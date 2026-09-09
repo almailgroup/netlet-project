@@ -6,7 +6,7 @@
  * root deployment keeps returning "/" and every helper below is a no-op there.
  */
 
-/** Base URL without a trailing slash — "" at the domain root, "/NetLet-Website" on Pages. */
+/** Base URL without a trailing slash — "" at the domain root, "/netlet-project" on Pages. */
 export const BASE_PATH = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
 
 /**

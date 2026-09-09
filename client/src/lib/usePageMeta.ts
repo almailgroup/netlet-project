@@ -18,7 +18,7 @@ const JSON_LD_ID = "netlet-structured-data";
 /** The origin the canonical and share URLs are built from. */
 export const SITE_URL: string =
   import.meta.env.VITE_SITE_URL?.replace(/\/+$/, "") ||
-  (typeof window !== "undefined" ? window.location.origin : "https://almailgroup.github.io/NetLet-Website");
+  (typeof window !== "undefined" ? window.location.origin : "https://almailgroup.github.io/netlet-project");
 
 function upsertMeta(attribute: "name" | "property", key: string, content: string): void {
   const selector = `meta[${attribute}="${key}"]`;

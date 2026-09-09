@@ -16,7 +16,7 @@
  * is refused rather than loaded. Point this at a local tunnel when developing
  * against an unpublished build.
  */
-export const MOBILE_STOREFRONT_URL = "https://almailgroup.github.io/NetLet-Website/";
+export const MOBILE_STOREFRONT_URL = "https://almailgroup.github.io/netlet-project/";
 
 /**
  * Items in the native bottom bar, in display order.

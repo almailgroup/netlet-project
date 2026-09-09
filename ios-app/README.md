@@ -15,7 +15,7 @@ ios-app/
 ## What the app is
 
 A native shell around the NetLet storefront. It loads
-`https://almailgroup.github.io/NetLet-Website/` in a `WKWebView` and adds the
+`https://almailgroup.github.io/netlet-project/` in a `WKWebView` and adds the
 things a website cannot do: a native tab bar, haptics, and the iOS glass effect.
 `src/webStorefront.ts` holds the values shared with the web side — change a tab
 label there and it must change on the web too, or that tab silently stops
