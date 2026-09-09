@@ -7,7 +7,7 @@
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import type { Product } from "@shared/commerce/types";
-import { Heart, LoaderCircle, Share2, ShoppingBag, Star, Zap } from "lucide-react";
+import { Eye, Heart, LoaderCircle, Share2, ShoppingBag, Star, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
@@ -105,7 +105,7 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
   );
 }
 
-export function ProductCard({ product, saved, onSave, onShare, onDetails, onAdd, onBuyNow, isAdding, compact = false }: { product: Product; saved: boolean; onSave: () => void; onShare?: () => void; onDetails: () => void; onAdd: () => void; onBuyNow: () => void; isAdding: boolean; compact?: boolean }) {
+export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false }: { product: Product; saved: boolean; onSave: () => void; onShare?: () => void; onDetails: () => void; onQuickView?: () => void; onAdd: () => void; onBuyNow: () => void; isAdding: boolean; compact?: boolean }) {
   const { t } = useTranslation();
   const money = useMoney();
   const share = onShare ?? (() => void shareProduct(product, t));
@@ -142,6 +142,9 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onAdd,
         {/* Share is secondary: it appears on hover on a pointer device and is
             always present on touch, where there is no hover to reveal it. */}
         <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
+        {onQuickView ? (
+          <button onClick={onQuickView} aria-label={t("quick.open", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-[5.25rem] grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Eye className="size-3.5" /></button>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">

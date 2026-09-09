@@ -17,6 +17,7 @@ import { isDuplicateKeyError } from "./db";
 import {
   customerNotificationPreferences,
   customerPreferences,
+  followedProducts,
   savedProducts,
   users,
 } from "../drizzle/schema";
@@ -123,6 +124,48 @@ describe("upserts", () => {
       // @ts-expect-error - the point is that the database refuses it too.
       db.insert(customerNotificationPreferences).values({ userId: user.id, kind: "not_a_kind", enabled: true })
     ).rejects.toThrow();
+  });
+});
+
+describe("followed products", () => {
+  it("keeps one follow per shopper per product", async () => {
+    const user = await makeUser("follower@example.com");
+    await db.insert(followedProducts).values({ userId: user.id, productId: "lamp" });
+    await expect(
+      db.insert(followedProducts).values({ userId: user.id, productId: "lamp" }),
+    ).rejects.toThrow();
+  });
+
+  // The upsert the follow toggle relies on: without the composite unique as the
+  // arbiter, ON CONFLICT has nothing to catch and a second tap throws.
+  it("upserts on the composite key rather than inserting a duplicate", async () => {
+    const user = await makeUser("upsert-follow@example.com");
+    await db.insert(followedProducts).values({ userId: user.id, productId: "kettle", priceDrop: true, backInStock: true });
+    await db
+      .insert(followedProducts)
+      .values({ userId: user.id, productId: "kettle", priceDrop: false, backInStock: true })
+      .onConflictDoUpdate({
+        target: [followedProducts.userId, followedProducts.productId],
+        set: { priceDrop: false },
+      });
+    const rows = await db.select().from(followedProducts).where(eq(followedProducts.userId, user.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].priceDrop).toBe(false);
+  });
+
+  it("defaults both alerts on, since following means tell me either way", async () => {
+    const user = await makeUser("defaults-follow@example.com");
+    const [row] = await db.insert(followedProducts).values({ userId: user.id, productId: "tv" }).returning();
+    expect({ priceDrop: row.priceDrop, backInStock: row.backInStock }).toEqual({ priceDrop: true, backInStock: true });
+    expect(row.lastNotifiedPrice).toBeNull();
+  });
+
+  it("goes away with the shopper", async () => {
+    const user = await makeUser("cascade-follow@example.com");
+    await db.insert(followedProducts).values({ userId: user.id, productId: "gone" });
+    await db.delete(users).where(eq(users.id, user.id));
+    const rows = await db.select().from(followedProducts).where(eq(followedProducts.userId, user.id));
+    expect(rows).toEqual([]);
   });
 });
 

@@ -215,10 +215,15 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.saved.list":
     case "customer.notifications.list":
     case "customer.tracking.list":
+    case "customer.follows.list":
       return [];
+    // Nobody is signed in to be waiting, so the demand line stays off.
+    case "customer.follows.demand":
+      return 0;
     case "customer.profile.update":
     case "customer.saved.set":
     case "customer.notifications.set":
+    case "customer.follows.set":
       return { success: true } as const;
 
     default:

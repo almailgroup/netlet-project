@@ -50,6 +50,8 @@ import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
 import { shareProduct } from "@/components/ProductCard";
 import { StoreHeader } from "@/components/StoreHeader";
+import { VariantPicker, imageIndexForVariant } from "@/components/VariantPicker";
+import { FollowProduct } from "@/components/FollowProduct";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
@@ -490,6 +492,17 @@ export default function ProductDetail() {
   const galleryImageCount = product?.images.length ?? 0;
 
   const changeImage = (direction: "previous" | "next") => setSelectedImageIndex(current => galleryIndex(current, galleryImageCount, direction));
+
+  /**
+   * Choosing a variant shows it. A colour control that does not change the
+   * picture is asking the shopper to take the colour on trust, which is the
+   * one thing the picture is there for.
+   */
+  const chooseVariant = (variant: { id: string }) => {
+    setSelectedVariantId(variant.id);
+    const next = imageIndexForVariant(product!, product!.variants.find(entry => entry.id === variant.id));
+    if (next !== null) setSelectedImageIndex(next);
+  };
   const addToCart = async () => {
     if (!product || !selectedVariant?.availableForSale) return;
     try {
@@ -573,7 +586,7 @@ export default function ProductDetail() {
               <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
             </div>
 
-            {product.variants.length > 1 ? <label className="mt-6 block text-xs font-extrabold text-[#0a285a]">{t("product.chooseOption")}<select value={selectedVariantId} onChange={event => setSelectedVariantId(event.target.value)} className="mt-2 block w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-3 text-sm font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]">{product.variants.map(variant => <option key={variant.id} value={variant.id} disabled={!variant.availableForSale}>{variant.title} — {money(variant.price)}{variant.availableForSale ? "" : t("product.variantUnavailable")}</option>)}</select></label> : null}
+            <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
 
             <div className="mt-6 flex items-center gap-3">
               <span className="text-sm font-semibold text-[#7e859b]">{t("product.quantity")}:</span>
@@ -588,6 +601,8 @@ export default function ProductDetail() {
               <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(inStock ? "product.addToCart" : "product.unavailable")}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
+
+            <div className="mt-3"><FollowProduct product={product} compact /></div>
 
             <button onClick={viewCart} className="pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#0a285a] bg-white/50 px-5 py-3.5 text-[15px] font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a] hover:text-white"><ShoppingBasket className="size-[18px]" />{itemCount ? t("product.viewCartCount", { count: itemCount }) : t("product.viewCart")}</button>
 

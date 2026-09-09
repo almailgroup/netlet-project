@@ -4,6 +4,7 @@ import postgres from "postgres";
 import {
   customerNotificationPreferences,
   customerPreferences,
+  followedProducts,
   orderTrackingEvents,
   savedProducts,
   users,
@@ -192,6 +193,69 @@ export async function setSavedProduct(userId: number, productId: string, saved: 
     await db.delete(savedProducts).where(and(eq(savedProducts.userId, userId), eq(savedProducts.productId, productId)));
   }
   return listSavedProductIds(userId);
+}
+
+/** Everything this shopper asked to be told about. */
+export async function listFollowedProducts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(followedProducts).where(eq(followedProducts.userId, userId));
+}
+
+/**
+ * Starts or stops watching a product.
+ *
+ * Turning both alerts off is the same as not following it, so the row is
+ * removed rather than left behind as a follow that notifies nothing — which
+ * would also inflate the demand count the vendor sees.
+ */
+export async function setFollowedProduct(
+  userId: number,
+  productId: string,
+  patch: { priceDrop?: boolean; backInStock?: boolean },
+) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const existing = (await db
+    .select()
+    .from(followedProducts)
+    .where(and(eq(followedProducts.userId, userId), eq(followedProducts.productId, productId)))
+    .limit(1))[0];
+
+  const priceDrop = patch.priceDrop ?? existing?.priceDrop ?? true;
+  const backInStock = patch.backInStock ?? existing?.backInStock ?? true;
+
+  if (!priceDrop && !backInStock) {
+    await db.delete(followedProducts).where(and(eq(followedProducts.userId, userId), eq(followedProducts.productId, productId)));
+    return listFollowedProducts(userId);
+  }
+
+  await db
+    .insert(followedProducts)
+    .values({ userId, productId, priceDrop, backInStock })
+    .onConflictDoUpdate({
+      target: [followedProducts.userId, followedProducts.productId],
+      set: { priceDrop, backInStock },
+    });
+  return listFollowedProducts(userId);
+}
+
+/**
+ * How many shoppers are waiting on a product.
+ *
+ * The requirement is that a back-in-stock request "also reaches the vendor, so
+ * they know the level of demand" — this is that number, and it is a count
+ * rather than a list because the vendor has no business knowing who.
+ */
+export async function countFollowers(productId: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const rows = await db
+    .select({ id: followedProducts.id })
+    .from(followedProducts)
+    .where(and(eq(followedProducts.productId, productId), eq(followedProducts.backInStock, true)));
+  return rows.length;
 }
 
 export async function listNotificationPreferences(userId: number) {

@@ -18,6 +18,19 @@ import { useEffect, useRef } from "react";
 export function useOverlay(open: boolean, onClose: () => void) {
   const opener = useRef<HTMLElement | null>(null);
 
+  /*
+   * Callers pass an inline arrow, so `onClose` is a new function on every
+   * render of the page holding the overlay. Depending on it directly tore the
+   * effect down and set it up again on each of those renders — which meant the
+   * scroll lock's "what was here before" was re-captured from a body that was
+   * already locked, and the page stayed frozen after the overlay closed.
+   *
+   * The ref keeps the latest callback without making it a dependency, so the
+   * effect runs once per open and once per close, which is what it describes.
+   */
+  const close = useRef(onClose);
+  close.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
@@ -26,7 +39,7 @@ export function useOverlay(open: boolean, onClose: () => void) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        close.current();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -50,5 +63,5 @@ export function useOverlay(open: boolean, onClose: () => void) {
       const active = document.activeElement;
       if (!active || active === document.body || !document.contains(active)) opener.current.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 }

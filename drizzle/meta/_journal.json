@@ -15,6 +15,13 @@
       "when": 1788604049663,
       "tag": "0001_late_morph",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788982521200,
+      "tag": "0002_gorgeous_iron_monger",
+      "breakpoints": true
     }
   ]
 }

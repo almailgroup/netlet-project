@@ -12,6 +12,7 @@
  */
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/ProductCard";
+import { QuickView } from "@/components/QuickView";
 import { StoreHeader } from "@/components/StoreHeader";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { useCart } from "@/contexts/CartContext";
@@ -64,6 +65,7 @@ export default function Category() {
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   useOverlay(sheetOpen, () => setSheetOpen(false));
 
   const slug = params?.slug ?? "all";
@@ -292,6 +294,7 @@ export default function Category() {
                       toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
                     }}
                     onDetails={() => openProduct(product)}
+                    onQuickView={() => setQuickProduct(product)}
                     onAdd={() => void addToCart(product)}
                     onBuyNow={() => void buyNow(product)}
                     isAdding={cartLoading}
@@ -366,6 +369,7 @@ export default function Category() {
           </aside>
         </div>
       ) : null}
+      <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />
     </main>
   );

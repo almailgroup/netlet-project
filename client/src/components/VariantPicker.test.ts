@@ -1,0 +1,59 @@
+import { describe, expect, it } from "vitest";
+import { imageIndexForVariant } from "./VariantPicker";
+import type { Product, ProductVariant } from "@shared/commerce/types";
+
+const money = (amount: string) => ({ amount, currencyCode: "KWD" });
+
+function variant(id: string, options: [string, string][]): ProductVariant {
+  return {
+    id, title: id, sku: null,
+    price: money("10"), compareAtPrice: null, availableForSale: true,
+    selectedOptions: options.map(([name, value]) => ({ name, value })),
+  };
+}
+
+function product(images: (string | null)[], variants: ProductVariant[]): Product {
+  return {
+    id: "p", handle: "p", title: "Lamp", description: "", descriptionHtml: "",
+    productType: null, vendor: null, tags: [], attributes: [],
+    images: images.map((altText, i) => ({ url: `img-${i}.jpg`, altText })),
+    priceRange: { min: money("10"), max: money("10") },
+    options: [], variants,
+  };
+}
+
+describe("imageIndexForVariant", () => {
+  it("finds the photo whose alt text names the variant", () => {
+    const charcoal = variant("v2", [["Colour", "Charcoal"]]);
+    const p = product(["Aurora Desk Lamp – Silver", "Aurora Desk Lamp – Charcoal"], [charcoal]);
+    expect(imageIndexForVariant(p, charcoal)).toBe(1);
+  });
+
+  it("matches case-insensitively, since merchants write alt text by hand", () => {
+    const v = variant("v1", [["Colour", "CHARCOAL"]]);
+    expect(imageIndexForVariant(product(["lamp in charcoal"], [v]), v)).toBe(0);
+  });
+
+  it("matches on any of the variant's options, not only the first", () => {
+    const v = variant("v1", [["Size", "Large"], ["Colour", "Oak"]]);
+    expect(imageIndexForVariant(product(["Shelf, oak finish"], [v]), v)).toBe(0);
+  });
+
+  // Jumping to an unrelated photo is worse than leaving the gallery alone: the
+  // shopper reads the change as "this is the one you picked".
+  it("answers null rather than guessing when no alt text matches", () => {
+    const v = variant("v1", [["Colour", "Charcoal"]]);
+    expect(imageIndexForVariant(product(["Aurora Desk Lamp"], [v]), v)).toBeNull();
+  });
+
+  it("answers null when the images carry no alt text at all", () => {
+    const v = variant("v1", [["Colour", "Charcoal"]]);
+    expect(imageIndexForVariant(product([null, null], [v]), v)).toBeNull();
+  });
+
+  it("answers null for a product with no real options", () => {
+    const v = variant("v1", []);
+    expect(imageIndexForVariant(product(["anything"], [v]), v)).toBeNull();
+    expect(imageIndexForVariant(product(["anything"], []), undefined)).toBeNull();
+  });
+});

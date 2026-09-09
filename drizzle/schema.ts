@@ -120,6 +120,45 @@ export const savedProducts = pgTable(
   ]
 );
 
+/**
+ * Products a shopper asked to be told about.
+ *
+ * Distinct from `savedProducts`: saving is "I might buy this", following is
+ * "tell me when something changes". A shopper follows an out-of-stock item to
+ * hear when it returns, or a expensive one to hear when it drops — and the
+ * vendor learns how many people are waiting, which is the demand signal the
+ * requirements ask for.
+ *
+ * `lastNotifiedPrice` is what the price was when we last told them, so a drop
+ * is measured against the last thing the shopper heard rather than against
+ * whatever the price happens to be on the next sweep. Null until the first
+ * notification goes out.
+ */
+export const followedProducts = pgTable(
+  "followed_products",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: varchar("product_id", { length: 191 }).notNull(),
+    /** Tell them when the price falls below what they last saw. */
+    priceDrop: boolean("price_drop").notNull().default(true),
+    /** Tell them when it is available again. */
+    backInStock: boolean("back_in_stock").notNull().default(true),
+    /** Decimal string, matching Money.amount — never a float. */
+    lastNotifiedPrice: varchar("last_notified_price", { length: 32 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("followed_products_user_product_unique").on(table.userId, table.productId),
+    index("followed_products_user_id_idx").on(table.userId),
+    // The sweep that looks for price drops reads by product, not by shopper.
+    index("followed_products_product_id_idx").on(table.productId),
+  ]
+);
+
 /** Per-shopper notification opt-ins, one row per notification kind. */
 export const customerNotificationPreferences = pgTable(
   "customer_notification_preferences",
@@ -173,6 +212,7 @@ export const orderTrackingEvents = pgTable(
 export const usersRelations = relations(users, ({ one, many }) => ({
   preferences: one(customerPreferences),
   savedProducts: many(savedProducts),
+  followedProducts: many(followedProducts),
   notificationPreferences: many(customerNotificationPreferences),
   orderTrackingEvents: many(orderTrackingEvents),
 }));
@@ -183,6 +223,10 @@ export const customerPreferencesRelations = relations(customerPreferences, ({ on
 
 export const savedProductsRelations = relations(savedProducts, ({ one }) => ({
   user: one(users, { fields: [savedProducts.userId], references: [users.id] }),
+}));
+
+export const followedProductsRelations = relations(followedProducts, ({ one }) => ({
+  user: one(users, { fields: [followedProducts.userId], references: [users.id] }),
 }));
 
 export const customerNotificationPreferencesRelations = relations(
@@ -206,6 +250,9 @@ export type InsertCustomerPreference = typeof customerPreferences.$inferInsert;
 
 export type SavedProduct = typeof savedProducts.$inferSelect;
 export type InsertSavedProduct = typeof savedProducts.$inferInsert;
+
+export type FollowedProduct = typeof followedProducts.$inferSelect;
+export type InsertFollowedProduct = typeof followedProducts.$inferInsert;
 
 export type CustomerNotificationPreference = typeof customerNotificationPreferences.$inferSelect;
 export type InsertCustomerNotificationPreference = typeof customerNotificationPreferences.$inferInsert;
