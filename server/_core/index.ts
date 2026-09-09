@@ -1,11 +1,7 @@
 import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
 import net from "net";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { applySecurity, apiRateLimit, authRateLimit } from "./security";
+import { createApp } from "./app";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -28,35 +24,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  const app = express();
+  const app = createApp();
   const server = createServer(app);
 
-  // Before any route, so a blocked request never reaches application code.
-  applySecurity(app);
-  // 50mb was inherited from a template that proxied file uploads. Nothing here
-  // accepts a file: the largest body the API sees is a cart mutation. Leaving
-  // it meant any unauthenticated caller could make the process buffer 50MB per
-  // request. 256kb is generous for JSON and bounded.
-  app.use(express.json({ limit: "256kb" }));
-  app.use(express.urlencoded({ limit: "256kb", extended: true }));
-  // Liveness. The tunnel and any uptime monitor need one URL that answers
-  // without touching Shopify or the database, so a red check means this
-  // process is down rather than a dependency being slow.
-  app.get("/healthz", (_req, res) => {
-    res.json({ status: "ok", uptime: Math.round(process.uptime()) });
-  });
-
-  // tRPC API
-  app.use("/api/trpc/auth.login", authRateLimit);
-  app.use("/api/trpc/auth.register", authRateLimit);
-  app.use("/api/trpc", apiRateLimit);
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);

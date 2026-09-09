@@ -121,6 +121,19 @@ its own direction and the punctuation lands on the right side.
 
 ## Deploys
 
+`server/_core/app.ts` holds the routes and the security, and knows nothing
+about how it is served. Two entry points use it: `server/_core/index.ts` adds
+Vite or static files and listens on a port, `api/index.ts` exports it as a
+Vercel function. One copy of the routes, so the two cannot drift.
+
+Vercel is the target that can run the backend — `docs/VERCEL.md` is the setup,
+and environment variables live in its dashboard rather than a `.env`. The app
+normalises a `/trpc/…` path back to `/api/trpc/…`, because a platform that
+rewrites onto a function mounted at `/api` may hand over the rewritten path,
+and every call would otherwise 404 silently.
+
+### GitHub Pages
+
 Pages serves `main` at `/` — "Deploy from a branch", one branch only. The
 workflow builds and commits the result back into `main`, so its deploy commits
 land on the branch you are working on: expect to rebase.
