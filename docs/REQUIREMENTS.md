@@ -33,9 +33,10 @@ What that unlocked, and where it landed:
   is reachable by no vendor rank at all, which is what §3.3 asks for.
 - `server/inventory.ts` — the data layer, with the guard next to each query
   rather than only at the router.
-- `/dashboard` — one application for admins and vendors, scoped by the server.
+- `/admin` — one application for admins and vendors, scoped by the server, with
+  `/admin/people` deciding who administers the platform at all.
 - `server/catalog.ts` — the storefront reading those same tables, so a product
-  added in the dashboard is a product in the shop.
+  added in the portal is a product in the shop.
 
 Still greenfield, and still marked *needs foundation* below: payments and
 payouts, the AI service layer (§3.5), affiliate marketing (§3.7), and
@@ -111,7 +112,8 @@ refinement (`server/routers/search.ts`).
 
 All six items — finance, product approval, audit trail, fraud detection,
 e-invoicing — are **needs foundation**. There is no admin surface. The `users`
-table has an `admin` role, and `/dashboard` is what reads it.
+table has an `admin` role, `/admin` is what reads it, and `/admin/people` is
+what grants it.
 
 ## 3.7 Affiliate Marketing · 3.8 Vendor-Customer Chat · 3.9 Grocery
 

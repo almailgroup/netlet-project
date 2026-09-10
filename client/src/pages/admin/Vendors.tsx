@@ -5,7 +5,7 @@
  * are explicit about. The server refuses a vendor regardless of what this page
  * renders — this is the surface, not the enforcement.
  */
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -16,9 +16,9 @@ import { toast } from "sonner";
 
 const STATUSES = ["pending", "approved", "suspended"] as const;
 
-export default function DashboardVendors() {
+export default function AdminVendors() {
   usePageMeta(privatePageMeta("Vendors"));
-  return <DashboardShell need={"platform.viewAll"}>{() => <VendorList />}</DashboardShell>;
+  return <AdminShell need={"platform.viewAll"}>{() => <VendorList />}</AdminShell>;
 }
 
 function VendorList() {
@@ -27,20 +27,20 @@ function VendorList() {
   const vendors = trpc.inventory.vendors.list.useQuery();
   const [rates, setRates] = useState<Record<number, string>>({});
 
-  const done = () => { void utils.inventory.vendors.list.invalidate(); toast.success(t("dash.saved")); };
-  const fail = () => toast.error(t("dash.forbidden"));
+  const done = () => { void utils.inventory.vendors.list.invalidate(); toast.success(t("admin.saved")); };
+  const fail = () => toast.error(t("admin.forbidden"));
   const setCommission = trpc.inventory.vendors.setCommission.useMutation({ onSuccess: done, onError: fail });
   const setStatus = trpc.inventory.vendors.setStatus.useMutation({ onSuccess: done, onError: fail });
 
-  if (vendors.isLoading) return <p className="text-sm text-[#536b8c]">{t("dash.loading")}</p>;
+  if (vendors.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
   const rows = vendors.data ?? [];
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("dash.vendors")}</h1>
+      <h1 className="text-xl font-extrabold">{t("admin.vendors")}</h1>
       {rows.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-          <p className="text-sm font-extrabold">{t("dash.noVendors")}</p>
+          <p className="text-sm font-extrabold">{t("admin.noVendors")}</p>
         </div>
       ) : (
         <div className="mt-5 space-y-3">
@@ -52,7 +52,7 @@ function VendorList() {
                   <p className="mt-0.5 text-[11px] text-[#9ea4b5]">/{vendor.slug}</p>
                 </div>
                 <label className="text-[11px] font-extrabold text-[#0a285a]">
-                  {t("dash.vendorStatus")}
+                  {t("admin.vendorStatus")}
                   <select
                     value={vendor.status}
                     onChange={event => setStatus.mutate({ vendorId: vendor.id, status: event.target.value as (typeof STATUSES)[number] })}
@@ -67,7 +67,7 @@ function VendorList() {
 
               <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-[#e6e9ef] pt-3">
                 <label className="text-[11px] font-extrabold text-[#0a285a]">
-                  {t("dash.commissionPercent")}
+                  {t("admin.commissionPercent")}
                   <input
                     dir="ltr"
                     inputMode="decimal"
@@ -81,11 +81,11 @@ function VendorList() {
                   disabled={setCommission.isPending}
                   className="glass glass-navy pressable h-9 rounded-full px-4 text-[11px] font-extrabold disabled:opacity-60"
                 >
-                  {t("dash.save")}
+                  {t("admin.save")}
                 </button>
                 {vendor.autoPublish ? (
                   <span className="ms-auto rounded-full bg-[#d4edda] px-2.5 py-1 text-[10px] font-extrabold text-[#155724]">
-                    {t("dash.autoPublish")}
+                    {t("admin.autoPublish")}
                   </span>
                 ) : null}
               </div>

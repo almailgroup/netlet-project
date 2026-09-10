@@ -1,8 +1,8 @@
 /**
- * Dashboard in, storefront out.
+ * Admin in, storefront out.
  *
  * Every other test covers one half. This one covers the join: a product
- * created and published through the same tRPC procedures the dashboard calls
+ * created and published through the same tRPC procedures the admin portal calls
  * has to appear through the same tRPC procedures the shop calls, and be
  * buyable. Before this change those were two different catalogs, and nothing
  * would have failed if they drifted apart again.
@@ -65,7 +65,7 @@ beforeAll(async () => {
   shopper = appRouter.createCaller(contextFor(null));
 }, 60_000);
 
-describe("a product's journey from the dashboard to the shop", () => {
+describe("a product's journey from the admin portal to the shop", () => {
   let handle = "";
   let variantId = "";
 

@@ -9,8 +9,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
-import { lazy, Suspense } from "react";
-import { Route, Router as WouterRouter, Switch } from "wouter";
+import { lazy, Suspense, useEffect } from "react";
+import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import LiquidGlassFilters from "./components/LiquidGlassFilters";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -29,13 +29,16 @@ const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
 const Category = lazy(() => import("@/pages/Category"));
-/* The dashboard is a separate application in everything but deployment: no
+/* The admin portal is a separate application in everything but deployment: no
    shopper ever loads it, so it stays out of the storefront's bundle. */
-const DashboardProducts = lazy(() => import("@/pages/dashboard/Products"));
-const DashboardProductEditor = lazy(() => import("@/pages/dashboard/ProductEditor"));
-const DashboardReview = lazy(() => import("@/pages/dashboard/Review"));
-const DashboardVendors = lazy(() => import("@/pages/dashboard/Vendors"));
-const DashboardTeam = lazy(() => import("@/pages/dashboard/Team"));
+const AdminOverview = lazy(() => import("@/pages/admin/Overview"));
+const AdminProducts = lazy(() => import("@/pages/admin/Products"));
+const AdminPeople = lazy(() => import("@/pages/admin/People"));
+const AdminStock = lazy(() => import("@/pages/admin/Stock"));
+const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
+const AdminReview = lazy(() => import("@/pages/admin/Review"));
+const AdminVendors = lazy(() => import("@/pages/admin/Vendors"));
+const AdminTeam = lazy(() => import("@/pages/admin/Team"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -53,6 +56,15 @@ function RouteFallback() {
   );
 }
 
+/** /dashboard/x -> /admin/x, replacing history so Back does not bounce. */
+function LegacyAdminRedirect() {
+  const [location, navigate] = useLocation();
+  useEffect(() => {
+    navigate(location.replace(/^\/dashboard/, "/admin") || "/admin", { replace: true });
+  }, [location, navigate]);
+  return null;
+}
+
 function Router() {
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
@@ -65,11 +77,18 @@ function Router() {
         <Route path="/saved" component={Saved} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/category/:slug" component={Category} />
-        <Route path="/dashboard" component={DashboardProducts} />
-        <Route path="/dashboard/products/:id" component={DashboardProductEditor} />
-        <Route path="/dashboard/review" component={DashboardReview} />
-        <Route path="/dashboard/vendors" component={DashboardVendors} />
-        <Route path="/dashboard/team" component={DashboardTeam} />
+        <Route path="/admin" component={AdminOverview} />
+        <Route path="/admin/products" component={AdminProducts} />
+        <Route path="/admin/products/:id" component={AdminProductEditor} />
+        <Route path="/admin/review" component={AdminReview} />
+        <Route path="/admin/stock" component={AdminStock} />
+        <Route path="/admin/vendors" component={AdminVendors} />
+        <Route path="/admin/people" component={AdminPeople} />
+        <Route path="/admin/team" component={AdminTeam} />
+        {/* The portal used to live at /dashboard. Anyone who bookmarked it
+            lands here rather than on a 404 that looks like the tool is gone. */}
+        <Route path="/dashboard/:rest*" component={LegacyAdminRedirect} />
+        <Route path="/dashboard" component={LegacyAdminRedirect} />
         <Route path="/products/:handle" component={ProductDetail} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

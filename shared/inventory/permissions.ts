@@ -51,7 +51,8 @@ export type Capability =
   | "vendor.setCommission"
   | "vendor.approve"
   | "product.review"
-  | "platform.viewAll";
+  | "platform.viewAll"
+  | "platform.manageUsers";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -79,6 +80,10 @@ const ADMIN_ONLY: Capability[] = [
   "vendor.approve",
   "product.review",
   "platform.viewAll",
+  // Who reaches the admin panel is decided by people who are already in it.
+  // A vendor owner runs their own team — `vendor.manageMembers` — and that is
+  // a different question from who is an administrator of NetLet.
+  "platform.manageUsers",
 ];
 
 /**

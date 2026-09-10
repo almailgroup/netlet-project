@@ -9,7 +9,7 @@
  * Staff and managers see this list read-only: knowing who else is in the
  * vendor is reasonable, changing it is not.
  */
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -20,20 +20,20 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
-  staff: "dash.roleStaff",
-  manager: "dash.roleManager",
-  owner: "dash.roleOwner",
+  staff: "admin.roleStaff",
+  manager: "admin.roleManager",
+  owner: "admin.roleOwner",
 };
 
 const ROLE_NOTE: Record<VendorRole, MessageKey> = {
-  staff: "dash.roleStaffNote",
-  manager: "dash.roleManagerNote",
-  owner: "dash.roleOwnerNote",
+  staff: "admin.roleStaffNote",
+  manager: "admin.roleManagerNote",
+  owner: "admin.roleOwnerNote",
 };
 
-export default function DashboardTeam() {
+export default function AdminTeam() {
   usePageMeta(privatePageMeta("Team"));
-  return <DashboardShell need={"vendor.viewMembers"}>{actor => <Team actor={actor} />}</DashboardShell>;
+  return <AdminShell need={"vendor.viewMembers"}>{actor => <Team actor={actor} />}</AdminShell>;
 }
 
 function Team({ actor }: { actor: Actor }) {
@@ -44,21 +44,21 @@ function Team({ actor }: { actor: Actor }) {
   const vendorId = actor.kind === "vendor" ? actor.vendorId : 0;
   const members = trpc.inventory.vendors.members.useQuery({ vendorId }, { enabled: vendorId > 0 });
 
-  const done = () => { void utils.inventory.vendors.members.invalidate({ vendorId }); toast.success(t("dash.saved")); };
-  const fail = () => toast.error(t("dash.forbidden"));
+  const done = () => { void utils.inventory.vendors.members.invalidate({ vendorId }); toast.success(t("admin.saved")); };
+  const fail = () => toast.error(t("admin.forbidden"));
   const setRole = trpc.inventory.vendors.setMemberRole.useMutation({ onSuccess: done, onError: fail });
   const remove = trpc.inventory.vendors.removeMember.useMutation({ onSuccess: done, onError: fail });
 
   const mayManage = can(actor, "vendor.manageMembers", vendorId);
 
-  if (vendorId === 0) return <p className="text-sm text-[#536b8c]">{t("dash.noAccessNote")}</p>;
-  if (members.isLoading) return <p className="text-sm text-[#536b8c]">{t("dash.loading")}</p>;
+  if (vendorId === 0) return <p className="text-sm text-[#536b8c]">{t("admin.noAccessNote")}</p>;
+  if (members.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
 
   const rows = members.data ?? [];
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("dash.team")}</h1>
+      <h1 className="text-xl font-extrabold">{t("admin.team")}</h1>
 
       <ul className="mt-5 space-y-2">
         {rows.map(member => (
@@ -72,14 +72,14 @@ function Team({ actor }: { actor: Actor }) {
                 <select
                   value={member.role}
                   onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
-                  aria-label={t("dash.memberRole")}
+                  aria-label={t("admin.memberRole")}
                   className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#f2683a]"
                 >
                   {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
                 </select>
                 <button
                   onClick={() => remove.mutate({ vendorId, userId: member.userId })}
-                  aria-label={t("dash.remove")}
+                  aria-label={t("admin.remove")}
                   className="glass pressable grid size-9 place-items-center rounded-full text-[#8c2f22]"
                 >
                   <Trash2 className="size-4" />
@@ -92,7 +92,7 @@ function Team({ actor }: { actor: Actor }) {
         ))}
         {rows.length === 0 ? (
           <li className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center text-sm font-extrabold">
-            {t("dash.noMembers")}
+            {t("admin.noMembers")}
           </li>
         ) : null}
       </ul>

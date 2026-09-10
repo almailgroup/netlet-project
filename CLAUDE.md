@@ -88,10 +88,10 @@ Postgres that `DATABASE_URL` points at. Money is `numeric`, never a float — th
 dinar has three decimal places and a binary fraction cannot hold 24.375.
 
 There is one catalog, not two. The storefront reads the same tables the
-dashboard writes: `server/catalog.ts` is the read side,
+admin portal writes: `server/catalog.ts` is the read side,
 `shared/commerce/fromInventory.ts` turns rows into the `Product` shape the
 pages are written against, and `server/storefront.e2e.test.ts` is what stops
-the two drifting apart again — it creates a product through the dashboard's
+the two drifting apart again — it creates a product through the portal's
 procedures and buys it through the shop's.
 
 `shared/commerce/types.ts` is that shape and is the only commerce contract the
@@ -119,18 +119,42 @@ A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
 
-## Dashboard
+## Admin portal
 
-`/dashboard` is one application for admins and vendors both, not two. The pages
+`/admin` is one application for admins and vendors both, not two. The pages
 are the same pages; scope is already decided by the server, so `products.list`
 returns one vendor's rows or every vendor's depending on who asks. Two shells
-would mean two navigations showing the same links.
+would mean two navigations showing the same links. It was `/dashboard` until
+the rename; `/dashboard/*` still redirects, so old bookmarks land.
 
 Which links appear comes from `can()` — the same pure function the server
 guards with. **A hidden link is a courtesy, never a control.** Pass `need` to
-`DashboardShell` so a route typed into the address bar refuses too: without it,
-a manager reaching `/dashboard/vendors` gets an empty page, which implies the
+`AdminShell` so a route typed into the address bar refuses too: without it,
+a manager reaching `/admin/vendors` gets an empty page, which implies the
 page exists and has nothing in it rather than that it is not theirs.
+
+**Two grants, deliberately not one control.** `platform.manageUsers` is who
+administers NetLet — it clears every vendor, commission, and `/admin/people`
+itself. Vendor membership is one company at one rank, and a vendor owner runs
+their own team from `/admin/team`. No vendor rank reaches `platform.manageUsers`
+at any level, or an owner could promote themselves.
+
+Two moves are refused outright on `/admin/people`: revoking your own
+administrator, and removing the last one. Both leave an installation that
+needs a database client to recover, and neither is worth allowing to save a
+click — there is always another administrator who can do it if it is meant.
+
+`/admin` opens on counts rather than lists, because the first question on
+arriving is "is anything waiting for me". "Waiting on you" carries only what
+somebody must act on and hides a zero; standing totals sit below it. Every
+tile links to the page that acts on it — a count with nowhere to go is
+decoration.
+
+`/admin/stock` judges low against **each variant's own `lowStockAt`**, not one
+shared number: three left of something that reorders at two is fine, three
+left of something that reorders at twenty is the emergency, and sorting by
+raw count puts them the wrong way round. A variant with no threshold is only
+listed once it hits zero.
 
 The publish button says what will actually happen. A vendor without
 `autoPublish` pressing Publish sends the product for review, and the page says
@@ -139,11 +163,13 @@ of small dishonesty that makes people distrust a tool.
 
 Stock moves by a delta with a reason, never by typing a new total. "We received
 12" is what happened; setting the box to 47 loses why and races with whoever
-else is editing.
+else is editing. `/admin/stock` is what reads those rows back, which is the
+whole reason for recording them.
 
-In a demo build the dashboard opens against fixtures as a vendor `manager` —
+In a demo build the portal opens against fixtures as a vendor `manager` —
 the one place the storefront's signed-out-guest rule is bent, because a sign-in
-wall would show nothing of the thing being demonstrated.
+wall would show nothing of the thing being demonstrated. `/admin/people` is
+admin-only, so in the demo it correctly refuses.
 
 ## Browsing
 

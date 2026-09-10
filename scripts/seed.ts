@@ -1,7 +1,7 @@
 /**
  * `pnpm db:seed` — the rows a fresh NetLet cannot start without.
  *
- * A brand-new database has no categories and no vendors, and the dashboard
+ * A brand-new database has no categories and no vendors, and the admin portal
  * cannot create a product without both: a product needs a vendor to belong to
  * before it can exist, and a department before it can be found. This writes
  * exactly those, and nothing else.
@@ -74,7 +74,7 @@ async function seedHouseVendor() {
  *
  * OWNER_EMAIL is granted the admin role when it registers, and an admin
  * already reaches everything — but being a member of a vendor is what makes
- * the dashboard's vendor-side pages show something real to test with.
+ * the portal's vendor-side pages show something real to test with.
  */
 async function linkOwner(vendorId: number) {
   const email = process.env.OWNER_EMAIL?.trim().toLowerCase();
@@ -104,7 +104,7 @@ async function main() {
   await seedDepartments();
   const vendorId = await seedHouseVendor();
   await linkOwner(vendorId);
-  console.log("\nDone. Add products at /dashboard.");
+  console.log("\nDone. Add products at /admin.");
 }
 
 main()

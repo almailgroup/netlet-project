@@ -14,7 +14,7 @@ import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../server/routers";
-import { demoCategories, demoInventoryActor, demoInventoryProducts } from "@/lib/demoInventory";
+import { demoCategories, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
@@ -228,7 +228,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.follows.set":
       return { success: true } as const;
 
-    /* The dashboard. The demo has no server, so it answers as a vendor manager
+    /* The admin portal. The demo has no server, so it answers as a vendor manager
        against fixtures — see demoInventory.ts. Writes are accepted and
        discarded; nothing here is persisted. */
     case "inventory.me":
@@ -243,11 +243,27 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.vendors.list":
     case "inventory.vendors.members":
       return [];
+    /* The demo actor is a vendor manager, so the counts are that vendor's and
+       the platform-wide vendor numbers are zero — the same shape the server
+       returns for a vendor, rather than an admin's view a manager never has. */
+    case "inventory.overview":
+      return demoOverview;
+    case "inventory.lowStock":
+      return demoLowStock;
+    case "inventory.stockHistory":
+      return demoStockHistory;
+    /* People is admin-only. A demo vendor manager cannot reach the page at
+       all, so the list is empty rather than invented. */
+    case "inventory.people.list":
+      return [];
     case "inventory.products.update":
     case "inventory.products.setImages":
     case "inventory.products.setStatus":
     case "inventory.variants.save":
     case "inventory.variants.adjustStock":
+    case "inventory.people.setAdmin":
+    case "inventory.people.addToVendor":
+    case "inventory.people.removeFromVendor":
       return { success: true } as const;
 
     default:

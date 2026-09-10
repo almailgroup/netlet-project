@@ -95,3 +95,26 @@ describe("assertCan", () => {
     expect(() => assertCan(manager, "product.publish", 10)).not.toThrow();
   });
 });
+
+describe("platform.manageUsers", () => {
+  it("is reachable by an admin", () => {
+    expect(can({ kind: "admin", userId: 1 }, "platform.manageUsers")).toBe(true);
+  });
+
+  // The escalation this blocks: a vendor owner granting themselves, or a
+  // colleague, administrator rights over the whole platform.
+  it("is out of reach of every vendor rank, owner included", () => {
+    for (const role of ["staff", "manager", "owner"] as const) {
+      expect(can({ kind: "vendor", userId: 2, vendorId: 1, role }, "platform.manageUsers")).toBe(false);
+    }
+  });
+
+  it("is out of reach of a shopper", () => {
+    expect(can({ kind: "customer", userId: 3 }, "platform.manageUsers")).toBe(false);
+  });
+
+  // Passing a vendor id must not make it look like a vendor-scoped question.
+  it("stays refused even when asked about the owner's own vendor", () => {
+    expect(can({ kind: "vendor", userId: 2, vendorId: 7, role: "owner" }, "platform.manageUsers", 7)).toBe(false);
+  });
+});

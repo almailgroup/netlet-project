@@ -22,7 +22,7 @@ public. So the chain is:
 Postgres  ->  this server (Mac mini)  ->  shopper's browser
 ```
 
-Until the middle link is running, adding products in the dashboard changes
+Until the middle link is running, adding products in the admin portal changes
 nothing on the live site.
 
 ## What the Mac mini needs
@@ -67,7 +67,7 @@ pnpm db:seed     # departments + the house vendor
 
 `db:seed` writes no products. A product needs a vendor to own it and a
 department to be found in, and those are what it creates; the catalog itself is
-yours to add at `/dashboard`.
+yours to add at `/admin`.
 
 Then:
 

@@ -1,7 +1,7 @@
 /**
- * The dashboard frame: who you are, and what that lets you reach.
+ * The admin portal frame: who you are, and what that lets you reach.
  *
- * There is one dashboard, not an admin one beside a vendor one. The pages are
+ * There is one admin portal, not an admin one beside a vendor one. The pages are
  * the same pages; what differs is scope, and scope is already decided by the
  * server — `products.list` returns one vendor's rows or every vendor's
  * depending on who asks. Building two shells would mean maintaining two
@@ -17,22 +17,22 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ClipboardCheck, LayoutGrid, Store, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Gauge, LayoutGrid, PackageSearch, ShieldCheck, Store, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
-  admin: "dash.roleAdmin",
-  owner: "dash.roleOwner",
-  manager: "dash.roleManager",
-  staff: "dash.roleStaff",
+  admin: "admin.roleAdmin",
+  owner: "admin.roleOwner",
+  manager: "admin.roleManager",
+  staff: "admin.roleStaff",
 };
 
 export function roleLabelKey(actor: Actor): MessageKey {
-  return actor.kind === "admin" ? "dash.roleAdmin" : ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
+  return actor.kind === "admin" ? "admin.roleAdmin" : ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
 }
 
-export function DashboardShell({ need, children }: {
+export function AdminShell({ need, children }: {
   /**
    * What this page requires. Hiding a nav link is a courtesy; a route typed
    * into the address bar arrives anyway, and rendering an empty page there
@@ -47,7 +47,7 @@ export function DashboardShell({ need, children }: {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   /*
    * The demo build is a signed-out guest everywhere — there is no server to
-   * sign in to. The dashboard is the one page where that would show nothing
+   * sign in to. The admin portal is the one page where that would show nothing
    * at all, so it opens against fixtures instead. This is the only place the
    * storefront's guest rule is bent, and only when there is no backend.
    */
@@ -55,13 +55,13 @@ export function DashboardShell({ need, children }: {
   const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable });
 
   if ((!DEMO_MODE && authLoading) || (reachable && me.isLoading)) {
-    return <Frame><p className="text-sm text-[#536b8c]">{t("dash.loading")}</p></Frame>;
+    return <Frame><p className="text-sm text-[#536b8c]">{t("admin.loading")}</p></Frame>;
   }
 
   if (!reachable) {
     return (
       <Frame>
-        <p className="text-sm font-bold text-[#0a285a]">{t("dash.signInFirst")}</p>
+        <p className="text-sm font-bold text-[#0a285a]">{t("admin.signInFirst")}</p>
         <Link href="/account" className="glass glass-navy pressable mt-4 inline-flex rounded-full px-5 py-3 text-xs font-extrabold">
           {t("header.signIn")}
         </Link>
@@ -70,16 +70,16 @@ export function DashboardShell({ need, children }: {
   }
 
   const actor = me.data;
-  // A signed-in shopper reaching /dashboard is not an error — it is somebody
+  // A signed-in shopper reaching /admin is not an error — it is somebody
   // who has not been added to a vendor yet, and telling them who to ask is
   // more use than a 403.
   if (!actor || actor.kind === "customer") {
     return (
       <Frame>
-        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("dash.noAccess")}</h1>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[#536b8c]">{t("dash.noAccessNote")}</p>
+        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.noAccess")}</h1>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[#536b8c]">{t("admin.noAccessNote")}</p>
         <Link href="/" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
-          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("dash.backToStore")}
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.backToStore")}
         </Link>
       </Frame>
     );
@@ -88,19 +88,22 @@ export function DashboardShell({ need, children }: {
   if (need && !can(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
     return (
       <Frame>
-        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("dash.forbidden")}</h1>
-        <Link href="/dashboard" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
-          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("dash.products")}
+        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.forbidden")}</h1>
+        <Link href="/admin" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.overview")}
         </Link>
       </Frame>
     );
   }
 
   const links = ([
-    { href: "/dashboard", label: "dash.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
-    { href: "/dashboard/review", label: "dash.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
-    { href: "/dashboard/vendors", label: "dash.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
-    { href: "/dashboard/team", label: "dash.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
+    { href: "/admin", label: "admin.overview", icon: <Gauge className="size-4" />, need: "product.view" },
+    { href: "/admin/products", label: "admin.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
+    { href: "/admin/stock", label: "admin.stock", icon: <PackageSearch className="size-4" />, need: "product.view" },
+    { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
+    { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
+    { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
+    { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
   ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability }[])
     .filter(link => can(actor, link.need));
 
@@ -110,10 +113,10 @@ export function DashboardShell({ need, children }: {
         <div className="container flex h-[64px] items-center gap-4">
           <Link href="/" className="flex items-center gap-2 text-sm font-extrabold">
             <ArrowLeft className="size-4 rtl:-scale-x-100" />
-            <span className="hidden sm:inline">{t("dash.backToStore")}</span>
+            <span className="hidden sm:inline">{t("admin.backToStore")}</span>
           </Link>
           <span className="ms-auto text-[11px] font-semibold text-[#536b8c]">
-            {user?.name || user?.email ? t("dash.signedInAs", { name: user?.name ?? user?.email ?? "" }) : null}
+            {user?.name || user?.email ? t("admin.signedInAs", { name: user?.name ?? user?.email ?? "" }) : null}
           </span>
           <span className="rounded-full bg-[#e7edf5] px-2.5 py-1 text-[10px] font-extrabold text-[#0a285a]">
             {t(roleLabelKey(actor))}
@@ -122,7 +125,7 @@ export function DashboardShell({ need, children }: {
       </header>
 
       <div className="container grid gap-6 py-6 lg:grid-cols-[210px_minmax(0,1fr)]">
-        <nav aria-label={t("dash.title")} className="hide-scrollbar flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+        <nav aria-label={t("admin.title")} className="hide-scrollbar flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
           {links.map(link => {
             const active = location === link.href;
             return (

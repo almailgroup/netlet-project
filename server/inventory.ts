@@ -62,7 +62,7 @@ export async function resolveActor(
 
 /* --------------------------------------------------------------- reading --- */
 
-/** A product with everything the storefront and the dashboards need. */
+/** A product with everything the storefront and the admin portal need. */
 export type FullProduct = Awaited<ReturnType<typeof getProduct>>;
 
 async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: (typeof products.$inferSelect)[]) {
@@ -122,7 +122,7 @@ export async function publishedProduct(handle: string) {
  * The products this actor administers.
  *
  * An admin sees every vendor's; anyone else sees only their own, at every
- * status, because a draft is exactly what a vendor comes to the dashboard to
+ * status, because a draft is exactly what a vendor comes to the admin portal to
  * finish.
  */
 export async function listProductsFor(actor: Actor, vendorId?: number) {
@@ -393,6 +393,285 @@ export async function removeMember(actor: Actor, vendorId: number, userId: numbe
   if (!db) throw new Error("Database is not configured");
   await db.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
   return listMembers(actor, vendorId);
+}
+
+/* -------------------------------------------------------------- overview --- */
+
+/**
+ * Scope, as SQL.
+ *
+ * Every report below is the same query for an admin and for a vendor, differing
+ * only in whether it is narrowed to one vendor. Writing that once means a
+ * report added later cannot accidentally show a vendor somebody else's numbers.
+ */
+function scopeOf(actor: Actor) {
+  return actor.kind === "vendor" ? actor.vendorId : undefined;
+}
+
+/**
+ * What the portal opens on.
+ *
+ * Counts rather than lists, because the first question on arriving is "is
+ * there anything waiting for me", and a list answers that slower than a
+ * number does. Each one is a link to the page that acts on it — a count with
+ * nowhere to go is decoration.
+ */
+export async function overview(actor: Actor) {
+  assertCan(actor, "product.view", scopeOf(actor));
+  const db = await getDb();
+  if (!db) {
+    return { draft: 0, pendingReview: 0, published: 0, archived: 0, outOfStock: 0, lowStock: 0, vendorsPending: 0, vendorsApproved: 0 };
+  }
+  const vendorId = scopeOf(actor);
+  const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
+
+  const byStatus = await db
+    .select({ status: products.status, count: sql<number>`count(*)::int` })
+    .from(products)
+    .where(mine)
+    .groupBy(products.status);
+
+  const countOf = (status: string) => byStatus.find(row => row.status === status)?.count ?? 0;
+
+  // Stock questions are about variants, joined back to products for scope.
+  const [stock] = await db
+    .select({
+      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} <= 0)::int`,
+      // Only variants that declare a threshold can be "low". A variant with no
+      // lowStockAt has not been given a level to be low against, and counting
+      // it as fine is the honest reading.
+      lowStock: sql<number>`count(*) filter (where ${productVariants.lowStockAt} is not null and ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAt})::int`,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(mine ? and(mine, eq(products.status, "published")) : eq(products.status, "published"));
+
+  let vendorsPending = 0;
+  let vendorsApproved = 0;
+  if (actor.kind === "admin") {
+    const byVendorStatus = await db
+      .select({ status: vendors.status, count: sql<number>`count(*)::int` })
+      .from(vendors)
+      .groupBy(vendors.status);
+    vendorsPending = byVendorStatus.find(row => row.status === "pending")?.count ?? 0;
+    vendorsApproved = byVendorStatus.find(row => row.status === "approved")?.count ?? 0;
+  }
+
+  return {
+    draft: countOf("draft"),
+    pendingReview: countOf("pending_review"),
+    published: countOf("published"),
+    archived: countOf("archived"),
+    outOfStock: stock?.outOfStock ?? 0,
+    lowStock: stock?.lowStock ?? 0,
+    vendorsPending,
+    vendorsApproved,
+  };
+}
+
+/**
+ * What is about to run out, worst first.
+ *
+ * "Worst" is how far below its own threshold a variant is, not its raw count:
+ * three left of something that reorders at two is fine, three left of
+ * something that reorders at twenty is the emergency. Sorting by raw stock
+ * would put them the wrong way round.
+ */
+export async function lowStock(actor: Actor, limit = 50) {
+  assertCan(actor, "product.view", scopeOf(actor));
+  const db = await getDb();
+  if (!db) return [];
+  const vendorId = scopeOf(actor);
+  const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
+
+  return db
+    .select({
+      variantId: productVariants.id,
+      variantTitle: productVariants.title,
+      sku: productVariants.sku,
+      stock: productVariants.stock,
+      lowStockAt: productVariants.lowStockAt,
+      productId: products.id,
+      productTitle: products.title,
+      productStatus: products.status,
+      vendorName: vendors.name,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .where(
+      and(
+        mine,
+        sql`${productVariants.stock} <= 0 or (${productVariants.lowStockAt} is not null and ${productVariants.stock} <= ${productVariants.lowStockAt})`,
+      ),
+    )
+    .orderBy(sql`${productVariants.stock} - coalesce(${productVariants.lowStockAt}, 0) asc`)
+    .limit(limit);
+}
+
+/**
+ * Who moved stock, when, and why.
+ *
+ * `adjustStock` already writes a row per movement; nothing read them back
+ * until now. A level that looks wrong is answered here rather than by asking
+ * around, which is the whole reason stock moves by a delta with a reason
+ * instead of by typing a new total.
+ */
+export async function stockHistory(actor: Actor, options: { variantId?: number; limit?: number } = {}) {
+  assertCan(actor, "product.view", scopeOf(actor));
+  const db = await getDb();
+  if (!db) return [];
+  const vendorId = scopeOf(actor);
+
+  return db
+    .select({
+      id: stockMovements.id,
+      delta: stockMovements.delta,
+      resulting: stockMovements.resulting,
+      reason: stockMovements.reason,
+      note: stockMovements.note,
+      createdAt: stockMovements.createdAt,
+      variantId: productVariants.id,
+      variantTitle: productVariants.title,
+      productId: products.id,
+      productTitle: products.title,
+      actorEmail: users.email,
+      actorName: users.name,
+    })
+    .from(stockMovements)
+    .innerJoin(productVariants, eq(stockMovements.variantId, productVariants.id))
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .leftJoin(users, eq(stockMovements.actorId, users.id))
+    .where(
+      and(
+        vendorId ? eq(products.vendorId, vendorId) : undefined,
+        options.variantId ? eq(stockMovements.variantId, options.variantId) : undefined,
+      ),
+    )
+    .orderBy(desc(stockMovements.createdAt))
+    .limit(options.limit ?? 100);
+}
+
+/* ------------------------------------------------------- platform people --- */
+
+/**
+ * Everyone with an account, with what they can reach.
+ *
+ * This is the list an administrator works from when deciding who gets in, so
+ * it carries the two things that decide that: the platform role, and every
+ * vendor membership. A shopper with neither is still listed — they are who
+ * you are about to grant something to.
+ *
+ * `query` matches email or name. It is a `LIKE`, not a search index: this
+ * list is people who work here, not the catalog, and it stays small enough
+ * that anything cleverer would be pretending.
+ */
+export async function listPeople(actor: Actor, options: { query?: string; limit?: number } = {}) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) return [];
+
+  const term = options.query?.trim().toLowerCase();
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: users.role,
+      lastSignedIn: users.lastSignedIn,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(term ? sql`lower(${users.email}) like ${`%${term}%`} or lower(coalesce(${users.name}, '')) like ${`%${term}%`}` : undefined)
+    .orderBy(desc(users.createdAt))
+    .limit(options.limit ?? 100);
+
+  if (!rows.length) return [];
+
+  const memberships = await db
+    .select({
+      userId: vendorMembers.userId,
+      vendorId: vendorMembers.vendorId,
+      role: vendorMembers.role,
+      vendorName: vendors.name,
+    })
+    .from(vendorMembers)
+    .innerJoin(vendors, eq(vendorMembers.vendorId, vendors.id))
+    .where(inArray(vendorMembers.userId, rows.map(row => row.id)));
+
+  return rows.map(row => ({
+    ...row,
+    vendors: memberships.filter(m => m.userId === row.id),
+  }));
+}
+
+/**
+ * Grants or revokes NetLet administrator.
+ *
+ * Two things are deliberately impossible here. An administrator cannot revoke
+ * their own access — locking yourself out of the only surface that can let
+ * you back in is not a mistake worth allowing, and there is always another
+ * administrator who can do it if it is really meant. And the last
+ * administrator cannot be removed at all, for the same reason at the scale of
+ * the whole platform: an installation with nobody who can approve a vendor or
+ * grant a role is one that needs a database client to recover.
+ */
+export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolean) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const target = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
+  if (!target) throw new Error("NOT_FOUND");
+
+  if (!isAdmin) {
+    if (target.id === actor.userId) throw new Error("CANNOT_DEMOTE_SELF");
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(eq(users.role, "admin"));
+    if (count <= 1) throw new Error("LAST_ADMIN");
+  }
+
+  await db.update(users).set({ role: isAdmin ? "admin" : "user" }).where(eq(users.id, userId));
+  return { id: userId, role: isAdmin ? "admin" : "user" } as const;
+}
+
+/**
+ * Puts somebody in a vendor, by address rather than by id.
+ *
+ * An administrator adding a vendor's staff knows their email, not their row
+ * id — and the person may not have registered yet. An unknown address is
+ * refused rather than creating an account, because an account created without
+ * a password is one nobody can sign in to and everybody assumes works.
+ */
+export async function addMemberByEmail(
+  actor: Actor,
+  vendorId: number,
+  email: string,
+  role: VendorRole,
+) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const target = (await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1))[0];
+  if (!target) throw new Error("NO_SUCH_ACCOUNT");
+
+  await db
+    .insert(vendorMembers)
+    .values({ vendorId, userId: target.id, role })
+    .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+  return { userId: target.id, vendorId, role };
+}
+
+/** Takes somebody out of a vendor. The account itself is untouched. */
+export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId: number) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  await db.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+  return { userId, vendorId };
 }
 
 /* --------------------------------------------------------------- vendors --- */

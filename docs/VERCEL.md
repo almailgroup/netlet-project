@@ -61,7 +61,7 @@ changing this one later needs a redeploy, not just a save.
 
 ### Switching on the real catalog
 
-This is the step that makes the dashboard's products appear in the shop.
+This is the step that makes the admin portal's products appear in the shop.
 
 1. Create a Supabase project and take the connection URI (Project Settings →
    Database → Connection string → URI).
@@ -85,7 +85,7 @@ DATABASE_URL    postgresql://…            # Supabase; see .env.example
 JWT_SECRET      <openssl rand -base64 48> # signs the session cookie
 ```
 
-Add products at `/dashboard`. A product needs a price, stock and at
+Add products at `/admin`. A product needs a price, stock and at
 least one image before it is worth publishing — the shop shows a grey box for
 a product with no picture.
 

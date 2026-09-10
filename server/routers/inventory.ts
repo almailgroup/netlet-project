@@ -13,24 +13,31 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import {
+  addMemberByEmail,
   adjustStock,
   createProduct,
   getProduct,
   listCategories,
   listMembers,
+  listPeople,
   listProductsFor,
   listVendors,
+  lowStock,
+  overview,
   publishedCatalog,
   publishedProduct,
   removeMember,
+  removeMemberAsAdmin,
   resolveActor,
   reviewProduct,
   saveVariant,
   setMemberRole,
   setProductImages,
   setProductStatus,
+  setUserAdmin,
   setVendorCommission,
   setVendorStatus,
+  stockHistory,
   updateProduct,
 } from "../inventory";
 import { VENDOR_ROLES } from "../../shared/inventory/permissions";
@@ -51,6 +58,17 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
       throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
     }
     if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "No such product" });
+    // These three are refusals a person can act on, not faults: they are
+    // told what they may do instead rather than shown a failure.
+    if (message === "NO_SUCH_ACCOUNT") {
+      throw new TRPCError({ code: "NOT_FOUND", message: "admin.noSuchAccount" });
+    }
+    if (message === "CANNOT_DEMOTE_SELF") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.cannotDemoteSelf" });
+    }
+    if (message === "LAST_ADMIN") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.lastAdmin" });
+    }
     throw error;
   }
 }
@@ -61,7 +79,7 @@ const moneySchema = z.string().regex(/^\d{1,9}(\.\d{1,3})?$/, "Expected an amoun
 const vendorScope = z.object({ vendorId: z.number().int().positive().optional() });
 
 export const inventoryRouter = router({
-  /** Who the caller is, so a dashboard knows what to render before asking. */
+  /** Who the caller is, so the portal knows what to render before asking. */
   me: protectedProcedure
     .input(vendorScope.optional())
     .query(({ ctx, input }) => resolveActor(ctx.user, input?.vendorId)),
@@ -196,6 +214,81 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => adjustStock(actor, input.variantId, input.delta, input.reason, input.note));
+      }),
+  }),
+
+  /**
+   * What the portal opens on, and the two reports it links to.
+   *
+   * All three are scoped by the data layer rather than the router: a vendor
+   * asking gets their own numbers from the same call an admin uses to get
+   * everyone's.
+   */
+  overview: protectedProcedure
+    .input(vendorScope.optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user, input?.vendorId);
+      return guard(() => overview(actor));
+    }),
+
+  lowStock: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => lowStock(actor, input?.limit ?? 50));
+    }),
+
+  stockHistory: protectedProcedure
+    .input(z.object({
+      variantId: z.number().int().positive().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => stockHistory(actor, input ?? {}));
+    }),
+
+  /**
+   * Who reaches the admin panel.
+   *
+   * Every procedure here needs `platform.manageUsers`, which no vendor rank
+   * can reach — a vendor owner runs their own team through `vendors.members`,
+   * which is a different question and a different guard.
+   */
+  people: router({
+    list: protectedProcedure
+      .input(z.object({
+        query: z.string().trim().max(160).optional(),
+        limit: z.number().int().min(1).max(200).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => listPeople(actor, input ?? {}));
+      }),
+
+    setAdmin: protectedProcedure
+      .input(z.object({ userId: z.number().int().positive(), isAdmin: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setUserAdmin(actor, input.userId, input.isAdmin));
+      }),
+
+    addToVendor: protectedProcedure
+      .input(z.object({
+        vendorId: z.number().int().positive(),
+        email: z.string().trim().email().max(320),
+        role: z.enum(VENDOR_ROLES),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => addMemberByEmail(actor, input.vendorId, input.email, input.role));
+      }),
+
+    removeFromVendor: protectedProcedure
+      .input(z.object({ vendorId: z.number().int().positive(), userId: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => removeMemberAsAdmin(actor, input.vendorId, input.userId));
       }),
   }),
 

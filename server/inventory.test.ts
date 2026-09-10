@@ -249,3 +249,136 @@ describe("product images", () => {
     expect(row.images).toEqual([]);
   });
 });
+
+describe("who reaches the admin panel", () => {
+  it("lists everyone with their memberships, for an admin", async () => {
+    const people = await inv.listPeople(adminActor());
+    const staffRow = people.find(person => person.email === "staff@acme.test");
+    expect(staffRow).toBeTruthy();
+    expect(staffRow!.vendors.map(v => v.role)).toEqual(["staff"]);
+  });
+
+  it("narrows by email or name", async () => {
+    const people = await inv.listPeople(adminActor(), { query: "staff@" });
+    expect(people.map(person => person.email)).toEqual(["staff@acme.test"]);
+  });
+
+  // The escalation this blocks: a vendor owner reading, and then editing, the
+  // list of who administers the platform.
+  it("refuses a vendor owner entirely", async () => {
+    await expect(inv.listPeople(ownerActor())).rejects.toThrow("FORBIDDEN:platform.manageUsers");
+    await expect(inv.setUserAdmin(ownerActor(), ids.staff, true)).rejects.toThrow("FORBIDDEN:platform.manageUsers");
+    await expect(inv.addMemberByEmail(ownerActor(), ids.acme, "staff@acme.test", "manager"))
+      .rejects.toThrow("FORBIDDEN:platform.manageUsers");
+  });
+
+  it("grants and revokes administrator", async () => {
+    await inv.setUserAdmin(adminActor(), ids.owner, true);
+    let row = (await db.select().from(users).where(eq(users.id, ids.owner)))[0];
+    expect(row.role).toBe("admin");
+
+    await inv.setUserAdmin(adminActor(), ids.owner, false);
+    row = (await db.select().from(users).where(eq(users.id, ids.owner)))[0];
+    expect(row.role).toBe("user");
+  });
+
+  it("will not let an administrator revoke their own access", async () => {
+    await expect(inv.setUserAdmin(adminActor(), ids.admin, false)).rejects.toThrow("CANNOT_DEMOTE_SELF");
+  });
+
+  it("will not let the last administrator be removed", async () => {
+    // Promote a second admin, then demote the first — allowed, because one is
+    // left. Demoting that last one is not.
+    await inv.setUserAdmin(adminActor(), ids.owner, true);
+    const second: Actor = { kind: "admin", userId: ids.owner };
+    await inv.setUserAdmin(second, ids.admin, false);
+
+    await expect(inv.setUserAdmin({ kind: "admin", userId: ids.staff }, ids.owner, false))
+      .rejects.toThrow("LAST_ADMIN");
+
+    // Put the fixtures back for the tests that follow.
+    await inv.setUserAdmin(second, ids.admin, true);
+    await inv.setUserAdmin(adminActor(), ids.owner, false);
+  });
+
+  it("adds somebody to a vendor by address, and takes them out again", async () => {
+    await inv.addMemberByEmail(adminActor(), ids.other, "staff@acme.test", "manager");
+    let members = await inv.listMembers(adminActor(), ids.other);
+    expect(members.map(m => m.role)).toEqual(["manager"]);
+
+    await inv.removeMemberAsAdmin(adminActor(), ids.other, ids.staff);
+    members = await inv.listMembers(adminActor(), ids.other);
+    expect(members).toEqual([]);
+  });
+
+  it("refuses an address that has no account, rather than inventing one", async () => {
+    await expect(inv.addMemberByEmail(adminActor(), ids.acme, "nobody@nowhere.test", "staff"))
+      .rejects.toThrow("NO_SUCH_ACCOUNT");
+    const rows = await db.select().from(users).where(eq(users.email, "nobody@nowhere.test"));
+    expect(rows).toEqual([]);
+  });
+});
+
+describe("the admin portal's reports", () => {
+  it("counts a vendor's own products only, for that vendor", async () => {
+    const mine = await inv.overview(ownerActor());
+    const all = await inv.overview(adminActor());
+    expect(all.draft + all.published + all.pendingReview + all.archived)
+      .toBeGreaterThan(mine.draft + mine.published + mine.pendingReview + mine.archived);
+  });
+
+  it("does not show a vendor the platform's vendor counts", async () => {
+    const mine = await inv.overview(ownerActor());
+    expect(mine.vendorsPending).toBe(0);
+    expect(mine.vendorsApproved).toBe(0);
+    const all = await inv.overview(adminActor());
+    expect(all.vendorsApproved).toBeGreaterThan(0);
+  });
+
+  it("judges low against each variant's own threshold, not a shared number", async () => {
+    const [urgent] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Reorders at 20", price: "1.000", stock: 3, lowStockAt: 20,
+    }).returning();
+    const [fine] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Reorders at 2", price: "1.000", stock: 3, lowStockAt: 2,
+    }).returning();
+
+    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    // Identical raw stock, opposite verdicts — which is the whole point.
+    expect(listed).toContain(urgent.id);
+    expect(listed).not.toContain(fine.id);
+  });
+
+  it("puts the most urgent shortfall first", async () => {
+    const [worse] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Deep shortfall", price: "1.000", stock: 1, lowStockAt: 40,
+    }).returning();
+    const [milder] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Shallow shortfall", price: "1.000", stock: 9, lowStockAt: 10,
+    }).returning();
+
+    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    expect(listed.indexOf(worse.id)).toBeLessThan(listed.indexOf(milder.id));
+  });
+
+  it("lists a variant at zero even when it declares no threshold", async () => {
+    const [empty] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Nothing left", price: "1.000", stock: 0, lowStockAt: null,
+    }).returning();
+    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    expect(listed).toContain(empty.id);
+  });
+
+  it("reads back who moved stock and why", async () => {
+    await inv.adjustStock(staffActor(), ids.acmeVariant, 7, "received", "Two pallets");
+    const history = await inv.stockHistory(ownerActor(), { variantId: ids.acmeVariant });
+    expect(history[0]).toMatchObject({ delta: 7, reason: "received", note: "Two pallets" });
+    expect(history[0].actorEmail).toBe("staff@acme.test");
+  });
+
+  it("keeps one vendor's stock history out of another's", async () => {
+    const history = await inv.stockHistory(ownerActor());
+    const productIds = new Set(history.map(row => row.productId));
+    expect(productIds.has(ids.otherProduct)).toBe(false);
+  });
+});
