@@ -272,7 +272,11 @@ is the way in.
 `pnpm db:push` then `pnpm db:seed` — the seed writes the departments and the
 house vendor and nothing else, because a product cannot exist without a vendor
 to own it, and an invented catalog on a real deployment looks like an open
-shop. Data-layer tests run against a real
+shop. `docs/supabase-bootstrap.sql` is those two steps as one paste-able file,
+for setting a database up from the Supabase dashboard with nothing installed;
+it is generated from `drizzle/*.sql` and `shared/commerce/departments.ts`, so
+regenerate it rather than hand-editing after a schema change. `docs/SUPABASE.md`
+is the walkthrough. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.
 

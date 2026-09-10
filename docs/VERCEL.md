@@ -63,8 +63,13 @@ changing this one later needs a redeploy, not just a save.
 
 This is the step that makes the admin portal's products appear in the shop.
 
-1. Create a Supabase project and take the connection URI (Project Settings →
-   Database → Connection string → URI).
+1. Create a Supabase project and take the connection string. **`docs/SUPABASE.md`
+   is the full walkthrough** — including how to create the tables from the
+   Supabase dashboard alone, with nothing installed locally.
+
+   Take the **Transaction pooler** string (port 6543), not the direct
+   connection: Vercel runs the backend as serverless functions, and enough of
+   those exhaust a direct connection's pool.
 2. Set the two variables below in Vercel.
 3. Locally, with the same `DATABASE_URL` in your `.env`, run:
 

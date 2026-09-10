@@ -1,0 +1,254 @@
+-- NetLet — one-shot Supabase bootstrap.
+--
+-- Paste the whole file into the Supabase SQL Editor and run it. It creates
+-- every table the app needs and seeds the departments and the house vendor.
+--
+-- This is the same schema `pnpm db:push` applies and the same rows
+-- `pnpm db:seed` writes — it exists so a database can be set up from the
+-- Supabase dashboard alone, with no local checkout and no Node installed.
+--
+-- Generated from drizzle/*.sql and shared/commerce/departments.ts. If you
+-- later change the schema, regenerate rather than hand-editing this file.
+
+-- ===== 0000_warm_thunderball.sql =====
+CREATE TYPE "public"."locale_code" AS ENUM('en', 'ar');
+CREATE TYPE "public"."notification_kind" AS ENUM('price_drop', 'bag_reminder', 'new_arrival', 'delivery_update');
+CREATE TYPE "public"."user_role" AS ENUM('user', 'admin');
+CREATE TABLE "customer_notification_preferences" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"kind" "notification_kind" NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "customer_preferences" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"locale" "locale_code" DEFAULT 'en' NOT NULL,
+	"delivery_zone_id" varchar(64),
+	"shopify_cart_id" varchar(255),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "order_tracking_events" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"order_reference" varchar(191) NOT NULL,
+	"status" varchar(64) NOT NULL,
+	"message" text,
+	"occurred_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "saved_products" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"product_id" varchar(191) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "users" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"email" varchar(320) NOT NULL,
+	"password_hash" varchar(255) NOT NULL,
+	"name" varchar(255),
+	"role" "user_role" DEFAULT 'user' NOT NULL,
+	"last_signed_in" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "customer_notification_preferences" ADD CONSTRAINT "customer_notification_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "customer_preferences" ADD CONSTRAINT "customer_preferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "order_tracking_events" ADD CONSTRAINT "order_tracking_events_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "saved_products" ADD CONSTRAINT "saved_products_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+CREATE UNIQUE INDEX "customer_notification_user_kind_unique" ON "customer_notification_preferences" USING btree ("user_id","kind");
+CREATE INDEX "customer_notification_user_id_idx" ON "customer_notification_preferences" USING btree ("user_id");
+CREATE UNIQUE INDEX "customer_preferences_user_id_unique" ON "customer_preferences" USING btree ("user_id");
+CREATE INDEX "order_tracking_user_id_idx" ON "order_tracking_events" USING btree ("user_id");
+CREATE INDEX "order_tracking_user_occurred_idx" ON "order_tracking_events" USING btree ("user_id","occurred_at");
+CREATE UNIQUE INDEX "saved_products_user_product_unique" ON "saved_products" USING btree ("user_id","product_id");
+CREATE INDEX "saved_products_user_id_idx" ON "saved_products" USING btree ("user_id");
+CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree ("email");
+
+-- ===== 0001_late_morph.sql =====
+ALTER TABLE "users" ALTER COLUMN "password_hash" DROP NOT NULL;
+ALTER TABLE "users" ADD COLUMN "firebase_uid" varchar(128);
+CREATE UNIQUE INDEX "users_firebase_uid_unique" ON "users" USING btree ("firebase_uid") WHERE "users"."firebase_uid" is not null;
+
+-- ===== 0002_gorgeous_iron_monger.sql =====
+CREATE TABLE "followed_products" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"product_id" varchar(191) NOT NULL,
+	"price_drop" boolean DEFAULT true NOT NULL,
+	"back_in_stock" boolean DEFAULT true NOT NULL,
+	"last_notified_price" varchar(32),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "followed_products" ADD CONSTRAINT "followed_products_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+CREATE UNIQUE INDEX "followed_products_user_product_unique" ON "followed_products" USING btree ("user_id","product_id");
+CREATE INDEX "followed_products_user_id_idx" ON "followed_products" USING btree ("user_id");
+CREATE INDEX "followed_products_product_id_idx" ON "followed_products" USING btree ("product_id");
+
+-- ===== 0003_chief_onslaught.sql =====
+CREATE TYPE "public"."product_status" AS ENUM('draft', 'pending_review', 'published', 'rejected', 'archived');
+CREATE TYPE "public"."vendor_role" AS ENUM('staff', 'manager', 'owner');
+CREATE TYPE "public"."vendor_status" AS ENUM('pending', 'approved', 'suspended');
+CREATE TABLE "categories" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"slug" varchar(120) NOT NULL,
+	"name" varchar(160) NOT NULL,
+	"name_ar" varchar(160),
+	"parent_id" integer,
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "product_images" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"product_id" integer NOT NULL,
+	"url" text NOT NULL,
+	"alt_text" varchar(255),
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "product_variants" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"product_id" integer NOT NULL,
+	"sku" varchar(120),
+	"title" varchar(255) DEFAULT 'Default' NOT NULL,
+	"price" numeric(12, 3) NOT NULL,
+	"compare_at_price" numeric(12, 3),
+	"stock" integer DEFAULT 0 NOT NULL,
+	"low_stock_at" integer,
+	"options" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "products" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"category_id" integer,
+	"handle" varchar(191) NOT NULL,
+	"title" varchar(255) NOT NULL,
+	"title_ar" varchar(255),
+	"description" text,
+	"description_ar" text,
+	"status" "product_status" DEFAULT 'draft' NOT NULL,
+	"review_note" text,
+	"tags" text[] DEFAULT '{}' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "stock_movements" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"variant_id" integer NOT NULL,
+	"delta" integer NOT NULL,
+	"resulting" integer NOT NULL,
+	"reason" varchar(64) NOT NULL,
+	"note" text,
+	"actor_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "vendor_members" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"role" "vendor_role" DEFAULT 'staff' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "vendors" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"slug" varchar(120) NOT NULL,
+	"name" varchar(255) NOT NULL,
+	"name_ar" varchar(255),
+	"status" "vendor_status" DEFAULT 'pending' NOT NULL,
+	"commission_percent" numeric(5, 2) DEFAULT '10.00' NOT NULL,
+	"commission_fixed" numeric(12, 3),
+	"auto_publish" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "product_images" ADD CONSTRAINT "product_images_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "product_variants" ADD CONSTRAINT "product_variants_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "products" ADD CONSTRAINT "products_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "products" ADD CONSTRAINT "products_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "stock_movements" ADD CONSTRAINT "stock_movements_actor_id_users_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "vendor_members" ADD CONSTRAINT "vendor_members_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "vendor_members" ADD CONSTRAINT "vendor_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+CREATE UNIQUE INDEX "categories_slug_unique" ON "categories" USING btree ("slug");
+CREATE INDEX "product_images_product_id_idx" ON "product_images" USING btree ("product_id");
+CREATE INDEX "product_variants_product_id_idx" ON "product_variants" USING btree ("product_id");
+CREATE UNIQUE INDEX "product_variants_sku_unique" ON "product_variants" USING btree ("sku");
+CREATE UNIQUE INDEX "products_handle_unique" ON "products" USING btree ("handle");
+CREATE INDEX "products_vendor_id_idx" ON "products" USING btree ("vendor_id");
+CREATE INDEX "products_category_id_idx" ON "products" USING btree ("category_id");
+CREATE INDEX "products_status_idx" ON "products" USING btree ("status");
+CREATE INDEX "stock_movements_variant_id_idx" ON "stock_movements" USING btree ("variant_id");
+CREATE INDEX "stock_movements_created_idx" ON "stock_movements" USING btree ("created_at");
+CREATE UNIQUE INDEX "vendor_members_vendor_user_unique" ON "vendor_members" USING btree ("vendor_id","user_id");
+CREATE INDEX "vendor_members_user_id_idx" ON "vendor_members" USING btree ("user_id");
+CREATE UNIQUE INDEX "vendors_slug_unique" ON "vendors" USING btree ("slug");
+
+-- ===== 0004_woozy_iron_lad.sql =====
+CREATE TABLE "cart_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"cart_id" varchar(64) NOT NULL,
+	"variant_id" integer NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "carts" (
+	"id" varchar(64) PRIMARY KEY NOT NULL,
+	"user_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "customer_preferences" RENAME COLUMN "shopify_cart_id" TO "cart_id";
+ALTER TABLE "products" ADD COLUMN "attributes" jsonb DEFAULT '[]'::jsonb NOT NULL;
+ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_cart_id_carts_id_fk" FOREIGN KEY ("cart_id") REFERENCES "public"."carts"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "carts" ADD CONSTRAINT "carts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+CREATE INDEX "cart_items_cart_id_idx" ON "cart_items" USING btree ("cart_id");
+CREATE UNIQUE INDEX "cart_items_cart_variant_unique" ON "cart_items" USING btree ("cart_id","variant_id");
+CREATE INDEX "carts_user_id_idx" ON "carts" USING btree ("user_id");
+
+-- ===== seed: departments and the house vendor =====
+-- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
+-- already there, so re-running after adding a department disturbs nothing.
+--
+-- Deliberately no products. A product needs a vendor to own it and a
+-- department to be found in; the catalog itself is yours to add at /admin.
+
+INSERT INTO categories (slug, name, name_ar, position) VALUES
+  ('electronics', 'Electronics', 'إلكترونيات', 1),
+  ('home-and-kitchen', 'Home & Kitchen', 'المنزل والمطبخ', 2),
+  ('beauty', 'Beauty', 'الجمال', 3),
+  ('style', 'Style', 'الأزياء', 4),
+  ('grocery', 'Grocery', 'البقالة', 5)
+ON CONFLICT (slug) DO NOTHING;
+
+-- NetLet sells its own stock as well as its vendors'. Something has to own a
+-- product before a product can exist, so this vendor is that owner: approved,
+-- auto-publishing (an admin reviewing their own listings teaches nothing), and
+-- on zero commission because NetLet takes nothing from itself.
+INSERT INTO vendors (slug, name, name_ar, status, auto_publish, commission_percent) VALUES
+  ('netlet', 'NetLet', 'نتلت', 'approved', true, '0.00')
+ON CONFLICT (slug) DO NOTHING;
