@@ -14,28 +14,32 @@ Nothing is marked done that a shopper cannot use today.
 
 ---
 
-## The decision this document is waiting on
+## The decision this document was waiting on — resolved
 
-The document describes **a multi-vendor marketplace, built from scratch, on
-microservices**. What exists is **a single-vendor storefront**: one merchant's
-Shopify catalog, an Express + tRPC monolith, Firebase for shopper accounts.
+This document describes **a multi-vendor marketplace**. What existed when it
+was first read was **a single-vendor storefront**: one merchant's Shopify
+catalog, with no concept of a vendor as a party to the transaction, no
+per-vendor commission, and no admin surface.
 
-That is not a criticism of either — they are different products. But roughly
-**two-thirds of this document cannot be built on the current foundation**, and
-no amount of front-end work changes that:
+**That fork has been taken: Shopify is gone and NetLet owns its catalog.**
 
-- **Shopify's Storefront API has no concept of a vendor.** No vendor accounts,
-  no per-vendor commission, no split payouts, no per-vendor delivery provider.
-  `vendor` on a product is a text label, not a party to the transaction. Every
-  requirement in §3.3 (Vendor Experience), the payout rules, and the
-  multi-vendor cart in §3.2 need a different catalog and order backend.
-- **There is no admin surface at all** — §3.6 is greenfield.
-- **There is no AI service layer** — §3.5, and the AI items scattered through
-  §3.1 and §3.3, are greenfield.
+What that unlocked, and where it landed:
 
-So the fork is: **keep Shopify and ship a single-vendor storefront**, or
-**build the marketplace backend** the document actually describes. Items below
-marked *needs foundation* are waiting on the second.
+- `drizzle/schema.ts` — vendors, vendor members, categories, products,
+  variants, images, stock movements, carts.
+- `shared/inventory/permissions.ts` — the access model. Scope (a vendor member
+  reaches their own vendor, an admin reaches everything) and rank (`staff`
+  moves stock, `manager` runs the catalog, `owner` runs the team). Commission
+  is reachable by no vendor rank at all, which is what §3.3 asks for.
+- `server/inventory.ts` — the data layer, with the guard next to each query
+  rather than only at the router.
+- `/dashboard` — one application for admins and vendors, scoped by the server.
+- `server/catalog.ts` — the storefront reading those same tables, so a product
+  added in the dashboard is a product in the shop.
+
+Still greenfield, and still marked *needs foundation* below: payments and
+payouts, the AI service layer (§3.5), affiliate marketing (§3.7), and
+vendor–customer chat (§3.8).
 
 ---
 
@@ -107,13 +111,13 @@ refinement (`server/routers/search.ts`).
 
 All six items — finance, product approval, audit trail, fraud detection,
 e-invoicing — are **needs foundation**. There is no admin surface. The `users`
-table has an `admin` role and nothing reads it.
+table has an `admin` role, and `/dashboard` is what reads it.
 
 ## 3.7 Affiliate Marketing · 3.8 Vendor-Customer Chat · 3.9 Grocery
 
-**Needs foundation**, all three. Note §3.9 is explicitly "built now, used
-later" — worth doing once there is a catalog model that can carry weight- and
-volume-priced goods, which Shopify's cannot cleanly.
+**Needs foundation**, all three. §3.9 is explicitly "built now, used later";
+the catalog model can now carry it — a grocery variant is a variant with a
+weight or volume option — but nothing reads that yet.
 
 ## 4. Built now, activated later
 

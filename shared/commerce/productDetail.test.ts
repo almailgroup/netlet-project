@@ -29,7 +29,7 @@ describe("savingsPercent", () => {
 });
 
 describe("productRating", () => {
-  it("reads Shopify's rating metafield, which stores JSON rather than a number", () => {
+  it("reads a rating stored as JSON rather than a bare number", () => {
     const rating = productRating([
       attribute("reviews", "rating", '{"scale_min":"1.0","scale_max":"5.0","value":"5.0"}'),
       attribute("reviews", "rating_count", "21"),

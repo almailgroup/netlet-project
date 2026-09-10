@@ -36,11 +36,18 @@ export function formatMoney(
   if (Number.isNaN(amountNum)) return "—";
 
   try {
+    // Let Intl use the currency's own precision rather than hard-coding two.
+    // The dinar has three decimal places, and Kuwait writes prices that way —
+    // capping at two rounds 24.375 to 24.38 on screen while the cart charges
+    // 24.375, and a total that does not match the parts is the fastest way to
+    // lose a shopper's trust.
+    //
+    // A whole amount still renders clean: 129, not 129.000.
+    const whole = amountNum % 1 === 0;
     return new Intl.NumberFormat(NUMBER_LOCALE[options?.locale ?? "en"], {
       style: "currency",
       currency: code,
-      minimumFractionDigits: amountNum % 1 === 0 ? 0 : 2,
-      maximumFractionDigits: 2,
+      ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
     }).format(amountNum);
   } catch {
     return `$${amountNum.toFixed(0)}`;

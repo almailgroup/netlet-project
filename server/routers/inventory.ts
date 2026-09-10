@@ -27,6 +27,7 @@ import {
   reviewProduct,
   saveVariant,
   setMemberRole,
+  setProductImages,
   setProductStatus,
   setVendorCommission,
   setVendorStatus,
@@ -120,6 +121,29 @@ export const inventoryRouter = router({
         const { id, ...patch } = input;
         const actor = await resolveActor(ctx.user);
         return guard(() => updateProduct(actor, id, patch));
+      }),
+
+    /**
+     * Replaces the product's images.
+     *
+     * The URL is validated as an absolute http(s) one: a relative path or a
+     * `javascript:` string reaching an <img src> is not imagery, and the
+     * storefront would render the failure as a broken card.
+     */
+    setImages: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        images: z.array(z.object({
+          url: z.string().url().max(2000).refine(
+            value => /^https?:\/\//i.test(value),
+            "Image URLs must start with http:// or https://",
+          ),
+          altText: z.string().trim().max(255).nullable().optional(),
+        })).max(12),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setProductImages(actor, input.id, input.images));
       }),
 
     setStatus: protectedProcedure

@@ -1,6 +1,6 @@
 /**
  * NetLet design reminder: public marketplace storefront in pearl white, luxury navy,
- * and NetLet Orange — with shopping state provided by Shopify’s normalized cart contract.
+ * and NetLet Orange — with shopping state provided by NetLet’s own cart.
  */
 import { BagDrawer } from "@/components/BagDrawer";
 import { Toaster } from "@/components/ui/sonner";

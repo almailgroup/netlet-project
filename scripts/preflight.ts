@@ -3,8 +3,8 @@
  *
  * Reports what is ready and what is missing, in the order it has to be fixed,
  * so setting the Mac mini up is one command rather than a guess about which
- * step silently failed. Checks configuration only; `pnpm shopify:probe` is the
- * one that calls Shopify for real.
+ * step silently failed. Checks configuration only — it opens no connections
+ * beyond the port probe.
  *
  * Exits non-zero if anything blocking is wrong, so it can gate a deploy script.
  */
@@ -43,49 +43,29 @@ try {
 
 /* --------------------------------------------------------- configuration --- */
 
-const domain = process.env.SHOPIFY_STORE_DOMAIN?.trim() ?? "";
-if (!domain) {
-  add("blocked", "SHOPIFY_STORE_DOMAIN", "not set — there is no catalog without it",
-    "Set it to your myshopify domain, e.g. netlet.myshopify.com");
-} else if (/^https?:\/\//i.test(domain) || domain.endsWith("/") || domain.includes("/")) {
-  // A pasted admin URL is the usual shape here, and it produces a confusing
-  // fetch failure rather than an obvious configuration error.
-  add("blocked", "SHOPIFY_STORE_DOMAIN", `"${domain}" includes a scheme or path`,
-    "Use the bare host only: netlet.myshopify.com");
+const databaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+if (!databaseUrl) {
+  add("blocked", "DATABASE_URL", "not set — there is no catalog without it",
+    "Supabase -> Project Settings -> Database -> Connection string -> URI, then pnpm db:push");
+} else if (!/^postgres(ql)?:\/\//i.test(databaseUrl)) {
+  // A pasted dashboard fragment rather than the URI is the usual shape here,
+  // and it surfaces as a connect failure with no hint about why.
+  add("blocked", "DATABASE_URL", "does not look like a postgres:// URI",
+    "Copy the URI form, not the host and password separately");
 } else {
-  const shape = domain.endsWith(".myshopify.com") ? "" : "  (not a .myshopify.com host — fine if it is a custom Storefront domain)";
-  add("ok", "SHOPIFY_STORE_DOMAIN", domain + shape);
+  add("ok", "DATABASE_URL", "set — catalog, cart and accounts are on");
 }
 
-const token = process.env.SHOPIFY_STOREFRONT_API_ACCESS_TOKEN?.trim() ?? "";
-if (!token) {
-  add("blocked", "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN", "not set — there is no catalog without it",
-    "Shopify admin -> Settings -> Apps and sales channels -> Develop apps -> your app -> Configuration -> Storefront API");
-} else if (token.startsWith("shpat_") || token.startsWith("shpca_") || token.startsWith("shppa_")) {
-  // The single most common mix-up, and it fails as a bare 401 with no hint.
-  add("blocked", "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN", "this is an Admin API token, not a Storefront one",
-    "Admin tokens start with shpat_. Take the token from the Storefront API tab of the same app instead.");
-} else {
-  add("ok", "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN", `set (${token.length} characters)`);
-}
-
-// Checked after the values themselves: under launchd the environment can come
-// from the plist instead, and a missing .env is then merely informational.
+// Checked after the value itself: under launchd the environment can come from
+// the plist instead, and a missing .env is then merely informational.
 const envPath = path.join(ROOT, ".env");
 if (existsSync(envPath)) {
   add("ok", ".env", "present");
-} else if (domain && token) {
-  add("ok", ".env", "absent, but the Shopify values are set in the environment");
+} else if (databaseUrl) {
+  add("ok", ".env", "absent, but DATABASE_URL is set in the environment");
 } else {
   add("blocked", ".env", "missing, and nothing is set in the environment either",
-    "cp .env.example .env, then fill in the two Shopify values");
-}
-
-if (process.env.DATABASE_URL?.trim()) {
-  add("ok", "DATABASE_URL", "set — accounts, saved items and order tracking are on");
-} else {
-  add("warn", "DATABASE_URL", "not set — browsing, cart and checkout still work; sign-in, saved items, delivery preference and order tracking stay dark",
-    "Optional. Set it later and run pnpm db:push");
+    "cp .env.example .env, then fill in DATABASE_URL");
 }
 
 if (process.env.JWT_SECRET?.trim() || !process.env.DATABASE_URL?.trim()) {
@@ -174,6 +154,6 @@ if (blocked.length) {
 }
 
 console.log("Configuration looks right. Next:");
-console.log("  pnpm shopify:probe    confirm Shopify answers with real products");
+console.log("  pnpm db:push          create the tables this connection string points at");
 console.log("  pnpm build            if the build check above said otherwise");
 console.log("  pnpm start            serve on http://localhost:" + port + "/");

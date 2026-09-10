@@ -1,14 +1,16 @@
 /**
- * Static catalog used by the GitHub Pages demo build.
+ * Static catalog used by the demo build.
  *
- * The live storefront gets its products from Shopify through the `commerce.*`
- * tRPC procedures. A static host runs no server, so this module supplies the
- * same `Product` shapes from `@shared/commerce/types` to keep every screen
- * rendering with realistic data. Nothing here is a real product or price.
+ * The live storefront gets its products from NetLet's own inventory through
+ * the `commerce.*` tRPC procedures. A demo build runs no server, so this
+ * module supplies the same `Product` shapes from `@shared/commerce/types` to
+ * keep every screen rendering with realistic data. Nothing here is a real
+ * product or price.
  *
  * Images are inline SVG data URIs on purpose: the demo then has no external
  * image host to go down, rate-limit, or need licensing for.
  */
+import { DEFAULT_VARIANT_TITLE } from "@shared/commerce/fromInventory";
 import type { Product } from "@shared/commerce/types";
 
 const CURRENCY = "KWD";
@@ -380,7 +382,7 @@ function money(amount: number) {
 }
 
 function toProduct(seed: Seed, index: number): Product {
-  const optionValues = seed.options?.values ?? ["Default Title"];
+  const optionValues = seed.options?.values ?? [DEFAULT_VARIANT_TITLE];
   const variants = optionValues.map((value, variantIndex) => ({
     id: `demo-variant-${index + 1}-${variantIndex + 1}`,
     title: value,
@@ -394,7 +396,9 @@ function toProduct(seed: Seed, index: number): Product {
     availableForSale: seed.soldOut
       ? false
       : !(optionValues.length > 2 && variantIndex === optionValues.length - 1),
-    selectedOptions: [{ name: seed.options?.name ?? "Title", value }],
+    // A product with no real options carries no option dimensions at
+    // all, which is what the inventory mapper produces too.
+    selectedOptions: seed.options ? [{ name: seed.options.name, value }] : [],
   }));
 
   return {
@@ -419,8 +423,8 @@ function toProduct(seed: Seed, index: number): Product {
         label: "Warranty",
         value: "12 months",
       },
-      // Written in Shopify's own rating-metafield format, so the demo
-      // exercises the same parsing path as a live store.
+      // Written in the same JSON-in-a-string form a real rating attribute
+      // uses, so the demo exercises the same parsing path as a live store.
       ...(seed.rating
         ? [
             {

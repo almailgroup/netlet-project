@@ -21,12 +21,12 @@ export const customerRouter = router({
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
       const profile = await getCustomerProfile(ctx.user.id);
-      return profile ?? { locale: "en" as const, deliveryZoneId: null, shopifyCartId: null };
+      return profile ?? { locale: "en" as const, deliveryZoneId: null, cartId: null };
     }),
     update: protectedProcedure.input(z.object({
       locale: z.enum(["en", "ar"]).optional(),
       deliveryZoneId: zoneIdSchema.nullable().optional(),
-      shopifyCartId: z.string().min(1).nullable().optional(),
+      cartId: z.string().min(1).nullable().optional(),
     })).mutation(({ ctx, input }) => upsertCustomerProfile(ctx.user.id, input)),
   }),
   /**

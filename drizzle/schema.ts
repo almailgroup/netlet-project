@@ -86,7 +86,7 @@ export const users = pgTable(
   ]
 );
 
-/** One row per shopper: locale, delivery area, and the active Shopify cart. */
+/** One row per shopper: locale, delivery area, and the active cart. */
 export const customerPreferences = pgTable(
   "customer_preferences",
   {
@@ -97,8 +97,8 @@ export const customerPreferences = pgTable(
     locale: localeCode("locale").notNull().default("en"),
     /** Governorate id from `shared/customer.ts`; null until the shopper picks. */
     deliveryZoneId: varchar("delivery_zone_id", { length: 64 }),
-    /** Opaque Shopify cart id, so a bag survives across devices. */
-    shopifyCartId: varchar("shopify_cart_id", { length: 255 }),
+    /** Opaque cart token, so a bag survives across devices. */
+    cartId: varchar("cart_id", { length: 255 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -343,6 +343,18 @@ export const products = pgTable(
     /** Why an admin rejected it, shown back to the vendor. */
     reviewNote: text("review_note"),
     tags: text("tags").array().notNull().default([]),
+    /**
+     * Spec rows, and the review score the cards and PDP read.
+     *
+     * A list rather than columns because what a spec row *is* differs per
+     * department: a laptop has "Ram Size", a shoe has "Material", and neither
+     * belongs in a table shared by both. `namespace` keeps the two kinds
+     * apart — "reviews"/"rating" is the score, anything else is a spec.
+     */
+    attributes: jsonb("attributes")
+      .$type<{ namespace: string; key: string; label: string; value: string }[]>()
+      .notNull()
+      .default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -431,6 +443,58 @@ export const stockMovements = pgTable(
   ]
 );
 
+/**
+ * The bag, server-side.
+ *
+ * It lives in Postgres rather than the browser because a cart that only
+ * exists in localStorage is gone the moment the shopper opens the site on
+ * their phone, and NetLet promises a persistent cart on the home page. The id
+ * is an unguessable token, not a serial: it is handed to an anonymous client
+ * and is the only thing standing between one shopper's bag and another's.
+ *
+ * `userId` is null for a guest. Signing in attaches the guest cart to the
+ * account rather than replacing it, so a bag filled before signing in
+ * survives the sign-in.
+ */
+export const carts = pgTable(
+  "carts",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [index("carts_user_id_idx").on(table.userId)]
+);
+
+/**
+ * One line of the bag.
+ *
+ * Deliberately stores no price. A cart is a list of intentions, and the price
+ * is whatever the variant costs when the shopper looks — quoting a stale
+ * price back at them is how a cart total stops matching the checkout. The
+ * price gets frozen at the order, which is a different table and a different
+ * problem.
+ *
+ * The composite unique is what makes "add the same variant twice" increment a
+ * line instead of growing a second one.
+ */
+export const cartItems = pgTable(
+  "cart_items",
+  {
+    id: serial("id").primaryKey(),
+    cartId: varchar("cart_id", { length: 64 }).notNull().references(() => carts.id, { onDelete: "cascade" }),
+    variantId: integer("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    index("cart_items_cart_id_idx").on(table.cartId),
+    uniqueIndex("cart_items_cart_variant_unique").on(table.cartId, table.variantId),
+  ]
+);
+
 /* ------------------------------------------------------------- relations --- */
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -496,6 +560,16 @@ export const productImagesRelations = relations(productImages, ({ one }) => ({
   product: one(products, { fields: [productImages.productId], references: [products.id] }),
 }));
 
+export const cartsRelations = relations(carts, ({ one, many }) => ({
+  user: one(users, { fields: [carts.userId], references: [users.id] }),
+  items: many(cartItems),
+}));
+
+export const cartItemsRelations = relations(cartItems, ({ one }) => ({
+  cart: one(carts, { fields: [cartItems.cartId], references: [carts.id] }),
+  variant: one(productVariants, { fields: [cartItems.variantId], references: [productVariants.id] }),
+}));
+
 export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
   variant: one(productVariants, { fields: [stockMovements.variantId], references: [productVariants.id] }),
   actor: one(users, { fields: [stockMovements.actorId], references: [users.id] }),
@@ -535,3 +609,6 @@ export type InsertInventoryProduct = typeof products.$inferInsert;
 export type ProductVariantRow = typeof productVariants.$inferSelect;
 export type ProductImageRow = typeof productImages.$inferSelect;
 export type StockMovement = typeof stockMovements.$inferSelect;
+
+export type CartRow = typeof carts.$inferSelect;
+export type CartItemRow = typeof cartItems.$inferSelect;

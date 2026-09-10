@@ -151,8 +151,9 @@ export function facetsFor(products: Product[]): Facets {
   const optionValues = new Map<string, string[]>();
   for (const product of products) {
     for (const [name, value] of optionPairs(product)) {
-      // "Title" is Shopify's placeholder for a product with no real options.
-      if (name === "Title") continue;
+      // A product with nothing to choose has no option dimensions at all, so
+      // there is no placeholder name to skip here — see optionsFromVariants.
+      if (!name) continue;
       optionValues.set(name, [...(optionValues.get(name) ?? []), value]);
     }
   }

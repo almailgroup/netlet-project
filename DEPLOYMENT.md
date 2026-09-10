@@ -1,26 +1,29 @@
 # Running NetLet on the Mac mini
 
-This is the guide for putting the real storefront online: the Express + tRPC
-server, talking to Shopify for the catalog and Postgres for accounts, served
-from a Mac mini.
+This is the guide for self-hosting the real storefront: the Express + tRPC
+server, talking to Postgres for the catalog, the cart and accounts, served from
+a Mac mini.
+
+If you are deploying to Vercel instead — which is the supported target — read
+`docs/VERCEL.md`. This document is for running it on your own hardware.
 
 ## Why this is needed at all
 
 The GitHub Pages site is **not** this. Pages serves static files and cannot run
 a server, so the Pages build sets `VITE_DEMO_MODE=true` and answers every tRPC
 call in the browser from invented fixtures (`client/src/lib/demoCatalog.ts`).
-It never reaches Shopify — it never makes a network request at all.
+It never reaches a database — it never makes a network request at all.
 
-The Shopify Storefront token is read server-side (`SHOPIFY_*`, never
-`VITE_SHOPIFY_*`) because anything with a `VITE_` prefix is inlined into the
-browser bundle and would be public. So the chain is:
+`DATABASE_URL` is read server-side, never under a `VITE_` name, because
+anything with that prefix is inlined into the browser bundle and would be
+public. So the chain is:
 
 ```
-Shopify  ->  this server (Mac mini)  ->  shopper's browser
+Postgres  ->  this server (Mac mini)  ->  shopper's browser
 ```
 
-Until the middle link is running, adding products in Shopify changes nothing on
-the live site.
+Until the middle link is running, adding products in the dashboard changes
+nothing on the live site.
 
 ## What the Mac mini needs
 
@@ -44,56 +47,38 @@ sudo pmset -a autorestart 1   # come back up after a power cut
 pnpm setup:env        # or, by hand: cp .env.example .env
 ```
 
-Fill in the two Storefront values. `.env.example` documents every other
-setting and what breaks without it. Nothing throws at boot when a value is
-missing — an unset variable shows up as a dead feature, not an error — so it is
-worth reading.
+Fill in `DATABASE_URL`. `.env.example` documents every other setting and what
+breaks without it. Nothing throws at boot when a value is missing — an unset
+variable shows up as a dead feature, not an error — so it is worth reading.
 
 ```sh
-SHOPIFY_STORE_DOMAIN=yourshop.myshopify.com          # no https://, no trailing slash
-SHOPIFY_STOREFRONT_API_ACCESS_TOKEN=...
+DATABASE_URL=postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres
+JWT_SECRET=...                                       # openssl rand -base64 48
 ```
 
-The token comes from Shopify admin → Settings → Apps and sales channels →
-Develop apps → your app → Configuration → **Storefront API** — not the Admin
-API. It needs:
+`.env` is gitignored. Keep it that way; both of those are credentials.
 
-- `unauthenticated_read_product_listings`
-- `unauthenticated_read_product_inventory`
-- `unauthenticated_write_checkouts`
+## 2. Create the tables, then check the setup
 
-`.env` is gitignored. Keep it that way; the token is a credential.
+```sh
+pnpm db:push     # applies the migrations
+pnpm db:seed     # departments + the house vendor
+```
 
-## 2. Check the setup before building anything
+`db:seed` writes no products. A product needs a vendor to own it and a
+department to be found in, and those are what it creates; the catalog itself is
+yours to add at `/dashboard`.
 
-Two checks, in order. The first reads configuration only and is instant:
+Then:
 
 ```sh
 pnpm preflight
 ```
 
-It reports Node, pnpm, `.env`, both Shopify values, the database, the build and
-the port — and exits non-zero listing what is still blocking. It catches the
-two mistakes that otherwise surface as a bare `401`: an Admin API token
-(`shpat_...`) pasted where the Storefront one belongs, and a full admin URL
-pasted where the bare `netlet.myshopify.com` host belongs.
-
-The second actually calls Shopify:
-
-```sh
-pnpm shopify:probe
-```
-
-This calls the real Storefront API and prints what came back. It exits non-zero
-if the catalog is unusable, so it is the fastest way to tell a wrong token from
-an empty store:
-
-- exit 2 — the variables are not set
-- an error naming the domain — wrong `SHOPIFY_STORE_DOMAIN`
-- `401`/`403` — wrong token, or an Admin token used by mistake
-- `received 0 product(s)` — the credentials work, but no product is published
-  to the Storefront API. In Shopify each product needs its sales channel set to
-  include the app the token belongs to. This is the most common surprise.
+It reports Node, pnpm, `.env`, the database, the build and the port — and exits
+non-zero listing what is still blocking. It catches the mistake that otherwise
+surfaces as a bare connection failure: a host and password pasted separately
+where the `postgres://` URI belongs.
 
 ## 3. Build and run
 
@@ -211,8 +196,8 @@ launchctl kickstart -k gui/$(id -u)/com.netlet.storefront
 
 | Symptom | Cause |
 |---|---|
-| `Shopify Storefront API is not configured` | `.env` not loaded — check `WorkingDirectory`, then `launchctl kickstart` |
-| Site loads, no products | Products not published to the token's sales channel — `pnpm shopify:probe` confirms |
+| Site loads, no products | Either `DATABASE_URL` is unset (`.env` not loaded — check `WorkingDirectory`, then `launchctl kickstart`), or nothing is published yet. A product is only visible when its status is `published` **and** its vendor is `approved`. |
+| Dashboard cannot create a product | No vendor exists — run `pnpm db:seed` |
 | `Could not find the build directory` | `pnpm build` has not run since the last pull |
 | Works locally, not through the domain | Tunnel down (`cloudflared tunnel info netlet`) or pointed at the wrong port |
 | Site dead after a reboot | plist not loaded, or the Mac mini slept — see the `pmset` commands above |

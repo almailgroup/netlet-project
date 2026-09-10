@@ -60,7 +60,7 @@ function findAttribute(attributes: ProductAttribute[], key: string): ProductAttr
 }
 
 /**
- * The store's review score, from Shopify's standard `reviews` metafields.
+ * The store's review score, from the `reviews` attribute namespace.
  *
  * `reviews.rating` is a rating-type metafield, so its value is JSON carrying
  * the score and the scale it was recorded on — a store on a 1–10 scale would
@@ -106,8 +106,8 @@ export function productRating(attributes: ProductAttribute[]): ProductRating | n
 /**
  * Whether the product is flagged for NetLet Express.
  *
- * Keyed off a tag because that is the one product field a merchant can set
- * from the Shopify admin without configuring a metafield definition first.
+ * Keyed off a tag because tags are free-form: a vendor flags a product for
+ * Express by typing one, with no schema change and no admin involvement.
  */
 export function isExpressEligible(product: Pick<Product, "tags">): boolean {
   return product.tags.some((tag) => tag.trim().toLowerCase().replace(/^netlet\s+/, "") === "express");

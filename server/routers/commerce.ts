@@ -1,10 +1,13 @@
 /**
- * Commerce router — backend-agnostic tRPC surface for the storefront.
+ * Commerce router — the storefront's tRPC surface.
  *
- * The router is intentionally thin: zod validates input, then delegates to the
- * named functions exported from `server/_core/shopify`. If we ever swap
- * commerce backends, only `_core/shopify.ts` + `_core/shopifyNormalize.ts`
- * change — this router stays put.
+ * Thin on purpose: zod validates, then `server/catalog.ts` does the work. The
+ * procedure names and their output shapes are the contract the whole client
+ * is written against, so they outlived the Shopify backend that first defined
+ * them and would outlive this one too.
+ *
+ * Every procedure is public. Browsing and filling a bag do not require an
+ * account — NetLet asks for one at checkout, not at the door.
  */
 
 import { z } from "zod";
@@ -18,8 +21,16 @@ import {
   listProducts,
   removeCartLines,
   updateCartLines,
-} from "../_core/shopify";
+} from "../catalog";
 import { publicProcedure, router } from "../_core/trpc";
+
+/**
+ * Which language to read merchant data in.
+ *
+ * Product titles and descriptions have their own Arabic columns, so unlike UI
+ * copy they are chosen server-side. Absent, English.
+ */
+const localeSchema = z.enum(["en", "ar"]).optional();
 
 const cartLineInputSchema = z.object({
   variantId: z.string().min(1),
@@ -40,6 +51,7 @@ export const commerceRouter = router({
           .object({
             first: z.number().int().min(1).max(100).optional(),
             collectionHandle: z.string().min(1).optional(),
+            locale: localeSchema,
           })
           .optional()
       )
@@ -47,28 +59,30 @@ export const commerceRouter = router({
         return listProducts(input ?? {});
       }),
     byHandle: publicProcedure
-      .input(z.object({ handle: z.string().min(1) }))
+      .input(z.object({ handle: z.string().min(1), locale: localeSchema }))
       .query(async ({ input }) => {
-        return getProductByHandle(input.handle);
+        return getProductByHandle(input.handle, input.locale ?? "en");
       }),
   }),
   collections: router({
     list: publicProcedure
-      .input(z.object({ first: z.number().int().min(1).max(50).optional() }).optional())
+      .input(z.object({ first: z.number().int().min(1).max(50).optional(), locale: localeSchema }).optional())
       .query(async ({ input }) => {
-        return listCollections(input?.first);
+        return listCollections(input?.first ?? 50, input?.locale ?? "en");
       }),
     byHandle: publicProcedure
-      .input(z.object({ handle: z.string().min(1) }))
+      .input(z.object({ handle: z.string().min(1), locale: localeSchema }))
       .query(async ({ input }) => {
-        return getCollectionByHandle(input.handle);
+        return getCollectionByHandle(input.handle, input.locale ?? "en");
       }),
   }),
   cart: router({
     create: publicProcedure
       .input(z.object({ lines: z.array(cartLineInputSchema).min(1).max(50) }))
-      .mutation(async ({ input }) => {
-        return createCart(input.lines);
+      .mutation(async ({ ctx, input }) => {
+        // A signed-in shopper's cart is attached to the account as it is
+        // created, so it is already theirs on the next device.
+        return createCart(input.lines, ctx.user?.id ?? null);
       }),
     get: publicProcedure
       .input(z.object({ cartId: z.string().min(1) }))

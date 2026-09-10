@@ -214,3 +214,38 @@ describe("members", () => {
     await expect(inv.listMembers(ownerActor(), ids.other)).rejects.toThrow("FORBIDDEN:vendor.viewMembers");
   });
 });
+
+describe("product images", () => {
+  it("replaces the whole list, in the order given", async () => {
+    await inv.setProductImages(ownerActor(), ids.acmeProduct, [
+      { url: "https://img/a.jpg", altText: "A" },
+      { url: "https://img/b.jpg", altText: null },
+    ]);
+    let row = await inv.getProduct(ownerActor(), ids.acmeProduct);
+    expect(row.images.map(i => i.url)).toEqual(["https://img/a.jpg", "https://img/b.jpg"]);
+    expect(row.images.map(i => i.position)).toEqual([0, 1]);
+
+    // Saving a shorter list removes the rest rather than leaving orphans.
+    await inv.setProductImages(ownerActor(), ids.acmeProduct, [{ url: "https://img/b.jpg" }]);
+    row = await inv.getProduct(ownerActor(), ids.acmeProduct);
+    expect(row.images.map(i => i.url)).toEqual(["https://img/b.jpg"]);
+  });
+
+  it("lets staff look but not change the pictures", async () => {
+    await expect(
+      inv.setProductImages(staffActor(), ids.acmeProduct, [{ url: "https://img/c.jpg" }]),
+    ).rejects.toThrow("FORBIDDEN:product.edit");
+  });
+
+  it("refuses a vendor reaching into another vendor's product", async () => {
+    await expect(
+      inv.setProductImages(ownerActor(), ids.otherProduct, [{ url: "https://img/c.jpg" }]),
+    ).rejects.toThrow("FORBIDDEN:product.edit");
+  });
+
+  it("empties the list when given nothing", async () => {
+    await inv.setProductImages(ownerActor(), ids.acmeProduct, []);
+    const row = await inv.getProduct(ownerActor(), ids.acmeProduct);
+    expect(row.images).toEqual([]);
+  });
+});

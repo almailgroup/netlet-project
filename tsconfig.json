@@ -6,6 +6,10 @@
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
     "noEmit": true,
     "module": "ESNext",
+    // Node 20 and every browser the storefront supports. Without it tsc
+    // defaults to ES5 and rejects BigInt and Set iteration that both the
+    // Vite build and the server runtime handle natively.
+    "target": "ES2022",
     "strict": true,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",

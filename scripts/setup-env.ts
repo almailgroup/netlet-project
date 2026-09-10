@@ -130,8 +130,6 @@ if (set.length) console.log(`  set:  ${set.join(", ")}`);
 if (kept.length) console.log(`  kept: ${kept.join(", ")} (already had a value)`);
 
 const stillEmpty = [
-  "SHOPIFY_STORE_DOMAIN",
-  "SHOPIFY_STOREFRONT_API_ACCESS_TOKEN",
   "DATABASE_URL",
   "FIREBASE_PROJECT_ID",
   "FIREBASE_CLIENT_EMAIL",

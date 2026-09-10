@@ -68,12 +68,12 @@
     "vercel-build": "vite build",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "format": "prettier --write .",
     "preflight": "tsx scripts/preflight.ts",
     "setup:env": "tsx scripts/setup-env.ts",
-    "shopify:probe": "tsx scripts/shopify-probe.runner.ts",
     "start": "NODE_ENV=production node dist/index.js",
     "test": "vitest run"
   },

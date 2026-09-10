@@ -162,7 +162,7 @@ export async function getCustomerProfile(userId: number) {
 
 export async function upsertCustomerProfile(
   userId: number,
-  patch: { locale?: "en" | "ar"; deliveryZoneId?: string | null; shopifyCartId?: string | null }
+  patch: { locale?: "en" | "ar"; deliveryZoneId?: string | null; cartId?: string | null }
 ) {
   const db = await getDb();
   if (!db) return undefined;

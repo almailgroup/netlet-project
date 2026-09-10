@@ -19,7 +19,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, LoaderCircle, Minus, Plus, Save } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Minus, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const categories = trpc.inventory.categories.useQuery();
 
   const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", categoryId: "", tags: "" });
+  const [images, setImages] = useState<{ url: string; altText: string }[]>([]);
   useEffect(() => {
     if (!product.data) return;
     setDraft({
@@ -51,6 +52,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       categoryId: product.data.categoryId ? String(product.data.categoryId) : "",
       tags: product.data.tags.join(", "),
     });
+    setImages(product.data.images.map(image => ({ url: image.url, altText: image.altText ?? "" })));
   }, [product.data?.id]);
 
   const refresh = () => {
@@ -69,6 +71,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       refresh();
       toast.success(t(status === "pending_review" ? "dash.sentForReview" : status === "published" ? "dash.nowLive" : "dash.saved"));
     },
+    onError: fail,
+  });
+  const saveImages = trpc.inventory.products.setImages.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("dash.saved")); },
     onError: fail,
   });
   const saveVariant = trpc.inventory.variants.save.useMutation({ onSuccess: () => { refresh(); toast.success(t("dash.saved")); }, onError: fail });
@@ -155,6 +161,84 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
             {t(save.isPending ? "dash.saving" : "dash.save")}
           </button>
+        ) : null}
+      </section>
+
+      {/* Images are saved as a whole list, in order, so removing the third
+          and adding a fourth are the same operation. Position is the array
+          index — reordering is a save, not a separate protocol. */}
+      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        <h2 className="text-sm font-extrabold">{t("dash.images")}</h2>
+        <p className="mt-1 text-[11px] font-semibold text-[#9ea4b5]">{t("dash.imagesHint")}</p>
+
+        {images.length === 0 ? (
+          <p className="mt-4 text-[13px] text-[#536b8c]">{t("dash.noImages")}</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {images.map((image, index) => (
+              <div key={index} className="flex items-start gap-3 rounded-xl border border-[#e6e9ef] p-3">
+                {/* A live preview is the only way to tell a good URL from a
+                    typo before the product is on the shelf. */}
+                <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef1f6]">
+                  {image.url ? <img src={image.url} alt="" className="size-full object-cover" /> : null}
+                </div>
+                <div className="grid min-w-0 flex-1 gap-2">
+                  <input
+                    dir="ltr"
+                    value={image.url}
+                    disabled={!mayEdit}
+                    placeholder={t("dash.imageUrl")}
+                    aria-label={t("dash.imageUrl")}
+                    onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, url: e.target.value } : entry))}
+                    className={field}
+                  />
+                  <input
+                    dir="auto"
+                    value={image.altText}
+                    disabled={!mayEdit}
+                    placeholder={t("dash.imageAlt")}
+                    aria-label={t("dash.imageAlt")}
+                    onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
+                    className={field}
+                  />
+                </div>
+                {mayEdit ? (
+                  <button
+                    onClick={() => setImages(images.filter((_, i) => i !== index))}
+                    aria-label={t("dash.removeImage")}
+                    className="tap-target text-[#778ba6] hover:text-[#f2683a]"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {mayEdit ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => setImages([...images, { url: "", altText: "" }])}
+              className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
+            >
+              <Plus className="size-4" />{t("dash.addImage")}
+            </button>
+            <button
+              onClick={() => saveImages.mutate({
+                id: row.id,
+                // A row left blank is an abandoned edit, not an image.
+                images: images
+                  .filter(image => image.url.trim())
+                  .map(image => ({ url: image.url.trim(), altText: image.altText.trim() || null })),
+              })}
+              disabled={saveImages.isPending}
+              className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
+            >
+              {saveImages.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {t(saveImages.isPending ? "dash.saving" : "dash.save")}
+            </button>
+          </div>
         ) : null}
       </section>
 

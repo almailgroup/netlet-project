@@ -210,6 +210,42 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
 }
 
 /**
+ * Replaces a product's images, in the order given.
+ *
+ * Replace rather than append: the editor shows the whole list and saves the
+ * whole list, so "remove the third one" is the same operation as "add one",
+ * and there is no second endpoint to forget to guard. Position comes from the
+ * array index, so reordering is a save rather than a swap protocol.
+ *
+ * Until uploads exist these are URLs a vendor pastes. That is also why the
+ * image CSP is wide by default — see ENV.mediaHost.
+ */
+export async function setProductImages(
+  actor: Actor,
+  productId: number,
+  images: { url: string; altText?: string | null }[],
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const row = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+
+  await db.delete(productImages).where(eq(productImages.productId, productId));
+  if (images.length) {
+    await db.insert(productImages).values(
+      images.map((image, position) => ({
+        productId,
+        url: image.url,
+        altText: image.altText?.trim() || null,
+        position,
+      })),
+    );
+  }
+  return getProduct(actor, productId);
+}
+
+/**
  * Moves a product between statuses.
  *
  * A vendor may publish only if their vendor is trusted with `autoPublish`;

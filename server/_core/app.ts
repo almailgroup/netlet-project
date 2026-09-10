@@ -47,8 +47,8 @@ export function createApp(): Express {
   });
 
   // Liveness. Any uptime monitor needs one URL that answers without touching
-  // Shopify or the database, so a red check means this process is down rather
-  // than a dependency being slow.
+  // the database, so a red check means this process is down rather than a
+  // dependency being slow.
   app.get(["/healthz", "/api/healthz"], (_req, res) => {
     res.json({ status: "ok", uptime: Math.round(process.uptime()) });
   });

@@ -41,8 +41,9 @@ export function VariantPicker({ product, selected, onSelect }: {
 }) {
   const { t } = useTranslation();
 
-  // "Title" is Shopify's placeholder on a product with no real options.
-  const options = product.options.filter(option => option.name !== "Title" && option.values.length > 1);
+  // An option with a single value cannot narrow anything, so it is a label
+  // rather than a control and does not earn a row of swatches.
+  const options = product.options.filter(option => option.values.length > 1);
   if (!options.length || product.variants.length < 2) return null;
 
   /**
@@ -112,7 +113,7 @@ export function VariantPicker({ product, selected, onSelect }: {
 /**
  * The image that belongs to a variant.
  *
- * Shopify does not give the normalized `Product` a per-variant image, so the
+ * The normalized `Product` has no per-variant image, so the
  * variant's own option values are matched against the image alt text the
  * merchant wrote — which is where "Aurora Desk Lamp – Charcoal" lives. No
  * match means no change, which is better than jumping to an unrelated photo.

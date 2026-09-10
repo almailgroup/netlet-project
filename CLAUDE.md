@@ -1,7 +1,8 @@
 # NetLet
 
 Kuwait-first marketplace storefront. React + Vite client, Express + tRPC server,
-Shopify for catalog and checkout, Postgres for accounts.
+Supabase Postgres for the catalog, the cart and accounts. Firebase holds the
+passwords. Vercel runs it.
 
 ## Design reference
 
@@ -64,6 +65,13 @@ the department rail and the hover-to-expand behaviour, which only earn their
 place on the page you land on. Checkout keeps a bare one: every extra exit on a
 payment page is an invitation to take it.
 
+The bag is server-side, in `carts` and `cart_items`. Its id is a random token
+rather than a serial, because it is handed to an anonymous browser and is the
+only thing separating one shopper's bag from another's — and every cart query
+is scoped by it, so a guessed line id edits nothing. Lines store no price:
+a cart is a list of intentions and the price is whatever the variant costs
+when the shopper looks. Freezing a price is the order's job.
+
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three.
@@ -78,6 +86,17 @@ NetLet owns its catalog. `drizzle/schema.ts` holds vendors, vendor members,
 categories, products, variants, images and stock movements, in the Supabase
 Postgres that `DATABASE_URL` points at. Money is `numeric`, never a float — the
 dinar has three decimal places and a binary fraction cannot hold 24.375.
+
+There is one catalog, not two. The storefront reads the same tables the
+dashboard writes: `server/catalog.ts` is the read side,
+`shared/commerce/fromInventory.ts` turns rows into the `Product` shape the
+pages are written against, and `server/storefront.e2e.test.ts` is what stops
+the two drifting apart again — it creates a product through the dashboard's
+procedures and buys it through the shop's.
+
+`shared/commerce/types.ts` is that shape and is the only commerce contract the
+client knows. It survived one backend already; keep it free of anything that
+smells like a table.
 
 **`shared/inventory/permissions.ts` is the whole access model, and it is pure.**
 Two axes: *scope* (a vendor member reaches their own vendor and nothing else,
@@ -223,7 +242,11 @@ is the way in.
 
 ## Checks
 
-`pnpm check` · `pnpm test` · `pnpm build`. Data-layer tests run against a real
+`pnpm check` · `pnpm test` · `pnpm build`. A fresh database needs
+`pnpm db:push` then `pnpm db:seed` — the seed writes the departments and the
+house vendor and nothing else, because a product cannot exist without a vendor
+to own it, and an invented catalog on a real deployment looks like an open
+shop. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.
 

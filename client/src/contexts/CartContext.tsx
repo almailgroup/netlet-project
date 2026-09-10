@@ -1,3 +1,4 @@
+import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import type { Cart } from "@shared/commerce/types";
@@ -16,10 +17,11 @@ import {
  * Storefront cart context.
  *
  * - Talks ONLY to backend-agnostic `commerce.*` tRPC procedures.
- * - Persists the cart id in localStorage and rehydrates on mount.
+ * - Persists the cart id in localStorage and rehydrates on mount, and mirrors
+ *   it onto the account so a bag survives moving to another device.
  * - Exposes a tiny imperative surface to UI: addItem, updateQuantity,
  *   removeItem, openCart, proceedToCheckout. Everything is typed against
- *   `shared/commerce/types` — the Shopify backend is invisible.
+ *   `shared/commerce/types` — which store is behind it is invisible.
  */
 
 const CART_STORAGE_KEY = "commerce:cart-id";
@@ -70,11 +72,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     if (!accountProfile.data || accountCartHydrated.current) return;
     accountCartHydrated.current = true;
-    if (accountProfile.data.shopifyCartId) {
-      setCartId(accountProfile.data.shopifyCartId);
-      writeStoredCartId(accountProfile.data.shopifyCartId);
-    } else if (cartId) {
-      updateProfile.mutate({ shopifyCartId: cartId });
+    // The bag filled before signing in wins over an older one on the account:
+    // it is the one the shopper is looking at.
+    if (cartId) {
+      updateProfile.mutate({ cartId });
+    } else if (accountProfile.data.cartId) {
+      setCartId(accountProfile.data.cartId);
+      writeStoredCartId(accountProfile.data.cartId);
     }
   }, [accountProfile.data, cartId, isAuthenticated, updateProfile]);
 
@@ -123,10 +127,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const created = await utils.client.commerce.cart.create.mutate({
             lines: [{ variantId, quantity }],
           });
+          if (!created) return;
           setCart(created);
           setCartId(created.id);
           writeStoredCartId(created.id);
-          if (isAuthenticated) updateProfile.mutate({ shopifyCartId: created.id });
+          if (isAuthenticated) updateProfile.mutate({ cartId: created.id });
         } else {
           const updated = await utils.client.commerce.cart.addLines.mutate({
             cartId,
@@ -180,13 +185,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     writeStoredCartId(null);
     setCartId(null);
     setCart(null);
-    if (isAuthenticated) updateProfile.mutate({ shopifyCartId: null });
+    if (isAuthenticated) updateProfile.mutate({ cartId: null });
   }, [isAuthenticated, updateProfile]);
 
+  // Checkout is a NetLet page now, not an external host, so this navigates
+  // in place rather than opening a tab. The drawer closes first: coming back
+  // from checkout to a drawer still hanging open is disorienting.
   const proceedToCheckout = useCallback(() => {
-    if (!cart?.checkoutUrl) return;
-    // checkoutUrl already has channel=online_store appended server-side.
-    window.open(cart.checkoutUrl, "_blank", "noopener,noreferrer");
+    if (!cart?.items.length) return;
+    setIsOpen(false);
+    window.location.assign(appPath(cart.checkoutUrl));
   }, [cart]);
 
   const value = useMemo<CartContextValue>(

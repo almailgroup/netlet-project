@@ -2,7 +2,7 @@
 
 Vercel runs the backend. GitHub Pages could not, which is why the published
 site has been a fixture-backed demo with invented products. On Vercel the same
-code serves real Shopify products, real accounts, and a real cart.
+code serves your own catalog, real accounts, and a real cart.
 
 Time: about ten minutes. Cost: nothing on the Hobby plan for a site this size.
 
@@ -48,34 +48,50 @@ Development unless noted.
 
 ### Start here — deploy today, with the demo catalog
 
-You do not have Shopify credentials yet, and without them there is no catalog.
-So set exactly one variable and deploy:
+Until Supabase is connected there is no catalog, so set exactly one variable
+and deploy:
 
 ```
 VITE_DEMO_MODE = true
 ```
 
 That gives you the site you have now, at a Vercel URL, with the backend wired
-and waiting. Everything below can be added later, and flipping demo mode off is
-what switches the whole thing over to real data.
+and waiting. `VITE_` variables are compiled into the bundle at build time, so
+changing this one later needs a redeploy, not just a save.
 
-### When the Shopify credentials arrive
+### Switching on the real catalog
 
-Remove `VITE_DEMO_MODE` (or set it to nothing) and add:
+This is the step that makes the dashboard's products appear in the shop.
 
-```
-SHOPIFY_STORE_DOMAIN                    netlet.myshopify.com
-SHOPIFY_STOREFRONT_API_ACCESS_TOKEN     <Storefront API token, not Admin>
-```
+1. Create a Supabase project and take the connection URI (Project Settings →
+   Database → Connection string → URI).
+2. Set the two variables below in Vercel.
+3. Locally, with the same `DATABASE_URL` in your `.env`, run:
 
-Redeploy. The storefront is now serving your real products.
+   ```
+   pnpm db:push     # creates the tables
+   pnpm db:seed     # departments + the house vendor
+   ```
 
-### For accounts (sign-in, saved items, delivery area)
+   The seed writes no products. An invented catalog on a live domain looks
+   like an open shop.
+4. **Remove `VITE_DEMO_MODE`** from Vercel and redeploy.
+5. Register your `OWNER_EMAIL` account on the site, then run `pnpm db:seed`
+   again — it puts that account in the house vendor so the vendor-side pages
+   have something real behind them.
 
 ```
 DATABASE_URL    postgresql://…            # Supabase; see .env.example
 JWT_SECRET      <openssl rand -base64 48> # signs the session cookie
 ```
+
+Add products at `/dashboard`. A product needs a price, stock and at
+least one image before it is worth publishing — the shop shows a grey box for
+a product with no picture.
+
+### For accounts (sign-in, saved items, delivery area)
+
+The two variables above are already what accounts need. Beyond them:
 
 Then the four Firebase values from `docs/FIREBASE.md`:
 

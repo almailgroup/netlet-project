@@ -28,15 +28,16 @@ function toFils(value: Money): number {
 }
 
 function fromFils(fils: number): Money {
-  return { amount: (fils / 1000).toFixed(2), currencyCode: CURRENCY };
+  return { amount: (fils / 1000).toFixed(3), currencyCode: CURRENCY };
 }
 
 function emptyCart(id: string): Cart {
   return {
     id,
-    // No real checkout exists in the demo; Checkout.tsx is a local route and the
-    // bag's "continue" button navigates there rather than opening this URL.
-    checkoutUrl: "",
+    // The same path the server returns. It has to match: the bag's "continue"
+    // button navigates to whatever this says, so an empty string here is a
+    // button that silently does nothing.
+    checkoutUrl: "/checkout",
     items: [],
     itemCount: 0,
     subtotal: fromFils(0),
@@ -188,7 +189,7 @@ function resolve(path: string, rawInput: unknown): unknown {
           );
           return update ? { ...item, quantity: update.quantity } : item;
         })
-        // A quantity of 0 removes the line, matching the Shopify cart contract.
+        // A quantity of 0 removes the line, matching the cart contract.
         .filter(item => item.quantity > 0);
       return writeCart(recalculate({ ...cart, items }));
     }
@@ -243,6 +244,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.vendors.members":
       return [];
     case "inventory.products.update":
+    case "inventory.products.setImages":
     case "inventory.products.setStatus":
     case "inventory.variants.save":
     case "inventory.variants.adjustStock":

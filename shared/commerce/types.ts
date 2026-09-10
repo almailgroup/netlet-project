@@ -1,11 +1,11 @@
 /**
  * Backend-agnostic commerce types.
  *
- * These shapes are the ONLY thing the frontend imports for commerce data.
- * They intentionally don't expose any Shopify-specific concepts (GraphQL
- * edges/nodes, GIDs, userErrors). The Shopify adapter in
- * `server/_core/shopify.ts` + `server/_core/shopifyNormalize.ts` are
- * responsible for normalizing into these shapes.
+ * These shapes are the ONLY thing the frontend imports for commerce data, and
+ * they expose nothing about the store behind them — no row ids typed as
+ * numbers, no table names, no status enums. `shared/commerce/fromInventory.ts`
+ * is what turns NetLet's own inventory rows into them; a different store
+ * would mean a different mapper and no change here.
  *
  * Keep `Money.amount` as a `string` — it mirrors what every commerce backend
  * returns and avoids float-precision risk on totals. The UI converts to a
@@ -37,7 +37,10 @@ export type SelectedOption = {
 export type ProductVariant = {
   /** Opaque variant identifier — pass back to addItem / cart mutations as-is. */
   id: string;
-  /** Human label such as "Medium / Charcoal" or "Default Title". */
+  /**
+   * Human label such as "Medium / Charcoal". A product with nothing to choose
+   * gets DEFAULT_VARIANT_TITLE, which the UI hides rather than prints.
+   */
   title: string;
   /** Merchant stock-keeping code. Null when the store leaves it blank. */
   sku: string | null;
@@ -65,7 +68,10 @@ export type Product = {
   productType: string | null;
   vendor: string | null;
   tags: string[];
-  /** Explicit Shopify custom metafields configured as product attributes. */
+  /**
+   * Spec rows and the review score, from `products.attributes`. The
+   * "reviews"/"rating" namespace is the score; anything else is a spec row.
+   */
   attributes: ProductAttribute[];
   images: Image[];
   /** Min / max across all variants — useful for "from $X" pricing. */
@@ -98,7 +104,7 @@ export type CartItem = {
 
 export type Cart = {
   id: string;
-  /** Already includes `channel=online_store` — open directly. */
+  /** Where checkout lives. A NetLet path, not an external host. */
   checkoutUrl: string;
   items: CartItem[];
   itemCount: number;

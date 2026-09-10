@@ -9,6 +9,7 @@ import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import type { Express, RequestHandler } from "express";
+import { ENV } from "./env";
 import { COOKIE_NAME } from "@shared/const";
 
 /**
@@ -25,12 +26,14 @@ const CONTENT_SECURITY_POLICY = {
   scriptSrc: ["'self'"],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-  // Shopify serves product imagery from its own CDN; the demo catalog uses
-  // inline SVG data URIs.
-  imgSrc: ["'self'", "data:", "blob:", "https://cdn.shopify.com"],
-  connectSrc: ["'self'", "https://*.myshopify.com"],
-  // Checkout hands off to Shopify's hosted flow.
-  formAction: ["'self'", "https://*.myshopify.com"],
+  // Product imagery: whatever MEDIA_HOST names, or any https origin while
+  // that is unset — see ENV.mediaHost. The demo catalog draws its own
+  // artwork as inline SVG data URIs.
+  imgSrc: ["'self'", "data:", "blob:", ENV.mediaHost || "https:"],
+  // Nothing off-origin to talk to: the catalog, the cart and checkout are
+  // all NetLet's own API now.
+  connectSrc: ["'self'"],
+  formAction: ["'self'"],
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
@@ -83,8 +86,8 @@ export function applySecurity(app: Express): void {
   app.use(
     helmet({
       contentSecurityPolicy: isProduction ? { directives: CONTENT_SECURITY_POLICY } : false,
-      // Vite's dev server and the Shopify checkout hand-off both need a
-      // referrer; the default `no-referrer` breaks the return journey.
+      // Vite's dev server needs a referrer; the default `no-referrer` breaks
+      // the return journey.
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       // Only meaningful over HTTPS, which in development there is not.
       hsts: isProduction ? { maxAge: 15552000, includeSubDomains: true } : false,
