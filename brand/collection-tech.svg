@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600" role="img" aria-label="Electronics collection artwork">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#dce5e9"/><stop offset="100%" stop-color="#b9ccd7"/></linearGradient></defs>
-  <rect width="900" height="600" fill="url(#g)"/>
-  <circle cx="700" cy="150" r="140" fill="#ffffff" opacity="0.30"/>
-  <rect x="90" y="300" width="260" height="260" rx="46" fill="#0a285a" opacity="0.09"/>
-  <rect x="390" y="380" width="180" height="180" rx="34" fill="#f2683a" opacity="0.15"/>
-</svg>
