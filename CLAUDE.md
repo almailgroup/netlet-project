@@ -72,6 +72,34 @@ Use it for anything modal rather than re-deriving two of the three.
 without changing how it looks. Gallery dots are 6px on purpose; a 6px *target*
 was a coin toss on a phone.
 
+## Inventory
+
+NetLet owns its catalog. `drizzle/schema.ts` holds vendors, vendor members,
+categories, products, variants, images and stock movements, in the Supabase
+Postgres that `DATABASE_URL` points at. Money is `numeric`, never a float — the
+dinar has three decimal places and a binary fraction cannot hold 24.375.
+
+**`shared/inventory/permissions.ts` is the whole access model, and it is pure.**
+Two axes: *scope* (a vendor member reaches their own vendor and nothing else,
+an admin reaches everything) and *rank* (`staff` moves stock, `manager` runs
+the catalog, `owner` runs the team). Some capabilities no vendor rank can
+reach at all — commission above all, which the requirements put outside a
+vendor's control entirely.
+
+Guards live in `server/inventory.ts`, next to the query each protects, not in
+the router alone: a second caller added later would skip a router-level check
+silently. `assertCan` throws `FORBIDDEN:<capability>`, which the router
+translates into a 403.
+
+There is one router for admins and vendors, not two. Two would mean the same
+procedures twice with a different guard at the top of each, which is the
+arrangement where a guard eventually goes missing from one copy. Every
+procedure resolves *who is asking* and the data layer refuses the rest.
+
+A vendor publishing means asking: the product goes to `pending_review` unless
+their vendor carries `autoPublish`. Suspending a vendor empties their shelf
+without editing a single product, which is what makes suspension a real lever.
+
 ## Browsing
 
 `/category/:slug` is the department page — the sidebar, the grid, the sort.
