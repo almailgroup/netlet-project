@@ -14,6 +14,7 @@ import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../server/routers";
+import { demoCategories, demoInventoryActor, demoInventoryProducts } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
@@ -224,6 +225,27 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.saved.set":
     case "customer.notifications.set":
     case "customer.follows.set":
+      return { success: true } as const;
+
+    /* The dashboard. The demo has no server, so it answers as a vendor manager
+       against fixtures — see demoInventory.ts. Writes are accepted and
+       discarded; nothing here is persisted. */
+    case "inventory.me":
+      return demoInventoryActor;
+    case "inventory.categories":
+      return demoCategories;
+    case "inventory.products.list":
+    case "inventory.storefront.list":
+      return demoInventoryProducts;
+    case "inventory.products.get":
+      return demoInventoryProducts.find(row => row.id === (input as { id: number })?.id) ?? null;
+    case "inventory.vendors.list":
+    case "inventory.vendors.members":
+      return [];
+    case "inventory.products.update":
+    case "inventory.products.setStatus":
+    case "inventory.variants.save":
+    case "inventory.variants.adjustStock":
       return { success: true } as const;
 
     default:

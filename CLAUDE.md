@@ -100,6 +100,32 @@ A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
 
+## Dashboard
+
+`/dashboard` is one application for admins and vendors both, not two. The pages
+are the same pages; scope is already decided by the server, so `products.list`
+returns one vendor's rows or every vendor's depending on who asks. Two shells
+would mean two navigations showing the same links.
+
+Which links appear comes from `can()` — the same pure function the server
+guards with. **A hidden link is a courtesy, never a control.** Pass `need` to
+`DashboardShell` so a route typed into the address bar refuses too: without it,
+a manager reaching `/dashboard/vendors` gets an empty page, which implies the
+page exists and has nothing in it rather than that it is not theirs.
+
+The publish button says what will actually happen. A vendor without
+`autoPublish` pressing Publish sends the product for review, and the page says
+so — a button labelled "Publish" that quietly produces "In review" is the kind
+of small dishonesty that makes people distrust a tool.
+
+Stock moves by a delta with a reason, never by typing a new total. "We received
+12" is what happened; setting the box to 47 loses why and races with whoever
+else is editing.
+
+In a demo build the dashboard opens against fixtures as a vendor `manager` —
+the one place the storefront's signed-out-guest rule is bent, because a sign-in
+wall would show nothing of the thing being demonstrated.
+
 ## Browsing
 
 `/category/:slug` is the department page — the sidebar, the grid, the sort.

@@ -29,6 +29,13 @@ const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
 const Category = lazy(() => import("@/pages/Category"));
+/* The dashboard is a separate application in everything but deployment: no
+   shopper ever loads it, so it stays out of the storefront's bundle. */
+const DashboardProducts = lazy(() => import("@/pages/dashboard/Products"));
+const DashboardProductEditor = lazy(() => import("@/pages/dashboard/ProductEditor"));
+const DashboardReview = lazy(() => import("@/pages/dashboard/Review"));
+const DashboardVendors = lazy(() => import("@/pages/dashboard/Vendors"));
+const DashboardTeam = lazy(() => import("@/pages/dashboard/Team"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 /**
@@ -58,6 +65,11 @@ function Router() {
         <Route path="/saved" component={Saved} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/category/:slug" component={Category} />
+        <Route path="/dashboard" component={DashboardProducts} />
+        <Route path="/dashboard/products/:id" component={DashboardProductEditor} />
+        <Route path="/dashboard/review" component={DashboardReview} />
+        <Route path="/dashboard/vendors" component={DashboardVendors} />
+        <Route path="/dashboard/team" component={DashboardTeam} />
         <Route path="/products/:handle" component={ProductDetail} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />

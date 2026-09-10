@@ -1,0 +1,152 @@
+/**
+ * The dashboard frame: who you are, and what that lets you reach.
+ *
+ * There is one dashboard, not an admin one beside a vendor one. The pages are
+ * the same pages; what differs is scope, and scope is already decided by the
+ * server — `products.list` returns one vendor's rows or every vendor's
+ * depending on who asks. Building two shells would mean maintaining two
+ * navigations that show the same links.
+ *
+ * Which links appear comes from `can()`, the same pure function the server
+ * guards with. A hidden link is a courtesy, never a control: the server
+ * refuses regardless, so the two cannot drift into a button that 403s.
+ */
+import { useAuth } from "@/_core/hooks/useAuth";
+import { DEMO_MODE } from "@/lib/demoMode";
+import { trpc } from "@/lib/trpc";
+import { useTranslation } from "@/lib/useTranslation";
+import { can, type Actor, type Capability } from "@shared/inventory/permissions";
+import type { MessageKey } from "@shared/i18n/dictionary";
+import { ArrowLeft, ClipboardCheck, LayoutGrid, Store, Users } from "lucide-react";
+import type { ReactNode } from "react";
+import { Link, useLocation } from "wouter";
+
+const ROLE_LABEL: Record<string, MessageKey> = {
+  admin: "dash.roleAdmin",
+  owner: "dash.roleOwner",
+  manager: "dash.roleManager",
+  staff: "dash.roleStaff",
+};
+
+export function roleLabelKey(actor: Actor): MessageKey {
+  return actor.kind === "admin" ? "dash.roleAdmin" : ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
+}
+
+export function DashboardShell({ need, children }: {
+  /**
+   * What this page requires. Hiding a nav link is a courtesy; a route typed
+   * into the address bar arrives anyway, and rendering an empty page there
+   * implies the page exists and has nothing in it — when the truth is that it
+   * is not yours to see. The server refuses the data either way.
+   */
+  need?: Capability;
+  children: (actor: Actor) => ReactNode;
+}) {
+  const { t } = useTranslation();
+  const [location] = useLocation();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  /*
+   * The demo build is a signed-out guest everywhere — there is no server to
+   * sign in to. The dashboard is the one page where that would show nothing
+   * at all, so it opens against fixtures instead. This is the only place the
+   * storefront's guest rule is bent, and only when there is no backend.
+   */
+  const reachable = DEMO_MODE || isAuthenticated;
+  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable });
+
+  if ((!DEMO_MODE && authLoading) || (reachable && me.isLoading)) {
+    return <Frame><p className="text-sm text-[#536b8c]">{t("dash.loading")}</p></Frame>;
+  }
+
+  if (!reachable) {
+    return (
+      <Frame>
+        <p className="text-sm font-bold text-[#0a285a]">{t("dash.signInFirst")}</p>
+        <Link href="/account" className="glass glass-navy pressable mt-4 inline-flex rounded-full px-5 py-3 text-xs font-extrabold">
+          {t("header.signIn")}
+        </Link>
+      </Frame>
+    );
+  }
+
+  const actor = me.data;
+  // A signed-in shopper reaching /dashboard is not an error — it is somebody
+  // who has not been added to a vendor yet, and telling them who to ask is
+  // more use than a 403.
+  if (!actor || actor.kind === "customer") {
+    return (
+      <Frame>
+        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("dash.noAccess")}</h1>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[#536b8c]">{t("dash.noAccessNote")}</p>
+        <Link href="/" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("dash.backToStore")}
+        </Link>
+      </Frame>
+    );
+  }
+
+  if (need && !can(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
+    return (
+      <Frame>
+        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("dash.forbidden")}</h1>
+        <Link href="/dashboard" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
+          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("dash.products")}
+        </Link>
+      </Frame>
+    );
+  }
+
+  const links = ([
+    { href: "/dashboard", label: "dash.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
+    { href: "/dashboard/review", label: "dash.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
+    { href: "/dashboard/vendors", label: "dash.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
+    { href: "/dashboard/team", label: "dash.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
+  ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability }[])
+    .filter(link => can(actor, link.need));
+
+  return (
+    <main className="min-h-screen bg-background text-[#0a285a]">
+      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
+        <div className="container flex h-[64px] items-center gap-4">
+          <Link href="/" className="flex items-center gap-2 text-sm font-extrabold">
+            <ArrowLeft className="size-4 rtl:-scale-x-100" />
+            <span className="hidden sm:inline">{t("dash.backToStore")}</span>
+          </Link>
+          <span className="ms-auto text-[11px] font-semibold text-[#536b8c]">
+            {user?.name || user?.email ? t("dash.signedInAs", { name: user?.name ?? user?.email ?? "" }) : null}
+          </span>
+          <span className="rounded-full bg-[#e7edf5] px-2.5 py-1 text-[10px] font-extrabold text-[#0a285a]">
+            {t(roleLabelKey(actor))}
+          </span>
+        </div>
+      </header>
+
+      <div className="container grid gap-6 py-6 lg:grid-cols-[210px_minmax(0,1fr)]">
+        <nav aria-label={t("dash.title")} className="hide-scrollbar flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
+          {links.map(link => {
+            const active = location === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`pressable inline-flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold ${active ? "glass glass-navy" : "text-[#536b8c] hover:bg-[#e7edf5]"}`}
+              >
+                {link.icon}{t(link.label)}
+              </Link>
+            );
+          })}
+        </nav>
+        <section className="min-w-0">{children(actor)}</section>
+      </div>
+    </main>
+  );
+}
+
+function Frame({ children }: { children: ReactNode }) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-background px-6 text-center">
+      <div>{children}</div>
+    </main>
+  );
+}

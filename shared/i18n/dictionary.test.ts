@@ -88,7 +88,19 @@ describe("dictionary hygiene", () => {
     };
     walk(root);
     const corpus = sources.join("\n");
-    const unused = (Object.keys(en) as MessageKey[]).filter((key) => !corpus.includes(`"${key}"`));
+
+    /*
+     * A key can be reached two ways, and looking only for the first reports a
+     * live key as dead: `t("status.draft")` spells it out, while
+     * `t(`status.${status}`)` builds it from a prefix. Collect the prefixes
+     * actually used that way and treat anything under one as reached — which
+     * is true, since the prefix is only ever fed values from the same family.
+     */
+    const dynamicPrefixes = [...corpus.matchAll(/`([a-z][\w.]*\.)\$\{/g)].map((match) => match[1]);
+    const reached = (key: MessageKey) =>
+      corpus.includes(`"${key}"`) || dynamicPrefixes.some((prefix) => key.startsWith(prefix));
+
+    const unused = (Object.keys(en) as MessageKey[]).filter((key) => !reached(key));
     expect(unused).toEqual([]);
   });
 });
