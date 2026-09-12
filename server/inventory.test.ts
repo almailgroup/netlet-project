@@ -546,6 +546,26 @@ describe("trust badges and account health", () => {
  * testing hardest: a store that exists but cannot be signed into looks
  * finished, so nobody goes back to fix it.
  */
+describe("account health", () => {
+  it("is null for an admin who has named no vendor, not an error", async () => {
+    // An admin belongs to no company, so they have no shelf and no rejection
+    // count to score. This used to throw NOT_FOUND, which made every admin
+    // visit to /admin a failed request the page then swallowed.
+    await expect(inv.vendorHealthFor(adminActor())).resolves.toBeNull();
+  });
+
+  it("is that vendor's numbers when an admin names one", async () => {
+    const health = await inv.vendorHealthFor(adminActor(), ids.acme);
+    expect(health?.vendorId).toBe(ids.acme);
+    expect(health?.score).toBeGreaterThanOrEqual(0);
+  });
+
+  it("is their own vendor's for a vendor member, whatever they ask for", async () => {
+    const health = await inv.vendorHealthFor(ownerActor(), ids.other);
+    expect(health?.vendorId).toBe(ids.acme);
+  });
+});
+
 describe("opening a store", () => {
   it("creates the vendor, the login and the membership together", async () => {
     const { vendor, ownerUserId } = await inv.createVendorWithOwner(adminActor(), {

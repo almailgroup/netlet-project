@@ -66,7 +66,10 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message.startsWith("FORBIDDEN:")) {
       throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
     }
-    if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "No such product" });
+    // Deliberately not "No such product": products, vendors and variants all
+    // raise this, and a vendor profile reported as a missing product sends
+    // whoever reads it looking in the wrong place.
+    if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "admin.notFound" });
     // These three are refusals a person can act on, not faults: they are
     // told what they may do instead rather than shown a failure.
     if (message === "NO_SUCH_ACCOUNT") {

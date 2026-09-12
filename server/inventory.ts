@@ -800,7 +800,15 @@ export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId
  */
 export async function vendorHealthFor(actor: Actor, vendorId?: number) {
   const scope = actor.kind === "vendor" ? actor.vendorId : vendorId;
-  if (scope === undefined) throw new Error("NOT_FOUND");
+  /*
+   * An admin who has not named a vendor has no health of their own, and that
+   * is not an error: they belong to no company, so there is no shelf and no
+   * rejection count to score. Returning null lets the overview simply omit the
+   * panel. Throwing NOT_FOUND — which this used to do — made every admin visit
+   * to /admin a failed request that the page then swallowed, so the panel was
+   * silently missing and the console carried a 404 on every load.
+   */
+  if (scope === undefined) return null;
   assertCan(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   const db = await getDb();
