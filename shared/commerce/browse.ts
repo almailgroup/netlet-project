@@ -13,8 +13,8 @@
  * carries a count, because a filter that leads to an empty page is worse than
  * no filter at all.
  */
-import { isExpressEligible, productRating } from "./productDetail";
-import type { Product } from "./types";
+import { isExpressEligible, productRating } from "./productDetail.js";
+import type { Product } from "./types.js";
 
 export type BrowseSort = "relevance" | "price-low" | "price-high" | "discount" | "rating" | "newest";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { relatedProducts } from "./related";
-import type { Product } from "./types";
+import { relatedProducts } from "./related.js";
+import type { Product } from "./types.js";
 
 function product(id: string, title: string, productType: string, tags: string[], vendor = "NetLet"): Product {
   return {

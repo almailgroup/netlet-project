@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TrpcContext } from "../_core/context";
-import { COOKIE_NAME } from "../../shared/const";
-import type { User } from "../../drizzle/schema";
+import type { TrpcContext } from "../_core/context.js";
+import { COOKIE_NAME } from "../../shared/const.js";
+import type { User } from "../../drizzle/schema.js";
 
 type CookieCall = { name: string; options: Record<string, unknown> };
 

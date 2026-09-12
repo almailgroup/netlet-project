@@ -9,8 +9,8 @@ import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import type { Express, RequestHandler } from "express";
-import { ENV } from "./env";
-import { COOKIE_NAME } from "../../shared/const";
+import { ENV } from "./env.js";
+import { COOKIE_NAME } from "../../shared/const.js";
 
 /**
  * Sources the storefront legitimately loads from.

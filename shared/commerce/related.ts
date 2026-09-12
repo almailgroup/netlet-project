@@ -1,4 +1,4 @@
-import type { Product } from "./types";
+import type { Product } from "./types.js";
 
 function normalized(values: Array<string | null | undefined>) {
   return new Set(values.filter((value): value is string => Boolean(value)).map(value => value.trim().toLowerCase()).filter(Boolean));

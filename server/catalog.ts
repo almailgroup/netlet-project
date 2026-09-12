@@ -25,16 +25,16 @@ import {
   products,
   productVariants,
   vendors,
-} from "../drizzle/schema";
+} from "../drizzle/schema.js";
 import {
   CURRENCY,
   toStorefrontCollection,
   toStorefrontProduct,
   type LocalePick,
-} from "../shared/commerce/fromInventory";
-import type { Cart, CartItem, Collection, Product } from "../shared/commerce/types";
-import { publishedCatalog, publishedProduct } from "./inventory";
-import { getDb } from "./db";
+} from "../shared/commerce/fromInventory.js";
+import type { Cart, CartItem, Collection, Product } from "../shared/commerce/types.js";
+import { publishedCatalog, publishedProduct } from "./inventory.js";
+import { getDb } from "./db.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 

@@ -18,17 +18,17 @@
  * The session cookie is httpOnly, so the token is never readable from
  * JavaScript and cannot be exfiltrated by a script injected into the page.
  */
-import { COOKIE_NAME } from "../../shared/const";
+import { COOKIE_NAME } from "../../shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth";
-import { getSessionCookieOptions } from "../_core/cookies";
-import { ENV } from "../_core/env";
-import { publicProcedure, router } from "../_core/trpc";
-import { hashPassword, verifyPassword } from "../_core/password";
-import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, verifyFirebasePassword } from "../_core/firebase";
-import { createUser, getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db";
-import type { User } from "../../drizzle/schema";
+import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth.js";
+import { getSessionCookieOptions } from "../_core/cookies.js";
+import { ENV } from "../_core/env.js";
+import { publicProcedure, router } from "../_core/trpc.js";
+import { hashPassword, verifyPassword } from "../_core/password.js";
+import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, verifyFirebasePassword } from "../_core/firebase.js";
+import { createUser, getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
+import type { User } from "../../drizzle/schema.js";
 
 const credentials = z.object({
   email: z.string().trim().email().max(320),

@@ -1,9 +1,9 @@
-import { authRouter } from "./routers/auth";
-import { router } from "./_core/trpc";
-import { commerceRouter } from "./routers/commerce";
-import { customerRouter } from "./routers/customer";
-import { inventoryRouter } from "./routers/inventory";
-import { searchRouter } from "./routers/search";
+import { authRouter } from "./routers/auth.js";
+import { router } from "./_core/trpc.js";
+import { commerceRouter } from "./routers/commerce.js";
+import { customerRouter } from "./routers/customer.js";
+import { inventoryRouter } from "./routers/inventory.js";
+import { searchRouter } from "./routers/search.js";
 
 export const appRouter = router({
   auth: authRouter,

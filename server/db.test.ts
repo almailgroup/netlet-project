@@ -13,14 +13,14 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { isDuplicateKeyError } from "./db";
+import { isDuplicateKeyError } from "./db.js";
 import {
   customerNotificationPreferences,
   customerPreferences,
   followedProducts,
   savedProducts,
   users,
-} from "../drizzle/schema";
+} from "../drizzle/schema.js";
 
 let db: ReturnType<typeof drizzle>;
 

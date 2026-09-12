@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assertCan, can, readableVendors, VENDOR_ROLES, type Actor, type Capability } from "./permissions";
+import { assertCan, can, readableVendors, VENDOR_ROLES, type Actor, type Capability } from "./permissions.js";
 
 const admin: Actor = { kind: "admin", userId: 1 };
 const owner: Actor = { kind: "vendor", userId: 2, vendorId: 10, role: "owner" };

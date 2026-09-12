@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ar, directionFor, en, LOCALES, messages, translate, type MessageKey } from "./dictionary";
+import { ar, directionFor, en, LOCALES, messages, translate, type MessageKey } from "./dictionary.js";
 
 describe("dictionary completeness", () => {
   it("translates every key — a gap would show an English word mid-sentence", () => {

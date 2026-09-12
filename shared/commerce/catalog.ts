@@ -1,4 +1,4 @@
-import type { Product } from "./types";
+import type { Product } from "./types.js";
 
 export type AvailabilityFilter = "all" | "available" | "unavailable";
 export type CatalogSort = "catalog" | "price-low" | "price-high" | "offers";

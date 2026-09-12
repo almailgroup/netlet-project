@@ -231,6 +231,20 @@ normalises a `/trpc/…` path back to `/api/trpc/…`, because a platform that
 rewrites onto a function mounted at `/api` may hand over the rewritten path,
 and every call would otherwise 404 silently.
 
+**Vercel transpiles the function rather than bundling it**, so it runs as plain
+Node ESM. Two things follow, and `server/_core/imports.test.ts` enforces both
+across `server/`, `shared/`, `api/` and `drizzle/`:
+
+- **No tsconfig path aliases.** `@shared/x` is unresolvable there.
+- **Every relative import carries its `.js` extension.** `./app` is not a
+  module specifier in Node ESM; `./app.js` is, and it names the emitted file
+  rather than the `.ts` on disk.
+
+Both break *only* on Vercel. Vite, esbuild, vitest and tsx all resolve the
+loose forms, so `pnpm check`, `pnpm test` and `pnpm build` pass while the
+deployed function is dead at load with ERR_MODULE_NOT_FOUND. That is why the
+rule is a test and not a convention.
+
 ### GitHub Pages
 
 Pages serves `main` at `/` — "Deploy from a branch", one branch only. The

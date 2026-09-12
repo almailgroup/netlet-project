@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { absoluteUrl, breadcrumbJsonLd, productJsonLd, productMeta, toPreviewText } from "./seo";
-import type { Product } from "./commerce/types";
+import { absoluteUrl, breadcrumbJsonLd, productJsonLd, productMeta, toPreviewText } from "./seo.js";
+import type { Product } from "./commerce/types.js";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
 

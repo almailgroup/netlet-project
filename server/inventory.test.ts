@@ -11,8 +11,8 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema";
-import type { Actor } from "../shared/inventory/permissions";
+import { products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import type { Actor } from "../shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let inv: typeof import("./inventory");

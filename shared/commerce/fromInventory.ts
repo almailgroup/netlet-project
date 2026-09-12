@@ -18,7 +18,7 @@ import type {
   ProductAttribute,
   ProductOption,
   ProductVariant,
-} from "./types";
+} from "./types.js";
 
 /**
  * The dinar, everywhere.

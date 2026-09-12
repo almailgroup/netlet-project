@@ -19,7 +19,7 @@ import {
   productVariants,
   users,
   vendors,
-} from "../drizzle/schema";
+} from "../drizzle/schema.js";
 
 let db: ReturnType<typeof drizzle>;
 let catalog: typeof import("./catalog");

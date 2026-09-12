@@ -12,9 +12,9 @@ import { drizzle } from "drizzle-orm/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { categories, users, vendorMembers, vendors } from "../drizzle/schema";
-import type { TrpcContext } from "./_core/context";
-import type { User } from "../drizzle/schema";
+import { categories, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import type { TrpcContext } from "./_core/context.js";
+import type { User } from "../drizzle/schema.js";
 
 let db: ReturnType<typeof drizzle>;
 let caller: any;

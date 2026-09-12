@@ -1,6 +1,6 @@
-import type { MessageKey } from "./i18n/dictionary";
+import type { MessageKey } from "./i18n/dictionary.js";
 
-export type { LocaleCode } from "./i18n/dictionary";
+export type { LocaleCode } from "./i18n/dictionary.js";
 
 export type DeliveryZone = {
   id: string;

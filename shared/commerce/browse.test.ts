@@ -12,8 +12,8 @@ import {
   searchFromFilters,
   sortProducts,
   type BrowseFilters,
-} from "./browse";
-import type { Product, ProductVariant } from "./types";
+} from "./browse.js";
+import type { Product, ProductVariant } from "./types.js";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
 

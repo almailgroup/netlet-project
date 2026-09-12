@@ -9,13 +9,13 @@
  * No third-party identity provider and no new dependency: `jose` was already
  * here for signing, and password hashing uses Node's own scrypt.
  */
-import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import { parse as parseCookies } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
-import type { User } from "../../drizzle/schema";
-import { getUserById } from "../db";
-import { ENV } from "./env";
+import type { User } from "../../drizzle/schema.js";
+import { getUserById } from "../db.js";
+import { ENV } from "./env.js";
 
 const ISSUER = "netlet";
 const AUDIENCE = "netlet-web";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isExpressEligible, productRating, savingsPercent, specifications } from "./productDetail";
-import type { ProductAttribute } from "./types";
+import { isExpressEligible, productRating, savingsPercent, specifications } from "./productDetail.js";
+import type { ProductAttribute } from "./types.js";
 
 const kwd = (amount: string) => ({ amount, currencyCode: "KWD" });
 const attribute = (namespace: string, key: string, value: string): ProductAttribute => ({

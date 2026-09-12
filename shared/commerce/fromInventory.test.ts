@@ -6,7 +6,7 @@ import {
   toStorefrontProduct,
   type InventoryProductRow,
   type InventoryVariantRow,
-} from "./fromInventory";
+} from "./fromInventory.js";
 
 function variant(overrides: Partial<InventoryVariantRow> = {}): InventoryVariantRow {
   return {

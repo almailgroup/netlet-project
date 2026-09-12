@@ -40,15 +40,49 @@ function sourceFilesUnder(dir: string): string[] {
 }
 
 /** Matches `from "@shared/x"` and `from '@/x'`, both quote styles. */
-const ALIAS = /\bfrom\s+["'](@shared\/|@\/)/;
+const ALIAS = /\bfrom\s+["'](@shared\/|@\/)/g;
+
+/** Every `from "./x"` / `from "../x"`, capturing the specifier. */
+const RELATIVE = /\bfrom\s+["'](\.[^"']*)["']/g;
+
+const SCOPE = ["server", "shared", "api", "drizzle"];
+
+function shippedFiles(): string[] {
+  return SCOPE.flatMap(dir => sourceFilesUnder(path.join(ROOT, dir)));
+}
 
 describe("imports reachable from the serverless function", () => {
   it("never use a tsconfig path alias", () => {
     const offenders: string[] = [];
-    for (const dir of ["server", "shared", "api"]) {
-      for (const file of sourceFilesUnder(path.join(ROOT, dir))) {
-        const source = readFileSync(file, "utf-8");
-        if (ALIAS.test(source)) offenders.push(path.relative(ROOT, file));
+    for (const file of shippedFiles()) {
+      if (new RegExp(ALIAS.source).test(readFileSync(file, "utf-8"))) {
+        offenders.push(path.relative(ROOT, file));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * The second half of the same lesson, and the more expensive one.
+   *
+   * Vercel transpiles each file rather than bundling, so the function runs as
+   * plain Node ESM — where a relative import MUST carry its extension.
+   * `from "./app"` resolves under every bundler in this repo (Vite, esbuild,
+   * vitest, tsx) and fails only in the one place that matters, with
+   * ERR_MODULE_NOT_FOUND at load and the whole function dead.
+   *
+   * The extension is `.js` even though the file on disk is `.ts`: it names the
+   * emitted file, which is what Node will actually look for.
+   */
+  it("give every relative import an explicit extension", () => {
+    const offenders: string[] = [];
+    for (const file of shippedFiles()) {
+      const source = readFileSync(file, "utf-8");
+      for (const match of source.matchAll(new RegExp(RELATIVE.source, "g"))) {
+        const specifier = match[1];
+        if (!/\.(js|json)$/.test(specifier)) {
+          offenders.push(`${path.relative(ROOT, file)} -> ${specifier}`);
+        }
       }
     }
     expect(offenders).toEqual([]);

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { ENV } from "../_core/env";
-import { publicProcedure, router } from "../_core/trpc";
+import { ENV } from "../_core/env.js";
+import { publicProcedure, router } from "../_core/trpc.js";
 
 const refinementSchema = z.object({
   query: z.string().trim().min(2).max(120),

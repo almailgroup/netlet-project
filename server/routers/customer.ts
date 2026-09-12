@@ -10,9 +10,9 @@ import {
   setNotificationPreference,
   setSavedProduct,
   upsertCustomerProfile,
-} from "../db";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
-import { kuwaitDeliveryZones, notificationKinds } from "../../shared/customer";
+} from "../db.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
+import { kuwaitDeliveryZones, notificationKinds } from "../../shared/customer.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);

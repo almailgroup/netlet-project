@@ -11,7 +11,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   addMemberByEmail,
   adjustStock,
@@ -39,8 +39,8 @@ import {
   setVendorStatus,
   stockHistory,
   updateProduct,
-} from "../inventory";
-import { VENDOR_ROLES } from "../../shared/inventory/permissions";
+} from "../inventory.js";
+import { VENDOR_ROLES } from "../../shared/inventory/permissions.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.

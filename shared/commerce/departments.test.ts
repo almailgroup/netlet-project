@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { categorySlug } from "./browse";
-import { DEPARTMENTS } from "./departments";
+import { categorySlug } from "./browse.js";
+import { DEPARTMENTS } from "./departments.js";
 
 describe("departments", () => {
   // The bug this prevents: a seeded slug of "home-kitchen" while the client

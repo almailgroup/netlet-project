@@ -8,7 +8,7 @@
  * Every helper degrades to "absent" so a sparsely configured product renders
  * without holes.
  */
-import type { Money, Product, ProductAttribute } from "./types";
+import type { Money, Product, ProductAttribute } from "./types.js";
 
 /** Attributes that describe the product rather than the review score. */
 const REVIEW_NAMESPACE = "reviews";

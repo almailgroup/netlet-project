@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canUseGalleryKeyboard, galleryIndex } from "./gallery";
+import { canUseGalleryKeyboard, galleryIndex } from "./gallery.js";
 
 describe("product gallery navigation", () => {
   it("wraps previous and next navigation across gallery images", () => {

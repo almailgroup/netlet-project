@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultNotificationPreferences, kuwaitDeliveryZones, notificationKinds } from "./customer";
+import { defaultNotificationPreferences, kuwaitDeliveryZones, notificationKinds } from "./customer.js";
 
 describe("NetLet customer foundation contracts", () => {
   it("offers the six Kuwaiti governorates without inventing delivery operations", () => {

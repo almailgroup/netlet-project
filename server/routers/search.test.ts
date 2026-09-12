@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseRefinedSearch } from "./search";
+import { parseRefinedSearch } from "./search.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();

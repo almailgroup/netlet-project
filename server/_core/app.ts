@@ -14,9 +14,9 @@
  */
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { applySecurity, apiRateLimit, authRateLimit } from "./security";
+import { appRouter } from "../routers.js";
+import { createContext } from "./context.js";
+import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
 
 export function createApp(): Express {
   const app = express();

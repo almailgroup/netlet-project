@@ -32,7 +32,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
-import { notificationKinds } from "../shared/customer";
+import { notificationKinds } from "../shared/customer.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */

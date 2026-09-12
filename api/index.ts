@@ -13,6 +13,6 @@
  * woken to hand back a stylesheet.
  */
 import "dotenv/config";
-import { createApp } from "../server/_core/app";
+import { createApp } from "../server/_core/app.js";
 
 export default createApp();

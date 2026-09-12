@@ -5,8 +5,8 @@
  * WhatsApp is testable rather than something you discover after sharing it.
  * The client applies the result to the document; nothing here touches the DOM.
  */
-import { isExpressEligible, productRating } from "./commerce/productDetail";
-import type { Product } from "./commerce/types";
+import { isExpressEligible, productRating } from "./commerce/productDetail.js";
+import type { Product } from "./commerce/types.js";
 
 export type PageMeta = {
   title: string;

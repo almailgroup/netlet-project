@@ -21,8 +21,8 @@ import {
   listProducts,
   removeCartLines,
   updateCartLines,
-} from "../catalog";
-import { publicProcedure, router } from "../_core/trpc";
+} from "../catalog.js";
+import { publicProcedure, router } from "../_core/trpc.js";
 
 /**
  * Which language to read merchant data in.

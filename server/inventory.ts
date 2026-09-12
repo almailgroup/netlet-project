@@ -19,9 +19,9 @@ import {
   users,
   vendorMembers,
   vendors,
-} from "../drizzle/schema";
-import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions";
-import { getDb } from "./db";
+} from "../drizzle/schema.js";
+import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
+import { getDb } from "./db.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
