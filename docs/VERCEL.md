@@ -183,6 +183,24 @@ first one fails, the build log will say why and the likely suspects are the two
 things above: a `VITE_` variable missing at build time, or the private key's
 escapes.
 
+## Checking a live deployment
+
+Two URLs, and they answer different questions:
+
+| URL | Means |
+|---|---|
+| `/healthz` | The function itself is alive. Touches nothing else, so a failure here is the process, not a dependency. |
+| `/readyz` | The database is reachable. `{"database":"ok"}`, or 503 with `unreachable` / `not configured`. |
+
+`/readyz` reports a verdict and never the reason — connection strings and
+driver messages are not for an unauthenticated caller. The reason goes to the
+Vercel runtime log, with the driver's own error unwrapped from the wrapper
+drizzle puts around it.
+
+Every tRPC 500 is logged the same way. Before that existed, a failed query
+returned 500 to the browser and wrote an empty line to the platform log, which
+made a production fault a guessing game.
+
 ## Node version
 
 The function needs **Node 22.x**. `engines.node` in `package.json` asks for it,

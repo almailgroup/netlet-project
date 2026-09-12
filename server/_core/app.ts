@@ -17,6 +17,9 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers.js";
 import { createContext } from "./context.js";
 import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
+import { sql } from "drizzle-orm";
+import { describeError } from "./describeError.js";
+import { getDb } from "../db.js";
 
 export function createApp(): Express {
   const app = express();
@@ -53,10 +56,59 @@ export function createApp(): Express {
     res.json({ status: "ok", uptime: Math.round(process.uptime()) });
   });
 
+  /**
+   * Is the database actually reachable?
+   *
+   * Deliberately separate from `/healthz`, which must answer even when every
+   * dependency is down — that is what makes a red check mean "this process is
+   * gone" rather than "something it talks to is slow".
+   *
+   * It reports a verdict and never the reason. Connection strings, hostnames
+   * and driver messages are not for an unauthenticated caller; the reason goes
+   * to the log, where the operator can read it.
+   */
+  app.get(["/readyz", "/api/readyz"], async (_req, res) => {
+    if (!process.env.DATABASE_URL) {
+      res.status(503).json({ database: "not configured" });
+      return;
+    }
+    try {
+      const db = await getDb();
+      if (!db) throw new Error("no client");
+      await db.execute(sql`select 1`);
+      res.json({ database: "ok" });
+    } catch (error) {
+      console.error(`[readyz] database unreachable: ${describeError(error)}`);
+      res.status(503).json({ database: "unreachable" });
+    }
+  });
+
   app.use("/api/trpc/auth.login", authRateLimit);
   app.use("/api/trpc/auth.register", authRateLimit);
   app.use("/api/trpc", apiRateLimit);
-  app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
+  /**
+   * Server errors are logged, not just returned.
+   *
+   * tRPC catches a thrown error and answers 500 with a sanitised message, so
+   * without this the platform log records an empty line and the real cause —
+   * a Postgres failure, a bad credential — is visible nowhere. That turns any
+   * production problem into a guessing game, which is exactly how this cost a
+   * day.
+   *
+   * INTERNAL_SERVER_ERROR only: a 403 or a NOT_FOUND is the system working,
+   * and logging those would bury the ones that are not.
+   */
+  app.use(
+    "/api/trpc",
+    createExpressMiddleware({
+      router: appRouter,
+      createContext,
+      onError({ error, path, type }) {
+        if (error.code !== "INTERNAL_SERVER_ERROR") return;
+        console.error(`[trpc] ${type} ${path ?? "<no path>"} failed: ${describeError(error)}`);
+      },
+    }),
+  );
 
   return app;
 }
