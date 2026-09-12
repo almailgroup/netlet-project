@@ -26,7 +26,7 @@ import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
 import { publicProcedure, router } from "../_core/trpc.js";
 import { hashPassword, verifyPassword } from "../_core/password.js";
-import { isFirebaseConfigured, verifyFirebasePassword } from "../_core/firebase.js";
+import { isFirebaseConfigured, sendFirebasePasswordReset, verifyFirebasePassword } from "../_core/firebase.js";
 import { createAccount, EmailTakenError } from "../_core/accounts.js";
 import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
 import type { User } from "../../drizzle/schema.js";
@@ -109,6 +109,35 @@ export const authRouter = router({
     ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
     return toPublicUser(user);
   }),
+
+  /**
+   * Asks Firebase to email a reset link.
+   *
+   * Always answers the same way, whether or not the address has an account —
+   * the same discipline as sign-in, for the same reason: a different answer
+   * for a registered address turns this into an enumeration oracle. The page
+   * therefore says "if that address has an account, a link is on its way"
+   * rather than confirming anything.
+   *
+   * Silent when Firebase is unconfigured: the local scrypt fallback has no
+   * email to send from, so there is nothing honest to do but accept the
+   * request. The dialog says the same sentence either way.
+   */
+  requestPasswordReset: publicProcedure
+    .input(z.object({
+      email: z.string().trim().email().max(320),
+      locale: z.enum(["en", "ar"]).default("en"),
+    }))
+    .mutation(async ({ input }) => {
+      try {
+        await sendFirebasePasswordReset(input.email, input.locale);
+      } catch (error) {
+        // A fault on our side is logged, never surfaced: the shopper cannot
+        // act on it, and the reply must not vary by address.
+        console.error(`[auth] password reset could not be sent: ${String(error)}`);
+      }
+      return { sent: true } as const;
+    }),
 
   login: publicProcedure.input(credentials).mutation(async ({ ctx, input }) => {
     assertConfigured();

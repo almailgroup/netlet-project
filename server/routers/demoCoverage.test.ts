@@ -28,6 +28,8 @@ const NOT_IN_DEMO = new Set([
   "auth.login",
   "auth.register",
   "auth.logout",
+  // The demo has no backend and no mail: there is nothing to send from.
+  "auth.requestPasswordReset",
   "auth.me",
   "search.refine",
 ]);

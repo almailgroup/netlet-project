@@ -53,6 +53,32 @@ With the four `FIREBASE_*` variables unset, the same endpoints fall back to the
 local scrypt digest in `password_hash`. Exactly one of the two is set on any
 given account.
 
+## Signing in
+
+`AuthDialog` is sign in, create account and reset in one overlay, switched by
+a real `tablist` rather than a link at the foot. Three things there are
+deliberate:
+
+- **The password can be shown.** Typing a long password blind is how people
+  end up choosing a short one.
+- **The strength meter names what is missing.** `shared/auth/passwordStrength.ts`
+  returns the unmet rules, not just a score, because a bar that goes red tells
+  somebody they failed without telling them how to stop. Only length and a
+  common-shape check actually block: composition rules that refuse a long
+  passphrase in favour of `P@ss1` make passwords worse.
+- **Reset sends a real email.** Firebase composes and sends it through
+  `accounts:sendOobCode`, so there is no mail provider to configure — which is
+  the only reason the link can be real rather than decorative. The reply is
+  identical for an address with no account, like sign-in, so it cannot be used
+  to ask who is registered.
+
+**There is no social sign-in, on purpose.** It needs a provider configured in
+the Firebase console and a redirect the server has to trust; a button that
+looks like Google sign-in and does nothing is worse than no button. The
+showcase panel carries what the account does, never seller counts or
+testimonials — invented numbers on a sign-in wall are checked once and never
+trusted again.
+
 ## Chrome
 
 `StoreHeader` and `MobileTabBar` are the site's navigation, and every shopping
