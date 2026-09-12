@@ -35,6 +35,13 @@ function ProductTable({ actor }: { actor: Actor }) {
   const utils = trpc.useUtils();
 
   const products = trpc.inventory.products.list.useQuery({});
+  /*
+   * A product belongs to a vendor, and an admin is not one — so an admin has
+   * to say which. Vendors see no picker: there is only ever one answer for
+   * them, and asking would be a question with a single option.
+   */
+  const vendors = trpc.inventory.vendors.list.useQuery(undefined, { enabled: actor.kind === "admin" });
+  const [chosenVendor, setChosenVendor] = useState("");
   const create = trpc.inventory.products.create.useMutation({
     onSuccess: row => {
       void utils.inventory.products.list.invalidate();
@@ -54,19 +61,54 @@ function ProductTable({ actor }: { actor: Actor }) {
   const showVendor = new Set((products.data ?? []).map(row => row.vendorId)).size > 1;
   const mayCreate = can(actor, "product.create", actor.kind === "vendor" ? actor.vendorId : undefined);
 
+  /**
+   * Which vendor a new product would belong to, or null when there is none.
+   *
+   * A vendor member: their own, always. An admin: whichever they picked, or
+   * the first — which on a fresh install is the house vendor the seed writes,
+   * so the common case needs no choice at all. Null only when the vendor table
+   * is genuinely empty, and then the button is replaced by the reason.
+   */
+  const newProductVendorId =
+    actor.kind === "vendor"
+      ? actor.vendorId
+      : Number(chosenVendor) || vendors.data?.[0]?.id || null;
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-extrabold">{t("admin.products")}</h1>
-        {mayCreate && actor.kind === "vendor" ? (
-          <button
-            onClick={() => create.mutate({ vendorId: actor.vendorId, title: t("admin.newProduct") })}
-            disabled={create.isPending}
-            className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold disabled:opacity-60"
-          >
-            {create.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <PackagePlus className="size-4" />}
-            {t("admin.newProduct")}
-          </button>
+        {mayCreate ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* More than one vendor is the only case where the choice is real. */}
+            {actor.kind === "admin" && (vendors.data ?? []).length > 1 ? (
+              <label className="text-[11px] font-extrabold text-[#536b8c]">
+                {t("admin.productVendor")}
+                <select
+                  value={chosenVendor || String(vendors.data?.[0]?.id ?? "")}
+                  onChange={event => setChosenVendor(event.target.value)}
+                  className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#f2683a]"
+                >
+                  {(vendors.data ?? []).map(vendor => (
+                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {newProductVendorId === null ? (
+              <p className="text-[12px] font-semibold text-[#8c2f22]">{t("admin.needVendorFirst")}</p>
+            ) : (
+              <button
+                onClick={() => create.mutate({ vendorId: newProductVendorId, title: t("admin.newProduct") })}
+                disabled={create.isPending}
+                className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold disabled:opacity-60"
+              >
+                {create.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <PackagePlus className="size-4" />}
+                {t("admin.newProduct")}
+              </button>
+            )}
+          </div>
         ) : null}
       </div>
 

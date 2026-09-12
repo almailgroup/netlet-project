@@ -13,10 +13,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { categories, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import { eq } from "drizzle-orm";
 import type { TrpcContext } from "./_core/context.js";
 import type { User } from "../drizzle/schema.js";
 
 let db: ReturnType<typeof drizzle>;
+let appRouter: any;
 let caller: any;
 let shopper: any;
 const ids = { vendorOwner: 0, vendor: 0, category: 0 };
@@ -45,7 +47,7 @@ beforeAll(async () => {
     upsertCustomerProfile: async () => undefined,
   }));
 
-  const { appRouter } = await import("./routers");
+  ({ appRouter } = await import("./routers.js"));
 
   const [owner] = await db.insert(users).values({ email: "owner@vendor.test" }).returning();
   ids.vendorOwner = owner.id;
@@ -140,5 +142,30 @@ describe("a product's journey from the admin portal to the shop", () => {
   it("shows the departments the seed creates as collections", async () => {
     const collections = await shopper.commerce.collections.list();
     expect(collections.map((c: any) => c.handle)).toContain("electronics");
+  });
+});
+
+describe("an admin, who belongs to no vendor", () => {
+  /*
+   * The gap this covers: an admin is attached to no vendor, and a product must
+   * belong to one. The admin portal hid the create button for them entirely,
+   * so the first administrator of a fresh install could not add a product at
+   * all — they could only look at an empty table telling them to add one.
+   */
+  it("can create a product against a vendor they name", async () => {
+    await db.update(users).set({ role: "admin" }).where(eq(users.id, ids.vendorOwner));
+    const [promoted] = await db.select().from(users).where(eq(users.id, ids.vendorOwner));
+    const adminCaller = appRouter.createCaller(contextFor(promoted as User));
+
+    const created = await adminCaller.inventory.products.create({
+      vendorId: ids.vendor,
+      title: "Admin Created Lamp",
+    });
+    expect(created.vendorId).toBe(ids.vendor);
+    expect(created.status).toBe("draft");
+
+    // And it is theirs to work on afterwards, not merely to create.
+    const listed = await adminCaller.inventory.products.list({});
+    expect(listed.some((row: any) => row.id === created.id)).toBe(true);
   });
 });
