@@ -366,7 +366,19 @@ shop. `docs/supabase-bootstrap.sql` is those two steps as one paste-able file,
 for setting a database up from the Supabase dashboard with nothing installed;
 `node scripts/build-bootstrap.mjs` regenerates it from `drizzle/*.sql` and
 `shared/commerce/departments.ts` — run that after a schema change rather than
-hand-editing, which is how it ended up two migrations behind. `docs/SUPABASE.md`
+hand-editing, which is how it ended up two migrations behind.
+
+**Its output is idempotent, and that is the point.** As plain migrations it
+only worked on an empty database, so a database that was behind needed
+somebody to work out *which* migrations it had missed and paste exactly
+those — a diagnosis, by hand, at the moment something is already broken. With
+`IF NOT EXISTS` everywhere (and a `DO` block where Postgres offers no such
+clause, or for the one `RENAME COLUMN`, which is the only statement that is
+actively not re-runnable), the answer to "my database is behind" is always
+"run this file", and running it on a current database does nothing. The
+generator exits non-zero on a statement shape it cannot make idempotent,
+because a file that claims to be re-runnable and is not is worse than one
+that never claimed it. `docs/SUPABASE.md`
 is the walkthrough. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.
