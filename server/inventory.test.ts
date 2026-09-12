@@ -7,7 +7,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -656,6 +656,57 @@ describe("opening a store", () => {
     const entry = rows.find(row => row.action === "vendor.create" && row.subjectLabel === "Bright Store");
     expect(entry).toBeTruthy();
     expect(entry!.actorId).toBe(ids.admin);
+  });
+});
+
+describe("giving an existing store a new login", () => {
+  it("creates the account and attaches it at the rank asked for", async () => {
+    const { userId } = await inv.addMemberWithNewAccount(adminActor(), ids.acme, {
+      email: "Warehouse@Acme.test",
+      password: "a-long-enough-password",
+      name: "Acme Warehouse",
+      role: "staff",
+    });
+
+    const [account] = await db.select().from(users).where(eq(users.id, userId));
+    expect(account.email).toBe("warehouse@acme.test");
+    // An ordinary NetLet account: being in a vendor is the membership row, not
+    // a platform role. Otherwise every warehouse hand is an administrator.
+    expect(account.role).toBe("user");
+
+    const [member] = await db
+      .select()
+      .from(vendorMembers)
+      .where(and(eq(vendorMembers.vendorId, ids.acme), eq(vendorMembers.userId, userId)));
+    expect(member.role).toBe("staff");
+  });
+
+  it("refuses an address that already has an account", async () => {
+    await expect(inv.addMemberWithNewAccount(adminActor(), ids.acme, {
+      email: "owner@acme.test",
+      password: "a-long-enough-password",
+      role: "manager",
+    })).rejects.toThrow("EMAIL_TAKEN");
+  });
+
+  it("refuses a vendor owner, who may rank their team but not mint logins", async () => {
+    // The line the requirements draw: vendor.manageMembers is running your own
+    // team, platform.manageUsers is creating a NetLet account. An owner has
+    // the first and never the second, or they could staff themselves up from
+    // nothing.
+    await expect(inv.addMemberWithNewAccount(ownerActor(), ids.acme, {
+      email: "smuggled@acme.test",
+      password: "a-long-enough-password",
+      role: "owner",
+    })).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  it("refuses a store that does not exist", async () => {
+    await expect(inv.addMemberWithNewAccount(adminActor(), 99999, {
+      email: "nowhere@acme.test",
+      password: "a-long-enough-password",
+      role: "staff",
+    })).rejects.toThrow("NOT_FOUND");
   });
 });
 

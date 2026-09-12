@@ -180,6 +180,21 @@ They were all crammed into every row of the list, which made twenty stores a
 wall of controls — and one Save across the page writes a commission change
 somebody made while fixing a phone number.
 
+A store gains a login two ways, and both cases are real. `people.addToVendor`
+attaches somebody who already registered on the storefront; `vendors.addNewMember`
+mints the account and attaches it in one call, which is the case an
+administrator is usually in — onboarding a shop whose staff have never visited
+the site. Without the second, a store that already existed could never gain a
+login at all, because the only other path made the store and its owner
+together. Both live on the store's own page, under the roles they grant
+spelled out rather than only named: a dropdown reading "Staff / Manager /
+Owner" asks whoever is choosing to already know the permission model.
+
+Minting an account is `platform.manageUsers`, not `vendor.manageMembers`. An
+owner ranks and unranks their own people; creating a NetLet login is a
+different act, and an owner who could do it would staff themselves up from
+nothing.
+
 **Two grants, deliberately not one control.** `platform.manageUsers` is who
 administers NetLet — it clears every vendor, commission, and `/admin/people`
 itself. Vendor membership is one company at one rank, and a vendor owner runs

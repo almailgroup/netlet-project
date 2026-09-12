@@ -15,6 +15,7 @@ import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   addMemberByEmail,
+  addMemberWithNewAccount,
   adjustStock,
   createProduct,
   createVendorWithOwner,
@@ -469,6 +470,28 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => removeMember(actor, input.vendorId, input.userId));
+      }),
+
+    /**
+     * Creates a login for this store and attaches it, in one call.
+     *
+     * Admin only: `vendor.manageMembers` lets an owner rank and unrank their
+     * own people, but minting a NetLet account is `platform.manageUsers`.
+     */
+    addNewMember: protectedProcedure
+      .input(z.object({
+        vendorId: z.number().int().positive(),
+        email: z.string().trim().email().max(320),
+        // The same floor the storefront's own registration uses, so an admin
+        // cannot set a weaker password than the person could set themselves.
+        password: z.string().min(10).max(200),
+        name: z.string().trim().max(255).nullish(),
+        role: z.enum(["owner", "manager", "staff"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { vendorId, ...account } = input;
+        const actor = await resolveActor(ctx.user);
+        return guard(() => addMemberWithNewAccount(actor, vendorId, account));
       }),
 
     setBadges: protectedProcedure

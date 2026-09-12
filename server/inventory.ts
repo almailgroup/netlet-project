@@ -1146,3 +1146,53 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
 
   return updated;
 }
+
+/**
+ * Creates a login and puts it straight into a vendor.
+ *
+ * The counterpart to `addMemberByEmail`, which can only attach somebody who
+ * has already registered on the storefront. That covers a seller who signed
+ * up and then asked for access; it does not cover the ordinary case of an
+ * administrator onboarding a shop whose staff have never visited the site.
+ * Without this, the only way to make a vendor login was to create the store
+ * and the owner together — so a store that already existed could never gain
+ * one.
+ *
+ * Admin only. `vendor.manageMembers` lets a vendor owner change ranks and
+ * remove people within their own company, but minting an account is making a
+ * NetLet login, which is `platform.manageUsers` — the same grant that governs
+ * who administers the platform.
+ */
+export async function addMemberWithNewAccount(
+  actor: Actor,
+  vendorId: number,
+  input: { email: string; password: string; name?: string | null; role: VendorRole },
+) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  if (!vendor) throw new Error("NOT_FOUND");
+
+  const email = input.email.trim().toLowerCase();
+  // Checked here rather than left to `createAccount`, so a duplicate never
+  // reaches Firebase and leaves an account belonging to no store.
+  const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  if (taken) throw new Error("EMAIL_TAKEN");
+
+  const account = await createAccount({ email, password: input.password, name: input.name ?? null });
+  await db.insert(vendorMembers).values({ vendorId, userId: account.id, role: input.role });
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.addMember",
+    subjectType: "user",
+    subjectId: account.id,
+    subjectLabel: account.email,
+    vendorId,
+    before: null,
+    after: { role: input.role, createdAccount: true },
+  });
+
+  return { userId: account.id, vendorId, role: input.role };
+}

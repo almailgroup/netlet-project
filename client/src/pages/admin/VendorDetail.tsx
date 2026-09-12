@@ -18,10 +18,11 @@ import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
+import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
 import { TRUST_BADGES, visibleBadges, type TrustBadge } from "@shared/inventory/vendorHealth";
 import { isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { ArrowLeft, LoaderCircle, Save } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Save, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -261,23 +262,183 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   );
 }
 
-/** The store's people, on the store's own page rather than a separate hunt. */
+const ROLE_LABEL: Record<VendorRole, MessageKey> = {
+  staff: "admin.roleStaff",
+  manager: "admin.roleManager",
+  owner: "admin.roleOwner",
+};
+
+const ROLE_WHAT: Record<VendorRole, MessageKey> = {
+  staff: "admin.roleStaffWhat",
+  manager: "admin.roleManagerWhat",
+  owner: "admin.roleOwnerWhat",
+};
+
+/**
+ * Who can sign in for this store, and the two ways to add one.
+ *
+ * Both ways exist because both cases are real. "Add someone who already has a
+ * NetLet account" is the seller who registered on the storefront and then
+ * asked for access. "Create a new login" is the ordinary case an administrator
+ * is actually in — onboarding a shop whose staff have never visited the site —
+ * and without it a store that already existed could never gain a login at all,
+ * since the only other path made the store and its owner together.
+ *
+ * Each row says what the rank actually permits rather than only naming it: a
+ * dropdown reading "Staff / Manager / Owner" asks whoever is choosing to
+ * already know the permission model.
+ */
 function VendorTeam({ vendorId }: { vendorId: number }) {
   const { t } = useTranslation();
+  const utils = trpc.useUtils();
   const members = trpc.inventory.vendors.members.useQuery({ vendorId });
-  if (!members.data?.length) return null;
+
+  const refresh = () => void utils.inventory.vendors.members.invalidate({ vendorId });
+  const fail = (error: { message: string }) =>
+    toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.forbidden"));
+
+  const addExisting = trpc.inventory.people.addToVendor.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.memberAdded")); setExisting({ email: "", role: "manager" }); },
+    onError: fail,
+  });
+  const addNew = trpc.inventory.vendors.addNewMember.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.loginCreated")); setFresh({ name: "", email: "", password: "", role: "manager" }); },
+    onError: fail,
+  });
+  const setRole = trpc.inventory.vendors.setMemberRole.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+  const remove = trpc.inventory.vendors.removeMember.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+
+  const [existing, setExisting] = useState<{ email: string; role: VendorRole }>({ email: "", role: "manager" });
+  const [fresh, setFresh] = useState<{ name: string; email: string; password: string; role: VendorRole }>(
+    { name: "", email: "", password: "", role: "manager" },
+  );
+
+  const rows = members.data ?? [];
 
   return (
     <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-      <h2 className="text-sm font-extrabold">{t("admin.team")}</h2>
-      <ul className="mt-3 space-y-2">
-        {members.data.map(member => (
-          <li key={member.userId} className="flex flex-wrap items-center justify-between gap-2 text-[12px]">
-            <span dir="ltr" className="font-bold text-[#0a285a]">{member.email}</span>
-            <span className="text-[#536b8c]">{t(`admin.role${member.role[0].toUpperCase()}${member.role.slice(1)}` as MessageKey)}</span>
-          </li>
-        ))}
-      </ul>
+      <h2 className="text-sm font-extrabold">{t("admin.storeTeam")}</h2>
+      <p className="mt-1 max-w-prose text-[12px] leading-5 text-[#536b8c]">{t("admin.storeTeamNote")}</p>
+
+      <QueryGate queries={[members]}>{() => rows.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-dashed border-[#b8c9dc] px-4 py-6 text-center text-[12px] text-[#536b8c]">
+          {t("admin.noStoreMembers")}
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {rows.map(member => (
+            <li key={member.userId} className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e6e9ef] p-3">
+              <div className="min-w-0 flex-1">
+                <p dir="ltr" className="truncate text-[12px] font-bold text-[#0a285a]">{member.email}</p>
+                <p className="mt-0.5 text-[10px] text-[#9ea4b5]">{t(ROLE_WHAT[member.role as VendorRole])}</p>
+              </div>
+              <select
+                value={member.role}
+                onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
+                className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#f2683a]"
+              >
+                {VENDOR_ROLES.map(role => (
+                  <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => remove.mutate({ vendorId, userId: member.userId })}
+                disabled={remove.isPending}
+                className="pressable rounded-full border border-[#f2b69e] px-3 py-1.5 text-[11px] font-extrabold text-[#8c2f22] disabled:opacity-60"
+              >
+                {t("admin.removeMember")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}</QueryGate>
+
+      <div className="mt-5 grid gap-4 border-t border-[#e6e9ef] pt-4 lg:grid-cols-2">
+        <div>
+          <p className="text-[11px] font-extrabold text-[#0a285a]">{t("admin.createLogin")}</p>
+          <div className="mt-2 space-y-2">
+            <input
+              dir="auto"
+              placeholder={t("admin.ownerName")}
+              value={fresh.name}
+              onChange={e => setFresh({ ...fresh, name: e.target.value })}
+              className={field}
+            />
+            <input
+              dir="ltr"
+              type="email"
+              placeholder={t("admin.emailAddress")}
+              value={fresh.email}
+              onChange={e => setFresh({ ...fresh, email: e.target.value })}
+              className={field}
+            />
+            <input
+              dir="ltr"
+              type="password"
+              autoComplete="new-password"
+              placeholder={t("admin.ownerPassword")}
+              value={fresh.password}
+              onChange={e => setFresh({ ...fresh, password: e.target.value })}
+              className={field}
+            />
+            <select
+              value={fresh.role}
+              onChange={e => setFresh({ ...fresh, role: e.target.value as VendorRole })}
+              className={field}
+            >
+              {VENDOR_ROLES.map(role => (
+                <option key={role} value={role}>{t(ROLE_LABEL[role])} — {t(ROLE_WHAT[role])}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-[#9ea4b5]">{t("admin.ownerPasswordHint")}</p>
+            <button
+              onClick={() => addNew.mutate({ vendorId, ...fresh, name: fresh.name.trim() || null })}
+              disabled={addNew.isPending || fresh.email.trim() === "" || fresh.password.length < 10}
+              className="glass glass-navy pressable inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-extrabold disabled:opacity-60"
+            >
+              {addNew.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              {t("admin.createLogin")}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-extrabold text-[#0a285a]">{t("admin.addExisting")}</p>
+          <div className="mt-2 space-y-2">
+            <input
+              dir="ltr"
+              type="email"
+              placeholder={t("admin.emailAddress")}
+              value={existing.email}
+              onChange={e => setExisting({ ...existing, email: e.target.value })}
+              className={field}
+            />
+            <select
+              value={existing.role}
+              onChange={e => setExisting({ ...existing, role: e.target.value as VendorRole })}
+              className={field}
+            >
+              {VENDOR_ROLES.map(role => (
+                <option key={role} value={role}>{t(ROLE_LABEL[role])} — {t(ROLE_WHAT[role])}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => addExisting.mutate({ vendorId, email: existing.email.trim(), role: existing.role })}
+              disabled={addExisting.isPending || existing.email.trim() === ""}
+              className="glass pressable inline-flex h-10 items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 text-xs font-extrabold disabled:opacity-60"
+            >
+              {addExisting.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
+              {t("admin.addMember")}
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
