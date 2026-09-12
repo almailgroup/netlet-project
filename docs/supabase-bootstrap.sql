@@ -241,6 +241,17 @@ ALTER TABLE "products" ADD COLUMN "commission_percent" numeric(5, 2);
 ALTER TABLE "products" ADD COLUMN "commission_fixed" numeric(12, 3);
 ALTER TABLE "vendors" ADD COLUMN "badges" text[] DEFAULT '{}' NOT NULL;
 
+-- ===== 0007_skinny_union_jack.sql =====
+ALTER TABLE "vendors" ADD COLUMN "contact_email" varchar(320);
+ALTER TABLE "vendors" ADD COLUMN "contact_phone" varchar(40);
+ALTER TABLE "vendors" ADD COLUMN "description" text;
+ALTER TABLE "vendors" ADD COLUMN "description_ar" text;
+ALTER TABLE "vendors" ADD COLUMN "logo_url" text;
+ALTER TABLE "vendors" ADD COLUMN "governorate" varchar(40);
+ALTER TABLE "vendors" ADD COLUMN "address_line" text;
+ALTER TABLE "vendors" ADD COLUMN "licence_number" varchar(60);
+ALTER TABLE "vendors" ADD COLUMN "payout_iban" varchar(34);
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

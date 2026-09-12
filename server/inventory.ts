@@ -24,6 +24,7 @@ import { assertCan, type Actor, type VendorRole } from "../shared/inventory/perm
 import { recordAudit, violationCount } from "./audit.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
+import { createAccount, EmailTakenError } from "./_core/accounts.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -944,4 +945,196 @@ export async function listCategories() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(categories).orderBy(asc(categories.position), asc(categories.name));
+}
+
+/* ----------------------------------------------------- opening a store --- */
+
+export type NewVendorInput = {
+  name: string;
+  nameAr?: string | null;
+  slug: string;
+  status?: "pending" | "approved" | "suspended";
+  commissionPercent?: string;
+  commissionFixed?: string | null;
+  autoPublish?: boolean;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  description?: string | null;
+  descriptionAr?: string | null;
+  logoUrl?: string | null;
+  governorate?: string | null;
+  addressLine?: string | null;
+  licenceNumber?: string | null;
+  payoutIban?: string | null;
+  /**
+   * The login to open with the store.
+   *
+   * Optional: an admin recording a seller whose owner will be attached later
+   * is a real case, and refusing the store until a password exists would send
+   * them back to a database client — which is the thing this replaces.
+   */
+  owner?: { email: string; password: string; name?: string | null; role?: VendorRole } | null;
+};
+
+/**
+ * Opens a store, and optionally its owner's login, in one go.
+ *
+ * This is the whole reason the page exists. Before it, onboarding a seller
+ * meant inserting a vendor row by hand in the database, asking the person to
+ * register on the storefront, then finding them in `/admin/people` and
+ * attaching them — three systems, one of which was a SQL console.
+ *
+ * The order matters. The vendor is written first because it is the row that
+ * can fail on a duplicate slug, and a failed slug after creating a Firebase
+ * account would leave a login belonging to no store. If the account then
+ * fails, the vendor is removed again: a half-made store that looks finished
+ * is worse than one that was never made, because nobody goes looking for it.
+ */
+export async function createVendorWithOwner(actor: Actor, input: NewVendorInput) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const slug = input.slug.trim();
+  if (!slug) throw new Error("SLUG_REQUIRED");
+
+  const [clash] = await db.select({ id: vendors.id }).from(vendors).where(eq(vendors.slug, slug)).limit(1);
+  if (clash) throw new Error("SLUG_TAKEN");
+
+  /*
+   * Check the address before writing anything.
+   *
+   * `createAccount` would refuse a duplicate anyway, but only after asking
+   * Firebase to make the account — and a Firebase user created for a store
+   * that is then rolled back is an orphan nothing here will ever clean up.
+   * This is still not the only guard: the race between the check and the
+   * write is what `EmailTakenError` remains the backstop for.
+   */
+  const ownerEmail = input.owner?.email.trim().toLowerCase();
+  if (ownerEmail) {
+    const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, ownerEmail)).limit(1);
+    if (taken) throw new Error("EMAIL_TAKEN");
+  }
+
+  const [vendor] = await db
+    .insert(vendors)
+    .values({
+      slug,
+      name: input.name.trim(),
+      nameAr: input.nameAr?.trim() || null,
+      status: input.status ?? "pending",
+      commissionPercent: input.commissionPercent ?? "10.00",
+      commissionFixed: input.commissionFixed ?? null,
+      autoPublish: input.autoPublish ?? false,
+      contactEmail: input.contactEmail?.trim().toLowerCase() || null,
+      contactPhone: input.contactPhone?.trim() || null,
+      description: input.description?.trim() || null,
+      descriptionAr: input.descriptionAr?.trim() || null,
+      logoUrl: input.logoUrl?.trim() || null,
+      governorate: input.governorate?.trim() || null,
+      addressLine: input.addressLine?.trim() || null,
+      licenceNumber: input.licenceNumber?.trim() || null,
+      payoutIban: input.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null,
+    })
+    .returning();
+
+  let ownerUserId: number | null = null;
+  if (input.owner) {
+    try {
+      const account = await createAccount({
+        email: ownerEmail!,
+        password: input.owner.password,
+        name: input.owner.name ?? null,
+      });
+      await db.insert(vendorMembers).values({
+        vendorId: vendor.id,
+        userId: account.id,
+        role: input.owner.role ?? "owner",
+      });
+      ownerUserId = account.id;
+    } catch (error) {
+      // Undo the store rather than leave one nobody can sign into.
+      await db.delete(vendors).where(eq(vendors.id, vendor.id));
+      if (error instanceof EmailTakenError) throw new Error("EMAIL_TAKEN");
+      throw error;
+    }
+  }
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.create",
+    subjectType: "vendor",
+    subjectId: vendor.id,
+    subjectLabel: vendor.name,
+    vendorId: vendor.id,
+    before: null,
+    after: { slug: vendor.slug, status: vendor.status, ownerUserId },
+  });
+
+  return { vendor, ownerUserId };
+}
+
+/** One vendor in full, for the detail page. Admin only, like the list. */
+export async function getVendor(actor: Actor, vendorId: number) {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return null;
+  const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  return vendor ?? null;
+}
+
+/**
+ * Edits a store's details. Deliberately not commission or status: those are
+ * their own audited actions, and folding them into a general "save" would
+ * make the audit trail say "updated" where it now says what changed.
+ */
+export async function updateVendorProfile(actor: Actor, vendorId: number, patch: {
+  name?: string;
+  nameAr?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  description?: string | null;
+  descriptionAr?: string | null;
+  logoUrl?: string | null;
+  governorate?: string | null;
+  addressLine?: string | null;
+  licenceNumber?: string | null;
+  payoutIban?: string | null;
+}) {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  if (!was) throw new Error("NOT_FOUND");
+
+  const next = {
+    ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+    ...(patch.nameAr !== undefined ? { nameAr: patch.nameAr?.trim() || null } : {}),
+    ...(patch.contactEmail !== undefined ? { contactEmail: patch.contactEmail?.trim().toLowerCase() || null } : {}),
+    ...(patch.contactPhone !== undefined ? { contactPhone: patch.contactPhone?.trim() || null } : {}),
+    ...(patch.description !== undefined ? { description: patch.description?.trim() || null } : {}),
+    ...(patch.descriptionAr !== undefined ? { descriptionAr: patch.descriptionAr?.trim() || null } : {}),
+    ...(patch.logoUrl !== undefined ? { logoUrl: patch.logoUrl?.trim() || null } : {}),
+    ...(patch.governorate !== undefined ? { governorate: patch.governorate?.trim() || null } : {}),
+    ...(patch.addressLine !== undefined ? { addressLine: patch.addressLine?.trim() || null } : {}),
+    ...(patch.licenceNumber !== undefined ? { licenceNumber: patch.licenceNumber?.trim() || null } : {}),
+    ...(patch.payoutIban !== undefined
+      ? { payoutIban: patch.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null }
+      : {}),
+  };
+  if (Object.keys(next).length === 0) return was;
+
+  const [updated] = await db.update(vendors).set(next).where(eq(vendors.id, vendorId)).returning();
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.update",
+    subjectType: "vendor",
+    subjectId: vendorId,
+    subjectLabel: updated.name,
+    vendorId,
+    before: Object.fromEntries(Object.keys(next).map(key => [key, (was as Record<string, unknown>)[key]])),
+    after: next,
+  });
+
+  return updated;
 }

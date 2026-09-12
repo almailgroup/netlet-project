@@ -276,6 +276,31 @@ export const vendors = pgTable(
      * set will grow, and a column per badge would mean a migration each time.
      */
     badges: text("badges").array().notNull().default([]),
+
+    /*
+     * The store's own details.
+     *
+     * All nullable, because a vendor row predating this and a vendor an admin
+     * creates in a hurry are both legitimate — a required field here would
+     * mean an admin cannot record a seller until they have chased down a
+     * licence number. `preflight`-style completeness is a judgement for the
+     * page to show, not a constraint that blocks the first save.
+     */
+    /** Where NetLet writes to the seller; not necessarily the owner's login. */
+    contactEmail: varchar("contact_email", { length: 320 }),
+    /** Kept as typed, including the +965: formatting a phone number loses it. */
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    description: text("description"),
+    descriptionAr: text("description_ar"),
+    logoUrl: text("logo_url"),
+    /** One of the six governorates, by the id in `shared/customer.ts`. */
+    governorate: varchar("governorate", { length: 40 }),
+    addressLine: text("address_line"),
+    /** Kuwait trade licence. A string, never a number — it carries leading zeros. */
+    licenceNumber: varchar("licence_number", { length: 60 }),
+    /** Where payouts go. Stored as typed; validated as an IBAN, not parsed. */
+    payoutIban: varchar("payout_iban", { length: 34 }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },

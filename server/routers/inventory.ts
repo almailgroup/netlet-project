@@ -10,12 +10,16 @@
  * code path.
  */
 import { TRPCError } from "@trpc/server";
+import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   addMemberByEmail,
   adjustStock,
   createProduct,
+  createVendorWithOwner,
+  getVendor,
+  updateVendorProfile,
   getProduct,
   listCategories,
   listMembers,
@@ -74,6 +78,17 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "LAST_ADMIN") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.lastAdmin" });
     }
+    // Opening a store: both are things the admin can fix in the form in front
+    // of them, so they are named rather than reported as a failure.
+    if (message === "SLUG_TAKEN") {
+      throw new TRPCError({ code: "CONFLICT", message: "admin.slugTaken" });
+    }
+    if (message === "SLUG_REQUIRED") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.slugRequired" });
+    }
+    if (message === "EMAIL_TAKEN") {
+      throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
+    }
     throw error;
   }
 }
@@ -82,6 +97,30 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 const moneySchema = z.string().regex(/^\d{1,9}(\.\d{1,3})?$/, "Expected an amount like 24.500");
 
 const vendorScope = z.object({ vendorId: z.number().int().positive().optional() });
+
+/*
+ * A store's details.
+ *
+ * The IBAN and phone go through the same pure checks the form uses, so a
+ * value typed past the form — or posted straight at the API — is refused by
+ * the same rule rather than a looser one. Empty is allowed throughout: a
+ * detail nobody has yet is not an error.
+ */
+const blankOr = <T extends z.ZodTypeAny>(schema: T) =>
+  z.union([schema, z.literal("")]).nullish();
+
+const storeDetails = {
+  nameAr: z.string().trim().max(255).nullish(),
+  contactEmail: blankOr(z.string().trim().email().max(320)),
+  contactPhone: blankOr(z.string().trim().refine(isValidKuwaitPhone, "admin.invalidPhone")),
+  description: z.string().trim().max(4000).nullish(),
+  descriptionAr: z.string().trim().max(4000).nullish(),
+  logoUrl: blankOr(z.string().trim().url().max(2000)),
+  governorate: blankOr(z.string().trim().refine(isGovernorate, "admin.invalidGovernorate")),
+  addressLine: z.string().trim().max(500).nullish(),
+  licenceNumber: z.string().trim().max(60).nullish(),
+  payoutIban: blankOr(z.string().trim().refine(isValidIban, "admin.invalidIban")),
+};
 
 export const inventoryRouter = router({
   /** Who the caller is, so the portal knows what to render before asking. */
@@ -353,6 +392,56 @@ export const inventoryRouter = router({
       const actor = await resolveActor(ctx.user);
       return guard(() => listVendors(actor));
     }),
+
+    get: protectedProcedure
+      .input(z.object({ vendorId: z.number().int().positive() }))
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => getVendor(actor, input.vendorId));
+      }),
+
+    /**
+     * Opens a store, with its owner's login if one was given.
+     *
+     * Admin only — `platform.manageUsers`, the same grant that administers
+     * NetLet — because this both creates a company and hands somebody a
+     * password for it.
+     */
+    create: protectedProcedure
+      .input(z.object({
+        name: z.string().trim().min(1).max(255),
+        slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/, "admin.slugFormat"),
+        status: z.enum(["pending", "approved", "suspended"]).optional(),
+        commissionPercent: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/).optional(),
+        commissionFixed: moneySchema.nullish(),
+        autoPublish: z.boolean().optional(),
+        ...storeDetails,
+        owner: z.object({
+          email: z.string().trim().email().max(320),
+          // The same floor the storefront's own registration uses: an admin
+          // opening an account must not be able to set a weaker password
+          // than the person could set for themselves.
+          password: z.string().min(10).max(200),
+          name: z.string().trim().max(255).nullish(),
+          role: z.enum(["owner", "manager", "staff"]).optional(),
+        }).nullish(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => createVendorWithOwner(actor, input));
+      }),
+
+    updateProfile: protectedProcedure
+      .input(z.object({
+        vendorId: z.number().int().positive(),
+        name: z.string().trim().min(1).max(255).optional(),
+        ...storeDetails,
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { vendorId, ...patch } = input;
+        const actor = await resolveActor(ctx.user);
+        return guard(() => updateVendorProfile(actor, vendorId, patch));
+      }),
 
     members: protectedProcedure
       .input(z.object({ vendorId: z.number().int().positive() }))

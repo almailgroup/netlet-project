@@ -31,8 +31,29 @@ beforeAll(async () => {
     }
   }
 
-  // The data layer reaches for the app's pool; point it at this one.
-  vi.doMock("./db", () => ({ getDb: async () => db }));
+  /*
+   * The data layer reaches for the app's pool; point it at this one.
+   *
+   * `createUser` is here too because `createAccount` calls it, and `getDb` is
+   * module-local inside db.ts — overriding the export would not redirect it.
+   * It writes to this same database, so the row the test reads back is real;
+   * the duplicate-address rule it does NOT reimplement, because
+   * `createVendorWithOwner` checks that against the real table itself.
+   */
+  vi.doMock("./db", () => ({
+    getDb: async () => db,
+    createUser: async (input: { email: string; passwordHash?: string | null; name?: string | null }) => {
+      /* One address stands in for the race the pre-check cannot close: the
+         real `createUser` returns null when the address was taken between the
+         check and the write, and that is what drives the rollback. */
+      if (input.email.trim().toLowerCase() === "race@netlet.test") return null;
+      const [row] = await db
+        .insert(users)
+        .values({ email: input.email.trim().toLowerCase(), passwordHash: input.passwordHash ?? null, name: input.name ?? null })
+        .returning();
+      return row;
+    },
+  }));
   inv = await import("./inventory");
   audit = await import("./audit");
 
@@ -516,5 +537,128 @@ describe("trust badges and account health", () => {
     expect(health.components.map(c => c.key).sort()).toEqual(["catalog", "compliance", "rating", "stock"]);
     expect(health.score).toBeGreaterThanOrEqual(0);
     expect(health.score).toBeLessThanOrEqual(100);
+  });
+});
+
+/*
+ * Opening a store is the flow that replaced "insert a row in Supabase, then
+ * ask them to register, then attach them". The rollback is the part worth
+ * testing hardest: a store that exists but cannot be signed into looks
+ * finished, so nobody goes back to fix it.
+ */
+describe("opening a store", () => {
+  it("creates the vendor, the login and the membership together", async () => {
+    const { vendor, ownerUserId } = await inv.createVendorWithOwner(adminActor(), {
+      name: "Bright Store",
+      slug: "bright-store",
+      status: "approved",
+      contactEmail: "Shop@Bright.test",
+      contactPhone: "55123456",
+      governorate: "hawalli",
+      licenceNumber: "0012345",
+      payoutIban: "kw81 cbku 0000 0000 0000 1234 5601 01",
+      owner: { email: "Owner@Bright.test", password: "a-long-enough-password", name: "Bright Owner" },
+    });
+
+    expect(vendor.slug).toBe("bright-store");
+    // Normalised on the way in: an address that differs only by case is the
+    // same address, and an IBAN with spaces is the same account.
+    expect(vendor.contactEmail).toBe("shop@bright.test");
+    expect(vendor.payoutIban).toBe("KW81CBKU0000000000001234560101");
+
+    expect(ownerUserId).not.toBeNull();
+    const [member] = await db
+      .select()
+      .from(vendorMembers)
+      .where(eq(vendorMembers.userId, ownerUserId!));
+    expect(member.vendorId).toBe(vendor.id);
+    expect(member.role).toBe("owner");
+
+    const [account] = await db.select().from(users).where(eq(users.id, ownerUserId!));
+    expect(account.email).toBe("owner@bright.test");
+  });
+
+  it("refuses a taken address before writing anything at all", async () => {
+    const before = await db.select().from(vendors);
+
+    await expect(inv.createVendorWithOwner(adminActor(), {
+      name: "Doomed Store",
+      slug: "doomed-store",
+      owner: { email: "owner@acme.test", password: "a-long-enough-password" },
+    })).rejects.toThrow("EMAIL_TAKEN");
+
+    const after = await db.select().from(vendors);
+    expect(after).toHaveLength(before.length);
+    expect(after.some(row => row.slug === "doomed-store")).toBe(false);
+  });
+
+  it("rolls the store back when the account cannot be made", async () => {
+    // The address passes the pre-check — nothing in `users` has it — and then
+    // fails at creation, which is the window the rollback exists for.
+    const before = await db.select().from(vendors);
+
+    await expect(inv.createVendorWithOwner(adminActor(), {
+      name: "Raced Store",
+      slug: "raced-store",
+      owner: { email: "race@netlet.test", password: "a-long-enough-password" },
+    })).rejects.toThrow("EMAIL_TAKEN");
+
+    const after = await db.select().from(vendors);
+    expect(after).toHaveLength(before.length);
+    expect(after.some(row => row.slug === "raced-store")).toBe(false);
+  });
+
+  it("refuses a slug that is already a store", async () => {
+    await expect(inv.createVendorWithOwner(adminActor(), {
+      name: "Another Acme",
+      slug: "acme",
+    })).rejects.toThrow("SLUG_TAKEN");
+  });
+
+  it("opens a store with no owner, for one attached later", async () => {
+    const { vendor, ownerUserId } = await inv.createVendorWithOwner(adminActor(), {
+      name: "Unstaffed Store",
+      slug: "unstaffed-store",
+    });
+    expect(ownerUserId).toBeNull();
+    expect(vendor.status).toBe("pending");
+  });
+
+  it("refuses a vendor owner, who may not create companies", async () => {
+    await expect(inv.createVendorWithOwner(ownerActor(), {
+      name: "Self Dealt",
+      slug: "self-dealt",
+    })).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  it("records who opened the store", async () => {
+    const rows = await audit.listAudit(adminActor(), { limit: 50 });
+    const entry = rows.find(row => row.action === "vendor.create" && row.subjectLabel === "Bright Store");
+    expect(entry).toBeTruthy();
+    expect(entry!.actorId).toBe(ids.admin);
+  });
+});
+
+describe("editing a store's details", () => {
+  it("saves what changed and leaves the rest alone", async () => {
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), {
+      name: "Edit Me",
+      slug: "edit-me",
+      contactPhone: "55000000",
+    });
+
+    const updated = await inv.updateVendorProfile(adminActor(), vendor.id, {
+      addressLine: "Block 4, Street 12",
+    });
+    expect(updated.addressLine).toBe("Block 4, Street 12");
+    expect(updated.contactPhone).toBe("55000000");
+  });
+
+  it("refuses a vendor owner editing their own company's record", async () => {
+    // Deliberate: the licence number and the payout account are NetLet's
+    // record of who it is paying, not a field the payee edits.
+    await expect(
+      inv.updateVendorProfile(ownerActor(), ids.acme, { payoutIban: "KW81CBKU0000000000001234560101" }),
+    ).rejects.toThrow(/FORBIDDEN/);
   });
 });

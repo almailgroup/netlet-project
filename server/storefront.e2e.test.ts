@@ -163,6 +163,37 @@ describe("a product's journey from the admin portal to the shop", () => {
     expect((await shopper.commerce.products.byHandle({ handle })).vendorBadges).toEqual([]);
   });
 
+  /*
+   * Through the router rather than the data layer, because the interesting
+   * part here is the schema: an empty optional field and a wrong one have to
+   * be told apart, and `blankOr` is where that is decided.
+   */
+  it("opens a store, accepting blank details but refusing wrong ones", async () => {
+    const [admin] = await db.select().from(users).where(eq(users.id, ids.admin));
+    const adminCaller = appRouter.createCaller(contextFor(admin as User));
+
+    const { vendor } = await adminCaller.inventory.vendors.create({
+      name: "Router Store",
+      slug: "router-store",
+      contactPhone: "",
+      payoutIban: "",
+      governorate: "",
+    });
+    expect(vendor.slug).toBe("router-store");
+    expect(vendor.payoutIban).toBeNull();
+
+    await expect(adminCaller.inventory.vendors.create({
+      name: "Bad IBAN Store",
+      slug: "bad-iban-store",
+      payoutIban: "KW81CBKU0000000000001234565001",
+    })).rejects.toThrow();
+
+    await expect(adminCaller.inventory.vendors.create({
+      name: "Bad Slug Store",
+      slug: "Bad Slug Store",
+    })).rejects.toThrow();
+  });
+
   it("refuses a vendor owner who tries to award themselves a badge", async () => {
     /* FORBIDDEN specifically: a test that accepts any throw would pass on a
        typo in the procedure name just as happily. */

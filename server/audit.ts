@@ -21,6 +21,8 @@ import { getDb } from "./db.js";
 
 /** The sensitive operations the requirements name, and nothing else. */
 export type AuditAction =
+  | "vendor.create"
+  | "vendor.update"
   | "vendor.setCommission"
   | "vendor.setStatus"
   | "vendor.addMember"

@@ -26,8 +26,9 @@ import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
 import { publicProcedure, router } from "../_core/trpc.js";
 import { hashPassword, verifyPassword } from "../_core/password.js";
-import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, verifyFirebasePassword } from "../_core/firebase.js";
-import { createUser, getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
+import { isFirebaseConfigured, verifyFirebasePassword } from "../_core/firebase.js";
+import { createAccount, EmailTakenError } from "../_core/accounts.js";
+import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
 import type { User } from "../../drizzle/schema.js";
 
 const credentials = z.object({
@@ -63,36 +64,6 @@ function assertConfigured() {
   }
 }
 
-/**
- * Registers with Firebase, then mirrors the account locally.
- *
- * The local row is written second on purpose: if it fails, Firebase holds an
- * account with no NetLet row, and the next sign-in creates that row through
- * `linkFirebaseUser`. The reverse order would leave a NetLet row that can never
- * be signed into.
- */
-async function registerWithFirebase(input: { email: string; password: string; name?: string }) {
-  const auth = getFirebaseAuth();
-  if (!auth) return null;
-
-  let uid: string;
-  try {
-    const record = await auth.createUser({
-      email: input.email,
-      password: input.password,
-      displayName: input.name,
-    });
-    uid = record.uid;
-  } catch (error) {
-    if (isEmailInUse(error)) throw emailTaken;
-    throw error;
-  }
-
-  const user = await linkFirebaseUser({ firebaseUid: uid, email: input.email, name: input.name ?? null });
-  if (!user) throw emailTaken;
-  return user;
-}
-
 const invalidCredentials = new TRPCError({
   code: "UNAUTHORIZED",
   message: "auth.invalidCredentials",
@@ -126,16 +97,13 @@ export const authRouter = router({
   register: publicProcedure.input(registration).mutation(async ({ ctx, input }) => {
     assertConfigured();
 
-    let user: User | null;
-    if (isFirebaseConfigured()) {
-      user = await registerWithFirebase(input);
-    } else {
-      // Hashed before the duplicate check so a taken address and a free one
-      // cost the same time; otherwise the response latency leaks which is which.
-      const passwordHash = await hashPassword(input.password);
-      user = await createUser({ email: input.email, passwordHash, name: input.name ?? null });
+    let user: User;
+    try {
+      user = await createAccount(input);
+    } catch (error) {
+      if (error instanceof EmailTakenError) throw emailTaken;
+      throw error;
     }
-    if (!user) throw emailTaken;
 
     const token = await signSession(user.id);
     ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });

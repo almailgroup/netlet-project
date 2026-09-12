@@ -150,6 +150,36 @@ guards with. **A hidden link is a courtesy, never a control.** Pass `need` to
 a manager reaching `/admin/vendors` gets an empty page, which implies the
 page exists and has nothing in it rather than that it is not theirs.
 
+Opening a store is one page, `/admin/vendors/new`, and it creates the vendor,
+the owner's login and the membership in one call. It exists because the
+alternative was three systems: insert a vendor row by hand in the database,
+ask the person to register on the storefront, then find them in
+`/admin/people` and attach them. `createVendorWithOwner` writes the vendor
+first (it is the row that can fail on a duplicate slug) and deletes it again
+if the account cannot be made — a store that exists but cannot be signed into
+looks finished, so nobody goes back to fix it. The owner is optional: a store
+recorded today whose owner arrives next week is a real case.
+
+`server/_core/accounts.ts` is the one place an account gets made, for the
+storefront's own registration and for that page alike. The Firebase-or-scrypt
+branch used to live inside the auth router, where the second caller would
+either import a router or grow a copy — and a copy is how one of them quietly
+stops using Firebase.
+
+A store's details are all nullable, and `missingStoreDetails` reports what is
+absent rather than the database refusing the save: an admin should not be
+blocked from recording a seller because the trade licence is on a document
+nobody has scanned. What *is* checked is what would be actively wrong — a
+payout IBAN is validated by the mod-97 rule in `shared/inventory/storeProfile.ts`,
+because a transposed pair of digits passes any length check and sends money
+to an account that does not exist.
+
+`/admin/vendors` is a list and nothing else; one store's status, commission,
+badges and team are on `/admin/vendors/:id`, each section saving on its own.
+They were all crammed into every row of the list, which made twenty stores a
+wall of controls — and one Save across the page writes a commission change
+somebody made while fixing a phone number.
+
 **Two grants, deliberately not one control.** `platform.manageUsers` is who
 administers NetLet — it clears every vendor, commission, and `/admin/people`
 itself. Vendor membership is one company at one rank, and a vendor owner runs

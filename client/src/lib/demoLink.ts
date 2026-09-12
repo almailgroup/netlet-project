@@ -243,6 +243,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.vendors.list":
     case "inventory.vendors.members":
       return [];
+    /* Admin-only, like the list above: the demo actor is a vendor manager and
+       the route refuses before this is reached. */
+    case "inventory.vendors.get":
+      return null;
     /* The demo actor is a vendor manager, so the counts are that vendor's and
        the platform-wide vendor numbers are zero — the same shape the server
        returns for a vendor, rather than an admin's view a manager never has. */
@@ -291,6 +295,8 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.people.addToVendor":
     case "inventory.people.removeFromVendor":
     case "inventory.products.setCommission":
+    case "inventory.vendors.create":
+    case "inventory.vendors.updateProfile":
     case "inventory.vendors.setBadges":
     case "inventory.vendors.setCommission":
     case "inventory.vendors.setStatus":
