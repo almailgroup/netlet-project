@@ -182,3 +182,14 @@ works unchanged, but nobody has watched an actual Vercel deploy of it. If the
 first one fails, the build log will say why and the likely suspects are the two
 things above: a `VITE_` variable missing at build time, or the private key's
 escapes.
+
+## Node version
+
+The function needs **Node 22.x**. `engines.node` in `package.json` asks for it,
+but Vercel's own **Settings → General → Node.js Version** overrides that — so if
+the function crashes at load with `ERR_REQUIRE_ESM`, set it there.
+
+The reason: `firebase-admin` depends on `jwks-rsa`, which `require()`s `jose`,
+and jose 6 is ESM-only. Requiring an ES module from CommonJS only works from
+Node 22.12 onward.
+

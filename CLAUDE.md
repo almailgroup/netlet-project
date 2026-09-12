@@ -245,6 +245,13 @@ loose forms, so `pnpm check`, `pnpm test` and `pnpm build` pass while the
 deployed function is dead at load with ERR_MODULE_NOT_FOUND. That is why the
 rule is a test and not a convention.
 
+**Node 22.12 or newer, and `engines.node` says so.** `firebase-admin` pulls in
+`jwks-rsa`, which is CommonJS and does `require('jose')` — and jose 6 is
+ESM-only. `require()` of an ES module arrived in Node 22.12, so anything older
+throws ERR_REQUIRE_ESM the moment `server/_core/firebase.ts` is imported,
+which is at load. Vercel reads `engines.node`; the project's Node version
+setting in its dashboard overrides it, so check there if this recurs.
+
 ### GitHub Pages
 
 Pages serves `main` at `/` — "Deploy from a branch", one branch only. The

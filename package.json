@@ -78,6 +78,9 @@
     "test": "vitest run"
   },
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "version": "1.0.0",
   "description": "NetLet — a Kuwait-first marketplace storefront."
 }

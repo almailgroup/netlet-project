@@ -25,12 +25,20 @@ const add = (status: Status, title: string, detail: string, fix?: string) =>
 
 /* ------------------------------------------------------------- toolchain --- */
 
-const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10);
-if (nodeMajor >= 20) {
+/*
+ * 22.12 is not arbitrary. `firebase-admin` pulls in `jwks-rsa`, which is
+ * CommonJS and does `require('jose')` — and jose 6 is ESM-only. Node gained
+ * `require()` of an ES module in 22.12, so below that the import throws
+ * ERR_REQUIRE_ESM and the whole server is dead at load. It is the same reason
+ * `engines.node` is pinned for Vercel.
+ */
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(n => Number.parseInt(n, 10));
+const nodeNewEnough = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 12);
+if (nodeNewEnough) {
   add("ok", "Node", `v${process.versions.node}`);
 } else {
-  add("blocked", "Node", `v${process.versions.node} is too old — 20 or newer is required`,
-    "brew install node");
+  add("blocked", "Node", `v${process.versions.node} cannot require() an ES module — 22.12 or newer is required`,
+    "Install Node 22 LTS: https://nodejs.org");
 }
 
 try {
