@@ -76,6 +76,9 @@ beforeAll(async () => {
   ids.acmeProduct = p1.id; ids.otherProduct = p2.id;
   const [v1] = await db.insert(productVariants).values({ productId: p1.id, title: "Default", price: "24.500", stock: 5 }).returning();
   ids.acmeVariant = v1.id;
+  // Priced, because publishing an unpriced product is refused — and a kettle
+  // nobody can buy was never a realistic fixture anyway.
+  await db.insert(productVariants).values({ productId: p2.id, title: "Default", price: "11.250", stock: 3 });
 }, 60_000);
 
 const adminActor = (): Actor => ({ kind: "admin", userId: ids.admin });
@@ -707,6 +710,59 @@ describe("giving an existing store a new login", () => {
       password: "a-long-enough-password",
       role: "staff",
     })).rejects.toThrow("NOT_FOUND");
+  });
+});
+
+/*
+ * The money bug. `createProduct` starts a product with a Default variant at
+ * 0.000 so that it has something to price; publishing before anyone types a
+ * price put a KWD 0 item on the shelf that a shopper could buy for nothing.
+ */
+describe("publishing an unpriced product", () => {
+  it("is refused, and the product stays where it was", async () => {
+    const created = await inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Unpriced Thing" });
+
+    await expect(
+      inv.setProductStatus(adminActor(), created.id, "published"),
+    ).rejects.toThrow("UNPRICED");
+
+    const [row] = await db.select().from(products).where(eq(products.id, created.id));
+    expect(row.status).toBe("draft");
+  });
+
+  it("is allowed once a price is on every variant", async () => {
+    const created = await inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Priced Thing" });
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.productId, created.id));
+    await inv.saveVariant(adminActor(), { id: variant.id, productId: created.id, title: "Default", price: "12.750" });
+
+    expect(await inv.setProductStatus(adminActor(), created.id, "published")).toBe("published");
+  });
+
+  it("blocks on one unpriced variant even when its siblings cost something", async () => {
+    // The reason this is "any" and not "all": the zero one is buyable at zero
+    // the moment the product goes live, whatever the others cost.
+    const created = await inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Half Priced" });
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.productId, created.id));
+    await inv.saveVariant(adminActor(), { id: variant.id, productId: created.id, title: "Default", price: "9.000" });
+    await inv.saveVariant(adminActor(), { productId: created.id, title: "Spare", price: "0.000" });
+
+    await expect(
+      inv.setProductStatus(adminActor(), created.id, "published"),
+    ).rejects.toThrow("UNPRICED");
+  });
+
+  it("is refused through the review queue too, which is the other door", async () => {
+    const created = await inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Awaiting Review" });
+    await db.update(products).set({ status: "pending_review" }).where(eq(products.id, created.id));
+
+    await expect(
+      inv.reviewProduct(adminActor(), created.id, true),
+    ).rejects.toThrow("UNPRICED");
+
+    // Rejecting is still fine: that takes it off the path to the shelf.
+    await inv.reviewProduct(adminActor(), created.id, false, "No price");
+    const [after] = await db.select().from(products).where(eq(products.id, created.id));
+    expect(after.status).toBe("rejected");
   });
 });
 

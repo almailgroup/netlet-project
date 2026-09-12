@@ -272,6 +272,28 @@ export async function setProductImages(
  * for an admin. That is the approval cycle the requirements describe, and the
  * decision is here rather than in the UI so it cannot be clicked around.
  */
+/**
+ * Refuses to put an unpriced product in front of shoppers.
+ *
+ * `createProduct` starts every product with a "Default" variant at 0.000,
+ * because a product with no variant cannot be priced or bought at all. The
+ * cost of that convenience is this: publish before typing a price and the
+ * storefront lists the thing at KWD 0 and lets somebody buy it for nothing.
+ *
+ * So publishing is where the price becomes required. Any variant at zero
+ * blocks it, not merely all of them — an unpriced variant is buyable at zero
+ * the moment the product is live, whatever its siblings cost.
+ */
+async function assertPriced(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, productId: number) {
+  const rows = await db
+    .select({ id: productVariants.id, price: productVariants.price })
+    .from(productVariants)
+    .where(eq(productVariants.productId, productId));
+
+  if (rows.length === 0) throw new Error("UNPRICED");
+  if (rows.some(row => Number.parseFloat(row.price) <= 0)) throw new Error("UNPRICED");
+}
+
 export async function setProductStatus(
   actor: Actor,
   productId: number,
@@ -283,6 +305,8 @@ export async function setProductStatus(
   const row = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.publish", row.vendorId);
+
+  if (target === "published") await assertPriced(db, productId);
 
   let status: typeof row.status = target;
   if (target === "published" && actor.kind === "vendor") {
@@ -301,6 +325,10 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
   if (!db) throw new Error("Database is not configured");
   const [was] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
   if (!was) throw new Error("NOT_FOUND");
+
+  // The review queue is the other door onto the shelf, and it has to be shut
+  // against an unpriced product too — an admin approving is publishing.
+  if (approve) await assertPriced(db, productId);
 
   await db
     .update(products)

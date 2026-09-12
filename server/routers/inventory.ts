@@ -91,6 +91,10 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "SLUG_REQUIRED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.slugRequired" });
     }
+    // A refusal the admin can act on: they are one field away from fixing it.
+    if (message === "UNPRICED") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.unpriced" });
+    }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
     }

@@ -19,7 +19,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
-import type { MessageKey } from "@shared/i18n/dictionary";
+import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { ArrowLeft, LoaderCircle, Minus, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
@@ -60,8 +60,16 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     void utils.inventory.products.get.invalidate({ id: productId });
     void utils.inventory.products.list.invalidate();
   };
+  /*
+   * The server's own refusal, when it wrote one.
+   *
+   * This used to read any message containing a dot as a permission error, so
+   * every named refusal came out as "You do not have permission to do that" —
+   * including "set a price before publishing", which is not a permission
+   * problem and sent whoever read it looking for the wrong thing.
+   */
   const fail = (error: { message: string }) =>
-    toast.error(error.message.includes(".") ? t("admin.forbidden") : t("admin.saveFailed"));
+    toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
 
   const save = trpc.inventory.products.update.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },

@@ -286,6 +286,15 @@ left of something that reorders at twenty is the emergency, and sorting by
 raw count puts them the wrong way round. A variant with no threshold is only
 listed once it hits zero.
 
+**Publishing requires a price, and that is a money rule rather than a tidiness
+one.** `createProduct` starts every product with a "Default" variant at 0.000,
+because a product with no variant cannot be priced or bought at all — and the
+cost of that convenience was that pressing Publish before typing a price put
+the thing in the shop at KWD 0, buyable for nothing. `assertPriced` now blocks
+it on both doors onto the shelf: `setProductStatus` and an admin approving
+from the review queue. Any variant at zero blocks, not merely all of them,
+since the zero one is buyable at zero the moment the product is live.
+
 The publish button says what will actually happen. A vendor without
 `autoPublish` pressing Publish sends the product for review, and the page says
 so — a button labelled "Publish" that quietly produces "In review" is the kind
