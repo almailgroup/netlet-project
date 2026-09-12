@@ -22,6 +22,7 @@ import {
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
 import { recordAudit, violationCount } from "./audit.js";
+import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
 
 /* ------------------------------------------------------------- the actor --- */
@@ -784,6 +785,113 @@ export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId
   });
 
   return { userId, vendorId };
+}
+
+/* ---------------------------------------------------------------- health --- */
+
+/**
+ * A vendor's own performance numbers.
+ *
+ * Scoped like everything else: a vendor member reads their own vendor, an
+ * admin reads any. The score itself is computed by the pure function in
+ * `shared/inventory/vendorHealth.ts` — this only gathers the counts, so the
+ * arithmetic a vendor sees is the arithmetic that is tested.
+ */
+export async function vendorHealthFor(actor: Actor, vendorId?: number) {
+  const scope = actor.kind === "vendor" ? actor.vendorId : vendorId;
+  if (scope === undefined) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
+
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const byStatus = await db
+    .select({ status: products.status, count: sql<number>`count(*)::int` })
+    .from(products)
+    .where(eq(products.vendorId, scope))
+    .groupBy(products.status);
+  const countOf = (status: string) => byStatus.find(row => row.status === status)?.count ?? 0;
+
+  const [stock] = await db
+    .select({
+      variants: sql<number>`count(*)::int`,
+      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} <= 0)::int`,
+    })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(and(eq(products.vendorId, scope), eq(products.status, "published")));
+
+  const inputs: HealthInputs = {
+    published: countOf("published"),
+    pendingReview: countOf("pending_review"),
+    // The audit trail is already the record of rejections; a second tally
+    // could disagree with the evidence an administrator can read back.
+    rejections: await violationCount(scope),
+    outOfStock: stock?.outOfStock ?? 0,
+    variants: stock?.variants ?? 0,
+    rating: null,
+  };
+
+  return { vendorId: scope, inputs, ...vendorHealth(inputs) };
+}
+
+/**
+ * Awards or removes a trust badge. Admin only, deliberately.
+ *
+ * A badge a seller can grant themselves tells a buyer nothing, so this sits
+ * behind `vendor.approve` — the same judgement as letting them trade at all.
+ */
+export async function setVendorBadges(actor: Actor, vendorId: number, badges: string[]) {
+  assertCan(actor, "vendor.approve");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  await db.update(vendors).set({ badges }).where(eq(vendors.id, vendorId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.setStatus",
+    subjectType: "vendor",
+    subjectId: vendorId,
+    subjectLabel: was?.name ?? null,
+    vendorId,
+    before: was ? { badges: was.badges } : null,
+    after: { badges },
+  });
+}
+
+/**
+ * Commission for one product, overriding its vendor's.
+ *
+ * Guarded by `vendor.setCommission` exactly like the vendor-level rate: the
+ * requirements put commission entirely outside a vendor's control, and a
+ * per-product override that a vendor could set would be that rule with a
+ * loophole in it.
+ */
+export async function setProductCommission(
+  actor: Actor,
+  productId: number,
+  rule: { percent?: string | null; fixed?: string | null },
+) {
+  assertCan(actor, "vendor.setCommission");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [was] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  if (!was) throw new Error("NOT_FOUND");
+
+  await db
+    .update(products)
+    .set({ commissionPercent: rule.percent ?? null, commissionFixed: rule.fixed ?? null })
+    .where(eq(products.id, productId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.setCommission",
+    subjectType: "product",
+    subjectId: productId,
+    subjectLabel: was.title,
+    vendorId: was.vendorId,
+    before: { commissionPercent: was.commissionPercent, commissionFixed: was.commissionFixed },
+    after: { commissionPercent: rule.percent ?? null, commissionFixed: rule.fixed ?? null },
+  });
 }
 
 /* --------------------------------------------------------------- vendors --- */

@@ -268,6 +268,14 @@ export const vendors = pgTable(
      * looking first, which the requirements ask for by name.
      */
     autoPublish: boolean("auto_publish").notNull().default(false),
+    /**
+     * Trust badges shown beside the vendor's name on a product page.
+     *
+     * Awarded by an admin rather than claimed by the vendor — a badge a seller
+     * can grant themselves tells a buyer nothing. Stored as a list because the
+     * set will grow, and a column per badge would mean a migration each time.
+     */
+    badges: text("badges").array().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -343,6 +351,19 @@ export const products = pgTable(
     /** Why an admin rejected it, shown back to the vendor. */
     reviewNote: text("review_note"),
     tags: text("tags").array().notNull().default([]),
+    /**
+     * Commission for this product alone, overriding the vendor's rate.
+     *
+     * The requirements ask for commission "per vendor company or per
+     * individual product", so this is the per-product half. Null means "use
+     * the vendor's", which is the common case — an override is the exception
+     * and should look like one in the data.
+     *
+     * Like the vendor's, no vendor rank can write these: `vendor.setCommission`
+     * is admin-only, and the guard is the same one.
+     */
+    commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }),
+    commissionFixed: numeric("commission_fixed", { precision: 12, scale: 3 }),
     /**
      * Spec rows, and the review score the cards and PDP read.
      *

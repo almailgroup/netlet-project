@@ -466,3 +466,55 @@ describe("three violations suspend a vendor", () => {
     expect(after.status).toBe("approved");
   });
 });
+
+describe("per-product commission", () => {
+  it("is refused to every vendor rank, exactly like the vendor rate", async () => {
+    for (const who of [ownerActor(), staffActor()]) {
+      await expect(inv.setProductCommission(who, ids.acmeProduct, { percent: "1.00" }))
+        .rejects.toThrow("FORBIDDEN:vendor.setCommission");
+    }
+  });
+
+  it("is written by an admin and recorded in the audit trail", async () => {
+    await inv.setProductCommission(adminActor(), ids.acmeProduct, { percent: "5.00", fixed: "0.250" });
+    const [row] = await db.select().from(products).where(eq(products.id, ids.acmeProduct));
+    expect(row.commissionPercent).toBe("5.00");
+    expect(row.commissionFixed).toBe("0.250");
+
+    const rows = await audit.listAudit({ action: "vendor.setCommission", subjectType: "product" });
+    expect(rows[0].after).toMatchObject({ commissionPercent: "5.00" });
+  });
+
+  it("clears back to the vendor's rate when set to nothing", async () => {
+    await inv.setProductCommission(adminActor(), ids.acmeProduct, { percent: null, fixed: null });
+    const [row] = await db.select().from(products).where(eq(products.id, ids.acmeProduct));
+    expect(row.commissionPercent).toBeNull();
+  });
+});
+
+describe("trust badges and account health", () => {
+  it("lets an admin award a badge and refuses a vendor owner", async () => {
+    await inv.setVendorBadges(adminActor(), ids.acme, ["verified", "fastShipping"]);
+    const [row] = await db.select().from(vendors).where(eq(vendors.id, ids.acme));
+    expect(row.badges).toEqual(["verified", "fastShipping"]);
+
+    await expect(inv.setVendorBadges(ownerActor(), ids.acme, ["verified"]))
+      .rejects.toThrow("FORBIDDEN:vendor.approve");
+  });
+
+  it("reports a vendor their own numbers, not another vendor's", async () => {
+    const mine = await inv.vendorHealthFor(ownerActor());
+    expect(mine.vendorId).toBe(ids.acme);
+    // A vendor asking about someone else still gets their own: scope is not
+    // a parameter they control.
+    const still = await inv.vendorHealthFor(ownerActor(), ids.other);
+    expect(still.vendorId).toBe(ids.acme);
+  });
+
+  it("shows the components behind the score, so a vendor can check it", async () => {
+    const health = await inv.vendorHealthFor(adminActor(), ids.acme);
+    expect(health.components.map(c => c.key).sort()).toEqual(["catalog", "compliance", "rating", "stock"]);
+    expect(health.score).toBeGreaterThanOrEqual(0);
+    expect(health.score).toBeLessThanOrEqual(100);
+  });
+});

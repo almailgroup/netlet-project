@@ -43,6 +43,13 @@
       "when": 1789229109303,
       "tag": "0005_rainy_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789230430827,
+      "tag": "0006_tense_greymalkin",
+      "breakpoints": true
     }
   ]
 }

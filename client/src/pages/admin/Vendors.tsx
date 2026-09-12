@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { TRUST_BADGES, visibleBadges, type TrustBadge } from "@shared/inventory/vendorHealth";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -31,6 +32,16 @@ function VendorList() {
   const fail = () => toast.error(t("admin.forbidden"));
   const setCommission = trpc.inventory.vendors.setCommission.useMutation({ onSuccess: done, onError: fail });
   const setStatus = trpc.inventory.vendors.setStatus.useMutation({ onSuccess: done, onError: fail });
+  const setBadges = trpc.inventory.vendors.setBadges.useMutation({ onSuccess: done, onError: fail });
+
+  /* A badge toggles on click and saves immediately. There is no Save here on
+     purpose: a checkbox that needs a second press to mean anything is how a
+     badge ends up awarded in the UI and not in the database. */
+  const toggleBadge = (vendorId: number, held: TrustBadge[], badge: TrustBadge) =>
+    setBadges.mutate({
+      vendorId,
+      badges: held.includes(badge) ? held.filter(one => one !== badge) : [...held, badge],
+    });
 
   if (vendors.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
   const rows = vendors.data ?? [];
@@ -89,10 +100,62 @@ function VendorList() {
                   </span>
                 ) : null}
               </div>
+
+              <BadgeRow
+                held={visibleBadges(vendor.badges)}
+                busy={setBadges.isPending}
+                onToggle={badge => toggleBadge(vendor.id, visibleBadges(vendor.badges), badge)}
+              />
             </article>
           ))}
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * The awarded badges, as toggles.
+ *
+ * Every badge is shown, held or not, so an admin can see what is available to
+ * award rather than only what has been. `earnedBadges` computes the other
+ * three from a vendor's numbers; these are the awarded copy of record, which
+ * is what a shopper is shown.
+ */
+function BadgeRow({
+  held,
+  busy,
+  onToggle,
+}: {
+  held: TrustBadge[];
+  busy: boolean;
+  onToggle: (badge: TrustBadge) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="mt-3 border-t border-[#e6e9ef] pt-3">
+      <p className="text-[11px] font-extrabold text-[#0a285a]">{t("admin.badges")}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {TRUST_BADGES.map(badge => {
+          const on = held.includes(badge);
+          return (
+            <button
+              key={badge}
+              type="button"
+              aria-pressed={on}
+              disabled={busy}
+              onClick={() => onToggle(badge)}
+              className={`pressable rounded-full px-3 py-1.5 text-[11px] font-extrabold transition disabled:opacity-60 ${
+                on
+                  ? "bg-[#0a285a] text-white"
+                  : "border border-[#d5dfeb] bg-white text-[#536b8c] hover:border-[#0a285a]"
+              }`}
+            >
+              {t(`badge.${badge}` as MessageKey)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

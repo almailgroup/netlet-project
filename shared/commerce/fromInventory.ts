@@ -19,6 +19,7 @@ import type {
   ProductOption,
   ProductVariant,
 } from "./types.js";
+import { visibleBadges } from "../inventory/vendorHealth.js";
 
 /**
  * The dinar, everywhere.
@@ -83,6 +84,8 @@ export type ProductContext = {
   /** Display name of the vendor that owns the product. */
   vendorName?: string | null;
   vendorNameAr?: string | null;
+  /** Awarded badges, unfiltered — `visibleBadges` drops anything unknown. */
+  vendorBadges?: string[] | null;
   /** Display name of its category — what the storefront calls productType. */
   categoryName?: string | null;
   categoryNameAr?: string | null;
@@ -204,6 +207,7 @@ export function toStorefrontProduct(
     descriptionHtml: toHtml(description),
     productType: pick(locale, context.categoryName, context.categoryNameAr) || null,
     vendor: pick(locale, context.vendorName, context.vendorNameAr) || null,
+    vendorBadges: visibleBadges(context.vendorBadges),
     tags: row.tags ?? [],
     attributes: row.attributes ?? [],
     images: row.images.map(image => ({ url: image.url, altText: image.altText ?? title })),

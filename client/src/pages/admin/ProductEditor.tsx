@@ -82,6 +82,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onSuccess: count => { refresh(); toast.success(t("admin.stockUpdated", { count })); },
     onError: fail,
   });
+  const setCommission = trpc.inventory.products.setCommission.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
 
   if (product.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
   if (!product.data) return <p className="text-sm font-bold">{t("product.notFound")}</p>;
@@ -90,6 +94,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const mayEdit = can(actor, "product.edit", row.vendorId);
   const mayPublish = can(actor, "product.publish", row.vendorId);
   const mayStock = can(actor, "stock.adjust", row.vendorId);
+  /* No vendor rank reaches this, so the whole panel is absent for one rather
+     than shown disabled — a greyed-out commission box invites the question of
+     how to enable it. */
+  const mayPrice = can(actor, "vendor.setCommission");
 
   return (
     <>
@@ -266,7 +274,76 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           </button>
         ) : null}
       </section>
+
+      {mayPrice ? (
+        <CommissionPanel
+          percent={row.commissionPercent}
+          fixed={row.commissionFixed}
+          pending={setCommission.isPending}
+          onSave={rule => setCommission.mutate({ id: row.id, ...rule })}
+        />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * The per-product override of the vendor's rate.
+ *
+ * Empty means "no override" and falls back to the vendor, which is why both
+ * boxes clear to null rather than to zero: a zero here is a deliberate
+ * commission-free product, and the two have to stay tellable apart.
+ */
+function CommissionPanel({
+  percent,
+  fixed,
+  pending,
+  onSave,
+}: {
+  percent: string | null;
+  fixed: string | null;
+  pending: boolean;
+  onSave: (rule: { percent: string | null; fixed: string | null }) => void;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState({ percent: percent ?? "", fixed: fixed ?? "" });
+  useEffect(() => { setDraft({ percent: percent ?? "", fixed: fixed ?? "" }); }, [percent, fixed]);
+
+  const trimmed = { percent: draft.percent.trim(), fixed: draft.fixed.trim() };
+
+  return (
+    <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+      <h2 className="text-sm font-extrabold">{t("admin.productCommission")}</h2>
+      <p className="mt-1 text-[11px] text-[#536b8c]">{t("admin.productCommissionNote")}</p>
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <Labelled label={t("admin.commissionPercent")} className="w-32">
+          <input
+            dir="ltr"
+            inputMode="decimal"
+            value={draft.percent}
+            onChange={event => setDraft({ ...draft, percent: event.target.value })}
+            className={field}
+          />
+        </Labelled>
+        <Labelled label={t("admin.commissionFixed")} className="w-32">
+          <input
+            dir="ltr"
+            inputMode="decimal"
+            value={draft.fixed}
+            onChange={event => setDraft({ ...draft, fixed: event.target.value })}
+            className={field}
+          />
+        </Labelled>
+        <button
+          onClick={() => onSave({ percent: trimmed.percent || null, fixed: trimmed.fixed || null })}
+          disabled={pending}
+          className="glass glass-navy pressable inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-extrabold disabled:opacity-60"
+        >
+          {pending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
+          {t("admin.save")}
+        </button>
+      </div>
+    </section>
   );
 }
 

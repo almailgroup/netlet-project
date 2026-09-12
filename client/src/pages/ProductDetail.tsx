@@ -16,6 +16,7 @@ import { relatedProducts } from "@shared/commerce/related";
 import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
+import { visibleBadges } from "@shared/inventory/vendorHealth";
 import {
   ArrowLeft,
   ArrowRight,
@@ -373,6 +374,31 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   );
 }
 
+/**
+ * The seller's trust badges, beside their name.
+ *
+ * `visibleBadges` filters rather than trusting the payload: an unknown badge
+ * would otherwise render as a raw key, and a shopper reading "topSeller" in a
+ * pill learns nothing and sees a bug.
+ */
+function VendorBadges({ badges }: { badges: string[] }) {
+  const { t } = useTranslation();
+  const shown = visibleBadges(badges);
+  if (!shown.length) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {shown.map(badge => (
+        <span
+          key={badge}
+          className="rounded-full bg-[#eaf1fb] px-2 py-0.5 text-[10px] font-extrabold text-[#0a285a]"
+        >
+          {t(`badge.${badge}` as MessageKey)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function StarRating({ value, scaleMax, count }: { value: number; scaleMax: number; count: number | null }) {
   const { t } = useTranslation();
   const label = count === null
@@ -553,7 +579,12 @@ export default function ProductDetail() {
           <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
-            {product.vendor ? <p className="text-xs font-bold tracking-[.5px] text-[#7e859b] uppercase">{product.vendor}</p> : null}
+            {product.vendor ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p dir="auto" className="text-xs font-bold tracking-[.5px] text-[#7e859b] uppercase">{product.vendor}</p>
+                <VendorBadges badges={product.vendorBadges} />
+              </div>
+            ) : null}
             {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium text-[#7e859b]">{t("product.sku")}: <span dir="ltr" className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
             {product.productType ? <p className="mt-2 text-sm font-medium text-[#7e859b]">{t("product.category")}: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
 

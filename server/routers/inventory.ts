@@ -35,13 +35,17 @@ import {
   setProductImages,
   setProductStatus,
   setUserAdmin,
+  setProductCommission,
+  setVendorBadges,
   setVendorCommission,
   setVendorStatus,
   stockHistory,
   updateProduct,
+  vendorHealthFor,
 } from "../inventory.js";
 import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
 import { listAudit, type AuditAction } from "../audit.js";
+import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -165,6 +169,21 @@ export const inventoryRouter = router({
         return guard(() => setProductImages(actor, input.id, input.images));
       }),
 
+    /**
+     * Commission for this product alone. Admin only, like the vendor rate —
+     * an override a vendor could set would be that rule with a loophole.
+     */
+    setCommission: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        percent: moneySchema.nullable().optional(),
+        fixed: moneySchema.nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setProductCommission(actor, input.id, { percent: input.percent, fixed: input.fixed }));
+      }),
+
     setStatus: protectedProcedure
       .input(z.object({
         id: z.number().int().positive(),
@@ -284,6 +303,14 @@ export const inventoryRouter = router({
       });
     }),
 
+  /** A vendor's own performance numbers, or any vendor's for an admin. */
+  health: protectedProcedure
+    .input(vendorScope.optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user, input?.vendorId);
+      return guard(() => vendorHealthFor(actor, input?.vendorId));
+    }),
+
   people: router({
     list: protectedProcedure
       .input(z.object({
@@ -350,6 +377,16 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => removeMember(actor, input.vendorId, input.userId));
+      }),
+
+    setBadges: protectedProcedure
+      .input(z.object({
+        vendorId: z.number().int().positive(),
+        badges: z.array(z.enum(TRUST_BADGES)).max(TRUST_BADGES.length),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setVendorBadges(actor, input.vendorId, input.badges));
       }),
 
     setCommission: protectedProcedure

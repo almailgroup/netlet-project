@@ -409,6 +409,9 @@ function toProduct(seed: Seed, index: number): Product {
     descriptionHtml: `<p>${seed.description}</p>`,
     productType: seed.productType,
     vendor: seed.vendor,
+    // A spread rather than the same pair everywhere, so the badge row on the
+    // product page is visible without pretending every demo seller is verified.
+    vendorBadges: [["verified", "fastShipping"], ["verified"], ["highRating"], []][index % 4] ?? [],
     tags: seed.tags,
     attributes: [
       {

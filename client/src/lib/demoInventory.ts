@@ -11,6 +11,7 @@
  * here reaches the real inventory — this module only exists in a demo build.
  */
 import { demoCatalog } from "@/lib/demoCatalog";
+import { vendorHealth } from "@shared/inventory/vendorHealth";
 
 const VENDOR_ID = 1;
 
@@ -110,3 +111,32 @@ export const demoStockHistory = [
   { id: 2, delta: 12, resulting: 6, reason: "received", note: "Two pallets", createdAt: new Date(), variantId: 1, variantTitle: "Default", productId: 1, productTitle: demoInventoryProducts[0]?.title ?? "Product", actorEmail: "manager@netlet.test", actorName: "Demo Manager" },
   { id: 1, delta: -1, resulting: 0, reason: "damaged", note: null, createdAt: new Date(), variantId: 3, variantTitle: "Default", productId: 3, productTitle: demoInventoryProducts[2]?.title ?? "Product", actorEmail: null, actorName: null },
 ];
+
+/**
+ * The demo vendor's health, derived from the fixtures rather than typed.
+ *
+ * Same reasoning as the overview counts: a hand-written score beside a list
+ * of eight products is the first thing that goes stale. `vendorHealth` is the
+ * function the server calls, so the demo shows the real arithmetic.
+ */
+const demoHealthInputs = {
+  published: demoInventoryProducts.filter(row => row.status === "published").length,
+  pendingReview: demoInventoryProducts.filter(row => row.status === "pending_review").length,
+  // One fixture product is rejected, and a rejection is what the audit trail
+  // would have recorded.
+  rejections: demoInventoryProducts.filter(row => row.status === "rejected").length,
+  outOfStock: demoInventoryProducts
+    .filter(row => row.status === "published")
+    .flatMap(row => row.variants)
+    .filter(variant => variant.stock <= 0).length,
+  variants: demoInventoryProducts
+    .filter(row => row.status === "published")
+    .flatMap(row => row.variants).length,
+  rating: null,
+};
+
+export const demoHealth = {
+  vendorId: VENDOR_ID,
+  inputs: demoHealthInputs,
+  ...vendorHealth(demoHealthInputs),
+};

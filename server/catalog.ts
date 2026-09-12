@@ -39,6 +39,8 @@ import { getDb } from "./db.js";
 /* ------------------------------------------------------------- the shelf --- */
 
 type Named = { id: number; name: string; nameAr: string | null };
+/** A vendor also carries its awarded badges, which a category has no analogue of. */
+type VendorNamed = Named & { badges: string[] | null };
 
 /**
  * Vendor and category names for a set of products, in two queries rather than
@@ -53,8 +55,8 @@ async function contextFor(
 
   const [vendorRows, categoryRows] = await Promise.all([
     vendorIds.length
-      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr }).from(vendors).where(inArray(vendors.id, vendorIds))
-      : Promise.resolve([] as Named[]),
+      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges }).from(vendors).where(inArray(vendors.id, vendorIds))
+      : Promise.resolve([] as VendorNamed[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
       : Promise.resolve([] as Named[]),
@@ -69,7 +71,7 @@ type CatalogRow = Awaited<ReturnType<typeof publishedCatalog>>[number];
 
 function shape(
   row: CatalogRow,
-  vendorById: Map<number, Named>,
+  vendorById: Map<number, VendorNamed>,
   categoryById: Map<number, Named>,
   locale: LocalePick,
 ): Product {
@@ -80,6 +82,7 @@ function shape(
     {
       vendorName: vendor?.name,
       vendorNameAr: vendor?.nameAr,
+      vendorBadges: vendor?.badges,
       categoryName: category?.name,
       categoryNameAr: category?.nameAr,
     },

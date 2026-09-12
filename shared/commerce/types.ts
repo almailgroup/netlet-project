@@ -67,6 +67,13 @@ export type Product = {
   descriptionHtml: string;
   productType: string | null;
   vendor: string | null;
+  /**
+   * Trust badges the vendor has been awarded, as plain keys the client
+   * translates. They are here rather than on a vendor object because the
+   * storefront never loads a vendor — it loads products, and this is the one
+   * place a shopper is told who they are buying from.
+   */
+  vendorBadges: string[];
   tags: string[];
   /**
    * Spec rows and the review score, from `products.attributes`. The

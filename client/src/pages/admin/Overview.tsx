@@ -16,6 +16,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import type { HealthDetailKey } from "@shared/inventory/vendorHealth";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
@@ -29,6 +30,7 @@ type Tile = { label: MessageKey; value: number; href: string; tone?: "urgent" | 
 function Overview({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
   const counts = trpc.inventory.overview.useQuery();
+  const health = trpc.inventory.health.useQuery(undefined, { retry: false });
 
   if (counts.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
   const data = counts.data;
@@ -71,11 +73,99 @@ function Overview({ actor }: { actor: Actor }) {
         </div>
       )}
 
+      {health.data ? <HealthPanel health={health.data} /> : null}
+
       <h2 className="mt-8 text-[11px] font-extrabold tracking-[.12em] text-[#536b8c] uppercase">{t("admin.atAGlance")}</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {standing.map(tile => <Tile key={tile.label} tile={tile} />)}
       </div>
     </>
+  );
+}
+
+const COMPONENT_LABEL = {
+  catalog: "admin.healthCatalog",
+  stock: "admin.healthStock",
+  compliance: "admin.healthCompliance",
+  rating: "admin.healthRating",
+} as const;
+
+const BAND_LABEL = { good: "admin.healthGood", fair: "admin.healthFair", poor: "admin.healthPoor" } as const;
+
+/*
+ * Every figure the score is shown with, labelled.
+ *
+ * Typed against `HealthDetailKey` rather than `string`, so a figure added to
+ * `vendorHealth` without a label here fails the build. The alternative is what
+ * this replaced: "outOfStock 0 · variants 4" rendered into an Arabic page.
+ */
+const DETAIL_LABEL: Record<HealthDetailKey, MessageKey> = {
+  published: "health.published",
+  pendingReview: "health.pendingReview",
+  outOfStock: "health.outOfStock",
+  variants: "health.variants",
+  rejections: "health.rejections",
+  suspendAt: "health.suspendAt",
+  rating: "health.rating",
+  outOf: "health.outOf",
+};
+
+/**
+ * Account health, with its working shown.
+ *
+ * The requirement is transparency, so each component carries the raw counts it
+ * was computed from. A score a vendor cannot reproduce is a grade with no
+ * appeal.
+ */
+function HealthPanel({ health }: {
+  health: {
+    score: number;
+    band: "good" | "fair" | "poor";
+    components: { key: "catalog" | "stock" | "compliance" | "rating"; score: number; detail: Partial<Record<HealthDetailKey, number>> }[];
+  };
+}) {
+  const { t } = useTranslation();
+  const tone = health.band === "good" ? "#155724" : health.band === "fair" ? "#8a6d3b" : "#8c2f22";
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-[11px] font-extrabold tracking-[.12em] text-[#536b8c] uppercase">{t("admin.health")}</h2>
+      <div className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        <div className="flex flex-wrap items-baseline gap-3">
+          {/* A score is a number: isolated so it reads the same in both scripts. */}
+          <p dir="ltr" className="text-3xl font-extrabold" style={{ color: tone }}>{health.score}</p>
+          <p className="text-[12px] font-extrabold" style={{ color: tone }}>{t(BAND_LABEL[health.band])}</p>
+          <p className="w-full text-[12px] leading-5 text-[#536b8c] sm:w-auto sm:flex-1">{t("admin.healthNote")}</p>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {health.components.map(part => (
+            <div key={part.key} className="rounded-xl border border-[#e6e9ef] p-3">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="text-[12px] font-bold text-[#0a285a]">{t(COMPONENT_LABEL[part.key])}</p>
+                <p dir="ltr" className="text-[13px] font-extrabold text-[#536b8c]">{part.score}</p>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef1f6]">
+                <div className="h-full rounded-full bg-[#0a285a]" style={{ width: `${part.score}%` }} />
+              </div>
+              {/* The numbers behind the bar, so the bar is checkable. The
+                  count is isolated so it reads as a number in either script;
+                  the label around it takes the page's direction. */}
+              <p className="mt-2 text-[10px] text-[#9ea4b5]">
+                {Object.keys(part.detail).length === 0
+                  ? "—"
+                  : (Object.entries(part.detail) as [HealthDetailKey, number][]).map(([key, value], index) => (
+                      <span key={key}>
+                        {index > 0 ? " · " : null}
+                        {t(DETAIL_LABEL[key])} <span dir="ltr">{value}</span>
+                      </span>
+                    ))}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

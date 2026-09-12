@@ -115,6 +115,23 @@ procedures twice with a different guard at the top of each, which is the
 arrangement where a guard eventually goes missing from one copy. Every
 procedure resolves *who is asking* and the data layer refuses the rest.
 
+Commission resolves in `shared/inventory/commission.ts`, and a product's own
+rate overrides its vendor's. **An explicit zero is an override; an absent value
+is not** — "this product earns us nothing" and "this product has no special
+rate" are different instructions, and collapsing them loses one of them. Both
+rates are admin-only, because commission sits outside a vendor's control
+entirely.
+
+`shared/inventory/vendorHealth.ts` is the score and the badges, and both are
+pure. The score is four evenly-weighted components rather than a tuned blend,
+because the requirement is transparency: every component carries the raw counts
+it came from, and those counts are a closed `HealthDetailKey` union so that
+adding a figure without a label is a compile error rather than a camelCase
+identifier in the middle of an Arabic page. A vendor with nothing yet scores
+100 — a new seller has done nothing wrong. `verified` is the one badge no
+amount of good behaviour earns: a human checked the documents, and a badge a
+seller could earn by behaving well would be saying something else.
+
 A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
@@ -307,8 +324,9 @@ house vendor and nothing else, because a product cannot exist without a vendor
 to own it, and an invented catalog on a real deployment looks like an open
 shop. `docs/supabase-bootstrap.sql` is those two steps as one paste-able file,
 for setting a database up from the Supabase dashboard with nothing installed;
-it is generated from `drizzle/*.sql` and `shared/commerce/departments.ts`, so
-regenerate it rather than hand-editing after a schema change. `docs/SUPABASE.md`
+`node scripts/build-bootstrap.mjs` regenerates it from `drizzle/*.sql` and
+`shared/commerce/departments.ts` — run that after a schema change rather than
+hand-editing, which is how it ended up two migrations behind. `docs/SUPABASE.md`
 is the walkthrough. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.

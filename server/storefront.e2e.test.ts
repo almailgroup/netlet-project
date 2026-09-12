@@ -21,7 +21,7 @@ let db: ReturnType<typeof drizzle>;
 let appRouter: any;
 let caller: any;
 let shopper: any;
-const ids = { vendorOwner: 0, vendor: 0, category: 0 };
+const ids = { vendorOwner: 0, vendor: 0, category: 0, admin: 0 };
 
 function contextFor(user: User | null): TrpcContext {
   return {
@@ -51,6 +51,11 @@ beforeAll(async () => {
 
   const [owner] = await db.insert(users).values({ email: "owner@vendor.test" }).returning();
   ids.vendorOwner = owner.id;
+  /* A real row, not an invented id: the audit trail has a foreign key to
+     `users`, so an actor who does not exist makes every audit write fail
+     silently and the test stops covering the thing it looks like it covers. */
+  const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
+  ids.admin = admin.id;
   const [vendor] = await db
     .insert(vendors)
     .values({ slug: "acme", name: "Acme", nameAr: "أكمي", status: "approved", autoPublish: true })
@@ -130,13 +135,40 @@ describe("a product's journey from the admin portal to the shop", () => {
 
   it("leaves the shop again the moment its vendor is suspended", async () => {
     const { setVendorStatus } = await import("./inventory");
-    await setVendorStatus({ kind: "admin", userId: 999 }, ids.vendor, "suspended");
+    await setVendorStatus({ kind: "admin", userId: ids.admin }, ids.vendor, "suspended");
 
     expect(await shopper.commerce.products.byHandle({ handle })).toBeNull();
     const shelf = await shopper.commerce.products.list();
     expect(shelf).toHaveLength(0);
 
-    await setVendorStatus({ kind: "admin", userId: 999 }, ids.vendor, "approved");
+    await setVendorStatus({ kind: "admin", userId: ids.admin }, ids.vendor, "approved");
+  });
+
+  /*
+   * Badges are awarded in the portal and read in the shop, which is two
+   * different tables' worth of code away from each other — exactly the join
+   * this file exists to hold together.
+   */
+  it("carries a badge awarded in the portal through to the shop", async () => {
+    const [admin] = await db.select().from(users).where(eq(users.id, ids.admin));
+    const adminCaller = appRouter.createCaller(contextFor(admin as User));
+
+    await adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: ["verified", "fastShipping"] });
+
+    const shown = await shopper.commerce.products.byHandle({ handle });
+    expect(shown.vendorBadges).toEqual(["verified", "fastShipping"]);
+
+    // And removing it removes it, rather than only ever adding.
+    await adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: [] });
+    expect((await shopper.commerce.products.byHandle({ handle })).vendorBadges).toEqual([]);
+  });
+
+  it("refuses a vendor owner who tries to award themselves a badge", async () => {
+    /* FORBIDDEN specifically: a test that accepts any throw would pass on a
+       typo in the procedure name just as happily. */
+    await expect(
+      caller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: ["verified"] }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("shows the departments the seed creates as collections", async () => {

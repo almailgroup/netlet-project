@@ -14,7 +14,7 @@ import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../server/routers";
-import { demoCategories, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
+import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
@@ -252,6 +252,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       return demoLowStock;
     case "inventory.stockHistory":
       return demoStockHistory;
+    /* Derived from the same fixtures the product list renders, so the panel
+       and the table behind it cannot disagree. */
+    case "inventory.health":
+      return demoHealth;
     case "inventory.storefront.byHandle":
       return demoInventoryProducts.find(row => row.handle === (input as { handle: string })?.handle) ?? null;
     /* Admin-only, and the demo actor is a vendor manager — so an empty list is
@@ -286,6 +290,8 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.people.setAdmin":
     case "inventory.people.addToVendor":
     case "inventory.people.removeFromVendor":
+    case "inventory.products.setCommission":
+    case "inventory.vendors.setBadges":
     case "inventory.vendors.setCommission":
     case "inventory.vendors.setStatus":
     case "inventory.vendors.setMemberRole":
