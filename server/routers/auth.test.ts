@@ -52,10 +52,18 @@ describe("auth.me", () => {
     const { ctx } = createContext(sampleUser);
     const me = await (await caller(ctx)).auth.me();
 
-    // The guard that matters: `users` rows carry the digest, and returning the
-    // row wholesale would ship it to every browser on every page load.
+    // The guard that matters: `users` rows carry the digest and the Firebase
+    // uid, and returning the row wholesale would ship both to every browser on
+    // every page load.
     expect(me).not.toHaveProperty("passwordHash");
-    expect(Object.keys(me ?? {}).sort()).toEqual(["email", "id", "name", "role"]);
+    expect(me).not.toHaveProperty("firebaseUid");
+    // Pinned rather than merely spot-checked, so a field added to `users` has
+    // to be admitted here on purpose before it can reach the client. The two
+    // dates were admitted for the account page, which shows when the account
+    // was opened and last used.
+    expect(Object.keys(me ?? {}).sort()).toEqual(
+      ["createdAt", "email", "id", "lastSignedIn", "name", "role"],
+    );
   });
 });
 

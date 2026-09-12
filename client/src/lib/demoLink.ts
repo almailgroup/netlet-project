@@ -297,6 +297,9 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.setCommission":
     case "inventory.vendors.create":
     case "inventory.vendors.updateProfile":
+    case "auth.updateName":
+    case "auth.changeEmail":
+    case "auth.changePassword":
     case "inventory.vendors.addNewMember":
     case "inventory.vendors.setBadges":
     case "inventory.vendors.setCommission":

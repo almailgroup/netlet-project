@@ -72,6 +72,28 @@ deliberate:
   identical for an address with no account, like sign-in, so it cannot be used
   to ask who is registered.
 
+`ProfileManager` on `/account` is the other half: display name, sign-in email
+and password, each its own small form with its own Save. One Save across all
+three would change a password somebody opened the panel to fix a spelling in.
+**Email and password both re-ask for the current password** — a session left
+open on a shared machine should not be enough to take an account over, and
+those two are exactly what somebody doing that would reach for. `server/profile.ts`
+holds the writes rather than `db.ts`, because functions inside `db.ts` call
+its module-local `getDb`, which nothing outside can redirect, so anything
+living there cannot be tested against a real database.
+
+The password floor is the *same* function on both sides:
+`newPassword` in the auth router refines on `checkPassword().acceptable`, so
+the API cannot accept what the form refuses. Sign-in is deliberately not held
+to it — an account made before a rule existed must still be able to get in and
+change it.
+
+**Signing out asks first**, from both places it can be done: the account page
+and the home header. `ConfirmDialog` is what asks, and its confirm button
+carries the verb rather than "OK" — somebody who opened it by accident reads
+the button, not the paragraph. Cancel takes focus on open, so a stray Enter
+gives the safe answer.
+
 **There is no social sign-in, on purpose.** It needs a provider configured in
 the Firebase console and a redirect the server has to trust; a button that
 looks like Google sign-in and does nothing is worse than no button. The

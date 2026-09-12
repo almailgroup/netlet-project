@@ -27,10 +27,20 @@ describe("checkPassword", () => {
   });
 
   it("collapses a common password whatever else it has", () => {
-    const verdict = checkPassword("Password123!extra");
+    const verdict = checkPassword("Password123!");
     expect(verdict.unmet).toContain("notCommon");
     expect(verdict.score).toBeLessThanOrEqual(1);
     expect(verdict.acceptable).toBe(false);
+  });
+
+  it("matches the core, not a substring", () => {
+    // The bug this replaced: any passphrase containing "password" anywhere was
+    // refused, which is wrong and pushes people toward something shorter.
+    expect(checkPassword("correct horse password staple").acceptable).toBe(true);
+    expect(checkPassword("my-kuwait-harbour-walk").acceptable).toBe(true);
+    // Still caught, which is the whole point of the rule.
+    expect(checkPassword("passw0rd").unmet).toContain("notCommon");
+    expect(checkPassword("qwerty_1").unmet).toContain("notCommon");
   });
 
   it("catches a single repeated character and a digit run", () => {

@@ -21,14 +21,16 @@
 import { COOKIE_NAME } from "../../shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { checkPassword } from "../../shared/auth/passwordStrength.js";
 import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth.js";
 import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
-import { publicProcedure, router } from "../_core/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { hashPassword, verifyPassword } from "../_core/password.js";
-import { isFirebaseConfigured, sendFirebasePasswordReset, verifyFirebasePassword } from "../_core/firebase.js";
+import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, sendFirebasePasswordReset, verifyFirebasePassword } from "../_core/firebase.js";
 import { createAccount, EmailTakenError } from "../_core/accounts.js";
 import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
+import { loadUser, updateUserEmail, updateUserName, updateUserPasswordHash } from "../profile.js";
 import type { User } from "../../drizzle/schema.js";
 
 const credentials = z.object({
@@ -38,15 +40,44 @@ const credentials = z.object({
   password: z.string().min(10).max(200),
 });
 
+/**
+ * A password somebody is *setting*, as opposed to one they are signing in
+ * with. The same floor the meter draws, applied here so the API cannot accept
+ * what the form refuses — otherwise the rules are advisory and anything
+ * posting straight at tRPC skips them.
+ *
+ * Sign-in is deliberately not held to this: an account made before a rule
+ * existed must still be able to get in and change it.
+ */
+const newPassword = z
+  .string()
+  .min(10)
+  .max(200)
+  .refine(value => checkPassword(value).acceptable, "auth.passwordTooWeak");
+
 const registration = credentials.extend({
+  password: newPassword,
   name: z.string().trim().min(1).max(255).optional(),
 });
 
-/** The shape sent to the client: never the hash. */
-export type PublicUser = Pick<User, "id" | "email" | "name" | "role">;
+/**
+ * The shape sent to the client: never the hash, and never the Firebase uid.
+ *
+ * The two dates are here so the account page can say when the account was
+ * opened and when it was last used — a shopper's own facts, and the ones that
+ * make an unrecognised sign-in noticeable.
+ */
+export type PublicUser = Pick<User, "id" | "email" | "name" | "role" | "createdAt" | "lastSignedIn">;
 
 function toPublicUser(user: User): PublicUser {
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    createdAt: user.createdAt,
+    lastSignedIn: user.lastSignedIn,
+  };
 }
 
 function assertConfigured() {
@@ -70,6 +101,26 @@ const invalidCredentials = new TRPCError({
 });
 
 const emailTaken = new TRPCError({ code: "CONFLICT", message: "auth.emailTaken" });
+
+const wrongPassword = new TRPCError({ code: "UNAUTHORIZED", message: "auth.wrongCurrentPassword" });
+
+/**
+ * Re-checks the password of somebody already signed in.
+ *
+ * Whichever store holds it: Firebase when the account has a uid, the local
+ * scrypt digest otherwise. An account with neither cannot be verified, and is
+ * refused rather than waved through — the failure mode of the alternative is
+ * silent and total.
+ */
+async function assertCurrentPassword(user: User, password: string): Promise<void> {
+  if (isFirebaseConfigured() && user.firebaseUid) {
+    const verified = await verifyFirebasePassword(user.email, password);
+    if (!verified) throw wrongPassword;
+    return;
+  }
+  if (!user.passwordHash) throw wrongPassword;
+  if (!(await verifyPassword(password, user.passwordHash))) throw wrongPassword;
+}
 
 /** Firebase checks the password; the local row is created on first sight. */
 async function signInWithFirebase(email: string, password: string): Promise<User | null> {
@@ -109,6 +160,87 @@ export const authRouter = router({
     ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
     return toPublicUser(user);
   }),
+
+  /**
+   * The profile, as its owner may change it.
+   *
+   * Name is free. Email and password both re-ask for the current password
+   * first: a session left open on a shared machine should not be enough to
+   * take an account over, and both of these are exactly the moves somebody
+   * doing that would make.
+   */
+  updateName: protectedProcedure
+    .input(z.object({ name: z.string().trim().max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      const name = input.name.trim() || null;
+      const updated = await updateUserName(ctx.user.id, name);
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+
+      // Firebase holds the display name too when it owns the account, and a
+      // mirror that disagrees is the kind of drift nobody notices until a
+      // reset email is addressed to the wrong name.
+      const auth = getFirebaseAuth();
+      if (auth && updated.firebaseUid) {
+        await auth.updateUser(updated.firebaseUid, { displayName: name ?? undefined });
+      }
+      return toPublicUser(updated);
+    }),
+
+  changeEmail: protectedProcedure
+    .input(z.object({
+      email: z.string().trim().email().max(320),
+      currentPassword: z.string().min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await loadUser(ctx.user.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+      await assertCurrentPassword(current, input.currentPassword);
+
+      const next = input.email.trim().toLowerCase();
+      if (next === current.email) return toPublicUser(current);
+
+      /*
+       * Firebase first, then the mirror. The reverse order would leave a local
+       * row claiming an address the shopper cannot actually sign in with —
+       * and sign-in goes to Firebase, so the mirror would be the lie.
+       */
+      const auth = getFirebaseAuth();
+      if (auth && current.firebaseUid) {
+        try {
+          await auth.updateUser(current.firebaseUid, { email: next });
+        } catch (error) {
+          if (isEmailInUse(error)) throw emailTaken;
+          throw error;
+        }
+      }
+
+      const updated = await updateUserEmail(ctx.user.id, next);
+      if (!updated) {
+        // Put Firebase back, or the two disagree about the login address.
+        if (auth && current.firebaseUid) await auth.updateUser(current.firebaseUid, { email: current.email });
+        throw emailTaken;
+      }
+      return toPublicUser(updated);
+    }),
+
+  changePassword: protectedProcedure
+    .input(z.object({
+      currentPassword: z.string().min(1).max(200),
+      newPassword,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await loadUser(ctx.user.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+      await assertCurrentPassword(current, input.currentPassword);
+
+      const auth = getFirebaseAuth();
+      if (auth && current.firebaseUid) {
+        await auth.updateUser(current.firebaseUid, { password: input.newPassword });
+      } else {
+        await updateUserPasswordHash(ctx.user.id, await hashPassword(input.newPassword));
+      }
+      return { changed: true } as const;
+    }),
 
   /**
    * Asks Firebase to email a reset link.

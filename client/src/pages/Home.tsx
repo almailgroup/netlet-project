@@ -8,6 +8,7 @@ import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, rail
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import AuthDialog from "@/components/AuthDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { filterAndSortCatalog } from "@shared/commerce/catalog";
@@ -273,6 +274,8 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
   useOverlay(menuOpen, () => setMenuOpen(false));
   const [, navigate] = useLocation();
@@ -352,7 +355,9 @@ export default function Home() {
       toast.error(t("cart.buyFailed"));
     }
   };
-  const accountAction = () => { if (authLoading) return; if (isAuthenticated) { void logout().then(() => toast.success(t("header.signedOut"))); } else openAuth(); };
+  // Signing out asks first here too. The header button is the easiest one to
+  // hit by accident, being where the cart and the language switch also live.
+  const accountAction = () => { if (authLoading) return; if (isAuthenticated) setSignOutOpen(true); else openAuth(); };
   // Footer links go where they say they go: a category filter, an on-page
   // rail, or another route. Only the two links with nothing behind them yet
   // fall through to a notice.
@@ -367,6 +372,26 @@ export default function Home() {
 
   return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
+    <ConfirmDialog
+      open={signOutOpen}
+      tone="danger"
+      icon={<LogOut className="size-5" />}
+      title={t("account.signOutTitle")}
+      body={t("account.signOutBody")}
+      confirmLabel={t("header.signOut")}
+      pending={signingOut}
+      onClose={() => setSignOutOpen(false)}
+      onConfirm={async () => {
+        setSigningOut(true);
+        try {
+          await logout();
+          toast.success(t("header.signedOut"));
+          setSignOutOpen(false);
+        } finally {
+          setSigningOut(false);
+        }
+      }}
+    />
     <header {...headerHandlers} data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}

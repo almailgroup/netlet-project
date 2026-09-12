@@ -50,12 +50,23 @@ const COMMON = [
   "abc123", "monkey", "dragon", "football", "baseball", "sunshine",
 ];
 
+/**
+ * Whether the password is essentially one of the shapes above.
+ *
+ * Matched against the password's *core* — lowercased, with digits and
+ * punctuation stripped — rather than as a substring. A substring test called
+ * "correct horse password staple" a common password, which is both wrong and
+ * the kind of refusal that teaches people to pick something shorter. The core
+ * test still catches what it is for: `Password123!`, `passw0rd`, `qwerty_1`.
+ */
 function isCommon(password: string): boolean {
+  // A run of one character, or a plain digit ladder, is the same failure.
+  if (/^(.)\1+$/.test(password)) return true;
+  if (/^(0123456789|1234567890|9876543210|1234567|7654321)\d*$/.test(password)) return true;
+
   const lower = password.toLowerCase();
-  // A long sequence of digits, or a run of one character, is the same failure.
-  if (/^(\d)\1+$/.test(password) || /^(.)\1+$/.test(password)) return true;
-  if (/^(0123456789|1234567890|9876543210)/.test(password)) return true;
-  return COMMON.some(word => lower.includes(word));
+  const core = lower.replace(/[^a-z]/g, "");
+  return COMMON.some(word => core === word || lower === word);
 }
 
 export function checkPassword(password: string): PasswordVerdict {
