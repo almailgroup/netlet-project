@@ -149,7 +149,7 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
 
       <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">
         {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] text-[#8fa3bd] uppercase">{product.vendor}</p> : null}
-        <button onClick={onDetails} className="mt-0.5 text-start"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:text-[#f2683a]">{product.title}</h3></button>
+        <button onClick={onDetails} className="mt-0.5 text-start"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:ink-accent">{product.title}</h3></button>
 
         {rating ? (
           <div className="mt-1.5 flex items-center gap-1" aria-label={rating.count ? t("product.ratingAriaCount", { value: rating.value, max: rating.scaleMax, count: rating.count }) : t("product.ratingAria", { value: rating.value, max: rating.scaleMax })}>

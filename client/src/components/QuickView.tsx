@@ -158,7 +158,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
             {inStock ? (
               <div className="mt-4 flex items-center gap-3">
-                <span className="text-[12px] font-semibold text-[#7e859b]">{t("product.quantity")}</span>
+                <span className="text-[12px] font-semibold ink-muted">{t("product.quantity")}</span>
                 <div className="glass inline-flex items-center overflow-hidden rounded-[10px]">
                   <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label={t("product.decreaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
                   <span aria-live="polite" className="min-w-9 text-center text-[14px] font-bold text-[#1f2229]">{quantity}</span>
@@ -189,7 +189,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               </button>
             </div>
 
-            <button onClick={openFull} className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold text-[#f2683a] underline underline-offset-4">
+            <button onClick={openFull} className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold ink-accent underline underline-offset-4">
               {t("quick.fullDetails")} <ArrowRight className="size-3.5 rtl:-scale-x-100" />
             </button>
           </div>

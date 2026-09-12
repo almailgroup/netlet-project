@@ -32,7 +32,7 @@ export default function NotFound() {
 
       <div id="main" className="container py-14 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#f2683a]">
+          <span className="inline-grid size-14 place-items-center rounded-2xl bg-[#e7edf5] ink-accent">
             <Compass className="size-7" />
           </span>
           <p className="mt-6 text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">404</p>
@@ -73,7 +73,7 @@ export default function NotFound() {
                       />
                     ) : <div className="aspect-square" />}
                   </div>
-                  <h3 className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:text-[#f2683a]">
+                  <h3 className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:ink-accent">
                     {product.title}
                   </h3>
                   <p className="mt-1 text-sm font-extrabold tracking-[-.04em]">{money(product.priceRange.min)}</p>

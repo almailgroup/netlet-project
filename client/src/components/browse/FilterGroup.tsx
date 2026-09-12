@@ -30,7 +30,7 @@ export function FilterGroup({ title, defaultOpen = true, children }: {
         className="flex w-full items-center justify-between gap-2 text-start"
       >
         <span className="text-[13px] font-bold text-[#0a285a]">{title}</span>
-        <ChevronDown className={`size-4 shrink-0 text-[#778ba6] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`size-4 shrink-0 ink-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {/* `hidden` rather than unmounting, so a group keeps its scroll position
           and any typed value when it is folded and opened again. */}
@@ -91,7 +91,7 @@ export function CollapsibleList({ children, moreLabel, fewerLabel, limit = 6 }: 
         <button
           type="button"
           onClick={() => setExpanded(current => !current)}
-          className="mt-1.5 text-[12px] font-bold text-[#f2683a] underline underline-offset-4"
+          className="mt-1.5 text-[12px] font-bold ink-accent underline underline-offset-4"
         >
           {expanded ? fewerLabel : moreLabel(children.length)}
         </button>

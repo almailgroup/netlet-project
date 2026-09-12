@@ -63,7 +63,7 @@ function Row({ icon, title, note, children }: {
         <span className="text-[#536b8c]">{icon}</span>
         <p className="text-[13px] font-extrabold text-[#0a285a]">{title}</p>
       </div>
-      {note ? <p className="mt-1 text-[11px] leading-4 text-[#778ba6]">{note}</p> : null}
+      {note ? <p className="mt-1 text-[11px] leading-4 ink-muted">{note}</p> : null}
       <div className="mt-3">{children}</div>
     </div>
   );
@@ -154,7 +154,7 @@ function EmailForm({ user, onSaved, onFail }: {
             onChange={event => setPassword(event.target.value)}
             className={field}
           />
-          <p className="text-[11px] leading-4 text-[#778ba6]">{t("account.currentPasswordWhy")}</p>
+          <p className="text-[11px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => save.mutate({ email: email.trim(), currentPassword: password })}
@@ -175,7 +175,7 @@ function EmailForm({ user, onSaved, onFail }: {
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="mt-2 text-[12px] font-extrabold text-[#f2683a] underline underline-offset-4"
+          className="mt-2 text-[12px] font-extrabold ink-accent underline underline-offset-4"
         >
           {t("account.changeEmail")}
         </button>
@@ -241,13 +241,13 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           {next.length > 0 && verdict.unmet.length > 0 && (
             <ul className="space-y-0.5">
               {verdict.unmet.map(rule => (
-                <li key={rule} className="text-[11px] leading-4 text-[#778ba6]">
+                <li key={rule} className="text-[11px] leading-4 ink-muted">
                   • {t(`auth.rule${rule[0].toUpperCase()}${rule.slice(1)}` as "auth.ruleLength")}
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[11px] leading-4 text-[#778ba6]">{t("account.currentPasswordWhy")}</p>
+          <p className="text-[11px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => save.mutate({ currentPassword: current, newPassword: next })}
@@ -268,7 +268,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
       ) : (
         <button
           onClick={() => setOpen(true)}
-          className="text-[12px] font-extrabold text-[#f2683a] underline underline-offset-4"
+          className="text-[12px] font-extrabold ink-accent underline underline-offset-4"
         >
           {t("account.changePassword")}
         </button>

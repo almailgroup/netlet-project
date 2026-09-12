@@ -118,7 +118,7 @@ export default function Saved() {
           </div>
         ) : (
           <div className="mt-8 rounded-[1.5rem] border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#e7edf5] text-[#f2683a]">
+            <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#e7edf5] ink-accent">
               <Heart className="size-6" />
             </div>
             <h2 className="mt-5 text-lg font-extrabold text-[#0a285a]">{t("saved.emptyTitle")}</h2>
@@ -135,7 +135,7 @@ export default function Saved() {
         )}
 
         {cartLoading ? (
-          <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold text-[#778ba6]">
+          <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold ink-muted">
             <LoaderCircle className="size-3.5 animate-spin" />{t("saved.updatingCart")}
           </p>
         ) : null}

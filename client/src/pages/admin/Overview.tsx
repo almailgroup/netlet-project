@@ -63,7 +63,7 @@ function Overview({ actor }: { actor: Actor }) {
     <>
       <h1 className="text-xl font-extrabold">{t("admin.overview")}</h1>
 
-      <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] text-[#f2683a] uppercase">{t("admin.needsYou")}</h2>
+      <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
       {waiting.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
           {t("admin.allClear")}

@@ -72,7 +72,7 @@ export function VariantPicker({ product, selected, onSelect }: {
           <fieldset key={option.name}>
             <legend className="text-xs font-extrabold text-[#0a285a]">
               {option.name}
-              {current ? <span className="ms-1.5 font-semibold text-[#7e859b]">{current}</span> : null}
+              {current ? <span className="ms-1.5 font-semibold ink-muted">{current}</span> : null}
             </legend>
             <div className="mt-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label={t("product.chooseVariant", { option: option.name })}>
               {option.values.map(value => {

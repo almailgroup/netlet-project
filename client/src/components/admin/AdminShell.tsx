@@ -55,13 +55,15 @@ export function AdminShell({ need, children }: {
   const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable });
 
   if ((!DEMO_MODE && authLoading) || (reachable && me.isLoading)) {
-    return <Frame><p className="text-sm text-[#536b8c]">{t("admin.loading")}</p></Frame>;
+    // Announced rather than only drawn: somebody on a screen reader arriving
+    // mid-load otherwise lands on a page that says nothing at all.
+    return <Frame><p role="status" className="text-sm ink-muted">{t("admin.loading")}</p></Frame>;
   }
 
   if (!reachable) {
     return (
       <Frame>
-        <p className="text-sm font-bold text-[#0a285a]">{t("admin.signInFirst")}</p>
+        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.signInFirst")}</h1>
         <Link href="/account" className="glass glass-navy pressable mt-4 inline-flex rounded-full px-5 py-3 text-xs font-extrabold">
           {t("header.signIn")}
         </Link>

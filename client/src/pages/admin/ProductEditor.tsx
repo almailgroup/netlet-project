@@ -215,7 +215,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   <button
                     onClick={() => setImages(images.filter((_, i) => i !== index))}
                     aria-label={t("admin.removeImage")}
-                    className="tap-target text-[#778ba6] hover:text-[#f2683a]"
+                    className="tap-target ink-muted hover:ink-accent"
                   >
                     <Trash2 className="size-4" />
                   </button>

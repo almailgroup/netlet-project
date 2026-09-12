@@ -207,7 +207,7 @@ export default function Category() {
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div className="container pt-4 sm:pt-6">
-        <nav className="flex items-center gap-1.5 text-[12px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}>
+        <nav className="flex items-center gap-1.5 text-[12px] ink-muted" aria-label={t("nav.breadcrumb")}>
           <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
           <ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
           <span className="text-[#404553]">{title}</span>
@@ -256,10 +256,10 @@ export default function Category() {
                     className="pressable inline-flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0a285a] hover:border-[#f2683a]"
                   >
                     <span dir="auto">{chip.label}</span>
-                    <X className="size-3 text-[#778ba6]" aria-hidden />
+                    <X className="size-3 ink-muted" aria-hidden />
                   </button>
                 ))}
-                <button onClick={clearAll} className="text-[11px] font-extrabold text-[#f2683a] underline underline-offset-4">
+                <button onClick={clearAll} className="text-[11px] font-extrabold ink-accent underline underline-offset-4">
                   {t("browse.clearAll")}
                 </button>
               </div>
@@ -273,7 +273,7 @@ export default function Category() {
               </div>
             ) : error ? (
               <div className="mt-6 rounded-2xl border border-[#f2b69e] bg-white px-6 py-14 text-center">
-                <PackageOpen className="mx-auto size-7 text-[#f2683a]" aria-hidden />
+                <PackageOpen className="mx-auto size-7 ink-accent" aria-hidden />
                 <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.catalogSlow")}</h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">{t("home.refreshNote")}</p>
                 <button onClick={() => void refetch()} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
@@ -303,7 +303,7 @@ export default function Category() {
               </div>
             ) : (
               <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-                <PackageOpen className="mx-auto size-7 text-[#778ba6]" aria-hidden />
+                <PackageOpen className="mx-auto size-7 ink-muted" aria-hidden />
                 <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">
                   {activeCount || search ? t("browse.empty") : t("browse.emptyCategory")}
                 </h2>
@@ -348,7 +348,7 @@ export default function Category() {
               <h2 className="text-sm font-extrabold">{t("browse.filters")}</h2>
               <div className="flex items-center gap-3">
                 {activeCount ? (
-                  <button onClick={clearAll} className="text-[11px] font-extrabold text-[#f2683a] underline underline-offset-4">
+                  <button onClick={clearAll} className="text-[11px] font-extrabold ink-accent underline underline-offset-4">
                     {t("browse.clearAll")}
                   </button>
                 ) : null}

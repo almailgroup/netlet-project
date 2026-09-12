@@ -380,6 +380,27 @@
 
   /* Navy tint, at full brand strength. White on #0a285a measures about 12.6:1,
      so the primary controls are comfortably past WCAG AA. */
+  /*
+   * Text colours that actually pass AA.
+   *
+   * The brand orange is #f2683a, and as *text* on a pale surface it measures
+   * 3.08:1 against white — below the 4.5:1 normal text needs. It stays the
+   * brand's fill colour everywhere it is a fill; these two are what it becomes
+   * when it has to be read as words. #a44a2b was already in the codebase as
+   * the darker orange, so this introduces no new hue, only a legible one.
+   *
+   * `--ink-muted` replaces #778ba6 (3.48:1) and #7e859b (3.67:1) for small
+   * print. Both were fine as decoration and failing as sentences.
+   */
+  :root {
+    --ink-accent: #a44a2b;
+    --ink-accent-on-dark: #ffab85;
+    --ink-muted: #536b8c;
+  }
+  .ink-accent { color: var(--ink-accent); }
+  .ink-accent-on-dark { color: var(--ink-accent-on-dark); }
+  .ink-muted { color: var(--ink-muted); }
+
   .glass-navy {
     color: #fffdf9;
     /* Opaque brand navy. The tint was translucent so the backdrop could show

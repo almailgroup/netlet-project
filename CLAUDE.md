@@ -291,6 +291,23 @@ the one place the storefront's signed-out-guest rule is bent, because a sign-in
 wall would show nothing of the thing being demonstrated. `/admin/people` is
 admin-only, so in the demo it correctly refuses.
 
+## Colour and contrast
+
+**The brand orange is a fill, not an ink.** `#f2683a` on a pale surface
+measures 3.08:1 against white — below the 4.5:1 that normal text needs, and
+it was being used for links, eyebrows and hints all over the storefront.
+Three utilities in `index.css` are what it becomes when it has to be read:
+`.ink-accent` (`#a44a2b`, 5.84:1 — already the codebase's darker orange, so no
+new hue), `.ink-accent-on-dark` (`#ffab85`, for the same text over navy, where
+darkening would make it worse), and `.ink-muted` (`#536b8c`, replacing
+`#778ba6` at 3.48 and `#7e859b` at 3.67).
+
+Use those rather than a raw hex for anything that is words. The fills are
+untouched: orange is still orange everywhere it is a surface.
+
+`axe-core` run over the storefront and the portal in both languages is what
+found all of it, and reports zero violations now.
+
 ## Browsing
 
 `/category/:slug` is the department page — the sidebar, the grid, the sort.

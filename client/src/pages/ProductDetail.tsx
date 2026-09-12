@@ -80,7 +80,7 @@ function RelatedCard({ product }: { product: Product }) {
           {image ? <img src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="aspect-square" />}
         </div>
         <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || t("product.netletEdit")}</p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:text-[#f2683a]">{product.title}</h3>
+        <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:ink-accent">{product.title}</h3>
         <p className="mt-2 text-base font-extrabold tracking-[-.04em] text-[#0a285a]">{money(product.priceRange.min)}</p>
       </button>
     </article>
@@ -343,9 +343,9 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           </div>
 
           <div className="absolute end-3 top-3 flex flex-col gap-2">
-            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><Share2 className="size-[18px]" /></button>
+            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:ink-accent"><Share2 className="size-[18px]" /></button>
             <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
-            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#f2683a]"><ZoomIn className="size-[18px]" /></button>
+            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:ink-accent"><ZoomIn className="size-[18px]" /></button>
           </div>
 
           {hasMultipleImages ? <>
@@ -369,7 +369,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
         </div>
       </div>
 
-      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold text-[#778ba6]">{t(canHover ? "product.galleryHintHover" : "product.galleryHintTouch")}</p> : null}
+      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold ink-muted">{t(canHover ? "product.galleryHintHover" : "product.galleryHintTouch")}</p> : null}
     </div>
   );
 }
@@ -408,14 +408,14 @@ function StarRating({ value, scaleMax, count }: { value: number; scaleMax: numbe
     <div className="mt-3 flex items-center gap-2 text-sm" aria-label={label}>
       <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
       <strong className="font-extrabold text-[#1f2229]">{value}</strong>
-      {count === null ? null : <span className="text-[#7e859b]">({count === 1 ? t("product.reviewOne") : t("product.reviews", { count })})</span>}
+      {count === null ? null : <span className="ink-muted">({count === 1 ? t("product.reviewOne") : t("product.reviews", { count })})</span>}
     </div>
   );
 }
 
 function SpecificationsPanel({ product, t }: { product: Product; t: Translate }) {
   const { rows, text } = specifications(product);
-  if (!rows.length && !text) return <p className="text-sm leading-7 text-[#778ba6]">{t("product.noSpecs")}</p>;
+  if (!rows.length && !text) return <p className="text-sm leading-7 ink-muted">{t("product.noSpecs")}</p>;
   return (
     <div className="space-y-3">
       {rows.length ? (
@@ -556,14 +556,14 @@ export default function ProductDetail() {
   // The selected tab keeps its navy on hover. `.glass-navy:hover` shifts to
   // orange, which is right for a button you are about to press but wrong for a
   // tab that is already selected — it reads as a second, different control.
-  const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "text-[#7e859b] hover:text-[#0a285a]"}`;
+  const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "ink-muted hover:text-[#0a285a]"}`;
 
   return (
     <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-14">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} />
 
       <div className="container py-6 sm:py-8">
-        <nav className="flex flex-wrap items-center gap-x-2 text-[13px] text-[#7e859b]" aria-label={t("nav.breadcrumb")}>
+        <nav className="flex flex-wrap items-center gap-x-2 text-[13px] ink-muted" aria-label={t("nav.breadcrumb")}>
           <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
           {product.productType ? <>
             <span aria-hidden>/</span>
@@ -581,12 +581,12 @@ export default function ProductDetail() {
           <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? (
               <div className="flex flex-wrap items-center gap-2">
-                <p dir="auto" className="text-xs font-bold tracking-[.5px] text-[#7e859b] uppercase">{product.vendor}</p>
+                <p dir="auto" className="text-xs font-bold tracking-[.5px] ink-muted uppercase">{product.vendor}</p>
                 <VendorBadges badges={product.vendorBadges} />
               </div>
             ) : null}
-            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium text-[#7e859b]">{t("product.sku")}: <span dir="ltr" className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
-            {product.productType ? <p className="mt-2 text-sm font-medium text-[#7e859b]">{t("product.category")}: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
+            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium ink-muted">{t("product.sku")}: <span dir="ltr" className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
+            {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
 
             <h1 className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 
@@ -620,7 +620,7 @@ export default function ProductDetail() {
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
 
             <div className="mt-6 flex items-center gap-3">
-              <span className="text-sm font-semibold text-[#7e859b]">{t("product.quantity")}:</span>
+              <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
               <div className="glass inline-flex items-center overflow-hidden rounded-[10px]">
                 <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label={t("product.decreaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
                 <span aria-live="polite" className="min-w-9 text-center text-[15px] font-bold text-[#1f2229]">{quantity}</span>
@@ -637,11 +637,11 @@ export default function ProductDetail() {
 
             <button onClick={viewCart} className="pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#0a285a] bg-white/50 px-5 py-3.5 text-[15px] font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a] hover:text-white"><ShoppingBasket className="size-[18px]" />{itemCount ? t("product.viewCartCount", { count: itemCount }) : t("product.viewCart")}</button>
 
-            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-[#778ba6]"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
+            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
           </div>
         </section>
 
-        <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold text-[#f2683a] underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
+        <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold ink-accent underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
       </div>
       <MobileTabBar />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}

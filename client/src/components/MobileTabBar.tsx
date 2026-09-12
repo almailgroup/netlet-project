@@ -73,7 +73,7 @@ export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
           key={tab.key}
           onClick={tab.action}
           aria-current={tab.active ? "page" : undefined}
-          className={`pressable relative grid min-w-[52px] place-items-center gap-0.5 rounded-xl p-1.5 text-[10px] font-bold ${tab.active ? "text-[#f2683a]" : "text-[#536b8c]"}`}
+          className={`pressable relative grid min-w-[52px] place-items-center gap-0.5 rounded-xl p-1.5 text-[10px] font-bold ${tab.active ? "ink-accent" : "text-[#536b8c]"}`}
         >
           <span className="relative">
             {tab.icon}

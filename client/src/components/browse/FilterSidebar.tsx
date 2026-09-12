@@ -104,7 +104,7 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
 
       {facets.priceBounds ? (
         <FilterGroup title={t("browse.price")}>
-          <p className="mb-2.5 text-[11px] text-[#778ba6]">
+          <p className="mb-2.5 text-[11px] ink-muted">
             {t("browse.priceRange", {
               min: money({ amount: String(facets.priceBounds.min), currencyCode: currency }),
               max: money({ amount: String(facets.priceBounds.max), currencyCode: currency }),

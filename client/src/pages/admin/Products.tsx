@@ -114,7 +114,7 @@ function ProductTable({ actor }: { actor: Actor }) {
       </div>
 
       <label className="glass-field mt-4 flex h-10 items-center gap-2 rounded-xl px-3">
-        <Search className="size-4 shrink-0 text-[#778ba6]" aria-hidden />
+        <Search className="size-4 shrink-0 ink-muted" aria-hidden />
         <input
           value={search}
           onChange={event => setSearch(event.target.value)}
@@ -134,7 +134,7 @@ function ProductTable({ actor }: { actor: Actor }) {
       ) : (
         <div className="mt-5 overflow-x-auto rounded-2xl border border-[#e6e9ef] bg-white">
           <table className="w-full min-w-[620px] text-start text-[13px]">
-            <thead className="border-b border-[#e6e9ef] text-[11px] uppercase tracking-[.08em] text-[#778ba6]">
+            <thead className="border-b border-[#e6e9ef] text-[11px] uppercase tracking-[.08em] ink-muted">
               <tr>
                 <th className="px-4 py-3 text-start font-bold">{t("admin.columnProduct")}</th>
                 {showVendor ? <th className="px-4 py-3 text-start font-bold">{t("admin.columnVendor")}</th> : null}

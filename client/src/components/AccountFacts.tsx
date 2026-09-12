@@ -34,7 +34,7 @@ export function AccountFacts({ user }: { user: PublicUser }) {
       <div className="grid gap-3 sm:grid-cols-3">
         {facts.map(fact => (
           <div key={fact.label} className="rounded-2xl border border-[#e6e9ef] p-4">
-            <p className="flex items-center gap-2 text-[11px] font-extrabold tracking-[.06em] text-[#778ba6] uppercase">
+            <p className="flex items-center gap-2 text-[11px] font-extrabold tracking-[.06em] ink-muted uppercase">
               <fact.icon className="size-3.5" aria-hidden />{fact.label}
             </p>
             {/* Isolated so a date reads the same in both scripts. */}

@@ -170,7 +170,7 @@ function People() {
                       <button
                         onClick={() => removeFromVendor.mutate({ vendorId: membership.vendorId, userId: person.id })}
                         aria-label={t("admin.removeFrom", { vendor: membership.vendorName })}
-                        className="tap-target text-[#778ba6] hover:text-[#f2683a]"
+                        className="tap-target ink-muted hover:ink-accent"
                       >
                         <X className="size-3" />
                       </button>

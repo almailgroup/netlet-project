@@ -77,7 +77,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
 
         <div className="flex shrink-0 items-center gap-1.5">
           <HeaderIcon label={t("header.changeLanguage")} onClick={toggleLocale}>
-            <Globe2 className="size-[18px] text-[#f2683a]" />
+            <Globe2 className="size-[18px] ink-accent" />
           </HeaderIcon>
           <HeaderIcon label={t("header.savedItems", { count: savedIds.length })} badge={savedIds.length} onClick={() => navigate("/saved")}>
             <Heart className="size-[18px]" />

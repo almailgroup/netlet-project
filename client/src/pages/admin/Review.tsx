@@ -50,7 +50,7 @@ function Queue() {
             <article key={row.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <Link href={`/admin/products/${row.id}`} className="font-bold text-[#0a285a] hover:text-[#f2683a]" dir="auto">
+                  <Link href={`/admin/products/${row.id}`} className="font-bold text-[#0a285a] hover:ink-accent" dir="auto">
                     {row.title}
                   </Link>
                   <p className="mt-0.5 text-[11px] text-[#9ea4b5]">

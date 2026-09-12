@@ -280,7 +280,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
               </button>
             ) : null}
 
-            <p className="type-label flex items-start gap-2 text-[11px] leading-4 text-[#778ba6]">
+            <p className="type-label flex items-start gap-2 text-[11px] leading-4 ink-muted">
               <Lock className="mt-px size-3.5 shrink-0" aria-hidden />
               {t("auth.secureNote")}
             </p>
@@ -320,7 +320,7 @@ function Field({ label, value, problem, valid, children }: {
              utilities by stylesheet order, not by their order in this string,
              so a lifted label carrying both `top-1/2` and `top-2` lands
              wherever the build happens to put them. */
-          className={`pointer-events-none absolute px-3.5 text-[#778ba6] transition-all duration-150 ${
+          className={`pointer-events-none absolute px-3.5 ink-muted transition-all duration-150 ${
             lifted
               ? "top-2 translate-y-0 text-[10px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase"
               : "top-1/2 -translate-y-1/2 text-[13px]"
@@ -377,7 +377,7 @@ function StrengthMeter({ verdict }: { verdict: ReturnType<typeof checkPassword> 
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <span className="type-label text-[10px] font-extrabold tracking-[.08em] text-[#778ba6] uppercase">
+        <span className="type-label text-[10px] font-extrabold tracking-[.08em] ink-muted uppercase">
           {t("auth.strength")}
         </span>
         <span className="type-label text-[11px] font-extrabold" style={{ color: tone }}>
@@ -403,7 +403,7 @@ function StrengthMeter({ verdict }: { verdict: ReturnType<typeof checkPassword> 
       {verdict.unmet.length > 0 && (
         <ul className="mt-2 space-y-0.5">
           {verdict.unmet.map(rule => (
-            <li key={rule} className="type-label text-[11px] leading-4 text-[#778ba6]">• {t(RULE_LABEL[rule])}</li>
+            <li key={rule} className="type-label text-[11px] leading-4 ink-muted">• {t(RULE_LABEL[rule])}</li>
           ))}
         </ul>
       )}
