@@ -123,3 +123,4 @@ ios-app/ios/*.xcworkspace
 ios-app/ios/.xcode.env.local
 **/xcuserdata/
 ios-app/.expo/
+api/app.generated.js

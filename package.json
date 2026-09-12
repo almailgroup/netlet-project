@@ -65,7 +65,7 @@
   },
   "scripts": {
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "vercel-build": "vite build",
+    "vercel-build": "vite build && node scripts/build-function.mjs",
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "db:seed": "tsx scripts/seed.ts",

@@ -1,18 +1,13 @@
 /**
  * The Vercel entry point.
  *
- * Vercel's Node runtime accepts an Express app as a request handler, so this is
- * the same app `pnpm dev` runs — no second copy of the routes to drift.
+ * Deliberately two lines. Vercel detects a function from a committed file in
+ * `api/`, and transpiles whatever it finds — so this stays small enough that
+ * there is nothing in it to transpile wrongly, and defers to the bundle that
+ * `pnpm vercel-build` produces beside it.
  *
- * Built once per cold start, not per request: `createApp()` at module scope
- * means a warm instance reuses it, and the database pool inside it survives
- * with the instance rather than being rebuilt on every call.
- *
- * Static files never reach here. `vercel.json` sends only `/api/*` to this
- * function; everything else is served from the CDN, so the function is not
- * woken to hand back a stylesheet.
+ * `server/_core/vercel.ts` explains why the bundle exists.
  */
-import "dotenv/config";
-import { createApp } from "../server/_core/app.js";
+import app from "./app.generated.js";
 
-export default createApp();
+export default app;

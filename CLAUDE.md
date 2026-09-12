@@ -231,26 +231,38 @@ normalises a `/trpc/…` path back to `/api/trpc/…`, because a platform that
 rewrites onto a function mounted at `/api` may hand over the rewritten path,
 and every call would otherwise 404 silently.
 
-**Vercel transpiles the function rather than bundling it**, so it runs as plain
-Node ESM. Two things follow, and `server/_core/imports.test.ts` enforces both
-across `server/`, `shared/`, `api/` and `drizzle/`:
+**The Vercel function is bundled, not transpiled.** `api/index.ts` is a
+two-line stub that re-exports `api/app.generated.js`, which
+`scripts/build-function.mjs` produces from `server/_core/vercel.ts` with every
+dependency inlined. The stub exists because Vercel detects a function from a
+committed file in `api/`; the bundle exists because everything else about
+Vercel's own handling was a trap.
 
-- **No tsconfig path aliases.** `@shared/x` is unresolvable there.
-- **Every relative import carries its `.js` extension.** `./app` is not a
-  module specifier in Node ESM; `./app.js` is, and it names the emitted file
-  rather than the `.ts` on disk.
+Left to transpile, the function is a tree of loose files run as plain Node
+ESM, and three separate things broke there while `pnpm check`, `pnpm test` and
+`pnpm build` all passed — because Vite, esbuild, vitest and tsx each resolve
+what plain Node does not:
 
-Both break *only* on Vercel. Vite, esbuild, vitest and tsx all resolve the
-loose forms, so `pnpm check`, `pnpm test` and `pnpm build` pass while the
-deployed function is dead at load with ERR_MODULE_NOT_FOUND. That is why the
-rule is a test and not a convention.
+- tsconfig path aliases (`@shared/x`) went unresolved;
+- extensionless relative imports (`./app`) are not valid ESM specifiers;
+- `jwks-rsa`, CommonJS and reached through `firebase-admin`, could not
+  `require()` the ESM-only `jose` on a Node older than 22.12.
 
-**Node 22.12 or newer, and `engines.node` says so.** `firebase-admin` pulls in
-`jwks-rsa`, which is CommonJS and does `require('jose')` — and jose 6 is
-ESM-only. `require()` of an ES module arrived in Node 22.12, so anything older
-throws ERR_REQUIRE_ESM the moment `server/_core/firebase.ts` is imported,
-which is at load. Vercel reads `engines.node`; the project's Node version
-setting in its dashboard overrides it, so check there if this recurs.
+Bundled, esbuild settles all three before the code leaves this machine. The
+bundle carries a `createRequire` banner because CommonJS packages still reach
+for `require` and `__dirname` once inside an ESM file — dotenv asking for `fs`
+is the first thing to hit it, and it fails on the first request rather than at
+load, so "it boots" is not evidence.
+
+`server/_core/imports.test.ts` still enforces no aliases and explicit `.js`
+extensions across `server/`, `shared/`, `api/` and `drizzle/`. Bundling means
+neither can break the deploy any more, but both keep `tsx` and a plain `node`
+run honest, and the rules cost nothing.
+
+Verify a change to any of this the only way that means anything: build, then
+serve `api/index.js` from a directory with **no `node_modules`**, and hit
+`/healthz` and a tRPC route. Anything less agrees with itself and not with
+Vercel.
 
 ### GitHub Pages
 
