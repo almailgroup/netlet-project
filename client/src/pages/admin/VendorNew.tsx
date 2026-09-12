@@ -283,7 +283,7 @@ function Labelled({ label, hint, problem, className = "", children }: {
   return (
     <label className={`block ${className}`}>
       <span className="text-[11px] font-extrabold text-[#0a285a]">{label}</span>
-      {hint ? <span className="mt-0.5 block text-[10px] font-semibold text-[#9ea4b5]">{hint}</span> : null}
+      {hint ? <span className="mt-0.5 block text-[10px] font-semibold ink-muted">{hint}</span> : null}
       <span className="mt-1.5 block">{children}</span>
       {problem ? <span className="mt-1 block text-[10px] font-bold text-[#8c2f22]">{t(problem)}</span> : null}
     </label>

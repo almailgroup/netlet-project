@@ -121,7 +121,7 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
               placeholder={t("browse.priceMin")}
               className={priceField}
             />
-            <span className="text-[#9ea4b5]">–</span>
+            <span className="ink-muted">–</span>
             <input
               inputMode="decimal"
               dir="ltr"

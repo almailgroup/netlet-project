@@ -107,20 +107,20 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
           </div>
 
           <div className="min-w-0">
-            {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] text-[#8fa3bd] uppercase">{product.vendor}</p> : null}
+            {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] ink-muted uppercase">{product.vendor}</p> : null}
             <h2 className="type-product mt-1 text-lg font-extrabold tracking-[-.025em] text-[#0a285a]">{product.title}</h2>
 
             {rating ? (
               <div className="mt-2 flex items-center gap-1.5 text-[13px]">
                 <Star className="size-3.5 fill-[#ffb800] text-[#ffb800]" aria-hidden />
                 <strong className="font-extrabold text-[#1f2229]">{rating.value}</strong>
-                {rating.count ? <span className="text-[#8fa3bd]">({rating.count})</span> : null}
+                {rating.count ? <span className="ink-muted">({rating.count})</span> : null}
               </div>
             ) : null}
 
             <div className="mt-3 flex flex-wrap items-baseline gap-2">
               <span className="type-price text-2xl font-extrabold tracking-[-.04em] text-[#0a285a]">{money(price)}</span>
-              {compareAt ? <span className="text-sm text-[#9ea4b5] line-through">{money(compareAt)}</span> : null}
+              {compareAt ? <span className="text-sm ink-muted line-through">{money(compareAt)}</span> : null}
               {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2 py-0.5 text-[11px] font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
 

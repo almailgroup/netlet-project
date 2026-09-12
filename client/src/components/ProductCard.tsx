@@ -148,14 +148,14 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
       </div>
 
       <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">
-        {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] text-[#8fa3bd] uppercase">{product.vendor}</p> : null}
-        <button onClick={onDetails} className="mt-0.5 text-start"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:ink-accent">{product.title}</h3></button>
+        {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] ink-muted uppercase">{product.vendor}</p> : null}
+        <button onClick={onDetails} className="mt-0.5 text-start"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:text-[#a44a2b]">{product.title}</h3></button>
 
         {rating ? (
           <div className="mt-1.5 flex items-center gap-1" aria-label={rating.count ? t("product.ratingAriaCount", { value: rating.value, max: rating.scaleMax, count: rating.count }) : t("product.ratingAria", { value: rating.value, max: rating.scaleMax })}>
             <Star className="size-3 fill-[#ffb800] text-[#ffb800]" aria-hidden />
             <span className="text-[11px] font-extrabold text-[#1f2229]">{rating.value}</span>
-            {rating.count ? <span className="text-[11px] text-[#8fa3bd]">({rating.count})</span> : null}
+            {rating.count ? <span className="text-[11px] ink-muted">({rating.count})</span> : null}
           </div>
         ) : null}
 
@@ -163,7 +163,7 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
             to, and the saving is only legible next to the old price. */}
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <p className="type-price text-lg font-extrabold tracking-[-.04em] text-[#0a285a]">{money(price)}</p>
-          {compareAt ? <p className="type-label text-[11px] text-[#9ea4b5] line-through">{money(compareAt)}</p> : null}
+          {compareAt ? <p className="type-label text-[11px] ink-muted line-through">{money(compareAt)}</p> : null}
         </div>
 
         <div className="mt-auto flex flex-col gap-2 pt-3 @[15rem]:flex-row">

@@ -156,7 +156,7 @@ function ProductTable({ actor }: { actor: Actor }) {
                   >
                     <td className="px-4 py-3">
                       <p dir="auto" className="font-bold text-[#0a285a]">{row.title}</p>
-                      <p className="mt-0.5 text-[11px] text-[#9ea4b5]">
+                      <p className="mt-0.5 text-[11px] ink-muted">
                         {row.variants.length === 1 ? t("admin.variantOne") : t("admin.variantCount", { count: row.variants.length })}
                       </p>
                     </td>

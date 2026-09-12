@@ -40,7 +40,7 @@ export default function NotFound() {
           <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-[#536b8c]">{t("notFound.note")}</p>
           {/* The path is shown so a mistyped URL is obvious, and escaped by
               React rather than interpolated into markup. */}
-          <p dir="ltr" className="mt-3 truncate font-mono text-[11px] text-[#9ea4b5]">{location}</p>
+          <p dir="ltr" className="mt-3 truncate font-mono text-[11px] ink-muted">{location}</p>
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate("/")} className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-xs font-extrabold">
@@ -73,7 +73,7 @@ export default function NotFound() {
                       />
                     ) : <div className="aspect-square" />}
                   </div>
-                  <h3 className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:ink-accent">
+                  <h3 className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:text-[#a44a2b]">
                     {product.title}
                   </h3>
                   <p className="mt-1 text-sm font-extrabold tracking-[-.04em]">{money(product.priceRange.min)}</p>

@@ -80,7 +80,7 @@ function RelatedCard({ product }: { product: Product }) {
           {image ? <img src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="aspect-square" />}
         </div>
         <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || t("product.netletEdit")}</p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:ink-accent">{product.title}</h3>
+        <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:text-[#a44a2b]">{product.title}</h3>
         <p className="mt-2 text-base font-extrabold tracking-[-.04em] text-[#0a285a]">{money(product.priceRange.min)}</p>
       </button>
     </article>
@@ -343,9 +343,9 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           </div>
 
           <div className="absolute end-3 top-3 flex flex-col gap-2">
-            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:ink-accent"><Share2 className="size-[18px]" /></button>
+            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
             <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
-            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:ink-accent"><ZoomIn className="size-[18px]" /></button>
+            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
           {hasMultipleImages ? <>
@@ -585,8 +585,8 @@ export default function ProductDetail() {
                 <VendorBadges badges={product.vendorBadges} />
               </div>
             ) : null}
-            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium ink-muted">{t("product.sku")}: <span dir="ltr" className="text-[#9ea4b5]">{selectedVariant.sku}</span></p> : null}
-            {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="text-[#9ea4b5]">{product.productType}</span></p> : null}
+            {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium ink-muted">{t("product.sku")}: <span dir="ltr" className="ink-muted">{selectedVariant.sku}</span></p> : null}
+            {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="ink-muted">{product.productType}</span></p> : null}
 
             <h1 className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 
@@ -596,7 +596,7 @@ export default function ProductDetail() {
 
             <div className="mt-5 flex flex-wrap items-baseline gap-3">
               <span className="text-[32px] font-extrabold tracking-[-.04em] text-[#1f2229]">{money(price)}</span>
-              {compareAtPrice ? <span className="text-lg text-[#9ea4b5] line-through">{money(compareAtPrice)}</span> : null}
+              {compareAtPrice ? <span className="text-lg ink-muted line-through">{money(compareAtPrice)}</span> : null}
               {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
 

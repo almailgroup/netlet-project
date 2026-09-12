@@ -397,6 +397,9 @@
     --ink-accent-on-dark: #ffab85;
     --ink-muted: #536b8c;
   }
+  /* Plain classes, so a variant cannot be stacked on them: write
+     `hover:text-[#a44a2b]` rather than `hover:ink-accent`, which silently
+     resolves to nothing. */
   .ink-accent { color: var(--ink-accent); }
   .ink-accent-on-dark { color: var(--ink-accent-on-dark); }
   .ink-muted { color: var(--ink-muted); }

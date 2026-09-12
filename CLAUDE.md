@@ -324,8 +324,20 @@ darkening would make it worse), and `.ink-muted` (`#536b8c`, replacing
 Use those rather than a raw hex for anything that is words. The fills are
 untouched: orange is still orange everywhere it is a surface.
 
-`axe-core` run over the storefront and the portal in both languages is what
-found all of it, and reports zero violations now.
+Variants cannot be stacked on these: write `hover:text-[#a44a2b]`, not
+`hover:ink-accent`, which resolves to nothing at all.
+
+`axe-core` over the storefront and the portal in both languages is what found
+all of it. **Run it against a catalog with products in it** — an empty shop
+never renders a product card, and half of these only appeared once there was
+something on the shelf.
+
+Three violations remain, all the same one: **white on `#f2683a` is 3.08:1**, on
+the home page's orange hero card. That is the brand decision this file already
+flags under Buttons — reaching AA needs a darker orange than the brand's, and
+that is a call for the brand rather than something to fix by quietly changing
+the colour. Everything around it has been taken as far as it goes without
+touching the hue.
 
 ## Browsing
 

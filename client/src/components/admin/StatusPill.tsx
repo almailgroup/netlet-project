@@ -7,7 +7,7 @@ const TONE: Record<string, string> = {
   pending_review: "bg-[#fff0ab] text-[#705523]",
   published: "bg-[#d4edda] text-[#155724]",
   rejected: "bg-[#fdeceb] text-[#8c2f22]",
-  archived: "bg-[#e7edf5] text-[#9ea4b5]",
+  archived: "bg-[#e7edf5] ink-muted",
 };
 
 export function StatusPill({ status }: { status: string }) {

@@ -186,7 +186,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           index — reordering is a save, not a separate protocol. */}
       <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
         <h2 className="text-sm font-extrabold">{t("admin.images")}</h2>
-        <p className="mt-1 text-[11px] font-semibold text-[#9ea4b5]">{t("admin.imagesHint")}</p>
+        <p className="mt-1 text-[11px] font-semibold ink-muted">{t("admin.imagesHint")}</p>
 
         {images.length === 0 ? (
           <p className="mt-4 text-[13px] text-[#536b8c]">{t("admin.noImages")}</p>
@@ -223,7 +223,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   <button
                     onClick={() => setImages(images.filter((_, i) => i !== index))}
                     aria-label={t("admin.removeImage")}
-                    className="tap-target ink-muted hover:ink-accent"
+                    className="tap-target ink-muted hover:text-[#a44a2b]"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -360,7 +360,7 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
   return (
     <label className={`block ${className}`}>
       <span className="text-[11px] font-extrabold text-[#0a285a]">{label}</span>
-      {hint ? <span className="ms-2 text-[10px] font-semibold text-[#9ea4b5]">{hint}</span> : null}
+      {hint ? <span className="ms-2 text-[10px] font-semibold ink-muted">{hint}</span> : null}
       <span className="mt-1.5 block">{children}</span>
     </label>
   );

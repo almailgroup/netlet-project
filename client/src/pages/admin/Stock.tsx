@@ -52,7 +52,7 @@ function Stock() {
               >
                 <div className="min-w-0 flex-1">
                   <p dir="auto" className="truncate font-bold text-[#0a285a]">{row.productTitle}</p>
-                  <p className="mt-0.5 text-[11px] text-[#9ea4b5]">
+                  <p className="mt-0.5 text-[11px] ink-muted">
                     {!isDefaultVariantTitle(row.variantTitle) ? <span dir="auto">{row.variantTitle} · </span> : null}
                     {row.lowStockAt === null ? t("admin.noThreshold") : t("admin.reorderAt", { count: row.lowStockAt })}
                     {row.vendorName ? <span dir="auto"> · {row.vendorName}</span> : null}
@@ -96,7 +96,7 @@ function Stock() {
               <span className="text-[11px] text-[#536b8c]">
                 {t(`reason.${row.reason}` as MessageKey)}
               </span>
-              <span className="text-[11px] text-[#9ea4b5]">
+              <span className="text-[11px] ink-muted">
                 {row.actorEmail ? t("admin.movedBy", { name: row.actorName || row.actorEmail }) : t("admin.movedBySystem")}
               </span>
             </li>

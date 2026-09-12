@@ -152,7 +152,7 @@ function HealthPanel({ health }: {
               {/* The numbers behind the bar, so the bar is checkable. The
                   count is isolated so it reads as a number in either script;
                   the label around it takes the page's direction. */}
-              <p className="mt-2 text-[10px] text-[#9ea4b5]">
+              <p className="mt-2 text-[10px] ink-muted">
                 {Object.keys(part.detail).length === 0
                   ? "—"
                   : (Object.entries(part.detail) as [HealthDetailKey, number][]).map(([key, value], index) => (

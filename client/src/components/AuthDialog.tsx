@@ -285,7 +285,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
               {t("auth.secureNote")}
             </p>
             {isRegister && (
-              <p className="type-label text-[11px] leading-4 text-[#9ea4b5]">{t("auth.terms")}</p>
+              <p className="type-label text-[11px] leading-4 ink-muted">{t("auth.terms")}</p>
             )}
           </div>
         </div>

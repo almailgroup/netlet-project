@@ -127,7 +127,7 @@ function People() {
                 <div className="min-w-0">
                   <p dir="auto" className="font-bold text-[#0a285a]">{person.name || person.email}</p>
                   {/* An address is an address in any language. */}
-                  <p dir="ltr" className="mt-0.5 truncate text-[11px] text-[#9ea4b5]">{person.email}</p>
+                  <p dir="ltr" className="mt-0.5 truncate text-[11px] ink-muted">{person.email}</p>
                 </div>
 
                 {person.role === "admin" ? (
@@ -158,7 +158,7 @@ function People() {
 
                 <span className="text-[11px] font-extrabold text-[#536b8c]">{t("admin.memberOf")}</span>
                 {person.vendors.length === 0 ? (
-                  <span className="text-[11px] text-[#9ea4b5]">{t("admin.noVendorMemberships")}</span>
+                  <span className="text-[11px] ink-muted">{t("admin.noVendorMemberships")}</span>
                 ) : (
                   person.vendors.map(membership => (
                     <span
@@ -170,7 +170,7 @@ function People() {
                       <button
                         onClick={() => removeFromVendor.mutate({ vendorId: membership.vendorId, userId: person.id })}
                         aria-label={t("admin.removeFrom", { vendor: membership.vendorName })}
-                        className="tap-target ink-muted hover:ink-accent"
+                        className="tap-target ink-muted hover:text-[#a44a2b]"
                       >
                         <X className="size-3" />
                       </button>
@@ -183,7 +183,7 @@ function People() {
                   administrator granting access wants to know they are looking
                   at the colleague who just registered, not a dormant account
                   with a similar name. */}
-              <p className="mt-2 flex flex-wrap gap-x-4 text-[10px] text-[#9ea4b5]">
+              <p className="mt-2 flex flex-wrap gap-x-4 text-[10px] ink-muted">
                 <span>{t("admin.joined")} <time dir="ltr" dateTime={asIso(person.createdAt)}>{onDay(person.createdAt, locale)}</time></span>
                 <span>{t("admin.lastSeen")} <time dir="ltr" dateTime={asIso(person.lastSignedIn)}>{onDay(person.lastSignedIn, locale)}</time></span>
               </p>

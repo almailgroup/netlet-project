@@ -93,7 +93,7 @@ export function VariantPicker({ product, selected, onSelect }: {
                     className={
                       colour
                         ? `pressable relative grid size-10 place-items-center rounded-full border-2 transition-colors ${active ? "border-[#f2683a]" : "border-[#d5dfeb] hover:border-[#aac0da]"} ${available ? "" : "opacity-40"}`
-                        : `pressable min-h-10 rounded-xl border-2 px-3.5 text-[13px] font-bold transition-colors ${active ? "border-[#f2683a] bg-[#fff7e3] text-[#0a285a]" : "border-[#d5dfeb] bg-white text-[#404553] hover:border-[#aac0da]"} ${available ? "" : "text-[#9ea4b5] line-through"}`
+                        : `pressable min-h-10 rounded-xl border-2 px-3.5 text-[13px] font-bold transition-colors ${active ? "border-[#f2683a] bg-[#fff7e3] text-[#0a285a]" : "border-[#d5dfeb] bg-white text-[#404553] hover:border-[#aac0da]"} ${available ? "" : "ink-muted line-through"}`
                     }
                   >
                     {colour

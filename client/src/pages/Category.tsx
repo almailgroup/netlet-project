@@ -281,7 +281,13 @@ export default function Category() {
                 </button>
               </div>
             ) : results.length ? (
-              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              <>
+                {/* The cards are h3s, and the page heading is the result count,
+                    so without this the outline skips a level. Hidden because
+                    the region is already visibly obvious; it is the screen
+                    reader's outline that needs the rung. */}
+                <h2 className="sr-only">{t("browse.resultsRegion")}</h2>
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 {results.map(product => (
                   <ProductCard
                     key={product.id}
@@ -300,7 +306,8 @@ export default function Category() {
                     isAdding={cartLoading}
                   />
                 ))}
-              </div>
+                </div>
+              </>
             ) : (
               <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
                 <PackageOpen className="mx-auto size-7 ink-muted" aria-hidden />

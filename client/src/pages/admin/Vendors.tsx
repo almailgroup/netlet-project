@@ -85,7 +85,7 @@ function VendorList() {
                       </span>
                     ))}
                   </div>
-                  <p className="mt-0.5 truncate text-[11px] text-[#9ea4b5]">
+                  <p className="mt-0.5 truncate text-[11px] ink-muted">
                     <span dir="ltr">/{vendor.slug}</span>
                     {" · "}
                     <span dir="ltr">{vendor.commissionPercent}%</span>
@@ -99,7 +99,7 @@ function VendorList() {
                     ) : null}
                   </p>
                 </div>
-                <ArrowRight className="size-4 shrink-0 text-[#9ea4b5] rtl:-scale-x-100" />
+                <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" />
               </Link>
             );
           })}

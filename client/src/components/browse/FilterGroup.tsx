@@ -62,7 +62,7 @@ export function FilterCheckbox({ label, count, checked, onChange }: {
         className="size-4 shrink-0 rounded accent-[#f2683a]"
       />
       <span className="min-w-0 flex-1 truncate" title={label}>{label}</span>
-      {count === undefined ? null : <span className="shrink-0 text-[11px] text-[#9ea4b5]">({count})</span>}
+      {count === undefined ? null : <span className="shrink-0 text-[11px] ink-muted">({count})</span>}
     </label>
   );
 }

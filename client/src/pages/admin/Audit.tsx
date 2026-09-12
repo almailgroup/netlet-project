@@ -76,7 +76,7 @@ function Trail() {
                   <p className="text-[13px] font-extrabold text-[#0a285a]">
                     {isMessageKey(label) ? t(label as MessageKey) : entry.action}
                   </p>
-                  <time dir="ltr" className="text-[11px] text-[#9ea4b5]">{when(entry.createdAt)}</time>
+                  <time dir="ltr" className="text-[11px] ink-muted">{when(entry.createdAt)}</time>
                 </div>
 
                 <p className="mt-0.5 flex flex-wrap items-baseline gap-x-3 text-[12px] text-[#536b8c]">
@@ -88,7 +88,7 @@ function Trail() {
                       {change.from} → {change.to}
                     </span>
                   ) : null}
-                  <span className="text-[#9ea4b5]">
+                  <span className="ink-muted">
                     {automatic || !entry.actorEmail
                       ? t("admin.auditAutomatic")
                       : t("admin.auditBy", { name: entry.actorEmail })}
