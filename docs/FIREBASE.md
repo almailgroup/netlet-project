@@ -77,7 +77,37 @@ These two **are** secret.
 Anyone holding it can read and modify every account in the project. Delete the
 download once the values are in your `.env`.
 
-## 4. Put them in `.env`
+## 4. Put them where the app will read them
+
+Two situations. Pick the one that matches you.
+
+### On Vercel (no local checkout)
+
+Vercel project → Settings → **Environment Variables**. Add four:
+
+| Name | Value |
+|---|---|
+| `FIREBASE_PROJECT_ID` | e.g. `netlet-a1b2c` |
+| `FIREBASE_CLIENT_EMAIL` | `firebase-adminsdk-xxxxx@netlet-a1b2c.iam.gserviceaccount.com` |
+| `FIREBASE_PRIVATE_KEY` | the `private_key` value from the JSON |
+| `FIREBASE_API_KEY` | `AIzaSy…` |
+
+**The private key is where this goes wrong.** On Vercel, paste it with **no
+surrounding quotes**. Either of these works:
+
+- The one-line form straight out of the JSON, with literal `\n` between the
+  lines: `-----BEGIN PRIVATE KEY-----\nMIIEvQ…\n-----END PRIVATE KEY-----\n`
+- The real multi-line key, newlines and all. Vercel accepts a multi-line value,
+  and the server handles both.
+
+What breaks it is **wrapping it in `"…"`**. A `.env` file needs those quotes;
+Vercel does not, and stores them as part of the value, so the key fails to
+parse. This is the opposite of the by-hand instructions below — take care which
+you are following.
+
+Then **redeploy**. These are read at boot, so a save alone changes nothing.
+
+### In a local `.env`
 
 There is no `.env` in a fresh clone — it holds secrets, so it is gitignored and
 never committed. `.env.example` is the template it is made from.
@@ -102,26 +132,25 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADAN...\n-----END PRI
 FIREBASE_API_KEY=AIzaSy...
 ```
 
-Three details that will otherwise cost you an afternoon:
+Here the double quotes **are** required, on one line, with the newlines left as
+the two characters `\n` — exactly as the JSON writes it. dotenv turns them back
+into real newlines; a raw platform variable does not, which is why the two
+sections differ.
 
-- **`FIREBASE_PRIVATE_KEY` must be in double quotes**, on one line, with its
-  newlines left as the two characters `\n`. That is exactly how the JSON file
-  writes it, so copy the value from the JSON verbatim — including the trailing
-  `\n` before the closing quote. The server converts them back to real newlines.
+### Either way
+
 - **All four or none.** With any one missing, NetLet uses the local password
   path instead. That is deliberate, not a bug — but it means a typo in one
   variable looks like "Firebase isn't working" rather than an error.
 - `DATABASE_URL` and `JWT_SECRET` are still required. Firebase replaces the
   password store, not the database or the session cookie.
 
-## 5. Apply the database migration
+## 5. Make sure the database is there
 
-The `users` table gained a `firebase_uid` column and `password_hash` became
-optional:
-
-```sh
-pnpm db:push
-```
+Firebase holds the password; Postgres holds the shopper. Registration writes
+both, so without a database there is nothing to sign in *to* — see
+`docs/SUPABASE.md`. If you already have it, the schema is current: `users`
+carries `firebase_uid`, and `password_hash` is optional.
 
 Existing accounts keep working: they still have their scrypt digest, and the
 first time one of them signs in after you have also created them in Firebase,
@@ -129,16 +158,14 @@ their row is adopted rather than duplicated — same id, same saved products.
 
 ## 6. Check it
 
-```sh
-pnpm dev
-```
-
-Open the storefront, register a new account, then look at
-**Firebase console → Authentication → Users**. The address should be listed,
-with a creation timestamp. That is the whole test: if it is there, accounts are
-being stored in Firebase.
+Register a new account on the site, then look at **Firebase console →
+Authentication → Users**. The address should be listed, with a creation
+timestamp. That is the whole test: if it is there, accounts are in Firebase.
 
 Sign out and back in to confirm the password check works.
+
+Locally that means `pnpm dev` first. On Vercel, just use the deployed site
+after the redeploy.
 
 ---
 
@@ -186,15 +213,16 @@ The account is in the local table, not Firebase, and Firebase is now configured
 register the address in Firebase console → Authentication → **Add user**, or
 clear the Firebase variables to go back to the local path.
 
-**Registration fails with an opaque error and the server log mentions a
+**Registration fails with an opaque error and the server log mentions
 `DECODER routines::unsupported` or an invalid PEM.**
-`FIREBASE_PRIVATE_KEY` lost its newlines. It must be the quoted single-line form
-with literal `\n`, as in step 4.
+`FIREBASE_PRIVATE_KEY` is malformed. In a `.env` it must be the quoted
+single-line form with literal `\n`; on Vercel it must have **no** quotes at
+all — a stray `"` at each end is the usual cause there. See step 4.
 
 **Everything still uses the old password table.**
 One of the four variables is empty or misspelled. The server checks all four
-together before it uses Firebase at all. Restart after editing `.env` — the
-values are read at boot.
+together before it uses Firebase at all. The values are read at boot, so
+restart after editing `.env` — or redeploy, on Vercel.
 
 **`Firebase sign-in failed with HTTP 403`.**
 The Identity Toolkit API is not enabled for the project, which happens if the
