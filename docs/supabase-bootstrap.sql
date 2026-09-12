@@ -333,6 +333,10 @@ ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "address_line" text;
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "licence_number" varchar(60);
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "payout_iban" varchar(34);
 
+-- ===== 0008_outstanding_amazoness.sql =====
+ALTER TABLE "customer_preferences" ALTER COLUMN "locale" DROP DEFAULT;
+ALTER TABLE "customer_preferences" ALTER COLUMN "locale" DROP NOT NULL;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

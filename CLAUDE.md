@@ -388,6 +388,16 @@ Two rules keep the RTL layout honest:
   the gradients and masks that shade toward the text, or the Arabic headline
   ends up sitting on the bright side of the hero.
 
+**A stored language is `null` until the shopper picks one, and that is load
+bearing.** `customer_preferences.locale` is nullable rather than defaulting to
+`en`, because a row gets created the first time somebody sets a delivery zone
+or their bag syncs — and a `NOT NULL DEFAULT 'en'` stamped "English" onto
+people who had said nothing. The client then adopted it, so signing in while
+reading Arabic flipped the whole site to English and left `localStorage`
+disagreeing with the page. Now: no stored preference means the language in use
+is kept *and written up*, and a stored one still wins, so a real choice
+follows the shopper between devices.
+
 Merchant data (product titles, spec rows) is in whatever language the merchant
 typed. Specification rows and description text carry `dir="auto"` so each takes
 its own direction and the punctuation lands on the right side.

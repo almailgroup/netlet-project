@@ -63,10 +63,11 @@ function idempotent(statement) {
   if (/^CREATE INDEX "/.test(sql)) return sql.replace(/^CREATE INDEX /, "CREATE INDEX IF NOT EXISTS ");
   if (/^ALTER TABLE .+ ADD COLUMN /.test(sql)) return sql.replace(/ ADD COLUMN /, " ADD COLUMN IF NOT EXISTS ");
 
-  // Dropping NOT NULL from a column that is already nullable is a no-op, so
-  // this one is re-runnable as written. Named rather than left to the
-  // fall-through, so it is a decision and not an oversight.
-  if (/^ALTER TABLE .+ ALTER COLUMN .+ DROP NOT NULL/.test(sql)) return sql;
+  // Dropping a NOT NULL that is already gone, or a default that is already
+  // gone, is a no-op in Postgres, so both are re-runnable as written. Named
+  // rather than left to the fall-through, so each is a decision and not an
+  // oversight.
+  if (/^ALTER TABLE .+ ALTER COLUMN .+ DROP (NOT NULL|DEFAULT)/.test(sql)) return sql;
 
   /*
    * A rename is the one shape that is actively not re-runnable: run twice,

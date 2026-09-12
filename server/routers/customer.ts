@@ -19,9 +19,20 @@ const notificationKindSchema = z.enum(notificationKinds);
 
 export const customerRouter = router({
   profile: router({
+    /**
+     * The shopper's stored preferences, or nulls where they have none.
+     *
+     * `locale` is null when there is no row, and that is the point: this used
+     * to answer "en" for somebody who had never chosen, which the client then
+     * adopted — so signing in while reading Arabic silently flipped the whole
+     * site to English. "Never chose" and "chose English" have to be different
+     * answers, or the default overrules the person using it.
+     */
     get: protectedProcedure.query(async ({ ctx }) => {
       const profile = await getCustomerProfile(ctx.user.id);
-      return profile ?? { locale: "en" as const, deliveryZoneId: null, cartId: null };
+      return profile
+        ? { locale: profile.locale, deliveryZoneId: profile.deliveryZoneId, cartId: profile.cartId }
+        : { locale: null, deliveryZoneId: null, cartId: null };
     }),
     update: protectedProcedure.input(z.object({
       locale: z.enum(["en", "ar"]).optional(),

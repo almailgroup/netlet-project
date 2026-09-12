@@ -57,6 +57,13 @@
       "when": 1789233390090,
       "tag": "0007_skinny_union_jack",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789249954040,
+      "tag": "0008_outstanding_amazoness",
+      "breakpoints": true
     }
   ]
 }

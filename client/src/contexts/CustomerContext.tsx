@@ -68,10 +68,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     document.documentElement.dir = directionFor(locale);
   }, [locale]);
 
+  /*
+   * Adopt a stored language, but only a stored one.
+   *
+   * A shopper with no saved preference keeps the language they are already
+   * reading, and it is written up so the choice exists from then on. The
+   * previous version took the server's "en" default as an answer and flipped
+   * an Arabic session to English on sign-in.
+   */
   useEffect(() => {
     if (!isAuthenticated || !profile.data) return;
+    if (profile.data.locale === null) {
+      updateProfile.mutate({ locale });
+      return;
+    }
     if (profile.data.locale !== locale) setLocaleState(profile.data.locale);
-  }, [isAuthenticated, locale, profile.data]);
+  }, [isAuthenticated, locale, profile.data, updateProfile]);
 
   useEffect(() => {
     if (!isAuthenticated || !saved.data?.length) return;
@@ -116,8 +128,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     if (!kuwaitDeliveryZones.some(zone => zone.id === zoneId)) return;
     setGuestDeliveryZoneId(zoneId);
     writeValue(DELIVERY_STORAGE_KEY, zoneId);
-    if (isAuthenticated) updateProfile.mutate({ deliveryZoneId: zoneId });
-  }, [isAuthenticated, updateProfile]);
+    // Carries the current language too: this call can be what creates the
+    // row, and a row created without one takes the column's "en" default.
+    if (isAuthenticated) updateProfile.mutate({ deliveryZoneId: zoneId, locale });
+  }, [isAuthenticated, locale, updateProfile]);
 
   const value = useMemo<CustomerContextValue>(() => ({
     locale,

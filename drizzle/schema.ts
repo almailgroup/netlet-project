@@ -94,7 +94,14 @@ export const customerPreferences = pgTable(
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    locale: localeCode("locale").notNull().default("en"),
+    /*
+     * Nullable on purpose: null means "never chose", which is different from
+     * choosing English. A row gets created the first time a shopper sets a
+     * delivery zone or their bag syncs, and a NOT NULL default stamped "en"
+     * onto people who had said nothing — then the client adopted it and
+     * flipped an Arabic session to English on sign-in.
+     */
+    locale: localeCode("locale"),
     /** Governorate id from `shared/customer.ts`; null until the shopper picks. */
     deliveryZoneId: varchar("delivery_zone_id", { length: 64 }),
     /** Opaque cart token, so a bag survives across devices. */
