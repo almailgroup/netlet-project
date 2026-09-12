@@ -18,7 +18,7 @@
  * The session cookie is httpOnly, so the token is never readable from
  * JavaScript and cannot be exfiltrated by a script injected into the page.
  */
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME } from "../../shared/const";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth";

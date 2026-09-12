@@ -10,7 +10,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import type { Express, RequestHandler } from "express";
 import { ENV } from "./env";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME } from "../../shared/const";
 
 /**
  * Sources the storefront legitimately loads from.
