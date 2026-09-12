@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ClipboardCheck, Gauge, LayoutGrid, PackageSearch, ShieldCheck, Store, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Gauge, LayoutGrid, PackageSearch, ScrollText, ShieldCheck, Store, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -103,6 +103,7 @@ export function AdminShell({ need, children }: {
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
     { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
+    { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
   ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability }[])
     .filter(link => can(actor, link.need));

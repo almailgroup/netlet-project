@@ -21,6 +21,7 @@ import {
   vendors,
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
+import { recordAudit, violationCount } from "./audit.js";
 import { getDb } from "./db.js";
 
 /* ------------------------------------------------------------- the actor --- */
@@ -58,6 +59,21 @@ export async function resolveActor(
     vendorId: membership.vendorId,
     role: membership.role as VendorRole,
   };
+}
+
+/**
+ * The actor as the audit trail wants them: id plus the address at the time.
+ *
+ * One extra read per audited operation, which are rare and consequential by
+ * definition — a commission edit is not a hot path. Copying the email means a
+ * row survives the account being deleted, which is exactly when an audit trail
+ * is most likely to be the only remaining record.
+ */
+async function auditActor(actor: Actor) {
+  const db = await getDb();
+  if (!db) return { id: actor.userId, email: null };
+  const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, actor.userId)).limit(1);
+  return { id: actor.userId, email: row?.email ?? null };
 }
 
 /* --------------------------------------------------------------- reading --- */
@@ -280,10 +296,50 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
   assertCan(actor, "product.review");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  const [was] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  if (!was) throw new Error("NOT_FOUND");
+
   await db
     .update(products)
     .set({ status: approve ? "published" : "rejected", reviewNote: note ?? null })
     .where(eq(products.id, productId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "product.review",
+    subjectType: "product",
+    subjectId: productId,
+    subjectLabel: was.title,
+    vendorId: was.vendorId,
+    before: { status: was.status },
+    after: { status: approve ? "published" : "rejected", approved: approve, note: note ?? null },
+  });
+
+  /*
+   * Three violations suspend the vendor, which the requirements ask for.
+   *
+   * The count comes from the audit trail rather than a separate tally, so the
+   * number that triggers a suspension is the same number an administrator can
+   * read back and check. A second counter would eventually disagree with the
+   * evidence, and the evidence is the point.
+   */
+  if (!approve) {
+    const strikes = await violationCount(was.vendorId);
+    if (strikes >= 3) {
+      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, was.vendorId)).limit(1);
+      if (vendor && vendor.status !== "suspended") {
+        await db.update(vendors).set({ status: "suspended" }).where(eq(vendors.id, was.vendorId));
+        await recordAudit({ id: null, email: null }, {
+          action: "vendor.setStatus",
+          subjectType: "vendor",
+          subjectId: was.vendorId,
+          subjectLabel: vendor.name,
+          vendorId: was.vendorId,
+          before: { status: vendor.status },
+          after: { status: "suspended", automatic: true, reason: "three-violations", strikes },
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -344,7 +400,21 @@ export async function saveVariant(actor: Actor, input: {
     options: input.options ?? {},
   };
   if (input.id) {
+    // A price change is singled out because the requirements want every one
+    // visible to the admin. The row says what it moved from and to.
+    const [was] = await db.select().from(productVariants).where(eq(productVariants.id, input.id)).limit(1);
     await db.update(productVariants).set(values).where(eq(productVariants.id, input.id));
+    if (was && was.price !== values.price) {
+      await recordAudit(await auditActor(actor), {
+        action: "product.priceChange",
+        subjectType: "variant",
+        subjectId: input.id,
+        subjectLabel: `${product.title} — ${values.title}`,
+        vendorId: product.vendorId,
+        before: { price: was.price },
+        after: { price: values.price },
+      });
+    }
     return input.id;
   }
   const [row] = await db.insert(productVariants).values(values).returning();
@@ -634,6 +704,16 @@ export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolea
   }
 
   await db.update(users).set({ role: isAdmin ? "admin" : "user" }).where(eq(users.id, userId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "user.setAdmin",
+    subjectType: "user",
+    subjectId: userId,
+    subjectLabel: target.email,
+    before: { role: target.role },
+    after: { role: isAdmin ? "admin" : "user" },
+  });
+
   return { id: userId, role: isAdmin ? "admin" : "user" } as const;
 }
 
@@ -658,10 +738,27 @@ export async function addMemberByEmail(
   const target = (await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1))[0];
   if (!target) throw new Error("NO_SUCH_ACCOUNT");
 
+  const [existing] = await db
+    .select()
+    .from(vendorMembers)
+    .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, target.id)))
+    .limit(1);
+
   await db
     .insert(vendorMembers)
     .values({ vendorId, userId: target.id, role })
     .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.addMember",
+    subjectType: "user",
+    subjectId: target.id,
+    subjectLabel: target.email,
+    vendorId,
+    before: existing ? { role: existing.role } : null,
+    after: { role },
+  });
+
   return { userId: target.id, vendorId, role };
 }
 
@@ -670,7 +767,22 @@ export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  const [was] = await db
+    .select()
+    .from(vendorMembers)
+    .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)))
+    .limit(1);
   await db.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.removeMember",
+    subjectType: "user",
+    subjectId: userId,
+    vendorId,
+    before: was ? { role: was.role } : null,
+    after: null,
+  });
+
   return { userId, vendorId };
 }
 
@@ -687,14 +799,37 @@ export async function setVendorCommission(actor: Actor, vendorId: number, percen
   assertCan(actor, "vendor.setCommission");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  // Read before writing: the audit row's value is the pair, not the result.
+  const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
   await db.update(vendors).set({ commissionPercent: percent, commissionFixed: fixed ?? null }).where(eq(vendors.id, vendorId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.setCommission",
+    subjectType: "vendor",
+    subjectId: vendorId,
+    subjectLabel: was?.name ?? null,
+    vendorId,
+    before: was ? { commissionPercent: was.commissionPercent, commissionFixed: was.commissionFixed } : null,
+    after: { commissionPercent: percent, commissionFixed: fixed ?? null },
+  });
 }
 
 export async function setVendorStatus(actor: Actor, vendorId: number, status: "pending" | "approved" | "suspended") {
   assertCan(actor, "vendor.approve");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
   await db.update(vendors).set({ status }).where(eq(vendors.id, vendorId));
+
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.setStatus",
+    subjectType: "vendor",
+    subjectId: vendorId,
+    subjectLabel: was?.name ?? null,
+    vendorId,
+    before: was ? { status: was.status } : null,
+    after: { status },
+  });
 }
 
 export async function listCategories() {

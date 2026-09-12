@@ -34,6 +34,7 @@ const Category = lazy(() => import("@/pages/Category"));
 const AdminOverview = lazy(() => import("@/pages/admin/Overview"));
 const AdminProducts = lazy(() => import("@/pages/admin/Products"));
 const AdminPeople = lazy(() => import("@/pages/admin/People"));
+const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 const AdminStock = lazy(() => import("@/pages/admin/Stock"));
 const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
 const AdminReview = lazy(() => import("@/pages/admin/Review"));
@@ -84,6 +85,7 @@ function Router() {
         <Route path="/admin/stock" component={AdminStock} />
         <Route path="/admin/vendors" component={AdminVendors} />
         <Route path="/admin/people" component={AdminPeople} />
+        <Route path="/admin/audit" component={AdminAudit} />
         <Route path="/admin/team" component={AdminTeam} />
         {/* The portal used to live at /dashboard. Anyone who bookmarked it
             lands here rather than on a 404 that looks like the tool is gone. */}

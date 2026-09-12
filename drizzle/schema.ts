@@ -495,6 +495,52 @@ export const cartItems = pgTable(
   ]
 );
 
+/**
+ * Who did what, and when.
+ *
+ * The requirements ask for an automatic background audit trail over sensitive
+ * operations — commission edits, product approvals and rejections, permission
+ * changes, vendor suspensions, admin sign-ins. "Automatic" is the load-bearing
+ * word: a log somebody has to remember to write is a log with holes in it
+ * exactly where it matters, so these rows are written by the data layer next
+ * to the operation itself, the same place the permission guard lives.
+ *
+ * `before` and `after` hold the values either side of the change. Keeping both
+ * is what makes the row answer "what actually changed" rather than only "a
+ * change happened" — the difference between an audit trail and a list of
+ * timestamps.
+ *
+ * `actorId` is nullable and `actorEmail` is copied rather than joined: an
+ * account can be deleted, and an audit row that loses who performed the action
+ * has lost the only thing it was for.
+ */
+export const auditLog = pgTable(
+  "audit_log",
+  {
+    id: serial("id").primaryKey(),
+    /** Dotted act, e.g. "vendor.setCommission" or "product.review". */
+    action: varchar("action", { length: 64 }).notNull(),
+    /** What it was done to: "vendor", "product", "user", "session". */
+    subjectType: varchar("subject_type", { length: 32 }).notNull(),
+    subjectId: integer("subject_id"),
+    /** Human label for the subject, so a deleted row still reads. */
+    subjectLabel: varchar("subject_label", { length: 255 }),
+    actorId: integer("actor_id").references(() => users.id, { onDelete: "set null" }),
+    actorEmail: varchar("actor_email", { length: 320 }),
+    /** Which vendor the action touched, when it was scoped to one. */
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    before: jsonb("before").$type<Record<string, unknown> | null>(),
+    after: jsonb("after").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("audit_log_created_idx").on(table.createdAt),
+    index("audit_log_action_idx").on(table.action),
+    index("audit_log_subject_idx").on(table.subjectType, table.subjectId),
+    index("audit_log_actor_idx").on(table.actorId),
+  ]
+);
+
 /* ------------------------------------------------------------- relations --- */
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -612,3 +658,5 @@ export type StockMovement = typeof stockMovements.$inferSelect;
 
 export type CartRow = typeof carts.$inferSelect;
 export type CartItemRow = typeof cartItems.$inferSelect;
+
+export type AuditEntry = typeof auditLog.$inferSelect;

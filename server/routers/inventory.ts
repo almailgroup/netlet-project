@@ -40,7 +40,8 @@ import {
   stockHistory,
   updateProduct,
 } from "../inventory.js";
-import { VENDOR_ROLES } from "../../shared/inventory/permissions.js";
+import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
+import { listAudit, type AuditAction } from "../audit.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -255,6 +256,34 @@ export const inventoryRouter = router({
    * can reach — a vendor owner runs their own team through `vendors.members`,
    * which is a different question and a different guard.
    */
+  /**
+   * The audit trail, admin only.
+   *
+   * Guarded by `platform.viewAll` rather than a capability of its own: seeing
+   * every vendor's sensitive operations is the same reach as seeing every
+   * vendor, and a separate capability would be a second thing to forget to
+   * check.
+   */
+  audit: protectedProcedure
+    .input(z.object({
+      action: z.string().max(64).optional(),
+      subjectType: z.string().max(32).optional(),
+      vendorId: z.number().int().positive().optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(async () => {
+        assertCan(actor, "platform.viewAll");
+        return listAudit({
+          action: input?.action as AuditAction | undefined,
+          subjectType: input?.subjectType,
+          vendorId: input?.vendorId,
+          limit: input?.limit ?? 100,
+        });
+      });
+    }),
+
   people: router({
     list: protectedProcedure
       .input(z.object({

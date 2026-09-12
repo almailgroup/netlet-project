@@ -16,6 +16,7 @@ import type { Actor } from "../shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let inv: typeof import("./inventory");
+let audit: typeof import("./audit");
 
 const ids = { acme: 0, other: 0, admin: 0, owner: 0, staff: 0, acmeProduct: 0, acmeVariant: 0, otherProduct: 0 };
 
@@ -33,6 +34,7 @@ beforeAll(async () => {
   // The data layer reaches for the app's pool; point it at this one.
   vi.doMock("./db", () => ({ getDb: async () => db }));
   inv = await import("./inventory");
+  audit = await import("./audit");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [owner] = await db.insert(users).values({ email: "owner@acme.test" }).returning();
@@ -380,5 +382,87 @@ describe("the admin portal's reports", () => {
     const history = await inv.stockHistory(ownerActor());
     const productIds = new Set(history.map(row => row.productId));
     expect(productIds.has(ids.otherProduct)).toBe(false);
+  });
+});
+
+describe("the audit trail", () => {
+  it("records a commission edit with both sides of the change", async () => {
+    await inv.setVendorCommission(adminActor(), ids.acme, "12.50", "1.000");
+    const rows = await audit.listAudit({ action: "vendor.setCommission" });
+    expect(rows[0]).toMatchObject({
+      action: "vendor.setCommission",
+      subjectType: "vendor",
+      subjectId: ids.acme,
+      actorEmail: "admin@netlet.test",
+    });
+    // The pair is what makes it an audit row rather than a timestamp.
+    expect(rows[0].after).toMatchObject({ commissionPercent: "12.50" });
+    expect(rows[0].before).toBeTruthy();
+  });
+
+  it("records who changed a platform role, and to what", async () => {
+    await inv.setUserAdmin(adminActor(), ids.staff, true);
+    const rows = await audit.listAudit({ action: "user.setAdmin" });
+    expect(rows[0]).toMatchObject({ subjectLabel: "staff@acme.test" });
+    expect(rows[0].before).toMatchObject({ role: "user" });
+    expect(rows[0].after).toMatchObject({ role: "admin" });
+    await inv.setUserAdmin(adminActor(), ids.staff, false);
+  });
+
+  it("records a price change, and only when the price actually moved", async () => {
+    const before = (await audit.listAudit({ action: "product.priceChange" })).length;
+    await inv.saveVariant(ownerActor(), {
+      id: ids.acmeVariant, productId: ids.acmeProduct, title: "Default", price: "31.000",
+    });
+    // Saving the same price again is not a change worth a row.
+    await inv.saveVariant(ownerActor(), {
+      id: ids.acmeVariant, productId: ids.acmeProduct, title: "Default", price: "31.000",
+    });
+    const rows = await audit.listAudit({ action: "product.priceChange" });
+    expect(rows.length).toBe(before + 1);
+    expect(rows[0].after).toMatchObject({ price: "31.000" });
+  });
+
+  /*
+   * The trail is evidence, and evidence must never be able to take down the
+   * thing it witnesses. A row that cannot be written is logged and dropped.
+   */
+  it("swallows a failed write rather than failing the caller", async () => {
+    await expect(
+      audit.recordAudit(
+        { id: 999_999, email: "ghost@netlet.test" }, // no such user: the FK rejects it
+        { action: "vendor.setStatus", subjectType: "vendor", subjectId: ids.acme },
+      ),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe("three violations suspend a vendor", () => {
+  it("suspends automatically on the third rejection, and says it was automatic", async () => {
+    const [v] = await db.insert(vendors).values({ slug: "strikes", name: "Strikes", status: "approved" }).returning();
+
+    for (let i = 1; i <= 3; i += 1) {
+      const [p] = await db.insert(products).values({
+        vendorId: v.id, handle: `strike-${i}`, title: `Strike ${i}`, status: "pending_review",
+      }).returning();
+      await inv.reviewProduct(adminActor(), p.id, false, "not acceptable");
+    }
+
+    const [after] = await db.select().from(vendors).where(eq(vendors.id, v.id));
+    expect(after.status).toBe("suspended");
+
+    const rows = await audit.listAudit({ vendorId: v.id, action: "vendor.setStatus" });
+    expect(rows[0].after).toMatchObject({ automatic: true, reason: "three-violations" });
+  });
+
+  it("leaves a vendor alone while they are under the limit", async () => {
+    const [v] = await db.insert(vendors).values({ slug: "onestrike", name: "One Strike", status: "approved" }).returning();
+    const [p] = await db.insert(products).values({
+      vendorId: v.id, handle: "one-strike", title: "One", status: "pending_review",
+    }).returning();
+    await inv.reviewProduct(adminActor(), p.id, false);
+
+    const [after] = await db.select().from(vendors).where(eq(vendors.id, v.id));
+    expect(after.status).toBe("approved");
   });
 });
