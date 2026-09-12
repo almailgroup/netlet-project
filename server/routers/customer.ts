@@ -54,9 +54,6 @@ export const customerRouter = router({
     set: protectedProcedure.input(z.object({ productId: z.string().min(1), saved: z.boolean() }))
       .mutation(({ ctx, input }) => setSavedProduct(ctx.user.id, input.productId, input.saved)),
   }),
-  delivery: router({
-    zones: protectedProcedure.query(() => kuwaitDeliveryZones),
-  }),
   notifications: router({
     list: protectedProcedure.query(({ ctx }) => listNotificationPreferences(ctx.user.id)),
     set: protectedProcedure.input(z.object({ kind: notificationKindSchema, enabled: z.boolean() }))

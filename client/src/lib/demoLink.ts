@@ -252,18 +252,44 @@ function resolve(path: string, rawInput: unknown): unknown {
       return demoLowStock;
     case "inventory.stockHistory":
       return demoStockHistory;
+    case "inventory.storefront.byHandle":
+      return demoInventoryProducts.find(row => row.handle === (input as { handle: string })?.handle) ?? null;
+    /* Admin-only, and the demo actor is a vendor manager — so an empty list is
+       the honest answer rather than invented evidence. The route refuses
+       before this is reached anyway. */
+    case "inventory.audit":
+      return [];
     /* People is admin-only. A demo vendor manager cannot reach the page at
        all, so the list is empty rather than invented. */
     case "inventory.people.list":
       return [];
+    /*
+     * Creating returns a row the editor can navigate to. The other writes are
+     * accepted and discarded — but every one the portal can reach has to be
+     * here, or a button in the demo throws instead of doing nothing, which is
+     * worse than either.
+     */
+    /*
+     * Creating hands back an id the editor can actually open. Inventing a new
+     * one would navigate to a product no fixture has, so the demo's own
+     * "New product" would land on "not found" — a dead end that looks like a
+     * bug in the portal rather than a limit of the demo.
+     */
+    case "inventory.products.create":
+      return { ...demoInventoryProducts[0], title: (input as { title?: string })?.title ?? "New product", status: "draft" };
     case "inventory.products.update":
     case "inventory.products.setImages":
     case "inventory.products.setStatus":
+    case "inventory.products.review":
     case "inventory.variants.save":
     case "inventory.variants.adjustStock":
     case "inventory.people.setAdmin":
     case "inventory.people.addToVendor":
     case "inventory.people.removeFromVendor":
+    case "inventory.vendors.setCommission":
+    case "inventory.vendors.setStatus":
+    case "inventory.vendors.setMemberRole":
+    case "inventory.vendors.removeMember":
       return { success: true } as const;
 
     default:
