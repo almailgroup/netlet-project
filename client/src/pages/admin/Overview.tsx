@@ -10,6 +10,7 @@
  * vendor sees their own products and no platform-wide vendor counts at all.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -32,7 +33,7 @@ function Overview({ actor }: { actor: Actor }) {
   const counts = trpc.inventory.overview.useQuery();
   const health = trpc.inventory.health.useQuery(undefined, { retry: false });
 
-  if (counts.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+  if (counts.isLoading || counts.isError) return <QueryGate queries={[counts]}>{() => null}</QueryGate>;
   const data = counts.data;
   if (!data) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
 

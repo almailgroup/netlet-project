@@ -12,6 +12,7 @@
  * anyone else editing.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
@@ -87,7 +88,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onError: fail,
   });
 
-  if (product.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+  if (product.isLoading || product.isError) return <QueryGate queries={[product]}>{() => null}</QueryGate>;
   if (!product.data) return <p className="text-sm font-bold">{t("product.notFound")}</p>;
 
   const row = product.data;

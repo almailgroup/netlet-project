@@ -10,6 +10,7 @@
  * vendor's.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -33,8 +34,8 @@ function Stock() {
       <h1 className="text-xl font-extrabold">{t("admin.lowStockTitle")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.lowStockNote")}</p>
 
-      {low.isLoading ? (
-        <p className="mt-5 text-sm text-[#536b8c]">{t("admin.loading")}</p>
+      {low.isLoading || low.isError ? (
+        <div className="mt-5"><QueryGate queries={[low]}>{() => null}</QueryGate></div>
       ) : (low.data ?? []).length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.nothingLow")}</p>
@@ -70,8 +71,8 @@ function Stock() {
       )}
 
       <h2 className="mt-9 text-sm font-extrabold">{t("admin.recentMovements")}</h2>
-      {history.isLoading ? (
-        <p className="mt-3 text-sm text-[#536b8c]">{t("admin.loading")}</p>
+      {history.isLoading || history.isError ? (
+        <div className="mt-3"><QueryGate queries={[history]}>{() => null}</QueryGate></div>
       ) : (history.data ?? []).length === 0 ? (
         <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
           {t("admin.noMovements")}

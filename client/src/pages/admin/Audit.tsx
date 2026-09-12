@@ -10,6 +10,7 @@
  * label.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -57,8 +58,8 @@ function Trail() {
       <h1 className="text-xl font-extrabold">{t("admin.audit")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.auditNote")}</p>
 
-      {entries.isLoading ? (
-        <p className="mt-5 text-sm text-[#536b8c]">{t("admin.loading")}</p>
+      {entries.isLoading || entries.isError ? (
+        <div className="mt-5"><QueryGate queries={[entries]}>{() => null}</QueryGate></div>
       ) : (entries.data ?? []).length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.noAudit")}</p>

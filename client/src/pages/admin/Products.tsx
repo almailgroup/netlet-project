@@ -11,6 +11,7 @@
  * variant figure is one click away.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { useMoney, useTranslation } from "@/lib/useTranslation";
@@ -123,8 +124,8 @@ function ProductTable({ actor }: { actor: Actor }) {
         />
       </label>
 
-      {products.isLoading ? (
-        <p className="mt-6 text-sm text-[#536b8c]">{t("admin.loading")}</p>
+      {products.isLoading || products.isError ? (
+        <div className="mt-6"><QueryGate queries={[products]}>{() => null}</QueryGate></div>
       ) : rows.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t(search ? "admin.noMatches" : "admin.noProducts")}</p>

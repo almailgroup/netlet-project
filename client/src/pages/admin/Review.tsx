@@ -7,6 +7,7 @@
  * separate message they may never see.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -34,7 +35,7 @@ function Queue() {
 
   const waiting = (products.data ?? []).filter(row => row.status === "pending_review");
 
-  if (products.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+  if (products.isLoading || products.isError) return <QueryGate queries={[products]}>{() => null}</QueryGate>;
 
   return (
     <>

@@ -10,6 +10,7 @@
  * vendor is reasonable, changing it is not.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -52,7 +53,7 @@ function Team({ actor }: { actor: Actor }) {
   const mayManage = can(actor, "vendor.manageMembers", vendorId);
 
   if (vendorId === 0) return <p className="text-sm text-[#536b8c]">{t("admin.noAccessNote")}</p>;
-  if (members.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+  if (members.isLoading || members.isError) return <QueryGate queries={[members]}>{() => null}</QueryGate>;
 
   const rows = members.data ?? [];
 

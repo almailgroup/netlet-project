@@ -191,6 +191,16 @@ administrator, and removing the last one. Both leave an installation that
 needs a database client to recover, and neither is worth allowing to save a
 click — there is always another administrator who can do it if it is meant.
 
+**Every admin page has three states, not two.** `QueryGate` renders loading,
+failed, or ready; a failed query shows what the server actually said and
+offers to retry. Before it, every page branched on `isLoading` and then read
+`data ?? []`, so a refused or broken query rendered as "No vendors yet" — the
+worst of the three answers, because an empty table reads as working and
+invites somebody to add the thing that is already there and merely unreadable.
+The server's own message is shown deliberately: "column contact_email does not
+exist" tells an administrator to run the migration, and "something went wrong"
+does not.
+
 `/admin` opens on counts rather than lists, because the first question on
 arriving is "is anything waiting for me". "Waiting on you" carries only what
 somebody must act on and hides a zero; standing totals sit below it. Every

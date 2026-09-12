@@ -13,6 +13,7 @@
  * at any level — otherwise a vendor owner could promote themselves.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -112,8 +113,8 @@ function People() {
         />
       </label>
 
-      {people.isLoading ? (
-        <p className="mt-5 text-sm text-[#536b8c]">{t("admin.loading")}</p>
+      {people.isLoading || people.isError ? (
+        <div className="mt-5"><QueryGate queries={[people]}>{() => null}</QueryGate></div>
       ) : rows.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.noPeople")}</p>

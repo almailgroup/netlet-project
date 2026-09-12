@@ -12,6 +12,7 @@
  * this renders — these are the surfaces, not the enforcement.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -37,9 +38,6 @@ function VendorList() {
   const { t } = useTranslation();
   const vendors = trpc.inventory.vendors.list.useQuery();
 
-  if (vendors.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
-  const rows = vendors.data ?? [];
-
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -52,7 +50,9 @@ function VendorList() {
         </Link>
       </div>
 
-      {rows.length === 0 ? (
+      <QueryGate queries={[vendors]}>{() => {
+        const rows = vendors.data ?? [];
+        return rows.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.noVendors")}</p>
           <Link
@@ -104,7 +104,8 @@ function VendorList() {
             );
           })}
         </div>
-      )}
+        );
+      }}</QueryGate>
     </>
   );
 }

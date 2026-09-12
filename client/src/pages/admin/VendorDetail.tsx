@@ -12,6 +12,7 @@
  * phone number.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -78,7 +79,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     setTerms({ commissionPercent: row.commissionPercent, commissionFixed: row.commissionFixed ?? "" });
   }, [row]);
 
-  if (vendor.isLoading) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+  if (vendor.isLoading || vendor.isError) return <QueryGate queries={[vendor]}>{() => null}</QueryGate>;
   if (!row) return <p className="text-sm font-bold">{t("admin.noVendors")}</p>;
 
   const set = <K extends keyof typeof draft>(key: K, value: string) =>
