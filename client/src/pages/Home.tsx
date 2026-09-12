@@ -8,7 +8,6 @@ import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, rail
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import AuthDialog from "@/components/AuthDialog";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { filterAndSortCatalog } from "@shared/commerce/catalog";
@@ -27,7 +26,6 @@ import {
   Globe2,
   Heart,
   LoaderCircle,
-  LogOut,
   MapPin,
   Menu,
   Minus,
@@ -274,8 +272,6 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [signOutOpen, setSignOutOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
   useOverlay(menuOpen, () => setMenuOpen(false));
   const [, navigate] = useLocation();
@@ -285,7 +281,7 @@ export default function Home() {
     ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
     : setAuthOpen(true);
   const [search, setSearch] = useState("");
-  const { user, loading: authLoading, isAuthenticated, logout } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const { itemCount, openCart, addItem, loading: cartLoading } = useCart();
   const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, toggleLocale } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError, refetch } = trpc.commerce.products.list.useQuery({ first: 24 });
@@ -355,9 +351,20 @@ export default function Home() {
       toast.error(t("cart.buyFailed"));
     }
   };
-  // Signing out asks first here too. The header button is the easiest one to
-  // hit by accident, being where the cart and the language switch also live.
-  const accountAction = () => { if (authLoading) return; if (isAuthenticated) setSignOutOpen(true); else openAuth(); };
+  /*
+   * Signed in, this opens the profile; signed out, it opens the dialog.
+   *
+   * It used to sign you out on one click, which put the most destructive thing
+   * the header can do under the friendliest label on it — beside the cart and
+   * the language switch, where nothing else costs anything. Signing out now
+   * lives on /account behind its confirmation, which is also where everything
+   * else about the account is.
+   */
+  const accountAction = () => {
+    if (authLoading) return;
+    if (isAuthenticated) navigate("/account");
+    else openAuth();
+  };
   // Footer links go where they say they go: a category filter, an on-page
   // rail, or another route. Only the two links with nothing behind them yet
   // fall through to a notice.
@@ -372,26 +379,6 @@ export default function Home() {
 
   return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    <ConfirmDialog
-      open={signOutOpen}
-      tone="danger"
-      icon={<LogOut className="size-5" />}
-      title={t("account.signOutTitle")}
-      body={t("account.signOutBody")}
-      confirmLabel={t("header.signOut")}
-      pending={signingOut}
-      onClose={() => setSignOutOpen(false)}
-      onConfirm={async () => {
-        setSigningOut(true);
-        try {
-          await logout();
-          toast.success(t("header.signedOut"));
-          setSignOutOpen(false);
-        } finally {
-          setSigningOut(false);
-        }
-      }}
-    />
     <header {...headerHandlers} data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}
@@ -402,7 +389,7 @@ export default function Home() {
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
           <AppDownloadAction t={t} />
           <HeaderAction label={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} caption={isArabic ? "AR /" : "EN /"} value="KWD" />
-          <HeaderAction label={t(isAuthenticated ? "header.signOut" : "header.signIn")} onClick={accountAction} icon={isAuthenticated ? <LogOut className="size-[19px]" /> : <UserRound className="size-[19px]" />} caption={t("header.welcome")} value={isAuthenticated ? (user?.name ? t("header.greeting", { name: user.name }) : t("header.signOut")) : t("header.signIn")} />
+          <HeaderAction label={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} caption={t("header.welcome")} value={isAuthenticated ? (user?.name ? t("header.greeting", { name: user.name }) : t("header.myProfile")) : t("header.signIn")} />
           <HeaderAction label={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} caption={t("nav.cart")} value={itemCount === 1 ? t("header.itemOne") : t("header.items", { count: itemCount })} />
         </div>
         <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable absolute end-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" /><span className="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{itemCount}</span></button>
@@ -415,7 +402,7 @@ export default function Home() {
       </div></nav>
     </header>
 
-    {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold">{isAuthenticated ? <LogOut className="size-4" /> : <UserRound className="size-4" />}{isAuthenticated ? (user?.name ? t("header.signOutName", { name: user.name }) : t("header.signOut")) : t("header.signInToNetlet")}</button></aside></div>}
+    {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold"><UserRound className="size-4" />{isAuthenticated ? t("header.myProfile") : t("header.signInToNetlet")}</button></aside></div>}
 
     {/* Hero, at roughly half its previous height so the first row of products
         is on screen when the page opens. The panel carries the colour now that

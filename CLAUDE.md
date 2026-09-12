@@ -88,8 +88,14 @@ the API cannot accept what the form refuses. Sign-in is deliberately not held
 to it — an account made before a rule existed must still be able to get in and
 change it.
 
-**Signing out asks first**, from both places it can be done: the account page
-and the home header. `ConfirmDialog` is what asks, and its confirm button
+**The header opens the profile; it does not sign you out.** Home's own header
+used to sign out on one click, which put the most destructive thing available
+there under the friendliest label on the bar, beside the cart and the language
+switch where nothing else costs anything. `StoreHeader` and `MobileTabBar`
+already went to `/account`; Home now does too, and signing out lives on that
+page behind its confirmation, next to everything else about the account.
+
+**Signing out asks first**, on the account page. `ConfirmDialog` is what asks, and its confirm button
 carries the verb rather than "OK" — somebody who opened it by accident reads
 the button, not the paragraph. Cancel takes focus on open, so a stray Enter
 gives the safe answer.
