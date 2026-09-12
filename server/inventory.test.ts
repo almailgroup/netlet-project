@@ -710,6 +710,37 @@ describe("giving an existing store a new login", () => {
   });
 });
 
+describe("sending a member a password reset", () => {
+  it("says it sent nothing when there is no mail to send with", async () => {
+    // Firebase is unconfigured in these tests, which is exactly the case an
+    // administrator must not be told "sent" for: they would wait for an email
+    // that was never going to arrive.
+    const result = await inv.sendMemberPasswordReset(adminActor(), ids.owner, "en");
+    expect(result.sent).toBe(false);
+    expect(result.email).toBe("owner@acme.test");
+  });
+
+  it("records who asked for it", async () => {
+    await inv.sendMemberPasswordReset(adminActor(), ids.staff, "en");
+    const rows = await audit.listAudit(adminActor(), { limit: 50 });
+    const entry = rows.find(row => row.action === "user.sendPasswordReset" && row.subjectId === ids.staff);
+    expect(entry).toBeTruthy();
+    expect(entry!.actorId).toBe(ids.admin);
+  });
+
+  it("refuses a vendor owner, who could otherwise reset a colleague's login", async () => {
+    await expect(
+      inv.sendMemberPasswordReset(ownerActor(), ids.staff, "en"),
+    ).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  it("refuses an account that does not exist", async () => {
+    await expect(
+      inv.sendMemberPasswordReset(adminActor(), 999999, "en"),
+    ).rejects.toThrow("NOT_FOUND");
+  });
+});
+
 describe("editing a store's details", () => {
   it("saves what changed and leaves the rest alone", async () => {
     const { vendor } = await inv.createVendorWithOwner(adminActor(), {

@@ -25,6 +25,7 @@ import { recordAudit, violationCount } from "./audit.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
+import { isFirebaseConfigured, sendFirebasePasswordReset } from "./_core/firebase.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -1195,4 +1196,45 @@ export async function addMemberWithNewAccount(
   });
 
   return { userId: account.id, vendorId, role: input.role };
+}
+
+/**
+ * Sends somebody a link to set a new password.
+ *
+ * The gap this closes: a vendor who forgets their password had no way back
+ * that did not involve an administrator opening the Firebase console. The
+ * shopper-facing reset already existed, but it is deliberately silent about
+ * whether an address is registered — useless to an administrator, who needs
+ * to know the link actually went somewhere.
+ *
+ * So this one *does* say. It is admin-only and takes a user id rather than an
+ * address, so it cannot be used to ask which addresses exist: the caller
+ * already has the row in front of them.
+ */
+export async function sendMemberPasswordReset(actor: Actor, userId: number, locale: "en" | "ar") {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!target) throw new Error("NOT_FOUND");
+
+  await sendFirebasePasswordReset(target.email, locale);
+
+  await recordAudit(await auditActor(actor), {
+    action: "user.sendPasswordReset",
+    subjectType: "user",
+    subjectId: target.id,
+    subjectLabel: target.email,
+    before: null,
+    after: null,
+  });
+
+  /*
+   * Whether a link could actually be sent, which is not the same question as
+   * whether the request was accepted. Without Firebase there is no mail to
+   * send, and an administrator told "sent" would wait for an email that was
+   * never going to arrive.
+   */
+  return { sent: isFirebaseConfigured(), email: target.email };
 }

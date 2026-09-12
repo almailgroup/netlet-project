@@ -301,6 +301,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "auth.changeEmail":
     case "auth.changePassword":
     case "inventory.vendors.addNewMember":
+    case "inventory.vendors.sendPasswordReset":
     case "inventory.vendors.setBadges":
     case "inventory.vendors.setCommission":
     case "inventory.vendors.setStatus":

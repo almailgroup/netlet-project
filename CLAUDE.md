@@ -238,6 +238,16 @@ together. Both live on the store's own page, under the roles they grant
 spelled out rather than only named: a dropdown reading "Staff / Manager /
 Owner" asks whoever is choosing to already know the permission model.
 
+An administrator can send any member a reset link from the store's page, which
+closes the one hole in the account flows: a vendor who forgot their password
+previously needed somebody to open the Firebase console. Unlike the
+shopper-facing reset — which is deliberately silent about whether an address
+is registered — this one reports what happened, because it takes a user id
+the caller already has on screen rather than an address they could be
+guessing. It also reports *honestly* when Firebase is unconfigured and no mail
+could be sent, since an administrator told "sent" would wait for an email that
+was never coming.
+
 Minting an account is `platform.manageUsers`, not `vendor.manageMembers`. An
 owner ranks and unranks their own people; creating a NetLet login is a
 different act, and an owner who could do it would staff themselves up from

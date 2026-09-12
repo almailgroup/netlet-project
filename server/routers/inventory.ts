@@ -19,6 +19,7 @@ import {
   adjustStock,
   createProduct,
   createVendorWithOwner,
+  sendMemberPasswordReset,
   getVendor,
   updateVendorProfile,
   getProduct,
@@ -492,6 +493,17 @@ export const inventoryRouter = router({
         const { vendorId, ...account } = input;
         const actor = await resolveActor(ctx.user);
         return guard(() => addMemberWithNewAccount(actor, vendorId, account));
+      }),
+
+    /** Emails a member a link to set a new password. Admin only. */
+    sendPasswordReset: protectedProcedure
+      .input(z.object({
+        userId: z.number().int().positive(),
+        locale: z.enum(["en", "ar"]).default("en"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => sendMemberPasswordReset(actor, input.userId, input.locale));
       }),
 
     setBadges: protectedProcedure

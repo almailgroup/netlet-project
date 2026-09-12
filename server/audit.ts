@@ -33,6 +33,7 @@ export type AuditAction =
   | "product.create"
   | "product.delete"
   | "user.setAdmin"
+  | "user.sendPasswordReset"
   | "admin.signIn";
 
 export type AuditActor = {

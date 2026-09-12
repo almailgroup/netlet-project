@@ -289,7 +289,7 @@ const ROLE_WHAT: Record<VendorRole, MessageKey> = {
  * already know the permission model.
  */
 function VendorTeam({ vendorId }: { vendorId: number }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const utils = trpc.useUtils();
   const members = trpc.inventory.vendors.members.useQuery({ vendorId });
 
@@ -311,6 +311,14 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
   });
   const remove = trpc.inventory.vendors.removeMember.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+  const sendReset = trpc.inventory.vendors.sendPasswordReset.useMutation({
+    // Says which of the two happened. "Sent" when nothing could be sent is
+    // how somebody ends up waiting for an email that was never coming.
+    onSuccess: result => toast[result.sent ? "success" : "error"](
+      result.sent ? t("admin.resetSentTo", { email: result.email }) : t("admin.resetNotConfigured"),
+    ),
     onError: fail,
   });
 
@@ -347,6 +355,13 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
                   <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>
                 ))}
               </select>
+              <button
+                onClick={() => sendReset.mutate({ userId: member.userId, locale })}
+                disabled={sendReset.isPending}
+                className="pressable rounded-full border border-[#d5dfeb] px-3 py-1.5 text-[11px] font-extrabold text-[#536b8c] hover:border-[#0a285a] hover:text-[#0a285a] disabled:opacity-60"
+              >
+                {t("admin.sendReset")}
+              </button>
               <button
                 onClick={() => remove.mutate({ vendorId, userId: member.userId })}
                 disabled={remove.isPending}
