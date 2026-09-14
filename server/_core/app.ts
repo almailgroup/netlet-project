@@ -20,6 +20,26 @@ import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { getDb } from "../db.js";
+import { sitemapEntries } from "../sitemap.js";
+import { robotsTxt, sitemapXml } from "../../shared/sitemap.js";
+
+/**
+ * The origin to write into `robots.txt` and `sitemap.xml`.
+ *
+ * `SITE_URL` wins where a canonical host has been decided — a site reachable
+ * on both a Vercel domain and a custom one should name the custom one in every
+ * sitemap, not whichever host the crawler happened to use. Unset, the request's
+ * own host is right far more often than any value hard-coded at build time.
+ *
+ * `x-forwarded-proto` is trusted only because `applySecurity` sets
+ * `trust proxy` to exactly one hop, so it is the tunnel or the platform
+ * speaking, not the client.
+ */
+function siteOrigin(req: { protocol: string; get(name: string): string | undefined }): string {
+  const configured = process.env.SITE_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  return `${req.protocol}://${req.get("host") ?? "localhost"}`;
+}
 
 export function createApp(): Express {
   const app = express();
@@ -80,6 +100,29 @@ export function createApp(): Express {
     } catch (error) {
       console.error(`[readyz] database unreachable: ${describeError(error)}`);
       res.status(503).json({ database: "unreachable" });
+    }
+  });
+
+  /**
+   * `robots.txt` and `sitemap.xml`, generated rather than committed.
+   *
+   * Both were static files, and both had gone stale the way static files do:
+   * `robots.txt` pointed crawlers at a sitemap that did not exist, on a host
+   * spelled with a repository name the project had already renamed away from.
+   * Serving them from the app means the origin is whatever origin actually
+   * answered the request, so a Vercel preview, the production domain and a
+   * laptop each name themselves correctly with nothing to configure.
+   */
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain").send(robotsTxt(siteOrigin(req)));
+  });
+
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      res.type("application/xml").send(sitemapXml(siteOrigin(req), await sitemapEntries()));
+    } catch (error) {
+      console.error(`[sitemap] could not be built: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("sitemap unavailable");
     }
   });
 

@@ -16,6 +16,7 @@ import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../server/routers";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
+import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
 const CURRENCY = "KWD";
@@ -130,6 +131,15 @@ function addLines(
 
 type Input = Record<string, unknown> | undefined;
 
+/**
+ * A whole fixture list, in the paged shape the server now answers with.
+ *
+ * The demo never has enough rows to need a second page, but the *shape* has to
+ * match or the portal reads `.rows` off an array and renders nothing — which
+ * is exactly the drift this file exists to avoid.
+ */
+const onePage = <T>(rows: T[]) => ({ rows, total: rows.length, page: 1, pageSize: DEFAULT_PAGE_SIZE });
+
 function resolve(path: string, rawInput: unknown): unknown {
   const input = (rawInput ?? {}) as Input & Record<string, any>;
 
@@ -236,11 +246,14 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.categories":
       return demoCategories;
     case "inventory.products.list":
+      return onePage(demoInventoryProducts.filter(row =>
+        !(input as { status?: string })?.status || row.status === (input as { status?: string }).status));
     case "inventory.storefront.list":
       return demoInventoryProducts;
     case "inventory.products.get":
       return demoInventoryProducts.find(row => row.id === (input as { id: number })?.id) ?? null;
     case "inventory.vendors.list":
+      return onePage([]);
     case "inventory.vendors.members":
       return [];
     /* Admin-only, like the list above: the demo actor is a vendor manager and
@@ -253,7 +266,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.overview":
       return demoOverview;
     case "inventory.lowStock":
-      return demoLowStock;
+      return onePage(demoLowStock);
     case "inventory.stockHistory":
       return demoStockHistory;
     /* Derived from the same fixtures the product list renders, so the panel
@@ -270,7 +283,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* People is admin-only. A demo vendor manager cannot reach the page at
        all, so the list is empty rather than invented. */
     case "inventory.people.list":
-      return [];
+      return onePage([]);
     /*
      * Creating returns a row the editor can navigate to. The other writes are
      * accepted and discarded — but every one the portal can reach has to be

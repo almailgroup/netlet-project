@@ -14,6 +14,7 @@ import {
   categories,
   productImages,
   products,
+  productStatus,
   productVariants,
   stockMovements,
   users,
@@ -24,6 +25,7 @@ import { assertCan, type Actor, type VendorRole } from "../shared/inventory/perm
 import { recordAudit, violationCount } from "./audit.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
 import { isFirebaseConfigured, sendFirebasePasswordReset } from "./_core/firebase.js";
 
@@ -144,17 +146,45 @@ export async function publishedProduct(handle: string) {
  * status, because a draft is exactly what a vendor comes to the admin portal to
  * finish.
  */
-export async function listProductsFor(actor: Actor, vendorId?: number) {
+export async function listProductsFor(
+  actor: Actor,
+  vendorId?: number,
+  request: PageRequest & { query?: string; status?: (typeof productStatus.enumValues)[number] } = {},
+) {
   assertCan(actor, "product.view", vendorId);
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return emptyPage<Awaited<ReturnType<typeof hydrate>>[number]>(request);
 
-  const scope = actor.kind === "admin"
+  const owned = actor.kind === "admin"
     ? (vendorId ? eq(products.vendorId, vendorId) : undefined)
     : eq(products.vendorId, actor.kind === "vendor" ? actor.vendorId : -1);
 
-  const rows = await db.select().from(products).where(scope).orderBy(desc(products.updatedAt)).limit(500);
-  return hydrate(db, rows);
+  /*
+   * Searching happens here rather than over the loaded rows, and that is the
+   * difference paging makes: a filter applied on the client would search only
+   * the page you happen to be on, and report "no matches" for a product that
+   * is on page three. A search that searches part of the catalog is worse than
+   * no search, because it answers confidently.
+   */
+  const term = request.query?.trim().toLowerCase();
+  const scope = and(
+    owned,
+    request.status ? eq(products.status, request.status) : undefined,
+    term ? sql`lower(${products.title}) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`}` : undefined,
+  );
+
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(products).where(scope);
+  const total = counted?.n ?? 0;
+  const { page, pageSize, offset } = windowFor(request, total);
+
+  const rows = await db
+    .select()
+    .from(products)
+    .where(scope)
+    .orderBy(desc(products.updatedAt), desc(products.id))
+    .limit(pageSize)
+    .offset(offset);
+  return { rows: await hydrate(db, rows), total, page, pageSize };
 }
 
 export async function getProduct(actor: Actor, productId: number) {
@@ -166,6 +196,42 @@ export async function getProduct(actor: Actor, productId: number) {
   // else's id is a refusal rather than a leak.
   assertCan(actor, "product.view", row.vendorId);
   return (await hydrate(db, [row]))[0];
+}
+
+/* ------------------------------------------------------------------ paging --- */
+
+/**
+ * What a paged list is asked for, and the empty answer when there is no
+ * database. `total` travels with every page: a list that shows some of the
+ * answer must not look like one that shows all of it.
+ */
+export type PageRequest = { page?: number; pageSize?: number };
+
+const emptyPage = <T>(request: PageRequest): Page<T> => ({
+  rows: [],
+  total: 0,
+  page: 1,
+  pageSize: clampPageSize(request.pageSize),
+});
+
+/**
+ * Turns a request into the offset to query with, given the true total.
+ *
+ * The total is counted first so an out-of-range page can be brought back into
+ * range before the rows are fetched — asking page 7 of a 5-page list returns
+ * page 5, not an empty table with no explanation.
+ */
+  /*
+   * The id is a tiebreaker, not decoration. `updatedAt` is not unique — a bulk
+   * import gives a hundred rows the same microsecond — and Postgres is free to
+   * order ties differently between two queries, so offset paging over an
+   * unstable sort silently repeats some rows and skips others. Every paged
+   * query below ends on a unique column for that reason.
+   */
+function windowFor(request: PageRequest, total: number) {
+  const pageSize = clampPageSize(request.pageSize);
+  const page = clampPage(request.page ?? 1, total, pageSize);
+  return { page, pageSize, offset: offsetFor(page, pageSize) };
 }
 
 /* --------------------------------------------------------------- writing --- */
@@ -570,6 +636,19 @@ export async function overview(actor: Actor) {
   };
 }
 
+/** One row of `lowStock`, named so an empty page types the same as a full one. */
+export type LowStockRow = {
+  variantId: number;
+  variantTitle: string;
+  sku: string | null;
+  stock: number;
+  lowStockAt: number | null;
+  productId: number;
+  productTitle: string;
+  productStatus: string;
+  vendorName: string;
+};
+
 /**
  * What is about to run out, worst first.
  *
@@ -578,14 +657,26 @@ export async function overview(actor: Actor) {
  * something that reorders at twenty is the emergency. Sorting by raw stock
  * would put them the wrong way round.
  */
-export async function lowStock(actor: Actor, limit = 50) {
+export async function lowStock(actor: Actor, request: PageRequest = {}) {
   assertCan(actor, "product.view", scopeOf(actor));
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return emptyPage<LowStockRow>(request);
   const vendorId = scopeOf(actor);
   const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
+  const isLow = and(
+    mine,
+    sql`${productVariants.stock} <= 0 or (${productVariants.lowStockAt} is not null and ${productVariants.stock} <= ${productVariants.lowStockAt})`,
+  );
 
-  return db
+  const [counted] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(isLow);
+  const total = counted?.n ?? 0;
+  const { page, pageSize, offset } = windowFor(request, total);
+
+  const rows = await db
     .select({
       variantId: productVariants.id,
       variantTitle: productVariants.title,
@@ -600,14 +691,12 @@ export async function lowStock(actor: Actor, limit = 50) {
     .from(productVariants)
     .innerJoin(products, eq(productVariants.productId, products.id))
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
-    .where(
-      and(
-        mine,
-        sql`${productVariants.stock} <= 0 or (${productVariants.lowStockAt} is not null and ${productVariants.stock} <= ${productVariants.lowStockAt})`,
-      ),
-    )
-    .orderBy(sql`${productVariants.stock} - coalesce(${productVariants.lowStockAt}, 0) asc`)
-    .limit(limit);
+    .where(isLow)
+    .orderBy(sql`${productVariants.stock} - coalesce(${productVariants.lowStockAt}, 0) asc`, asc(productVariants.id))
+    .limit(pageSize)
+    .offset(offset);
+
+  return { rows, total, page, pageSize };
 }
 
 /**
@@ -667,12 +756,34 @@ export async function stockHistory(actor: Actor, options: { variantId?: number; 
  * list is people who work here, not the catalog, and it stays small enough
  * that anything cleverer would be pretending.
  */
-export async function listPeople(actor: Actor, options: { query?: string; limit?: number } = {}) {
+/** One row of `listPeople`, named so an empty page types the same as a full one. */
+export type PersonRow = {
+  id: number;
+  email: string;
+  name: string | null;
+  role: string;
+  lastSignedIn: Date;
+  createdAt: Date;
+  vendors: { userId: number; vendorId: number; role: string; vendorName: string }[];
+};
+
+export async function listPeople(actor: Actor, options: { query?: string } & PageRequest = {}) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();
-  if (!db) return [];
+  if (!db) return emptyPage<PersonRow>(options);
 
   const term = options.query?.trim().toLowerCase();
+  const matching = term
+    ? sql`lower(${users.email}) like ${`%${term}%`} or lower(coalesce(${users.name}, '')) like ${`%${term}%`}`
+    : undefined;
+
+  // This list is everyone with an account, shoppers included, so it is the one
+  // that outgrows a fixed ceiling first — and deciding who administers NetLet
+  // from the hundred newest registrations is not a decision at all.
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(users).where(matching);
+  const total = counted?.n ?? 0;
+  const { page, pageSize, offset } = windowFor(options, total);
+
   const rows = await db
     .select({
       id: users.id,
@@ -683,11 +794,12 @@ export async function listPeople(actor: Actor, options: { query?: string; limit?
       createdAt: users.createdAt,
     })
     .from(users)
-    .where(term ? sql`lower(${users.email}) like ${`%${term}%`} or lower(coalesce(${users.name}, '')) like ${`%${term}%`}` : undefined)
-    .orderBy(desc(users.createdAt))
-    .limit(options.limit ?? 100);
+    .where(matching)
+    .orderBy(desc(users.createdAt), desc(users.id))
+    .limit(pageSize)
+    .offset(offset);
 
-  if (!rows.length) return [];
+  if (!rows.length) return { rows: [] as PersonRow[], total, page, pageSize };
 
   const memberships = await db
     .select({
@@ -700,10 +812,12 @@ export async function listPeople(actor: Actor, options: { query?: string; limit?
     .innerJoin(vendors, eq(vendorMembers.vendorId, vendors.id))
     .where(inArray(vendorMembers.userId, rows.map(row => row.id)));
 
-  return rows.map(row => ({
-    ...row,
-    vendors: memberships.filter(m => m.userId === row.id),
-  }));
+  return {
+    rows: rows.map(row => ({ ...row, vendors: memberships.filter(m => m.userId === row.id) })),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 /**
@@ -934,11 +1048,17 @@ export async function setProductCommission(
 
 /* --------------------------------------------------------------- vendors --- */
 
-export async function listVendors(actor: Actor) {
+export async function listVendors(actor: Actor, request: PageRequest = {}) {
   assertCan(actor, "platform.viewAll");
   const db = await getDb();
-  if (!db) return [];
-  return db.select().from(vendors).orderBy(asc(vendors.name));
+  if (!db) return emptyPage<typeof vendors.$inferSelect>(request);
+
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(vendors);
+  const total = counted?.n ?? 0;
+  const { page, pageSize, offset } = windowFor(request, total);
+
+  const rows = await db.select().from(vendors).orderBy(asc(vendors.name), asc(vendors.id)).limit(pageSize).offset(offset);
+  return { rows, total, page, pageSize };
 }
 
 export async function setVendorCommission(actor: Actor, vendorId: number, percent: string, fixed?: string | null) {

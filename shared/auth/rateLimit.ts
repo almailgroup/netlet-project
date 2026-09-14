@@ -1,0 +1,81 @@
+/**
+ * How many failed sign-ins are too many, and for how long.
+ *
+ * Pure, so the thresholds can be argued with in a test rather than discovered
+ * in production. The counting and the storing are `server/rateLimit.ts`; this
+ * decides only what a set of timestamps means.
+ *
+ * **Two keys, not one.** Throttling by address alone is what a shared office
+ * connection, a university or a phone carrier's NAT all look like from the
+ * server, and one of those hitting the ceiling locks out everybody behind it.
+ * Throttling by account alone does nothing about one host spraying a common
+ * password across a thousand different addresses. Each key answers the attack
+ * the other cannot see, so both are checked and the stricter one wins.
+ *
+ * **Only failures are counted.** A busy office where everybody signs in
+ * successfully never approaches either ceiling — which is what makes an
+ * address ceiling safe to have at all.
+ */
+
+/** How far back a failure still counts against you. */
+export const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+/**
+ * Failures against one account before it stops answering.
+ *
+ * Ten is enough to be a person who genuinely cannot remember which password
+ * they used, and far too few to search a password space.
+ */
+export const MAX_FAILURES_PER_ACCOUNT = 10;
+
+/**
+ * Failures from one address, across every account, before it stops answering.
+ *
+ * Deliberately much higher than the per-account ceiling: this is the number
+ * that a real shared connection could plausibly produce, and the per-account
+ * limit is what actually protects any individual login.
+ */
+export const MAX_FAILURES_PER_ADDRESS = 30;
+
+export type RateVerdict =
+  | { allowed: true }
+  | { allowed: false; retryAfterSeconds: number };
+
+export const ALLOWED: RateVerdict = { allowed: true };
+
+/**
+ * Whether another attempt is allowed, and when to come back if not.
+ *
+ * `retryAfterSeconds` is measured from the *oldest failure still inside the
+ * window*, because that is the one that will age out first and put the count
+ * back under the ceiling. Measuring from the newest would tell somebody to
+ * wait the full window after every attempt, which never expires — a lockout
+ * that a person cannot get out of by waiting is a support ticket.
+ */
+export function limitVerdict(
+  failures: Date[],
+  max: number,
+  now: Date = new Date(),
+  windowMs: number = ATTEMPT_WINDOW_MS,
+): RateVerdict {
+  const cutoff = now.getTime() - windowMs;
+  const inWindow = failures
+    .map(at => at.getTime())
+    .filter(at => at > cutoff)
+    .sort((a, b) => a - b);
+
+  if (inWindow.length < max) return ALLOWED;
+
+  // The (max)th most recent failure is the one whose expiry drops the count
+  // below the ceiling; anything older than it has already stopped counting.
+  const decisive = inWindow[inWindow.length - max];
+  const msUntilFree = decisive + windowMs - now.getTime();
+  return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil(msUntilFree / 1000)) };
+}
+
+/** The stricter of two verdicts — the one that says no, or says wait longer. */
+export function strictest(a: RateVerdict, b: RateVerdict): RateVerdict {
+  if (a.allowed) return b;
+  if (b.allowed) return a;
+  return a.retryAfterSeconds >= b.retryAfterSeconds ? a : b;
+}

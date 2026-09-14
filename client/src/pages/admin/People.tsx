@@ -14,6 +14,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -62,8 +63,18 @@ function People() {
   const { t, locale } = useTranslation();
   const utils = trpc.useUtils();
   const [query, setQuery] = useState("");
-  const people = trpc.inventory.people.list.useQuery({ query: query.trim() || undefined });
-  const vendors = trpc.inventory.vendors.list.useQuery();
+  const [page, setPage] = useState(1);
+  /*
+   * This list is everyone with an account, shoppers included, so it is the one
+   * that outgrew its old ceiling of a hundred first — and choosing who
+   * administers NetLet from the hundred newest registrations is not a choice.
+   */
+  const people = trpc.inventory.people.list.useQuery(
+    { query: query.trim() || undefined, page },
+    { placeholderData: previous => previous },
+  );
+  // The picker wants every store, not a page of them.
+  const vendors = trpc.inventory.vendors.list.useQuery({ pageSize: 200 });
 
   const refresh = () => void utils.inventory.people.list.invalidate();
   /*
@@ -88,8 +99,8 @@ function People() {
     onError: fail,
   });
 
-  const rows = people.data ?? [];
-  const vendorRows = vendors.data ?? [];
+  const rows = people.data?.rows ?? [];
+  const vendorRows = vendors.data?.rows ?? [];
 
   return (
     <>
@@ -107,7 +118,7 @@ function People() {
         <input
           dir="auto"
           value={query}
-          onChange={event => setQuery(event.target.value)}
+          onChange={event => { setQuery(event.target.value); setPage(1); }}
           placeholder={t("admin.searchPeople")}
           className={`${field} max-w-md`}
         />
@@ -191,6 +202,7 @@ function People() {
               </p>
             </article>
           ))}
+          {people.data ? <Pager page={people.data} onPage={setPage} /> : null}
         </div>
       )}
     </>

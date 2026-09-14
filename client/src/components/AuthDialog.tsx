@@ -156,7 +156,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
             <X className="size-4" />
           </button>
 
-          <img src={logoImage} alt="" aria-hidden className="h-8 w-auto lg:hidden" />
+          <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-8 w-auto lg:hidden" />
 
           <h2 id={titleId} className="display-face mt-4 text-[28px] leading-tight text-[#0a285a] lg:mt-0">
             {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
@@ -435,7 +435,7 @@ function ShowcasePanel() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_0%_0%,rgba(242,104,58,.38),transparent_60%)] rtl:-scale-x-100"
       />
       <div className="relative">
-        <img src={logoImage} alt="" aria-hidden className="h-9 w-auto brightness-0 invert" />
+        <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-9 w-auto brightness-0 invert" />
         <p className="display-face mt-6 text-[30px] leading-[1.15]">{t("auth.panelTitle")}</p>
       </div>
 

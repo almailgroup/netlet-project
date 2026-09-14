@@ -31,6 +31,7 @@ import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, sendFirebasePasswo
 import { createAccount, EmailTakenError } from "../_core/accounts.js";
 import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
 import { loadUser, updateUserEmail, updateUserName, updateUserPasswordHash } from "../profile.js";
+import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../rateLimit.js";
 import type { User } from "../../drizzle/schema.js";
 
 const credentials = z.object({
@@ -139,6 +140,34 @@ async function signInLocally(email: string, password: string): Promise<User | nu
     return null;
   }
   return (await verifyPassword(password, user.passwordHash)) ? user : null;
+}
+
+/**
+ * The two keys a caller is throttled on.
+ *
+ * `ctx.req.ip` is the real client only because `applySecurity` sets
+ * `trust proxy` to one hop; without that it is the tunnel's address and every
+ * visitor shares one bucket.
+ */
+function callerOf(ctx: { req: { ip?: string } }, email?: string): Caller {
+  return { email, address: ctx.req.ip ?? null };
+}
+
+/**
+ * Refuses, with the wait, when a caller has failed too often.
+ *
+ * TOO_MANY_REQUESTS rather than UNAUTHORIZED: a throttled caller has not been
+ * told their password is wrong, and telling them so would be a lie that also
+ * leaks whether the guess was close.
+ */
+async function assertNotThrottled(caller: Caller, kind: AttemptKind): Promise<void> {
+  const verdict = await checkAuthAllowed(caller, kind);
+  if (verdict.allowed) return;
+  throw new TRPCError({
+    code: "TOO_MANY_REQUESTS",
+    message: "auth.tooManyAttempts",
+    cause: { retryAfterSeconds: verdict.retryAfterSeconds },
+  });
 }
 
 export const authRouter = router({
@@ -260,7 +289,14 @@ export const authRouter = router({
       email: z.string().trim().email().max(320),
       locale: z.enum(["en", "ar"]).default("en"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // Unlike sign-in there is no failure to count here — the reply is
+      // identical for an address with no account, on purpose — so every
+      // request counts. The abuse this stops is using NetLet to post mail to
+      // somebody else's inbox a hundred times.
+      const caller = callerOf(ctx, input.email);
+      await assertNotThrottled(caller, "reset");
+      await recordAuthAttempt(caller, "reset");
       try {
         await sendFirebasePasswordReset(input.email, input.locale);
       } catch (error) {
@@ -274,11 +310,22 @@ export const authRouter = router({
   login: publicProcedure.input(credentials).mutation(async ({ ctx, input }) => {
     assertConfigured();
 
+    const caller = callerOf(ctx, input.email);
+    await assertNotThrottled(caller, "login");
+
     const user = isFirebaseConfigured()
       ? await signInWithFirebase(input.email, input.password)
       : await signInLocally(input.email, input.password);
-    if (!user) throw invalidCredentials;
+    if (!user) {
+      // Only a failure is counted, which is what makes the per-address ceiling
+      // safe: an office where everybody signs in successfully never nears it.
+      await recordAuthAttempt(caller, "login");
+      throw invalidCredentials;
+    }
 
+    // Somebody who mistyped nine times and then got it right is not one
+    // failure from a lockout for the next quarter of an hour.
+    await clearAccountFailures(input.email);
     await touchLastSignedIn(user.id);
     const token = await signSession(user.id);
     ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });

@@ -80,6 +80,8 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
             src={item.url}
             alt={position === 0 ? (item.altText ?? product.title) : ""}
             aria-hidden={position !== 0}
+            loading="lazy"
+            decoding="async"
             style={{ transitionDuration: `${PREVIEW_FADE}ms` }}
             className={`aspect-[1.02] w-full object-cover transition-opacity ease-out group-hover:scale-105 motion-safe:transition-transform ${position === 0 ? "" : "absolute inset-0"} ${position === index ? "opacity-100" : "opacity-0"}`}
           />

@@ -47,6 +47,15 @@ const CONTENT_SECURITY_POLICY = {
  * but not low enough to make an online guessing attack pointless. Keyed on the
  * client IP; behind the tunnel that is only the real client once `trust proxy`
  * is set, which `applySecurity` does.
+ *
+ * **This is the coarse layer, and it counts in memory.** One long-lived server
+ * is what `express-rate-limit`'s default store assumes: a `Map` that lives as
+ * long as the process. Served from a pool of short-lived instances instead,
+ * every instance starts with an empty one, so the real ceiling is this number
+ * times however many are warm and it resets whenever one recycles. Good enough
+ * to blunt a flood before it reaches application code; not something to rely
+ * on for credential guessing, which `server/rateLimit.ts` counts in Postgres
+ * where every instance can see it.
  */
 export const authRateLimit: RequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000,

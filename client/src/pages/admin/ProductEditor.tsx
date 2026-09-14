@@ -197,7 +197,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 {/* A live preview is the only way to tell a good URL from a
                     typo before the product is on the shelf. */}
                 <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef1f6]">
-                  {image.url ? <img src={image.url} alt="" className="size-full object-cover" /> : null}
+                  {image.url ? <img src={image.url} alt="" loading="lazy" decoding="async" className="size-full object-cover" /> : null}
                 </div>
                 <div className="grid min-w-0 flex-1 gap-2">
                   <input

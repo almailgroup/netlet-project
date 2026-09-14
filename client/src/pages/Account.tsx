@@ -77,7 +77,7 @@ export default function Account() {
       <header className="border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
         <div className="container flex h-[76px] items-center justify-between gap-4">
           <a href={appPath("/")} className="flex items-center" aria-label={t("account.backHome")}>
-            <img src={logoImage} alt="NetLet" className="h-11 w-auto max-w-[140px] object-contain" />
+            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-11 w-auto max-w-[140px] object-contain" />
           </a>
           <a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2">
             {t("header.continueShopping")} <ChevronRight className="size-4 rtl:-scale-x-100" />

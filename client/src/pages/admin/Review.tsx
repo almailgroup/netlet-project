@@ -8,6 +8,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -26,14 +27,24 @@ function Queue() {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const [notes, setNotes] = useState<Record<number, string>>({});
-  const products = trpc.inventory.products.list.useQuery({});
+  const [page, setPage] = useState(1);
+  /*
+   * The queue asks the server for what is waiting, rather than fetching a page
+   * of products and filtering it: with paging the second would show the
+   * pending items that happened to land on page one and report the queue empty
+   * once it grew past that.
+   */
+  const products = trpc.inventory.products.list.useQuery(
+    { status: "pending_review", page },
+    { placeholderData: previous => previous },
+  );
 
   const review = trpc.inventory.products.review.useMutation({
     onSuccess: () => { void utils.inventory.products.list.invalidate(); toast.success(t("admin.saved")); },
     onError: () => toast.error(t("admin.forbidden")),
   });
 
-  const waiting = (products.data ?? []).filter(row => row.status === "pending_review");
+  const waiting = products.data?.rows ?? [];
 
   if (products.isLoading || products.isError) return <QueryGate queries={[products]}>{() => null}</QueryGate>;
 
@@ -85,6 +96,7 @@ function Queue() {
               />
             </article>
           ))}
+          {products.data ? <Pager page={products.data} onPage={setPage} /> : null}
         </div>
       )}
     </>

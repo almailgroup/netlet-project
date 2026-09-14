@@ -337,6 +337,16 @@ ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "payout_iban" varchar(34);
 ALTER TABLE "customer_preferences" ALTER COLUMN "locale" DROP DEFAULT;
 ALTER TABLE "customer_preferences" ALTER COLUMN "locale" DROP NOT NULL;
 
+-- ===== 0009_swift_greymalkin.sql =====
+CREATE TABLE IF NOT EXISTS "auth_attempts" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"bucket" varchar(340) NOT NULL,
+	"kind" varchar(16) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "auth_attempts_bucket_idx" ON "auth_attempts" USING btree ("bucket","kind","created_at");
+CREATE INDEX IF NOT EXISTS "auth_attempts_created_idx" ON "auth_attempts" USING btree ("created_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

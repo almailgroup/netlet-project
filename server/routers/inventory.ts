@@ -151,10 +151,15 @@ export const inventoryRouter = router({
 
   products: router({
     list: protectedProcedure
-      .input(vendorScope.optional())
+      .input(vendorScope.extend({
+        query: z.string().trim().max(160).optional(),
+        status: z.enum(["draft", "pending_review", "published", "archived"]).optional(),
+        page: z.number().int().min(1).max(100_000).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
+      }).optional())
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input?.vendorId);
-        return guard(() => listProductsFor(actor, input?.vendorId));
+        return guard(() => listProductsFor(actor, input?.vendorId, input ?? {}));
       }),
 
     get: protectedProcedure
@@ -300,10 +305,13 @@ export const inventoryRouter = router({
     }),
 
   lowStock: protectedProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .input(z.object({
+        page: z.number().int().min(1).max(100_000).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
+    }).optional())
     .query(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
-      return guard(() => lowStock(actor, input?.limit ?? 50));
+      return guard(() => lowStock(actor, input ?? {}));
     }),
 
   stockHistory: protectedProcedure
@@ -363,7 +371,8 @@ export const inventoryRouter = router({
     list: protectedProcedure
       .input(z.object({
         query: z.string().trim().max(160).optional(),
-        limit: z.number().int().min(1).max(200).optional(),
+        page: z.number().int().min(1).max(100_000).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
       }).optional())
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
@@ -397,10 +406,15 @@ export const inventoryRouter = router({
   }),
 
   vendors: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      const actor = await resolveActor(ctx.user);
-      return guard(() => listVendors(actor));
-    }),
+    list: protectedProcedure
+      .input(z.object({
+        page: z.number().int().min(1).max(100_000).optional(),
+        pageSize: z.number().int().min(1).max(200).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => listVendors(actor, input ?? {}));
+      }),
 
     get: protectedProcedure
       .input(z.object({ vendorId: z.number().int().positive() }))

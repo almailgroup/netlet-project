@@ -13,6 +13,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -21,6 +22,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { missingStoreDetails } from "@shared/inventory/storeProfile";
 import { ArrowRight, Plus } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
 
 export default function AdminVendors() {
@@ -36,7 +38,10 @@ const STATUS_TONE: Record<string, string> = {
 
 function VendorList() {
   const { t } = useTranslation();
-  const vendors = trpc.inventory.vendors.list.useQuery();
+  const [page, setPage] = useState(1);
+  // `placeholderData` keeps the previous page drawn while the next arrives, so
+  // stepping through does not blink the whole table out and back.
+  const vendors = trpc.inventory.vendors.list.useQuery({ page }, { placeholderData: previous => previous });
 
   return (
     <>
@@ -51,7 +56,8 @@ function VendorList() {
       </div>
 
       <QueryGate queries={[vendors]}>{() => {
-        const rows = vendors.data ?? [];
+        const result = vendors.data;
+        const rows = result?.rows ?? [];
         return rows.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.noVendors")}</p>
@@ -103,6 +109,7 @@ function VendorList() {
               </Link>
             );
           })}
+          {result ? <Pager page={result} onPage={setPage} /> : null}
         </div>
         );
       }}</QueryGate>

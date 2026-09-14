@@ -100,6 +100,30 @@ carries the verb rather than "OK" — somebody who opened it by accident reads
 the button, not the paragraph. Cancel takes focus on open, so a stray Enter
 gives the safe answer.
 
+**Sign-in throttling counts in Postgres, not in memory.** The
+`express-rate-limit` layer in `_core/security.ts` is still there and still
+blunts a flood before it reaches application code, but its store is a `Map`
+that assumes one long-lived process: served from a pool of short-lived
+instances, each starts empty, so the real ceiling is the number times however
+many are warm and it resets whenever one recycles. `server/rateLimit.ts` counts
+in a table every instance shares, and `shared/auth/rateLimit.ts` is the policy,
+pure.
+
+Two keys, because each catches what the other cannot see: by address alone, one
+office NAT hitting the ceiling locks out the whole building; by account alone,
+nothing stops one host spraying a common password across a thousand addresses.
+**Only failures count**, which is what makes an address ceiling safe to have —
+an office where everybody signs in successfully never approaches it. Signing in
+clears the *account's* record but deliberately not the address's, or one
+attacker with an account of their own could launder their history at will. A
+throttled caller gets `TOO_MANY_REQUESTS`, never "wrong password" — behaving
+differently for the right password would make the throttle an oracle.
+
+Password reset is throttled too, and there it counts every request rather than
+every failure: the reply is identical for an address with no account, on
+purpose, so there is no failure to count. The abuse being stopped is using
+NetLet to post mail into somebody else's inbox.
+
 **There is no social sign-in, on purpose.** It needs a provider configured in
 the Firebase console and a redirect the server has to trust; a button that
 looks like Google sign-in and does nothing is worse than no button. The
@@ -270,6 +294,24 @@ administrator, and removing the last one. Both leave an installation that
 needs a database client to recover, and neither is worth allowing to save a
 click — there is always another administrator who can do it if it is meant.
 
+**Every admin list is paged, and always says how many there are.** The lists
+stopped at a fixed ceiling — 500 products, 100 vendors, 100 people, 50 low-stock
+rows — and said nothing, which is the same lie `QueryGate` was built to stop: a
+table showing part of the answer looks exactly like one showing all of it.
+`shared/pagination.ts` is the arithmetic and is pure; `Pager` draws it. The
+count is rendered even on a single page, because the count is the part that
+keeps a short list honest.
+
+Two things follow from paging that are easy to get wrong, and both are tested.
+**Filtering moved to the server** — product search and the review queue's
+`pending_review` filter — because a filter applied to the rows already fetched
+searches one page and reports "no matches" for something on another. And
+**every paged query ends on a unique column**: `updatedAt` is not unique, a bulk
+import gives a hundred rows the same microsecond, and Postgres orders ties
+freely between two queries, so offset paging over an unstable sort repeats rows
+on the next page and skips others. That one was found in the browser, not in a
+test — the fixtures were too small to tie.
+
 **Every admin page has three states, not two.** `QueryGate` renders loading,
 failed, or ready; a failed query shows what the server actually said and
 offers to retry. Before it, every page branched on `isLoading` and then read
@@ -407,13 +449,35 @@ around it.** An email, a slug, a score, a URL path: the characters read left to
 right, but the *line* is still part of an Arabic page and belongs on its side.
 `dir` on a block does both jobs, so `<p dir="ltr">` threw the address to the far
 edge with the label above it hugging the other one — visible on the account
-card, `/admin/people`, `/admin/team` and a store's header. `client/src/lib/rtl.test.ts`
+card, `/admin/people`, `/admin/team` and a store's header. `client/src/lib/markup.test.ts`
 is what keeps it out, allowing `dir="ltr"` only on a form control (where it sets
 the typing direction), an inline run, or `pre`.
 
 That rule is about values, not prose: on merchant text `dir="auto"` flipping the
 whole block is the intent, which is why the guard polices `ltr` and leaves
 `auto` alone.
+
+## Images
+
+**Every `<img>` says how it loads**, and `markup.test.ts` fails on one that does
+not. There was a single `loading="lazy"` in the whole storefront, so a category
+page opened every product photo at once — worst exactly where NetLet sells, on
+a phone on a Kuwaiti mobile connection.
+
+The attribute has to be present; which value is a judgement about the page, and
+the test deliberately does not have an opinion. Three of them are `eager`: the
+home hero and the product page's own picture, both `fetchPriority="high"`
+because they are that page's largest paint, and the header logo, eager but
+*without* the priority hint so it does not compete with them. Everything else —
+cards, rails, thumbnails, the bag drawer, the admin editor — is `lazy`.
+
+`decoding="async"` rides along everywhere: decoding a photo on the main thread
+blocks the frame, and nothing here needs an image decoded synchronously.
+
+Sizes are not set as attributes because every image already sits in a box the
+CSS fixes (`aspect-square`, `aspect-[1.02]`, `size-*`), which is what actually
+prevents the layout shifting. `product_images` stores no dimensions to set them
+from anyway.
 
 ## Deploys
 
@@ -460,6 +524,19 @@ Verify a change to any of this the only way that means anything: build, then
 serve `api/index.js` from a directory with **no `node_modules`**, and hit
 `/healthz` and a tRPC route. Anything less agrees with itself and not with
 Vercel.
+
+### robots.txt and sitemap.xml
+
+Both are generated by the app, not committed. As files they had gone stale the
+way files do: `robots.txt` pointed crawlers at a sitemap that had never existed,
+on a host spelled with a repository name the project had already renamed away
+from. `shared/sitemap.ts` is the pure serialiser and `server/sitemap.ts` reads
+the catalog — through `publishedCatalog`, so a draft or a suspended vendor's
+product is absent from the index for the same reason it is absent from the shop.
+
+The origin is never written down. `SITE_URL` wins when a canonical domain has
+been decided; otherwise it is the origin that answered the request, which is
+right on a preview deployment and on a laptop with nothing to configure.
 
 ### GitHub Pages
 

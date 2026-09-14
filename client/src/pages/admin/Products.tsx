@@ -12,6 +12,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { useMoney, useTranslation } from "@/lib/useTranslation";
@@ -19,7 +20,7 @@ import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { LoaderCircle, PackagePlus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -35,13 +36,23 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [search, setSearch] = useState("");
   const utils = trpc.useUtils();
 
-  const products = trpc.inventory.products.list.useQuery({});
+  const [page, setPage] = useState(1);
+  /*
+   * The search term goes to the server, so stepping to page three and typing
+   * still searches the whole catalog. Changing it resets to page one, or a
+   * narrowed list would open on a page that no longer exists.
+   */
+  const term = search.trim();
+  const products = trpc.inventory.products.list.useQuery(
+    { page, query: term || undefined },
+    { placeholderData: previous => previous },
+  );
   /*
    * A product belongs to a vendor, and an admin is not one — so an admin has
    * to say which. Vendors see no picker: there is only ever one answer for
    * them, and asking would be a question with a single option.
    */
-  const vendors = trpc.inventory.vendors.list.useQuery(undefined, { enabled: actor.kind === "admin" });
+  const vendors = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: actor.kind === "admin" });
   const [chosenVendor, setChosenVendor] = useState("");
   const create = trpc.inventory.products.create.useMutation({
     onSuccess: row => {
@@ -51,15 +62,10 @@ function ProductTable({ actor }: { actor: Actor }) {
     onError: error => toast.error(error.message === "product.create" ? t("admin.forbidden") : t("admin.saveFailed")),
   });
 
-  const rows = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const all = products.data ?? [];
-    if (!term) return all;
-    return all.filter(row => row.title.toLowerCase().includes(term) || row.handle.includes(term));
-  }, [products.data, search]);
+  const rows = products.data?.rows ?? [];
 
   // Only worth a column when the answer differs between rows.
-  const showVendor = new Set((products.data ?? []).map(row => row.vendorId)).size > 1;
+  const showVendor = new Set(rows.map(row => row.vendorId)).size > 1;
   const mayCreate = can(actor, "product.create", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   /**
@@ -73,7 +79,7 @@ function ProductTable({ actor }: { actor: Actor }) {
   const newProductVendorId =
     actor.kind === "vendor"
       ? actor.vendorId
-      : Number(chosenVendor) || vendors.data?.[0]?.id || null;
+      : Number(chosenVendor) || vendors.data?.rows?.[0]?.id || null;
 
   return (
     <>
@@ -82,15 +88,15 @@ function ProductTable({ actor }: { actor: Actor }) {
         {mayCreate ? (
           <div className="flex flex-wrap items-center gap-2">
             {/* More than one vendor is the only case where the choice is real. */}
-            {actor.kind === "admin" && (vendors.data ?? []).length > 1 ? (
+            {actor.kind === "admin" && (vendors.data?.rows ?? []).length > 1 ? (
               <label className="text-[11px] font-extrabold text-[#536b8c]">
                 {t("admin.productVendor")}
                 <select
-                  value={chosenVendor || String(vendors.data?.[0]?.id ?? "")}
+                  value={chosenVendor || String(vendors.data?.rows?.[0]?.id ?? "")}
                   onChange={event => setChosenVendor(event.target.value)}
                   className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#f2683a]"
                 >
-                  {(vendors.data ?? []).map(vendor => (
+                  {(vendors.data?.rows ?? []).map(vendor => (
                     <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
                   ))}
                 </select>
@@ -117,7 +123,7 @@ function ProductTable({ actor }: { actor: Actor }) {
         <Search className="size-4 shrink-0 ink-muted" aria-hidden />
         <input
           value={search}
-          onChange={event => setSearch(event.target.value)}
+          onChange={event => { setSearch(event.target.value); setPage(1); }}
           aria-label={t("admin.searchProducts")}
           placeholder={t("admin.searchProducts")}
           className="w-full bg-transparent text-[13px] outline-none"
@@ -172,6 +178,7 @@ function ProductTable({ actor }: { actor: Actor }) {
               })}
             </tbody>
           </table>
+          {products.data ? <Pager page={products.data} onPage={setPage} /> : null}
         </div>
       )}
     </>

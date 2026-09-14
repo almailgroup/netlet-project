@@ -86,7 +86,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               className="block w-full overflow-hidden rounded-2xl border border-[#e2e5eb] bg-white"
             >
               {image
-                ? <img src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-contain p-4" />
+                ? <img src={image.url} alt={image.altText ?? product.title} loading="lazy" decoding="async" className="aspect-square w-full object-contain p-4" />
                 : <div className="aspect-square" />}
             </button>
             {product.images.length > 1 ? (
@@ -99,7 +99,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                     aria-current={index === imageIndex}
                     className={`pressable grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 ${index === imageIndex ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
                   >
-                    <img src={item.url} alt="" aria-hidden className="size-full object-contain" />
+                    <img src={item.url} alt="" aria-hidden loading="lazy" decoding="async" className="size-full object-contain" />
                   </button>
                 ))}
               </div>

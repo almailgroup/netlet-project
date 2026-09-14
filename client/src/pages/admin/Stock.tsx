@@ -11,6 +11,8 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -26,7 +28,8 @@ export default function AdminStock() {
 
 function Stock() {
   const { t } = useTranslation();
-  const low = trpc.inventory.lowStock.useQuery();
+  const [page, setPage] = useState(1);
+  const low = trpc.inventory.lowStock.useQuery({ page }, { placeholderData: previous => previous });
   const history = trpc.inventory.stockHistory.useQuery({ limit: 30 });
 
   return (
@@ -36,13 +39,13 @@ function Stock() {
 
       {low.isLoading || low.isError ? (
         <div className="mt-5"><QueryGate queries={[low]}>{() => null}</QueryGate></div>
-      ) : (low.data ?? []).length === 0 ? (
+      ) : (low.data?.rows ?? []).length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.nothingLow")}</p>
         </div>
       ) : (
         <div className="mt-5 space-y-2">
-          {(low.data ?? []).map(row => {
+          {(low.data?.rows ?? []).map(row => {
             const out = row.stock <= 0;
             return (
               <Link
@@ -67,6 +70,7 @@ function Stock() {
               </Link>
             );
           })}
+          {low.data ? <Pager page={low.data} onPage={setPage} /> : null}
         </div>
       )}
 

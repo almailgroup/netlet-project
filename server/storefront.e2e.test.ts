@@ -93,7 +93,7 @@ describe("a product's journey from the admin portal to the shop", () => {
 
   it("appears in the shop once it is published, with its price and picture", async () => {
     const product = await caller.inventory.products.get({
-      id: (await caller.inventory.products.list({}))[0].id,
+      id: (await caller.inventory.products.list({})).rows[0].id,
     });
     await caller.inventory.variants.save({
       id: product.variants[0].id,
@@ -228,7 +228,7 @@ describe("an admin, who belongs to no vendor", () => {
     expect(created.status).toBe("draft");
 
     // And it is theirs to work on afterwards, not merely to create.
-    const listed = await adminCaller.inventory.products.list({});
+    const listed = (await adminCaller.inventory.products.list({})).rows;
     expect(listed.some((row: any) => row.id === created.id)).toBe(true);
   });
 });

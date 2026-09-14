@@ -103,12 +103,12 @@ describe("resolveActor", () => {
 
 describe("scope", () => {
   it("shows a vendor only its own products", async () => {
-    const rows = await inv.listProductsFor(ownerActor());
+    const { rows } = await inv.listProductsFor(ownerActor());
     expect(rows.map(r => r.handle)).toEqual(["acme-lamp"]);
   });
 
   it("shows an admin every vendor's", async () => {
-    const rows = await inv.listProductsFor(adminActor());
+    const { rows } = await inv.listProductsFor(adminActor());
     expect(rows.map(r => r.handle).sort()).toEqual(["acme-lamp", "other-kettle"]);
   });
 
@@ -278,14 +278,14 @@ describe("product images", () => {
 
 describe("who reaches the admin panel", () => {
   it("lists everyone with their memberships, for an admin", async () => {
-    const people = await inv.listPeople(adminActor());
+    const { rows: people } = await inv.listPeople(adminActor());
     const staffRow = people.find(person => person.email === "staff@acme.test");
     expect(staffRow).toBeTruthy();
     expect(staffRow!.vendors.map(v => v.role)).toEqual(["staff"]);
   });
 
   it("narrows by email or name", async () => {
-    const people = await inv.listPeople(adminActor(), { query: "staff@" });
+    const { rows: people } = await inv.listPeople(adminActor(), { query: "staff@" });
     expect(people.map(person => person.email)).toEqual(["staff@acme.test"]);
   });
 
@@ -369,7 +369,7 @@ describe("the admin portal's reports", () => {
       productId: ids.acmeProduct, title: "Reorders at 2", price: "1.000", stock: 3, lowStockAt: 2,
     }).returning();
 
-    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    const listed = (await inv.lowStock(ownerActor())).rows.map(row => row.variantId);
     // Identical raw stock, opposite verdicts — which is the whole point.
     expect(listed).toContain(urgent.id);
     expect(listed).not.toContain(fine.id);
@@ -383,7 +383,7 @@ describe("the admin portal's reports", () => {
       productId: ids.acmeProduct, title: "Shallow shortfall", price: "1.000", stock: 9, lowStockAt: 10,
     }).returning();
 
-    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    const listed = (await inv.lowStock(ownerActor())).rows.map(row => row.variantId);
     expect(listed.indexOf(worse.id)).toBeLessThan(listed.indexOf(milder.id));
   });
 
@@ -391,7 +391,7 @@ describe("the admin portal's reports", () => {
     const [empty] = await db.insert(productVariants).values({
       productId: ids.acmeProduct, title: "Nothing left", price: "1.000", stock: 0, lowStockAt: null,
     }).returning();
-    const listed = (await inv.lowStock(ownerActor())).map(row => row.variantId);
+    const listed = (await inv.lowStock(ownerActor())).rows.map(row => row.variantId);
     expect(listed).toContain(empty.id);
   });
 
@@ -818,5 +818,122 @@ describe("editing a store's details", () => {
     await expect(
       inv.updateVendorProfile(ownerActor(), ids.acme, { payoutIban: "KW81CBKU0000000000001234560101" }),
     ).rejects.toThrow(/FORBIDDEN/);
+  });
+});
+
+/**
+ * Paging, over more rows than a page holds.
+ *
+ * The fixtures above are deliberately small, so these build their own vendor
+ * with enough products to actually spill — a list that fits on one page proves
+ * nothing about the one that does not, which is the whole failure being fixed.
+ */
+describe("paging a list longer than a page", () => {
+  let pagedVendor = 0;
+
+  beforeAll(async () => {
+    const [vendor] = await db.insert(vendors).values({ slug: "paged", name: "Paged", status: "approved" }).returning();
+    pagedVendor = vendor.id;
+    await db.insert(products).values(
+      Array.from({ length: 25 }, (_, index) => ({
+        vendorId: vendor.id,
+        // Zero-padded so lexical order matches numeric order when reading a failure.
+        handle: `paged-${String(index).padStart(2, "0")}`,
+        title: `Paged ${String(index).padStart(2, "0")}`,
+      })),
+    );
+  }, 60_000);
+
+  const pagedActor = (): Actor => ({ kind: "admin", userId: ids.admin });
+
+  it("reports the true total on every page, not the size of the page", async () => {
+    const first = await inv.listProductsFor(pagedActor(), pagedVendor, { page: 1, pageSize: 10 });
+    const last = await inv.listProductsFor(pagedActor(), pagedVendor, { page: 3, pageSize: 10 });
+    expect(first.total).toBe(25);
+    expect(last.total).toBe(25);
+    expect(first.rows).toHaveLength(10);
+    expect(last.rows).toHaveLength(5);
+  });
+
+  it("hands back different rows on different pages, with none repeated or lost", async () => {
+    const seen: string[] = [];
+    for (const page of [1, 2, 3]) {
+      const result = await inv.listProductsFor(pagedActor(), pagedVendor, { page, pageSize: 10 });
+      seen.push(...result.rows.map(row => row.handle));
+    }
+    expect(new Set(seen).size).toBe(25);
+  });
+
+  /*
+   * A bookmark of page 9 outlives the rows that made nine pages. Landing on
+   * the last page is what somebody meant; an empty table is not.
+   */
+  it("brings a page past the end back to the last real one", async () => {
+    const result = await inv.listProductsFor(pagedActor(), pagedVendor, { page: 99, pageSize: 10 });
+    expect(result.page).toBe(3);
+    expect(result.rows).toHaveLength(5);
+  });
+
+  /*
+   * The reason search moved to the server: filtering the rows already fetched
+   * would search one page and report "no matches" for a product on another.
+   */
+  it("searches the whole list, not the page it is showing", async () => {
+    const result = await inv.listProductsFor(pagedActor(), pagedVendor, { query: "Paged 23", pageSize: 10 });
+    expect(result.total).toBe(1);
+    expect(result.rows.map(row => row.handle)).toEqual(["paged-23"]);
+  });
+
+  it("counts what matches the filter, not the whole table", async () => {
+    const all = await inv.listProductsFor(pagedActor(), pagedVendor, { pageSize: 10 });
+    const drafts = await inv.listProductsFor(pagedActor(), pagedVendor, { status: "published", pageSize: 10 });
+    expect(all.total).toBe(25);
+    expect(drafts.total).toBe(0);
+  });
+});
+
+/**
+ * Rows that tie on the sort key.
+ *
+ * A bulk import gives every row the same `updatedAt`, and Postgres is free to
+ * order ties differently between two queries — so offset paging over an
+ * unstable sort repeats some rows on the next page and skips others entirely.
+ * This is the case that found it: the pager looked fine until the fixtures had
+ * matching timestamps.
+ */
+describe("paging rows that tie on the sort key", () => {
+  let tiedVendor = 0;
+
+  beforeAll(async () => {
+    const [vendor] = await db.insert(vendors).values({ slug: "tied", name: "Tied", status: "approved" }).returning();
+    tiedVendor = vendor.id;
+    const sameMoment = new Date("2026-01-01T00:00:00.000Z");
+    await db.insert(products).values(
+      Array.from({ length: 30 }, (_, index) => ({
+        vendorId: vendor.id,
+        handle: `tied-${String(index).padStart(2, "0")}`,
+        title: `Tied ${String(index).padStart(2, "0")}`,
+        createdAt: sameMoment,
+        updatedAt: sameMoment,
+      })),
+    );
+  }, 60_000);
+
+  it("visits every row exactly once across the pages", async () => {
+    const actor: Actor = { kind: "admin", userId: ids.admin };
+    const seen: string[] = [];
+    for (const page of [1, 2, 3]) {
+      const result = await inv.listProductsFor(actor, tiedVendor, { page, pageSize: 10 });
+      seen.push(...result.rows.map(row => row.handle));
+    }
+    expect(seen).toHaveLength(30);
+    expect(new Set(seen).size).toBe(30);
+  });
+
+  it("gives the same page the same rows when asked twice", async () => {
+    const actor: Actor = { kind: "admin", userId: ids.admin };
+    const once = await inv.listProductsFor(actor, tiedVendor, { page: 2, pageSize: 10 });
+    const twice = await inv.listProductsFor(actor, tiedVendor, { page: 2, pageSize: 10 });
+    expect(once.rows.map(row => row.handle)).toEqual(twice.rows.map(row => row.handle));
   });
 });

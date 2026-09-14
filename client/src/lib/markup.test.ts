@@ -1,5 +1,12 @@
 /**
- * `dir` on a block element does two jobs, and page code usually wants one.
+ * Markup invariants across client page code, enforced by reading the source.
+ *
+ * Both rules here are the kind that cost nothing to follow and are invisible
+ * when broken: the page still renders, in the wrong language's direction or
+ * with forty image requests in flight. A reviewer will not catch either
+ * reliably, so a test does.
+ *
+ * --- 1. `dir` on a block element does two jobs, and page code usually wants one.
  *
  * Setting `dir="ltr"` isolates the text run *and* moves the whole block to the
  * left of its container. On an Arabic page that is how an email address ends
@@ -17,6 +24,14 @@
  * `dir="auto"` is deliberately not policed. On merchant prose — a description,
  * a specification row — flipping the block is the documented intent: the text
  * is in whatever language the merchant typed and should be laid out as such.
+ *
+ * --- 2. Every `<img>` states how it loads.
+ *
+ * There was one `loading="lazy"` in the whole storefront, so a category page
+ * fired every product photo at once — worst exactly where NetLet sells, on a
+ * phone. The rule is that the attribute is present, not what it says: the
+ * picture of the product on its own page should be `eager`, and the answer is
+ * a judgement about the page rather than something a test can make.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -76,5 +91,28 @@ describe("bidi isolation", () => {
     expect(tagsCarryingLtr(`<p><bdi dir="ltr">x</bdi></p>`)).toEqual(["bdi"]);
     // Past the closing bracket the attribute belongs to no tag at all.
     expect(tagsCarryingLtr(`<p>dir="ltr"</p>`)).toEqual([]);
+  });
+});
+
+/** The whole attribute list of every `<img …>` in a file, one string each. */
+function imageTags(source: string): string[] {
+  return [...source.matchAll(/<img\b([^>]*?)\/?>/gs)].map((match) => match[1]);
+}
+
+describe("image loading", () => {
+  it("gives every image an explicit loading strategy", () => {
+    const offenders = clientSources().flatMap(([file, source]) =>
+      imageTags(source)
+        .filter((attributes) => !/\bloading=/.test(attributes))
+        .map((attributes) => `${file}: <img ${attributes.trim().replace(/\s+/g, " ").slice(0, 70)}…>`),
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it("reads a tag's attributes whether it is written on one line or many", () => {
+    expect(imageTags(`<img src="a" loading="lazy" />`)).toEqual([` src="a" loading="lazy" `]);
+    expect(imageTags(`<img\n  src="a"\n  loading="lazy"\n/>`)).toHaveLength(1);
+    expect(imageTags(`<img src="a" /><img src="b" />`)).toHaveLength(2);
+    expect(imageTags(`no images here`)).toEqual([]);
   });
 });

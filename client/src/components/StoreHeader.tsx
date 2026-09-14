@@ -66,7 +66,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       </a>
       <div className="container flex h-[68px] items-center gap-3 lg:gap-5">
         <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
-          <img src={logoImage} alt="NetLet" className="h-9 w-auto max-w-[118px] object-contain" />
+          <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-9 w-auto max-w-[118px] object-contain" />
         </Link>
 
         {searchable ? (

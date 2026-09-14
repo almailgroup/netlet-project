@@ -57,6 +57,12 @@ export const en = {
   "admin.roleManagerWhat": "Runs the catalogue: creates, edits and publishes.",
   "admin.roleOwnerWhat": "Runs the catalogue and the team.",
   "admin.notFound": "That no longer exists.",
+  "admin.showingRange": "Showing {first}–{last} of {total}",
+  "admin.showingNone": "Nothing to show",
+  "admin.pagination": "Pages",
+  "admin.previousPage": "Previous page",
+  "admin.nextPage": "Next page",
+  "admin.goToPage": "Go to page {page}",
   "admin.retry": "Try again",
   "admin.newStore": "New store",
   "admin.newStoreIntro": "Opens the store and, if you fill in the owner below, their login — in one step.",
@@ -717,6 +723,7 @@ export const en = {
   "auth.signedIn": "You are signed in.",
   "auth.emailTaken": "That email is already registered.",
   "auth.invalidCredentials": "Email or password is incorrect.",
+  "auth.tooManyAttempts": "Too many attempts. Wait a few minutes and try again.",
 
   // --- checkout ------------------------------------------------------
   "checkout.return": "Return to NetLet home",
@@ -807,6 +814,12 @@ export const ar: Record<MessageKey, string> = {
   "admin.roleManagerWhat": "يدير الكتالوج: ينشئ ويعدّل وينشر.",
   "admin.roleOwnerWhat": "يدير الكتالوج والفريق.",
   "admin.notFound": "لم يعد هذا موجوداً.",
+  "admin.showingRange": "عرض {first}–{last} من {total}",
+  "admin.showingNone": "لا شيء لعرضه",
+  "admin.pagination": "الصفحات",
+  "admin.previousPage": "الصفحة السابقة",
+  "admin.nextPage": "الصفحة التالية",
+  "admin.goToPage": "الانتقال إلى الصفحة {page}",
   "admin.retry": "إعادة المحاولة",
   "admin.newStore": "متجر جديد",
   "admin.newStoreIntro": "ينشئ المتجر، وإن أدخلت بيانات المالك أدناه، حسابه أيضاً — في خطوة واحدة.",
@@ -1467,6 +1480,7 @@ export const ar: Record<MessageKey, string> = {
   "auth.signedIn": "تم تسجيل دخولك.",
   "auth.emailTaken": "هذا البريد الإلكتروني مسجّل بالفعل.",
   "auth.invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+  "auth.tooManyAttempts": "محاولات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.",
 
   // --- checkout ------------------------------------------------------
   "checkout.return": "العودة إلى الصفحة الرئيسية",

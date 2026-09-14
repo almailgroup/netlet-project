@@ -594,6 +594,39 @@ export const auditLog = pgTable(
   ]
 );
 
+/**
+ * Failed sign-ins and password-reset requests, for throttling.
+ *
+ * In Postgres rather than in the process's memory, and that is the whole
+ * point. `express-rate-limit` keeps its counters in a `Map`, which is correct
+ * for one long-lived server and close to useless on a platform that answers
+ * requests from a pool of short-lived instances: each one starts with an empty
+ * Map, so the ceiling is really the ceiling times however many instances are
+ * warm, and it resets whenever one recycles. A table is the one piece of state
+ * every instance already shares.
+ *
+ * `bucket` is the thing being limited — `account:<email>` or `address:<ip>` —
+ * lower-cased and stored as written, never joined to `users`: an attempt
+ * against an address that has no account still has to count, or the limiter
+ * can be told which addresses exist by which ones it throttles.
+ */
+export const authAttempts = pgTable(
+  "auth_attempts",
+  {
+    id: serial("id").primaryKey(),
+    /** `account:<email>` or `address:<ip>`. */
+    bucket: varchar("bucket", { length: 340 }).notNull(),
+    /** Which door was being tried: "login" or "reset". */
+    kind: varchar("kind", { length: 16 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("auth_attempts_bucket_idx").on(table.bucket, table.kind, table.createdAt),
+    // Pruning walks by age alone, across every bucket.
+    index("auth_attempts_created_idx").on(table.createdAt),
+  ]
+);
+
 /* ------------------------------------------------------------- relations --- */
 
 export const usersRelations = relations(users, ({ one, many }) => ({
