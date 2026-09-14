@@ -10,8 +10,10 @@ describe("dictionary completeness", () => {
   });
 
   it("has no Arabic entry left as a copy of the English", () => {
-    // Two keys are legitimately identical: each names the *other* language.
-    const allowed = new Set<MessageKey>(["header.language"]);
+    /* Legitimately identical in both dictionaries: each names a language in
+       that language's own words, which is the point — "English" has to read as
+       English to somebody who cannot read the Arabic, and the reverse. */
+    const allowed = new Set<MessageKey>(["header.language", "account.english", "account.arabic"]);
     const untranslated = (Object.keys(en) as MessageKey[]).filter(
       (key) => !allowed.has(key) && ar[key] === en[key],
     );
@@ -26,7 +28,8 @@ describe("dictionary completeness", () => {
   });
 
   it("has no untranslated English left in the Arabic", () => {
-    const allowed = new Set<MessageKey>(["header.language"]);
+    // Same three, for the same reason: "English" is Latin script on purpose.
+    const allowed = new Set<MessageKey>(["header.language", "account.english", "account.arabic"]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.
     const leaked = (Object.keys(ar) as MessageKey[]).filter(

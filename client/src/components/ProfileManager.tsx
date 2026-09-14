@@ -5,11 +5,17 @@
  * different decisions and one Save across all of them would change a password
  * somebody only opened the panel to correct a spelling in.
  *
+ * Each is also its own `SettingPanel`, a sibling of the next rather than a row
+ * inside a card of its own — the page already names the section above them, so
+ * a wrapper card would have repeated that heading and nested three cards in a
+ * fourth for nothing.
+ *
  * Email and password both ask for the current password again. A session left
  * open on a shared machine should not be enough to take an account over, and
  * moving the login address or the password is exactly what somebody doing that
  * would reach for. The server enforces it; this only asks.
  */
+import { SettingPanel } from "@/components/SettingPanel";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import { checkPassword } from "@shared/auth/passwordStrength";
@@ -23,6 +29,14 @@ type PublicUser = { id: number; email: string; name: string | null; role: string
 const field =
   "type-body h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3.5 text-[14px] text-[#0a285a] outline-none transition focus:border-[#f2683a] focus:ring-2 focus:ring-[#f2683a]/25";
 
+const primary =
+  "glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50";
+
+const secondary =
+  "glass pressable inline-flex h-11 items-center rounded-xl border border-[#d5dfeb] px-4 text-xs font-extrabold text-[#0a285a]";
+
+const link = "text-[12px] font-extrabold ink-accent underline underline-offset-4";
+
 export function ProfileManager({ user }: { user: PublicUser }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
@@ -31,40 +45,10 @@ export function ProfileManager({ user }: { user: PublicUser }) {
     toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
 
   return (
-    <section className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 sm:p-7">
-      <div className="flex gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e7edf5] text-[#0a285a]">
-          <UserRound className="size-5" />
-        </div>
-        <div>
-          <p className="type-product text-lg">{t("account.profile")}</p>
-          <p className="type-body mt-1 text-sm text-[#536b8c]">{t("account.profileNote")}</p>
-        </div>
-      </div>
-
-      <div className="mt-6 space-y-5">
-        <NameForm user={user} onSaved={refresh} onFail={fail} />
-        <EmailForm user={user} onSaved={refresh} onFail={fail} />
-        <PasswordForm onFail={fail} />
-      </div>
-    </section>
-  );
-}
-
-function Row({ icon, title, note, children }: {
-  icon: React.ReactNode;
-  title: string;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#e6e9ef] p-4">
-      <div className="flex items-center gap-2.5">
-        <span className="text-[#536b8c]">{icon}</span>
-        <p className="text-[13px] font-extrabold text-[#0a285a]">{title}</p>
-      </div>
-      {note ? <p className="mt-1 text-[11px] leading-4 ink-muted">{note}</p> : null}
-      <div className="mt-3">{children}</div>
+    <div className="space-y-4">
+      <NameForm user={user} onSaved={refresh} onFail={fail} />
+      <EmailForm user={user} onSaved={refresh} onFail={fail} />
+      <PasswordForm onFail={fail} />
     </div>
   );
 }
@@ -87,7 +71,11 @@ function NameForm({ user, onSaved, onFail }: {
   const changed = name.trim() !== (user.name ?? "").trim();
 
   return (
-    <Row icon={<UserRound className="size-4" />} title={t("account.displayName")} note={t("account.displayNameNote")}>
+    <SettingPanel
+      icon={<UserRound className="size-5" />}
+      title={t("account.displayName")}
+      note={t("account.displayNameNote")}
+    >
       <div className="flex flex-wrap gap-2">
         <input
           id={id}
@@ -98,16 +86,12 @@ function NameForm({ user, onSaved, onFail }: {
           aria-label={t("account.displayName")}
           className={`${field} min-w-0 flex-1`}
         />
-        <button
-          onClick={() => save.mutate({ name })}
-          disabled={!changed || save.isPending}
-          className="glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50"
-        >
+        <button onClick={() => save.mutate({ name })} disabled={!changed || save.isPending} className={primary}>
           {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
           {t("account.saveChanges")}
         </button>
       </div>
-    </Row>
+    </SettingPanel>
   );
 }
 
@@ -131,8 +115,14 @@ function EmailForm({ user, onSaved, onFail }: {
   });
 
   return (
-    <Row icon={<AtSign className="size-4" />} title={t("account.signInEmail")}>
-      <p dir="ltr" className="text-[13px] font-bold text-[#0a285a]">{user.email}</p>
+    <SettingPanel
+      icon={<AtSign className="size-5" />}
+      title={t("account.signInEmail")}
+      note={t("account.signInEmailNote")}
+    >
+      <p className="break-words text-sm font-bold text-[#0a285a]">
+        <bdi dir="ltr">{user.email}</bdi>
+      </p>
       {open ? (
         <div className="mt-3 space-y-2">
           <input
@@ -159,28 +149,22 @@ function EmailForm({ user, onSaved, onFail }: {
             <button
               onClick={() => save.mutate({ email: email.trim(), currentPassword: password })}
               disabled={save.isPending || email.trim() === "" || password === ""}
-              className="glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50"
+              className={primary}
             >
               {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
               {t("account.saveChanges")}
             </button>
-            <button
-              onClick={() => { setOpen(false); setEmail(""); setPassword(""); }}
-              className="glass pressable inline-flex h-11 items-center rounded-xl border border-[#d5dfeb] px-4 text-xs font-extrabold text-[#0a285a]"
-            >
+            <button onClick={() => { setOpen(false); setEmail(""); setPassword(""); }} className={secondary}>
               {t("common.cancel")}
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="mt-2 text-[12px] font-extrabold ink-accent underline underline-offset-4"
-        >
+        <button onClick={() => setOpen(true)} className={`mt-2 ${link}`}>
           {t("account.changeEmail")}
         </button>
       )}
-    </Row>
+    </SettingPanel>
   );
 }
 
@@ -204,7 +188,11 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   const verdict = checkPassword(next);
 
   return (
-    <Row icon={<KeyRound className="size-4" />} title={t("account.password")} note={t("account.passwordNote")}>
+    <SettingPanel
+      icon={<KeyRound className="size-5" />}
+      title={t("account.password")}
+      note={t("account.passwordNote")}
+    >
       {open ? (
         <div className="space-y-2">
           <input
@@ -252,27 +240,21 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
             <button
               onClick={() => save.mutate({ currentPassword: current, newPassword: next })}
               disabled={save.isPending || current === "" || !verdict.acceptable}
-              className="glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50"
+              className={primary}
             >
               {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
               {t("account.changePassword")}
             </button>
-            <button
-              onClick={() => { setOpen(false); setCurrent(""); setNext(""); }}
-              className="glass pressable inline-flex h-11 items-center rounded-xl border border-[#d5dfeb] px-4 text-xs font-extrabold text-[#0a285a]"
-            >
+            <button onClick={() => { setOpen(false); setCurrent(""); setNext(""); }} className={secondary}>
               {t("common.cancel")}
             </button>
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="text-[12px] font-extrabold ink-accent underline underline-offset-4"
-        >
+        <button onClick={() => setOpen(true)} className={link}>
           {t("account.changePassword")}
         </button>
       )}
-    </Row>
+    </SettingPanel>
   );
 }

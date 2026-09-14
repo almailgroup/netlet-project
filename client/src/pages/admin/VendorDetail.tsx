@@ -103,7 +103,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 dir="auto" className="text-xl font-extrabold">{row.name}</h1>
-          <p dir="ltr" className="mt-0.5 text-[11px] ink-muted">/{row.slug}</p>
+          <p className="mt-0.5 text-[11px] ink-muted"><bdi dir="ltr">/{row.slug}</bdi></p>
         </div>
         <p className={`text-[12px] font-extrabold ${missing > 0 ? "text-[#8a6d3b]" : "text-[#155724]"}`}>
           {missing > 0
@@ -343,7 +343,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
           {rows.map(member => (
             <li key={member.userId} className="flex flex-wrap items-center gap-2 rounded-xl border border-[#e6e9ef] p-3">
               <div className="min-w-0 flex-1">
-                <p dir="ltr" className="truncate text-[12px] font-bold text-[#0a285a]">{member.email}</p>
+                <p className="truncate text-[12px] font-bold text-[#0a285a]"><bdi dir="ltr">{member.email}</bdi></p>
                 <p className="mt-0.5 text-[10px] ink-muted">{t(ROLE_WHAT[member.role as VendorRole])}</p>
               </div>
               <select

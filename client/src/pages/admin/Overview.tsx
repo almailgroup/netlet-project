@@ -134,7 +134,7 @@ function HealthPanel({ health }: {
       <div className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white p-5">
         <div className="flex flex-wrap items-baseline gap-3">
           {/* A score is a number: isolated so it reads the same in both scripts. */}
-          <p dir="ltr" className="text-3xl font-extrabold" style={{ color: tone }}>{health.score}</p>
+          <p className="text-3xl font-extrabold" style={{ color: tone }}><bdi dir="ltr">{health.score}</bdi></p>
           <p className="text-[12px] font-extrabold" style={{ color: tone }}>{t(BAND_LABEL[health.band])}</p>
           <p className="w-full text-[12px] leading-5 text-[#536b8c] sm:w-auto sm:flex-1">{t("admin.healthNote")}</p>
         </div>
@@ -144,7 +144,7 @@ function HealthPanel({ health }: {
             <div key={part.key} className="rounded-xl border border-[#e6e9ef] p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-[12px] font-bold text-[#0a285a]">{t(COMPONENT_LABEL[part.key])}</p>
-                <p dir="ltr" className="text-[13px] font-extrabold text-[#536b8c]">{part.score}</p>
+                <p className="text-[13px] font-extrabold text-[#536b8c]"><bdi dir="ltr">{part.score}</bdi></p>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef1f6]">
                 <div className="h-full rounded-full bg-[#0a285a]" style={{ width: `${part.score}%` }} />
@@ -179,8 +179,8 @@ function Tile({ tile }: { tile: Tile }) {
       className={`pressable block rounded-2xl border p-4 ${urgent ? "border-[#f2b69e] bg-[#fdeceb]" : "border-[#e6e9ef] bg-white"}`}
     >
       {/* The number is read as a number, so it stays LTR even in Arabic. */}
-      <p dir="ltr" className={`text-2xl font-extrabold ${urgent ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
-        {tile.value}
+      <p className={`text-2xl font-extrabold ${urgent ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
+        <bdi dir="ltr">{tile.value}</bdi>
       </p>
       <p className={`mt-1 flex items-center gap-1.5 text-[12px] font-bold ${urgent ? "text-[#8c2f22]" : "text-[#536b8c]"}`}>
         {t(tile.label)}

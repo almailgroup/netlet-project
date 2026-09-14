@@ -40,7 +40,7 @@ export default function NotFound() {
           <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-[#536b8c]">{t("notFound.note")}</p>
           {/* The path is shown so a mistyped URL is obvious, and escaped by
               React rather than interpolated into markup. */}
-          <p dir="ltr" className="mt-3 truncate font-mono text-[11px] ink-muted">{location}</p>
+          <p className="mt-3 truncate font-mono text-[11px] ink-muted"><bdi dir="ltr">{location}</bdi></p>
 
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate("/")} className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-xs font-extrabold">

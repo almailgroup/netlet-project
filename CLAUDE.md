@@ -402,6 +402,19 @@ Merchant data (product titles, spec rows) is in whatever language the merchant
 typed. Specification rows and description text carry `dir="auto"` so each takes
 its own direction and the punctuation lands on the right side.
 
+**A value that is always Latin gets `<bdi dir="ltr">`, never `dir` on the block
+around it.** An email, a slug, a score, a URL path: the characters read left to
+right, but the *line* is still part of an Arabic page and belongs on its side.
+`dir` on a block does both jobs, so `<p dir="ltr">` threw the address to the far
+edge with the label above it hugging the other one — visible on the account
+card, `/admin/people`, `/admin/team` and a store's header. `client/src/lib/rtl.test.ts`
+is what keeps it out, allowing `dir="ltr"` only on a form control (where it sets
+the typing direction), an inline run, or `pre`.
+
+That rule is about values, not prose: on merchant text `dir="auto"` flipping the
+whole block is the intent, which is why the guard polices `ltr` and leaves
+`auto` alone.
+
 ## Deploys
 
 `server/_core/app.ts` holds the routes and the security, and knows nothing

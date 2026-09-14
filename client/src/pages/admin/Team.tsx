@@ -65,8 +65,8 @@ function Team({ actor }: { actor: Actor }) {
         {rows.map(member => (
           <li key={member.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-4">
             <div className="min-w-0 flex-1">
-              <p dir="auto" className="font-bold text-[#0a285a]">{member.name || member.email}</p>
-              <p dir="ltr" className="mt-0.5 text-[11px] ink-muted">{member.email}</p>
+              <p className="font-bold text-[#0a285a]"><bdi>{member.name || member.email}</bdi></p>
+              <p className="mt-0.5 text-[11px] ink-muted"><bdi dir="ltr">{member.email}</bdi></p>
             </div>
             {mayManage ? (
               <>

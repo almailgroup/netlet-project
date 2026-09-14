@@ -125,9 +125,11 @@ function People() {
             <article key={person.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p dir="auto" className="font-bold text-[#0a285a]">{person.name || person.email}</p>
-                  {/* An address is an address in any language. */}
-                  <p dir="ltr" className="mt-0.5 truncate text-[11px] ink-muted">{person.email}</p>
+                  <p className="font-bold text-[#0a285a]"><bdi>{person.name || person.email}</bdi></p>
+                  {/* An address is an address in any language — isolated so it
+                      reads left-to-right, inside a line that still takes the
+                      page's side. */}
+                  <p className="mt-0.5 truncate text-[11px] ink-muted"><bdi dir="ltr">{person.email}</bdi></p>
                 </div>
 
                 {person.role === "admin" ? (
