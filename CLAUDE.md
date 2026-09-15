@@ -214,6 +214,58 @@ A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
 
+## Orders
+
+**A cart stores no prices and an order stores nothing else.** That one sentence
+is the whole design. A basket is a list of intentions, so its total moves as the
+catalog moves; an order is an obligation, so every number in it is copied at the
+moment of sale and never recomputed — not the price, not the product's title,
+not the commission rate. Recomputing an old order against today's catalog is how
+a refund comes out at a different figure from the payment.
+
+`shared/commerce/order.ts` is the arithmetic and is pure: `freezeLine`,
+`draftOrder`, `sliceByVendor`, `refusalFor`. `server/orders.ts` is the part that
+needs a database — reading live prices one last time, taking the stock, writing
+the order. The split is the same one commission and permissions already use, and
+for the same reason: a rule you can only exercise by placing a real order
+against a real database is a rule nobody checks.
+
+**Two lifecycles run over one order and conflating them is a classic bug.**
+Payment lives on the order (`pending_payment` → `paid` → `cancelled` →
+`refunded`); fulfilment lives on the *line*. A basket spanning three vendors can
+be fully paid while two of the three have shipped nothing, and partial shipment
+within one vendor — two items, one on the shelf — is ordinary. Grouping lines by
+vendor gives the per-vendor view without a third table that would then have to
+be kept in step with the lines.
+
+Every reference out of `order_items` is `set null` and every fact that matters
+is copied beside it. A product can be deleted, a variant renamed, a vendor
+removed, and an order from last year still has to render, still has to be
+refundable, and still has to say what was bought at what price. The commission
+rate is copied for the sharper version of the same reason: raising a vendor's
+rate in October must not change what they were owed in September.
+
+Stock is taken with `stock = stock - n WHERE stock >= n`, and that predicate is
+the entire safety property — two shoppers racing for the last item both read
+"1 available", and without the condition inside the write both are sold it.
+A short read is refused rather than corrected: there is no arithmetic that makes
+an item appear in a warehouse. Anything already taken is handed back when a
+later line cannot be served, so a part-served basket never half-happens.
+
+**The order reference is not the serial id.** `NL-20260915-QRTVW` carries the
+date so support can find it without a lookup, and a random tail so a shopper who
+orders twice cannot tell how many orders NetLet took in between. The alphabet
+drops the characters people mishear — no O or 0, no I, 1 or L, no S or 5 —
+because the number gets read down a phone.
+
+Nothing places a *paid* order yet, and that is the honest state rather than an
+omission: an order has to exist before a payment can reference it. `orders` and
+`order_items` are the shape the payment phase attaches to.
+
+`order_tracking_events` predates this and is now the odd one out — the account
+page reads its row count and nothing else. It should be folded into orders when
+tracking becomes real.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages

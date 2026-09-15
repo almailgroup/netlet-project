@@ -35,6 +35,7 @@ import {
 import type { Cart, CartItem, Collection, Product } from "../shared/commerce/types.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
+import { addMoney, multiplyMoney } from "../shared/money.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 
@@ -178,16 +179,7 @@ function money(amount: string) {
 
 /** Sum decimal strings without going through a float on the way. */
 function sumMinor(values: { amount: string; quantity: number }[]): string {
-  let total = 0n;
-  for (const { amount, quantity } of values) {
-    const [whole, fraction = ""] = amount.split(".");
-    const fils = BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, "0").slice(0, 3));
-    total += fils * BigInt(quantity);
-  }
-  const negative = total < 0n;
-  const abs = negative ? -total : total;
-  const text = `${abs / 1000n}.${String(abs % 1000n).padStart(3, "0")}`;
-  return negative ? `-${text}` : text;
+  return addMoney(...values.map(({ amount, quantity }) => multiplyMoney(amount, quantity)));
 }
 
 /**

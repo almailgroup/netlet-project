@@ -16,23 +16,11 @@
  *   nothing by accident.
  *
  * Money is a decimal string throughout — never a float. The dinar has three
- * decimal places and a binary fraction cannot hold 24.375.
+ * decimal places and a binary fraction cannot hold 24.375; `shared/money.ts`
+ * is where that arithmetic lives, so this file decides the rule and not the
+ * rounding.
  */
-
-/** Fils — the dinar's minor unit, 1/1000. All arithmetic happens here. */
-function toFils(amount: string): bigint {
-  const trimmed = amount.trim();
-  const negative = trimmed.startsWith("-");
-  const [whole, fraction = ""] = (negative ? trimmed.slice(1) : trimmed).split(".");
-  const value = BigInt(whole || "0") * 1000n + BigInt(fraction.padEnd(3, "0").slice(0, 3));
-  return negative ? -value : value;
-}
-
-function fromFils(fils: bigint): string {
-  const negative = fils < 0n;
-  const abs = negative ? -fils : fils;
-  return `${negative ? "-" : ""}${abs / 1000n}.${String(abs % 1000n).padStart(3, "0")}`;
-}
+import { fromFils, toFils } from "../money.js";
 
 export type CommissionRule = {
   /** Percent of the line, 0–100, as a decimal string. Null means none. */

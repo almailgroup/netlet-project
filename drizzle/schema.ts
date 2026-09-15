@@ -249,6 +249,42 @@ export const productStatus = pgEnum("product_status", [
 export const vendorStatus = pgEnum("vendor_status", ["pending", "approved", "suspended"]);
 
 /**
+ * Where an order is in the *money*, which is not where it is in the warehouse.
+ *
+ * Two lifecycles run over one order and conflating them is a classic
+ * commerce bug: a basket spanning three vendors can be fully paid while two
+ * of the three have shipped nothing. So payment lives here, on the order, and
+ * fulfilment lives on the line — see `fulfilmentStatus`.
+ *
+ * `pending_payment` is the state every order is born in. Nothing else may
+ * create one, because an order that exists without a payment attempt behind it
+ * is a basket, and a basket is already a different table.
+ */
+export const orderStatus = pgEnum("order_status", [
+  "pending_payment",
+  "paid",
+  "cancelled",
+  "refunded",
+]);
+
+/**
+ * Where a single line is in the warehouse.
+ *
+ * Per line rather than per order, and per line rather than per vendor, because
+ * partial shipment is ordinary: two items from one seller where one is on the
+ * shelf and one is not. Grouping lines by vendor gives the per-vendor view
+ * without a table that would then have to be kept in step with the lines.
+ */
+export const fulfilmentStatus = pgEnum("fulfilment_status", [
+  "pending",
+  "preparing",
+  "shipped",
+  "delivered",
+  "cancelled",
+  "returned",
+]);
+
+/**
  * A selling company.
  *
  * `commissionPercent` and `commissionFixed` live here rather than on the
@@ -624,6 +660,119 @@ export const authAttempts = pgTable(
     index("auth_attempts_bucket_idx").on(table.bucket, table.kind, table.createdAt),
     // Pruning walks by age alone, across every bucket.
     index("auth_attempts_created_idx").on(table.createdAt),
+  ]
+);
+
+/* ---------------------------------------------------------------- orders --- */
+
+/**
+ * A purchase, and the point at which intentions become obligations.
+ *
+ * `carts` holds no prices on purpose — a cart is a list of intentions, and the
+ * price is whatever the variant costs when the shopper looks. Freezing it is
+ * *this* table's job, and it happens once, here, at placement.
+ *
+ * Almost everything about the shopper is copied rather than joined. `userId`
+ * is nullable because guest checkout is a real case, and `email` is stored
+ * beside it because an account can be deleted and an order that has lost who
+ * placed it has lost the thing it was for. The delivery address is copied for
+ * the same reason in the other direction: somebody correcting a typo in their
+ * address next March must not rewrite where a parcel was sent last September.
+ */
+export const orders = pgTable(
+  "orders",
+  {
+    id: serial("id").primaryKey(),
+    /**
+     * What a shopper quotes on the phone.
+     *
+     * Not the serial id: that tells anyone who orders twice exactly how many
+     * orders NetLet took in between, which is nobody's business and is the
+     * first number a competitor would collect.
+     */
+    reference: varchar("reference", { length: 24 }).notNull(),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    email: varchar("email", { length: 320 }).notNull(),
+    status: orderStatus("status").notNull().default("pending_payment"),
+    currency: varchar("currency", { length: 3 }).notNull().default("KWD"),
+
+    /* Money, frozen. `grandTotal` is stored rather than derived because it is
+       what was charged — a later change to how totals are computed must not
+       silently restate an old invoice. */
+    itemsTotal: numeric("items_total", { precision: 12, scale: 3 }).notNull(),
+    deliveryTotal: numeric("delivery_total", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    grandTotal: numeric("grand_total", { precision: 12, scale: 3 }).notNull(),
+    /** NetLet's cut across every line, for reporting without a re-sum. */
+    commissionTotal: numeric("commission_total", { precision: 12, scale: 3 }).notNull().default("0.000"),
+
+    /* Where it goes, as it was given. */
+    contactName: varchar("contact_name", { length: 160 }),
+    contactPhone: varchar("contact_phone", { length: 32 }),
+    deliveryZoneId: varchar("delivery_zone_id", { length: 32 }),
+    addressLine: text("address_line"),
+    addressNotes: text("address_notes"),
+
+    placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("orders_reference_unique").on(table.reference),
+    index("orders_user_id_idx").on(table.userId),
+    index("orders_status_idx").on(table.status),
+    index("orders_placed_idx").on(table.placedAt),
+  ]
+);
+
+/**
+ * One line of an order, frozen at the moment of sale.
+ *
+ * Every reference out of this table is `set null`, and every fact that matters
+ * is copied beside it. A product can be deleted, a variant renamed, a vendor
+ * removed — and an order from last year still has to render, still has to be
+ * refundable, and still has to say what was actually bought at what price. A
+ * line that renders as "(deleted product) × 2" has lost the record.
+ *
+ * The commission rate is copied for the same reason and it matters more:
+ * raising a vendor's rate in October must not change what they were owed in
+ * September. `commissionAmount` is the money; the percent and fixed beside it
+ * are so a statement can say *why* rather than only how much.
+ */
+export const orderItems = pgTable(
+  "order_items",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    /** Denormalised: per-vendor views and payouts both need it, and the
+        vendor row can go away while the obligation does not. */
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    variantId: integer("variant_id").references(() => productVariants.id, { onDelete: "set null" }),
+
+    /* What was bought, as it read on the day. */
+    vendorName: varchar("vendor_name", { length: 160 }),
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    variantTitle: varchar("variant_title", { length: 255 }),
+    sku: varchar("sku", { length: 120 }),
+
+    unitPrice: numeric("unit_price", { precision: 12, scale: 3 }).notNull(),
+    quantity: integer("quantity").notNull(),
+    lineTotal: numeric("line_total", { precision: 12, scale: 3 }).notNull(),
+
+    /* The rate that was in force, and what it came to. */
+    commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }).notNull().default("0.00"),
+    commissionFixed: numeric("commission_fixed", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    commissionAmount: numeric("commission_amount", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    /** What the vendor is owed for this line: line total less commission. */
+    vendorNet: numeric("vendor_net", { precision: 12, scale: 3 }).notNull().default("0.000"),
+
+    fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    index("order_items_order_id_idx").on(table.orderId),
+    index("order_items_vendor_id_idx").on(table.vendorId),
+    index("order_items_fulfilment_idx").on(table.fulfilment),
   ]
 );
 
