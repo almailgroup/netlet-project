@@ -1,5 +1,6 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
+import { Thumb } from "@/components/Thumb";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
@@ -77,7 +78,7 @@ function RelatedCard({ product }: { product: Product }) {
     <article className="group min-w-[190px] overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 sm:min-w-0">
       <button onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))} className="block w-full text-start">
         <div className="relative overflow-hidden rounded-xl bg-[#e7edf5]">
-          {image ? <img src={image.url} alt={image.altText ?? product.title} loading="lazy" decoding="async" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" /> : <div className="aspect-square" />}
+          <Thumb src={image?.url} alt={image?.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" />
         </div>
         <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || t("product.netletEdit")}</p>
         <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:text-[#a44a2b]">{product.title}</h3>
@@ -152,7 +153,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
               aria-current={selectedImageIndex === index}
               className={`pressable aspect-square overflow-hidden rounded-xl border-2 bg-white p-1 ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
             >
-              <img src={item.url} alt="" aria-hidden loading="lazy" decoding="async" className="size-full object-contain" />
+              <Thumb src={item.url} alt="" className="size-full object-contain" />
             </button>
           ))}
         </div>
@@ -163,7 +164,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           onPointerCancel={() => { swipeStart.current = null; }}
           className="relative order-1 flex min-h-[46vh] flex-1 touch-pan-y items-center justify-center overflow-auto lg:order-2 lg:min-h-[320px]"
         >
-          {image ? <img src={image.url} alt={image.altText ?? product.title} style={{ transform: `scale(${scale})` }} loading="eager" decoding="async" className="max-h-full max-w-full object-contain transition-transform duration-200" /> : null}
+          <Thumb src={image?.url} alt={image?.altText ?? product.title} priority style={{ transform: `scale(${scale})` }} className="max-h-full max-w-full object-contain transition-transform duration-200" />
           <div className="absolute end-2 top-2 flex flex-col gap-2">
             <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
             <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} disabled={scale <= 1} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
@@ -304,7 +305,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
                 aria-selected={selectedImageIndex === index}
                 className={`pressable grid size-[62px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors sm:size-[68px] ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
               >
-                <img src={item.url} alt="" aria-hidden loading="lazy" decoding="async" className="size-full object-contain" />
+                <Thumb src={item.url} alt="" className="size-full object-contain" />
               </button>
             ))}
             {overflow > 0 ? (
@@ -325,9 +326,14 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             onPointerCancel={() => { swipeStart.current = null; }}
             className="relative flex h-[340px] touch-pan-y items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-5 sm:h-[460px] sm:p-6"
           >
-            {image
-              ? <img src={image.url} alt={image.altText ?? product.title} draggable={false} loading="eager" fetchPriority="high" decoding="async" className="max-h-full max-w-full object-contain" />
-              : <PackageOpen className="size-24 text-[#e2e5f1]" />}
+            <Thumb
+              src={image?.url}
+              alt={image?.altText ?? product.title}
+              priority
+              draggable={false}
+              className="max-h-full max-w-full object-contain"
+              icon={<PackageOpen className="size-24 text-[#e2e5f1]" />}
+            />
             {lens && image ? (
               <span
                 aria-hidden

@@ -3,6 +3,7 @@
  * persistent bag, native checkout mockup, and responsive marketplace rails.
  */
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Thumb } from "@/components/Thumb";
 import { LiveSearch } from "@/components/LiveSearch";
 import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, railSupportCardContent } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
@@ -18,8 +19,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
-  Apple,
-  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -30,9 +29,7 @@ import {
   Menu,
   Minus,
   PackageCheck,
-  Play,
   Plus,
-  QrCode,
   Search,
   ShoppingBag,
   Share2,
@@ -52,7 +49,7 @@ import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
 import { homeMeta } from "@shared/seo";
-import { collectionImages, footerLogoImage, heroImage, logoImage, qrImage } from "@/lib/brandAssets";
+import { collectionImages, footerLogoImage, heroImage, logoImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -85,40 +82,6 @@ function HeaderAction({ icon, caption, value, onClick, label, badge, tone = "qui
     </span>
   </button>;
 }
-
-/**
- * App-download header action with a QR panel on hover.
- *
- * Opens on focus as well as hover, so the panel is reachable from the keyboard
- * rather than being mouse-only. `invisible` (not `opacity-0` alone) keeps it out
- * of the accessibility tree while closed.
- *
- * The QR is a placeholder: a structurally convincing pattern that decodes to
- * nothing, so it cannot resolve anywhere unintended before the real code is
- * dropped in at client/public/brand/qr-placeholder.svg.
- */
-function AppDownloadAction({ t }: { t: Translate }) {
-  const pending = (store: string) => toast(t("header.storeSoon", { store }), { description: t("header.appNotPublished") });
-  return <div className="group relative">
-    <HeaderAction label={t("header.downloadFull")} onClick={() => toast(t("header.scanQrNote"))} icon={<QrCode className="size-[19px] ink-accent" />} caption={t("header.downloadCaption")} value={t("header.downloadValue")} />
-    <div className="invisible absolute left-1/2 top-full z-50 w-[430px] -translate-x-1/2 pt-2.5 opacity-0 transition-opacity duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-      <div className="glass rounded-3xl p-5 !bg-[rgba(255,253,249,.9)] shadow-[0_20px_50px_rgba(10,40,90,.18)]">
-        <div className="flex items-start gap-4">
-          <img src={qrImage} alt={t("header.qrAlt")} loading="lazy" decoding="async" className="size-[116px] shrink-0 rounded-2xl bg-white p-1.5" />
-          <div className="min-w-0">
-            <p className="type-heading text-base text-[#0a285a]">{t("header.downloadFull")}</p>
-            <p className="type-label mt-1 text-[#536b8c]">{t("header.scanQr")}</p>
-            <div className="mt-3 flex gap-2">
-              <button onClick={() => pending(t("header.appStore"))} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-[11px] font-extrabold"><Apple className="size-4" />{t("header.appStore")}</button>
-              <button onClick={() => pending(t("header.googlePlay"))} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-[11px] font-extrabold"><Play className="size-4" />{t("header.googlePlay")}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>;
-}
-
 
 function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { deliveryZoneId, setDeliveryZoneId } = useCustomer();
@@ -171,7 +134,7 @@ function ProductRail({ id, title, description, dark = false, products, catalogLo
   const { t } = useTranslation();
   const railProducts = products.slice(0, 4);
   const railTitle = t(title);
-  return <section id={id} className={dark ? "bg-[#0a285a] py-9 sm:py-12" : "py-9 sm:py-12"}><div className="container"><div className="flex items-end justify-between gap-4"><div><p className={`text-[10px] font-extrabold tracking-[.16em] uppercase ${dark ? "text-[#ffcc64]" : "text-[#a44a2b]"}`}>{t("home.liveCatalogAria")}</p><h2 className={`display-face mt-1 text-3xl sm:text-4xl ${dark ? "text-white" : "text-[#0a285a]"}`}>{railTitle}</h2><p className={`mt-1 text-xs ${dark ? "text-[#b9cce5]" : "text-[#536b8c]"}`}>{t(description)}</p></div><div className="hidden items-center gap-2 sm:flex"><IconButton label={t("home.previousProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronLeft className="size-4 rtl:-scale-x-100" /></IconButton><IconButton label={t("home.nextProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronRight className="size-4 rtl:-scale-x-100" /></IconButton><button onClick={onViewAll} className={`pressable rounded-full px-3.5 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase ${dark ? "bg-white/10 text-white hover:bg-white/20" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"}`}>{t("home.viewAll")}</button></div></div>{catalogLoading ? <CatalogSkeleton dark={dark} /> : catalogError ? <div className={`mt-5 rounded-2xl border px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-white" : "border-[#f2b69e] bg-white text-[#0a285a]"}`}><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div> : railProducts.length ? <div className="hide-scrollbar mt-5 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{railProducts.map((product) => <div key={`${id}-${product.id}`} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0"><ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onAdd={() => void onAdd(product)} onBuyNow={() => void onBuyNow(product)} isAdding={isAdding} /></div>)}{supportCard && products.length < 4 ? <button onClick={() => onSelectSupport(supportCard.category)} className="group relative min-h-[248px] min-w-[230px] overflow-hidden rounded-2xl text-start sm:min-w-[260px] lg:min-w-0"><img src={supportCard.image} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/85 via-[#061b3b]/16 to-transparent" /><div className="absolute bottom-0 start-0 end-0 p-5 text-white"><p className="text-[9px] font-extrabold tracking-[.14em] text-[#ffe6b2] uppercase">{t(supportCard.eyebrow)}</p><h3 className="display-face mt-2 max-w-[220px] text-3xl leading-[.92]">{t(supportCard.title)}</h3><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.shopCollection")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></span></div></button> : null}</div> : <div className={`mt-5 rounded-2xl border border-dashed px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-[#d9e7f7]" : "border-[#b8c9dc] bg-white/55 text-[#536b8c]"}`}><Search className="mx-auto size-5" /><p className="mt-2 text-sm font-bold">{t("home.noMatches")}</p><button onClick={onViewAll} className={`mt-3 text-xs font-extrabold underline underline-offset-4 ${dark ? "ink-accent-on-dark" : "ink-accent"}`}>{t("home.showCatalog")}</button></div>}</div></section>;
+  return <section id={id} className={dark ? "bg-[#0a285a] py-9 sm:py-12" : "py-9 sm:py-12"}><div className="container"><div className="flex items-end justify-between gap-4"><div><p className={`text-[10px] font-extrabold tracking-[.16em] uppercase ${dark ? "text-[#ffcc64]" : "text-[#a44a2b]"}`}>{t("home.liveCatalogAria")}</p><h2 className={`display-face mt-1 text-3xl sm:text-4xl ${dark ? "text-white" : "text-[#0a285a]"}`}>{railTitle}</h2><p className={`mt-1 text-xs ${dark ? "text-[#b9cce5]" : "text-[#536b8c]"}`}>{t(description)}</p></div><div className="hidden items-center gap-2 sm:flex"><IconButton label={t("home.previousProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronLeft className="size-4 rtl:-scale-x-100" /></IconButton><IconButton label={t("home.nextProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronRight className="size-4 rtl:-scale-x-100" /></IconButton><button onClick={onViewAll} className={`pressable rounded-full px-3.5 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase ${dark ? "bg-white/10 text-white hover:bg-white/20" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"}`}>{t("home.viewAll")}</button></div></div>{catalogLoading ? <CatalogSkeleton dark={dark} /> : catalogError ? <div className={`mt-5 rounded-2xl border px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-white" : "border-[#f2b69e] bg-white text-[#0a285a]"}`}><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div> : railProducts.length ? <div className="hide-scrollbar mt-5 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{railProducts.map((product) => <div key={`${id}-${product.id}`} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0"><ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onAdd={() => void onAdd(product)} onBuyNow={() => void onBuyNow(product)} isAdding={isAdding} /></div>)}{supportCard && products.length < 4 ? <button onClick={() => onSelectSupport(supportCard.category)} className="group relative min-h-[248px] min-w-[230px] overflow-hidden rounded-2xl text-start sm:min-w-[260px] lg:min-w-0"><Thumb src={supportCard.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/85 via-[#061b3b]/16 to-transparent" /><div className="absolute bottom-0 start-0 end-0 p-5 text-white"><p className="text-[9px] font-extrabold tracking-[.14em] text-[#ffe6b2] uppercase">{t(supportCard.eyebrow)}</p><h3 className="display-face mt-2 max-w-[220px] text-3xl leading-[.92]">{t(supportCard.title)}</h3><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.shopCollection")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></span></div></button> : null}</div> : <div className={`mt-5 rounded-2xl border border-dashed px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-[#d9e7f7]" : "border-[#b8c9dc] bg-white/55 text-[#536b8c]"}`}><Search className="mx-auto size-5" /><p className="mt-2 text-sm font-bold">{t("home.noMatches")}</p><button onClick={onViewAll} className={`mt-3 text-xs font-extrabold underline underline-offset-4 ${dark ? "ink-accent-on-dark" : "ink-accent"}`}>{t("home.showCatalog")}</button></div>}</div></section>;
 }
 
 /**
@@ -246,11 +209,18 @@ function CategoryRail({ categories, onSelect }: {
           >
             <span
               className="grid aspect-square w-full place-items-center overflow-hidden rounded-2xl border border-[#e6e9ef] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-[#aac0da] group-hover:shadow-[0_10px_22px_rgba(10,40,90,.12)]"
-              style={{ backgroundColor: category.image ? "#ffffff" : category.color }}
+              /* The department's own colour is the ground whether or not the
+                 picture arrives, so a dead image URL costs the tile its
+                 artwork and not its identity. */
+              style={{ backgroundColor: category.color }}
             >
-              {category.image
-                ? <img src={category.image} alt="" aria-hidden loading="lazy" decoding="async" className="size-full object-contain p-2.5" />
-                : <PackageCheck className="size-7 text-[#0a285a]/70" aria-hidden />}
+              <Thumb
+                src={category.image}
+                alt=""
+                className="size-full object-contain p-2.5"
+                icon={<PackageCheck className="size-7 text-[#0a285a]/70" />}
+                fallbackClassName="bg-transparent"
+              />
             </span>
             <span className="line-clamp-2 text-center text-[11px] font-bold leading-[1.25] text-[#0a285a] group-hover:text-[#a44a2b] sm:text-xs">
               {category.label}
@@ -265,7 +235,7 @@ function CategoryRail({ categories, onSelect }: {
 function DealsSurface({ loading, error, product, saved, onSave, onDetails, onAdd, onBuyNow, isAdding, onRetry, onViewAll }: { loading: boolean; error: boolean; product?: Product; saved: string[]; onSave: (id: string, title: string) => void; onDetails: (product: Product) => void; onAdd: (product: Product) => void; onBuyNow: (product: Product) => void; isAdding: boolean; onRetry: () => void; onViewAll: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
-  return <section id="deals" className="container py-9 sm:py-12"><div className="mb-5 flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.freshNow")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.deals")}</h2><p className="mt-1 text-xs text-[#536b8c]">{t("home.dealsNote")}</p></div><button onClick={onViewAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div>{loading ? <CatalogSkeleton /> : error ? <div className="rounded-[1.5rem] border border-[#f2b69e] bg-white px-6 py-14 text-center"><PackageCheck className="mx-auto size-7 ink-accent" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.dealsSlow")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.refreshNote")}</p><button onClick={onRetry} className="glass glass-navy pressable mt-5 rounded-full px-4 py-3 text-xs font-extrabold">{t("home.refreshCatalog")}</button></div> : !product ? <div className="rounded-[1.5rem] border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center"><Search className="mx-auto size-6 ink-muted" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.newDeals")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.newDealsNote")}</p><button onClick={onViewAll} className="mt-4 text-xs font-extrabold ink-accent underline underline-offset-4">{t("home.browseDepartments")}</button></div> : <div className="grid gap-3 lg:grid-cols-[1.45fr_1fr_1fr]"><button onClick={() => onDetails(product)} className="pressable group relative min-h-[270px] overflow-hidden rounded-[1.5rem] bg-[#f2683a] p-6 text-start text-white sm:min-h-[330px]"><div className="absolute end-0 top-0 h-full w-[54%] overflow-hidden"><img src={product.images[0]?.url} alt="" loading="lazy" decoding="async" className="size-full object-cover opacity-95 transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-r from-[#f2683a] via-[#f2683a]/25 to-transparent rtl:bg-gradient-to-l" /></div><div className="relative z-10 flex h-full max-w-[250px] flex-col"><span className="w-fit rounded-full bg-[#8c2f22] px-3 py-1 text-[9px] font-extrabold tracking-[.14em] uppercase">{t("home.todaysEdit")}</span><p className="mt-6 text-[11px] font-bold text-white">{product.productType || t("home.netletSelection")}</p><h3 className="display-face mt-2 text-3xl leading-[.92]">{product.title}</h3><p className="mt-3 text-sm text-white">{money(product.priceRange.min)}</p><span className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold">{t("home.shopDeal")} <ArrowRight className="size-4 rtl:-scale-x-100" /></span></div></button><ProductCard product={product} compact saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onAdd={() => void onAdd(product)} onBuyNow={() => void onBuyNow(product)} isAdding={isAdding} /><div className="relative overflow-hidden rounded-[1.5rem] border border-[#d5dfeb] bg-[#fff0ab] p-6"><div className="absolute -end-8 -top-8 size-32 rounded-full border-[18px] border-[#f2683a]/25" /><div className="relative flex h-full flex-col"><span className="grid size-10 place-items-center rounded-2xl bg-white/80 ink-accent"><Truck className="size-5" /></span><p className="mt-5 text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h3 className="display-face mt-2 text-3xl leading-[.92] text-[#0a285a]">{t("home.deliveryCloser")}</h3><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("home.deliveryCloserNote")}</p><button onClick={onViewAll} className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold text-[#0a285a]">{t("home.browseCatalogAction")} <ArrowRight className="size-4 ink-accent rtl:-scale-x-100" /></button></div></div></div>}</section>;
+  return <section id="deals" className="container py-9 sm:py-12"><div className="mb-5 flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.freshNow")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.deals")}</h2><p className="mt-1 text-xs text-[#536b8c]">{t("home.dealsNote")}</p></div><button onClick={onViewAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div>{loading ? <CatalogSkeleton /> : error ? <div className="rounded-[1.5rem] border border-[#f2b69e] bg-white px-6 py-14 text-center"><PackageCheck className="mx-auto size-7 ink-accent" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.dealsSlow")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.refreshNote")}</p><button onClick={onRetry} className="glass glass-navy pressable mt-5 rounded-full px-4 py-3 text-xs font-extrabold">{t("home.refreshCatalog")}</button></div> : !product ? <div className="rounded-[1.5rem] border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center"><Search className="mx-auto size-6 ink-muted" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.newDeals")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.newDealsNote")}</p><button onClick={onViewAll} className="mt-4 text-xs font-extrabold ink-accent underline underline-offset-4">{t("home.browseDepartments")}</button></div> : <div className="grid gap-3 lg:grid-cols-[1.45fr_1fr_1fr]"><button onClick={() => onDetails(product)} className="pressable group relative min-h-[270px] overflow-hidden rounded-[1.5rem] bg-[#f2683a] p-6 text-start text-white sm:min-h-[330px]"><div className="absolute end-0 top-0 h-full w-[54%] overflow-hidden"><Thumb src={product.images[0]?.url} alt="" className="size-full object-cover opacity-95 transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-r from-[#f2683a] via-[#f2683a]/25 to-transparent rtl:bg-gradient-to-l" /></div><div className="relative z-10 flex h-full max-w-[250px] flex-col"><span className="w-fit rounded-full bg-[#8c2f22] px-3 py-1 text-[9px] font-extrabold tracking-[.14em] uppercase">{t("home.todaysEdit")}</span><p className="mt-6 text-[11px] font-bold text-white">{product.productType || t("home.netletSelection")}</p><h3 className="display-face mt-2 text-3xl leading-[.92]">{product.title}</h3><p className="mt-3 text-sm text-white">{money(product.priceRange.min)}</p><span className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold">{t("home.shopDeal")} <ArrowRight className="size-4 rtl:-scale-x-100" /></span></div></button><ProductCard product={product} compact saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onAdd={() => void onAdd(product)} onBuyNow={() => void onBuyNow(product)} isAdding={isAdding} /><div className="relative overflow-hidden rounded-[1.5rem] border border-[#d5dfeb] bg-[#fff0ab] p-6"><div className="absolute -end-8 -top-8 size-32 rounded-full border-[18px] border-[#f2683a]/25" /><div className="relative flex h-full flex-col"><span className="grid size-10 place-items-center rounded-2xl bg-white/80 ink-accent"><Truck className="size-5" /></span><p className="mt-5 text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h3 className="display-face mt-2 text-3xl leading-[.92] text-[#0a285a]">{t("home.deliveryCloser")}</h3><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("home.deliveryCloserNote")}</p><button onClick={onViewAll} className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold text-[#0a285a]">{t("home.browseCatalogAction")} <ArrowRight className="size-4 ink-accent rtl:-scale-x-100" /></button></div></div></div>}</section>;
 }
 
 export default function Home() {
@@ -386,9 +356,18 @@ export default function Home() {
         <div className="absolute start-4 lg:static lg:hidden"><IconButton label={t("header.openMenu")} onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
         <div className={`mx-auto origin-left transition-transform rtl:origin-right duration-300 ease-out lg:mx-0 ${headerCompact ? "scale-[.82]" : "scale-100"}`}><Logo t={t} /></div>
         <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+        {/* The same four controls `StoreHeader` carries, in the same order, so
+            the two headers differ only in the ways they are meant to — this one
+            is taller and keeps the department rail. It had drifted: an advert
+            for an unpublished app sat where a shopper looks for their account,
+            and Saved was stranded in the department row below. */}
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-          <AppDownloadAction t={t} />
-          <HeaderAction label={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} caption={isArabic ? "AR /" : "EN /"} value="KWD" />
+          <HeaderAction label={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")} badge={saved.length || undefined} icon={<Heart className="size-[19px]" />} caption={t("header.yourList")} value={t("nav.saved")} />
+          {/* `header.language` is the language you would get, not the one you
+              are reading — a toggle labelled with its current state leaves you
+              guessing which way it goes. Currency is gone from here: there is
+              one, and a control that cannot change is not a control. */}
+          <HeaderAction label={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} caption={t("header.languageCaption")} value={t("header.language")} />
           <HeaderAction label={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} caption={t("header.welcome")} value={isAuthenticated ? (user?.name ? t("header.greeting", { name: user.name }) : t("header.myProfile")) : t("header.signIn")} />
           <HeaderAction label={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} caption={t("nav.cart")} value={itemCount === 1 ? t("header.itemOne") : t("header.items", { count: itemCount })} />
         </div>
@@ -396,10 +375,7 @@ export default function Home() {
       </div>
       <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/* Secondary bar: departments only, so the row reads as one rail. */}
-      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}<div className="ms-auto flex shrink-0 items-center gap-1.5">
-        <IconButton label={t("header.notifications")} onClick={() => toast(t("header.notificationsSoon"))}><Bell className="size-[19px]" /></IconButton>
-        <IconButton label={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")}><span className="relative"><Heart className="size-[19px]" />{saved.length ? <span className="absolute -end-2 -top-1.5 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{saved.length}</span> : null}</span></IconButton>
-      </div></nav>
+      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}</nav>
     </header>
 
     {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold"><UserRound className="size-4" />{isAuthenticated ? t("header.myProfile") : t("header.signInToNetlet")}</button></aside></div>}

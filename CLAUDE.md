@@ -143,6 +143,22 @@ the department rail and the hover-to-expand behaviour, which only earn their
 place on the page you land on. Checkout keeps a bare one: every extra exit on a
 payment page is an invitation to take it.
 
+**Both headers carry the same four controls in the same order**: saved,
+language, account, cart. Home's had drifted, which is what two copies do. It
+grew an advert for an unpublished app in the spot a shopper looks for their
+account — with a QR that decoded to nothing and store buttons that toasted
+"soon", the same dishonesty the Publish button and the absent social sign-in are
+careful to avoid. It grew a notifications bell that only ever said "coming
+soon", which is the browse rule again: a control that changes nothing is worse
+than no control. And Saved was stranded in the department rail below, which its
+own comment already claimed was "departments only". The app still has its
+section further down the home page, where it is an offer rather than a fixture.
+
+The language control names **the language you would get**, not the one you are
+reading — `header.language` is "العربية" in the English dictionary and "English"
+in the Arabic one. It no longer reads "EN / KWD": there is one currency, and
+half a control that cannot change is not a control.
+
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
 only thing separating one shopper's bag from another's — and every cart query
@@ -511,6 +527,19 @@ whole block is the intent, which is why the guard polices `ltr` and leaves
 
 ## Images
 
+**A picture that fails is never a broken icon.** `Thumb` draws every merchant
+image in the storefront, and on `error` it swaps to a fallback. That is not an
+edge case here: until uploads exist these are URLs a vendor typed, so a dead
+link is an ordinary state, and the browser's own broken-image glyph on a white
+ground makes one seller's typo look like the whole site is down. Every `<img>`
+handled the *absent* case already and none handled the *failing* one.
+
+It stores which `src` failed rather than a boolean, so a swatch that swaps the
+photo is not stuck showing the fallback for a picture that is fine. The
+fallback's surface is the caller's to choose — the department tiles carry a
+colour each, and a neutral box painted over it costs them the only thing that
+distinguishes them.
+
 **Every `<img>` says how it loads**, and `markup.test.ts` fails on one that does
 not. There was a single `loading="lazy"` in the whole storefront, so a category
 page opened every product photo at once — worst exactly where NetLet sells, on
@@ -530,6 +559,13 @@ Sizes are not set as attributes because every image already sits in a box the
 CSS fixes (`aspect-square`, `aspect-[1.02]`, `size-*`), which is what actually
 prevents the layout shifting. `product_images` stores no dimensions to set them
 from anyway.
+
+Both guards in `markup.test.ts` read the source with its comments stripped. This
+codebase explains itself at length — `Thumb` describes the broken-image case in
+prose containing a literal `<img>`, and half the files discuss `dir="ltr"` by
+name — and a guard that reports its own documentation trains everybody to ignore
+it. The image scan also tracks brace depth rather than matching to the first
+`>`, because `onError={() => reset()}` contains one.
 
 ## Deploys
 

@@ -39,6 +39,24 @@ import { describe, expect, it } from "vitest";
 
 const INLINE_OR_TYPED = new Set(["input", "textarea", "span", "time", "bdi", "pre"]);
 
+/**
+ * Source with its comments removed.
+ *
+ * Both guards below read markup out of the file, and this codebase explains
+ * itself at length — `Thumb.tsx` describes the broken-image case in prose
+ * containing a literal `<img>`, and half the files here discuss `dir="ltr"` by
+ * name. Scanned raw, a guard reports its own documentation as a violation,
+ * which trains everybody to ignore it.
+ *
+ * Block and JSX comments go; line comments only when they begin a line, so a
+ * `https://` inside a string survives.
+ */
+function withoutComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]*\/\/.*$/gm, "");
+}
+
 /** Every `.tsx` under the client, as `[repo-relative path, source]`. */
 function clientSources(): [string, string][] {
   const root = path.resolve(import.meta.dirname, "../..");
@@ -50,7 +68,7 @@ function clientSources(): [string, string][] {
       if (entry.isDirectory()) walk(full);
       // The unused shadcn primitives are left as they came.
       else if (entry.name.endsWith(".tsx") && !full.includes(`${path.sep}ui${path.sep}`)) {
-        out.push([path.relative(root, full), readFileSync(full, "utf-8")]);
+        out.push([path.relative(root, full), withoutComments(readFileSync(full, "utf-8"))]);
       }
     }
   };
@@ -94,9 +112,31 @@ describe("bidi isolation", () => {
   });
 });
 
-/** The whole attribute list of every `<img …>` in a file, one string each. */
+/**
+ * The whole attribute list of every `<img …>` in a file, one string each.
+ *
+ * Scanned rather than matched with a regex, because JSX puts `>` inside an
+ * attribute: `onError={() => reset()}` ends the tag as far as `[^>]` is
+ * concerned, so a regex reads the attributes up to the arrow and reports a
+ * perfectly correct image as missing everything after it. Tracking brace depth
+ * is the difference between a guard and a guard that cries wolf.
+ */
 function imageTags(source: string): string[] {
-  return [...source.matchAll(/<img\b([^>]*?)\/?>/gs)].map((match) => match[1]);
+  const tags: string[] = [];
+  for (const match of source.matchAll(/<img\b/g)) {
+    let depth = 0;
+    let index = match.index + match[0].length;
+    const start = index;
+    while (index < source.length) {
+      const char = source[index];
+      if (char === "{") depth += 1;
+      else if (char === "}") depth -= 1;
+      else if (char === ">" && depth === 0) break;
+      index += 1;
+    }
+    tags.push(source.slice(start, index).replace(/\/$/, ""));
+  }
+  return tags;
 }
 
 describe("image loading", () => {
@@ -114,5 +154,20 @@ describe("image loading", () => {
     expect(imageTags(`<img\n  src="a"\n  loading="lazy"\n/>`)).toHaveLength(1);
     expect(imageTags(`<img src="a" /><img src="b" />`)).toHaveLength(2);
     expect(imageTags(`no images here`)).toEqual([]);
+    /*
+     * The one a regex gets wrong: the arrow in a handler is a `>`, so matching
+     * to the first `>` truncates the attributes and reports a correct image as
+     * missing its loading strategy.
+     */
+    expect(imageTags(`<img src="a" onError={() => reset()} loading="lazy" />`)[0])
+      .toContain(`loading="lazy"`);
+  });
+
+  it("reads code, not the prose explaining it", () => {
+    const documented = `/** Handles a broken <img> by drawing a fallback. */\nconst x = 1;`;
+    expect(imageTags(withoutComments(documented))).toEqual([]);
+    // A line comment goes; a URL that merely looks like one does not.
+    expect(withoutComments(`  // <img src="x">\nconst u = "https://a.test/b";`))
+      .toContain("https://a.test/b");
   });
 });

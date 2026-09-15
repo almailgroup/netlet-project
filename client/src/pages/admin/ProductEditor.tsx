@@ -12,6 +12,7 @@
  * anyone else editing.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { Thumb } from "@/components/Thumb";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
@@ -197,7 +198,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 {/* A live preview is the only way to tell a good URL from a
                     typo before the product is on the shelf. */}
                 <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef1f6]">
-                  {image.url ? <img src={image.url} alt="" loading="lazy" decoding="async" className="size-full object-cover" /> : null}
+                  <Thumb src={image.url} alt="" className="size-full object-cover" />
                 </div>
                 <div className="grid min-w-0 flex-1 gap-2">
                   <input

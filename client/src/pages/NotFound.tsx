@@ -7,6 +7,7 @@
  * a mistyped or dead product link is a dead end otherwise.
  */
 import { StoreHeader } from "@/components/StoreHeader";
+import { Thumb } from "@/components/Thumb";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/lib/usePageMeta";
@@ -66,11 +67,9 @@ export default function NotFound() {
                 >
                   <div className="overflow-hidden rounded-xl bg-[#e7edf5]">
                     {product.images[0] ? (
-                      <img
+                      <Thumb
                         src={product.images[0].url}
                         alt={product.images[0].altText ?? product.title}
-                        loading="lazy"
-                        decoding="async"
                         className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : <div className="aspect-square" />}
