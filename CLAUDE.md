@@ -521,9 +521,18 @@ neither can break the deploy any more, but both keep `tsx` and a plain `node`
 run honest, and the rules cost nothing.
 
 Verify a change to any of this the only way that means anything: build, then
-serve `api/index.js` from a directory with **no `node_modules`**, and hit
+serve the bundle from a directory with **no `node_modules`**, and hit
 `/healthz` and a tRPC route. Anything less agrees with itself and not with
 Vercel.
+
+`pnpm smoke` is that check, and CI runs it on every push. It copies
+`api/app.generated.js` to a temp directory *outside the repository* — Node
+resolves `node_modules` by walking up, so a scratch folder inside the project
+would quietly find the project's own dependencies and pass a bundle missing
+half of itself — and asks for a real response rather than settling for a
+process that started. `/healthz` is answered before the router is ever
+touched, so a bundle whose router cannot load still passes it; the tRPC route
+is the check that matters.
 
 ### robots.txt and sitemap.xml
 
@@ -575,7 +584,15 @@ is the way in.
 
 ## Checks
 
-`pnpm check` · `pnpm test` · `pnpm build`. A fresh database needs
+`pnpm check` · `pnpm test` · `pnpm build` · `pnpm smoke`.
+
+**CI runs all four on every push**, from `.github/workflows/ci.yml`. There was
+none for a long time, which was survivable while the work was the storefront
+and stopped being survivable once orders and payments arrived: a silent
+regression there is money rather than a layout bug. The fourth is the one the
+other three cannot replace — `check`, `test` and `build` all run through
+tooling that resolves imports more generously than plain Node, and all three
+have passed green on a function that could not boot. A fresh database needs
 `pnpm db:push` then `pnpm db:seed` — the seed writes the departments and the
 house vendor and nothing else, because a product cannot exist without a vendor
 to own it, and an invented catalog on a real deployment looks like an open

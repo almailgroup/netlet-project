@@ -1,0 +1,92 @@
+# Every check that has been run by hand until now, run on every push instead.
+#
+# There was no CI at all: 384 tests existed and ran when somebody remembered.
+# That was survivable while the work was the storefront; it stops being
+# survivable now, because everything ahead of this touches orders, payments
+# and payouts, where a silent regression is money rather than a layout bug.
+#
+# The last job is the one that cannot be replaced by the others. `pnpm check`,
+# `pnpm test` and `pnpm build` all run through tooling that resolves imports
+# more generously than plain Node does, so all three have passed green on a
+# Vercel function that could not boot. `smoke-function.mjs` runs the real
+# bundle with no node_modules in reach and asks it for a real response.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So a red main can be re-run after an infrastructure blip without an
+  # empty commit, which is the usual reason one appears in a history.
+  workflow_dispatch:
+
+# A second push supersedes the first: nobody needs the result for a commit
+# that has already been replaced.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Types, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # Version comes from packageManager in package.json, so it cannot
+        # drift from what a contributor runs locally.
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches "engines": { "node": "22.x" }. The jose/jwks-rsa interop
+          # that broke the function once is version-sensitive, so this is not
+          # a detail to leave floating.
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm check
+
+      # Data-layer tests run a real Postgres in-process through PGlite and
+      # apply the generated migrations verbatim, so no service container is
+      # needed and ON CONFLICT arbiters are genuinely exercised.
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+  function:
+    name: Vercel function boots
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Bundle the function
+        run: pnpm vercel-build
+
+      # Serves api/app.generated.js from a temp directory outside the
+      # repository — Node resolves node_modules by walking up, so anywhere
+      # inside it would quietly find the project's own dependencies and pass
+      # on a bundle that is missing half of itself.
+      - name: Serve it with no node_modules
+        run: node scripts/smoke-function.mjs

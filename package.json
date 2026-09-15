@@ -74,6 +74,7 @@
     "format": "prettier --write .",
     "preflight": "tsx scripts/preflight.ts",
     "setup:env": "tsx scripts/setup-env.ts",
+    "smoke": "pnpm vercel-build && node scripts/smoke-function.mjs",
     "start": "NODE_ENV=production node dist/index.js",
     "test": "vitest run"
   },
