@@ -163,9 +163,11 @@ place on the page you land on. Checkout keeps a bare one: every extra exit on a
 payment page is an invitation to take it.
 
 **Both headers carry the same four controls in the same order**: saved,
-language, account, cart. Home's had drifted, which is what two copies do. It
-grew an advert for an unpublished app in the spot a shopper looks for their
-account — with a QR that decoded to nothing and store buttons that toasted
+language, account, cart. Both have drifted into it at some point, which is what
+two copies do — most recently `StoreHeader`, which had language and saved the
+other way round, so the first control on the bar moved when a shopper left the
+home page. Home's drifted further: it grew an advert for an unpublished app in
+the spot a shopper looks for their account — with a QR that decoded to nothing and store buttons that toasted
 "soon", the same dishonesty the Publish button and the absent social sign-in are
 careful to avoid. It grew a notifications bell that only ever said "coming
 soon", which is the browse rule again: a control that changes nothing is worse
@@ -188,15 +190,43 @@ was four mute circles, and that is the width band most laptops browse at.
 **A badge draws only when it has something to say.** A cart badge reading "0"
 is an alert that never stops firing, which is the fastest way to teach somebody
 to ignore the one place a count matters. Both cart buttons need the guard —
-the desktop cluster and the phone-only one beside the logo; the second was
-missed on the first pass and still showed a zero.
+the desktop cluster and the phone-only one at the end of the bar; the second
+was missed on the first pass and still showed a zero.
 
-**Delivery sits at the end of the department rail.** Taking the notifications
-bell and the saved icon out of that row left 650px of it empty — more than half
-the rail, which read as a fragment rather than a row. Delivery earns the place
-those two did not: it is where the parcel goes, it decides what checkout costs,
-and it could otherwise only be set from a hero link that scrolls away. Showing
-the chosen governorate is information; a bell that said "coming soon" was not.
+**Delivery sits in the primary bar, because that is the row that survives a
+scroll.** It spent one release at the end of the department rail, put there to
+fill the 650px the notifications bell and the saved icon left behind — and the
+argument for it was that an area could otherwise only be set from a hero link
+that scrolls away. The rail collapses on scroll too, so that fixed nothing and
+had not been checked. A row ending where its departments end is fine; a
+control you can only reach by scrolling back up is not, and inventing work to
+fill space is how the wrong row gets chosen. `Deliver to` goes `sr-only` below
+`xl` so the bar still works at 1024 — visually hidden, never hidden from the
+name, which is the whole of WCAG 2.5.3: the button used to carry an
+`aria-label` of "Choose your governorate" while reading "Deliver to Hawalli",
+so somebody driving the page by voice said what they could see and nothing
+happened.
+
+Delivery is Home's alone, and that is not drift. `DeliveryZoneDialog` lives in
+`Home.tsx` and the only other place an area is set is checkout's own select —
+which is the one page that must ask. The four-control rule is about the account
+cluster; Home is already the header that carries more shopping context.
+
+**On a phone the compact bar takes the search field and drops the wordmark.**
+Collapsing the search row on its own left a scrolled phone with a hamburger, a
+wordmark and a cart — no way to search the catalog from the page the catalog is
+on, while a category page kept its field because `StoreHeader` never collapses.
+The wordmark is the half worth spending: somebody four screens into NetLet
+knows they are on NetLet. The bar costs the same 58px either way. The collapsed
+row below it is `inert` as well as `aria-hidden` — `aria-hidden` over a
+still-focusable input is a violation of its own, and the two search fields would
+otherwise both be in the tab order.
+
+**A sticky header earns its shadow in the compact state and nowhere else.** At
+rest the hero sits directly beneath with its own edge, so a hairline separates
+it; once content is moving underneath, a 1px border reads as part of the page.
+`data-compact` was already on the element with nothing reading it, which is a
+hook somebody left for later — it drives this now.
 
 The search placeholder takes its example **from the live catalog**, and holds
 still. It used to cycle four hard-coded phrases every 2.6 seconds — "espresso
@@ -210,6 +240,12 @@ only thing separating one shopper's bag from another's — and every cart query
 is scoped by it, so a guessed line id edits nothing. Lines store no price:
 a cart is a list of intentions and the price is whatever the variant costs
 when the shopper looks. Freezing a price is the order's job.
+
+**Every header starts with a skip link.** Home was the one page without one,
+which is the wrong way round: it carries the most header of any page — a bar,
+a search row and a department rail — so it is where tabbing past costs the
+most. It lands on `#main`, which is the hero, the same id every other page
+gives its first content.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.

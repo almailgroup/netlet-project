@@ -75,12 +75,17 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
           </div>
         ) : <div className="flex-1" />}
 
+        {/* Saved, language, account, cart — the order home uses. The two had
+            drifted into swapping the first two, which is exactly the drift
+            having one documented order is meant to catch: a shopper moving
+            from home to a category page should not have to re-find a control
+            that is still on the bar. */}
         <div className="flex shrink-0 items-center gap-1.5">
-          <HeaderIcon label={t("header.changeLanguage")} onClick={toggleLocale}>
-            <Globe2 className="size-[18px] ink-accent" />
-          </HeaderIcon>
           <HeaderIcon label={t("header.savedItems", { count: savedIds.length })} badge={savedIds.length} onClick={() => navigate("/saved")}>
             <Heart className="size-[18px]" />
+          </HeaderIcon>
+          <HeaderIcon label={t("header.changeLanguage")} onClick={toggleLocale}>
+            <Globe2 className="size-[18px] ink-accent" />
           </HeaderIcon>
           <HeaderIcon label={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={() => navigate("/account")}>
             <UserRound className="size-[18px]" />

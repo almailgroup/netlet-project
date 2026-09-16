@@ -357,18 +357,77 @@ export default function Home() {
 
   return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
     <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    <header {...headerHandlers} data-compact={headerCompact} className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
+    {/*
+      The shadow is the compact state's job. At rest the hero sits directly
+      below with its own edge, so a hairline is separation enough; once the page
+      is moving underneath, a sticky bar with only a 1px border reads as part of
+      the page rather than above it. `data-compact` was on this element already
+      and nothing read it — it drives this now rather than sitting as a hook
+      somebody left for later.
+    */}
+    <header
+      {...headerHandlers}
+      data-compact={headerCompact}
+      className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl transition-shadow duration-300 data-[compact=true]:shadow-[0_6px_20px_rgba(10,40,90,.09)]"
+    >
+      {/* Every other shopping page had this and the landing page did not, which
+          is the wrong way round: home carries the most header of any page, so
+          it is the one where tabbing past it costs the most. */}
+      <a href="#main" className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:absolute focus:start-4 focus:top-3 focus:z-50">{t("nav.skipToContent")}</a>
       {/* Primary bar: logo, a search field that takes all remaining width, then
           the account cluster — the layout marketplaces converge on. */}
       <div className={`container relative flex items-center gap-3 transition-[height] duration-300 ease-out lg:gap-5 ${headerCompact ? "h-[58px] lg:h-[62px]" : "h-[68px] lg:h-[76px]"}`}>
-        <div className="absolute start-4 lg:static lg:hidden"><IconButton label={t("header.openMenu")} onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
-        <div className={`mx-auto origin-left transition-transform rtl:origin-right duration-300 ease-out lg:mx-0 ${headerCompact ? "scale-[.82]" : "scale-100"}`}><Logo t={t} /></div>
+        <div className="lg:hidden"><IconButton label={t("header.openMenu")} onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
+        {/*
+          On a phone the compact bar drops the logo and takes the search field
+          into the row the logo was in. Collapsing the search row on its own
+          left a scrolled phone with a hamburger, a wordmark and a cart — no
+          way to search the catalog from the page the catalog is on, while a
+          category page (`StoreHeader`, which never collapses) kept its field.
+          The wordmark is the half worth spending: somebody four screens into
+          NetLet knows they are on NetLet, and the bar costs the same 58px
+          either way.
+        */}
+        <div className={`origin-left transition-transform rtl:origin-right duration-300 ease-out lg:mx-0 ${headerCompact ? "hidden lg:block lg:scale-[.82]" : "mx-auto scale-100"}`}><Logo t={t} /></div>
+        {headerCompact && <div className="min-w-0 flex-1 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>}
         <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
-        {/* The same four controls `StoreHeader` carries, in the same order, so
-            the two headers differ only in the ways they are meant to — this one
-            is taller and keeps the department rail. It had drifted: an advert
-            for an unpublished app sat where a shopper looks for their account,
-            and Saved was stranded in the department row below. */}
+        {/*
+          Delivery lives in the bar rather than the rail below because this row
+          is the one that survives a scroll. It is the only shopping context a
+          Kuwait-first shop should never make somebody scroll back for: it is
+          where the parcel goes and it decides what checkout costs.
+
+          "Deliver to" is the half that can go when the bar is tight — the
+          governorate alone beside a truck says the same thing — so the label
+          waits for xl and the value never does.
+        */}
+        <button
+          onClick={() => setDeliveryOpen(true)}
+          className="glass pressable hidden h-12 shrink-0 items-center gap-2 rounded-2xl px-3.5 text-xs font-semibold lg:flex"
+        >
+          <Truck className="size-[18px] shrink-0 ink-accent" aria-hidden />
+          {/*
+            Hidden from the eye below xl, never from the name. This carried an
+            `aria-label` of "Choose your governorate" while reading "Deliver to
+            Hawalli", which is WCAG 2.5.3 the wrong way round: somebody driving
+            the page by voice says what they can see, and "Deliver to" matched
+            nothing. The visible words are the label now, and `sr-only` keeps
+            them in the name at the width that cannot afford to draw them.
+          */}
+          <span className="sr-only ink-muted xl:not-sr-only">{t("home.deliverTo")}</span>
+          <span dir="auto" className="max-w-[120px] truncate text-[13px] font-extrabold text-[#0a285a]">
+            {deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort")}
+          </span>
+        </button>
+
+        {/* Saved, language, account, cart — the same four `StoreHeader` carries,
+            in the same order, so the two headers differ only in the ways they
+            are meant to: this one is taller and keeps the department rail.
+            Delivery sits before them rather than among them; it is shopping
+            context, which is the kind of thing this header is the one to
+            carry. Home's cluster had drifted before — an advert for an
+            unpublished app where a shopper looks for their account, and Saved
+            stranded in the department row below. */}
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
           <HeaderAction title={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")} badge={saved.length} icon={<Heart className="size-[19px]" />} label={t("nav.saved")} />
           {/* `header.language` is the language you would get, not the one you
@@ -379,29 +438,21 @@ export default function Home() {
           <HeaderAction title={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} label={isAuthenticated ? (user?.name ? user.name : t("header.myProfile")) : t("header.signIn")} />
           <HeaderAction title={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} label={t("nav.cart")} />
         </div>
-        <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable absolute end-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
+        <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable relative grid size-10 shrink-0 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
       </div>
-      <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+      <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/*
-        Secondary bar: the departments, and at the far end the one piece of
-        shopping context a Kuwait-first shop should never make you scroll for.
-        Removing the notifications bell and the saved-items icon from this row
-        left 650px of it empty — more than half the rail — which read as a
-        fragment rather than a row. Delivery belongs here in a way those two
-        did not: it is where the parcel goes, it changes what checkout will
-        cost, and until now it could only be set from a hero link that scrolls
-        away. Showing the chosen governorate is information; the two it
-        replaces were a dead control and a duplicate.
+        Secondary bar: departments, and nothing else.
+
+        Delivery sat here for one release and it was the wrong row. It went in
+        because the only other way to set an area was a hero link that scrolls
+        away — and then this rail collapses on scroll too, so it solved nothing
+        and I had not checked. It lives in the bar above now, which never
+        collapses. The row ending where its departments end is fine: a
+        left-aligned nav is what every marketplace has, and filling the space
+        was a problem I invented.
       */}
-      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}
-        <button onClick={() => setDeliveryOpen(true)} className="glass pressable ms-auto flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold" aria-label={t("delivery.chooseGovernorate")}>
-          <Truck className="size-4 ink-accent" aria-hidden />
-          <span className="ink-muted">{t("home.deliverTo")}</span>
-          <span dir="auto" className="max-w-[140px] truncate font-extrabold text-[#0a285a]">
-            {deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort")}
-          </span>
-        </button>
-      </nav>
+      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}</nav>
     </header>
 
     {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold"><UserRound className="size-4" />{isAuthenticated ? t("header.myProfile") : t("header.signInToNetlet")}</button></aside></div>}
@@ -411,7 +462,7 @@ export default function Home() {
         the page ground is a near-white neutral: a deep navy field lifted toward
         an electric blue, a brand-orange bloom on the warm side and a cool one
         opposite so the warmth reads as deliberate rather than as a cast. */}
-    <section className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden loading="eager" fetchPriority="high" decoding="async" className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button><button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button></div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Store className="size-3.5 text-[#ff9a70]" /> {t("home.liveCatalog")}</span><span className="flex items-center gap-1.5"><ShoppingBag className="size-3.5 text-[#ff9a70]" /> {t("home.persistentCart")}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
+    <section id="main" className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden loading="eager" fetchPriority="high" decoding="async" className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button><button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button></div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Store className="size-3.5 text-[#ff9a70]" /> {t("home.liveCatalog")}</span><span className="flex items-center gap-1.5"><ShoppingBag className="size-3.5 text-[#ff9a70]" /> {t("home.persistentCart")}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
 
     <CategoryRail categories={departmentTiles} onSelect={selectCategory} />
     <DealsSurface loading={catalogLoading} error={Boolean(catalogError)} product={firstProduct} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onRetry={() => void refetch()} onViewAll={showAll} />
