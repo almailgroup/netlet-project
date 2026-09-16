@@ -11,7 +11,7 @@
  * guards with. A hidden link is a courtesy, never a control: the server
  * refuses regardless, so the two cannot drift into a button that 403s.
  */
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";

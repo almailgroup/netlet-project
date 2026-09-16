@@ -11,7 +11,7 @@
  * Checkout keeps a deliberately bare one — every extra exit on a payment page
  * is an invitation to leave it.
  */
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { LiveSearch } from "@/components/LiveSearch";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";

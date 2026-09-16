@@ -11,7 +11,7 @@
  * the demand signal the vendor needs. It is a count; who is waiting is nobody's
  * business.
  */
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/lib/useTranslation";
 import type { Product } from "@shared/commerce/types";

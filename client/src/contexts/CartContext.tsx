@@ -1,6 +1,6 @@
 import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import type { Cart } from "@shared/commerce/types";
 import {
   createContext,

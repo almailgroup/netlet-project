@@ -2,7 +2,7 @@
  * NetLet storefront: Kuwait-focused discovery with a live product catalog,
  * persistent bag, native checkout mockup, and responsive marketplace rails.
  */
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Thumb } from "@/components/Thumb";
 import { LiveSearch } from "@/components/LiveSearch";
 import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, railSupportCardContent } from "@/content/homeLayout";

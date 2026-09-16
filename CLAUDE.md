@@ -4,6 +4,25 @@ Kuwait-first marketplace storefront. React + Vite client, Express + tRPC server,
 Supabase Postgres for the catalog, the cart and accounts. Firebase holds the
 passwords. Vercel runs it.
 
+## Layout
+
+`README.md` has the directory map; two boundaries in it are load bearing.
+
+**`shared/` is pure**, and that is what makes the rules checkable: permissions,
+commission, order arithmetic and the password floor each decide something that
+costs money or access, and both sides import the same function, so the UI
+cannot offer what the API refuses.
+
+**`server/_core/` is infrastructure and the rest of `server/` is the data
+layer** — app, auth, env, security, trpc and the two entry points on one side;
+inventory, orders, catalog, profile on the other. `_core` used to mean three
+different things: there was a `shared/_core/` holding one dead file and a
+`client/src/_core/hooks/` holding one hook while `client/src/hooks/` held four.
+Both are gone, so the prefix now names one idea in one place.
+
+Everything under `client/src/hooks/` is a hook and everything in
+`client/src/lib/` is not; there is no second answer to where either goes.
+
 ## Design reference
 
 `almailgroup/netlet-old-design`, branch `claude/shiplee-tracking-website` — an
@@ -492,8 +511,7 @@ Two rules keep the RTL layout honest:
 
 - **No physical direction utilities in page code.** `ms-`/`me-`/`ps-`/`pe-`/
   `start-`/`end-`/`text-start`/`border-s`. `left-1/2 -translate-x-1/2` is the
-  exception — it centres, it does not take a side. The unused shadcn primitives
-  under `components/ui/` are left as they came.
+  exception — it centres, it does not take a side.
 - **Arrows and chevrons that mean "onward" carry `rtl:-scale-x-100`.** So do
   the gradients and masks that shade toward the text, or the Arabic headline
   ends up sitting on the bright side of the hero.

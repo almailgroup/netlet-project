@@ -157,7 +157,7 @@ console.log("");
 if (blocked.length) {
   console.log(`${blocked.length} thing${blocked.length === 1 ? "" : "s"} to fix before NetLet can serve a catalog:`);
   for (const check of blocked) console.log(`  - ${check.title}`);
-  console.log("\nSee DEPLOYMENT.md for the full walkthrough.");
+  console.log("\nSee docs/SELF-HOSTING.md for the full walkthrough.");
   process.exit(1);
 }
 

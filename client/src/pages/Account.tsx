@@ -10,7 +10,7 @@
  * account's own facts in a bare card at the foot, which put the reason for
  * visiting below the things you visit the shop for.
  */
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ProfileManager } from "@/components/ProfileManager";
 import { AccountIdentity } from "@/components/AccountIdentity";
