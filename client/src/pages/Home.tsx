@@ -70,16 +70,24 @@ function IconButton({ label, children, onClick, className = "" }: { label: strin
 }
 
 /**
- * Header control in the marketplace convention: an icon, then a stacked
- * caption/value pair that collapses to the icon alone on narrower viewports.
+ * Header control: an icon and one label.
+ *
+ * It used to stack a caption over a value — "Your list / Saved", "Welcome /
+ * Sign in" — which is two lines of 10px and 12px text, four times across the
+ * bar. The caption was always the less informative half, and dropping it
+ * halves each control's width. That is what buys the labels their place at
+ * laptop widths: they used to appear only above 1280px, so everything from
+ * 1024 to 1280 was four mute circles, which is the width band most people
+ * actually browse at.
+ *
+ * The badge draws only when it has something to say. A badge showing "0" is an
+ * alert that is never not firing, and the fastest way to teach somebody to
+ * stop looking at the one place a count matters.
  */
-function HeaderAction({ icon, caption, value, onClick, label, badge, tone = "quiet" }: { icon: React.ReactNode; caption: string; value: string; onClick: () => void; label: string; badge?: number; tone?: "quiet" | "primary" }) {
-  return <button onClick={onClick} aria-label={label} title={label} className={`pressable flex h-12 shrink-0 items-center rounded-2xl px-3 ${badge !== undefined ? "gap-3.5" : "gap-2.5"} ${tone === "primary" ? "glass glass-navy" : "glass"}`}>
-    <span className="relative grid shrink-0 place-items-center">{icon}{badge !== undefined && <span className="absolute -end-2 -top-2.5 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white">{badge}</span>}</span>
-    <span className="hidden max-w-[128px] text-start leading-[1.15] xl:block">
-      <span dir="auto" className={`block truncate text-[10px] font-semibold ${tone === "primary" ? "text-white" : "text-[#536b8c]"}`}>{caption}</span>
-      <span className="block truncate text-xs font-extrabold">{value}</span>
-    </span>
+function HeaderAction({ icon, label, onClick, title, badge, tone = "quiet" }: { icon: React.ReactNode; label: string; onClick: () => void; title: string; badge?: number; tone?: "quiet" | "primary" }) {
+  return <button onClick={onClick} aria-label={title} title={title} className={`pressable flex h-12 shrink-0 items-center gap-2.5 rounded-2xl px-3.5 ${tone === "primary" ? "glass glass-navy" : "glass"}`}>
+    <span className="relative grid shrink-0 place-items-center">{icon}{badge ? <span className="absolute -end-2 -top-2 grid min-w-[17px] place-items-center rounded-full bg-[#f2683a] px-1 text-[10px] font-extrabold text-white"><bdi dir="ltr">{badge > 99 ? "99+" : badge}</bdi></span> : null}</span>
+    <span dir="auto" className="hidden max-w-[120px] truncate text-[13px] font-extrabold lg:block">{label}</span>
   </button>;
 }
 
@@ -362,20 +370,38 @@ export default function Home() {
             for an unpublished app sat where a shopper looks for their account,
             and Saved was stranded in the department row below. */}
         <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-          <HeaderAction label={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")} badge={saved.length || undefined} icon={<Heart className="size-[19px]" />} caption={t("header.yourList")} value={t("nav.saved")} />
+          <HeaderAction title={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")} badge={saved.length} icon={<Heart className="size-[19px]" />} label={t("nav.saved")} />
           {/* `header.language` is the language you would get, not the one you
               are reading — a toggle labelled with its current state leaves you
               guessing which way it goes. Currency is gone from here: there is
               one, and a control that cannot change is not a control. */}
-          <HeaderAction label={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} caption={t("header.languageCaption")} value={t("header.language")} />
-          <HeaderAction label={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} caption={t("header.welcome")} value={isAuthenticated ? (user?.name ? t("header.greeting", { name: user.name }) : t("header.myProfile")) : t("header.signIn")} />
-          <HeaderAction label={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} caption={t("nav.cart")} value={itemCount === 1 ? t("header.itemOne") : t("header.items", { count: itemCount })} />
+          <HeaderAction title={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} label={t("header.language")} />
+          <HeaderAction title={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} label={isAuthenticated ? (user?.name ? user.name : t("header.myProfile")) : t("header.signIn")} />
+          <HeaderAction title={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} label={t("nav.cart")} />
         </div>
-        <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable absolute end-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" /><span className="absolute -end-1 -top-1 grid size-4 place-items-center rounded-full bg-[#f2683a] text-[9px] font-extrabold text-white">{itemCount}</span></button>
+        <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable absolute end-4 grid size-10 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
       </div>
       <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
-      {/* Secondary bar: departments only, so the row reads as one rail. */}
-      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}</nav>
+      {/*
+        Secondary bar: the departments, and at the far end the one piece of
+        shopping context a Kuwait-first shop should never make you scroll for.
+        Removing the notifications bell and the saved-items icon from this row
+        left 650px of it empty — more than half the rail — which read as a
+        fragment rather than a row. Delivery belongs here in a way those two
+        did not: it is where the parcel goes, it changes what checkout will
+        cost, and until now it could only be set from a hero link that scrolls
+        away. Showing the chosen governorate is information; the two it
+        replaces were a dead control and a duplicate.
+      */}
+      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "flex items-center gap-2 font-bold" : ""} ${index === 0 ? "glass glass-navy" : "glass !text-[#536b8c]"}`}>{index === 0 && <Menu className="size-4" />}{t(category.key)}</button>)}
+        <button onClick={() => setDeliveryOpen(true)} className="glass pressable ms-auto flex shrink-0 items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold" aria-label={t("delivery.chooseGovernorate")}>
+          <Truck className="size-4 ink-accent" aria-hidden />
+          <span className="ink-muted">{t("home.deliverTo")}</span>
+          <span dir="auto" className="max-w-[140px] truncate font-extrabold text-[#0a285a]">
+            {deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort")}
+          </span>
+        </button>
+      </nav>
     </header>
 
     {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 block w-full rounded-xl px-4 py-4 text-start text-sm font-bold">{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold"><UserRound className="size-4" />{isAuthenticated ? t("header.myProfile") : t("header.signInToNetlet")}</button></aside></div>}

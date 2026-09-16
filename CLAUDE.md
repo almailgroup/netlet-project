@@ -178,6 +178,32 @@ reading — `header.language` is "العربية" in the English dictionary and 
 in the Arabic one. It no longer reads "EN / KWD": there is one currency, and
 half a control that cannot change is not a control.
 
+**One label per control, not a caption stacked over a value.** "Your list /
+Saved", "Welcome / Sign in" — the caption was always the less informative half,
+and four of them meant eight lines of 10px and 12px text across one bar.
+Dropping it halves each control, which is what buys the labels their place from
+`lg` up: they used to appear only above 1280px, so everything from 1024 to 1280
+was four mute circles, and that is the width band most laptops browse at.
+
+**A badge draws only when it has something to say.** A cart badge reading "0"
+is an alert that never stops firing, which is the fastest way to teach somebody
+to ignore the one place a count matters. Both cart buttons need the guard —
+the desktop cluster and the phone-only one beside the logo; the second was
+missed on the first pass and still showed a zero.
+
+**Delivery sits at the end of the department rail.** Taking the notifications
+bell and the saved icon out of that row left 650px of it empty — more than half
+the rail, which read as a fragment rather than a row. Delivery earns the place
+those two did not: it is where the parcel goes, it decides what checkout costs,
+and it could otherwise only be set from a hero link that scrolls away. Showing
+the chosen governorate is information; a bell that said "coming soon" was not.
+
+The search placeholder takes its example **from the live catalog**, and holds
+still. It used to cycle four hard-coded phrases every 2.6 seconds — "espresso
+maker", "wireless headphones" — naming things the shop may not sell, and moving
+in the corner of the eye while somebody is trying to read the page. With no
+product type to draw on it asks plainly rather than inventing one.
+
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
 only thing separating one shopper's bag from another's — and every cart query
