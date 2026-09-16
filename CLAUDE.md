@@ -295,32 +295,46 @@ a search row and a department rail — so it is where tabbing past costs the
 most. It lands on `#main`, which is the hero, the same id every other page
 gives its first content.
 
-**A card's quantity stepper reveals on hover, and never *only* on hover.**
-`.reveal-on-hover` hides it behind `@media (hover: hover) and (pointer: fine)`,
-so on a phone — which is most of what NetLet sells to — it is simply there. A
-hover-only control on this storefront is one most shoppers never see, and it
-is unreachable from a keyboard besides; `:focus-within` reveals it too, so
-tabbing to the card brings it out with the pointer nowhere near.
+**The quantity control is inside the action button, and reveals on hover.** At
+rest each pill is one label; hovering it slides a minus out of the leading end
+and a plus out of the trailing end, and the label keeps the middle.
 
-It uses `visibility`, not opacity alone. An element at `opacity: 0` still
-catches clicks and still takes a tab stop, so a hidden stepper would sit
-invisible over the card swallowing presses. And it holds its space in both
-states, because a row that appears on hover and pushes the buttons down moves
-the button out from under the cursor that revealed it — the one interaction
-guaranteed to happen.
+They are three separate `<button>`s sharing one styled wrapper, because **a
+button cannot contain a button** — nested, the markup is invalid and the
+browser decides for itself what a click meant. The wrapper carries the fill and
+the rounding so the three read as one control.
 
-**One quantity per card, not one per button.** Add-to-cart and buy-now are not
-two things to buy; they are two destinations for the same choice, the bag or
-the checkout, so two independent counts would leave no answer to which applies.
-**The labels count when the count is not one** — "Add 3 to cart", and the same
-in the accessible name. A stepper reading 3 over a button reading "Add to cart"
-is the same small dishonesty as a Publish button that quietly produces "In
-review".
+`.qty-step` reveals on hover **and never only on hover**: `:focus-within`
+brings it out for a keyboard, and below `@media (hover: hover) and (pointer:
+fine)` it is simply present, which is every phone this shop sells to. A
+hover-only control on a Kuwait-first storefront is one most shoppers never see.
+It animates `width` but gates hit-testing on `visibility` — at zero width an
+element still catches clicks and still takes a tab stop, so without that the
+hidden minus would swallow presses aimed at the label. The pill's own width
+never changes, only how the three split it, so nothing moves out from under the
+cursor that revealed it.
 
-`QuantityStepper` is one component because it was about to be three: the
-product page had one, Quick View had a second, and the card would have been a
-third. Three copies is how one clamps at 1 and another at 0. `MAX_QUANTITY`
-lives there.
+**One quantity per card, not one per pill.** Add-to-cart and buy-now are not two
+things to buy; they are two destinations for the same choice, the bag or the
+checkout. **The label carries the count** — "Add 3 to cart" — because the minus
+and plus show no number, so the label is the only place it can live, and a
+stepper reading 3 beside a button reading "Add to cart" asks somebody to guess
+which the press takes.
+
+**A 172px rail card cannot hold the full label beside the steps, and Arabic is
+where that bites.** "أضف 3 إلى السلة" measures 102px in an 81px slot while the
+English fits — so below `@[12rem]` both pills swap to a short label ("Add 3")
+and the steps give back 8px each. Both strings are rendered and one is shown,
+because a container query can pick a rule and not a string. The threshold is
+measured rather than guessed: a 226px grid card takes the full label, a 173px
+rail card takes the short one, and the check fails on any label whose
+`scrollWidth` exceeds its `clientWidth` — which is what caught the clipping a
+screenshot had already shown and no assertion had.
+
+`QuantityStepper` stays the always-visible control for the product page and
+Quick View, where the product is the subject rather than one card in a rail.
+`MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
+about the ceiling.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.

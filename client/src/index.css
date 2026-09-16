@@ -606,37 +606,47 @@
  * animating height would lay out the flex row seven times a frame.
  */
 /*
- * Shown while the card is hovered or holds focus — and shown unconditionally
- * where there is no hover to do the revealing, which is every phone NetLet
- * actually sells to. A hover-only control on a Kuwait-first storefront is a
- * control most shoppers never see.
+ * The quantity control lives *inside* the action button.
  *
- * `visibility` rather than opacity alone. An element at `opacity: 0` still
- * catches clicks and still takes a tab stop, so a hidden stepper would sit
- * invisible over the card swallowing presses, and a keyboard would land on a
- * control nobody can see. `visibility: hidden` removes it from hit testing and
- * from the accessibility tree; focus-within still reveals it, because focus
- * entering anything else in the card is what flips the group.
+ * At rest the pill is one label. Hovering it slides a minus out of its leading
+ * end and a plus out of its trailing end, and the label keeps the middle. The
+ * three are separate `<button>`s sharing one styled wrapper, because a button
+ * cannot contain a button — nesting them is invalid markup and browsers make
+ * their own decision about what the click meant.
  *
- * It keeps its space in both states on purpose. A stepper that appears and
- * pushes the buttons down moves the button out from under the cursor that
- * revealed it — the one interaction guaranteed to happen here.
+ * Hovered *or* focused, and unconditionally present where there is no hover to
+ * do the revealing, which is every phone this shop sells to. A hover-only
+ * control on a Kuwait-first storefront is one most shoppers never see, and it
+ * is unreachable from a keyboard besides.
+ *
+ * `width` carries the animation and `visibility` carries the hit testing. At
+ * zero width an element is still clickable and still takes a tab stop, so
+ * without the second a hidden minus would swallow presses aimed at the label
+ * and the keyboard would stop on a control nobody can see.
+ *
+ * The pill's own width never changes — only how the three split it — so
+ * nothing moves out from under the cursor that revealed it.
  */
-.reveal-on-hover {
+.qty-step {
+  width: var(--qty-step-w, 2.25rem);
+  overflow: hidden;
   transition:
-    opacity 180ms var(--ease-out),
+    width 180ms var(--ease-out),
+    opacity 140ms var(--ease-out),
     visibility 180ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .reveal-on-hover {
-    visibility: hidden;
+  .qty-step {
+    width: 0;
     opacity: 0;
+    visibility: hidden;
   }
-  .group:hover .reveal-on-hover,
-  .group:focus-within .reveal-on-hover {
-    visibility: visible;
+  .qty-inline:hover .qty-step,
+  .qty-inline:focus-within .qty-step {
+    width: var(--qty-step-w, 2.25rem);
     opacity: 1;
+    visibility: visible;
   }
 }
 

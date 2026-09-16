@@ -6,11 +6,11 @@
  * drifts every time the first is touched.
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
-import { QuantityStepper } from "@/components/QuantityStepper";
+import { MAX_QUANTITY } from "@/components/QuantityStepper";
 import { Thumb } from "@/components/Thumb";
 import type { Product } from "@shared/commerce/types";
-import { Eye, Heart, LoaderCircle, Share2, ShoppingBag, Star, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Eye, Heart, LoaderCircle, Minus, Plus, Share2, ShoppingBag, Star, Zap } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
 
@@ -106,6 +106,88 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
   );
 }
 
+/**
+ * An action button with its own quantity control inside it.
+ *
+ * Three real buttons sharing one styled wrapper, because a `<button>` cannot
+ * contain a `<button>`: nested, the markup is invalid and the browser decides
+ * for itself which one a click meant. The wrapper carries the fill and the
+ * rounding, so the three read as one pill.
+ *
+ * The minus and plus reveal on hover and on focus, and are simply present on a
+ * phone — `.qty-step` is where that lives. The label carries the count rather
+ * than a separate number: "Add 3 to cart" leaves nothing to work out, where a
+ * stepper reading 3 beside a button reading "Add to cart" asks somebody to
+ * guess which the press will take.
+ */
+function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQuantity, onAct, disabled, busy = false }: {
+  tone: "quiet" | "accent";
+  icon: ReactNode;
+  /** Mid-request. The spinner replaces the icon and is never hidden. */
+  busy?: boolean;
+  /**
+   * What the pill says on a card too narrow for the full label.
+   *
+   * Both are rendered and one is shown, because a container query cannot pick
+   * a string — only CSS. The count has nowhere else to live: the minus and
+   * plus carry no number, so a label trimmed to "Add" would lose it entirely.
+   */
+  shortLabel: string;
+  label: string;
+  /** The accessible name for the action itself, which already counts. */
+  name: string;
+  quantity: number;
+  onQuantity: (next: number) => void;
+  onAct: () => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation();
+  const step = "qty-step pressable grid h-full shrink-0 place-items-center disabled:cursor-not-allowed disabled:opacity-40";
+
+  return (
+    /*
+      A narrow rail card is 172px, and two 36px steps plus an icon clipped the
+      label to "Add…". The steps give back 8px each below `@[15rem]` and the
+      static icon stands down entirely — the words are the part that says what
+      the button does. The spinner is exempt: it is the only sign that a press
+      was heard.
+    */
+    <div className={`qty-inline glass [--qty-step-w:1.6rem] @[15rem]:[--qty-step-w:2.25rem] ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full items-center rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
+      <button
+        type="button"
+        onClick={() => onQuantity(Math.max(1, quantity - 1))}
+        disabled={disabled || quantity <= 1}
+        aria-label={t("product.decreaseQuantity")}
+        className={step}
+      >
+        <Minus className="size-3.5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={onAct}
+        disabled={disabled}
+        aria-label={name}
+        className="pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 px-1 text-xs font-extrabold @[15rem]:gap-2 @[15rem]:px-2 disabled:cursor-not-allowed"
+      >
+        {busy ? <LoaderCircle className="size-4 shrink-0 animate-spin" /> : <span className="shrink-0">{icon}</span>}
+        <span className="truncate @[12rem]:hidden">{shortLabel}</span>
+        <span className="hidden truncate @[12rem]:inline">{label}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onQuantity(Math.min(MAX_QUANTITY, quantity + 1))}
+        disabled={disabled || quantity >= MAX_QUANTITY}
+        aria-label={t("product.increaseQuantity")}
+        className={step}
+      >
+        <Plus className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false }: {
   product: Product;
   saved: boolean;
@@ -187,36 +269,49 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
         </div>
 
         {/*
-          How many, above the two buttons that act on it. It reveals on hover
-          and on focus, and stays put where there is no hover — see
-          `.reveal-on-hover`. It holds its space in both states, because a row
-          that appears on hover and pushes the buttons down moves the button
-          out from under the cursor that revealed it.
-
-          Only where there is something to buy: a stepper over a sold-out
-          product is a control that changes nothing.
+          Both actions carry the same count, because they are not two things to
+          buy — they are two destinations for the same choice, the bag or the
+          checkout. Two independent counts would leave no answer to which the
+          press applies.
         */}
-        {canBuy ? (
-          <div className="reveal-on-hover mt-3 flex items-center justify-between gap-2">
-            <span className="type-label ink-muted">{t("product.quantity")}</span>
-            <QuantityStepper size="compact" value={quantity} onChange={setQuantity} disabled={isAdding} />
-          </div>
-        ) : null}
-
-        <div className={`flex flex-col gap-2 @[15rem]:flex-row ${canBuy ? "mt-2" : "mt-auto pt-3"}`}>
-          {/*
-            The label counts when the count is not one. A stepper reading 3 over
-            a button reading "Add to cart" leaves somebody guessing whether the
-            press takes the three or the one — the same small dishonesty as a
-            Publish button that quietly produces "In review".
-          */}
-          <button disabled={!canBuy || isAdding} onClick={() => void onAdd(quantity)} className="glass pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 px-3 text-xs font-extrabold text-[#0a285a] @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? t(quantity > 1 ? "product.addToCartNameCount" : "product.addToCartName", { name: product.title, count: String(quantity) }) : t("product.unavailableName", { name: product.title })}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{t(!canBuy ? "product.unavailable" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}</button>
+        <div className="mt-auto flex flex-col gap-2 pt-3 @[15rem]:flex-row">
+          <ActionWithQuantity
+            tone="quiet"
+            disabled={!canBuy || isAdding}
+            quantity={quantity}
+            onQuantity={setQuantity}
+            onAct={() => void onAdd(quantity)}
+            busy={isAdding}
+            icon={<ShoppingBag className="size-4" />}
+            label={t(!canBuy ? "product.unavailable" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
+            shortLabel={t(!canBuy ? "product.unavailable" : quantity > 1 ? "product.addShortCount" : "product.addShort", { count: String(quantity) })}
+            name={canBuy
+              ? t(quantity > 1 ? "product.addToCartNameCount" : "product.addToCartName", { name: product.title, count: String(quantity) })
+              : t("product.unavailableName", { name: product.title })}
+          />
           {/* Buy now is the accent because it is the shorter path to a
               completed order; add-to-cart keeps the quieter clear tint so the
               pair reads as a primary and a secondary rather than two primaries
               shouting at each other. */}
-          <button disabled={!canBuy || isAdding} onClick={() => void onBuyNow(quantity)} className="glass glass-accent pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={t(quantity > 1 ? "product.buyNowNameCount" : "product.buyNowName", { name: product.title, count: String(quantity) })}><Zap className="size-4 fill-current" />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
+          <ActionWithQuantity
+            tone="accent"
+            disabled={!canBuy || isAdding}
+            quantity={quantity}
+            onQuantity={setQuantity}
+            onAct={() => void onBuyNow(quantity)}
+            icon={<Zap className="size-4 fill-current" />}
+            label={t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}
+            shortLabel={t(quantity > 1 ? "product.buyShortCount" : "product.buyShort", { count: String(quantity) })}
+            name={t(quantity > 1 ? "product.buyNowNameCount" : "product.buyNowName", { name: product.title, count: String(quantity) })}
+          />
         </div>
+
+        {/*
+          One live region for the card, not one per pill. The count lives in two
+          button labels now, and a changed label is not announced — but two
+          regions saying the same thing would read it twice.
+        */}
+        <span aria-live="polite" className="sr-only">{t("product.quantity")}: {quantity}</span>
       </div>
     </article>
   );
