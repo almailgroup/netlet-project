@@ -234,19 +234,27 @@ maker", "wireless headphones" — naming things the shop may not sell, and movin
 in the corner of the eye while somebody is trying to read the page. With no
 product type to draw on it asks plainly rather than inventing one.
 
-**Voice and photo search are designed and not wired, and the switch says so.**
-`SearchModes.tsx` holds both panels with every state drawn — listening, heard,
-refused, unsupported, choosing, previewing, scanning, no match — and
-`SEARCH_MODES_WIRED` is the one constant that flips when a recogniser lands.
-Until it does, `showSearchModes` draws the two controls in a dev build and in
-the fixtures-only demo and nowhere else, so no shopper meets a microphone that
-cannot hear. That is the `orders` arrangement rather than the notifications
-bell: the shape exists before the thing that fills it, and a build check
-asserts a production bundle renders neither control on any page.
+**Voice and photo search are designed and not wired, and the panel says so.**
+`SearchModes.tsx` holds both, with every state drawn — listening, heard,
+refused, unsupported, choosing, previewing, scanning, no match.
 
-Every state opens for review at `?searchTest=voice-heard`,
-`?searchTest=photo-scanning` and the rest, in a dev build only — the same
-parameter `LiveSearch` already uses to force its mobile panel.
+**Drawn and wired are two constants, not one.** They were briefly the same, and
+the result was that every build anybody actually looks at — the deployed site
+included — showed a bare field, so the design could not be reviewed where it
+mattered. `showSearchModes` is now unconditional; `SEARCH_MODES_WIRED` governs
+one thing, the line in each panel saying nothing is listening yet.
+
+That line is what keeps this on the right side of the rule the notifications
+bell broke. The bell answered a press with a toast saying "coming soon" and had
+nothing behind it; these open a designed panel that states what they are and
+points back at the field that works, so a press is answered rather than
+ignored. Nothing else changes when the switch flips.
+
+Every state opens at `?searchTest=voice-denied`, `?searchTest=photo-noMatch`
+and the rest, on any build — deliberately unlike `LiveSearch`'s own
+`searchTest` values, which simulate an outage and stay in dev. Several states
+are unreachable by clicking, so without this the refusals and the no-match
+cannot be looked at at all.
 
 Two things there were found by measuring, not by reading. **The sheet is
 portalled to `<body>`**, because `backdrop-filter` on the header makes it the

@@ -11,21 +11,24 @@
  * scanning, no match — so wiring it later is a swap of where the text and the
  * photo come from, not a redesign.
  *
- * It matters that the controls do not reach a shopper before then. This
- * codebase has removed a notifications bell that only ever said "coming soon",
- * a QR code that decoded to nothing, and store buttons that toasted "soon",
- * all under one rule: a control that changes nothing is worse than no control.
- * So `showSearchModes` draws them where the design can be reviewed — a dev
- * build and the fixtures-only demo, which is already an invented catalog — and
- * nowhere else. Flip `SEARCH_MODES_WIRED` when the recognisers land and the
- * controls appear everywhere, with no other change.
+ * The two facts are tracked separately on purpose: **drawn** and **wired**.
+ * They were briefly the same switch, which hid the controls from every build a
+ * person actually looks at — including the deployed site — so the design could
+ * not be reviewed where it matters. Drawn is now unconditional.
+ *
+ * That leaves the rule this codebase keeps returning to: a control that
+ * changes nothing is worse than no control, which is why a notifications bell
+ * saying "coming soon", a QR that decoded to nothing and store buttons that
+ * toasted "soon" were all taken out. These two are not that. Each opens a
+ * panel that states plainly what it is and points at the field that does work,
+ * so pressing one is answered rather than ignored. `SEARCH_MODES_WIRED` is
+ * what removes that line, and nothing else changes when it flips.
  *
  * Every state is reachable for review without pretending to hold a microphone:
  * `?searchTest=voice-heard`, `?searchTest=photo-scanning` and the rest, in a
  * dev build only. That query parameter is the same one `LiveSearch` already
  * uses to force its mobile panel open.
  */
-import { DEMO_MODE } from "@/lib/demoMode";
 import { useOverlay } from "@/lib/useOverlay";
 import { useTranslation } from "@/lib/useTranslation";
 import { Thumb } from "@/components/Thumb";
@@ -34,22 +37,35 @@ import { Camera, CameraOff, Image as ImageIcon, Keyboard, Mic, MicOff, RotateCcw
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-/** Flip to true the moment speech recognition and photo matching are real. */
+/**
+ * Whether a recogniser is actually behind these. It governs one thing: the
+ * line in each panel saying so. Flip it when speech recognition and photo
+ * matching are real, and the line goes.
+ */
 export const SEARCH_MODES_WIRED = false;
 
 /**
- * Where the controls are drawn. A demo build is already an invented catalog
- * that says so, and a dev build is where the design gets looked at; a real
- * shopper on a real shelf sees nothing until the switch above moves.
+ * Whether the controls are drawn at all — everywhere, deliberately. Gating
+ * this on the build meant the deployed site showed a bare field, which is not
+ * a design anybody can review or sign off.
  */
-export const showSearchModes = SEARCH_MODES_WIRED || import.meta.env.DEV || DEMO_MODE;
+export const showSearchModes = true;
 
 export type VoiceState = "listening" | "heard" | "denied" | "unsupported";
 export type PhotoState = "choose" | "preview" | "scanning" | "noMatch" | "denied";
 
-/** A dev-only way to open the sheet straight into a state, for review. */
+/**
+ * Opens the sheet straight into one state, for review.
+ *
+ * Not gated on the build, unlike `LiveSearch`'s own `searchTest` values — those
+ * simulate an outage and belong nowhere near a real shopper. This one only
+ * decides which of several honest panels is drawn, and until the recognisers
+ * land it is the only way to see the states a click cannot reach: what a
+ * refused microphone looks like, what a browser that cannot listen says, what
+ * happens when a photo matches nothing. A design nobody can look at on the
+ * deployed site is a design nobody can sign off.
+ */
 function forcedState(prefix: string): string | null {
-  if (!import.meta.env.DEV) return null;
   const flag = new URLSearchParams(window.location.search).get("searchTest");
   return flag?.startsWith(`${prefix}-`) ? flag.slice(prefix.length + 1) : null;
 }
