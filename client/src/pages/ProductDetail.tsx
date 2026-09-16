@@ -1,6 +1,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/Thumb";
+import { QuantityStepper } from "@/components/QuantityStepper";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
@@ -29,9 +30,7 @@ import {
   Heart,
   ListTree,
   LoaderCircle,
-  Minus,
   PackageOpen,
-  Plus,
   RotateCcw,
   Share2,
   ShieldCheck,
@@ -627,11 +626,9 @@ export default function ProductDetail() {
 
             <div className="mt-6 flex items-center gap-3">
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
-              <div className="glass inline-flex items-center overflow-hidden rounded-[10px]">
-                <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label={t("product.decreaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
-                <span aria-live="polite" className="min-w-9 text-center text-[15px] font-bold text-[#1f2229]">{quantity}</span>
-                <button onClick={() => setQuantity(current => Math.min(99, current + 1))} disabled={quantity >= 99} aria-label={t("product.increaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-4" /></button>
-              </div>
+              {/* The shared control: the card grew the same thing, and two
+                  copies is how one clamps at 1 and the other at 0. */}
+              <QuantityStepper value={quantity} onChange={setQuantity} disabled={cartLoading} />
             </div>
 
             <div className="mt-6 flex gap-3">

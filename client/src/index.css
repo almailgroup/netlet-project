@@ -605,6 +605,41 @@
  * `scaleY` rather than `height` so it runs on the compositor: seven elements
  * animating height would lay out the flex row seven times a frame.
  */
+/*
+ * Shown while the card is hovered or holds focus — and shown unconditionally
+ * where there is no hover to do the revealing, which is every phone NetLet
+ * actually sells to. A hover-only control on a Kuwait-first storefront is a
+ * control most shoppers never see.
+ *
+ * `visibility` rather than opacity alone. An element at `opacity: 0` still
+ * catches clicks and still takes a tab stop, so a hidden stepper would sit
+ * invisible over the card swallowing presses, and a keyboard would land on a
+ * control nobody can see. `visibility: hidden` removes it from hit testing and
+ * from the accessibility tree; focus-within still reveals it, because focus
+ * entering anything else in the card is what flips the group.
+ *
+ * It keeps its space in both states on purpose. A stepper that appears and
+ * pushes the buttons down moves the button out from under the cursor that
+ * revealed it — the one interaction guaranteed to happen here.
+ */
+.reveal-on-hover {
+  transition:
+    opacity 180ms var(--ease-out),
+    visibility 180ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-on-hover {
+    visibility: hidden;
+    opacity: 0;
+  }
+  .group:hover .reveal-on-hover,
+  .group:focus-within .reveal-on-hover {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
 @keyframes voice-level {
   0%,
   100% {

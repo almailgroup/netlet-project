@@ -17,10 +17,11 @@ import { useMoney, useTranslation } from "@/lib/useTranslation";
 import { useOverlay } from "@/lib/useOverlay";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import type { Product } from "@shared/commerce/types";
-import { ArrowRight, Check, LoaderCircle, Minus, Plus, ShoppingBag, Star, X, Zap } from "lucide-react";
+import { ArrowRight, Check, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FollowProduct } from "@/components/FollowProduct";
+import { QuantityStepper } from "@/components/QuantityStepper";
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
@@ -160,11 +161,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             {inStock ? (
               <div className="mt-4 flex items-center gap-3">
                 <span className="text-[12px] font-semibold ink-muted">{t("product.quantity")}</span>
-                <div className="glass inline-flex items-center overflow-hidden rounded-[10px]">
-                  <button onClick={() => setQuantity(current => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label={t("product.decreaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-4" /></button>
-                  <span aria-live="polite" className="min-w-9 text-center text-[14px] font-bold text-[#1f2229]">{quantity}</span>
-                  <button onClick={() => setQuantity(current => Math.min(99, current + 1))} disabled={quantity >= 99} aria-label={t("product.increaseQuantity")} className="grid size-9 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-4" /></button>
-                </div>
+                <QuantityStepper value={quantity} onChange={setQuantity} disabled={loading} />
               </div>
             ) : (
               // Out of stock is the moment a back-in-stock alert is worth
@@ -179,7 +176,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 className="glass pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 text-xs font-extrabold text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}
-                {t(inStock ? "product.addToCart" : "product.unavailable")}
+                {t(!inStock ? "product.unavailable" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
               </button>
               <button
                 onClick={() => void add(true)}

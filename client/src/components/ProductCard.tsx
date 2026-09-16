@@ -6,6 +6,7 @@
  * drifts every time the first is touched.
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
+import { QuantityStepper } from "@/components/QuantityStepper";
 import { Thumb } from "@/components/Thumb";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, LoaderCircle, Share2, ShoppingBag, Star, Zap } from "lucide-react";
@@ -105,8 +106,27 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
   );
 }
 
-export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false }: { product: Product; saved: boolean; onSave: () => void; onShare?: () => void; onDetails: () => void; onQuickView?: () => void; onAdd: () => void; onBuyNow: () => void; isAdding: boolean; compact?: boolean }) {
+export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false }: {
+  product: Product;
+  saved: boolean;
+  onSave: () => void;
+  onShare?: () => void;
+  onDetails: () => void;
+  onQuickView?: () => void;
+  /** Both take the chosen quantity: the stepper above them is what sets it. */
+  onAdd: (quantity: number) => void | Promise<void>;
+  onBuyNow: (quantity: number) => void | Promise<void>;
+  isAdding: boolean;
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
+  /*
+   * One quantity for the card, not one per button. Two independent counts for
+   * the same product leaves no answer to which one applies, and the two
+   * buttons are not two things to buy — they are two destinations for the same
+   * choice, the bag or the checkout.
+   */
+  const [quantity, setQuantity] = useState(1);
   const money = useMoney();
   const share = onShare ?? (() => void shareProduct(product, t));
   const variant = product.variants[0];
@@ -166,13 +186,36 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           {compareAt ? <p className="type-label text-[11px] ink-muted line-through">{money(compareAt)}</p> : null}
         </div>
 
-        <div className="mt-auto flex flex-col gap-2 pt-3 @[15rem]:flex-row">
-          <button disabled={!canBuy || isAdding} onClick={onAdd} className="glass pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 px-3 text-xs font-extrabold text-[#0a285a] @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? t("product.addToCartName", { name: product.title }) : t("product.unavailableName", { name: product.title })}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{t(canBuy ? "product.addToCart" : "product.unavailable")}</button>
+        {/*
+          How many, above the two buttons that act on it. It reveals on hover
+          and on focus, and stays put where there is no hover — see
+          `.reveal-on-hover`. It holds its space in both states, because a row
+          that appears on hover and pushes the buttons down moves the button
+          out from under the cursor that revealed it.
+
+          Only where there is something to buy: a stepper over a sold-out
+          product is a control that changes nothing.
+        */}
+        {canBuy ? (
+          <div className="reveal-on-hover mt-3 flex items-center justify-between gap-2">
+            <span className="type-label ink-muted">{t("product.quantity")}</span>
+            <QuantityStepper size="compact" value={quantity} onChange={setQuantity} disabled={isAdding} />
+          </div>
+        ) : null}
+
+        <div className={`flex flex-col gap-2 @[15rem]:flex-row ${canBuy ? "mt-2" : "mt-auto pt-3"}`}>
+          {/*
+            The label counts when the count is not one. A stepper reading 3 over
+            a button reading "Add to cart" leaves somebody guessing whether the
+            press takes the three or the one — the same small dishonesty as a
+            Publish button that quietly produces "In review".
+          */}
+          <button disabled={!canBuy || isAdding} onClick={() => void onAdd(quantity)} className="glass pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 px-3 text-xs font-extrabold text-[#0a285a] @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={canBuy ? t(quantity > 1 ? "product.addToCartNameCount" : "product.addToCartName", { name: product.title, count: String(quantity) }) : t("product.unavailableName", { name: product.title })}>{isAdding ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}{t(!canBuy ? "product.unavailable" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}</button>
           {/* Buy now is the accent because it is the shorter path to a
               completed order; add-to-cart keeps the quieter clear tint so the
               pair reads as a primary and a secondary rather than two primaries
               shouting at each other. */}
-          <button disabled={!canBuy || isAdding} onClick={onBuyNow} className="glass glass-accent pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={t("product.buyNowName", { name: product.title })}><Zap className="size-4 fill-current" />{t("product.buyNow")}</button>
+          <button disabled={!canBuy || isAdding} onClick={() => void onBuyNow(quantity)} className="glass glass-accent pressable flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-xs font-extrabold @[15rem]:w-auto @[15rem]:flex-1 disabled:cursor-not-allowed disabled:opacity-50" aria-label={t(quantity > 1 ? "product.buyNowNameCount" : "product.buyNowName", { name: product.title, count: String(quantity) })}><Zap className="size-4 fill-current" />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
         </div>
       </div>
     </article>

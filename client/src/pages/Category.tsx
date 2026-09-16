@@ -139,22 +139,26 @@ export default function Category() {
   const openProduct = (product: Product) =>
     window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
-  const addToCart = async (product: Product) => {
+  const addToCart = async (product: Product, quantity = 1) => {
     const variant = product.variants[0];
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
-      await addItem(variant.id);
-      toast.success(t("cart.added", { name: product.title }));
+      await addItem(variant.id, quantity);
+      // The confirmation counts when the count is not one: "added to your cart"
+      // after picking three is a receipt that does not match the request.
+      toast.success(quantity > 1
+        ? t("cart.addedQuantity", { count: String(quantity), name: product.title })
+        : t("cart.added", { name: product.title }));
     } catch {
       toast.error(t("cart.addFailed"));
     }
   };
 
-  const buyNow = async (product: Product) => {
+  const buyNow = async (product: Product, quantity = 1) => {
     const variant = product.variants[0];
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
-      await addItem(variant.id);
+      await addItem(variant.id, quantity);
       window.location.assign(appPath("/checkout"));
     } catch {
       toast.error(t("cart.buyFailed"));
@@ -301,8 +305,8 @@ export default function Category() {
                     }}
                     onDetails={() => openProduct(product)}
                     onQuickView={() => setQuickProduct(product)}
-                    onAdd={() => void addToCart(product)}
-                    onBuyNow={() => void buyNow(product)}
+                    onAdd={(quantity) => void addToCart(product, quantity)}
+                    onBuyNow={(quantity) => void buyNow(product, quantity)}
                     isAdding={cartLoading}
                   />
                 ))}
