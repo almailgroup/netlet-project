@@ -411,6 +411,40 @@ omission: an order has to exist before a payment can reference it. `orders` and
 page reads its row count and nothing else. It should be folded into orders when
 tracking becomes real.
 
+**Orders and returns are one section on `/account`, not two.** A return is
+something you do *to* an order rather than a separate pile of things, and a
+Returns tab is empty for everybody who has never returned anything — which
+teaches people not to look. It is the *first* section, ahead of the settings:
+somebody opening their account on a shop is usually asking where a parcel is,
+not changing a display name.
+
+`server/orders.ts` had `listOrdersForUser` and `getOrderForUser` from the day
+the tables landed and **nothing could call them** — there was no router, so the
+page had no way to ask. `server/routers/orders.ts` is that missing half. Every
+procedure is protected and every query is scoped by `ctx.user.id` inside the
+data layer rather than filtered in the router, because a reference is short
+enough to paste and an id is a serial: "show me order 4" has to be refused by
+the query. Tested by handing one shopper another's reference.
+
+**`shared/commerce/returns.ts` is the window, and it is pure.** A return needs
+*both* lifecycles to agree — the money taken and the goods arrived — and asking
+only one is how a shopper gets offered a return on a parcel still in a van.
+`RETURN_WINDOW_DAYS` is one constant so the policy is one edit. The server
+resolves the state and sends the answer rather than the ingredients, so the
+clock is the server's and nobody reopens a closed window by changing their
+system date.
+
+Two things there are deliberately wrong in a known direction. `order_items` has
+**no `delivered_at`**, so the router stands `updatedAt` in for it — which pushes
+a window out rather than shortening it, the safe way to be wrong, and is one
+line to change when the column lands. And an **unknown delivery date counts as
+open**, because refusing a return over a gap in our own schema puts our problem
+on the shopper.
+
+The return *request* is an email address, not a form. There is no returns table
+and no signed-off policy, and a form that silently drops a request is worse
+than an address.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages

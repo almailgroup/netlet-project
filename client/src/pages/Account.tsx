@@ -16,6 +16,7 @@ import { ProfileManager } from "@/components/ProfileManager";
 import { AccountIdentity } from "@/components/AccountIdentity";
 import { AccountPreferences } from "@/components/AccountPreferences";
 import { AccountActivity } from "@/components/AccountActivity";
+import { AccountOrders } from "@/components/AccountOrders";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import AuthDialog from "@/components/AuthDialog";
@@ -31,6 +32,7 @@ import type { ReactNode } from "react";
 
 /** The sections, in page order. The nav and the page read from one list. */
 const SECTIONS = [
+  { id: "orders", label: "account.sectionOrders" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
   { id: "activity", label: "account.sectionActivity" },
@@ -105,6 +107,15 @@ export default function Account() {
 
             <div className="space-y-10">
               <AccountIdentity user={user} />
+
+              {/* First of the sections, ahead of the settings. Somebody opening
+                  their account on a shop is usually asking where a parcel is or
+                  whether they can still send something back — not changing a
+                  display name. The nav and the page read from one list, so the
+                  order here is the order there. */}
+              <Section id="orders" title={t("account.sectionOrders")}>
+                <AccountOrders />
+              </Section>
 
               <Section id="details" title={t("account.sectionProfile")}>
                 <ProfileManager user={user} />

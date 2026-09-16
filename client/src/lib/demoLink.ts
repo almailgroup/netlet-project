@@ -229,6 +229,16 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.tracking.list":
     case "customer.follows.list":
       return [];
+    /*
+     * Nobody can buy anything in the demo — there is no payment anywhere yet,
+     * and the demo catalog is invented besides — so the honest answer is an
+     * empty page rather than a fabricated order history. A demo order would be
+     * a receipt for a product that does not exist, at a price nobody paid.
+     */
+    case "orders.list":
+      return onePage([]);
+    case "orders.get":
+      return null;
     // Nobody is signed in to be waiting, so the demand line stays off.
     case "customer.follows.demand":
       return 0;
