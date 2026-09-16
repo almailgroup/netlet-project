@@ -234,6 +234,46 @@ maker", "wireless headphones" — naming things the shop may not sell, and movin
 in the corner of the eye while somebody is trying to read the page. With no
 product type to draw on it asks plainly rather than inventing one.
 
+**Voice and photo search are designed and not wired, and the switch says so.**
+`SearchModes.tsx` holds both panels with every state drawn — listening, heard,
+refused, unsupported, choosing, previewing, scanning, no match — and
+`SEARCH_MODES_WIRED` is the one constant that flips when a recogniser lands.
+Until it does, `showSearchModes` draws the two controls in a dev build and in
+the fixtures-only demo and nowhere else, so no shopper meets a microphone that
+cannot hear. That is the `orders` arrangement rather than the notifications
+bell: the shape exists before the thing that fills it, and a build check
+asserts a production bundle renders neither control on any page.
+
+Every state opens for review at `?searchTest=voice-heard`,
+`?searchTest=photo-scanning` and the rest, in a dev build only — the same
+parameter `LiveSearch` already uses to force its mobile panel.
+
+Two things there were found by measuring, not by reading. **The sheet is
+portalled to `<body>`**, because `backdrop-filter` on the header makes it the
+containing block for every `position: fixed` descendant, so `inset-0` resolved
+against a 125px bar and the sheet hung off the top of the screen.
+`DeliveryZoneDialog` never hit it only because it renders from the page rather
+than from inside the bar. And **the two controls do not swallow their own
+mousedown**, unlike clear and submit beside them: that trick keeps the field
+from blurring and taking the suggestions with it, but a button that refuses
+focus is one `useOverlay` cannot hand focus back to, so closing the sheet
+dropped the keyboard on `<body>`.
+
+**They share the clear button's slot rather than adding to the row.** You speak
+or point *instead* of typing, and the moment there is something in the field
+the thing you want is to empty it — so the pair shows on an empty field and
+clear shows on a full one. A 358px phone field cannot hold four controls and
+still show what you typed. They are flat beside the navy submit, because three
+filled discs give no answer to which one searches, and `size-9` rather than a
+28px disc wearing `.tap-target`: two 44px pseudo-targets 34px apart overlap,
+and the winner is whichever is later in the document.
+
+A dialog's primary action is **navy, not the brand orange**. `.glass-accent` is
+white on `#f2683a` at 3.08:1 and these labels are `text-xs`, nowhere near
+large-text size, so 4.5:1 is the bar. axe passes the existing orange buttons
+only by reporting `incomplete` over the gradient, which is not the same as
+passing.
+
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
 only thing separating one shopper's bag from another's — and every cart query

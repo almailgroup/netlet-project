@@ -595,6 +595,45 @@
   }
 }
 
+/*
+ * The voice panel's level meter. It is not reading a real signal — nothing is
+ * listening yet — but it is what the meter has to do when something is: the
+ * bars have to move independently, or a row that rises and falls as one block
+ * reads as a loading bar rather than as a room with a voice in it. The stagger
+ * is set per bar at the call site.
+ *
+ * `scaleY` rather than `height` so it runs on the compositor: seven elements
+ * animating height would lay out the flex row seven times a frame.
+ */
+@keyframes voice-level {
+  0%,
+  100% {
+    transform: scaleY(0.22);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.voice-bar {
+  transform-origin: center;
+  animation: voice-level 900ms var(--ease-out) infinite;
+}
+
+/* The photo panel's scanning sweep: one pass down the frame, repeating. */
+@keyframes photo-scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(400%);
+  }
+}
+
+.photo-scan {
+  animation: photo-scan 1700ms var(--ease-out) infinite;
+}
+
 @keyframes netlet-menu-scrim-in {
   from {
     opacity: 0;
