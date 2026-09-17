@@ -45,6 +45,7 @@ import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { useOverlay } from "@/lib/useOverlay";
 import { ProductCard } from "@/components/ProductCard";
 import { MobileTabBar } from "@/components/MobileTabBar";
+import { RecommendedRail } from "@/components/RecommendedRail";
 import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
@@ -466,6 +467,15 @@ export default function Home() {
 
     <CategoryRail categories={departmentTiles} onSelect={selectCategory} />
     <DealsSurface loading={catalogLoading} error={Boolean(catalogError)} product={firstProduct} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onRetry={() => void refetch()} onViewAll={showAll} />
+
+    <RecommendedRail
+      saved={saved}
+      onSave={toggleSaved}
+      onDetails={openProduct}
+      onAdd={(product, quantity) => void addProduct(product, quantity)}
+      onBuyNow={(product, quantity) => void buyProduct(product, quantity)}
+      isAdding={cartLoading}
+    />
 
     {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} supportCard={railSupportCards[index]} onSelectSupport={selectCategory} />)}
 

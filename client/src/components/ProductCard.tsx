@@ -188,7 +188,7 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
   );
 }
 
-export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false }: {
+export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuickView, onAdd, onBuyNow, isAdding, compact = false, note }: {
   product: Product;
   saved: boolean;
   onSave: () => void;
@@ -200,6 +200,14 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
   onBuyNow: (quantity: number) => void | Promise<void>;
   isAdding: boolean;
   compact?: boolean;
+  /**
+   * One line above the title saying why this card is here.
+   *
+   * Only the recommendation rail passes it. It sits where the vendor's name
+   * would, because that is the line a shopper already reads for "where is this
+   * from" — and "why am I seeing this" is the same question.
+   */
+  note?: ReactNode;
 }) {
   const { t } = useTranslation();
   /*
@@ -250,7 +258,7 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
       </div>
 
       <div className="flex flex-1 flex-col px-0.5 pb-0.5 pt-3">
-        {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] ink-muted uppercase">{product.vendor}</p> : null}
+        {note ?? (product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] ink-muted uppercase">{product.vendor}</p> : null)}
         <button onClick={onDetails} className="mt-0.5 text-start"><h3 className="type-product line-clamp-2 text-[15px] font-extrabold tracking-[-.025em] text-[#0a285a] transition-colors group-hover:text-[#a44a2b]">{product.title}</h3></button>
 
         {rating ? (

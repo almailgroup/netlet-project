@@ -486,6 +486,67 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+## Recommendations
+
+**`shared/commerce/taste.ts` is the ranking, and it is pure.** This decides
+what a shopper is shown, which is the most visible thing NetLet does with what
+it knows about them — and a ranking you can only exercise by signing in as
+somebody and staring at a rail is one nobody checks. The failure mode is not a
+crash; it is a shop quietly recommending the wrong things to everybody for a
+month.
+
+Signals are weighted `bought > bagged > saved > followed`, and **a product
+counts once, at its strongest kind**: somebody who saved a lamp, bagged it and
+bought it has said one thing about lamps, and counting it three times lets a
+single purchase drown out everything else they browse. Price uses the **median**
+rather than the mean, so one aspirational look at a KWD 480 rug does not start
+recommending furniture to somebody who buys coffee. Price never lifts a product
+on its own — it sharpens a match that already exists, or the cheap half of the
+shop is "recommended" to anybody who ever bought anything cheap.
+
+**Every recommendation carries its reason**, as message keys rather than
+sentences. "Because you saved a brass lamp" is checkable by the shopper, and a
+bare list is not — the same argument `vendorHealth` makes for carrying the raw
+counts behind its score.
+
+**`isRecommendable` refuses two things, and both were found by looking at a
+real rail rather than reasoning about one.** Sold out: a "picked for you" row
+where three of four cannot be bought is the dead-control rule at the size of a
+shelf. Priced at zero: the same money rule `assertPriced` puts on the two doors
+onto the shelf, applied at the third. Both cut a four-card rail to one on the
+current catalog, which is the honest answer rather than a bug.
+
+**"Picked for you" is a claim, and `personalised` is what earns it.** Below
+`TASTE_FLOOR` the rail says "Popular right now" and explains how to make it
+personal. One saved product is a data point, not a taste, and a rail claiming
+otherwise is checked once and never trusted again.
+
+**Only interest terms leave NetLet.** `tasteTerms` is the entire payload sent to
+the model — "lighting, home, warm", true of thousands of people and identifying
+none of them. No name, no email, no account id, no order reference. A
+personalisation feature that ships a customer's identity to a third party for a
+nicer rail has made a trade nobody asked it to make.
+
+**A model reorders; it never chooses.** The candidate set comes from
+`publishedCatalog`, so a draft or a suspended vendor's product is absent from a
+rail for the same reason it is absent from the shop. `applyModelOrder` drops any
+id that was not in the set it was given — **a model must not be able to add a
+product to a shop**, and "it returned an id we did not send" is either a
+hallucination or an injection. Anything it omits keeps its own order behind what
+it chose, so a truncated reply degrades to the deterministic ranking rather than
+to a short rail.
+
+Every model failure is one answer: no key, a 2.5s timeout, a refusal, malformed
+JSON — all fall back to the ranking that was already good enough to render, and
+`refinedByModel` goes false so the "Ordered by NetLet AI" badge cannot appear
+over a plain sort.
+
+**The recommender is only as good as the catalog's metadata.** It ranks on
+category, vendor, tags and price, and on the current shelf every published
+product had a null category and no tags — which leaves vendor and price and
+nothing else. That is a merchandising gap rather than a code one, and no model
+fixes it: `search.refine` and this pass both read what merchants typed.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages

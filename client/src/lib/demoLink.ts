@@ -235,6 +235,20 @@ function resolve(path: string, rawInput: unknown): unknown {
      * empty page rather than a fabricated order history. A demo order would be
      * a receipt for a product that does not exist, at a price nobody paid.
      */
+    /*
+     * The demo has fixtures and no signals — nobody is signed in and no bag
+     * survives a reload — so the honest answer is the shop's own shelf marked
+     * `personalised: false`, which is exactly what the real server returns for
+     * a shopper it knows nothing about. Inventing a taste profile to make the
+     * demo look clever would be the invented catalog problem twice over.
+     */
+    case "recommendations.forMe":
+      return {
+        items: demoCatalog.slice(0, 8).map(product => ({ product, score: 0, reasons: [] })),
+        personalised: false,
+        terms: [],
+        refinedByModel: false,
+      };
     case "orders.list":
       return onePage([]);
     case "orders.get":
