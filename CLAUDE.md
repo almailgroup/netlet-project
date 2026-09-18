@@ -336,6 +336,32 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
+**Quick View is on every page that draws a card**, and the trigger is a labelled
+bar rather than an icon. It existed before it was asked for — `QuickView` and
+`ProductCard`'s `onQuickView` were wired on `/category/:slug` alone, opened by
+an unlabelled eye stacked third in a hover-revealed corner cluster, and a
+shopper asked for the feature to be added. That is the whole verdict on that
+treatment: a control nobody finds is a control that is not there. It now reads
+"Preview" across the foot of the image, and Home (the rails, the deals surface,
+the recommendation rail) and `/saved` mount it too, once per page beside the
+other overlays.
+
+`.reveal-panel` is the second user of the rule `.qty-step` already follows:
+hidden and not hit-testable at rest under a mouse, revealed on `:hover` and on
+`:focus-within`, and simply present below `@media (hover: hover) and (pointer:
+fine)` — which is every phone this shop sells to. `visibility`, not `opacity`
+alone, for the reason the stepper has: a transparent element still catches
+clicks and still takes a tab stop.
+
+**Anything that goes to another page is an anchor.** The popup's picture and its
+"Full product details" were `<button>`s calling `window.location.assign`, which
+works for exactly one way of pressing a link: no middle-click, no open-in-new-
+tab, no copy address, nothing in the status bar. They carry `href` now.
+
+The in-stock line was `#28a745` on pearl — 3.13:1, the same failure the orange
+has. It is `#2f5d33` at 7.68:1, a darkening rather than a new hue. The refusal
+red beside it computes 4.58:1 and was left alone.
+
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three.

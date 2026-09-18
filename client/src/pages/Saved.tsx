@@ -10,6 +10,7 @@
  * once signed in — so the list survives a reload either way.
  */
 import { ProductCard } from "@/components/ProductCard";
+import { QuickView } from "@/components/QuickView";
 import { StoreHeader } from "@/components/StoreHeader";
 import { MobileTabBar } from "@/components/MobileTabBar";
 import { useCart } from "@/contexts/CartContext";
@@ -32,6 +33,7 @@ export default function Saved() {
   const { savedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
+  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const { addItem, loading: cartLoading } = useCart();
   const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 60 });
 
@@ -114,6 +116,7 @@ export default function Saved() {
                   toast(t("saved.removed", { name: product.title }));
                 }}
                 onDetails={() => openProduct(product)}
+                onQuickView={() => setQuickProduct(product)}
                 onAdd={(quantity) => void addToCart(product, quantity)}
                 onBuyNow={(quantity) => void buyNow(product, quantity)}
                 isAdding={cartLoading}
@@ -144,6 +147,7 @@ export default function Saved() {
           </p>
         ) : null}
       </div>
+      <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />
     </main>
   );

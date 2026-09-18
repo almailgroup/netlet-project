@@ -229,7 +229,7 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
 
   return (
     <article className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] transition-shadow duration-300 hover:shadow-[0_14px_40px_rgba(10,40,90,.10)] ${compact ? "p-2.5" : "p-3"}`}>
-      <div className="relative">
+      <div className="relative overflow-hidden rounded-xl">
         <CardGallery product={product} onDetails={onDetails} compact={compact} />
 
         {/* Signals a shopper scans for before anything else, stacked down the
@@ -252,8 +252,30 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
         {/* Share is secondary: it appears on hover on a pointer device and is
             always present on touch, where there is no hover to reveal it. */}
         <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
+        {/*
+          Preview says the word.
+          
+          It was an eye in the corner, third in a stack under a heart and a
+          share, unlabelled and revealed only on hover — three icons deep is
+          not somewhere anybody looks for a feature, and a bare eye is not a
+          thing anybody guesses. A shopper asked for this to be added while it
+          was already there, which is the whole verdict on that treatment.
+          
+          Across the foot of the photo, with its name on it, and revealed by
+          the same rule the quantity steps use: hover or focus on a pointer
+          device, simply present where there is no hover. `reveal-panel` is
+          that rule — `visibility` rather than opacity alone, because an
+          invisible bar over a photo still swallows the tap meant for the card.
+        */}
         {onQuickView ? (
-          <button onClick={onQuickView} aria-label={t("quick.open", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-[5.25rem] grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Eye className="size-3.5" /></button>
+          <button
+            onClick={onQuickView}
+            aria-label={t("quick.open", { name: product.title })}
+            className="reveal-panel pressable absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-[#0a285a]/85 py-2 text-[11px] font-extrabold text-white backdrop-blur-sm"
+          >
+            <Eye className="size-3.5 shrink-0" aria-hidden />
+            {t("quick.preview")}
+          </button>
         ) : null}
       </div>
 

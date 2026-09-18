@@ -627,6 +627,39 @@
  * The pill's own width never changes — only how the three split it — so
  * nothing moves out from under the cursor that revealed it.
  */
+/*
+ * A panel that appears on hover, and is simply there where there is no hover.
+ *
+ * The same rule `.qty-step` follows and for the same reason: a control that
+ * only exists under a mouse pointer is one most of this shop's shoppers never
+ * meet. `:focus-within` on the card brings it out for a keyboard, and under
+ * `(hover: none)` it never hides.
+ *
+ * `visibility` rather than opacity alone, again: a transparent bar lying over
+ * a product photo still catches the tap that was meant for the photo, and
+ * still takes a tab stop.
+ */
+.reveal-panel {
+  transition:
+    opacity 180ms var(--ease-out),
+    visibility 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-panel {
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  .group:hover .reveal-panel,
+  .group:focus-within .reveal-panel {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .qty-step {
   width: var(--qty-step-w, 2.25rem);
   overflow: hidden;

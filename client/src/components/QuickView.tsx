@@ -50,7 +50,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const rating = productRating(product.attributes);
   const inStock = Boolean(variant?.availableForSale);
   const image = product.images[imageIndex] ?? product.images[0];
-  const openFull = () => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
+  const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
   const add = async (thenCheckout: boolean) => {
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
@@ -82,15 +82,15 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
         <div className="mt-4 grid gap-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
           <div>
-            <button
-              onClick={openFull}
+            <a
+              href={fullHref}
               aria-label={t("product.view", { name: product.title })}
               className="block w-full overflow-hidden rounded-2xl border border-[#e2e5eb] bg-white"
             >
               {image
                 ? <Thumb src={image.url} alt={image.altText ?? product.title} className="aspect-square w-full object-contain p-4" />
                 : <div className="aspect-square" />}
-            </button>
+            </a>
             {product.images.length > 1 ? (
               <div className="hide-scrollbar mt-2 flex gap-2 overflow-x-auto">
                 {product.images.slice(0, 6).map((item, index) => (
@@ -128,7 +128,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] font-semibold">
               {inStock
-                ? <span className="flex items-center gap-1.5 text-[#28a745]"><Check className="size-4" />{t("product.inStock")}</span>
+                ? <span className="flex items-center gap-1.5 text-[#2f5d33]"><Check className="size-4" />{t("product.inStock")}</span>
                 : <span className="flex items-center gap-1.5 text-[#e61c38]">{t("product.outOfStock")}</span>}
               {isExpressEligible(product) ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
@@ -187,9 +187,9 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               </button>
             </div>
 
-            <button onClick={openFull} className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold ink-accent underline underline-offset-4">
+            <a href={fullHref} className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold ink-accent underline underline-offset-4">
               {t("quick.fullDetails")} <ArrowRight className="size-3.5 rtl:-scale-x-100" />
-            </button>
+            </a>
           </div>
         </div>
       </section>

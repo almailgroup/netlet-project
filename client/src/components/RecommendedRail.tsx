@@ -32,10 +32,11 @@ import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
 
-export function RecommendedRail({ saved, onSave, onDetails, onAdd, onBuyNow, isAdding }: {
+export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding }: {
   saved: string[];
   onSave: (id: string, title: string) => void;
   onDetails: (product: Product) => void;
+  onQuickView: (product: Product) => void;
   onAdd: (product: Product, quantity: number) => void;
   onBuyNow: (product: Product, quantity: number) => void;
   isAdding: boolean;
@@ -90,6 +91,7 @@ export function RecommendedRail({ saved, onSave, onDetails, onAdd, onBuyNow, isA
                     saved={saved.includes(item.product.id)}
                     onSave={() => onSave(item.product.id, item.product.title)}
                     onDetails={() => onDetails(item.product)}
+                    onQuickView={() => onQuickView(item.product)}
                     onAdd={quantity => onAdd(item.product, quantity)}
                     onBuyNow={quantity => onBuyNow(item.product, quantity)}
                     isAdding={isAdding}
