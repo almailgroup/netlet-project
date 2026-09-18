@@ -44,11 +44,11 @@ pearl `#f3f2ed`. Do not carry the old colours across without asking.
 
 ## Buttons
 
-One rule, and it is easy to break by accident. The three filled tints
-(`.glass-navy`, `.glass-accent`, `.glass-on-dark`) share a construction: solid
-fill, a single hairline along the top edge, a soft inner shade at the bottom, a
-restrained rim. **No diagonal wash and no hover sweep** — over a filled surface
-those read as glare.
+One rule, and it is easy to break by accident. The four filled tints
+(`.glass-navy`, `.glass-accent`, `.glass-on-dark`, `.glass-white`) share a
+construction: solid fill, a single hairline along the top edge, a soft inner
+shade at the bottom, a restrained rim. **No diagonal wash and no hover sweep** —
+over a filled surface those read as glare.
 
 The clear tint (`.glass`) keeps both, because on a near-transparent surface they
 are what makes the glass legible at all.
@@ -336,7 +336,7 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
-**Quick View is on every page that draws a card**, and the trigger is a navy
+**Quick View is on every page that draws a card**, and the trigger is a white
 disc in the trailing bottom corner of the photo. It existed before it was asked
 for — `QuickView` and `ProductCard`'s `onQuickView` were wired on
 `/category/:slug` alone, opened by an eye stacked third in a hover-revealed
@@ -351,12 +351,22 @@ wins the accessible name and `title` becomes the description — which is the
 arrangement that wanted checking, because the tooltip is the only thing that
 tells somebody with a mouse what an eye means before they press it.
 
-The white border is not decoration: `.glass-navy`'s own rim is a *navy* shadow,
-which separates a navy disc from a pale page and from nothing at all on a dark
-photograph. The heart and the share above it are the clear tint and survive
-either background; a filled disc needs the hairline. (Verified against a near
--black image, which is also how it became obvious that the clear-tint pair above
-it goes nearly invisible over one — pre-existing, and not this control's.)
+**`.glass-white` is the fourth filled tint**, and it exists because this is the
+only control in the storefront that sits on a *photograph* rather than on the
+page. Navy vanished into a dark picture; the clear tint the heart and the share
+wear vanishes into a pale one. A solid white fill holds on both — and its rim
+is navy rather than white, because on white the rim is the only edge there is.
+It follows the same construction as the other three: one hairline along the top,
+a soft inner shade at the bottom, a restrained rim, no diagonal wash, no sweep.
+
+Checked against a pure-black and a pure-white image, not against the catalog's
+own photographs, which are all mid-tone. That is also how it became obvious that
+the clear-tint heart and share above it go nearly invisible over a dark photo —
+pre-existing, and not this control's to fix.
+
+At `size-11` it is 44px, which *is* the touch minimum, so it carries no
+`.tap-target`: the pseudo-element would be a no-op, and leaving it off also
+keeps a second 44px hit area from sitting under the share button's.
 
 `.reveal-control` is the second user of the rule `.qty-step` already follows:
 hidden and not hit-testable at rest under a mouse, revealed on `:hover` and on
@@ -366,7 +376,7 @@ alone, for the reason the stepper has: a transparent element still catches
 clicks and still takes a tab stop. It grows and settles rather than sliding in
 from an edge, because a disc in a corner has no edge to slide from.
 
-`bottom-1.5 end-1.5`, so it mirrors in Arabic the way the heart above it does —
+`bottom-2 end-2`, so it mirrors in Arabic the way the heart above it does —
 checked by measuring the gap to each side of the image in both directions, not
 by reading the class.
 

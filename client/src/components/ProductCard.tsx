@@ -258,11 +258,11 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           It began as an eye third in the stack under the heart and the share,
           unlabelled — three icons deep is not somewhere anybody looks, and a
           shopper asked for this to be added while it was already there. It is
-          its own corner now, on its own, filled navy rather than glass so it
+          its own corner now, on its own, and filled rather than glass so it
           reads as the one thing the picture offers rather than a third member
           of the cluster above it.
 
-          `bottom-1.5 end-1.5`, so it mirrors in Arabic the way the heart does.
+          `bottom-2 end-2`, so it mirrors in Arabic the way the heart does.
           It is icon-only, so it carries both an `aria-label` and a `title`:
           the label is for anybody not using a pointer, and the tooltip is the
           only thing that tells a mouse user what an eye means before they
@@ -272,20 +272,24 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           follow — `visibility` rather than opacity alone, because an invisible
           disc over a photo still swallows the tap meant for the card.
 
-          The white border is not decoration. `.glass-navy`'s own rim is a navy
-          shadow, which separates it from a pale page and from nothing at all
-          on a dark photograph — and half this catalog is a dark photograph.
-          The heart and the share above it are the clear tint and stay legible
-          either way; this one is a filled navy disc and needs the hairline.
+          White, and the largest control on the card. It was navy first, which
+          vanished into a dark photograph; the clear tint the heart and share
+          wear vanishes into a pale one. A solid white fill with a navy rim is
+          the one that holds on both, and `.glass-white` is that tint, built to
+          the same construction as the other three filled ones.
+
+          `size-11` is 44px, which is the touch minimum — so it no longer needs
+          `.tap-target`, and dropping it also removes a 44px pseudo-element
+          that would otherwise have sat under the share button's.
         */}
         {onQuickView ? (
           <button
             onClick={onQuickView}
             aria-label={t("quick.open", { name: product.title })}
             title={t("quick.preview")}
-            className="glass glass-navy reveal-control pressable tap-target absolute bottom-1.5 end-1.5 grid size-9 place-items-center rounded-full border-2 border-white/85"
+            className="glass glass-white reveal-control pressable absolute bottom-2 end-2 grid size-11 place-items-center rounded-full"
           >
-            <Eye className="size-4" aria-hidden />
+            <Eye className="size-5" aria-hidden />
           </button>
         ) : null}
       </div>
