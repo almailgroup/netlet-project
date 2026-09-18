@@ -336,22 +336,39 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
-**Quick View is on every page that draws a card**, and the trigger is a labelled
-bar rather than an icon. It existed before it was asked for — `QuickView` and
-`ProductCard`'s `onQuickView` were wired on `/category/:slug` alone, opened by
-an unlabelled eye stacked third in a hover-revealed corner cluster, and a
-shopper asked for the feature to be added. That is the whole verdict on that
-treatment: a control nobody finds is a control that is not there. It now reads
-"Preview" across the foot of the image, and Home (the rails, the deals surface,
-the recommendation rail) and `/saved` mount it too, once per page beside the
-other overlays.
+**Quick View is on every page that draws a card**, and the trigger is a navy
+disc in the trailing bottom corner of the photo. It existed before it was asked
+for — `QuickView` and `ProductCard`'s `onQuickView` were wired on
+`/category/:slug` alone, opened by an eye stacked third in a hover-revealed
+corner cluster, and a shopper asked for the feature to be added. That is the
+whole verdict on *that* treatment: three icons deep is not somewhere anybody
+looks. It is its own corner now, on its own, and Home (the rails, the deals
+surface, the recommendation rail) and `/saved` mount the popup too, once per
+page beside the other overlays.
 
-`.reveal-panel` is the second user of the rule `.qty-step` already follows:
+It is icon-only, so it carries an `aria-label` **and** a `title`. `aria-label`
+wins the accessible name and `title` becomes the description — which is the
+arrangement that wanted checking, because the tooltip is the only thing that
+tells somebody with a mouse what an eye means before they press it.
+
+The white border is not decoration: `.glass-navy`'s own rim is a *navy* shadow,
+which separates a navy disc from a pale page and from nothing at all on a dark
+photograph. The heart and the share above it are the clear tint and survive
+either background; a filled disc needs the hairline. (Verified against a near
+-black image, which is also how it became obvious that the clear-tint pair above
+it goes nearly invisible over one — pre-existing, and not this control's.)
+
+`.reveal-control` is the second user of the rule `.qty-step` already follows:
 hidden and not hit-testable at rest under a mouse, revealed on `:hover` and on
 `:focus-within`, and simply present below `@media (hover: hover) and (pointer:
 fine)` — which is every phone this shop sells to. `visibility`, not `opacity`
 alone, for the reason the stepper has: a transparent element still catches
-clicks and still takes a tab stop.
+clicks and still takes a tab stop. It grows and settles rather than sliding in
+from an edge, because a disc in a corner has no edge to slide from.
+
+`bottom-1.5 end-1.5`, so it mirrors in Arabic the way the heart above it does —
+checked by measuring the gap to each side of the image in both directions, not
+by reading the class.
 
 **Anything that goes to another page is an anchor.** The popup's picture and its
 "Full product details" were `<button>`s calling `window.location.assign`, which
@@ -735,16 +752,19 @@ Variants cannot be stacked on these: write `hover:text-[#a44a2b]`, not
 `hover:ink-accent`, which resolves to nothing at all.
 
 `axe-core` over the storefront and the portal in both languages is what found
-all of it. **Run it against a catalog with products in it** — an empty shop
-never renders a product card, and half of these only appeared once there was
-something on the shelf.
+all of it. **Run it against a catalog with products in it, and with some of
+them on offer** — an empty shop never renders a product card, and a shop where
+nothing is discounted never renders the `−27%` badge. Half of these only
+appeared once there was something on the shelf; the badge only appeared once
+something on the shelf had a compare-at price, which took one audit longer than
+it should have.
 
-Three violations remain, all the same one: **white on `#f2683a` is 3.08:1**, on
-the home page's orange hero card. That is the brand decision this file already
-flags under Buttons — reaching AA needs a darker orange than the brand's, and
-that is a call for the brand rather than something to fix by quietly changing
-the colour. Everything around it has been taken as far as it goes without
-touching the hue.
+What remains is all one violation: **white on `#f2683a` is 3.08:1**. It is on
+the home page's orange hero card, and on the discount badge of every card in
+every grid and rail. That is the brand decision this file already flags under
+Buttons — reaching AA needs a darker orange than the brand's, and that is a
+call for the brand rather than something to fix by quietly changing the colour.
+Everything around it has been taken as far as it goes without touching the hue.
 
 ## Browsing
 

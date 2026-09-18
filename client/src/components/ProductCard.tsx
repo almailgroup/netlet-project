@@ -253,28 +253,39 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
             always present on touch, where there is no hover to reveal it. */}
         <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
         {/*
-          Preview says the word.
-          
-          It was an eye in the corner, third in a stack under a heart and a
-          share, unlabelled and revealed only on hover — three icons deep is
-          not somewhere anybody looks for a feature, and a bare eye is not a
-          thing anybody guesses. A shopper asked for this to be added while it
-          was already there, which is the whole verdict on that treatment.
-          
-          Across the foot of the photo, with its name on it, and revealed by
-          the same rule the quantity steps use: hover or focus on a pointer
-          device, simply present where there is no hover. `reveal-panel` is
-          that rule — `visibility` rather than opacity alone, because an
-          invisible bar over a photo still swallows the tap meant for the card.
+          Preview: a disc in the trailing bottom corner of the photo.
+
+          It began as an eye third in the stack under the heart and the share,
+          unlabelled — three icons deep is not somewhere anybody looks, and a
+          shopper asked for this to be added while it was already there. It is
+          its own corner now, on its own, filled navy rather than glass so it
+          reads as the one thing the picture offers rather than a third member
+          of the cluster above it.
+
+          `bottom-1.5 end-1.5`, so it mirrors in Arabic the way the heart does.
+          It is icon-only, so it carries both an `aria-label` and a `title`:
+          the label is for anybody not using a pointer, and the tooltip is the
+          only thing that tells a mouse user what an eye means before they
+          press it.
+
+          `reveal-control` is the hover rule, the same one the quantity steps
+          follow — `visibility` rather than opacity alone, because an invisible
+          disc over a photo still swallows the tap meant for the card.
+
+          The white border is not decoration. `.glass-navy`'s own rim is a navy
+          shadow, which separates it from a pale page and from nothing at all
+          on a dark photograph — and half this catalog is a dark photograph.
+          The heart and the share above it are the clear tint and stay legible
+          either way; this one is a filled navy disc and needs the hairline.
         */}
         {onQuickView ? (
           <button
             onClick={onQuickView}
             aria-label={t("quick.open", { name: product.title })}
-            className="reveal-panel pressable absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-[#0a285a]/85 py-2 text-[11px] font-extrabold text-white backdrop-blur-sm"
+            title={t("quick.preview")}
+            className="glass glass-navy reveal-control pressable tap-target absolute bottom-1.5 end-1.5 grid size-9 place-items-center rounded-full border-2 border-white/85"
           >
-            <Eye className="size-3.5 shrink-0" aria-hidden />
-            {t("quick.preview")}
+            <Eye className="size-4" aria-hidden />
           </button>
         ) : null}
       </div>
