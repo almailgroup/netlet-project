@@ -10,9 +10,10 @@ import { MAX_QUANTITY } from "@/components/QuantityStepper";
 import { Thumb } from "@/components/Thumb";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, LoaderCircle, Minus, Plus, Share2, ShoppingBag, Star, Zap } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 export async function shareProduct(product: Product, t: Translate) {
   const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
@@ -34,45 +35,127 @@ export async function shareProduct(product: Product, t: Translate) {
   }
 }
 
+/** Hovering: the shopper asked to see the other views, so they come quickly. */
 const PREVIEW_HOLD = 1500;
 const PREVIEW_FADE = 450;
 
 /**
+ * Not hovering: the card is offering, not answering, so it moves at a third
+ * of the speed and fades across twice as slowly. A grid of twenty cards each
+ * flicking every 1.5s is a page nobody can read.
+ */
+const IDLE_HOLD = 4500;
+const IDLE_FADE = 900;
+
+/**
  * Card gallery: every image of the product, previewable without opening it.
  *
- * Hovering the artwork cycles the views; hovering a dot pins one and stops the
- * cycle, so a shopper who spots the angle they want can hold it. Leaving resets
- * to the first image, because a card left showing view five reads as a
- * different product when the eye comes back to the grid.
+ * **Hovering anywhere on the card speeds it up, not just the picture.** The
+ * handlers used to sit on the image alone, so a pointer resting over the title
+ * or the price — which is where a cursor lands when somebody is reading a card
+ * rather than pointing at it — left the photograph on its slow cycle while
+ * every other reveal on the card was already out, because those key off
+ * `group-hover` on the article. One hover, one behaviour.
+ *
+ * **It cycles on its own, and faster when hovered.** A second and third
+ * photograph that only exist for somebody holding a mouse over the card are
+ * invisible on every phone this shop sells to, which is most of them — so the
+ * card offers them by itself, at `IDLE_HOLD`, and answers a hover at
+ * `PREVIEW_HOLD`. Hovering a dot pins one and stops both, so a shopper who
+ * spots the angle they want can hold it.
+ *
+ * Three things keep a self-cycling grid from becoming a page that cannot be
+ * read, and all three are the reason this is not simply a second `setInterval`:
+ *
+ * **Only what is on screen moves.** An `IntersectionObserver` gates the timer,
+ * so a category page with forty cards runs the handful in view rather than
+ * forty, and a card scrolled past stops. Twenty permanent cross-fades is real
+ * battery on a mid-range phone on a Kuwaiti mobile connection.
+ *
+ * **Every card starts on its own beat.** Without the per-card offset the whole
+ * grid turns over as one block every 4.5 seconds, which is not a set of
+ * products breathing but a page blinking. The jitter is drawn once per card
+ * and kept, so the stagger is stable rather than re-rolled on every render.
+ *
+ * **A hidden tab advances nothing.** Browsers throttle background intervals
+ * rather than stopping them, and each tick here is a state update and a
+ * re-render of every card in the document.
+ *
+ * Reduced motion turns all of it off, idle and hover alike — through a hook
+ * that *subscribes*, because somebody who turns the setting on to stop a page
+ * moving should not have to reload it. The dots still work.
+ *
+ * Leaving a hover resets to the first image and the slow cycle picks up from
+ * there: a card left parked on view five reads as a different product when the
+ * eye comes back to it, and returning to a known first frame is what makes the
+ * rotation feel like one product rather than several.
  *
  * Every image is stacked and cross-faded on opacity rather than swapped in the
  * src. Swapping would show a blank frame on the first pass while the next file
  * decodes, and this way they are all decoded after the first cycle.
  */
-export function CardGallery({ product, onDetails, compact }: { product: Product; onDetails: () => void; compact: boolean }) {
+export function CardGallery({ product, onDetails, compact, hovering }: { product: Product; onDetails: () => void; compact: boolean; hovering: boolean }) {
   const { t } = useTranslation();
   const [index, setIndex] = useState(0);
-  const [hovering, setHovering] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [onScreen, setOnScreen] = useState(false);
+  const frame = useRef<HTMLButtonElement>(null);
+  const reducedMotion = useReducedMotion();
   const images = product.images;
 
-  useEffect(() => {
-    if (!hovering || pinned || images.length < 2) return;
-    // Auto-advance is motion the user did not ask for, so it is off when they
-    // have asked the system for less of it. The dots still work.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setIndex(current => (current + 1) % images.length), PREVIEW_HOLD);
-    return () => window.clearInterval(timer);
-  }, [hovering, pinned, images.length]);
+  // Drawn once per card and kept for its lifetime. See the stagger note above.
+  const [jitter] = useState(() => Math.random() * IDLE_HOLD);
 
-  const leave = () => { setHovering(false); setPinned(false); setIndex(0); };
+  useEffect(() => {
+    const node = frame.current;
+    if (!node || images.length < 2) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      // A third of the card showing is enough to be worth animating, and is
+      // high enough that a card one pixel into the viewport does not start.
+      { threshold: 0.35 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [images.length]);
+
+  useEffect(() => {
+    if (pinned || reducedMotion || images.length < 2) return;
+    if (!hovering && !onScreen) return;
+
+    const period = hovering ? PREVIEW_HOLD : IDLE_HOLD;
+    const advance = () => {
+      if (document.hidden) return;
+      setIndex(current => (current + 1) % images.length);
+    };
+
+    // The first idle turn waits a period *plus* this card's own offset, so the
+    // grid never ticks as one. A hover is an answer and waits only the period.
+    let repeat = 0;
+    const first = window.setTimeout(() => {
+      advance();
+      repeat = window.setInterval(advance, period);
+    }, hovering ? period : period + jitter);
+
+    return () => { window.clearTimeout(first); window.clearInterval(repeat); };
+  }, [hovering, onScreen, pinned, reducedMotion, images.length, jitter]);
+
+  /*
+   * Leaving the card returns it to its first view, and the slow cycle picks up
+   * again from there. Only a change in `hovering` resets it — the idle cycle
+   * moves the same state, so reacting to anything else would fight it.
+   */
+  useEffect(() => {
+    if (hovering) return;
+    setPinned(false);
+    setIndex(0);
+  }, [hovering]);
 
   return (
     <>
       <button
+        ref={frame}
         onClick={onDetails}
-        onPointerEnter={(event) => { if (event.pointerType === "mouse") setHovering(true); }}
-        onPointerLeave={leave}
         className="relative block w-full overflow-hidden rounded-xl bg-[#e7edf5] text-start"
         aria-label={t("product.view", { name: product.title })}
       >
@@ -81,7 +164,7 @@ export function CardGallery({ product, onDetails, compact }: { product: Product;
             key={`${item.url}-${position}`}
             src={item.url}
             alt={position === 0 ? (item.altText ?? product.title) : ""}
-            style={{ transitionDuration: `${PREVIEW_FADE}ms` }}
+            style={{ transitionDuration: `${hovering ? PREVIEW_FADE : IDLE_FADE}ms` }}
             className={`aspect-[1.02] w-full object-cover transition-opacity ease-out group-hover:scale-105 motion-safe:transition-transform ${position === 0 ? "" : "absolute inset-0"} ${position === index ? "opacity-100" : "opacity-0"}`}
           />
         )) : <div className="grid aspect-[1.02] place-items-center text-sm font-bold text-[#536b8c]">{t("product.imageProcessing")}</div>}
@@ -217,6 +300,15 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
    * choice, the bag or the checkout.
    */
   const [quantity, setQuantity] = useState(1);
+  /*
+   * Hovering lives on the card rather than on the picture, because every other
+   * reveal here already keys off `group-hover` on this element — the preview
+   * disc, the share button, the quantity steps. A cursor resting on the title
+   * had the card half-awake: the controls out, the photograph still idling.
+   * Only a mouse engages it; a touch would latch on tap with no pointer to
+   * leave with, which is the same reason the header takes that guard.
+   */
+  const [hovering, setHovering] = useState(false);
   const money = useMoney();
   const share = onShare ?? (() => void shareProduct(product, t));
   const variant = product.variants[0];
@@ -228,9 +320,13 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
   const express = isExpressEligible(product);
 
   return (
-    <article className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] transition-shadow duration-300 hover:shadow-[0_14px_40px_rgba(10,40,90,.10)] ${compact ? "p-2.5" : "p-3"}`}>
+    <article
+      onPointerEnter={(event) => { if (event.pointerType === "mouse") setHovering(true); }}
+      onPointerLeave={() => setHovering(false)}
+      className={`product-card group relative @container flex flex-col overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] transition-shadow duration-300 hover:shadow-[0_14px_40px_rgba(10,40,90,.10)] ${compact ? "p-2.5" : "p-3"}`}
+    >
       <div className="relative overflow-hidden rounded-xl">
-        <CardGallery product={product} onDetails={onDetails} compact={compact} />
+        <CardGallery product={product} onDetails={onDetails} compact={compact} hovering={hovering} />
 
         {/* Signals a shopper scans for before anything else, stacked down the
             leading edge so they read in one pass instead of competing. */}

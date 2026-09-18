@@ -336,6 +336,44 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
+**A card cycles its photographs on its own, and faster when hovered.** The
+second and third views used to exist only for somebody holding a mouse over the
+picture, which is nobody on a phone — and a phone is most of this shop. Idle is
+`IDLE_HOLD` (4.5s, with a 900ms cross-fade); a hover answers at `PREVIEW_HOLD`
+(1.5s, 450ms). Hovering a dot still pins one and stops both.
+
+Three things are what keep a self-cycling grid from being a page nobody can
+read, and each is why this is not simply a second `setInterval`:
+
+- **Only what is on screen moves.** An `IntersectionObserver` at a 0.35
+  threshold gates the timer, so forty cards run the handful in view. Twenty
+  permanent cross-fades is real battery on a mid-range phone.
+- **Every card starts on its own beat.** A per-card offset, drawn once and
+  kept, so the grid does not turn over as one block every 4.5 seconds — that
+  is a page blinking, not products breathing.
+- **A hidden tab advances nothing.** Browsers throttle background intervals
+  rather than stopping them, and every tick here is a re-render.
+
+All three were verified by measuring, and two of the first tests were wrong in
+ways worth remembering: a page only 1400px tall cannot scroll a card out of a
+900px viewport, so "off screen" passed while the card was still 70% visible;
+and reading `opacity === "1"` to find the showing frame reports nothing during
+a cross-fade, which invented a state change that never happened. Measure which
+image has the *highest* opacity, and check the card is actually off screen.
+
+**Hovering is on the card, not on the picture.** It was on the image alone,
+so a cursor resting over the title — where it lands when somebody is reading a
+card rather than pointing at it — left the photograph idling while the preview
+disc, the share button and the quantity steps were all already out, because
+those key off `group-hover` on the article. That one was invisible until a test
+hovered the title band on purpose.
+
+Reduced motion stops all of it, idle and hover alike, through
+`useReducedMotion` — which *subscribes* rather than reading `matchMedia` once
+inside an effect. Somebody who turns the setting on to stop a page moving
+should not have to reload it, and a preference read inside an effect only takes
+hold the next time that effect happens to re-run.
+
 **Quick View is on every page that draws a card**, and the trigger is a white
 disc in the trailing bottom corner of the photo. It existed before it was asked
 for — `QuickView` and `ProductCard`'s `onQuickView` were wired on
