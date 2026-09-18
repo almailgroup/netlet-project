@@ -6,6 +6,7 @@ import { inventoryRouter } from "./routers/inventory.js";
 import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
 import { searchRouter } from "./routers/search.js";
+import { wishlistsRouter } from "./routers/wishlists.js";
 
 export const appRouter = router({
   auth: authRouter,
@@ -15,6 +16,7 @@ export const appRouter = router({
   orders: ordersRouter,
   recommendations: recommendationsRouter,
   search: searchRouter,
+  wishlists: wishlistsRouter,
 });
 
 export type AppRouter = typeof appRouter;

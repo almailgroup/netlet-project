@@ -37,6 +37,26 @@ export const MAX_FAILURES_PER_ACCOUNT = 10;
  */
 export const MAX_FAILURES_PER_ADDRESS = 30;
 
+/**
+ * Lookups of a gift list by phone number, from one address, before it stops
+ * answering.
+ *
+ * A different door from the other two and counted differently: **every**
+ * lookup counts, not only the ones that find nothing. There is no such thing
+ * as a failed lookup here — the reply is identical whether the number belongs
+ * to nobody or to somebody who publishes nothing, deliberately, so that the
+ * lookup cannot be used to ask which phone numbers shop at NetLet. With no
+ * failure to count, the only honest thing to count is the request.
+ *
+ * Sixty an hour is far more than a family opening a list a few times and far
+ * too few to walk an eight-digit number space: at this rate a single address
+ * needs two thousand years to try them all. The window is an hour rather than
+ * the sign-in fifteen minutes, because enumeration is patient in a way that
+ * password guessing is not.
+ */
+export const MAX_LOOKUPS_PER_ADDRESS = 60;
+export const LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+
 export type RateVerdict =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };

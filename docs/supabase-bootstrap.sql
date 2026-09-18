@@ -424,6 +424,52 @@ CREATE INDEX IF NOT EXISTS "orders_user_id_idx" ON "orders" USING btree ("user_i
 CREATE INDEX IF NOT EXISTS "orders_status_idx" ON "orders" USING btree ("status");
 CREATE INDEX IF NOT EXISTS "orders_placed_idx" ON "orders" USING btree ("placed_at");
 
+-- ===== 0011_slim_stark_industries.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."wishlist_visibility" AS ENUM('private', 'public');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "wishlist_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"wishlist_id" integer NOT NULL,
+	"product_id" varchar(191) NOT NULL,
+	"note" varchar(280),
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"claimed_at" timestamp with time zone,
+	"claimed_by" integer,
+	"bought_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "wishlists" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"title" varchar(120) NOT NULL,
+	"visibility" "wishlist_visibility" DEFAULT 'private' NOT NULL,
+	"owner_name" varchar(120),
+	"share_token" varchar(64) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "customer_preferences" ADD COLUMN IF NOT EXISTS "wishlist_phone" varchar(24);
+DO $$ BEGIN
+  ALTER TABLE "wishlist_items" ADD CONSTRAINT "wishlist_items_wishlist_id_wishlists_id_fk" FOREIGN KEY ("wishlist_id") REFERENCES "public"."wishlists"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "wishlist_items" ADD CONSTRAINT "wishlist_items_claimed_by_users_id_fk" FOREIGN KEY ("claimed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "wishlist_items_list_product_unique" ON "wishlist_items" USING btree ("wishlist_id","product_id");
+CREATE INDEX IF NOT EXISTS "wishlist_items_list_id_idx" ON "wishlist_items" USING btree ("wishlist_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "wishlists_share_token_unique" ON "wishlists" USING btree ("share_token");
+CREATE INDEX IF NOT EXISTS "wishlists_user_id_idx" ON "wishlists" USING btree ("user_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "customer_preferences_wishlist_phone_unique" ON "customer_preferences" USING btree ("wishlist_phone") WHERE "customer_preferences"."wishlist_phone" is not null;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

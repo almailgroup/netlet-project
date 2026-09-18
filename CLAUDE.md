@@ -638,6 +638,80 @@ product had a null category and no tags — which leaves vendor and price and
 nothing else. That is a merchandising gap rather than a code one, and no model
 fixes it: `search.refine` and this pass both read what merchants typed.
 
+## Wishlists and gifts
+
+**A phone-number lookup is an enumeration oracle, and that is the whole design
+problem.** A Kuwaiti number is eight digits; the space can be walked. So what
+comes back has to be worth almost nothing to somebody walking it, and four
+rules do that work:
+
+- **Private is the default and public is a decision.** `visibility` has no
+  database default of "public" and never will.
+- **"Nobody has that number" and "that person publishes nothing" are the same
+  answer** — an empty array. Distinguishing them turns the lookup into a way
+  to ask which numbers shop at NetLet, which is the rule sign-in and password
+  reset already follow.
+- **The lookup counts in Postgres, every request rather than every failure.**
+  There is no failed lookup to count, precisely because of the rule above.
+  `MAX_LOOKUPS_PER_ADDRESS` is 60 an hour: far more than a family needs, and
+  at that rate walking the space takes two thousand years. It is keyed on the
+  caller's address and deliberately *not* on the number being asked for —
+  throttling by the target would let anybody lock a stranger's list.
+- **Nothing identifying rides along.** No email, no account id, no other list,
+  and a name only when the owner set one for that list. `ownerName` is copied
+  onto the list rather than joined from `users`, so the lookup never touches
+  that table and a gift list can say "Noura" while an invoice says otherwise.
+
+`shared/commerce/wishlist.ts` is the pure half: `normalisePhone` (which folds
+Arabic-Indic digits, because an Arabic keyboard is the obvious way to type a
+number on an Arabic page), the claim window, and what the two views may carry.
+`server/wishlists.ts` is the database half, and there the security property is
+**which columns each query selects** rather than a check at the top.
+
+**The owner is told less than a stranger is, and that is the point.**
+`itemsForOwner` does not select `claimedAt` or `claimedBy` — a list whose owner
+can watch items go grey tells them what they are getting for their birthday.
+There is no flag and no "unless": the columns are simply not named. The one
+claim fact that does reach a viewer is `claimedByYou`, which is a fact about
+*them* rather than anybody else, and without it the release procedure would
+have no caller.
+
+Claiming is one press with bagging, because they are one intention; two buttons
+would let somebody bag the gift without marking it and the next relative buys
+it too. The predicate lives inside the `UPDATE`, the way the stock take does,
+so two aunts racing cannot both be told they have it. A claim lapses at
+`CLAIM_HOLD_DAYS`; a purchase never does.
+
+**Unpublishing mints a new share token.** Otherwise "make this private" would
+only stop *new* people finding it by phone and would leave every link already
+pasted into a family group chat live, which is not what anybody means by
+private.
+
+The number is **not verified**, and that is a known gap rather than an
+oversight: verifying it needs SMS, which NetLet does not have. What it costs is
+that somebody could publish under a number that is not theirs — advertising
+their own wishes at a stranger's number, odd rather than dangerous — and the
+unique index keeps them from displacing the real owner later.
+
+Three defects here were found by pressing the button in a browser and by
+nothing else, which is the argument for that habit in its sharpest form:
+
+- `sql\`${claimedAt} < ${lapsed}\`` interpolated a JS `Date` into a raw
+  fragment, skipping the column's mapper. PGlite accepted it; postgres.js
+  throws `ERR_INVALID_ARG_TYPE`, so **every test passed and every claim 500ed**.
+  Use `lt(column, date)`.
+- An `onConflictDoUpdate` whose `set` came out empty is refused when the
+  statement is *built*, not when a conflict happens — so a plain "add to list"
+  failed every time, not just on a repeat. Every test happened to send a note.
+- Adding to the bag opened the drawer over the list, so a relative choosing
+  three presents dismissed the bag three times. `addItem` takes `reveal` now;
+  the gift page confirms with a toast.
+
+Items are added from Saved rather than from a picker over the catalog: the
+heart is already how somebody says "I want this", so a wishlist is a promotion
+of that rather than a second act of curation — and it keeps a fourth control
+off every product card.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages

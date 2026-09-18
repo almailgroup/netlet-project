@@ -17,6 +17,7 @@ import { AccountIdentity } from "@/components/AccountIdentity";
 import { AccountPreferences } from "@/components/AccountPreferences";
 import { AccountActivity } from "@/components/AccountActivity";
 import { AccountOrders } from "@/components/AccountOrders";
+import { WishlistManager } from "@/components/WishlistManager";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import AuthDialog from "@/components/AuthDialog";
@@ -33,6 +34,7 @@ import type { ReactNode } from "react";
 /** The sections, in page order. The nav and the page read from one list. */
 const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
+  { id: "wishlists", label: "account.sectionWishlists" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
   { id: "activity", label: "account.sectionActivity" },
@@ -115,6 +117,13 @@ export default function Account() {
                   order here is the order there. */}
               <Section id="orders" title={t("account.sectionOrders")}>
                 <AccountOrders />
+              </Section>
+
+              {/* Second, ahead of the settings: a wishlist is something other
+                  people act on, so it is closer to "where is my parcel" than
+                  to "change my display name". */}
+              <Section id="wishlists" title={t("account.sectionWishlists")}>
+                <WishlistManager />
               </Section>
 
               <Section id="details" title={t("account.sectionProfile")}>

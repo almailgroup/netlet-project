@@ -16,15 +16,17 @@ import { authAttempts } from "../drizzle/schema.js";
 import {
   ALLOWED,
   ATTEMPT_WINDOW_MS,
+  LOOKUP_WINDOW_MS,
   MAX_FAILURES_PER_ACCOUNT,
   MAX_FAILURES_PER_ADDRESS,
+  MAX_LOOKUPS_PER_ADDRESS,
   limitVerdict,
   strictest,
   type RateVerdict,
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset";
+export type AttemptKind = "login" | "reset" | "giftLookup";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -113,6 +115,49 @@ export async function clearAccountFailures(email: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
   await db.delete(authAttempts).where(eq(authAttempts.bucket, accountBucket(email)));
+}
+
+/**
+ * May this address look up another gift list?
+ *
+ * Its own function rather than a third branch of `checkAuthAllowed`, because
+ * the two differ in the way that matters: this counts every request rather
+ * than every failure, and it counts over an hour rather than a quarter of one.
+ * Folding them together would mean a shared helper taking a window and a
+ * ceiling and a should-I-count-successes flag, which is three parameters
+ * standing in for the one sentence each door actually needs.
+ *
+ * There is no account key. The caller is usually signed out — that is the
+ * whole point of the feature — so the address is all there is, and the owner
+ * of the list being looked up is deliberately not a bucket: throttling by the
+ * *target* would let anybody lock a stranger's gift list by hammering it.
+ */
+export async function checkLookupAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(
+      and(
+        eq(authAttempts.bucket, addressBucket(address)),
+        eq(authAttempts.kind, "giftLookup"),
+        gt(authAttempts.createdAt, new Date(Date.now() - LOOKUP_WINDOW_MS)),
+      ),
+    );
+
+  return limitVerdict(rows.map(row => row.at), MAX_LOOKUPS_PER_ADDRESS, new Date(), LOOKUP_WINDOW_MS);
+}
+
+/** Count one lookup, whatever it found. See `MAX_LOOKUPS_PER_ADDRESS`. */
+export async function recordLookup(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "giftLookup" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "giftLookup"), lt(authAttempts.createdAt, new Date(Date.now() - LOOKUP_WINDOW_MS))),
+  );
 }
 
 /** How many attempts a bucket currently carries. Exposed for tests. */

@@ -44,7 +44,16 @@ type CartContextValue = {
   itemCount: number;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (variantId: string, quantity?: number) => Promise<void>;
+  /**
+   * Add a line to the bag.
+   *
+   * `reveal` decides whether the drawer opens on top. It does by default,
+   * because on a product page the drawer *is* the confirmation. On the gift
+   * list it is not: somebody choosing three presents for one person would
+   * have to dismiss the whole bag between each, so that page passes false and
+   * confirms with a toast instead.
+   */
+  addItem: (variantId: string, quantity?: number, reveal?: boolean) => Promise<void>;
   updateQuantity: (lineId: string, quantity: number) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
   clearCart: () => void;
@@ -120,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const addItem = useCallback(
-    async (variantId: string, quantity: number = 1) => {
+    async (variantId: string, quantity: number = 1, reveal: boolean = true) => {
       setLoading(true);
       try {
         if (!cartId || !cart) {
@@ -139,7 +148,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           });
           setCart(updated);
         }
-        setIsOpen(true);
+        if (reveal) setIsOpen(true);
       } finally {
         setLoading(false);
       }

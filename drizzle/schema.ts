@@ -38,6 +38,7 @@ import { notificationKinds } from "../shared/customer.js";
    once here rather than inline on the column as MySQL allows. */
 export const userRole = pgEnum("user_role", ["user", "admin"]);
 export const localeCode = pgEnum("locale_code", ["en", "ar"]);
+export const wishlistVisibility = pgEnum("wishlist_visibility", ["private", "public"]);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
 /**
@@ -106,10 +107,35 @@ export const customerPreferences = pgTable(
     deliveryZoneId: varchar("delivery_zone_id", { length: 64 }),
     /** Opaque cart token, so a bag survives across devices. */
     cartId: varchar("cart_id", { length: 255 }),
+    /*
+     * The number friends and family type to find a published wishlist, stored
+     * canonically (`+9655…`) by `normalisePhone` so one person has one key
+     * whatever spelling their aunt used.
+     *
+     * Unique, and null until the shopper sets it. Unique because two accounts
+     * answering one number makes the lookup ambiguous, and a gift list that
+     * resolves to a coin toss is worse than no gift list. Nullable because
+     * most shoppers never publish anything and must not be made to hand over
+     * a phone number to shop.
+     *
+     * Deliberately not verified, and that is a known gap rather than an
+     * oversight: verifying it needs SMS, which NetLet does not have. What it
+     * costs is that somebody could publish a list under a number that is not
+     * theirs — they would be advertising their own wishes at a stranger's
+     * number, which is odd rather than dangerous, and the unique index keeps
+     * it from displacing the real owner once they arrive.
+     */
+    wishlistPhone: varchar("wishlist_phone", { length: 24 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
-  table => [uniqueIndex("customer_preferences_user_id_unique").on(table.userId)]
+  table => [
+    uniqueIndex("customer_preferences_user_id_unique").on(table.userId),
+    // Partial, so the many shoppers with no number do not all collide on null.
+    uniqueIndex("customer_preferences_wishlist_phone_unique")
+      .on(table.wishlistPhone)
+      .where(sql`${table.wishlistPhone} is not null`),
+  ]
 );
 
 /** Saved ("wishlisted") products. The product id is the storefront handle/id. */
@@ -126,6 +152,94 @@ export const savedProducts = pgTable(
   table => [
     uniqueIndex("saved_products_user_product_unique").on(table.userId, table.productId),
     index("saved_products_user_id_idx").on(table.userId),
+  ]
+);
+
+/* -------------------------------------------------------------- wishlists --- */
+
+/**
+ * A list a shopper keeps, and may publish for other people to buy from.
+ *
+ * Distinct from `savedProducts` in the way `followedProducts` is: saving is
+ * "I might buy this", following is "tell me when it changes", and a wishlist
+ * is "I would like somebody to buy me this". Only the third has an audience,
+ * and having an audience is what makes it a different table rather than a
+ * column on the first — every rule here is about a stranger reading it.
+ *
+ * **Private is the default and public is a decision.** `visibility` has no
+ * database default of "public" and never will: a list that becomes findable
+ * because somebody did not notice a setting is the failure this whole feature
+ * has to avoid.
+ *
+ * `shareToken` is what a URL carries, never the serial id. Ids are guessable
+ * and a published list is a page people paste into a family group — a token
+ * means the link cannot be walked, and it means a shopper can unpublish and
+ * republish to get a fresh one when a link has gone somewhere they did not
+ * intend.
+ */
+export const wishlists = pgTable(
+  "wishlists",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 120 }).notNull(),
+    visibility: wishlistVisibility("visibility").notNull().default("private"),
+    /*
+     * The name a stranger sees on a published list, copied rather than joined
+     * to `users.name`. Two reasons, and the second is the important one: a
+     * shopper may want "Noura" on a gift list and their full legal name on an
+     * invoice, and a join would put whatever is on the account in front of
+     * anybody who guesses a phone number. Null means the page says "This list".
+     */
+    ownerName: varchar("owner_name", { length: 120 }),
+    /** Random, URL-safe, and regenerated whenever the list is republished. */
+    shareToken: varchar("share_token", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("wishlists_share_token_unique").on(table.shareToken),
+    index("wishlists_user_id_idx").on(table.userId),
+  ]
+);
+
+/**
+ * One wish, and whether anybody has taken it.
+ *
+ * `claimedAt` and `claimedBy` are the part the owner must never see. A list
+ * whose owner can watch items go grey tells them exactly what they are getting
+ * for their birthday, so the data layer's owner-facing reads leave both
+ * columns out — the secrecy is enforced where the query is written, not by
+ * asking every page to remember.
+ *
+ * `claimedBy` is nullable and `set null` on purpose: a giver need not have an
+ * account, and one who deletes theirs must not take the hold with them.
+ */
+export const wishlistItems = pgTable(
+  "wishlist_items",
+  {
+    id: serial("id").primaryKey(),
+    wishlistId: integer("wishlist_id")
+      .notNull()
+      .references(() => wishlists.id, { onDelete: "cascade" }),
+    /** The storefront product id, as `savedProducts` stores it. */
+    productId: varchar("product_id", { length: 191 }).notNull(),
+    /** "the blue one, size 42" — the owner's own words, for whoever buys it. */
+    note: varchar("note", { length: 280 }),
+    quantity: integer("quantity").notNull().default(1),
+    /** When somebody said they were getting it. Lapses; see CLAIM_HOLD_DAYS. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    claimedBy: integer("claimed_by").references(() => users.id, { onDelete: "set null" }),
+    /** Set when a claim became a real order. Never lapses. */
+    boughtAt: timestamp("bought_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("wishlist_items_list_product_unique").on(table.wishlistId, table.productId),
+    index("wishlist_items_list_id_idx").on(table.wishlistId),
   ]
 );
 
@@ -790,6 +904,15 @@ export const customerPreferencesRelations = relations(customerPreferences, ({ on
   user: one(users, { fields: [customerPreferences.userId], references: [users.id] }),
 }));
 
+export const wishlistsRelations = relations(wishlists, ({ one, many }) => ({
+  user: one(users, { fields: [wishlists.userId], references: [users.id] }),
+  items: many(wishlistItems),
+}));
+
+export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
+  wishlist: one(wishlists, { fields: [wishlistItems.wishlistId], references: [wishlists.id] }),
+}));
+
 export const savedProductsRelations = relations(savedProducts, ({ one }) => ({
   user: one(users, { fields: [savedProducts.userId], references: [users.id] }),
 }));
@@ -866,6 +989,12 @@ export type InsertCustomerPreference = typeof customerPreferences.$inferInsert;
 
 export type SavedProduct = typeof savedProducts.$inferSelect;
 export type InsertSavedProduct = typeof savedProducts.$inferInsert;
+
+export type Wishlist = typeof wishlists.$inferSelect;
+export type InsertWishlist = typeof wishlists.$inferInsert;
+
+export type WishlistItem = typeof wishlistItems.$inferSelect;
+export type InsertWishlistItem = typeof wishlistItems.$inferInsert;
 
 export type FollowedProduct = typeof followedProducts.$inferSelect;
 export type InsertFollowedProduct = typeof followedProducts.$inferInsert;

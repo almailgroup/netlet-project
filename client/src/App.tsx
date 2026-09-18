@@ -28,6 +28,7 @@ const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
+const GiftList = lazy(() => import("@/pages/GiftList"));
 const Category = lazy(() => import("@/pages/Category"));
 /* The admin portal is a separate application in everything but deployment: no
    shopper ever loads it, so it stays out of the storefront's bundle. */
@@ -78,6 +79,8 @@ function Router() {
         <Route path="/" component={Home} />
         <Route path="/account" component={Account} />
         <Route path="/saved" component={Saved} />
+        <Route path="/gifts/:token" component={GiftList} />
+        <Route path="/gifts" component={GiftList} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/category/:slug" component={Category} />
         <Route path="/admin" component={AdminOverview} />

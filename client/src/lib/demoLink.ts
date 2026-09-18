@@ -253,6 +253,36 @@ function resolve(path: string, rawInput: unknown): unknown {
       return onePage([]);
     case "orders.get":
       return null;
+
+    /*
+     * Wishlists in the demo are empty rather than invented, and that is the
+     * one honest answer here. Every other fixture is a made-up product; a
+     * made-up *gift list* would be a made-up person with a made-up phone
+     * number, and the whole feature is about a real number resolving to a real
+     * shopper. An empty state demonstrates the page; a fake Noura would
+     * demonstrate a lie.
+     */
+    case "wishlists.mine":
+      return [];
+    case "wishlists.get":
+      return { list: { id: 1, title: "", visibility: "private" as const, ownerName: null }, items: [] };
+    case "wishlists.shareLink":
+    case "wishlists.phone":
+    case "wishlists.byToken":
+      return null;
+    case "wishlists.findByPhone":
+      return [];
+    case "wishlists.create":
+      return 1;
+    case "wishlists.setPhone":
+      return null;
+    case "wishlists.update":
+    case "wishlists.remove":
+    case "wishlists.addItem":
+    case "wishlists.removeItem":
+    case "wishlists.claim":
+    case "wishlists.release":
+      return undefined;
     // Nobody is signed in to be waiting, so the demand line stays off.
     case "customer.follows.demand":
       return 0;
