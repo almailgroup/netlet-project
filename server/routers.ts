@@ -7,6 +7,7 @@ import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
 import { reviewsRouter } from "./routers/reviews.js";
 import { searchRouter } from "./routers/search.js";
+import { togetherRouter } from "./routers/together.js";
 import { wishlistsRouter } from "./routers/wishlists.js";
 
 export const appRouter = router({
@@ -18,6 +19,7 @@ export const appRouter = router({
   recommendations: recommendationsRouter,
   reviews: reviewsRouter,
   search: searchRouter,
+  together: togetherRouter,
   wishlists: wishlistsRouter,
 });
 

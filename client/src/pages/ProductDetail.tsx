@@ -1,5 +1,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { ProductReviews } from "@/components/product/ProductReviews";
+import { BoughtTogether } from "@/components/product/BoughtTogether";
+import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
@@ -521,6 +523,7 @@ export default function ProductDetail() {
   const selectedVariant = product?.variants.find(variant => variant.id === selectedVariantId) ?? product?.variants[0];
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
   const isSaved = product ? savedIds.includes(product.id) : false;
+  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const galleryImageCount = product?.images.length ?? 0;
 
   const changeImage = (direction: "previous" | "next") => setSelectedImageIndex(current => galleryIndex(current, galleryImageCount, direction));
@@ -645,8 +648,23 @@ export default function ProductDetail() {
           </div>
         </section>
 
-        {/* Before "keep discovering": somebody deciding on this product wants
-            what other buyers said, not another four products to consider. */}
+        {/*
+          Complements before reviews, reviews before "keep discovering".
+          Somebody on this page has largely decided: the case that goes with
+          the phone is the most useful next thing, what other buyers said is
+          the second, and four more products to consider instead is the least.
+        */}
+        <BoughtTogether
+          productId={product.id}
+          saved={savedIds}
+          onSave={id => toggleSaved(id)}
+          onDetails={item => navigate(`/products/${encodeURIComponent(item.handle)}`)}
+          onQuickView={setQuickProduct}
+          onAdd={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity); }}
+          onBuyNow={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity).then(openCart); }}
+          isAdding={cartLoading}
+        />
+
         <div className="mt-14">
           <ProductReviews productId={product.id} productTitle={product.title} />
         </div>
@@ -654,6 +672,7 @@ export default function ProductDetail() {
         <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold ink-accent underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
       </div>
       <MobileTabBar />
+      <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
     </main>
   );

@@ -268,6 +268,14 @@ function resolve(path: string, rawInput: unknown): unknown {
      * a fixture full of made-up ones would be demonstrating the one thing the
      * table exists to make impossible.
      */
+    /*
+     * Empty in a demo, and honestly so: this rail is a claim about what real
+     * shoppers did, and a fixture would be inventing that claim. The component
+     * draws nothing when there is no evidence, which is exactly right here.
+     */
+    case "together.forProduct":
+      return [];
+
     case "reviews.forProduct":
       return { items: [], summary: null, total: 0 };
     case "reviews.mine":

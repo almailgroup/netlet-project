@@ -711,6 +711,13 @@ export const en = {
   "account.sectionWishlists": "Wishlists and gifts",
   "account.sectionReviews": "Your reviews",
 
+  /* Frequently bought together. The rail only draws when the shop has real
+     evidence, so every string here can be stated plainly rather than hedged. */
+  "together.heading": "Frequently bought together",
+  "together.note": "What other shoppers put in the same basket as this.",
+  "together.otherSeller": "Another seller",
+  "together.confidence": "{percent}% also took this",
+
   /* Reviews. Every one is a verified purchase — the table has no way to hold
      anything else — so the page says so rather than implying it. */
   "review.heading": "Reviews",
@@ -1655,6 +1662,11 @@ export const ar: Record<MessageKey, string> = {
   "account.sectionActivity": "نشاطك",
   "account.sectionWishlists": "قوائم الأمنيات والهدايا",
   "account.sectionReviews": "تقييماتك",
+
+  "together.heading": "يُشترى معه عادة",
+  "together.note": "ما وضعه متسوقون آخرون في السلة نفسها مع هذا المنتج.",
+  "together.otherSeller": "بائع آخر",
+  "together.confidence": "{percent}٪ أخذوه أيضًا",
 
   "review.heading": "التقييمات",
   "review.none": "لا توجد تقييمات بعد.",

@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 12 |
+| Built | 13 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 52 |
+| Not started | 51 |
 
-*Last updated after landing reviews (3.1.16). Payments and everything gated on
+*Last updated after landing frequently-bought-together (3.1.21). Payments and everything gated on
 them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -37,7 +37,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 6 built, 1 partial, 1 drawn, 13 absent
+## 3.1 Customer experience — 7 built, 1 partial, 1 drawn, 12 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -61,7 +61,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 18 | Price-drop alerts | **Built** | Same follow mechanism. |
 | 19 | Subscribe & Save | Not started | |
 | 20 | AI size guide | Not started | |
-| 21 | Frequently bought together, cross-vendor | Not started | |
+| 21 | Frequently bought together, cross-vendor | **Built** | `shared/commerce/together.ts`, scored on **lift** rather than raw co-occurrence — a bestseller shares baskets with everything, so counting pairs surfaces bestsellers and not complements. Reads orders *and* carts (3:1), so the rail works today rather than waiting on payments. Cross-vendor complements are kept and labelled "Another seller", which is where the value is. Draws nothing below `MIN_SUPPORT` baskets or `MIN_LIFT`, because the heading is a claim. |
 
 ## 3.2 Checkout & payments — 0 built, 3 partial, 6 absent
 
