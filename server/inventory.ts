@@ -23,6 +23,7 @@ import {
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
 import { recordAudit, violationCount } from "./audit.js";
+import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
@@ -480,12 +481,23 @@ export async function saveVariant(actor: Actor, input: {
   compareAtPrice?: string | null;
   stock?: number;
   options?: Record<string, string>;
+  unit?: SellUnit;
+  stepAmount?: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   const product = (await db.select().from(products).where(eq(products.id, input.productId)).limit(1))[0];
   if (!product) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", product.vendorId);
+
+  /*
+   * The measure is refused here as well as in the router, because a second
+   * caller added later would skip a check written only at the top — the same
+   * argument that puts every other guard in this file next to its query. A
+   * half-gram step is what puts floating point back into the arithmetic.
+   */
+  const measure = { unit: input.unit ?? "each", stepAmount: input.stepAmount ?? 1 };
+  if (!isValidMeasure(measure)) throw new Error("INVALID_MEASURE");
 
   const values = {
     productId: input.productId,
@@ -495,6 +507,8 @@ export async function saveVariant(actor: Actor, input: {
     compareAtPrice: input.compareAtPrice ?? null,
     stock: input.stock ?? 0,
     options: input.options ?? {},
+    unit: measure.unit,
+    stepAmount: String(measure.stepAmount),
   };
   if (input.id) {
     // A price change is singled out because the requirements want every one

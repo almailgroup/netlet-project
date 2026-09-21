@@ -1,3 +1,4 @@
+import type { Measure } from "./units.js";
 /**
  * Backend-agnostic commerce types.
  *
@@ -47,6 +48,15 @@ export type ProductVariant = {
   price: Money;
   compareAtPrice: Money | null;
   availableForSale: boolean;
+  /**
+   * What this variant is sold in, when it is not simply counted.
+   *
+   * `{ unit: "each", stepAmount: 1 }` for every product in the shop today, so
+   * a page that ignores this keeps working. `{ unit: "g", stepAmount: 250 }`
+   * is a quarter-kilo step — `price` is then the price of one step and
+   * `unitPrice` derives the per-kilo figure a shopper compares on.
+   */
+  measure: Measure;
   /** Flat list of selected options — sized for variant pickers. */
   selectedOptions: SelectedOption[];
 };
@@ -107,6 +117,12 @@ export type CartItem = {
   unitPrice: Money;
   quantity: number;
   lineTotal: Money;
+  /**
+   * What the variant is sold in, so the bag can read "1.5 kg" beside a
+   * quantity of 6. `{ unit: "each", stepAmount: 1 }` for everything counted,
+   * which is every line in the shop today.
+   */
+  measure: Measure;
 };
 
 export type Cart = {

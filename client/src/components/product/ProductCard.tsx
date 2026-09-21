@@ -8,6 +8,7 @@
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { Thumb } from "@/components/product/Thumb";
+import { UnitPrice } from "@/components/product/UnitPrice";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, LoaderCircle, Minus, Plus, Share2, ShoppingBag, Star, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -408,6 +409,8 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           <p className="type-price text-lg font-extrabold tracking-[-.04em] text-[#0a285a]">{money(price)}</p>
           {compareAt ? <p className="type-label text-[11px] ink-muted line-through">{money(compareAt)}</p> : null}
         </div>
+        {/* Draws nothing for a counted product, which is every product today. */}
+        {variant ? <UnitPrice variant={variant} className="mt-0.5" /> : null}
 
         {/*
           Both actions carry the same count, because they are not two things to

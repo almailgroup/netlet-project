@@ -510,6 +510,14 @@ CREATE INDEX IF NOT EXISTS "reviews_product_idx" ON "reviews" USING btree ("prod
 CREATE INDEX IF NOT EXISTS "reviews_vendor_idx" ON "reviews" USING btree ("vendor_id","created_at");
 CREATE INDEX IF NOT EXISTS "reviews_user_idx" ON "reviews" USING btree ("user_id");
 
+-- ===== 0013_hot_cardiac.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."sell_unit" AS ENUM('each', 'g', 'kg', 'ml', 'l');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "unit" "sell_unit" DEFAULT 'each' NOT NULL;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "step_amount" numeric(12, 3) DEFAULT '1' NOT NULL;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

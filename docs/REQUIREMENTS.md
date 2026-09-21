@@ -9,14 +9,15 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 13 |
+| Built | 15 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 51 |
+| Not started | 49 |
 
-*Last updated after landing frequently-bought-together (3.1.21). Payments and everything gated on
-them are deliberately untouched — see the note under 3.2.*
+*Last updated after landing sell-by-weight for the grocery section (3.9, and the
+same work under 4.3). Payments and everything gated on them are deliberately
+untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
 derives them from the rows and `scripts/requirements.test.ts` fails the build
@@ -135,22 +136,30 @@ automatic return/exchange handling · AI-generated tutorial videos.
 | 5 | AI fraud detection | Not started | |
 | 6 | E-invoice compliance | Not started | |
 
-## 3.7 Affiliate marketing · 3.8 Vendor–customer chat · 3.9 Grocery
+## 3.7 Affiliate marketing · 3.8 Vendor–customer chat
 
-All absent. Three notes worth keeping:
+Both absent. Two notes worth keeping:
 
 - **3.8's hard part is the filter, not the chat.** Blocking phone numbers,
   emails and handles — including the ways people spell them to get around a
   filter — is the requirement. A chat without it leaks every customer off the
   platform on day one.
-- **3.9 needs a unit on the variant.** Sold-by-weight is a schema change
-  (`unit`, `step`, price-per-unit), not a page. Cheap now, expensive later.
 - **3.7 shares a ledger with 3.1's referral points.** Build one points ledger,
   not two.
 
-## 4. Built now, activated later — 0 of 3
+## 3.9 Grocery — 1 built
 
-Kuwait loyalty subscription · fully-managed fulfilment (Shiplee) · grocery.
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Grocery section built now, used later — some products sold by count, others by kilo, weight or volume | **Built** | `shared/commerce/units.ts` is the arithmetic and is pure; `product_variants.unit` and `.step_amount` are the schema. A `grocery` department already existed and routes like any other, so what was missing was the half the requirement names as its reason: the two ways of selling. Verified end to end against real Postgres — loose tomatoes at 250 g a step, KWD 0.600, showing `2.400 / kg` on the product page and `1.5 kg` for six steps in the bag. Substitutions for an out-of-stock grocery line are a separate requirement and are absent. |
+
+## 4. Built now, activated later — 1 built, 2 absent
+
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Kuwait loyalty subscription — free fast delivery, exclusive deals | Not started | Gated on payments, which are deliberately untouched. |
+| 2 | Fully-managed fulfilment, toward Shiplee | Not started | No fulfilment interface exists for the delivery company at all — the same gap 2.2 names. |
+| 3 | Grocery/supermarket section, built into the architecture now (see 3.9) | **Built** | The architecture is the unit on the variant, and it is in. A counted product is `{ unit: "each", stepAmount: 1 }`, which is every product in the shop today and behaves exactly as it always has — which is what let this land before the section is stocked. |
 
 ---
 

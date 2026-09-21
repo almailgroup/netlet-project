@@ -396,6 +396,10 @@ function toProduct(seed: Seed, index: number): Product {
     availableForSale: seed.soldOut
       ? false
       : !(optionValues.length > 2 && variantIndex === optionValues.length - 1),
+    // Counted, like every product in the demo catalog. The grocery shelf is
+    // built but not stocked; inventing a price-per-kilo here would be
+    // inventing a shop that does not exist.
+    measure: { unit: "each" as const, stepAmount: 1 },
     // A product with no real options carries no option dimensions at
     // all, which is what the inventory mapper produces too.
     selectedOptions: seed.options ? [{ name: seed.options.name, value }] : [],

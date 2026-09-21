@@ -577,6 +577,42 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+## Selling by weight
+
+A supermarket has two kinds of shelf: most of it is counted, and some of it is
+measured — tomatoes by the kilo, oil by the litre. `shared/commerce/units.ts`
+is the arithmetic for both and is pure, for the reason the order arithmetic is
+pure: a price shown per kilo and a price charged at the till that disagree is a
+shop somebody stops trusting.
+
+**`quantity` stays an integer everywhere, and that is the whole design.** The
+obvious move is to make quantity fractional so a shopper can buy 1.5 kg, and it
+is a trap — a cart line, an order line, a stock take and the `stock >= n`
+predicate would all become floating point, and 0.1 + 0.2 is not 0.3 in any of
+them. Instead a variant declares the **step** it is sold in, and quantity counts
+steps: six 250 g steps is 1500 g is 1.5 kg, exactly, in integers, and every
+query already written keeps working untouched. It is the discipline
+`shared/money.ts` already applies to the dinar — hold the small unit as an
+integer and derive the human number for display. Mass gets grams, volume gets
+millilitres, and nothing is ever a float.
+
+`EACH` is `{ unit: "each", stepAmount: 1 }` and is every product in the shop
+today, behaving exactly as it always has. That is what let this land before the
+grocery section is stocked.
+
+`unitPrice` divides in fils and rounds **once, at the end** — the number the law
+and the shopper both care about, and the one that makes two sizes of the same
+thing comparable. It returns null for a counted product, because "per each" is
+not a unit price; it is just the price, and printing it twice is noise.
+`measureOf` stays in the small unit below one canonical unit — 800 g, not
+0.8 kg — which is where a grocer's own label switches too.
+
+`isValidMeasure` refuses a step that is not a whole number of base units, and
+that is the door the float would otherwise come back in through: a 0.5 g step
+would make `baseUnitsFor` round, and the arithmetic would stop being exact. The
+guard lives in `server/inventory.ts` next to the query, not in the router alone,
+for the reason every other guard there does.
+
 ## Recommendations
 
 **`shared/commerce/taste.ts` is the ranking, and it is pure.** This decides

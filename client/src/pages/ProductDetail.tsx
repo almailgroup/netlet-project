@@ -1,6 +1,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
+import { UnitPrice } from "@/components/product/UnitPrice";
 import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -608,6 +609,10 @@ export default function ProductDetail() {
               {compareAtPrice ? <span className="text-lg ink-muted line-through">{money(compareAtPrice)}</span> : null}
               {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
+
+            {/* The per-kilo figure, when there is one. Nothing for a counted
+                product — "per each" is the price printed twice. */}
+            {selectedVariant ? <UnitPrice variant={selectedVariant} className="mt-1 text-sm" /> : null}
 
             <hr className="my-6 border-[#0a285a]/8" />
 

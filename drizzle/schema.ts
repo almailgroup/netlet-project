@@ -33,12 +33,15 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { notificationKinds } from "../shared/customer.js";
+import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
 export const userRole = pgEnum("user_role", ["user", "admin"]);
 export const localeCode = pgEnum("locale_code", ["en", "ar"]);
 export const wishlistVisibility = pgEnum("wishlist_visibility", ["private", "public"]);
+/* What a variant's price is quoted against. `each` is every product today. */
+export const sellUnit = pgEnum("sell_unit", sellUnits);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
 /**
@@ -593,6 +596,27 @@ export const productVariants = pgTable(
     stock: integer("stock").notNull().default(0),
     /** Warn the vendor at or below this. Null means never. */
     lowStockAt: integer("low_stock_at"),
+    /*
+     * Selling things that are not counted — the grocery shelf.
+     *
+     * `unit` is what the price is quoted against and `stepAmount` is how much
+     * one `quantity` represents. A 500 g bag of rice is `("g", 500)` and one
+     * quantity is one bag; loose tomatoes in quarter-kilos are `("g", 250)`
+     * and six quantities is exactly 1.5 kg.
+     *
+     * **Quantity stays an integer, everywhere.** Making it fractional so a
+     * shopper could buy 1.5 kg would put floating point into cart lines, order
+     * lines, the stock take and the `stock >= n` predicate that stops two
+     * people being sold the last item — and 0.1 + 0.2 is not 0.3 in any of
+     * them. Counting steps keeps every existing query working unchanged and
+     * the arithmetic exact, which is the same reason money is held in fils
+     * rather than as a float.
+     *
+     * Defaults of `each` and 1 mean every product that exists today behaves
+     * exactly as it did before this column landed.
+     */
+    unit: sellUnit("unit").notNull().default("each"),
+    stepAmount: numeric("step_amount", { precision: 12, scale: 3 }).notNull().default("1"),
     options: jsonb("options").$type<Record<string, string>>().notNull().default({}),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

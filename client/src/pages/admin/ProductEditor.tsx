@@ -17,6 +17,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
@@ -368,10 +369,10 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
 }
 
 function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
-  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number };
+  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null };
   mayEdit: boolean;
   mayStock: boolean;
-  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null }) => void;
+  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number }) => void;
   onAdjust: (delta: number, reason: (typeof REASONS)[number]) => void;
   pending: boolean;
 }) {
@@ -381,7 +382,18 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
     sku: variant.sku ?? "",
     price: variant.price,
     compareAtPrice: variant.compareAtPrice ?? "",
+    unit: (variant.unit ?? "each") as SellUnit,
+    stepAmount: String(variant.stepAmount ?? 1),
   });
+
+  const measure = { unit: values.unit, stepAmount: Number(values.stepAmount) };
+  /*
+   * The *same* predicate the server refuses with, so the form cannot save a
+   * measure the API would reject — the arrangement the password floor uses.
+   * A half-gram step is what puts floating point back into the arithmetic.
+   */
+  const measureOk = isValidMeasure(measure);
+  const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
 
@@ -402,14 +414,55 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
         </Labelled>
       </div>
 
+      {/*
+        The grocery shelf. Left alone, a variant is `each` × 1 and behaves as
+        every product in the shop does today — so this row costs a vendor who
+        sells kettles nothing but two defaults they never touch.
+      */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <Labelled label={t("admin.variantUnit")} hint={t("admin.variantUnitHint")}>
+          <select
+            value={values.unit}
+            disabled={!mayEdit}
+            onChange={e => setValues({ ...values, unit: e.target.value as SellUnit, stepAmount: e.target.value === "each" ? "1" : values.stepAmount })}
+            className={field}
+          >
+            {SELL_UNITS.map(unit => <option key={unit} value={unit}>{t(`unit.${unit}` as MessageKey)}</option>)}
+          </select>
+        </Labelled>
+        <Labelled label={t("admin.variantStep")} hint={t("admin.variantStepHint")}>
+          <input
+            dir="ltr" inputMode="decimal" value={values.stepAmount}
+            disabled={!mayEdit || values.unit === "each"}
+            onChange={e => setValues({ ...values, stepAmount: e.target.value })}
+            aria-invalid={!measureOk}
+            className={field}
+          />
+        </Labelled>
+        <Labelled label={t("admin.variantUnitPrice")}>
+          {/* Read-only and derived: the figure the shopper will compare on,
+              shown to the vendor before they save rather than after. */}
+          <p className="px-1 py-2 text-sm font-extrabold text-[#0a285a]">
+            {perUnit
+              ? t("unit.perUnit", { price: perUnit.amount, unit: t(`unit.${perUnit.unit}` as MessageKey) })
+              : "—"}
+          </p>
+        </Labelled>
+      </div>
+      {!measureOk ? <p className="mt-1 text-[12px] font-semibold text-[#8c2f22]">{t("admin.variantStepInvalid")}</p> : null}
+
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <p className="text-[12px] font-semibold text-[#536b8c]">
           {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#e61c38]" : "text-[#0a285a]"}>{variant.stock}</strong>
         </p>
         {mayEdit ? (
           <button
-            onClick={() => onSave({ title: values.title, sku: values.sku || null, price: values.price, compareAtPrice: values.compareAtPrice || null })}
-            disabled={pending}
+            onClick={() => onSave({
+              title: values.title, sku: values.sku || null, price: values.price,
+              compareAtPrice: values.compareAtPrice || null,
+              unit: measure.unit, stepAmount: measure.stepAmount,
+            })}
+            disabled={pending || !measureOk}
             className="glass pressable rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
           >
             {t("admin.save")}

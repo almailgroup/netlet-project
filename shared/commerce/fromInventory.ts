@@ -20,6 +20,7 @@ import type {
   ProductVariant,
 } from "./types.js";
 import { visibleBadges } from "../inventory/vendorHealth.js";
+import type { Measure } from "./units.js";
 
 /**
  * The dinar, everywhere.
@@ -60,6 +61,9 @@ export type InventoryVariantRow = {
   compareAtPrice: string | null;
   stock: number;
   options: Record<string, string>;
+  /* Optional so a caller that predates the grocery shelf still type-checks. */
+  unit?: string | null;
+  stepAmount?: string | number | null;
 };
 
 export type InventoryImageRow = {
@@ -166,6 +170,11 @@ function toVariant(row: InventoryVariantRow): ProductVariant {
     // when out of stock" flag, because overselling a marketplace's vendors is
     // a support ticket rather than a sale.
     availableForSale: row.stock > 0,
+    // Defaults to `each` for every product that predates the grocery shelf.
+    measure: {
+      unit: (row.unit ?? "each") as Measure["unit"],
+      stepAmount: Number(row.stepAmount ?? 1),
+    },
     selectedOptions: Object.entries(row.options ?? {}).map(([name, value]) => ({ name, value })),
   };
 }

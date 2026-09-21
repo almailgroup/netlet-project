@@ -12,6 +12,7 @@
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
+import { SELL_UNITS } from "../../shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   addMemberByEmail,
@@ -271,6 +272,9 @@ export const inventoryRouter = router({
         compareAtPrice: moneySchema.nullable().optional(),
         stock: z.number().int().min(0).max(1_000_000).optional(),
         options: z.record(z.string().max(60), z.string().max(120)).optional(),
+        /* The grocery shelf. `each` and 1 are what every product is today. */
+        unit: z.enum(SELL_UNITS).optional(),
+        stepAmount: z.number().positive().max(1_000_000).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);

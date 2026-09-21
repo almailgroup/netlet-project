@@ -33,6 +33,7 @@ import {
   type LocalePick,
 } from "../shared/commerce/fromInventory.js";
 import type { Cart, CartItem, Collection, Product } from "../shared/commerce/types.js";
+import type { Measure } from "../shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
@@ -204,6 +205,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       variantTitle: productVariants.title,
       price: productVariants.price,
       stock: productVariants.stock,
+      unit: productVariants.unit,
+      stepAmount: productVariants.stepAmount,
       productHandle: products.handle,
       productTitle: products.title,
       productTitleAr: products.titleAr,
@@ -236,6 +239,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     image: imageFor.get(row.productId) ?? null,
     unitPrice: money(row.price),
     quantity: row.quantity,
+    measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     lineTotal: money(sumMinor([{ amount: row.price, quantity: row.quantity }])),
   }));
 

@@ -104,6 +104,8 @@ function buildLine(variantId: string, quantity: number): CartItem {
     image: product.images[0] ?? null,
     unitPrice: variant.price,
     quantity,
+    // The demo catalog is counted throughout; see demoCatalog.ts.
+    measure: { unit: "each" as const, stepAmount: 1 },
     lineTotal: fromFils(toFils(variant.price) * quantity),
   };
 }
