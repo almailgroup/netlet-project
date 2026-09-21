@@ -6,13 +6,13 @@
  * drifts every time the first is touched.
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
-import { MAX_QUANTITY } from "@/components/QuantityStepper";
-import { Thumb } from "@/components/Thumb";
+import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
+import { Thumb } from "@/components/product/Thumb";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, LoaderCircle, Minus, Plus, Share2, ShoppingBag, Star, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
+import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 
 export async function shareProduct(product: Product, t: Translate) {

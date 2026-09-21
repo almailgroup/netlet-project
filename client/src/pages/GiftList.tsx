@@ -21,16 +21,16 @@
  * system is built for that. It is also true: `itemsForOwner` does not select
  * the claim columns.
  */
-import { MobileTabBar } from "@/components/MobileTabBar";
-import { StoreHeader } from "@/components/StoreHeader";
-import { Thumb } from "@/components/Thumb";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { Thumb } from "@/components/product/Thumb";
 import { useCart } from "@/contexts/CartContext";
 import { appPath } from "@/lib/basePath";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
-import { usePageMeta } from "@/lib/usePageMeta";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { normalisePhone } from "@shared/commerce/wishlist";
 import type { Product } from "@shared/commerce/types";
 import { Check, Gift, Lock, Search, ShoppingBag } from "lucide-react";

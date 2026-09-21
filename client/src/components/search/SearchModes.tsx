@@ -29,9 +29,9 @@
  * dev build only. That query parameter is the same one `LiveSearch` already
  * uses to force its mobile panel open.
  */
-import { useOverlay } from "@/lib/useOverlay";
-import { useTranslation } from "@/lib/useTranslation";
-import { Thumb } from "@/components/Thumb";
+import { useOverlay } from "@/hooks/useOverlay";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Thumb } from "@/components/product/Thumb";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Camera, CameraOff, Image as ImageIcon, Keyboard, Mic, MicOff, RotateCcw, ScanLine, Search, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";

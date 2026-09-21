@@ -11,18 +11,18 @@
  * rather than an assumed one.
  */
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
-import { ProductCard } from "@/components/ProductCard";
-import { QuickView } from "@/components/QuickView";
-import { StoreHeader } from "@/components/StoreHeader";
-import { MobileTabBar } from "@/components/MobileTabBar";
+import { ProductCard } from "@/components/product/ProductCard";
+import { QuickView } from "@/components/product/QuickView";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
-import { usePageMeta } from "@/lib/usePageMeta";
-import { useTranslation } from "@/lib/useTranslation";
-import { useOverlay } from "@/lib/useOverlay";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useOverlay } from "@/hooks/useOverlay";
 import {
   activeFilterCount,
   browse,

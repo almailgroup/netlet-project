@@ -6,10 +6,10 @@
  * four pages out of six is worse than no button.
  */
 import { useCart } from "@/contexts/CartContext";
-import { Thumb } from "@/components/Thumb";
+import { Thumb } from "@/components/product/Thumb";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
-import { useMoney, useTranslation } from "@/lib/useTranslation";
-import { useOverlay } from "@/lib/useOverlay";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { useOverlay } from "@/hooks/useOverlay";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 
 export function BagDrawer() {

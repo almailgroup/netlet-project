@@ -3,15 +3,15 @@
  * KNET, Visa, Mastercard, and Google Pay presentation. No payment is processed.
  */
 import { useCart } from "@/contexts/CartContext";
-import { Thumb } from "@/components/Thumb";
-import { usePageMeta } from "@/lib/usePageMeta";
+import { Thumb } from "@/components/product/Thumb";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { CHECKOUT_IS_MOCK_ONLY, KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { useMoney, useTranslation } from "@/lib/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowLeft, Check, ChevronDown, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 

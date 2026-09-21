@@ -11,21 +11,21 @@
  * visiting below the things you visit the shop for.
  */
 import { useAuth } from "@/hooks/useAuth";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { ProfileManager } from "@/components/ProfileManager";
-import { AccountIdentity } from "@/components/AccountIdentity";
-import { AccountPreferences } from "@/components/AccountPreferences";
-import { AccountActivity } from "@/components/AccountActivity";
-import { AccountOrders } from "@/components/AccountOrders";
-import { WishlistManager } from "@/components/WishlistManager";
-import { usePageMeta } from "@/lib/usePageMeta";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ProfileManager } from "@/components/account/ProfileManager";
+import { AccountIdentity } from "@/components/account/AccountIdentity";
+import { AccountPreferences } from "@/components/account/AccountPreferences";
+import { AccountActivity } from "@/components/account/AccountActivity";
+import { AccountOrders } from "@/components/account/AccountOrders";
+import { WishlistManager } from "@/components/account/WishlistManager";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import AuthDialog from "@/components/AuthDialog";
+import AuthDialog from "@/components/auth/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { useState } from "react";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronRight, LogIn, LogOut, ShoppingBag, UserPlus, UserRound } from "lucide-react";
 import { toast } from "sonner";

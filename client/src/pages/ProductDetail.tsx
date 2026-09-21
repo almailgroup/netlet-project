@@ -1,9 +1,9 @@
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { Thumb } from "@/components/Thumb";
-import { QuantityStepper } from "@/components/QuantityStepper";
+import { Thumb } from "@/components/product/Thumb";
+import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { appPath } from "@/lib/basePath";
-import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
+import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
@@ -48,12 +48,12 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
-import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
-import { shareProduct } from "@/components/ProductCard";
-import { StoreHeader } from "@/components/StoreHeader";
-import { VariantPicker, imageIndexForVariant } from "@/components/VariantPicker";
-import { FollowProduct } from "@/components/FollowProduct";
-import { MobileTabBar } from "@/components/MobileTabBar";
+import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
+import { shareProduct } from "@/components/product/ProductCard";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
+import { FollowProduct } from "@/components/product/FollowProduct";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /**

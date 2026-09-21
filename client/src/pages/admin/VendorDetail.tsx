@@ -14,8 +14,8 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
-import { usePageMeta } from "@/lib/usePageMeta";
+import { useTranslation } from "@/hooks/useTranslation";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";

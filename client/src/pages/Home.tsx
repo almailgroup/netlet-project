@@ -3,12 +3,12 @@
  * persistent bag, native checkout mockup, and responsive marketplace rails.
  */
 import { useAuth } from "@/hooks/useAuth";
-import { Thumb } from "@/components/Thumb";
-import { LiveSearch } from "@/components/LiveSearch";
+import { Thumb } from "@/components/product/Thumb";
+import { LiveSearch } from "@/components/search/LiveSearch";
 import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, railSupportCardContent } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import AuthDialog from "@/components/AuthDialog";
+import AuthDialog from "@/components/auth/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { filterAndSortCatalog } from "@shared/commerce/catalog";
@@ -42,18 +42,18 @@ import {
   Zap,
 } from "lucide-react";
 import { useCompactHeader } from "@/hooks/useCompactHeader";
-import { useOverlay } from "@/lib/useOverlay";
-import { ProductCard } from "@/components/ProductCard";
-import { MobileTabBar } from "@/components/MobileTabBar";
-import { QuickView } from "@/components/QuickView";
-import { RecommendedRail } from "@/components/RecommendedRail";
+import { useOverlay } from "@/hooks/useOverlay";
+import { ProductCard } from "@/components/product/ProductCard";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { QuickView } from "@/components/product/QuickView";
+import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
-import { SITE_URL, usePageMeta } from "@/lib/usePageMeta";
+import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { homeMeta } from "@shared/seo";
 import { collectionImages, footerLogoImage, heroImage, logoImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
-import { useMoney, useTranslation, type Translate } from "@/lib/useTranslation";
+import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 const railSupportImages = [collectionImages[1], collectionImages[0], collectionImages[2]];

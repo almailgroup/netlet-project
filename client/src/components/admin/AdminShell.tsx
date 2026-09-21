@@ -14,7 +14,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowLeft, ClipboardCheck, Gauge, LayoutGrid, PackageSearch, ScrollText, ShieldCheck, Store, Users } from "lucide-react";

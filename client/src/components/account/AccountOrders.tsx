@@ -19,10 +19,10 @@
  */
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
-import { Thumb } from "@/components/Thumb";
+import { Thumb } from "@/components/product/Thumb";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, PackageSearch, RotateCcw } from "lucide-react";

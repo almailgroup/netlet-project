@@ -10,8 +10,8 @@
  * on open for the same reason: the safe answer should be the one a stray
  * Enter gives.
  */
-import { useTranslation } from "@/lib/useTranslation";
-import { useOverlay } from "@/lib/useOverlay";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useOverlay } from "@/hooks/useOverlay";
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 

@@ -11,7 +11,7 @@
  */
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Heart, Menu, ShoppingBag, Store, UserRound } from "lucide-react";
 import { useLocation } from "wouter";
 

@@ -12,7 +12,7 @@
  * can actually paint; anything else falls back to a labelled chip, because a
  * grey square captioned "Oak" is worse than the word "Oak".
  */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Product, ProductVariant } from "@shared/commerce/types";
 
 /**

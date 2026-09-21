@@ -13,7 +13,7 @@
  */
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
 import { BellRing, Check, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";

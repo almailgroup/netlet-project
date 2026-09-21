@@ -8,7 +8,7 @@
  * language the site speaks to you in is missing the one people look for.
  */
 import { useCustomer } from "@/contexts/CustomerContext";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import {
   defaultNotificationPreferences,
@@ -17,7 +17,7 @@ import {
   notificationLabelKeys,
   type NotificationKind,
 } from "@shared/customer";
-import { SettingPanel } from "@/components/SettingPanel";
+import { SettingPanel } from "@/components/ui/SettingPanel";
 import { Bell, Globe, MapPin } from "lucide-react";
 import { toast } from "sonner";
 

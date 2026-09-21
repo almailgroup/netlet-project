@@ -15,9 +15,9 @@
  * moving the login address or the password is exactly what somebody doing that
  * would reach for. The server enforces it; this only asks.
  */
-import { SettingPanel } from "@/components/SettingPanel";
+import { SettingPanel } from "@/components/ui/SettingPanel";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword } from "@shared/auth/passwordStrength";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { AtSign, Check, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";

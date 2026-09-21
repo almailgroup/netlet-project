@@ -10,7 +10,7 @@
  * So: loading, failed, or ready — and failed says so, shows what the server
  * said, and offers to try again.
  */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { AlertTriangle, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";

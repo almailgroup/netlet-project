@@ -6,7 +6,7 @@
  * saved items are actually used.
  */
 import { useCustomer } from "@/contexts/CustomerContext";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight, Heart, PackageSearch } from "lucide-react";

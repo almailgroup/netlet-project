@@ -30,8 +30,8 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useTranslation } from "@/lib/useTranslation";
-import { useOverlay } from "@/lib/useOverlay";
+import { useTranslation } from "@/hooks/useTranslation";
+import { useOverlay } from "@/hooks/useOverlay";
 import { logoImage } from "@/lib/brandAssets";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import type { MessageKey } from "@shared/i18n/dictionary";

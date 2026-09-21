@@ -6,12 +6,12 @@
  * leave. It now looks like NetLet and, more usefully, offers a way onward:
  * a mistyped or dead product link is a dead end otherwise.
  */
-import { StoreHeader } from "@/components/StoreHeader";
-import { Thumb } from "@/components/Thumb";
-import { MobileTabBar } from "@/components/MobileTabBar";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { Thumb } from "@/components/product/Thumb";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { trpc } from "@/lib/trpc";
-import { usePageMeta } from "@/lib/usePageMeta";
-import { useMoney, useTranslation } from "@/lib/useTranslation";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { privatePageMeta } from "@shared/seo";
 import { ArrowRight, Compass, Search } from "lucide-react";

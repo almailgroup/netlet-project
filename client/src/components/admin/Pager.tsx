@@ -10,7 +10,7 @@
  * The controls themselves are hidden at one page, where they would be four
  * disabled buttons saying the list is short.
  */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { pageCount, pageRange, pageWindow, type Page } from "@shared/pagination";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 

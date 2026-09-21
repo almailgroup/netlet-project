@@ -12,12 +12,12 @@
  * anyone else editing.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Thumb } from "@/components/Thumb";
+import { Thumb } from "@/components/product/Thumb";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
-import { usePageMeta } from "@/lib/usePageMeta";
+import { useTranslation } from "@/hooks/useTranslation";
+import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";

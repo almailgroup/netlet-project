@@ -12,11 +12,11 @@
  * is an invitation to leave it.
  */
 import { useAuth } from "@/hooks/useAuth";
-import { LiveSearch } from "@/components/LiveSearch";
+import { LiveSearch } from "@/components/search/LiveSearch";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { logoImage } from "@/lib/brandAssets";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
 import { Globe2, Heart, ShoppingBag, UserRound } from "lucide-react";
 import { Link, useLocation } from "wouter";

@@ -1,5 +1,5 @@
 /** A product's status, in the colour that matches what it means. */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 const TONE: Record<string, string> = {

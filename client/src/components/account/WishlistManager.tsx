@@ -25,11 +25,11 @@
  * it. That is not a rendering decision: `itemsForOwner` does not select those
  * columns, so the secrecy survives somebody rewriting this file.
  */
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { QueryGate } from "@/components/admin/QueryGate";
-import { Thumb } from "@/components/Thumb";
+import { Thumb } from "@/components/product/Thumb";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { Check, Gift, Link2, Lock, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import type { Product } from "@shared/commerce/types";

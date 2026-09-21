@@ -2,17 +2,17 @@
  * NetLet design reminder: public marketplace storefront in pearl white, luxury navy,
  * and NetLet Orange — with shopping state provided by NetLet’s own cart.
  */
-import { BagDrawer } from "@/components/BagDrawer";
+import { BagDrawer } from "@/components/cart/BagDrawer";
 import { Toaster } from "@/components/ui/sonner";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { lazy, Suspense, useEffect } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
-import LiquidGlassFilters from "./components/LiquidGlassFilters";
-import ErrorBoundary from "./components/ErrorBoundary";
+import LiquidGlassFilters from "./components/ui/LiquidGlassFilters";
+import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 

@@ -10,7 +10,7 @@
  * One list of filters, one set of behaviours, rendered in two frames.
  */
 import { FilterCheckbox, FilterGroup, CollapsibleList } from "./FilterGroup";
-import { useMoney, useTranslation } from "@/lib/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { categorySlug, type BrowseFilters, type Facets } from "@shared/commerce/browse";
 import { useEffect, useState } from "react";
 

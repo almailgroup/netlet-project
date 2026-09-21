@@ -11,7 +11,7 @@
  * The buttons disable at the ends rather than silently refusing, so the
  * control says where its limits are before you hit them.
  */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Minus, Plus } from "lucide-react";
 
 /** Nobody buys a hundred lamps from a product card; a typo could. */

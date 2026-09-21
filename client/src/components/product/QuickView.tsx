@@ -11,17 +11,17 @@
  * what the full page is for, and the link to it is right there.
  */
 import { useCart } from "@/contexts/CartContext";
-import { Thumb } from "@/components/Thumb";
+import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
-import { useMoney, useTranslation } from "@/lib/useTranslation";
-import { useOverlay } from "@/lib/useOverlay";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { useOverlay } from "@/hooks/useOverlay";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import type { Product } from "@shared/commerce/types";
 import { ArrowRight, Check, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { FollowProduct } from "@/components/FollowProduct";
-import { QuantityStepper } from "@/components/QuantityStepper";
+import { FollowProduct } from "@/components/product/FollowProduct";
+import { QuantityStepper } from "@/components/cart/QuantityStepper";
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();

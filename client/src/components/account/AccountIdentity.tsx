@@ -11,7 +11,7 @@
  * Initials at least identify the account at a glance, which is what an avatar
  * on a settings page is actually for.
  */
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { ArrowRight, CalendarDays, Clock, ShieldCheck } from "lucide-react";
 

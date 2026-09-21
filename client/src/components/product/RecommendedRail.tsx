@@ -23,11 +23,11 @@
  * Three states, never two: `QueryGate` is the same gate the portal uses, so a
  * failed query says so instead of rendering as an empty shelf.
  */
-import { ProductCard } from "@/components/ProductCard";
+import { ProductCard } from "@/components/product/ProductCard";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";

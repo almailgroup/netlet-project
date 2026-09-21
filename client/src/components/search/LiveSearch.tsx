@@ -1,10 +1,10 @@
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
-import { Thumb } from "@/components/Thumb";
-import { PhotoSearchPanel, showSearchModes, VoiceSearchPanel } from "@/components/SearchModes";
+import { Thumb } from "@/components/product/Thumb";
+import { PhotoSearchPanel, showSearchModes, VoiceSearchPanel } from "@/components/search/SearchModes";
 import { Camera, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "@/lib/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
 
 /**
  * What the placeholder suggests searching for, taken from the shelf.
