@@ -470,6 +470,46 @@ CREATE UNIQUE INDEX IF NOT EXISTS "wishlists_share_token_unique" ON "wishlists" 
 CREATE INDEX IF NOT EXISTS "wishlists_user_id_idx" ON "wishlists" USING btree ("user_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "customer_preferences_wishlist_phone_unique" ON "customer_preferences" USING btree ("wishlist_phone") WHERE "customer_preferences"."wishlist_phone" is not null;
 
+-- ===== 0012_common_guardian.sql =====
+CREATE TABLE IF NOT EXISTS "reviews" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"order_item_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"product_id" integer,
+	"vendor_id" integer,
+	"product_title" varchar(255) NOT NULL,
+	"rating" integer NOT NULL,
+	"title" varchar(120),
+	"body" text,
+	"hidden_at" timestamp with time zone,
+	"hidden_reason" varchar(200),
+	"vendor_reply" text,
+	"vendor_replied_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "delivered_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "reviews" ADD CONSTRAINT "reviews_order_item_id_order_items_id_fk" FOREIGN KEY ("order_item_id") REFERENCES "public"."order_items"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "reviews" ADD CONSTRAINT "reviews_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "reviews" ADD CONSTRAINT "reviews_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "reviews" ADD CONSTRAINT "reviews_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "reviews_order_item_unique" ON "reviews" USING btree ("order_item_id");
+CREATE INDEX IF NOT EXISTS "reviews_product_idx" ON "reviews" USING btree ("product_id","created_at");
+CREATE INDEX IF NOT EXISTS "reviews_vendor_idx" ON "reviews" USING btree ("vendor_id","created_at");
+CREATE INDEX IF NOT EXISTS "reviews_user_idx" ON "reviews" USING btree ("user_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

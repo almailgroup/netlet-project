@@ -5,6 +5,7 @@ import { customerRouter } from "./routers/customer.js";
 import { inventoryRouter } from "./routers/inventory.js";
 import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
+import { reviewsRouter } from "./routers/reviews.js";
 import { searchRouter } from "./routers/search.js";
 import { wishlistsRouter } from "./routers/wishlists.js";
 
@@ -15,6 +16,7 @@ export const appRouter = router({
   inventory: inventoryRouter,
   orders: ordersRouter,
   recommendations: recommendationsRouter,
+  reviews: reviewsRouter,
   search: searchRouter,
   wishlists: wishlistsRouter,
 });

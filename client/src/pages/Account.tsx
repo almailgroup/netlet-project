@@ -18,6 +18,7 @@ import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { WishlistManager } from "@/components/account/WishlistManager";
+import { AccountReviews } from "@/components/account/AccountReviews";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import AuthDialog from "@/components/auth/AuthDialog";
@@ -34,6 +35,7 @@ import type { ReactNode } from "react";
 /** The sections, in page order. The nav and the page read from one list. */
 const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
+  { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
@@ -122,6 +124,13 @@ export default function Account() {
               {/* Second, ahead of the settings: a wishlist is something other
                   people act on, so it is closer to "where is my parcel" than
                   to "change my display name". */}
+              {/* Directly after orders, because a review is something you do
+                  *to* an order — the same argument that keeps returns with
+                  orders rather than in a tab of their own. */}
+              <Section id="reviews" title={t("account.sectionReviews")}>
+                <AccountReviews />
+              </Section>
+
               <Section id="wishlists" title={t("account.sectionWishlists")}>
                 <WishlistManager />
               </Section>

@@ -51,16 +51,19 @@ export const ordersRouter = router({
         lines: found.lines.map(line => ({
           ...line,
           /*
-           * `order_items` has no `delivered_at`, so `updatedAt` stands in. It
-           * is wrong in one direction — a vendor editing the line pushes the
-           * window out rather than shortening it — which is the safe direction
-           * to be wrong in while the column is missing, and it is one line to
-           * change when it lands. Only a delivered line is asked, so an edit
-           * to a line still in the warehouse costs nothing.
+           * `order_items.delivered_at` is real now, so the window is measured
+           * from when the goods arrived rather than from `updatedAt`. That
+           * stand-in was wrong in a known direction — a vendor editing the
+           * line pushed the window out — and this is the one line the old
+           * comment promised would change when the column landed.
+           *
+           * The date outlives the status on purpose: a line delivered and then
+           * returned keeps its arrival date, which is what lets the return
+           * window and a review both still make sense afterwards.
            */
           returnState: returnStateFor(
             found.order,
-            { fulfilment: line.fulfilment, deliveredAt: line.fulfilment === "delivered" ? line.updatedAt : null },
+            { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt },
             now,
           ),
         })),

@@ -71,10 +71,18 @@ beforeAll(async () => {
   });
 
   // One paid order with four lines, one in each state a return cares about.
-  const line = (title: string, fulfilment: "delivered" | "shipped" | "returned", updatedAt: Date) => ({
+  /*
+   * `deliveredAt` rather than `updatedAt`. The window used to be measured from
+   * whenever the row was last touched, because `order_items` had no delivery
+   * date; now it has one, and this fixture says what it means instead of
+   * encoding the stand-in.
+   */
+  const line = (title: string, fulfilment: "delivered" | "shipped" | "returned", deliveredAt: Date) => ({
     orderId: monaOrders[0].id, vendorId: vendor.id, vendorName: "Acme",
     productTitle: title, unitPrice: "2.500", quantity: 1, lineTotal: "2.500",
-    fulfilment, updatedAt,
+    fulfilment,
+    // A shipped line has not arrived, so it carries no arrival date.
+    deliveredAt: fulfilment === "shipped" ? null : deliveredAt,
   });
   await db.insert(orderItems).values([
     line("Recently delivered", "delivered", ago(2)),   // inside the window
@@ -87,7 +95,7 @@ beforeAll(async () => {
   await db.insert(orderItems).values({
     orderId: monaOrders[2].id, vendorId: vendor.id, vendorName: "Acme",
     productTitle: "Delivered but unpaid", unitPrice: "5.000", quantity: 1, lineTotal: "5.000",
-    fulfilment: "delivered", updatedAt: ago(1),
+    fulfilment: "delivered", deliveredAt: ago(1),
   });
 });
 

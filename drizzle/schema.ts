@@ -777,6 +777,74 @@ export const authAttempts = pgTable(
   ]
 );
 
+
+/* --------------------------------------------------------------- reviews --- */
+
+/**
+ * What a shopper thought of something they actually received.
+ *
+ * **Anchored to an order line, not to a person and a product.** The line is
+ * the proof of purchase, so "verified" needs no separate flag and cannot be
+ * forged by anything short of writing to `order_items`. It is also the right
+ * uniqueness key: somebody who bought a kettle twice has two opinions worth
+ * having, and somebody who bought it once cannot write ten. A
+ * `(user_id, product_id)` key gets both of those wrong.
+ *
+ * `product_id` is carried beside it and is `set null` like every other
+ * reference out of an order line — a product can be deleted and the review it
+ * earned still has to render on the vendor's record. `product_title` is copied
+ * for the same reason the order copies it.
+ *
+ * Nothing here is a rating a merchant typed. The star row on a product page
+ * reads this table or shows nothing at all.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: serial("id").primaryKey(),
+    /*
+     * The proof, and the uniqueness key. Cascade rather than set null: a
+     * review whose order line has been erased can no longer be shown to be a
+     * real purchase, and an unverifiable review is exactly what this table
+     * exists to make impossible.
+     */
+    orderItemId: integer("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    /** Copied, so an old review still names what it was about. */
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    /** One to five whole stars. The floor and ceiling are in `shared/`. */
+    rating: integer("rating").notNull(),
+    title: varchar("title", { length: 120 }),
+    body: text("body"),
+    /**
+     * Hidden by an admin, rather than deleted.
+     *
+     * A removed review is a fact about moderation and the vendor's record
+     * should keep it. Hiding takes it off the page; deleting would also delete
+     * the evidence of why it was taken off.
+     */
+    hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+    hiddenReason: varchar("hidden_reason", { length: 200 }),
+    /** The vendor's public answer, if they gave one. */
+    vendorReply: text("vendor_reply"),
+    vendorRepliedAt: timestamp("vendor_replied_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("reviews_order_item_unique").on(table.orderItemId),
+    index("reviews_product_idx").on(table.productId, table.createdAt),
+    index("reviews_vendor_idx").on(table.vendorId, table.createdAt),
+    index("reviews_user_idx").on(table.userId),
+  ]
+);
+
 /* ---------------------------------------------------------------- orders --- */
 
 /**
@@ -880,6 +948,20 @@ export const orderItems = pgTable(
     vendorNet: numeric("vendor_net", { precision: 12, scale: 3 }).notNull().default("0.000"),
 
     fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
+    /*
+     * When the goods actually arrived.
+     *
+     * Two features were standing `updatedAt` in for this — the return window
+     * and, later, review eligibility — and both carried a comment saying it
+     * was one line to change when the column landed. This is that line.
+     *
+     * It is a *date*, not a restatement of `fulfilment`, and the two are
+     * deliberately allowed to disagree: a line that was delivered and then
+     * returned reads `returned` today while keeping the date it arrived. That
+     * is what lets somebody review a product they sent back, which is the most
+     * useful review on the shelf.
+     */
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -989,6 +1071,9 @@ export type InsertCustomerPreference = typeof customerPreferences.$inferInsert;
 
 export type SavedProduct = typeof savedProducts.$inferSelect;
 export type InsertSavedProduct = typeof savedProducts.$inferInsert;
+
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = typeof reviews.$inferInsert;
 
 export type Wishlist = typeof wishlists.$inferSelect;
 export type InsertWishlist = typeof wishlists.$inferInsert;

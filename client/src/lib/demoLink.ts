@@ -262,6 +262,24 @@ function resolve(path: string, rawInput: unknown): unknown {
      * shopper. An empty state demonstrates the page; a fake Noura would
      * demonstrate a lie.
      */
+    /*
+     * Reviews in a demo are empty rather than invented, for the reason the
+     * wishlists are: every review in this system is a verified purchase, and
+     * a fixture full of made-up ones would be demonstrating the one thing the
+     * table exists to make impossible.
+     */
+    case "reviews.forProduct":
+      return { items: [], summary: null, total: 0 };
+    case "reviews.mine":
+      return [];
+    case "reviews.write":
+      return 1;
+    case "reviews.edit":
+    case "reviews.remove":
+    case "reviews.reply":
+    case "reviews.setHidden":
+      return undefined;
+
     case "wishlists.mine":
       return [];
     case "wishlists.get":

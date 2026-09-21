@@ -9,10 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 12 |
+| Built | 13 |
 | Partial | 12 |
 | Designed, not wired | 1 |
-| Not started | 52 |
+| Not started | 51 |
+
+*Last updated after landing reviews (3.1.16). Payments and everything gated on
+them are deliberately untouched — see the note under 3.2.*
 
 ---
 
@@ -44,7 +47,7 @@ rounding up. Nothing is marked done because the schema could support it.
 | 13 | Request a special discount (vendor opt-in) | Not started | |
 | 14 | Referral, two tracks | Not started | |
 | 15 | Referral points, spend or cash out at 10% | Not started | No points ledger. |
-| 16 | Reviews: verified purchase, after delivery | Not started | **No reviews table.** Today's star rating is a merchant-typed attribute. |
+| 16 | Reviews: verified purchase, after delivery | **Built** | `reviews`, keyed on an **order line** — so "verified" is structural rather than a flag, and one purchase buys one review. Gated on `order_items.delivered_at`, a column that now exists. Product page shows the average, a histogram and every review; `/account` lists each delivered line with a form or the reason there is none. Vendors reply, admins hide (never delete). Verified end to end in a browser against a real paid, delivered order. |
 | 17 | Cart recovery reminder | Not started | |
 | 18 | Price-drop alerts | **Built** | Same follow mechanism. |
 | 19 | Subscribe & Save | Not started | |
@@ -55,14 +58,14 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
-| 1 | KNET, cards, Deema BNPL, payment link | **Not started — blocked** | No provider touched. Needs a merchant account: 4–12 week lead time. |
+| 1 | KNET, cards, Deema BNPL, payment link | **Not started — set aside** | No provider touched, by instruction. Everything below waits on it. |
 | 2 | COD by default, disableable | Not started | |
 | 3 | Points, gift card, discount codes | Not started | |
 | 4 | Multi-vendor cart, delivery cost per vendor | **Partial** | `sliceByVendor` groups an order by vendor already. No delivery cost anywhere. |
 | 5 | Delivery speed per product | Not started | |
 | 6 | Different address per product | Not started | |
 | 7 | Map address picker | Not started | Governorate select only. |
-| 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half. Return and re-pickup as operations are absent. |
+| 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
 ## 3.3 Vendor experience — 5 built, 3 partial, 14 absent
@@ -92,7 +95,7 @@ rounding up. Nothing is marked done because the schema could support it.
 | 21 | Auto payouts: COD 14 business days, others 1–3 | Not started | |
 | 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |
 
-## 3.4 Delivery — 0 of 4
+## 3.4 Delivery — 0 of 4, and one dependency now met
 
 Multiple delivery companies · damage borne by the carrier · live map tracking
 with a moving ETA · delivery rating separate from the product rating.
@@ -100,6 +103,12 @@ with a moving ETA · delivery rating separate from the product rating.
 `order_tracking_events` exists and is vestigial — the account page reads its
 row count and nothing else. **This section and the two missing audiences in
 2.2 are the same hole.**
+
+One thing that was missing here has landed: `order_items.delivered_at`. Until
+now nothing in the system recorded *when* goods arrived, so the return window
+measured from `updatedAt` — which a vendor editing the line pushed forward.
+Whoever builds the courier integration writes that column, and the return
+window and review eligibility both become correct for free.
 
 ## 3.5 AI customer service — 0 of 3
 
@@ -135,6 +144,23 @@ All absent. Three notes worth keeping:
 Kuwait loyalty subscription · fully-managed fulfilment (Shiplee) · grocery.
 
 ---
+
+## Repository structure
+
+Two fixes, both measured rather than felt:
+
+- `client/src/components/` already had `admin/`, `browse/` and `ui/` — a
+  grouping started and abandoned, with **24 files stranded at the top level**.
+  They now sit under `account`, `auth`, `cart`, `layout`, `product`, `search`
+  and `ui`.
+- `useOverlay`, `usePageMeta` and `useTranslation` were in `client/src/lib/`,
+  which breaks this repo's own rule that every hook lives in
+  `client/src/hooks/`. Moved.
+
+Still outstanding: **`server/inventory.ts` is 1388 lines** and wants splitting
+on the section banners it already has. It has shared module-local internals,
+so it is worth doing while landing a feature that touches it — then the
+feature's own tests prove the seams — rather than as a move on its own.
 
 ## The one recommendation I would put in front of the plan
 
