@@ -17,6 +17,13 @@ export default defineConfig({
     // Every layer, so a test cannot be silently skipped by living beside the
     // code it covers. The previous server-only glob is why shared/ tests never
     // ran and why unrelated suites were filed under server/.
-    include: ["{server,shared,client}/**/*.{test,spec}.{ts,tsx}"],
+    /*
+     * `scripts/` is in the list because the things in it are code: the
+     * bootstrap generator and the requirements counter both decide something
+     * that is wrong silently. Leaving them out of the run meant a script could
+     * not be tested even if somebody wrote a test for it — which is what
+     * happened the first time one was.
+     */
+    include: ["{server,shared,client,scripts}/**/*.{test,spec}.{ts,tsx}"],
   },
 });
