@@ -1,135 +1,160 @@
-# NetLet requirements — status against the codebase
+# NetLet requirements, against the code
 
-Source: *Netlet — Requirements Document (Developer Version)*, 11 August 2026.
+Every requirement in *Netlet — Requirements Document (Developer Version)*
+(version 11 August 2026), mapped to what is actually in this repository.
 
-Every numbered item from that document appears below with an honest status.
-Nothing is marked done that a shopper cannot use today.
+Status is deliberately harsh. **Built** means it works end to end against a
+real database and a real server. **Partial** names the gap rather than
+rounding up. Nothing is marked done because the schema could support it.
 
-| | meaning |
+| | count |
 |---|---|
-| **done** | built, tested, in `main` |
-| **partial** | some of it works; the gap is named |
-| **needs foundation** | cannot start until an architectural decision below is made |
-| **not started** | buildable on today's code, nobody has |
+| Built | 12 |
+| Partial | 12 |
+| Designed, not wired | 1 |
+| Not started | 52 |
 
 ---
 
-## The decision this document was waiting on — resolved
+## 2. Architectural principles
 
-This document describes **a multi-vendor marketplace**. What existed when it
-was first read was **a single-vendor storefront**: one merchant's Shopify
-catalog, with no concept of a vendor as a party to the transaction, no
-per-vendor commission, and no admin surface.
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 2.1 | Fully microservices-based | **Not started** | One Express + tRPC app, one Postgres, one Vercel function. The seams are clean — each `server/` module has 1–4 relative imports and **no cross-module transactions** — so splitting later is packaging, not a rewrite. See the note at the foot of this file. |
+| 2.2 | Easy for all five parties | **Partial** | Buyer, vendor and admin each have a real interface. **The delivery company and the order-processing employee have no interface at all** — two of the five audiences are absent, not merely rough. |
+| 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
+| 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-**That fork has been taken: Shopify is gone and NetLet owns its catalog.**
+## 3.1 Customer experience — 5 built, 1 partial, 1 drawn, 14 absent
 
-What that unlocked, and where it landed:
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Back-in-stock request, vendor sees demand | **Built** | `followed_products`; `customer.follows.demand` is public so the "N people are waiting" line can render. Vendor-side surfacing needs a panel. |
+| 2 | Optional installation fees, extended warranty | Not started | |
+| 3 | Pre-order | Not started | |
+| 4 | Public/private wishlists, found by phone | **Built** | `wishlists`, `wishlist_items`, phone key, claim holds, lookup throttle. |
+| 5 | AI personalised recommendations | **Built** | `shared/commerce/taste.ts` + model reorder pass. |
+| 6 | AI visual search (photo or description) | **Drawn, not wired** | `SearchModes.tsx` has every state designed. `SEARCH_MODES_WIRED` governs one line of copy; nothing is listening. |
+| 7 | Variants: colour swaps photo, zoom, per-category attributes | **Partial** | Swatches and zoom are built. Attributes are free-form `jsonb` — there is no per-category attribute schema. |
+| 8 | AI virtual try-on | Not started | |
+| 9 | Product videos | Not started | No video anywhere in the schema or the client. |
+| 10 | AI pulls manufacturer images | Not started | There is no image pipeline at all — vendors type URLs. |
+| 11 | Quick View with quantity | **Built** | On every page that draws a card. |
+| 12 | Category icons | Not started | Departments carry a colour each, no icon. |
+| 13 | Request a special discount (vendor opt-in) | Not started | |
+| 14 | Referral, two tracks | Not started | |
+| 15 | Referral points, spend or cash out at 10% | Not started | No points ledger. |
+| 16 | Reviews: verified purchase, after delivery | Not started | **No reviews table.** Today's star rating is a merchant-typed attribute. |
+| 17 | Cart recovery reminder | Not started | |
+| 18 | Price-drop alerts | **Built** | Same follow mechanism. |
+| 19 | Subscribe & Save | Not started | |
+| 20 | AI size guide | Not started | |
+| 21 | Frequently bought together, cross-vendor | Not started | |
 
-- `drizzle/schema.ts` — vendors, vendor members, categories, products,
-  variants, images, stock movements, carts.
-- `shared/inventory/permissions.ts` — the access model. Scope (a vendor member
-  reaches their own vendor, an admin reaches everything) and rank (`staff`
-  moves stock, `manager` runs the catalog, `owner` runs the team). Commission
-  is reachable by no vendor rank at all, which is what §3.3 asks for.
-- `server/inventory.ts` — the data layer, with the guard next to each query
-  rather than only at the router.
-- `/admin` — one application for admins and vendors, scoped by the server, with
-  `/admin/people` deciding who administers the platform at all.
-- `server/catalog.ts` — the storefront reading those same tables, so a product
-  added in the portal is a product in the shop.
+## 3.2 Checkout & payments — 0 built, 3 partial, 6 absent
 
-Still greenfield, and still marked *needs foundation* below: payments and
-payouts, the AI service layer (§3.5), affiliate marketing (§3.7), and
-vendor–customer chat (§3.8).
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | KNET, cards, Deema BNPL, payment link | **Not started — blocked** | No provider touched. Needs a merchant account: 4–12 week lead time. |
+| 2 | COD by default, disableable | Not started | |
+| 3 | Points, gift card, discount codes | Not started | |
+| 4 | Multi-vendor cart, delivery cost per vendor | **Partial** | `sliceByVendor` groups an order by vendor already. No delivery cost anywhere. |
+| 5 | Delivery speed per product | Not started | |
+| 6 | Different address per product | Not started | |
+| 7 | Map address picker | Not started | Governorate select only. |
+| 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half. Return and re-pickup as operations are absent. |
+| 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
+
+## 3.3 Vendor experience — 5 built, 3 partial, 14 absent
+
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Self-registration: account → choose vendor → documents → contract → approval | **Not started** | Today an admin creates the vendor and its login. There is no self-serve path, no document upload, no contract step. |
+| 2 | Default commission shown at onboarding, propose custom | **Partial** | Commission is fully modelled; there is no onboarding to show it in. |
+| 3 | Bulk upload by Excel, AI-assisted entry | Not started | |
+| 4 | AI fixes images after upload | Not started | No upload exists. |
+| 5 | AI auto-categorises on bulk upload | Not started | |
+| 6 | AI reviews products, alerts admin | Not started | The review queue is entirely human. |
+| 7 | Trusted companies publish directly | **Built** | `autoPublish`. |
+| 8 | Vendor product changes visible to admin | **Partial** | Logged — `product.priceChange`, `product.create`, `product.delete`. Not notified. |
+| 9 | Commission admin-only, log who changed it and who authorised them | **Partial** | Outside every vendor rank ✓, `vendor.setCommission` logs the actor ✓. Which admin granted that employee the permission is not recorded. |
+| 10 | Vendor trust badges | **Built** | |
+| 11 | Bundles, including cross-vendor | Not started | |
+| 12 | Commission: % or fixed, per vendor or per product | **Built** | Explicit zero is an override; absent is not. |
+| 13 | Per-vendor delivery provider | Not started | |
+| 14 | Size/type → required vehicle type | Not started | |
+| 15 | Self-service featured placement and ad booking | Not started | |
+| 16 | Individuals selling under NetLet's licence, weekly payout report | Not started | |
+| 17 | Switch between vendor and customer mode | Not started | One account holds both roles; there is no switch. |
+| 18 | Auto-suspend after 3 warnings | **Built** | `violationCount` is read in `inventory.ts` and suspends. |
+| 19 | Discount licence required on an offer (Kuwait law) | Not started | |
+| 20 | Vendors who join discounts get better placement | Not started | |
+| 21 | Auto payouts: COD 14 business days, others 1–3 | Not started | |
+| 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |
+
+## 3.4 Delivery — 0 of 4
+
+Multiple delivery companies · damage borne by the carrier · live map tracking
+with a moving ETA · delivery rating separate from the product rating.
+
+`order_tracking_events` exists and is vestigial — the account page reads its
+row count and nothing else. **This section and the two missing audiences in
+2.2 are the same hole.**
+
+## 3.5 AI customer service — 0 of 3
+
+Chat + WhatsApp + voice contact centre (**named a Phase 1 top priority**) ·
+automatic return/exchange handling · AI-generated tutorial videos.
+
+## 3.6 Admin panels — 1 built, 1 partial, 3 absent
+
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Finance panel | Not started | Commission is calculated and frozen per order line; nothing reports on it. |
+| 2 | Product approval panel, AI-backed | **Partial** | `/admin/review` is built and paged. The AI alerts are absent. |
+| 3 | Automatic audit trail | **Built** | 14 actions, covering commission edits, approvals, permission changes and admin sign-ins. |
+| 4 | No HR panel | n/a | Correctly absent. |
+| 5 | AI fraud detection | Not started | |
+| 6 | E-invoice compliance | Not started | |
+
+## 3.7 Affiliate marketing · 3.8 Vendor–customer chat · 3.9 Grocery
+
+All absent. Three notes worth keeping:
+
+- **3.8's hard part is the filter, not the chat.** Blocking phone numbers,
+  emails and handles — including the ways people spell them to get around a
+  filter — is the requirement. A chat without it leaks every customer off the
+  platform on day one.
+- **3.9 needs a unit on the variant.** Sold-by-weight is a schema change
+  (`unit`, `step`, price-per-unit), not a page. Cheap now, expensive later.
+- **3.7 shares a ledger with 3.1's referral points.** Build one points ledger,
+  not two.
+
+## 4. Built now, activated later — 0 of 3
+
+Kuwait loyalty subscription · fully-managed fulfilment (Shiplee) · grocery.
 
 ---
 
-## 3.1 Customer Experience
+## The one recommendation I would put in front of the plan
 
-| # | Requirement | Status |
-|---|---|---|
-| 1 | Back-in-stock notification request, demand visible to vendor | **done** — follow a product, `followed_products`; demand shown as a count. Vendor-facing view needs §3.3 |
-| 2 | Installation fees / extended warranty on eligible products | not started |
-| 3 | Pre-order products | not started |
-| 4 | Public + private wishlists, lookup by phone number | **partial** — saved items exist and sync to the account; public/shared lists and phone lookup not built |
-| 5 | AI-personalised recommendations | needs foundation (AI layer) |
-| 6 | AI visual search (photo or description) | needs foundation (AI layer) |
-| 7 | Variants: colour swaps the photo, zoom, per-category attributes | **done** for colour swatches + photo swap + zoom. Per-category attribute config needs admin (§3.6) |
-| 8 | AI virtual try-on | needs foundation (AI layer) |
-| 9 | Product videos alongside photos | not started — `Product.images` has no video member yet |
-| 10 | AI pulls manufacturer's official images | needs foundation (AI layer) |
-| 11 | Quick View on listing pages | **done** |
-| 12 | Icons alongside category names | **done** — department rail, artwork drawn from the catalog |
-| 13 | "Request special discount", vendor-approved | needs foundation (vendor) |
-| 14 | Referral system, two tracks, commission held past return window | needs foundation (vendor + payouts) |
-| 15 | Referral points, spend or cash out at 10% fee | needs foundation (payments) |
-| 16 | Reviews only after verified, delivered purchase | not started — ratings are displayed, no review system |
-| 17 | Cart recovery reminder | **partial** — cart persists across sessions and devices; the reminder needs a scheduler + messaging |
-| 18 | Price-drop alerts on a followed product | **done** — follow + `last_notified_price`. The sweep that sends them needs a scheduler |
-| 19 | Subscribe & Save | not started |
-| 20 | AI smart size guide | needs foundation (AI layer) |
-| 21 | Frequently Bought Together | not started — `relatedProducts` is the nearest thing and is similarity, not affinity |
+**Stay a modular monolith until payments and fulfilment are real, then split.**
 
-## 3.2 Checkout & Payments
+The goal in 2.1 is that a new feature ships without disturbing the rest of the
+system. That goal is met today by the module boundaries, not by the network:
+`shared/` is pure and holds every rule that costs money or access, guards sit
+next to the queries they protect, and no transaction spans two modules. Those
+are the properties that make a split cheap — and they are exactly the
+properties a premature split destroys, because once `orders` and `inventory`
+are two services, taking stock during checkout stops being a transaction and
+becomes a saga with compensating writes.
 
-| # | Requirement | Status |
-|---|---|---|
-| 22 | KNET, cards, Deema BNPL, payment link | **not started** — checkout is a mockup; `CHECKOUT_IS_MOCK_ONLY` is true and no payment is processed |
-| 23 | Cash on delivery, admin-disableable | not started |
-| 24 | Points, gift card, discount codes at checkout | not started |
-| 25 | Multi-vendor cart, delivery cost per vendor | needs foundation (vendor) |
-| 26 | Delivery speed per product | needs foundation |
-| 27 | Delivery address per product | needs foundation |
-| 28 | Address via interactive map | not started — governorate picker only |
-| 29 | Split an order into per-product sub-operations | needs foundation (order service) |
-| 30 | Fast checkout as top priority | **partial** — the cart and address are persisted; there is no checkout to be fast |
+The cost of waiting is low: the seams are measured above and they hold. The
+cost of splitting now is paid on every feature in this document, before a
+single dinar has been taken.
 
-## 3.3 Vendor Experience
-
-All fifteen items — self-registration, contracts, commission rates, bulk
-upload, AI product review, trust badges, bundles, delivery provider choice,
-featured placement booking, individual-seller path, violation suspension,
-discount licences, automatic payouts, account health score — are **needs
-foundation**. There is no vendor entity in the system.
-
-## 3.4 Delivery
-
-| # | Requirement | Status |
-|---|---|---|
-| 46 | Multiple delivery companies | needs foundation |
-| 47 | Delivery company bears damage cost | needs foundation (policy + orders) |
-| 48 | Real-time map tracking with live ETA | **partial** — `order_tracking_events` exists and the account page reads it; no courier feed, no map |
-| 49 | Delivery rating separate from product rating | not started |
-
-## 3.5 AI Customer Service
-
-All three items — chat/WhatsApp/voice contact centre, automated
-return/exchange handling, AI-generated tutorial videos — are **needs
-foundation**. The only AI in the system today is Mistral-backed search
-refinement (`server/routers/search.ts`).
-
-## 3.6 Admin Panels
-
-All six items — finance, product approval, audit trail, fraud detection,
-e-invoicing — are **needs foundation**. There is no admin surface. The `users`
-table has an `admin` role, `/admin` is what reads it, and `/admin/people` is
-what grants it.
-
-## 3.7 Affiliate Marketing · 3.8 Vendor-Customer Chat · 3.9 Grocery
-
-**Needs foundation**, all three. §3.9 is explicitly "built now, used later";
-the catalog model can now carry it — a grocery variant is a variant with a
-weight or volume option — but nothing reads that yet.
-
-## 4. Built now, activated later
-
-Loyalty subscription, managed fulfilment, grocery — **needs foundation**.
-
----
-
-## What a shopper can actually do today
-
-Browse departments with filters, search, quick-view a product, pick a variant
-and see it, follow a product for price and stock alerts, save items, keep a
-cart across devices, and read it all in English or Arabic. They cannot buy
-anything: there is no payment.
+If the answer is still "split now", say so and I will — the document wins over
+my recommendation. But I would want the payment and delivery services carved
+out **first**, since those are the two with genuinely independent failure
+modes and genuinely different scaling, and the rest to follow only when
+something forces it.
