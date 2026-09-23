@@ -20,6 +20,8 @@ import {
   orderItemAddons,
   orderItems,
   orders,
+  discountCodes,
+  giftCards,
   productAddons,
   productVariants,
   products,
@@ -536,6 +538,97 @@ describe("optional extras", () => {
     const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
     expect(line.lineTotal).toBe("24.375");
     expect(await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, line.id))).toEqual([]);
+  });
+});
+
+/*
+ * Discount codes and gift cards (3.2.3), against a real Postgres. The
+ * arithmetic is proved pure in `shared/commerce/vouchers.test.ts`; what is
+ * here is what cannot be — that a code's use count is the rows rather than a
+ * column two orders can race, that a card's balance is taken with the
+ * predicate inside the write, and that all three reductions land on the order
+ * in the right order.
+ */
+describe("codes and gift cards", () => {
+  const buy = (cartId: string, voucherCode?: string) =>
+    ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, voucherCode });
+
+  it("takes a percentage off the goods and freezes it", async () => {
+    await db.insert(discountCodes).values({ code: "TENOFF", kind: "percent", value: "10" });
+    const placed = await buy(await basket([{ variantId: ids.lampVariant, quantity: 2 }], ids.shopper), "ten-off");
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    // 24.375 × 2 = 48.750, ten percent of which is 4.875.
+    expect(order.discountCode).toBe("TENOFF");
+    expect(order.discountValue).toBe("4.875");
+    expect(order.grandTotal).toBe("43.875");
+  });
+
+  /* The row is the count, so this is also what makes "all used up" true. */
+  it("refuses a code that has been used as often as it allows", async () => {
+    await db.insert(discountCodes).values({ code: "ONCE", kind: "fixed", value: "1.000", maxRedemptions: 1 });
+    await buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "ONCE");
+
+    await expect(buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "ONCE"))
+      .rejects.toMatchObject({ reason: "order.voucherGone" });
+  });
+
+  it("refuses a code whose window has passed", async () => {
+    await db.insert(discountCodes).values({
+      code: "LASTYEAR", kind: "fixed", value: "1.000", endsAt: new Date("2020-01-01"),
+    });
+    await expect(buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "LASTYEAR"))
+      .rejects.toMatchObject({ reason: "order.voucherGone" });
+  });
+
+  it("spends a gift card down and records what it paid", async () => {
+    await db.insert(giftCards).values({ code: "NLGIFT1", initialBalance: "10.000", remaining: "10.000" });
+    const placed = await buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "NLGIFT1");
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    expect(order.giftCardCode).toBe("NLGIFT1");
+    expect(order.giftCardValue).toBe("10.000");
+    /* 24.375, and this seller delivers free, less the card's 10.000. */
+    expect(order.grandTotal).toBe("14.375");
+
+    const [card] = await db.select().from(giftCards).where(eq(giftCards.code, "NLGIFT1"));
+    expect(card.remaining).toBe("0.000");
+  });
+
+  /* Partial use is ordinary; a card that had to be spent in one go would be a
+     voucher with extra steps. */
+  it("pays only what is owed and leaves the rest on the card", async () => {
+    await db.insert(giftCards).values({ code: "NLGIFT2", initialBalance: "500.000", remaining: "500.000" });
+    const placed = await buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "NLGIFT2");
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    expect(order.grandTotal).toBe("0.000");
+    const [card] = await db.select().from(giftCards).where(eq(giftCards.code, "NLGIFT2"));
+    expect(card.remaining).toBe("475.625");
+  });
+
+  it("refuses an empty card rather than charging the full price", async () => {
+    await db.insert(giftCards).values({ code: "NLSPENT", initialBalance: "5.000", remaining: "0.000" });
+    await expect(buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "NLSPENT"))
+      .rejects.toMatchObject({ reason: "order.voucherGone" });
+  });
+
+  it("refuses a code nobody has heard of", async () => {
+    await expect(buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "NOPE"))
+      .rejects.toMatchObject({ reason: "order.voucherGone" });
+  });
+
+  /* The card's balance has to go back when the order does not happen, the same
+     as the stock and the points. */
+  it("puts the card's money back when the order fails", async () => {
+    await db.insert(giftCards).values({ code: "NLGIFT3", initialBalance: "10.000", remaining: "10.000" });
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    await db.update(productVariants).set({ stock: 0, preorderStock: 0 }).where(eq(productVariants.id, ids.lampVariant));
+
+    await expect(buy(cartId, "NLGIFT3")).rejects.toMatchObject({ reason: "order.outOfStock" });
+    const [card] = await db.select().from(giftCards).where(eq(giftCards.code, "NLGIFT3"));
+    expect(card.remaining).toBe("10.000");
+    await db.update(productVariants).set({ stock: 40 }).where(eq(productVariants.id, ids.lampVariant));
   });
 });
 

@@ -365,6 +365,16 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.bulkCreate":
       throw new Error("admin.saveFailed");
 
+    /* No codes and no cards in the fixtures, and inventing one would be a
+       code somebody types into a real shop and finds does not exist. */
+    case "orders.quoteVoucher":
+      return { ok: false, reason: "voucher.unknown" };
+    case "orders.vouchers":
+      return { codes: [], cards: [] };
+    case "orders.saveDiscountCode":
+    case "orders.createGiftCard":
+      throw new Error("admin.saveFailed");
+
     /* The demo signs in as a vendor `manager` and its fixtures hold no orders,
        so the seller's desk is reachable and honestly empty — which is also the
        only state it could have without an order to act on. */

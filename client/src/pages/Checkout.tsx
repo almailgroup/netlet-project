@@ -15,6 +15,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { useAuth } from "@/hooks/useAuth";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
+import { giftCardPayment, settle } from "@shared/commerce/vouchers";
 import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
@@ -98,13 +99,45 @@ export default function Checkout() {
    * there. What it must not do is disagree with the button, which is why both
    * use `pointsSpendableOn` over the same total.
    */
+  /*
+   * A discount code or a gift card, in one field (3.2.3). One field because a
+   * shopper holding a code does not necessarily know which kind it is, and
+   * asking them to pick the right box before they can use it is a question the
+   * shop can answer itself.
+   *
+   * Applied on a press rather than as they type: a quote per keystroke would
+   * be a query per character and a refusal flashing at somebody halfway
+   * through typing.
+   */
+  const [codeInput, setCodeInput] = useState("");
+  const [applied, setApplied] = useState<string>("");
+  const quote = trpc.orders.quoteVoucher.useQuery(
+    { cartId: cart?.id ?? "", code: applied },
+    { enabled: Boolean(cart?.id && applied) },
+  );
+
   const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated });
   const [usePoints, setUsePoints] = useState(false);
   const balance = rewards.data?.balance ?? 0;
   const orderTotal = cart?.total.amount ?? subtotal.amount;
-  const pointsApplied = usePoints ? pointsSpendableOn(balance, orderTotal) : 0;
+  /* The same `settle` the order writer uses, so the summary and the bill
+     cannot disagree about the order things come off in. */
+  const voucher = quote.data?.ok ? quote.data : null;
+  const discountOff = voucher?.kind === "discount" ? voucher.amount : "0.000";
+  const afterDiscount = subtractMoney(orderTotal, discountOff);
+  const pointsApplied = usePoints ? pointsSpendableOn(balance, afterDiscount) : 0;
   const pointsOff = spendValue(pointsApplied);
-  const payable = subtractMoney(orderTotal, pointsOff);
+  const giftOff = voucher?.kind === "gift"
+    ? giftCardPayment(voucher.remaining, subtractMoney(afterDiscount, pointsOff))
+    : "0.000";
+  const bill = settle({
+    goods: cart?.subtotal.amount ?? subtotal.amount,
+    delivery: cart?.delivery.total.amount ?? "0.000",
+    discount: discountOff,
+    points: pointsOff,
+    giftCard: giftOff,
+  });
+  const payable = bill.payable;
 
   return (
     <main className="type-body min-h-screen bg-background text-[#0a285a]">
@@ -149,7 +182,9 @@ export default function Checkout() {
                     reading the total, and nowhere else. The control is absent
                     rather than disabled for a balance of nothing — a checkbox
                     that can only be ticked to no effect is the dead control
-                    rule again. */}{balance > 0 ? (<label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
+                    rule again. */}{balance > 0 ? (<label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{/* One field for a discount code or a gift card. The refusal names the
+                    one fixable thing rather than shrugging, which is what makes
+                    somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already
                 follow. */}
             <button
@@ -162,6 +197,7 @@ export default function Checkout() {
                 addressLine: form.addressLine.trim(),
                 addressNotes: form.addressNotes.trim() || null,
                 usePoints,
+                voucherCode: applied || undefined,
               })}
               disabled={!canPlace || place.isPending}
               className="glass glass-navy type-control pressable mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-60"

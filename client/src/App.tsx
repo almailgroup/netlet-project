@@ -40,6 +40,7 @@ const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
 const AdminStock = lazy(() => import("@/pages/admin/Stock"));
 const AdminOrders = lazy(() => import("@/pages/admin/Orders"));
 const AdminImport = lazy(() => import("@/pages/admin/Import"));
+const AdminPromotions = lazy(() => import("@/pages/admin/Promotions"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
 const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
@@ -111,6 +112,7 @@ function Router() {
         <Route path="/admin/stock" component={AdminStock} />
         <Route path="/admin/orders" component={AdminOrders} />
         <Route path="/admin/import" component={AdminImport} />
+        <Route path="/admin/promotions" component={AdminPromotions} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />
         <Route path="/admin/vendors" component={AdminVendors} />

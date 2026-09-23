@@ -129,7 +129,10 @@ function Import({ actor }: { actor: Actor }) {
         {actor.kind === "admin" && (vendors.data?.rows ?? []).length > 1 ? (
           <label className="text-[11px] font-extrabold text-[#536b8c]">
             {t("admin.productVendor")}
+            {/* Named itself, because a <label> wrapping a select pulls every
+                option's text into the accessible name. */}
             <select
+              aria-label={t("admin.productVendor")}
               value={chosenVendor || String(vendors.data?.rows?.[0]?.id ?? "")}
               onChange={event => setChosenVendor(event.target.value)}
               className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#f2683a]"

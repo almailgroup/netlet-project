@@ -724,6 +724,73 @@ CREATE UNIQUE INDEX IF NOT EXISTS "cart_item_addons_unique" ON "cart_item_addons
 CREATE INDEX IF NOT EXISTS "order_item_addons_line_idx" ON "order_item_addons" USING btree ("order_item_id");
 CREATE INDEX IF NOT EXISTS "product_addons_product_idx" ON "product_addons" USING btree ("product_id","position");
 
+-- ===== 0028_flaky_korg.sql =====
+CREATE TABLE IF NOT EXISTS "discount_codes" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"code" varchar(40) NOT NULL,
+	"kind" varchar(10) DEFAULT 'percent' NOT NULL,
+	"value" numeric(12, 3) NOT NULL,
+	"min_spend" numeric(12, 3),
+	"starts_at" timestamp with time zone,
+	"ends_at" timestamp with time zone,
+	"max_redemptions" integer,
+	"per_shopper" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "discount_redemptions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"code_id" integer NOT NULL,
+	"user_id" integer,
+	"order_id" integer,
+	"amount" numeric(12, 3) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "gift_card_uses" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"gift_card_id" integer NOT NULL,
+	"order_id" integer,
+	"amount" numeric(12, 3) NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "gift_cards" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"code" varchar(40) NOT NULL,
+	"initial_balance" numeric(12, 3) NOT NULL,
+	"remaining" numeric(12, 3) NOT NULL,
+	"expires_at" timestamp with time zone,
+	"note" varchar(200),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "discount_code" varchar(40);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "discount_value" numeric(12, 3) DEFAULT '0.000' NOT NULL;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "gift_card_code" varchar(40);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "gift_card_value" numeric(12, 3) DEFAULT '0.000' NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "discount_redemptions" ADD CONSTRAINT "discount_redemptions_code_id_discount_codes_id_fk" FOREIGN KEY ("code_id") REFERENCES "public"."discount_codes"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "discount_redemptions" ADD CONSTRAINT "discount_redemptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "discount_redemptions" ADD CONSTRAINT "discount_redemptions_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "gift_card_uses" ADD CONSTRAINT "gift_card_uses_gift_card_id_gift_cards_id_fk" FOREIGN KEY ("gift_card_id") REFERENCES "public"."gift_cards"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "gift_card_uses" ADD CONSTRAINT "gift_card_uses_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "discount_codes_code_unique" ON "discount_codes" USING btree ("code");
+CREATE UNIQUE INDEX IF NOT EXISTS "discount_redemptions_order_unique" ON "discount_redemptions" USING btree ("code_id","order_id");
+CREATE INDEX IF NOT EXISTS "discount_redemptions_user_idx" ON "discount_redemptions" USING btree ("code_id","user_id");
+CREATE INDEX IF NOT EXISTS "gift_card_uses_card_idx" ON "gift_card_uses" USING btree ("gift_card_id","created_at");
+CREATE UNIQUE INDEX IF NOT EXISTS "gift_cards_code_unique" ON "gift_cards" USING btree ("code");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -761,6 +828,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  28 AS migrations_in_this_file,
+  29 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

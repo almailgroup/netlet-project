@@ -261,6 +261,9 @@ export type OrderRefusal =
      (3.1.15). Refused rather than charged in full: quietly taking more than
      the button said is the one outcome worse than refusing. */
   | "order.pointsGone"
+  /* The code or the gift card stopped working between pressing and placing
+     (3.2.3). Refused rather than charged in full, the same as the points. */
+  | "order.voucherGone"
   | "order.zeroPriced";
 
 export function refusalFor(

@@ -1217,6 +1217,18 @@ export const orders = pgTable(
     pointsSpent: integer("points_spent").notNull().default(0),
     pointsValue: numeric("points_value", { precision: 12, scale: 3 }).notNull().default("0.000"),
     /**
+     * The discount code and the gift card this order was settled with (3.2.3).
+     *
+     * The code is copied rather than joined, for the reason every other fact
+     * on an order is: a code can be deleted or its terms changed, and an order
+     * from last year still has to say what was taken off and why. `grand_total`
+     * is already net of both.
+     */
+    discountCode: varchar("discount_code", { length: 40 }),
+    discountValue: numeric("discount_value", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    giftCardCode: varchar("gift_card_code", { length: 40 }),
+    giftCardValue: numeric("gift_card_value", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    /**
      * Who charged what to deliver, frozen beside the total.
      *
      * An order is an obligation, so the breakdown is copied the way the
@@ -1339,6 +1351,112 @@ export const orderItems = pgTable(
     index("order_items_vendor_id_idx").on(table.vendorId),
     index("order_items_fulfilment_idx").on(table.fulfilment),
   ]
+);
+
+/* -------------------------------------------------------------- vouchers --- */
+
+/**
+ * A discount code (3.2.3).
+ *
+ * **Platform-wide, and that is a decision rather than a gap.** A code a
+ * *vendor* offers reduces the vendor's own takings, which changes the
+ * commission split on their lines; a code NetLet offers comes out of NetLet's
+ * cut. Building the first without deciding who pays for it would put an
+ * arbitrary answer into the money, so this is NetLet's own promotion and a
+ * seller's is a separate question with a `vendor_id` waiting for it.
+ *
+ * **Nothing here is a stored state.** Expired is `ends_at` having passed, used
+ * up is a count of redemptions — never a flag a job has to go round and write,
+ * which is the decision the discount permit and the price offers both make.
+ */
+export const discountCodes = pgTable(
+  "discount_codes",
+  {
+    id: serial("id").primaryKey(),
+    /** Stored exactly as `normaliseCode` writes it, so the lookup is exact. */
+    code: varchar("code", { length: 40 }).notNull(),
+    /** `percent` or `fixed`, from `VOUCHER_KINDS`. */
+    kind: varchar("kind", { length: 10 }).notNull().default("percent"),
+    /** "10" for ten percent, or "5.000" for five dinars. */
+    value: numeric("value", { precision: 12, scale: 3 }).notNull(),
+    /** The basket has to be worth this much. Null means any basket. */
+    minSpend: numeric("min_spend", { precision: 12, scale: 3 }),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    /** Null is open-ended, which is a real case for a welcome code. */
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    /** Across everybody. Null is unlimited. */
+    maxRedemptions: integer("max_redemptions"),
+    /** How many times one shopper may use it. */
+    perShopper: integer("per_shopper").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [uniqueIndex("discount_codes_code_unique").on(table.code)]
+);
+
+/**
+ * That a code was used, by whom, on what.
+ *
+ * The count is the evidence rather than a column on the code: two orders
+ * placed at once would both read "4 used" and both write 5. A row per use
+ * cannot double-count, and the unique index stops one order counting twice.
+ */
+export const discountRedemptions = pgTable(
+  "discount_redemptions",
+  {
+    id: serial("id").primaryKey(),
+    codeId: integer("code_id").notNull().references(() => discountCodes.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    /** What it took off, frozen — the code's terms may change afterwards. */
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("discount_redemptions_order_unique").on(table.codeId, table.orderId),
+    index("discount_redemptions_user_idx").on(table.codeId, table.userId),
+  ]
+);
+
+/**
+ * A gift card (3.2.3).
+ *
+ * **A balance, not a voucher**: partial use is the ordinary case, so the
+ * remaining figure lives on the row and is taken with the predicate inside the
+ * write — `remaining = remaining - n WHERE remaining >= n`, exactly the shape
+ * of the stock take and of the pre-order allowance. Two tabs spending the last
+ * dinar cannot both succeed.
+ *
+ * The code is the whole credential: anybody holding it can spend it, the way a
+ * gift card in a wallet works, so it is generated rather than chosen and it is
+ * long enough that guessing one is not a strategy.
+ */
+export const giftCards = pgTable(
+  "gift_cards",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 40 }).notNull(),
+    /** What it was worth when it was made. Kept, so a card can be explained. */
+    initialBalance: numeric("initial_balance", { precision: 12, scale: 3 }).notNull(),
+    remaining: numeric("remaining", { precision: 12, scale: 3 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** Free text an admin writes: who it was for, why it was issued. */
+    note: varchar("note", { length: 200 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [uniqueIndex("gift_cards_code_unique").on(table.code)]
+);
+
+/** What a card paid, on which order. Frozen, like every other figure there. */
+export const giftCardUses = pgTable(
+  "gift_card_uses",
+  {
+    id: serial("id").primaryKey(),
+    giftCardId: integer("gift_card_id").notNull().references(() => giftCards.id, { onDelete: "cascade" }),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("gift_card_uses_card_idx").on(table.giftCardId, table.createdAt)]
 );
 
 /* ---------------------------------------------------------------- extras --- */
@@ -1670,3 +1788,6 @@ export type PointEntryRow = typeof pointEntries.$inferSelect;
 
 export type ProductAddon = typeof productAddons.$inferSelect;
 export type OrderItemAddon = typeof orderItemAddons.$inferSelect;
+
+export type DiscountCodeRow = typeof discountCodes.$inferSelect;
+export type GiftCardRow = typeof giftCards.$inferSelect;

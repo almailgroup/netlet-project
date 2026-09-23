@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 292 columns across 28 tables.
+-- Expected: 324 columns across 32 tables.
 
 WITH expected AS (
   SELECT
@@ -24,11 +24,15 @@ WITH expected AS (
     ('categories', 'created_at,id,name,name_ar,parent_id,position,slug'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
     ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
+    ('discount_codes', 'code,created_at,ends_at,id,kind,max_redemptions,min_spend,per_shopper,starts_at,value'),
+    ('discount_redemptions', 'amount,code_id,created_at,id,order_id,user_id'),
     ('followed_products', 'back_in_stock,created_at,id,last_notified_price,price_drop,product_id,updated_at,user_id'),
+    ('gift_card_uses', 'amount,created_at,gift_card_id,id,order_id'),
+    ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'commission_amount,commission_fixed,commission_percent,created_at,delivered_at,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,email,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
     ('point_entries', 'created_at,id,note,order_id,points,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),

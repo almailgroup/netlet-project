@@ -21,13 +21,16 @@ import {
   OrderRefused,
   placeOrder,
   recordCashCollected,
+  quoteVoucherForCart,
   setLineFulfilment,
 } from "../orders.js";
 import { resolveActor } from "../inventory.js";
+import { createGiftCard, listVouchers, saveDiscountCode } from "../vouchers.js";
+import { VOUCHER_KINDS } from "../../shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../shared/commerce/payment.js";
 import { FULFILMENT_STATES } from "../../shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
-import { protectedProcedure, router } from "../_core/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../shared/commerce/returns.js";
 
 export const ordersRouter = router({
@@ -110,6 +113,9 @@ export const ordersRouter = router({
          server's arithmetic — a figure sent from a browser is a figure to
          check against the one read here anyway. */
       usePoints: z.boolean().optional(),
+      /* A discount code or a gift card, in one field (3.2.3): a shopper
+         holding a code does not necessarily know which it is. */
+      voucherCode: z.string().trim().max(40).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -123,12 +129,15 @@ export const ordersRouter = router({
           addressLine: input.addressLine,
           addressNotes: input.addressNotes ?? null,
           usePoints: input.usePoints ?? false,
+          voucherCode: input.voucherCode ?? null,
         });
         return {
           reference: placed.order.reference,
           total: placed.totals.grandTotal,
           pointsSpent: placed.totals.pointsSpent,
           pointsValue: placed.totals.pointsValue,
+          discountValue: placed.totals.discountValue,
+          giftCardValue: placed.totals.giftCardValue,
         };
       } catch (error) {
         /* Every refusal is already a message key, so the client says it in the
@@ -139,6 +148,53 @@ export const ordersRouter = router({
         throw error;
       }
     }),
+
+  /**
+   * What a typed code is worth on this basket (3.2.3).
+   *
+   * A query rather than a mutation, and nothing is reserved: this is the same
+   * arithmetic the order will do, run early so the summary can show it. The
+   * figure is read again at the moment of sale, the way every price is.
+   *
+   * `publicProcedure`, because a gift card belongs to whoever holds it — the
+   * whole point of one — and a guest basket may carry a discount code too.
+   */
+  quoteVoucher: publicProcedure
+    .input(z.object({ cartId: z.string().min(1).max(64), code: z.string().trim().min(1).max(40) }))
+    .query(({ ctx, input }) => quoteVoucherForCart(input.cartId, input.code, ctx.user?.id ?? null)),
+
+  /* ----------------------------------------------------------- minting --- */
+
+  /** Every code and card, for the promotions page. Admin-only, guarded inside. */
+  vouchers: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () =>
+      listVouchers(await resolveActor(ctx.user), input?.limit ?? 100))),
+
+  /** Create or edit a discount code. Editing a live campaign is ordinary. */
+  saveDiscountCode: protectedProcedure
+    .input(z.object({
+      code: z.string().trim().min(3).max(40),
+      kind: z.enum(VOUCHER_KINDS),
+      value: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+      minSpend: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/).nullable().optional(),
+      startsAt: z.coerce.date().nullable().optional(),
+      endsAt: z.coerce.date().nullable().optional(),
+      maxRedemptions: z.number().int().min(1).max(1_000_000).nullable().optional(),
+      perShopper: z.number().int().min(1).max(100).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => guard(async () =>
+      saveDiscountCode(await resolveActor(ctx.user), input))),
+
+  /** Mint a gift card. The code is generated: it is the whole credential. */
+  createGiftCard: protectedProcedure
+    .input(z.object({
+      amount: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+      note: z.string().trim().max(200).nullable().optional(),
+      expiresAt: z.coerce.date().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => guard(async () =>
+      createGiftCard(await resolveActor(ctx.user), input))),
 
   /* ------------------------------------------------------------- selling --- */
 

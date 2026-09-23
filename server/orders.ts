@@ -41,7 +41,9 @@ import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote }
 import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
-import { addMoney, multiplyMoney, subtractMoney } from "../shared/money.js";
+import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
+import { quoteVoucher, recordGiftCardUse, recordRedemption, refundGiftCard, spendGiftCard } from "./vouchers.js";
+import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
@@ -83,6 +85,14 @@ export type PlaceOrderDetails = {
    * capped at the order — points are a discount, not a deposit.
    */
   usePoints?: boolean;
+  /**
+   * A discount code or a gift card the shopper typed (3.2.3).
+   *
+   * One field for both, because somebody holding a code does not necessarily
+   * know which kind it is, and the shop can answer that itself. What it is
+   * worth is decided here, against the catalog, at the last moment.
+   */
+  voucherCode?: string | null;
 };
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
@@ -388,8 +398,32 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
    * Placing the order at full price instead would charge somebody more than
    * the button they pressed said, which is worse than refusing.
    */
+  /*
+   * The code comes off before the points, because a code is a discount and so
+   * are points — and the gift card goes last, against what is still owed,
+   * since a gift card *pays* rather than reduces. `settle` is the one place
+   * that order lives, so the checkout summary and this cannot disagree.
+   */
+  const typed = details.voucherCode?.trim() ?? "";
+  const quoted = typed
+    ? await quoteVoucher(db, typed, {
+        goods: draft.totals.itemsTotal,
+        owed: draft.totals.grandTotal,
+        userId: details.userId ?? null,
+      })
+    : null;
+  /* A code that has stopped working between the page and the button refuses
+     the order rather than quietly charging the full price — the same rule the
+     points take follows, and for the same reason. */
+  if (quoted && !quoted.ok) {
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    throw new OrderRefused("order.voucherGone");
+  }
+  const discountValue = quoted?.ok && quoted.kind === "discount" ? quoted.amount : "0.000";
+  const afterDiscount = subtractMoney(draft.totals.grandTotal, discountValue);
+
   const wantedPoints = details.usePoints && details.userId
-    ? pointsSpendableOn(await balanceFor(db, details.userId), draft.totals.grandTotal)
+    ? pointsSpendableOn(await balanceFor(db, details.userId), afterDiscount)
     : 0;
   const pointsEntryId = wantedPoints > 0 && details.userId
     ? await takePoints(db, details.userId, wantedPoints, "spent_on_order")
@@ -400,6 +434,30 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   }
   const pointsSpent = pointsEntryId === null ? 0 : wantedPoints;
   const pointsValue = spendValue(pointsSpent);
+
+  /*
+   * The card is taken the way the stock and the points are: before the write,
+   * with the predicate inside it, and handed back if anything later fails.
+   */
+  const owedBeforeCard = subtractMoney(afterDiscount, pointsValue);
+  const giftAsked =
+    quoted?.ok && quoted.kind === "gift" ? giftCardPayment(quoted.remaining, owedBeforeCard) : "0.000";
+  const giftTaken = toFils(giftAsked) > 0n && quoted?.ok && quoted.kind === "gift"
+    ? await spendGiftCard(db, quoted.code, giftAsked)
+    : false;
+  if (toFils(giftAsked) > 0n && !giftTaken) {
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
+    throw new OrderRefused("order.voucherGone");
+  }
+  const giftCardValue = giftTaken ? giftAsked : "0.000";
+  const settled = settle({
+    goods: draft.totals.itemsTotal,
+    delivery: draft.totals.deliveryTotal,
+    discount: discountValue,
+    points: pointsValue,
+    giftCard: giftCardValue,
+  });
 
   try {
     const [order] = await db
@@ -413,9 +471,15 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         /* Net of the points, so the column that says what is owed needs no
            arithmetic to read — and no line moves, because the discount comes
            out of NetLet's cut rather than the seller's net. */
-        grandTotal: subtractMoney(draft.totals.grandTotal, pointsValue),
+        /* Net of all three, so the column that says what is owed needs no
+           arithmetic to read. Every one of them is frozen beside it. */
+        grandTotal: settled.payable,
         pointsSpent,
         pointsValue,
+        discountCode: toFils(discountValue) > 0n && quoted?.ok ? quoted.code : null,
+        discountValue,
+        giftCardCode: giftTaken && quoted?.ok ? quoted.code : null,
+        giftCardValue,
         commissionTotal: draft.totals.commissionTotal,
         /* Frozen beside the total, so an order from last year still says who
            charged what — the reason the commission rate is copied too. */
@@ -484,6 +548,17 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
       await db.update(pointEntries).set({ orderId: order.id }).where(eq(pointEntries.id, pointsEntryId));
     }
 
+    /* The redemption row *is* the count of how often a code has been used, so
+       this is also what makes "all used up" true for the next shopper. */
+    if (toFils(discountValue) > 0n && quoted?.ok) {
+      await recordRedemption(db, quoted.code, {
+        userId: details.userId ?? null,
+        orderId: order.id,
+        amount: discountValue,
+      });
+    }
+    if (giftTaken && quoted?.ok) await recordGiftCardUse(db, quoted.code, order.id, giftCardValue);
+
     // The basket has become the order; leaving it would let the same items be
     // bought twice from a stale tab.
     await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
@@ -491,15 +566,46 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     return {
       order,
       lines: draft.lines,
-      totals: { ...draft.totals, grandTotal: order.grandTotal, pointsSpent, pointsValue },
+      totals: {
+        ...draft.totals,
+        grandTotal: order.grandTotal,
+        pointsSpent,
+        pointsValue,
+        discountValue,
+        giftCardValue,
+      },
     };
   } catch (error) {
     // Back to the pool each line came from. Handing a pre-ordered line back as
     // real stock would invent inventory out of a failed write.
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
+    /* A card charged for an order that does not exist has to go back, the same
+       as the stock and the points. */
+    if (giftTaken && quoted?.ok) await refundGiftCard(db, quoted.code, giftCardValue);
     throw error;
   }
+}
+
+/**
+ * What a typed code would be worth on a basket, before anything is placed.
+ *
+ * Here rather than in the router because it has to price the basket exactly as
+ * `placeOrder` will — live prices, agreed prices, the extras and the delivery —
+ * and a second implementation of that in a router is how a checkout summary
+ * comes to disagree with the bill.
+ */
+export async function quoteVoucherForCart(cartId: string, code: string, userId: number | null) {
+  const db = await getDb();
+  if (!db) return { ok: false, reason: "voucher.unknown" } as const;
+
+  const { lines, delivery } = await priceableLines(db, cartId, userId);
+  const draft = draftOrder(lines, delivery.total);
+  return quoteVoucher(db, code, {
+    goods: draft.totals.itemsTotal,
+    owed: draft.totals.grandTotal,
+    userId,
+  });
 }
 
 /* ----------------------------------------------------------------- reading --- */
