@@ -13,8 +13,19 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { getOrderForUser, listOrdersForUser, OrderRefused, placeOrder } from "../orders.js";
+import {
+  getOrderFor,
+  getOrderForUser,
+  listOrdersFor,
+  listOrdersForUser,
+  OrderRefused,
+  placeOrder,
+  recordCashCollected,
+  setLineFulfilment,
+} from "../orders.js";
+import { resolveActor } from "../inventory.js";
 import { PAYMENT_METHODS } from "../../shared/commerce/payment.js";
+import { FULFILMENT_STATES } from "../../shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../shared/commerce/returns.js";
@@ -128,4 +139,76 @@ export const ordersRouter = router({
         throw error;
       }
     }),
+
+  /* ------------------------------------------------------------- selling --- */
+
+  /**
+   * The orders a seller has to act on, or every order for an admin.
+   *
+   * `listOrdersFor` and `getOrderFor` were written the day the tables landed
+   * and nothing could call them — the same gap `listOrdersForUser` had, and
+   * with a sharper cost: without this nobody can mark a parcel shipped or a
+   * driver's cash collected, so `delivered_at` never gets set, reviews never
+   * open, payouts never start and a referral never pays. The functions already
+   * scope themselves by vendor and guard beside the query; this is the missing
+   * half.
+   */
+  forSeller: protectedProcedure
+    .input(z.object({ page: z.number().int().min(1).optional(), pageSize: z.number().int().min(1).max(100).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () =>
+      listOrdersFor(await resolveActor(ctx.user), input ?? {}))),
+
+  /**
+   * One order, as whoever is asking may see it.
+   *
+   * A vendor gets their own lines and the address to deliver to; an admin gets
+   * every line. The slicing is the data layer's, not this router's, and an
+   * order holding none of a vendor's lines comes back null rather than empty —
+   * an order with no lines would confirm that the order exists.
+   */
+  forSellerDetail: protectedProcedure
+    .input(z.object({ orderId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => guard(async () =>
+      getOrderFor(await resolveActor(ctx.user), input.orderId))),
+
+  /**
+   * Move one line along (3.2.8).
+   *
+   * Per line rather than per order, because that is where fulfilment lives:
+   * two items from one seller, one on the shelf and one not, is ordinary.
+   */
+  setFulfilment: protectedProcedure
+    .input(z.object({
+      lineId: z.number().int().positive(),
+      fulfilment: z.enum(FULFILMENT_STATES),
+    }))
+    .mutation(async ({ ctx, input }) => guard(async () =>
+      setLineFulfilment(await resolveActor(ctx.user), input.lineId, input.fulfilment))),
+
+  /**
+   * Record that the driver collected the cash (3.2.2).
+   *
+   * This is the moment a cash order becomes paid, and the predicate is inside
+   * the `UPDATE`, so two people pressing it cannot both be told they were the
+   * one who recorded it. `false` is the honest answer for an order that was
+   * already paid, is not a cash order, or is not theirs.
+   */
+  markCollected: protectedProcedure
+    .input(z.object({ orderId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => guard(async () =>
+      ({ recorded: await recordCashCollected(await resolveActor(ctx.user), input.orderId) }))),
 });
+
+/** The same translation every other router does: `assertCan` throws, this is the 403. */
+async function guard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.startsWith("FORBIDDEN:")) {
+      throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
+    }
+    if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "orders.lineGone" });
+    throw error;
+  }
+}

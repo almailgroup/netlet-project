@@ -34,6 +34,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { notificationKinds } from "../shared/customer.js";
 import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
+import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -401,14 +402,9 @@ export const orderStatus = pgEnum("order_status", [
  * shelf and one is not. Grouping lines by vendor gives the per-vendor view
  * without a table that would then have to be kept in step with the lines.
  */
-export const fulfilmentStatus = pgEnum("fulfilment_status", [
-  "pending",
-  "preparing",
-  "shipped",
-  "delivered",
-  "cancelled",
-  "returned",
-]);
+/* The one list, from `shared/`, so the enum, the router's input and the
+   control that draws them cannot drift apart. */
+export const fulfilmentStatus = pgEnum("fulfilment_status", FULFILMENT_STATES);
 
 /**
  * A selling company.

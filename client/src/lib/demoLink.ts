@@ -340,6 +340,18 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "orders.place":
       throw new Error("checkout.placeFailed");
 
+    /* The demo signs in as a vendor `manager` and its fixtures hold no orders,
+       so the seller's desk is reachable and honestly empty — which is also the
+       only state it could have without an order to act on. */
+    case "orders.forSeller":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "orders.forSellerDetail":
+      return null;
+    case "orders.setFulfilment":
+      throw new Error("orders.lineGone");
+    case "orders.markCollected":
+      return { recorded: false };
+
     case "offers.openOn":
       return [];
     case "offers.mine":

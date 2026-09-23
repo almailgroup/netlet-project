@@ -308,6 +308,24 @@ describe("reading orders back", () => {
     expect((await ordersModule.listOrdersFor(adminActor())).total).toBe(2);
   });
 
+  /*
+   * The leak this closes was latent until the seller's order desk called it:
+   * the list returned whole order rows, so a vendor sharing a basket with
+   * another seller read the grand total — a rival's sales — on a page
+   * `getOrderFor` is careful to keep it off.
+   */
+  it("shows a vendor their own figure and an admin the order's", async () => {
+    const placed = await twoVendorOrder();
+
+    const [asAcme] = (await ordersModule.listOrdersFor(acmeActor())).rows;
+    const [asAdmin] = (await ordersModule.listOrdersFor(adminActor())).rows;
+
+    expect(asAcme.orderTotal).toBe("48.750");
+    expect(asAcme).not.toHaveProperty("grandTotal");
+    expect(asAdmin.orderTotal).toBe(placed.order.grandTotal);
+    expect(asAcme.vendorCount).toBe(2);
+  });
+
   it("shows a vendor only orders that contain their own goods", async () => {
     await twoVendorOrder();
     // Acme only.
@@ -345,6 +363,9 @@ describe("reading orders back", () => {
     expect(asAcme?.slice?.itemsTotal).toBe("48.750");
     expect(asAcme?.slice?.vendorNet).toBe("43.875");
     expect(asAcme?.order).not.toHaveProperty("grandTotal");
+    /* They do get the payment method: a seller hands the driver a parcel and
+       takes the cash, and it says nothing about anybody else's goods. */
+    expect(asAcme?.order).toHaveProperty("paymentMethod");
   });
 
   it("refuses an order a vendor has no lines in, rather than showing an empty one", async () => {
@@ -394,6 +415,77 @@ describe("moving a line through the warehouse", () => {
     const after = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
     expect(after.find(line => line.vendorId === ids.acme)!.fulfilment).toBe("shipped");
     expect(after.find(line => line.vendorId === ids.other)!.fulfilment).toBe("pending");
+  });
+
+  /*
+   * `delivered_at` is what the return window and review eligibility are both
+   * measured from, and it had no writer at all: every line said "delivered"
+   * with a null date, so nothing downstream ever opened.
+   */
+  it("stamps the arrival date when a line is marked delivered", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }]), DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+
+    expect(line.deliveredAt).toBeNull();
+    const delivered = await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
+    expect(delivered.deliveredAt).toBeInstanceOf(Date);
+  });
+
+  /* The date does not move on a second press — a parcel arrives once. */
+  it("keeps the first arrival date when delivered is recorded again", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }]), DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+
+    const first = await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "shipped");
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
+    const [after] = await db.select().from(orderItems).where(eq(orderItems.id, line.id));
+    expect(after.deliveredAt).not.toBeNull();
+    expect(after.deliveredAt!.getTime()).toBeGreaterThanOrEqual(first.deliveredAt!.getTime());
+  });
+
+  /*
+   * Uncomfortable and still right: a seller correcting a mis-click has said
+   * the parcel has not arrived, and leaving the date would hold a return
+   * window open on a parcel that is not there.
+   */
+  it("clears the arrival date when a line is moved back off delivered", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }]), DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
+    const back = await ordersModule.setLineFulfilment(acmeActor(), line.id, "preparing");
+    expect(back.deliveredAt).toBeNull();
+  });
+});
+
+describe("recording that the driver collected", () => {
+  it("moves a cash order to paid, once", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper, paymentMethod: "cod" },
+    );
+    expect(placed.order.status).toBe("pending_payment");
+
+    expect(await ordersModule.recordCashCollected(acmeActor(), placed.order.id)).toBe(true);
+    /* The predicate is inside the UPDATE, so the second press changes nothing
+       and says so rather than claiming a second collection. */
+    expect(await ordersModule.recordCashCollected(acmeActor(), placed.order.id)).toBe(false);
+
+    const [after] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    expect(after.status).toBe("paid");
+    expect(after.paymentCollectedAt).toBeInstanceOf(Date);
+  });
+
+  it("refuses a seller with no line on the order", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper, paymentMethod: "cod" },
+    );
+    expect(await ordersModule.recordCashCollected(otherActor(), placed.order.id)).toBe(false);
   });
 });
 

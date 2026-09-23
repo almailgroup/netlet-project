@@ -516,14 +516,34 @@ export async function getOrderForUser(userId: number, reference: string) {
  * filtered afterwards — a vendor must not receive another vendor's rows and
  * have the client hide them.
  */
+/** One row of the seller's order desk. Deliberately not the whole order row. */
+export type SellerOrderRow = {
+  id: number;
+  reference: string;
+  status: OrderRow["status"];
+  paymentMethod: string | null;
+  placedAt: Date;
+  vendorCount: number;
+  /**
+   * What this row is worth *to whoever is asking*.
+   *
+   * An admin sees the order's grand total; a vendor sees their own lines and
+   * nothing else. Returning the whole order row handed a vendor the basket
+   * total on a shared order — a rival's sales figure, which `getOrderFor` is
+   * careful to withhold three functions further down. The leak was latent
+   * only because nothing had ever called this.
+   */
+  orderTotal: string;
+};
+
 export async function listOrdersFor(
   actor: Actor,
   request: { page?: number; pageSize?: number } = {},
-): Promise<Page<OrderRow & { vendorCount: number }>> {
+): Promise<Page<SellerOrderRow>> {
   assertCan(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   const db = await getDb();
-  if (!db) return emptyPage<OrderRow & { vendorCount: number }>(request.pageSize);
+  if (!db) return emptyPage<SellerOrderRow>(request.pageSize);
 
   const mine =
     actor.kind === "vendor"
@@ -537,7 +557,14 @@ export async function listOrdersFor(
   const page = clampPage(request.page ?? 1, total, pageSize);
 
   const rows = await db
-    .select()
+    .select({
+      id: orders.id,
+      reference: orders.reference,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      placedAt: orders.placedAt,
+      grandTotal: orders.grandTotal,
+    })
     .from(orders)
     .where(mine)
     .orderBy(desc(orders.placedAt), desc(orders.id))
@@ -546,18 +573,27 @@ export async function listOrdersFor(
 
   if (rows.length === 0) return { rows: [], total, page, pageSize };
 
-  const counts = await db
-    .select({ orderId: orderItems.orderId, vendorId: orderItems.vendorId })
+  const lines = await db
+    .select({ orderId: orderItems.orderId, vendorId: orderItems.vendorId, lineTotal: orderItems.lineTotal })
     .from(orderItems)
     .where(inArray(orderItems.orderId, rows.map(row => row.id)));
 
   return {
-    rows: rows.map(row => ({
-      ...row,
-      vendorCount: new Set(
-        counts.filter(count => count.orderId === row.id).map(count => count.vendorId),
-      ).size,
-    })),
+    rows: rows.map(row => {
+      const own = lines.filter(line => line.orderId === row.id);
+      return {
+        id: row.id,
+        reference: row.reference,
+        status: row.status,
+        paymentMethod: row.paymentMethod,
+        placedAt: row.placedAt,
+        vendorCount: new Set(own.map(line => line.vendorId)).size,
+        orderTotal:
+          actor.kind === "vendor"
+            ? addMoney(...own.filter(line => line.vendorId === actor.vendorId).map(line => line.lineTotal))
+            : row.grandTotal,
+      };
+    }),
     total,
     page,
     pageSize,
@@ -614,6 +650,10 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         status: order.status,
         placedAt: order.placedAt,
         contactName: order.contactName,
+        /* The seller is who hands the driver a parcel and takes the cash, so
+           they need to know it is a cash order. It says how the shopper pays
+           for their own goods and nothing about anybody else's. */
+        paymentMethod: order.paymentMethod,
         deliveryZoneId: order.deliveryZoneId,
         addressLine: order.addressLine,
         addressNotes: order.addressNotes,
@@ -648,8 +688,19 @@ export async function setLineFulfilment(
 
   assertCan(actor, "stock.adjust", line.vendorId ?? undefined);
 
-  await db.update(orderItems).set({ fulfilment }).where(eq(orderItems.id, lineId));
-  return { ...line, fulfilment };
+  /*
+   * `delivered_at` is stamped here and nowhere else, because it is what the
+   * return window and review eligibility are both measured from — a line that
+   * says "delivered" with no date is a parcel nobody can review or send back.
+   *
+   * Moved *away* from delivered it is cleared, which is the uncomfortable half
+   * and still right: a seller correcting a mis-click has said the parcel has
+   * not arrived, and leaving the date would hold a return window open on it.
+   */
+  const deliveredAt = fulfilment === "delivered" ? (line.deliveredAt ?? new Date()) : null;
+
+  await db.update(orderItems).set({ fulfilment, deliveredAt }).where(eq(orderItems.id, lineId));
+  return { ...line, fulfilment, deliveredAt };
 }
 
 /**
