@@ -489,6 +489,16 @@ export const vendors = pgTable(
      */
     deliverySpeed: varchar("delivery_speed", { length: 20 }),
     /**
+     * Who this store ships with (3.4.13).
+     *
+     * Free text and deliberately so: NetLet integrates with no carrier, and a
+     * fixed list would be this codebase asserting which companies exist in
+     * Kuwait. It is recorded and shown, and it claims nothing about tracking —
+     * a carrier name beside a live-tracking promise NetLet cannot keep would
+     * be worse than no name at all.
+     */
+    deliveryProvider: varchar("delivery_provider", { length: 120 }),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller
@@ -629,6 +639,17 @@ export const products = pgTable(
      * built to order and a cable off the shelf leave the same warehouse.
      */
     deliverySpeed: varchar("delivery_speed", { length: 20 }),
+    /**
+     * How big it is, which is what decides the vehicle (3.4.14).
+     *
+     * A class the seller picks rather than dimensions, because a class is what
+     * they can answer without a tape measure and it captures shape as well as
+     * bulk — a mattress is light and still needs a van. Weight is the
+     * fallback where there is no class, and `shared/commerce/vehicle.ts` is
+     * the rule. Null is a real answer: unknown beats guessing small, which is
+     * how a sofa gets dispatched on a motorcycle.
+     */
+    sizeClass: varchar("size_class", { length: 20 }),
     /**
      * Spec rows, and the review score the cards and PDP read.
      *

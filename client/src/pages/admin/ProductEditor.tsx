@@ -19,6 +19,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
+import { SIZE_CLASSES, vehicleFor, type SizeClass } from "@shared/commerce/vehicle";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
@@ -86,6 +87,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
+  const setSize = trpc.inventory.products.setSizeClass.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
   const setSpeed = trpc.inventory.products.setDeliverySpeed.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
@@ -120,6 +125,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
 
   const row = product.data;
   const mayEdit = can(actor, "product.edit", row.vendorId);
+  /* Derived from the class the seller picked, so the two cannot disagree. */
+  const needsVehicle = vehicleFor({ sizeClass: row.sizeClass });
   const mayPublish = can(actor, "product.publish", row.vendorId);
   const mayStock = can(actor, "stock.adjust", row.vendorId);
   /* No vendor rank reaches this, so the whole panel is absent for one rather
@@ -224,6 +231,28 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
             ))}
           </select>
+        </Labelled>
+        {/* How big it is, and what that means for dispatch (3.4.14). The
+            vehicle is derived rather than a second dropdown: two fields that
+            must agree eventually do not, and the seller can answer the first
+            without a tape measure. */}
+        <Labelled label={t("admin.fieldSizeClass")} className="mb-4">
+          <select
+            value={row.sizeClass ?? ""}
+            disabled={!mayEdit || setSize.isPending}
+            onChange={e => setSize.mutate({ productId: row.id, sizeClass: e.target.value === "" ? null : (e.target.value as SizeClass) })}
+            className={field}
+          >
+            <option value="">{t("admin.sizeUnset")}</option>
+            {SIZE_CLASSES.map(size => (
+              <option key={size} value={size}>{t(`size.${size}` as MessageKey)}</option>
+            ))}
+          </select>
+          {needsVehicle ? (
+            <p className="mt-1 text-[11px] ink-muted">
+              {t("admin.needsVehicle", { vehicle: t(`vehicle.${needsVehicle}` as MessageKey) })}
+            </p>
+          ) : null}
         </Labelled>
         <Labelled label={t("admin.offersProductOpen")}>
           <select

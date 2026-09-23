@@ -101,6 +101,8 @@ export type ProductContext = {
   vendorBadges?: string[] | null;
   /* The store's usual band, which this product may override (3.2.5). */
   vendorDeliverySpeed?: string | null;
+  /* Who the store ships with (3.4.13), shown as the seller typed it. */
+  vendorDeliveryProvider?: string | null;
   /**
    * The vendor's Kuwaiti discount permit, checked on every read.
    *
@@ -279,6 +281,7 @@ export function toStorefrontProduct(
        same reason `images` is derived from `media` rather than filtered at
        every call site. */
     deliverySpeed: resolveSpeed(context.vendorDeliverySpeed, (row as { deliverySpeed?: string | null }).deliverySpeed),
+    deliveryProvider: context.vendorDeliveryProvider?.trim() || null,
     tags: row.tags ?? [],
     attributes: row.attributes ?? [],
     /*

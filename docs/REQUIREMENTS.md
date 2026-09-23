@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 26 |
+| Built | 28 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 41 |
+| Not started | 39 |
 
-*Last updated after landing per-product delivery speed (3.2.5). Payments and
+*Last updated after landing the delivery cluster — cost, speed, carrier and vehicle (3.2.4, 3.2.5, 3.4.13, 3.4.14). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 9 built, 1 partial, 12 absent
+## 3.3 Vendor experience — 11 built, 1 partial, 10 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -93,8 +93,8 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 10 | Vendor trust badges | **Built** | |
 | 11 | Bundles, including cross-vendor | Not started | |
 | 12 | Commission: % or fixed, per vendor or per product | **Built** | Explicit zero is an override; absent is not. |
-| 13 | Per-vendor delivery provider | Not started | |
-| 14 | Size/type → required vehicle type | Not started | |
+| 13 | Per-vendor delivery provider | **Built** | Each store records who it ships with, and the storefront shows it beside the shipping band, attributed. **Free text, deliberately**: NetLet integrates with no carrier, and a fixed list would be this codebase asserting which companies exist in Kuwait. It claims nothing about tracking — a carrier name beside a live-tracking promise the shop cannot keep would be worse than no name. A blank is nobody rather than an empty name a page then renders. |
+| 14 | Size/type → required vehicle type | **Built** | `shared/commerce/vehicle.ts` is the rule and is pure. A seller picks a size class — small, medium, large, oversize — and the vehicle is **derived** rather than asked for separately, because two fields that must agree eventually do not. The declared class beats weight, since it captures shape as well as bulk: a mattress is light and still needs a van. Weight is the fallback, and quantity can push the answer up — ten of something a bike carries is not a bike delivery. **The largest line decides the whole delivery**, and a line nobody measured is skipped rather than counted small, so one unmeasured item cannot talk a dispatcher down from a van. Unknown is a real answer: guessing small is how a sofa gets dispatched on a motorcycle. |
 | 15 | Self-service featured placement and ad booking | Not started | |
 | 16 | Individuals selling under NetLet's licence, weekly payout report | Not started | |
 | 17 | Switch between vendor and customer mode | **Built** | One account already held both identities — a vendor member is a shopper with a `vendor_members` row — and there was simply no door between them: the portal has carried "Back to the store" since it existed, and nothing in the storefront pointed the other way. A Selling section on `/account` is that missing leg, naming the store and the rank so somebody is told which hat they are putting on. **Drawn only for an account that has the second identity**, decided by the server rather than guessed on the client — a switch a shopper can see leads to a page refusing them, which is the dead-control rule. The anchor in the side nav goes with it, since a jump to nothing is the same fault. The store's name is a separate read rather than a field on `Actor`: that type is the permission shape both sides import, and a display name has no business in an answer about access. |

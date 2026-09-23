@@ -151,6 +151,14 @@ export type Product = {
    * guarantee: NetLet has no carrier integration to compute one from.
    */
   deliverySpeed: DeliverySpeed | null;
+  /**
+   * Who the seller ships with (3.4.13), as they typed it.
+   *
+   * Shown and attributed, and it claims nothing about tracking — NetLet
+   * integrates with no carrier, and a name beside a live-tracking promise the
+   * shop cannot keep would be worse than no name.
+   */
+  deliveryProvider: string | null;
 };
 
 export type Collection = {

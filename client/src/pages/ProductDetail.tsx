@@ -827,7 +827,7 @@ export default function ProductDetail() {
                   a pre-order, where the release date is the promise. */}
               {selectedVariant?.preorder
                 ? null
-                : <DeliverySpeedLine speed={product.deliverySpeed} className="mt-1.5 text-[13px]" />}
+                : <DeliverySpeedLine speed={product.deliverySpeed} provider={product.deliveryProvider} className="mt-1.5 text-[13px]" />}
               <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
                 {/* Four tabs will not divide a phone's width into anything
                     readable, so below `sm` the row scrolls instead of each tab

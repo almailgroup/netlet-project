@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 251 columns across 23 tables.
+-- Expected: 253 columns across 23 tables.
 
 WITH expected AS (
   SELECT
@@ -30,13 +30,13 @@ WITH expected AS (
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),
     ('product_variants', 'compare_at_price,created_at,id,low_stock_at,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
-    ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,status,tags,title,title_ar,updated_at,vendor_id'),
+    ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
     ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),
     ('saved_products', 'created_at,id,product_id,user_id'),
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
     ('users', 'audit_seen_at,created_at,email,firebase_uid,id,last_signed_in,name,password_hash,role,updated_at'),
     ('vendor_members', 'created_at,id,role,user_id,vendor_id'),
-    ('vendors', 'accepts_offers,address_line,auto_publish,badges,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_number,logo_url,name,name_ar,payout_iban,slug,status,updated_at'),
+    ('vendors', 'accepts_offers,address_line,auto_publish,badges,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_number,logo_url,name,name_ar,payout_iban,slug,status,updated_at'),
     ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at,id,note,product_id,quantity,updated_at,wishlist_id'),
     ('wishlists', 'created_at,id,owner_name,share_token,title,updated_at,user_id,visibility')
   ) AS packed (table_name, columns)

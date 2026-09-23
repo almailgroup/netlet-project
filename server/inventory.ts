@@ -92,6 +92,22 @@ export async function setProductDeliverySpeed(
 }
 
 /**
+ * How big this product is for delivery (3.4.14).
+ *
+ * `null` clears it and means unknown, which is a real answer rather than a
+ * gap to fill with "small" — guessing small is how a sofa gets dispatched on a
+ * motorcycle. `product.edit`, guarded beside the query.
+ */
+export async function setProductSizeClass(actor: Actor, productId: number, sizeClass: string | null): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+  await db.update(products).set({ sizeClass }).where(eq(products.id, productId));
+}
+
+/**
  * The store the caller acts for, by name.
  *
  * Deliberately not a field on `Actor`: that type is the *permission* shape
@@ -1391,6 +1407,7 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   deliveryFlat?: string | null;
   deliveryFreeOver?: string | null;
   deliverySpeed?: string | null;
+  deliveryProvider?: string | null;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();

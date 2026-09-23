@@ -19,13 +19,20 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 
-export function DeliverySpeedLine({ speed, className = "" }: { speed: DeliverySpeed | null; className?: string }) {
+export function DeliverySpeedLine({ speed, provider = null, className = "" }: {
+  speed: DeliverySpeed | null;
+  /** Who the seller ships with (3.4.13), when they named somebody. */
+  provider?: string | null;
+  className?: string;
+}) {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
-  if (!speed) return null;
+  /* Nothing stated and nobody named is nothing to draw — a row reading
+     "Delivery: unknown" costs a line and answers no question. */
+  if (!speed && !provider) return null;
 
-  const arrival = arrivalFor(speed);
-  const dates = arrival.from && arrival.to
+  const arrival = speed ? arrivalFor(speed) : null;
+  const dates = arrival?.from && arrival.to
     /* One date when the window is a single day, rather than "27 – 27": a range
        with the same end twice reads as a mistake. */
     ? arrival.from.getTime() === arrival.to.getTime()
@@ -37,10 +44,13 @@ export function DeliverySpeedLine({ speed, className = "" }: { speed: DeliverySp
     <p className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 ${className}`}>
       <span className="inline-flex items-center gap-1.5 font-bold text-[#0a285a]">
         <Truck className="size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
-        {t(`speed.${speed}` as MessageKey)}
+        {speed ? t(`speed.${speed}` as MessageKey) : t("product.shippedBy", { name: provider! })}
       </span>
       {dates ? <span className="ink-muted">{dates}</span> : null}
-      <span className="text-[11px] ink-muted">{t("speed.bySeller")}</span>
+      {/* The carrier the seller named, when there is also a band to sit
+          beside — never a tracking promise, which NetLet cannot keep. */}
+      {speed && provider ? <span dir="auto" className="ink-muted">{t("product.shippedBy", { name: provider })}</span> : null}
+      {speed ? <span className="text-[11px] ink-muted">{t("speed.bySeller")}</span> : null}
     </p>
   );
 }

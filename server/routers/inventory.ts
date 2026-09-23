@@ -49,6 +49,7 @@ import {
   stockHistory,
   myStore,
   setProductDeliverySpeed,
+  setProductSizeClass,
   updateProduct,
   vendorHealthFor,
 } from "../inventory.js";
@@ -56,6 +57,7 @@ import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../audit.js";
 import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
+import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -154,6 +156,10 @@ const storeDetails = {
      than accepted as free text, so a typo cannot reach a page that then has no
      translation for it. */
   deliverySpeed: blankOr(z.enum(DELIVERY_SPEEDS)),
+  /* Who this store ships with (3.4.13). Free text, because NetLet integrates
+     with no carrier and a fixed list would be asserting which companies exist
+     in Kuwait. */
+  deliveryProvider: blankOr(z.string().trim().max(120)),
 };
 
 export const inventoryRouter = router({
@@ -237,6 +243,17 @@ export const inventoryRouter = router({
         const actor = await resolveActor(ctx.user);
         return guard(async () => {
           await setProductDeliverySpeed(actor, input.productId, input.speed);
+          return { ok: true } as const;
+        });
+      }),
+
+    /** How big it is for delivery, or null for unknown (3.4.14). */
+    setSizeClass: protectedProcedure
+      .input(z.object({ productId: z.number().int().positive(), sizeClass: z.enum(SIZE_CLASSES).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(async () => {
+          await setProductSizeClass(actor, input.productId, input.sizeClass);
           return { ok: true } as const;
         });
       }),

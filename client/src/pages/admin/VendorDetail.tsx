@@ -65,7 +65,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     name: "", nameAr: "", contactEmail: "", contactPhone: "",
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
-    deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "",
+    deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "", deliveryProvider: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -81,6 +81,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       deliveryFlat: row.deliveryFlat ?? "",
       deliveryFreeOver: row.deliveryFreeOver ?? "",
       deliverySpeed: row.deliverySpeed ?? "",
+      deliveryProvider: row.deliveryProvider ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -184,8 +185,14 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <Labelled label={t("admin.fieldDeliveryFreeOver")}>
             <input dir="ltr" inputMode="decimal" value={draft.deliveryFreeOver} onChange={e => set("deliveryFreeOver", e.target.value)} className={field} />
           </Labelled>
+          {/* Who this store ships with (3.4.13). Free text on purpose: NetLet
+              integrates with no carrier, and a fixed list would be this
+              codebase asserting which companies exist in Kuwait. */}
+          <Labelled label={t("admin.fieldDeliveryProvider")} className="sm:col-span-2">
+            <input dir="auto" value={draft.deliveryProvider} onChange={e => set("deliveryProvider", e.target.value)} className={field} />
+          </Labelled>
           <p className="text-[11px] ink-muted sm:col-span-2">
-            {t("admin.fieldDeliveryFlatHint")} {t("admin.fieldDeliveryFreeOverHint")}
+            {t("admin.fieldDeliveryFlatHint")} {t("admin.fieldDeliveryFreeOverHint")} {t("admin.fieldDeliveryProviderHint")}
           </p>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
@@ -218,6 +225,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                validates against the same list — this cast reconciles the draft's
                plain string with that, it does not widen what is accepted. */
             deliverySpeed: (blank(draft.deliverySpeed) as DeliverySpeed | null),
+            deliveryProvider: blank(draft.deliveryProvider),
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),
@@ -401,6 +409,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
                 <p className="mt-0.5 text-[10px] ink-muted">{t(ROLE_WHAT[member.role as VendorRole])}</p>
               </div>
               <select
+                aria-label={t("admin.memberRole")}
                 value={member.role}
                 onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
                 className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#f2683a]"
@@ -457,6 +466,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
               className={field}
             />
             <select
+              aria-label={t("admin.memberRole")}
               value={fresh.role}
               onChange={e => setFresh({ ...fresh, role: e.target.value as VendorRole })}
               className={field}
@@ -489,6 +499,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
               className={field}
             />
             <select
+              aria-label={t("admin.memberRole")}
               value={existing.role}
               onChange={e => setExisting({ ...existing, role: e.target.value as VendorRole })}
               className={field}

@@ -411,6 +411,29 @@ describe("the admin portal's reports", () => {
 
 /* Requirement 3.4.17: one account sells and shops, and the door between the
    two only exists for somebody who actually has both identities. */
+/* Requirement 3.4.14: the size class the seller picks, which decides the
+   vehicle a dispatcher sends. */
+describe("how big it is for delivery", () => {
+  it("stores the class the seller picked, and clears back to unknown", async () => {
+    await inv.setProductSizeClass(adminActor(), ids.acmeProduct, "large");
+    let [row] = await db.select({ sizeClass: products.sizeClass }).from(products).where(eq(products.id, ids.acmeProduct));
+    expect(row.sizeClass).toBe("large");
+
+    /* Unknown is a real answer rather than a gap to fill with "small":
+       guessing small is how a sofa gets dispatched on a motorcycle. */
+    await inv.setProductSizeClass(adminActor(), ids.acmeProduct, null);
+    [row] = await db.select({ sizeClass: products.sizeClass }).from(products).where(eq(products.id, ids.acmeProduct));
+    expect(row.sizeClass).toBeNull();
+  });
+
+  /* Checked against the product's own vendor, so another seller's id is a
+     refusal rather than a write. */
+  it("refuses a seller reaching for another seller's product", async () => {
+    await expect(inv.setProductSizeClass(ownerActor(), ids.otherProduct, "large"))
+      .rejects.toThrow("FORBIDDEN:product.edit");
+  });
+});
+
 describe("which store the caller acts for", () => {
   it("names a vendor member's own store", async () => {
     expect(await inv.myStore(ownerActor())).toMatchObject({ id: ids.acme, name: "Acme" });

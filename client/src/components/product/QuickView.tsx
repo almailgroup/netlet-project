@@ -134,7 +134,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                   give different answers about one product. */}
               {variant?.preorder
                 ? null
-                : <DeliverySpeedLine speed={product.deliverySpeed} className="mt-1 text-[12px]" />}
+                : <DeliverySpeedLine speed={product.deliverySpeed} provider={product.deliveryProvider} className="mt-1 text-[12px]" />}
               {isExpressEligible(product) ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
                   <Zap className="size-2.5 fill-current" />{t("product.express")}

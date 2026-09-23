@@ -298,3 +298,21 @@ describe("the shipping band", () => {
     expect((await catalog.getProductByHandle("desk-lamp"))?.deliverySpeed).toBeNull();
   });
 });
+
+/* Requirements 3.4.13 and 3.4.14: the carrier the seller named, and the size
+   class that decides the vehicle. */
+describe("who ships it and in what", () => {
+  it("shows the carrier the store named, as they typed it", async () => {
+    await db.update(vendors).set({ deliveryProvider: "  Shiplee  " }).where(eq(vendors.id, ids.acme));
+    expect((await catalog.getProductByHandle("desk-lamp"))?.deliveryProvider).toBe("Shiplee");
+  });
+
+  /* A blank is nobody, not an empty name a page would then render. */
+  it("is null when the store named nobody", async () => {
+    await db.update(vendors).set({ deliveryProvider: "   " }).where(eq(vendors.id, ids.acme));
+    expect((await catalog.getProductByHandle("desk-lamp"))?.deliveryProvider).toBeNull();
+    await db.update(vendors).set({ deliveryProvider: null }).where(eq(vendors.id, ids.acme));
+    expect((await catalog.getProductByHandle("desk-lamp"))?.deliveryProvider).toBeNull();
+  });
+
+});
