@@ -8,7 +8,7 @@
  */
 import { z } from "zod";
 import { financeReport } from "../finance.js";
-import { payoutReport, sellersUnderPlatformLicence } from "../payouts.js";
+import { payoutDueList, payoutReport, sellersUnderPlatformLicence } from "../payouts.js";
 import { TRPCError } from "@trpc/server";
 import { resolveActor } from "../inventory.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
@@ -55,6 +55,17 @@ export const financeRouter = router({
     .input(z.object({ from: z.coerce.date().nullish(), to: z.coerce.date().nullish() }).optional())
     .query(async ({ ctx, input }) => guard(async () =>
       payoutReport(await resolveActor(ctx.user), { from: input?.from, to: input?.to }))),
+
+  /**
+   * When each completed order's money is due to its seller (3.3.21).
+   *
+   * Beside the weekly report rather than on a page of its own: "what am I
+   * owed" and "when does it arrive" are one question a seller asks twice.
+   */
+  payoutsDue: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(500).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () =>
+      payoutDueList(await resolveActor(ctx.user), input?.limit ?? 200))),
 
   /** Which sellers trade under NetLet's own licence. Admin-only. */
   platformLicensed: protectedProcedure

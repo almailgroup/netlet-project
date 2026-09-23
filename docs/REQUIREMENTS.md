@@ -10,10 +10,10 @@ rounding up. Nothing is marked done because the schema could support it.
 | | count |
 |---|---|
 | Built | 32 |
-| Partial | 7 |
+| Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 36 |
+| Not started | 35 |
 
 *Last updated after landing cash on delivery (3.2.2), which places the first real orders. Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 13 built, 1 partial, 8 absent
+## 3.3 Vendor experience — 13 built, 2 partial, 7 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -101,7 +101,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 18 | Auto-suspend after 3 warnings | **Built** | `violationCount` is read in `inventory.ts` and suspends. |
 | 19 | Discount licence required on an offer (Kuwait law) | **Built** | The Ministry of Commerce permit is a number and a *window* on the vendor, because that is what is issued — and the window is why the rule is applied when the storefront **reads** an offer, not only when a vendor writes one: a permit lapses on a date with nobody saving anything, and a write-time check alone would leave the shop advertising a saving it may no longer advertise. `fromInventory` drops `compareAtPrice`, so the strikethrough, the `−27%` badge and the savings line disappear together by construction. Both doors onto the shelf refuse an unlicensed offer, with two reasons rather than one — "record a permit" and "renew the permit" are different things to go and do. The price does not move and the product is not hidden: an expired permit stops the claim, not the trade. |
 | 20 | Vendors who join discounts get better placement | **Built** | `shared/commerce/placement.ts` is the rule and is pure. **Only a permitted, live saving earns anything, and it is not checked here because it cannot arrive here**: `fromInventory` has already dropped `compareAtPrice` when the Ministry permit is not valid now, so an unlicensed offer is indistinguishable from none — the rule holds by construction rather than at a call site. It **sharpens and never overturns**: the boost applies to the default view only, and the moment a shopper picks their own order that choice wins outright, because a "price low to high" that quietly puts discounters first is not price low to high. Nothing sold out is lifted, the same rule `isRecommendable` applies. The boost scales with depth and then stops, since past a point a bigger number is a clearance sale rather than a better shop. The reorder is stable, so a page does not shuffle under somebody reloading it. |
-| 21 | Auto payouts: COD 14 business days, others 1–3 | Not started | |
+| 21 | Auto payouts: COD 14 business days, others 1–3 | **Partial** | The **schedule** is built and is what a seller can be told: `shared/commerce/payoutSchedule.ts` is pure, cash settles 14 business days after collection and everything else in 1–3, counted across the Friday–Saturday weekend. **The clock starts when the money arrived, not when the order was placed** — a cash order is placed the instant a shopper presses the button and the cash turns up days later, so counting from the press would promise a payout for money NetLet does not hold. A refunded line is not owed and gets no due date; an overdue one says so rather than hiding behind a comfortable number. What is absent is the *run* — nothing moves money, because there is no payout rail until 3.2.1 lands. That is the honest half: NetLet can now say when it owes and how much, which it has to be able to do before it can be held to it. |
 | 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |
 
 ## 3.4 Delivery — 0 of 4, and one dependency now met

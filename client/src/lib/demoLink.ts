@@ -361,6 +361,8 @@ function resolve(path: string, rawInput: unknown): unknown {
        their own store, so it is reachable and honestly empty. */
     case "finance.payouts":
       return { vendors: [], owed: "0.000", truncated: false };
+    case "finance.payoutsDue":
+      return [];
     case "finance.platformLicensed":
       return [];
 

@@ -9,9 +9,11 @@
  * inside it reach its module-local `getDb`, which nothing outside can
  * redirect, so anything living there cannot be tested against a real database.
  */
-import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { orderItems, orders, vendors } from "../drizzle/schema.js";
 import { payoutsByVendor, totalOwed, type PayoutLine } from "../shared/commerce/payouts.js";
+import { payoutDue } from "../shared/commerce/payoutSchedule.js";
+import { fromFils, toFils } from "../shared/money.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
@@ -46,6 +48,9 @@ export async function payoutReport(
       lineTotal: orderItems.lineTotal,
       commissionAmount: orderItems.commissionAmount,
       vendorNet: orderItems.vendorNet,
+      /* What decides when this money is actually due (3.3.21). */
+      paymentMethod: orders.paymentMethod,
+      paymentCollectedAt: orders.paymentCollectedAt,
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
@@ -81,4 +86,86 @@ export async function sellersUnderPlatformLicence(actor: Actor) {
     .from(vendors)
     .where(eq(vendors.underPlatformLicence, true))
     .orderBy(vendors.name);
+}
+
+/**
+ * When each completed order's money is due to its seller (3.3.21).
+ *
+ * Per order rather than per week, because the schedule runs from when the
+ * money *arrived* and two orders in one week can settle a fortnight apart —
+ * a cash order collected on the Sunday and one still uncollected on the
+ * Thursday are not the same obligation.
+ *
+ * Scoped like the report it sits beside: a vendor sees their own, an admin
+ * every seller's.
+ */
+export async function payoutDueList(actor: Actor, limit = 200) {
+  const scoped = actor.kind === "vendor" ? actor.vendorId : undefined;
+  if (scoped === undefined) assertCan(actor, "platform.viewAll");
+  else assertCan(actor, "product.view", scoped);
+
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      orderId: orders.id,
+      reference: orders.reference,
+      status: orders.status,
+      placedAt: orders.placedAt,
+      paymentMethod: orders.paymentMethod,
+      paymentCollectedAt: orders.paymentCollectedAt,
+      vendorId: orderItems.vendorId,
+      vendorName: orderItems.vendorName,
+      vendorNet: orderItems.vendorNet,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .where(and(
+      /*
+       * Wider than the weekly report on purpose. That one counts money that
+       * moved; this one answers "when does it arrive", and a cash order placed
+       * but not yet collected is exactly what a seller needs to see coming —
+       * it is the whole point of a fourteen-day cash schedule. `payoutDue`
+       * reports it as `unpaid`, which is unreachable if the query excludes it.
+       */
+      inArray(orders.status, ["paid", "refunded", "pending_payment"]),
+      scoped === undefined ? undefined : eq(orderItems.vendorId, scoped),
+    ))
+    .orderBy(desc(orders.placedAt), desc(orders.id))
+    .limit(limit);
+
+  const now = new Date();
+  /* One row per order per seller: an order spanning three sellers is three
+     obligations with three different owners, even though it settled once. */
+  const byKey = new Map<string, { orderId: number; reference: string; vendorId: number | null; vendorName: string | null; owed: bigint; due: ReturnType<typeof payoutDue> }>();
+  for (const row of rows) {
+    const key = `${row.orderId}:${row.vendorId}`;
+    const held = byKey.get(key);
+    const net = toFils(row.vendorNet);
+    if (held) {
+      held.owed += row.status === "pending_payment" ? 0n : row.status === "refunded" ? -net : net;
+      continue;
+    }
+    byKey.set(key, {
+      orderId: row.orderId,
+      reference: row.reference,
+      vendorId: row.vendorId,
+      vendorName: row.vendorName,
+      /* Nothing is owed on an order nobody has paid for; the figure is what
+         would be due, and inventing it before the money exists is how a
+         seller plans around a number that may never arrive. */
+      owed: row.status === "pending_payment" ? 0n : row.status === "refunded" ? -net : net,
+      due: payoutDue(row, now),
+    });
+  }
+
+  return [...byKey.values()].map(entry => ({
+    orderId: entry.orderId,
+    reference: entry.reference,
+    vendorId: entry.vendorId,
+    vendorName: entry.vendorName?.trim() || `#${entry.vendorId ?? "—"}`,
+    owed: fromFils(entry.owed),
+    due: entry.due,
+  }));
 }

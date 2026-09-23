@@ -229,3 +229,49 @@ describe("the weekly payout report", () => {
     await expect(payouts.sellersUnderPlatformLicence(adminActor())).resolves.toEqual([]);
   });
 });
+
+/* Requirement 3.3.21: when the money is actually due. */
+describe("when a payout is due", () => {
+  it("has no due date while the cash has not arrived", async () => {
+    const row = await order("paid", [acmeLine("100.000", "10.000", "90.000")]);
+    await db.update(orders).set({ status: "pending_payment", paymentMethod: "cod" }).where(eq(orders.id, row.id));
+
+    const [entry] = await payouts.payoutDueList(adminActor());
+    expect(entry.due.state).toBe("unpaid");
+  });
+
+  /*
+   * The clock starts when the money arrived, not when the order was placed:
+   * counting from the press would promise a payout for money NetLet does not
+   * hold.
+   */
+  it("counts from the collection rather than the order date", async () => {
+    const row = await order("paid", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-08-03T10:00:00Z"));
+    await db.update(orders).set({
+      paymentMethod: "cod",
+      paymentCollectedAt: new Date("2026-09-21T10:00:00Z"),
+    }).where(eq(orders.id, row.id));
+
+    const [entry] = await payouts.payoutDueList(adminActor());
+    expect(entry.due.state === "due" || entry.due.state === "held").toBe(true);
+    if (entry.due.state === "due" || entry.due.state === "held") {
+      /* 21 September 2026 is a Monday; 14 business days across three
+         Friday-Saturday weekends lands on Sunday 11 October. */
+      expect(entry.due.window.from.toISOString().slice(0, 10)).toBe("2026-10-11");
+    }
+  });
+
+  /* Money that went back is not a payout waiting to happen. */
+  it("reports a refunded order as refunded rather than due", async () => {
+    await order("refunded", [acmeLine("40.000", "4.000", "36.000")]);
+    const [entry] = await payouts.payoutDueList(adminActor());
+    expect(entry.due.state).toBe("refunded");
+    expect(entry.owed).toBe("-36.000");
+  });
+
+  it("shows a vendor only their own", async () => {
+    await order("paid", [acmeLine("100.000", "10.000", "90.000")]);
+    await order("paid", [{ vendorId: ids.other, vendorName: "Other", lineTotal: "50.000", commissionAmount: "5.000", vendorNet: "45.000" }]);
+    expect((await payouts.payoutDueList(vendorActor())).map(r => r.vendorName)).toEqual(["Acme"]);
+  });
+});
