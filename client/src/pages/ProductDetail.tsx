@@ -24,30 +24,7 @@ import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import {
-  ArrowLeft,
-  ArrowRight,
-  BadgeCheck,
-  ChevronLeft,
-  ChevronRight,
-  Heart,
-  ListTree,
-  LoaderCircle,
-  PackageOpen,
-  RotateCcw,
-  Share2,
-  ShieldCheck,
-  ShoppingBag,
-  ShoppingBasket,
-  Star,
-  Tag,
-  Truck,
-  Wallet,
-  X,
-  Zap,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, ShoppingBasket, Star, Tag, Truck, Wallet, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -116,8 +93,12 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
 }) {
   const { direction, t } = useTranslation();
   const [scale, setScale] = useState(1);
-  const image = product.images[selectedImageIndex] ?? product.images[0];
-  const hasMultipleImages = product.images.length > 1;
+  /* The same list the gallery indexes into, or "image 4" would mean two
+     different things on the two surfaces the moment a video is in the set. */
+  const media = product.media.length ? product.media : product.images.map(item => ({ ...item, kind: "image" as const, posterUrl: null }));
+  const image = media[selectedImageIndex] ?? media[0];
+  const isVideo = image?.kind === "video";
+  const hasMultipleImages = media.length > 1;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   // A new image at 3x would drop the shopper into a corner of it.
@@ -147,15 +128,20 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           comes first there; the desktop keeps the grid on the left. */}
       <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6 pt-4 sm:px-6 lg:flex-row lg:gap-6 lg:overflow-hidden">
         <div className="order-2 grid h-fit shrink-0 grid-cols-4 gap-2.5 sm:grid-cols-5 lg:order-1 lg:w-[400px] lg:grid-cols-3 lg:gap-3">
-          {product.images.map((item, index) => (
+          {media.map((item, index) => (
             <button
               key={`${item.url}-${index}`}
               onClick={() => onSelectImage(index)}
-              aria-label={t("product.showImage", { index: index + 1, total: product.images.length })}
+              aria-label={t(item.kind === "video" ? "product.showVideo" : "product.showImage", { index: index + 1, total: media.length })}
               aria-current={selectedImageIndex === index}
-              className={`pressable aspect-square overflow-hidden rounded-xl border-2 bg-white p-1 ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
+              className={`pressable relative aspect-square overflow-hidden rounded-xl border-2 bg-white p-1 ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
             >
-              <Thumb src={item.url} alt="" className="size-full object-contain" />
+              <Thumb src={item.kind === "video" ? (item.posterUrl ?? undefined) : item.url} alt="" className="size-full object-contain" icon={item.kind === "video" ? <Play className="size-5 text-[#536b8c]" /> : undefined} />
+              {item.kind === "video" ? (
+                <span aria-hidden className="absolute inset-0 m-auto grid size-7 place-items-center rounded-full bg-[#0a285a]/85 text-white">
+                  <Play className="size-3.5 fill-current" />
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -174,7 +160,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           {hasMultipleImages ? <>
             <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
             <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
-            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {product.images.length}</span></span>
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {media.length}</span></span>
           </> : null}
         </div>
       </div>
@@ -231,8 +217,15 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   isSaved: boolean;
 }) {
   const { direction, t } = useTranslation();
-  const image = product.images[selectedImageIndex] ?? product.images[0];
-  const hasMultipleImages = product.images.length > 1;
+  /*
+   * `media`, not `images`: the video sits in the shopper's sequence between
+   * the photographs, which is what "alongside photos" asks for. Cards and
+   * rails keep reading `images`, so none of them can render a video frame.
+   */
+  const media = product.media.length ? product.media : product.images.map(image => ({ ...image, kind: "image" as const, posterUrl: null }));
+  const image = media[selectedImageIndex] ?? media[0];
+  const isVideo = image?.kind === "video";
+  const hasMultipleImages = media.length > 1;
   const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
   const [canHover, setCanHover] = useState(false);
   const [narrowRail, setNarrowRail] = useState(false);
@@ -264,8 +257,8 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   // One limit drives both the slice and the count, or the tile advertises a
   // number that does not match the thumbnails beside it.
   const railLimit = narrowRail ? RAIL_LIMIT_NARROW : RAIL_LIMIT;
-  const overflow = product.images.length - railLimit;
-  const railImages = overflow > 0 ? product.images.slice(0, railLimit) : product.images;
+  const overflow = media.length - railLimit;
+  const railImages = overflow > 0 ? media.slice(0, railLimit) : media;
 
   const trackLens = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!canHover || !image) return;
@@ -303,15 +296,26 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
                 role="tab"
                 onClick={() => onSelectImage(index)}
                 onMouseEnter={() => { if (canHover) onSelectImage(index); }}
-                aria-label={t("product.showImage", { index: index + 1, total: product.images.length })}
+                aria-label={t(item.kind === "video" ? "product.showVideo" : "product.showImage", { index: index + 1, total: media.length })}
                 aria-selected={selectedImageIndex === index}
                 className={`pressable grid size-[62px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors sm:size-[68px] ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
               >
-                <Thumb src={item.url} alt="" className="size-full object-contain" />
+                {item.kind === "video" ? (
+                  <span className="relative grid size-full place-items-center">
+                    <Thumb src={item.posterUrl ?? undefined} alt="" className="size-full object-contain" icon={<Play className="size-5 text-[#536b8c]" />} />
+                    {/* The marker, not a label: the tab's accessible name
+                        already says this one is a video. */}
+                    <span aria-hidden className="absolute grid size-6 place-items-center rounded-full bg-[#0a285a]/85 text-white">
+                      <Play className="size-3 fill-current" />
+                    </span>
+                  </span>
+                ) : (
+                  <Thumb src={item.url} alt="" className="size-full object-contain" />
+                )}
               </button>
             ))}
             {overflow > 0 ? (
-              <button onClick={onZoom} aria-label={t("product.viewAllImages", { count: product.images.length })} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
+              <button onClick={onZoom} aria-label={t("product.viewAllImages", { count: media.length })} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
                 <span className="text-base font-extrabold leading-none">+{overflow}</span>
                 <span className="text-[9px] font-bold leading-none">{t("home.viewAll")}</span>
               </button>
@@ -328,15 +332,34 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             onPointerCancel={() => { swipeStart.current = null; }}
             className="relative flex h-[340px] touch-pan-y items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-5 sm:h-[460px] sm:p-6"
           >
-            <Thumb
-              src={image?.url}
-              alt={image?.altText ?? product.title}
-              priority
-              draggable={false}
-              className="max-h-full max-w-full object-contain"
-              icon={<PackageOpen className="size-24 text-[#e2e5f1]" />}
-            />
-            {lens && image ? (
+            {isVideo ? (
+              /* `controls` rather than a bespoke player: the browser's own is
+                 keyboard-operable, captioned-capable and familiar, and a
+                 hand-rolled one would have to earn all three back. No autoplay
+                 — sound starting by itself on a product page is the reason
+                 people mute tabs. `preload="metadata"` fetches the duration
+                 and not the clip, since most shoppers never press play. */
+              <video
+                key={image.url}
+                src={image.url}
+                poster={image.posterUrl ?? undefined}
+                controls
+                playsInline
+                preload="metadata"
+                aria-label={image.altText ?? product.title}
+                className="max-h-full max-w-full rounded-lg object-contain"
+              />
+            ) : (
+              <Thumb
+                src={image?.url}
+                alt={image?.altText ?? product.title}
+                priority
+                draggable={false}
+                className="max-h-full max-w-full object-contain"
+                icon={<PackageOpen className="size-24 text-[#e2e5f1]" />}
+              />
+            )}
+            {lens && image && !isVideo ? (
               <span
                 aria-hidden
                 className="pointer-events-none absolute size-[130px] rounded-sg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
@@ -345,7 +368,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             ) : null}
             {hasMultipleImages ? (
               <span className="pointer-events-none absolute bottom-3 start-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[11px] font-bold text-white" aria-live="polite">
-                <span dir="ltr">{selectedImageIndex + 1} / {product.images.length}</span>
+                <span dir="ltr">{selectedImageIndex + 1} / {media.length}</span>
               </span>
             ) : null}
           </div>

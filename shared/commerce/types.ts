@@ -25,6 +25,19 @@ export type Image = {
   height?: number;
 };
 
+/**
+ * One item in a product's gallery: a photograph, or a video beside them.
+ *
+ * `posterUrl` is the still shown before a video plays and in the thumbnail
+ * strip. Null is ordinary — a vendor may have the clip and no poster — and the
+ * player then shows its own first frame rather than the product refusing to
+ * render.
+ */
+export type ProductMedia = Image & {
+  kind: "image" | "video";
+  posterUrl: string | null;
+};
+
 export type ProductOption = {
   name: string; // e.g. "Size"
   values: string[]; // e.g. ["Small", "Medium", "Large"]
@@ -107,7 +120,22 @@ export type Product = {
    * "reviews"/"rating" namespace is the score; anything else is a spec row.
    */
   attributes: ProductAttribute[];
+  /**
+   * The photographs, and only the photographs.
+   *
+   * Every card, rail, thumbnail and saved-item tile reads this, and each of
+   * them wants a still picture: a card that renders a video is a rail that
+   * cannot be scanned. Derived from `media` rather than stored separately, so
+   * the rule holds by construction instead of by everybody remembering it.
+   */
   images: Image[];
+  /**
+   * The gallery in the order the vendor arranged it, video included.
+   *
+   * The product page reads this. Nothing else needs to, which is why `images`
+   * stays rather than every consumer learning to filter.
+   */
+  media: ProductMedia[];
   /** Min / max across all variants — useful for "from $X" pricing. */
   priceRange: { min: Money; max: Money };
   /** Available option dimensions (e.g. Size, Color) for the variant picker. */

@@ -168,3 +168,43 @@ describe("toStorefrontCollection", () => {
     expect(collection.title).toBe("إلكترونيات");
   });
 });
+
+/*
+ * The rule the video feature rests on: `media` is the vendor's gallery and
+ * `images` is the same list with the video taken out. Every card, rail,
+ * thumbnail and saved tile reads `images`, so a card that renders a video
+ * frame is impossible by construction rather than by everybody remembering.
+ */
+describe("product media", () => {
+  const gallery = [
+    { url: "https://cdn.test/front.jpg", altText: "Front" },
+    { url: "https://cdn.test/demo.mp4", altText: "In use", kind: "video" as const, posterUrl: "https://cdn.test/poster.jpg" },
+    { url: "https://cdn.test/back.jpg", altText: null },
+  ];
+
+  it("keeps the video in the gallery, in the vendor's order", () => {
+    const mapped = toStorefrontProduct(product({ images: gallery }));
+    expect(mapped.media.map(item => item.kind)).toEqual(["image", "video", "image"]);
+    expect(mapped.media[1].posterUrl).toBe("https://cdn.test/poster.jpg");
+  });
+
+  it("never lets a video into images", () => {
+    const mapped = toStorefrontProduct(product({ images: gallery }));
+    expect(mapped.images).toHaveLength(2);
+    expect(mapped.images.every(image => !image.url.endsWith(".mp4"))).toBe(true);
+  });
+
+  it("treats a row with no kind as a photograph, which is every row written before video", () => {
+    const mapped = toStorefrontProduct(product({ images: [{ url: "https://cdn.test/a.jpg", altText: null }] }));
+    expect(mapped.media[0].kind).toBe("image");
+    expect(mapped.media[0].posterUrl).toBeNull();
+    expect(mapped.images).toHaveLength(1);
+  });
+
+  it("falls back to the product title for a missing alt, on video as on images", () => {
+    const mapped = toStorefrontProduct(product({
+      images: [{ url: "https://cdn.test/demo.mp4", altText: null, kind: "video" as const, posterUrl: null }],
+    }));
+    expect(mapped.media[0].altText).toBe("Desk Lamp");
+  });
+});

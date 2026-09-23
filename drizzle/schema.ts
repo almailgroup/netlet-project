@@ -647,6 +647,26 @@ export const productVariants = pgTable(
 );
 
 /** Product photography, ordered. Files live in object storage; this is the URL. */
+/**
+ * What a product's gallery is made of.
+ *
+ * One kind column on one ordered table rather than a second table for video,
+ * because a video belongs *between* the photographs — "alongside photos" is
+ * what the requirement asks for — and two ordered lists would force an
+ * interleave rule that has no right answer and would be re-invented at every
+ * call site.
+ */
+export const mediaKind = pgEnum("media_kind", ["image", "video"]);
+
+/**
+ * The product gallery: photographs and video, in one order.
+ *
+ * The table is still called `product_images`, and that is a deliberate wart.
+ * Renaming it would be a rename executed against a live database by pasting
+ * `docs/supabase-bootstrap.sql`, which is the single riskiest migration shape
+ * there is — and the file's whole value is that it can be re-run. A slightly
+ * wrong table name costs less than that.
+ */
 export const productImages = pgTable(
   "product_images",
   {
@@ -655,6 +675,17 @@ export const productImages = pgTable(
     url: text("url").notNull(),
     altText: varchar("alt_text", { length: 255 }),
     position: integer("position").notNull().default(0),
+    /** Defaults to `image`, so every row that predates video stays a photograph. */
+    kind: mediaKind("kind").notNull().default("image"),
+    /**
+     * The still shown before a video plays, and in the thumbnail strip.
+     *
+     * Null is allowed and ordinary: a vendor may have the clip and no poster.
+     * The player then shows its own first frame, which is worse but not
+     * broken — refusing the video over a missing poster would be refusing the
+     * feature over its garnish.
+     */
+    posterUrl: text("poster_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("product_images_product_id_idx").on(table.productId)]

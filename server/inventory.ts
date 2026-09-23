@@ -309,7 +309,7 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
 export async function setProductImages(
   actor: Actor,
   productId: number,
-  images: { url: string; altText?: string | null }[],
+  images: { url: string; altText?: string | null; kind?: "image" | "video" | null; posterUrl?: string | null }[],
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -325,6 +325,11 @@ export async function setProductImages(
         url: image.url,
         altText: image.altText?.trim() || null,
         position,
+        /* Absent means a photograph, which is what every row written before
+           video was. A poster on an image row would never be read, so it is
+           dropped rather than stored to be misleading later. */
+        kind: image.kind === "video" ? ("video" as const) : ("image" as const),
+        posterUrl: image.kind === "video" ? (image.posterUrl?.trim() || null) : null,
       })),
     );
   }

@@ -73,6 +73,9 @@ export type InventoryVariantRow = {
 export type InventoryImageRow = {
   url: string;
   altText: string | null;
+  /** Absent on a caller that predates video, which means a photograph. */
+  kind?: "image" | "video" | null;
+  posterUrl?: string | null;
 };
 
 export type InventoryProductRow = {
@@ -224,6 +227,14 @@ export function toStorefrontProduct(
   const variants = [...row.variants].map(toVariant);
   const description = pick(locale, row.description, row.descriptionAr);
   const title = pick(locale, row.title, row.titleAr);
+
+  const media = row.images.map(item => ({
+    url: item.url,
+    altText: item.altText ?? title,
+    kind: item.kind === "video" ? ("video" as const) : ("image" as const),
+    posterUrl: item.posterUrl ?? null,
+  }));
+
   return {
     id: String(row.id),
     handle: row.handle,
@@ -235,7 +246,14 @@ export function toStorefrontProduct(
     vendorBadges: visibleBadges(context.vendorBadges),
     tags: row.tags ?? [],
     attributes: row.attributes ?? [],
-    images: row.images.map(image => ({ url: image.url, altText: image.altText ?? title })),
+    /*
+     * `media` is the gallery as the vendor arranged it; `images` is the same
+     * list with the video taken out. Cards, rails, thumbnails and saved tiles
+     * all read `images`, so none of them can render a video frame — the rule
+     * holds by construction rather than by each of them remembering it.
+     */
+    media,
+    images: media.filter(item => item.kind === "image").map(({ url, altText }) => ({ url, altText })),
     priceRange: priceRange(variants),
     options: optionsFromVariants(row.variants),
     variants,

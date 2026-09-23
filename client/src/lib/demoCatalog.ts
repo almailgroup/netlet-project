@@ -424,6 +424,13 @@ function toProduct(seed: Seed, index: number): Product {
     selectedOptions: seed.options ? [{ name: seed.options.name, value }] : [],
   }));
 
+  const photographs = Array.from({ length: seed.views ?? 2 }, (_, view) => ({
+    url: placeholderImage(seed.title, seed.palette[view % 2], seed.palette[(view + 1) % 2], view),
+    altText: view === 0 ? seed.title : `${seed.title} — view ${view + 1}`,
+    width: 800,
+    height: 800,
+  }));
+
   return {
     id: `demo-product-${index + 1}`,
     handle: seed.handle,
@@ -468,12 +475,11 @@ function toProduct(seed: Seed, index: number): Product {
           ]
         : []),
     ],
-    images: Array.from({ length: seed.views ?? 2 }, (_, view) => ({
-      url: placeholderImage(seed.title, seed.palette[view % 2], seed.palette[(view + 1) % 2], view),
-      altText: view === 0 ? seed.title : `${seed.title} — view ${view + 1}`,
-      width: 800,
-      height: 800,
-    })),
+    images: photographs,
+    /* No video in the demo: there is no invented clip to point at, and a
+       dead <video> would be worse than none. The shape is here so the page
+       renders the same code path either way. */
+    media: photographs.map(image => ({ ...image, kind: "image" as const, posterUrl: null })),
     priceRange: { min: money(seed.price), max: money(seed.price) },
     options: seed.options
       ? [{ name: seed.options.name, values: seed.options.values }]

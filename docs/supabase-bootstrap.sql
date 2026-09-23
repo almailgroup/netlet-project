@@ -524,6 +524,14 @@ ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "preorder_release_at" timesta
 ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "preorder_stock" integer DEFAULT 0 NOT NULL;
 ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "preorder_release_at" timestamp with time zone;
 
+-- ===== 0015_noisy_kabuki.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."media_kind" AS ENUM('image', 'video');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER TABLE "product_images" ADD COLUMN IF NOT EXISTS "kind" "media_kind" DEFAULT 'image' NOT NULL;
+ALTER TABLE "product_images" ADD COLUMN IF NOT EXISTS "poster_url" text;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

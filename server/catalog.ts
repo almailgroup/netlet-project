@@ -224,7 +224,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const productIds = [...new Set(rows.map(row => row.productId))];
   const images = productIds.length
     ? await db
-        .select({ productId: productImages.productId, url: productImages.url, altText: productImages.altText })
+        .select({ productId: productImages.productId, url: productImages.url, altText: productImages.altText, kind: productImages.kind, posterUrl: productImages.posterUrl })
         .from(productImages)
         .where(inArray(productImages.productId, productIds))
         .orderBy(productImages.position)

@@ -22,7 +22,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, LoaderCircle, Minus, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const categories = trpc.inventory.categories.useQuery();
 
   const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", categoryId: "", tags: "" });
-  const [images, setImages] = useState<{ url: string; altText: string }[]>([]);
+  const [images, setImages] = useState<{ url: string; altText: string; kind: "image" | "video"; posterUrl: string }[]>([]);
   useEffect(() => {
     if (!product.data) return;
     setDraft({
@@ -55,7 +55,15 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       categoryId: product.data.categoryId ? String(product.data.categoryId) : "",
       tags: product.data.tags.join(", "),
     });
-    setImages(product.data.images.map(image => ({ url: image.url, altText: image.altText ?? "" })));
+    // The raw rows carry `kind` and `posterUrl`, so a video already on the
+    // product comes back as a video rather than being silently rewritten to a
+    // photograph on the next save.
+    setImages(product.data.images.map(item => ({
+      url: item.url,
+      altText: item.altText ?? "",
+      kind: item.kind,
+      posterUrl: item.posterUrl ?? "",
+    })));
   }, [product.data?.id]);
 
   const refresh = () => {
@@ -199,7 +207,15 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 {/* A live preview is the only way to tell a good URL from a
                     typo before the product is on the shelf. */}
                 <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef1f6]">
-                  <Thumb src={image.url} alt="" className="size-full object-cover" />
+                  {/* A video previews from its poster: loading the clip to
+                      draw a 64px square would cost the vendor a download per
+                      row for a thumbnail. */}
+                  <Thumb
+                    src={image.kind === "video" ? (image.posterUrl || undefined) : image.url}
+                    alt=""
+                    className="size-full object-cover"
+                    icon={image.kind === "video" ? <Play className="size-5 text-[#536b8c]" /> : undefined}
+                  />
                 </div>
                 <div className="grid min-w-0 flex-1 gap-2">
                   <input
@@ -220,6 +236,34 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                     onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
                     className={field}
                   />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-[11px] font-extrabold ink-muted" htmlFor={`media-kind-${index}`}>{t("admin.mediaKind")}</label>
+                    <select
+                      id={`media-kind-${index}`}
+                      value={image.kind}
+                      disabled={!mayEdit}
+                      onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, kind: e.target.value as "image" | "video" } : entry))}
+                      className="type-body h-9 rounded-lg border border-[#d5dfeb] bg-white px-2 text-[12px] font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]"
+                    >
+                      <option value="image">{t("admin.mediaImage")}</option>
+                      <option value="video">{t("admin.mediaVideo")}</option>
+                    </select>
+                  </div>
+                  {image.kind === "video" ? (
+                    <>
+                      <input
+                        dir="ltr"
+                        value={image.posterUrl}
+                        disabled={!mayEdit}
+                        placeholder={t("admin.mediaPoster")}
+                        aria-label={t("admin.mediaPoster")}
+                        aria-describedby={`poster-hint-${index}`}
+                        onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, posterUrl: e.target.value } : entry))}
+                        className={field}
+                      />
+                      <p id={`poster-hint-${index}`} className="text-[11px] ink-muted">{t("admin.mediaPosterHint")}</p>
+                    </>
+                  ) : null}
                 </div>
                 {mayEdit ? (
                   <button
@@ -238,7 +282,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
         {mayEdit ? (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
-              onClick={() => setImages([...images, { url: "", altText: "" }])}
+              onClick={() => setImages([...images, { url: "", altText: "", kind: "image" as const, posterUrl: "" }])}
               className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
             >
               <Plus className="size-4" />{t("admin.addImage")}

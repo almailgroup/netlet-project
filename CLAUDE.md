@@ -577,6 +577,42 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+## Product video
+
+**One ordered gallery with a `kind` column, not a second table.** A video
+belongs *between* the photographs — "alongside photos" is what the requirement
+asks — and two ordered lists would force an interleave rule that has no right
+answer and would be re-invented at every call site.
+
+The table is still `product_images`, and that is a deliberate wart. Renaming it
+would be a table rename executed against a live database by pasting
+`docs/supabase-bootstrap.sql`, which is the riskiest migration shape there is,
+and that file's whole value is that it can be re-run. A slightly wrong table
+name costs less.
+
+**`media` is the gallery; `images` is the same list with the video removed.**
+Every card, rail, thumbnail and saved tile reads `images` and wants a still
+picture — a card that renders a video is a rail nobody can scan. `images` is
+*derived* from `media` in `fromInventory`, so the rule holds by construction
+rather than by every consumer remembering to filter.
+
+The product page and its lightbox both index into `media`, not one into each:
+the moment a video is in the set, "image 4" would otherwise mean two different
+things on the two surfaces.
+
+The player is the browser's own — `controls`, `playsInline`, no autoplay,
+`preload="metadata"`. A hand-rolled player would have to earn back keyboard
+operation, captions and familiarity; sound starting by itself on a product page
+is why people mute tabs; and metadata fetches the duration rather than the clip,
+since most shoppers never press play. The magnifier and the zoom are for
+photographs and are skipped on a video.
+
+`posterUrl` is optional and null is ordinary. A vendor may have the clip and no
+still, and the player then shows its own first frame — worse, but not broken.
+Refusing the video over a missing poster would be refusing the feature over its
+garnish. A poster on an image row is dropped rather than stored, so nothing
+later reads a value that was never meant.
+
 ## Pre-order
 
 **A pre-order is not an exemption from the stock predicate; it is a second pool

@@ -216,6 +216,13 @@ export const inventoryRouter = router({
             "Image URLs must start with http:// or https://",
           ),
           altText: z.string().trim().max(255).nullable().optional(),
+          kind: z.enum(["image", "video"]).optional(),
+          /* Held to the same http(s) rule as the media URL beside it: a
+             poster is fetched by the browser exactly as an image is. */
+          posterUrl: z.string().url().max(2000).refine(
+            value => /^https?:\/\//i.test(value),
+            "Poster URLs must start with http:// or https://",
+          ).nullable().optional(),
         })).max(12),
       }))
       .mutation(async ({ ctx, input }) => {
