@@ -343,6 +343,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Reading the file is pure and happens in the browser, so the demo's
        import page previews a real spreadsheet — only the write has nowhere to
        go, and saying it succeeded would be the lie the Publish button avoids. */
+    /* The demo portal can draw the extras editor and cannot save it, the same
+       branch every other write there takes. */
+    case "inventory.products.setAddons":
+      throw new Error("admin.saveFailed");
+
     case "inventory.products.bulkCreate":
       throw new Error("admin.saveFailed");
 

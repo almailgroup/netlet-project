@@ -91,6 +91,8 @@ export type InventoryProductRow = {
   attributes: ProductAttribute[] | null;
   variants: InventoryVariantRow[];
   images: InventoryImageRow[];
+  /** Optional extras the seller offers (3.1.2). Absent for nearly everything. */
+  addons?: { id: number; kind: string; label: string; labelAr: string | null; price: string }[];
 };
 
 export type ProductContext = {
@@ -295,6 +297,15 @@ export function toStorefrontProduct(
     priceRange: priceRange(variants),
     options: optionsFromVariants(row.variants),
     variants,
+    /* Nothing is filtered out here: a free extra is refused where a seller
+       records it, so anything that reached the database is sellable. The
+       label follows the reader's language when the seller gave both. */
+    addons: (row.addons ?? []).map(addon => ({
+      id: String(addon.id),
+      kind: addon.kind,
+      label: pick(locale, addon.label, addon.labelAr) || addon.label,
+      price: money(addon.price),
+    })),
   };
 }
 

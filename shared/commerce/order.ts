@@ -17,6 +17,7 @@
 import { commissionFor, type CommissionRule } from "../inventory/commission.js";
 import { addMoney, multiplyMoney, money } from "../money.js";
 import { fulfilmentFor, type StockLevels } from "./preorder.js";
+import { addonsTotal, type ChosenAddon } from "./addons.js";
 
 /** A basket line, with everything needed to price and attribute it. */
 export type PriceableLine = {
@@ -41,6 +42,13 @@ export type PriceableLine = {
   /** The vendor's rate card, and the product's override if it has one. */
   vendorRule: CommissionRule;
   productRule?: CommissionRule | null;
+  /**
+   * The optional extras this shopper ticked (3.1.2), priced from the catalog.
+   *
+   * Optional, so a caller that predates add-ons stays correct with none — the
+   * same shape `levels` uses for pre-order.
+   */
+  addons?: ChosenAddon[];
 };
 
 /** One line as it will be written, with nothing left to compute. */
@@ -52,8 +60,14 @@ export type FrozenLine = {
   productTitle: string;
   variantTitle: string | null;
   sku: string | null;
+  /** The goods, per unit. The extras are their own figure below. */
   unitPrice: string;
   quantity: number;
+  /** What the shopper ticked (3.1.2), copied so an old order still says what. */
+  addons: ChosenAddon[];
+  /** Those extras for the whole line: per unit, times the quantity. */
+  addonsTotal: string;
+  /** The goods and the extras together — everything this line is worth. */
   lineTotal: string;
   commissionPercent: string;
   commissionFixed: string;
@@ -94,7 +108,16 @@ export type DraftOrder = { lines: FrozenLine[]; totals: OrderTotals };
  */
 export function freezeLine(line: PriceableLine): FrozenLine {
   const quantity = Math.max(0, Math.trunc(line.quantity));
-  const split = commissionFor(line.unitPrice, quantity, line.vendorRule, line.productRule);
+  /*
+   * The extras are charged per unit — two fridges need two fittings — and
+   * they are part of what this line is worth, so the commission split runs
+   * over them too and `commission + vendorNet === lineTotal` still holds
+   * exactly. `unitPrice` stays the goods: a line saying the fridge cost 245
+   * when it cost 240 and a 5 fitting is a line nobody can check.
+   */
+  const addons = line.addons ?? [];
+  const extras = addonsTotal(addons, quantity);
+  const split = commissionFor(line.unitPrice, quantity, line.vendorRule, line.productRule, extras);
 
   return {
     variantId: line.variantId,
@@ -106,7 +129,9 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     sku: line.sku,
     unitPrice: money(line.unitPrice),
     quantity,
-    lineTotal: multiplyMoney(line.unitPrice, quantity),
+    addons,
+    addonsTotal: extras,
+    lineTotal: addMoney(multiplyMoney(line.unitPrice, quantity), extras),
     commissionPercent: split.percentApplied,
     commissionFixed: money(split.fixedApplied),
     commissionAmount: split.commission,

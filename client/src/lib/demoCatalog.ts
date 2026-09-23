@@ -438,6 +438,15 @@ function toProduct(seed: Seed, index: number): Product {
        any seller who has not set one. */
     deliverySpeed: index % 3 === 0 ? ("next_day" as const) : index % 3 === 1 ? ("two_to_four" as const) : null,
     deliveryProvider: index % 2 === 0 ? "Shiplee" : null,
+    /* Every third fixture offers extras (3.1.2), so the panel is reachable in
+       the demo and the absent case — which is most of a real shop — is what
+       the other two show. */
+    addons: index % 3 === 0
+      ? [
+          { id: `demo-addon-${index}-1`, kind: "installation", label: "Installation at your address", price: { amount: "5.000", currencyCode: "KWD" } },
+          { id: `demo-addon-${index}-2`, kind: "warranty", label: "Two extra years of warranty", price: { amount: "12.500", currencyCode: "KWD" } },
+        ]
+      : [],
     handle: seed.handle,
     title: seed.title,
     description: seed.description,

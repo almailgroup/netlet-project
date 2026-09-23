@@ -40,6 +40,7 @@ import {
   reviewProduct,
   saveVariant,
   setMemberRole,
+  setProductAddons,
   setProductImages,
   setProductStatus,
   setUserAdmin,
@@ -60,6 +61,7 @@ import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } fro
 import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
+import { ADDON_KINDS } from "../../shared/commerce/addons.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
 /**
@@ -354,6 +356,27 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => setProductImages(actor, input.id, input.images));
+      }),
+
+    /**
+     * The optional extras this product offers (3.1.2).
+     *
+     * The whole list at once, like the images: these are read as a set, and a
+     * per-row endpoint turns reordering two of them into four calls.
+     */
+    setAddons: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        addons: z.array(z.object({
+          kind: z.enum(ADDON_KINDS),
+          label: z.string().trim().min(1).max(160),
+          labelAr: z.string().trim().max(160).nullable().optional(),
+          price: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+        })).max(10),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setProductAddons(actor, input.id, input.addons));
       }),
 
     /**

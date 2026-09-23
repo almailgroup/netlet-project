@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 37 |
+| Built | 38 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 30 |
+| Not started | 29 |
 
-*Last updated after landing the seller's order desk and bulk upload (3.3.3, 3.3.5). Card payments and
+*Last updated after landing optional extras (3.1.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -37,12 +37,12 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 15 built, 0 partial, 1 drawn, 5 absent
+## 3.1 Customer experience — 16 built, 0 partial, 1 drawn, 4 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | Back-in-stock request, vendor sees demand | **Built** | `followed_products`; `customer.follows.demand` is public so the "N people are waiting" line can render. Vendor-side surfacing needs a panel. |
-| 2 | Optional installation fees, extended warranty | Not started | |
+| 2 | Optional installation fees, extended warranty | **Built** | `shared/commerce/addons.ts` is the arithmetic and is pure. **Charged per unit**, because two fridges need two fittings and charging per line makes somebody buying three pay for one and argue about it on the doorstep. **The money goes into the line it belongs to**, so `line_total` still covers everything the line is worth and `commission + vendorNet === lineTotal` still holds exactly — the identity the finance panel is tested against — rather than a separate pot with its own rate, its own report and its own refund rule describing the same transaction. **Nothing is ticked by default, ever**: a pre-ticked warranty is how a shopper pays for what they did not ask for and did not notice, which is the one thing this feature could do that would be worse than not having it. The cart stores *which* extras and never what they cost, exactly as it stores no prices; the order freezes the label and the figure beside the price, so a seller changing an extra afterwards cannot rewrite what was charged. A free extra is refused where a seller records it — that is a feature of the product, and a check box that changes no figure is the dead-control rule. The seller's order desk lists what was bought with each line, because the seller is who turns up to fit the thing. Verified in a browser in both languages, axe clean: declared on the product, ticked by the shopper, carried through the bag and frozen on a real order. |
 | 3 | Pre-order | **Built** | A pre-order is not an exemption from `stock >= n`; it is a second pool carrying the same predicate. `product_variants.preorder_stock` is what the vendor will promise ahead of arrival, taken with `preorder_stock = preorder_stock - n WHERE preorder_stock >= n`, so a vendor who promises 50 sells 50 and the fifty-first is refused by the same race-safe mechanism. The allowance is also the flag — two columns that must agree eventually do not. A line is wholly stocked or wholly pre-ordered, never split. `shared/commerce/preorder.ts` is the rule and is pure; the order line freezes whether it was a pre-order and the date promised, beside the price and the commission rate. |
 | 4 | Public/private wishlists, found by phone | **Built** | `wishlists`, `wishlist_items`, phone key, claim holds, lookup throttle. |
 | 5 | AI personalised recommendations | **Built** | `shared/commerce/taste.ts` + model reorder pass. |

@@ -93,6 +93,21 @@ export const en = {
   "checkout.pointsRow": "Points",
   "auth.referralInvited": "A friend invited you. You both earn points when your first order is paid for.",
   /* The admin's side: what NetLet still owes in cash-outs. */
+  /* The optional extras a seller offers with a product (3.1.2). */
+  "product.addons": "Add to this order",
+  "product.addonInstallation": "Installation",
+  "product.addonWarranty": "Warranty",
+  "product.addonOther": "Extra",
+  "product.addonPerUnit": "{price} each",
+  "admin.addons": "Optional extras",
+  "admin.addonsNote": "Installation, an extended warranty, anything else you offer with this product. Charged per unit — two fridges need two fittings — and never ticked for the shopper by default.",
+  "admin.addonsEmpty": "No extras offered with this product.",
+  "admin.addonLabel": "What it is",
+  "admin.addonKind": "Kind of extra",
+  "admin.addonPrice": "Price each",
+  "admin.addonAdd": "Add an extra",
+  "admin.addonRemove": "Remove",
+  "admin.addonFree": "An extra with no price is a feature of the product — put it in the description instead.",
   /* Bulk upload (3.3.3) and the department guess that rides with it (3.3.5). */
   "admin.import": "Import from a spreadsheet",
   "admin.importNote": "Export your catalogue as CSV — Excel and Google Sheets both write it from Save As. Nothing is created until you have seen what we read.",
@@ -1366,6 +1381,21 @@ export const ar: Record<MessageKey, string> = {
   "checkout.pointsRow": "النقاط",
   "auth.referralInvited": "دعاك صديق. تكسبان كلاكما نقاطاً عند دفع ثمن أول طلب لك.",
   /* جانب الإدارة: ما تدين به نت‑لت من صرف نقدي. */
+  /* الإضافات الاختيارية التي يعرضها البائع مع المنتج. */
+  "product.addons": "أضف إلى هذا الطلب",
+  "product.addonInstallation": "تركيب",
+  "product.addonWarranty": "ضمان",
+  "product.addonOther": "إضافة",
+  "product.addonPerUnit": "{price} للقطعة",
+  "admin.addons": "إضافات اختيارية",
+  "admin.addonsNote": "تركيب، ضمان ممتد، أو أي خدمة أخرى تقدمها مع هذا المنتج. تُحتسب لكل قطعة — ثلاجتان تحتاجان تركيبين — ولا تُحدَّد للمشتري مسبقاً أبداً.",
+  "admin.addonsEmpty": "لا إضافات مع هذا المنتج.",
+  "admin.addonLabel": "ما هي",
+  "admin.addonKind": "نوع الإضافة",
+  "admin.addonPrice": "سعر القطعة",
+  "admin.addonAdd": "أضف إضافة",
+  "admin.addonRemove": "احذف",
+  "admin.addonFree": "الإضافة بلا سعر هي ميزة في المنتج — اذكرها في الوصف بدلاً من ذلك.",
   /* الرفع بالجملة والتصنيف التلقائي المرافق له. */
   "admin.import": "استيراد من ملف",
   "admin.importNote": "صدّر كتالوجك بصيغة CSV — إكسل وجداول جوجل يكتبانها من «حفظ باسم». لا يُنشأ شيء قبل أن ترى ما قرأناه.",

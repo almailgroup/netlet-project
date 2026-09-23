@@ -14,10 +14,13 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  cartItemAddons,
   cartItems,
   carts,
+  orderItemAddons,
   orderItems,
   orders,
+  productAddons,
   productVariants,
   products,
   users,
@@ -25,6 +28,7 @@ import {
   vendors,
 } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
+import { addMoney } from "../shared/money.js";
 
 let db: ReturnType<typeof drizzle>;
 let ordersModule: typeof import("./orders.js");
@@ -459,6 +463,79 @@ describe("moving a line through the warehouse", () => {
     await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
     const back = await ordersModule.setLineFulfilment(acmeActor(), line.id, "preparing");
     expect(back.deliveredAt).toBeNull();
+  });
+});
+
+/*
+ * Optional extras (3.1.2). The arithmetic is proved pure in
+ * `shared/commerce/addons.test.ts`; what is here is that a ticked extra
+ * survives the trip from the basket to a frozen order line, that the money
+ * lands where it should, and — the one that matters — that the identity the
+ * finance panel is tested against still holds exactly.
+ */
+describe("optional extras", () => {
+  async function basketWithAddon(price: string, quantity: number) {
+    const [addon] = await db.insert(productAddons).values({
+      productId: ids.lamp, kind: "installation", label: "Fitting at your address", price,
+    }).returning();
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity }], ids.shopper);
+    const [line] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    await db.insert(cartItemAddons).values({ cartItemId: line.id, addonId: addon.id });
+    return { cartId, addonId: addon.id };
+  }
+
+  it("charges the extra per unit and puts it in the line total", async () => {
+    const { cartId } = await basketWithAddon("5.000", 3);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    // The lamp is 24.375 × 3 = 73.125, and three fittings at 5.000 = 15.000.
+    expect(line.unitPrice).toBe("24.375");
+    expect(line.lineTotal).toBe("88.125");
+  });
+
+  /*
+   * The identity the finance panel is built on, with an extra in the middle of
+   * it: a fitting the platform did not take its cut of would make the report
+   * disagree with the money.
+   */
+  it("keeps commission + vendorNet === lineTotal exactly", async () => {
+    const { cartId } = await basketWithAddon("5.000", 2);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(addMoney(line.commissionAmount, line.vendorNet)).toBe(line.lineTotal);
+  });
+
+  it("freezes what it was called and what it cost", async () => {
+    const { cartId, addonId } = await basketWithAddon("5.000", 1);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+
+    const frozen = await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, line.id));
+    expect(frozen).toHaveLength(1);
+    expect(frozen[0]).toMatchObject({ addonId, kind: "installation", label: "Fitting at your address", price: "5.000" });
+  });
+
+  /* An order is an obligation: moving the price afterwards must not rewrite
+     what was charged, exactly as with the goods and the commission rate. */
+  it("does not follow the seller changing the price afterwards", async () => {
+    const { cartId, addonId } = await basketWithAddon("5.000", 1);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    await db.update(productAddons).set({ price: "40.000" }).where(eq(productAddons.id, addonId));
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const [frozen] = await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, line.id));
+    expect(frozen.price).toBe("5.000");
+    expect(line.lineTotal).toBe("29.375");
+  });
+
+  it("leaves a line with nothing ticked exactly as it was", async () => {
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(line.lineTotal).toBe("24.375");
+    expect(await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, line.id))).toEqual([]);
   });
 });
 

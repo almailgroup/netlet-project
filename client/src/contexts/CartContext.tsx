@@ -53,7 +53,12 @@ type CartContextValue = {
    * have to dismiss the whole bag between each, so that page passes false and
    * confirms with a toast instead.
    */
-  addItem: (variantId: string, quantity?: number, reveal?: boolean) => Promise<void>;
+  /**
+   * `addonIds` are the optional extras the shopper ticked (3.1.2). Ids only:
+   * the price is the catalog's, and anything a browser says about money is
+   * discarded server-side.
+   */
+  addItem: (variantId: string, quantity?: number, reveal?: boolean, addonIds?: string[]) => Promise<void>;
   updateQuantity: (lineId: string, quantity: number) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
   clearCart: () => void;
@@ -129,12 +134,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const addItem = useCallback(
-    async (variantId: string, quantity: number = 1, reveal: boolean = true) => {
+    async (variantId: string, quantity: number = 1, reveal: boolean = true, addonIds: string[] = []) => {
       setLoading(true);
       try {
         if (!cartId || !cart) {
           const created = await utils.client.commerce.cart.create.mutate({
-            lines: [{ variantId, quantity }],
+            lines: [{ variantId, quantity, addonIds }],
           });
           if (!created) return;
           setCart(created);
@@ -144,7 +149,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         } else {
           const updated = await utils.client.commerce.cart.addLines.mutate({
             cartId,
-            lines: [{ variantId, quantity }],
+            lines: [{ variantId, quantity, addonIds }],
           });
           setCart(updated);
         }

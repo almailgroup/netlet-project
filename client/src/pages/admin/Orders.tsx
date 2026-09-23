@@ -224,6 +224,18 @@ function OrderDetail({ orderId }: { orderId: number }) {
                         <bdi dir="ltr">{line.quantity} × {money({ amount: line.unitPrice, currencyCode: "KWD" })}</bdi>
                       </p>
                     </div>
+                    {/* What was bought with it (3.1.2). The seller is who turns
+                        up to fit the thing, so this is not decoration. */}
+                    {line.addons.length > 0 ? (
+                      <ul className="mt-1 space-y-0.5">
+                        {line.addons.map(addon => (
+                          <li key={addon.id} dir="auto" className="text-[12px] ink-accent">
+                            + {addon.label} · <bdi dir="ltr">{money({ amount: addon.price, currencyCode: "KWD" })}</bdi>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">
                         {t(FULFILMENT_LABEL[line.fulfilment as FulfilmentState])}

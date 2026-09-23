@@ -75,10 +75,21 @@ export function commissionFor(
   quantity: number,
   vendor: CommissionRule,
   product?: CommissionRule | null,
+  /**
+   * Anything else this line is worth, already totalled for the whole line.
+   *
+   * Today that is the optional extras (3.1.2) — a fitting, an extended
+   * warranty. They are the seller's own service on the seller's own line, so
+   * the platform's cut is taken on them exactly as it is on the goods, and
+   * `commission + net === lineTotal` keeps holding on every line, which is the
+   * identity the finance panel is tested against.
+   */
+  extra = "0.000",
 ): CommissionBreakdown {
   const { rule, source } = resolveRule(vendor, product);
 
-  const grossFils = toFils(unitPrice) * BigInt(Math.max(0, Math.trunc(quantity)));
+  const grossFils =
+    toFils(unitPrice) * BigInt(Math.max(0, Math.trunc(quantity))) + toFils(extra);
 
   const percent = rule.percent?.trim() || "0";
   const fixed = rule.fixed?.trim() || "0";

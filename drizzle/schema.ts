@@ -1341,6 +1341,91 @@ export const orderItems = pgTable(
   ]
 );
 
+/* ---------------------------------------------------------------- extras --- */
+
+/**
+ * The optional extras a seller offers with a product (3.1.2).
+ *
+ * Installation and extended warranty are what the requirement names, and both
+ * are **the seller's own service on the seller's own product** — so they hang
+ * off the product rather than off a services catalog of their own. A separate
+ * pot would need its own commission rate, its own report and its own refund
+ * rule to describe the same transaction: the fitter and the fridge come from
+ * one shop.
+ *
+ * On the product rather than the variant, because a fitting is the same visit
+ * whichever colour was picked, and an extra per variant would ask a seller to
+ * type it once per size.
+ */
+export const productAddons = pgTable(
+  "product_addons",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    /** One of `ADDON_KINDS`. Text rather than an enum so a new kind is not a migration. */
+    kind: varchar("kind", { length: 20 }).notNull().default("other"),
+    /** The seller's own words, in whichever language they typed. */
+    label: varchar("label", { length: 160 }).notNull(),
+    labelAr: varchar("label_ar", { length: 160 }),
+    /** Per unit: two fridges need two fittings. */
+    price: numeric("price", { precision: 12, scale: 3 }).notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("product_addons_product_idx").on(table.productId, table.position)]
+);
+
+/**
+ * Which extras a shopper ticked, on one line of their basket.
+ *
+ * **No price here**, exactly as `cart_items` stores none: a basket is a list of
+ * intentions and the fitting costs whatever the seller charges when the shopper
+ * looks. Freezing it is the order's job, which is what `order_item_addons`
+ * below is for.
+ *
+ * Cascade from the line, so emptying a basket takes the choices with it, and
+ * from the add-on, because a withdrawn extra cannot be bought.
+ */
+export const cartItemAddons = pgTable(
+  "cart_item_addons",
+  {
+    id: serial("id").primaryKey(),
+    cartItemId: integer("cart_item_id")
+      .notNull()
+      .references(() => cartItems.id, { onDelete: "cascade" }),
+    addonId: integer("addon_id")
+      .notNull()
+      .references(() => productAddons.id, { onDelete: "cascade" }),
+  },
+  table => [uniqueIndex("cart_item_addons_unique").on(table.cartItemId, table.addonId)]
+);
+
+/**
+ * The extras as they were sold, frozen beside the price.
+ *
+ * Everything is copied and the reference is `set null`, for the reason every
+ * other fact on an order line is: a seller may withdraw an extra, rename it or
+ * change what it costs, and an order from last year still has to say what was
+ * bought, at what price, and still has to be refundable at that figure.
+ */
+export const orderItemAddons = pgTable(
+  "order_item_addons",
+  {
+    id: serial("id").primaryKey(),
+    orderItemId: integer("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    addonId: integer("addon_id").references(() => productAddons.id, { onDelete: "set null" }),
+    kind: varchar("kind", { length: 20 }).notNull(),
+    label: varchar("label", { length: 160 }).notNull(),
+    /** Per unit, as charged. The line's own quantity says how many. */
+    price: numeric("price", { precision: 12, scale: 3 }).notNull(),
+  },
+  table => [index("order_item_addons_line_idx").on(table.orderItemId)]
+);
+
 /* ------------------------------------------------------------- referrals --- */
 
 /**
@@ -1582,3 +1667,6 @@ export type AuditEntry = typeof auditLog.$inferSelect;
 
 export type Referral = typeof referrals.$inferSelect;
 export type PointEntryRow = typeof pointEntries.$inferSelect;
+
+export type ProductAddon = typeof productAddons.$inferSelect;
+export type OrderItemAddon = typeof orderItemAddons.$inferSelect;

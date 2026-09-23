@@ -99,6 +99,19 @@ export type ProductAttribute = {
   value: string;
 };
 
+/**
+ * An optional extra a seller offers with a product (3.1.2).
+ *
+ * On the product rather than the variant: a fitting is the same visit
+ * whichever colour was picked.
+ */
+export type ProductAddon = {
+  id: string;
+  kind: string;
+  label: string;
+  price: Money;
+};
+
 export type Product = {
   id: string;
   /** URL-friendly slug used as the route param on PDP. */
@@ -159,6 +172,12 @@ export type Product = {
    * shop cannot keep would be worse than no name.
    */
   deliveryProvider: string | null;
+  /**
+   * Optional extras the seller offers with this product (3.1.2) — installation,
+   * an extended warranty. Empty for nearly everything, which is why it is a
+   * list rather than two nullable fields.
+   */
+  addons: ProductAddon[];
 };
 
 export type Collection = {
@@ -190,6 +209,14 @@ export type CartItem = {
    */
   agreedFrom?: Money | null;
   quantity: number;
+  /**
+   * The optional extras this line carries (3.1.2) — a fitting, an extended
+   * warranty. Priced from the catalog on every read, like everything else in a
+   * basket: `cart_item_addons` stores which, never what they cost.
+   */
+  addons?: { id: string; label: string; kind: string; price: Money }[];
+  /** Those extras across the whole line. Included in `lineTotal`. */
+  addonsTotal?: Money | null;
   lineTotal: Money;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a

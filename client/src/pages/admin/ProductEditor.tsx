@@ -16,6 +16,7 @@ import { Thumb } from "@/components/product/Thumb";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
+import { ADDON_KINDS, type AddonKind } from "@shared/commerce/addons";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
@@ -50,6 +51,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const [specs, setSpecs] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", categoryId: "", tags: "" });
   const [images, setImages] = useState<{ url: string; altText: string; kind: "image" | "video"; posterUrl: string }[]>([]);
+  /* The optional extras this product offers (3.1.2), edited as a whole list
+     for the reason the images are: they are read as a set. */
+  const [addons, setAddons] = useState<{ kind: AddonKind; label: string; labelAr: string; price: string }[]>([]);
   useEffect(() => {
     if (!product.data) return;
     setDraft({
@@ -75,6 +79,12 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       altText: item.altText ?? "",
       kind: item.kind,
       posterUrl: item.posterUrl ?? "",
+    })));
+    setAddons((product.data.addons ?? []).map(addon => ({
+      kind: addon.kind as AddonKind,
+      label: addon.label,
+      labelAr: addon.labelAr ?? "",
+      price: addon.price,
     })));
   }, [product.data?.id]);
 
@@ -123,6 +133,12 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const saveImages = trpc.inventory.products.setImages.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
+  });
+  const saveAddons = trpc.inventory.products.setAddons.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    /* The one refusal a seller can act on: a free extra is a feature of the
+       product, and the message says where to put it instead. */
+    onError: error => (error.message === "ADDON_NOT_SELLABLE" ? toast.error(t("admin.addonFree")) : fail(error)),
   });
   const saveVariant = trpc.inventory.variants.save.useMutation({ onSuccess: () => { refresh(); toast.success(t("admin.saved")); }, onError: fail });
   const adjust = trpc.inventory.variants.adjustStock.useMutation({
@@ -457,6 +473,98 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             >
               {saveImages.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
               {t(saveImages.isPending ? "admin.saving" : "admin.save")}
+            </button>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Optional extras (3.1.2). Beneath the images and above the variants,
+          because they are a fact about the product rather than about one size
+          of it — a fitting is the same visit whichever colour was picked. */}
+      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        <h2 className="text-sm font-extrabold">{t("admin.addons")}</h2>
+        <p className="mt-1 max-w-2xl text-[11px] leading-5 font-semibold ink-muted">{t("admin.addonsNote")}</p>
+
+        {addons.length === 0 ? (
+          <p className="mt-4 text-[13px] text-[#536b8c]">{t("admin.addonsEmpty")}</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {addons.map((addon, index) => (
+              <div key={index} className="flex items-start gap-3 rounded-xl border border-[#e6e9ef] p-3">
+                <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_140px_120px]">
+                  <input
+                    dir="auto"
+                    value={addon.label}
+                    disabled={!mayEdit}
+                    placeholder={t("admin.addonLabel")}
+                    aria-label={t("admin.addonLabel")}
+                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))}
+                    className={inputClass}
+                  />
+                  <select
+                    value={addon.kind}
+                    disabled={!mayEdit}
+                    aria-label={t("admin.addonKind")}
+                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, kind: e.target.value as AddonKind } : entry))}
+                    className={inputClass}
+                  >
+                    {ADDON_KINDS.map(kind => (
+                      <option key={kind} value={kind}>
+                        {t(kind === "installation" ? "product.addonInstallation" : kind === "warranty" ? "product.addonWarranty" : "product.addonOther")}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    dir="ltr"
+                    inputMode="decimal"
+                    value={addon.price}
+                    disabled={!mayEdit}
+                    placeholder={t("admin.addonPrice")}
+                    aria-label={t("admin.addonPrice")}
+                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, price: e.target.value } : entry))}
+                    className={inputClass}
+                  />
+                </div>
+                {mayEdit ? (
+                  <button
+                    onClick={() => setAddons(addons.filter((_, i) => i !== index))}
+                    aria-label={t("admin.addonRemove")}
+                    className="tap-target ink-muted hover:text-[#a44a2b]"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {mayEdit ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => setAddons([...addons, { kind: "installation" as AddonKind, label: "", labelAr: "", price: "" }])}
+              className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
+            >
+              <Plus className="size-4" />{t("admin.addonAdd")}
+            </button>
+            <button
+              onClick={() => saveAddons.mutate({
+                id: row.id,
+                // A row left blank is an abandoned edit, not an extra.
+                addons: addons
+                  .filter(addon => addon.label.trim() && addon.price.trim())
+                  .map(addon => ({
+                    kind: addon.kind,
+                    label: addon.label.trim(),
+                    labelAr: addon.labelAr.trim() || null,
+                    price: addon.price.trim(),
+                  })),
+              })}
+              disabled={saveAddons.isPending}
+              className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
+            >
+              {saveAddons.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {t(saveAddons.isPending ? "admin.saving" : "admin.save")}
             </button>
           </div>
         ) : null}

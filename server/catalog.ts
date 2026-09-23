@@ -18,9 +18,11 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import {
+  cartItemAddons,
   cartItems,
   carts,
   categories,
+  productAddons,
   productImages,
   products,
   productVariants,
@@ -38,6 +40,7 @@ import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
+import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
 import { codAvailability } from "../shared/commerce/payment.js";
 import { recoveryFor } from "../shared/commerce/cartRecovery.js";
@@ -270,10 +273,41 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   /* `priceFor` decides what each line actually costs: the agreed price while
      it is live, and the shelf price the moment the shelf is cheaper. */
   const agreed = await liveOffersFor(db, cart.userId, rows.map(row => row.variantId));
-  const priced = rows.map(row => ({
-    ...row,
-    charged: priceFor(row.price, agreed.get(row.variantId) ?? null),
-  }));
+
+  /*
+   * The optional extras each line carries (3.1.2), priced from the catalog on
+   * every read — `cart_item_addons` stores which, never what they cost, which
+   * is the same rule that keeps a cart free of prices.
+   */
+  const lineIds = rows.map(row => row.lineId);
+  const chosenAddons = lineIds.length
+    ? await db
+        .select({
+          lineId: cartItemAddons.cartItemId,
+          id: productAddons.id,
+          kind: productAddons.kind,
+          label: productAddons.label,
+          labelAr: productAddons.labelAr,
+          price: productAddons.price,
+        })
+        .from(cartItemAddons)
+        .innerJoin(productAddons, eq(productAddons.id, cartItemAddons.addonId))
+        .where(inArray(cartItemAddons.cartItemId, lineIds))
+        .orderBy(productAddons.position)
+    : [];
+
+  const priced = rows.map(row => {
+    const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
+    return {
+      ...row,
+      charged: priceFor(row.price, agreed.get(row.variantId) ?? null),
+      extras,
+      extrasTotal: addonsTotal(
+        extras.map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
+        row.quantity,
+      ),
+    };
+  });
 
   const items: CartItem[] = priced.map(row => ({
     lineId: String(row.lineId),
@@ -291,10 +325,22 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     agreedFrom: row.charged === row.price ? null : money(row.price),
     quantity: row.quantity,
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
-    lineTotal: money(sumMinor([{ amount: row.charged, quantity: row.quantity }])),
+    addons: row.extras.map(addon => ({
+      id: String(addon.id),
+      kind: addon.kind,
+      label: addon.label,
+      price: money(addon.price),
+    })),
+    addonsTotal: row.extras.length ? money(row.extrasTotal) : null,
+    /* The extras are part of what this line costs, so they are inside the
+       line total rather than a figure somebody has to add up themselves. */
+    lineTotal: money(addMoney(sumMinor([{ amount: row.charged, quantity: row.quantity }]), row.extrasTotal)),
   }));
 
-  const subtotal = sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity })));
+  const subtotal = addMoney(
+    sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity }))),
+    ...priced.map(row => row.extrasTotal),
+  );
   const quote = deliveryFor(priced);
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
@@ -350,12 +396,14 @@ export async function getCart(cartId: string): Promise<Cart | null> {
  */
 function deliveryFor(rows: {
   vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
-  charged: string; quantity: number;
+  charged: string; quantity: number; extrasTotal?: string;
 }[]) {
   const groups = new Map<number, DeliveryGroup>();
   for (const row of rows) {
     const held = groups.get(row.vendorId);
-    const line = multiplyMoney(row.charged, row.quantity);
+    /* The extras count toward a seller's free-delivery threshold: they are
+       money spent with that seller, the same as an agreed price is. */
+    const line = addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal ?? "0.000");
     if (held) held.goods = addMoney(held.goods, line);
     else {
       groups.set(row.vendorId, {
@@ -369,7 +417,14 @@ function deliveryFor(rows: {
   return quoteDelivery([...groups.values()]);
 }
 
-type Line = { variantId: string; quantity: number };
+/**
+ * A line as the client asks for it.
+ *
+ * `addonIds` are the optional extras the shopper ticked (3.1.2) — ids only,
+ * because the price comes from the catalog and anything the client says about
+ * money is discarded.
+ */
+type Line = { variantId: string; quantity: number; addonIds?: string[] };
 
 /**
  * Only a buyable variant may enter a cart.
@@ -404,7 +459,11 @@ async function putLines(
   lines: Line[],
 ) {
   const wanted = lines
-    .map(line => ({ variantId: Number(line.variantId), quantity: line.quantity }))
+    .map(line => ({
+      variantId: Number(line.variantId),
+      quantity: line.quantity,
+      addonIds: (line.addonIds ?? []).map(Number).filter(Number.isInteger),
+    }))
     .filter(line => Number.isInteger(line.variantId) && line.quantity > 0);
   const buyable = await buyableVariantIds(db, wanted.map(line => line.variantId));
 
@@ -412,13 +471,35 @@ async function putLines(
     if (!buyable.has(line.variantId)) continue;
     // Adding the same variant twice adds to the line rather than growing a
     // second one — which is what the composite unique is for.
-    await db
+    const [row] = await db
       .insert(cartItems)
       .values({ cartId, variantId: line.variantId, quantity: line.quantity })
       .onConflictDoUpdate({
         target: [cartItems.cartId, cartItems.variantId],
         set: { quantity: sql`${cartItems.quantity} + ${line.quantity}`, updatedAt: new Date() },
-      });
+      })
+      .returning({ id: cartItems.id });
+
+    if (line.addonIds.length === 0 || !row) continue;
+
+    /*
+     * Only extras this product actually offers, so an id from another seller's
+     * listing cannot be attached to this line — the same reason the price is
+     * read here rather than taken from the caller.
+     */
+    const offered = await db
+      .select({ id: productAddons.id })
+      .from(productAddons)
+      .innerJoin(productVariants, eq(productVariants.productId, productAddons.productId))
+      .where(and(inArray(productAddons.id, line.addonIds), eq(productVariants.id, line.variantId)));
+
+    if (offered.length === 0) continue;
+    /* Ticking the same extra twice is one extra: the unique index decides, so
+       two tabs cannot both attach it. */
+    await db
+      .insert(cartItemAddons)
+      .values(offered.map(addon => ({ cartItemId: row.id, addonId: addon.id })))
+      .onConflictDoNothing();
   }
 }
 

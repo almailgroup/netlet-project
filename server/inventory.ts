@@ -12,6 +12,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   categories,
+  productAddons,
   productImages,
   products,
   productStatus,
@@ -22,6 +23,7 @@ import {
   vendors,
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
+import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
 import { recordAudit, violationCount } from "./audit.js";
 import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
@@ -179,14 +181,18 @@ export type FullProduct = Awaited<ReturnType<typeof getProduct>>;
 async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: (typeof products.$inferSelect)[]) {
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
-  const [variants, images] = await Promise.all([
+  const [variants, images, addons] = await Promise.all([
     db.select().from(productVariants).where(inArray(productVariants.productId, ids)).orderBy(asc(productVariants.position)),
     db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.position)),
+    /* The optional extras (3.1.2). One query for the page rather than one per
+       product, the way the images already are. */
+    db.select().from(productAddons).where(inArray(productAddons.productId, ids)).orderBy(asc(productAddons.position)),
   ]);
   return rows.map(row => ({
     ...row,
     variants: variants.filter(v => v.productId === row.id),
     images: images.filter(i => i.productId === row.id),
+    addons: addons.filter(a => a.productId === row.id),
   }));
 }
 
@@ -505,6 +511,48 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
  * Until uploads exist these are URLs a vendor pastes. That is also why the
  * image CSP is wide by default — see ENV.mediaHost.
  */
+/**
+ * Replace the optional extras a product offers (3.1.2).
+ *
+ * The whole list at once, the way the images are, because these are read as a
+ * set and a per-row endpoint turns "the seller changed their mind about the
+ * order of two things" into four calls.
+ *
+ * **A free extra is refused here**, not hidden on the page: an extra that adds
+ * nothing to the total is a feature of the product, and a check box that
+ * changes no figure is the dead-control rule. The guard is beside the query
+ * rather than in the router alone, for the reason every other guard here is.
+ */
+export async function setProductAddons(
+  actor: Actor,
+  productId: number,
+  addons: { kind: string; label: string; labelAr?: string | null; price: string }[],
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const row = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+
+  const sellable = addons.filter(addon => isSellableAddon(addon));
+  if (sellable.length !== addons.length) throw new Error("ADDON_NOT_SELLABLE");
+
+  await db.delete(productAddons).where(eq(productAddons.productId, productId));
+  if (sellable.length) {
+    await db.insert(productAddons).values(
+      sellable.map((addon, position) => ({
+        productId,
+        kind: ADDON_KINDS.includes(addon.kind as AddonKind) ? addon.kind : "other",
+        label: addon.label.trim(),
+        labelAr: addon.labelAr?.trim() || null,
+        price: addon.price,
+        position,
+      })),
+    );
+  }
+  return getProduct(actor, productId);
+}
+
 export async function setProductImages(
   actor: Actor,
   productId: number,

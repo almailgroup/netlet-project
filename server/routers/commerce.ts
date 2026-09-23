@@ -35,6 +35,9 @@ const localeSchema = z.enum(["en", "ar"]).optional();
 const cartLineInputSchema = z.object({
   variantId: z.string().min(1),
   quantity: z.number().int().min(1).max(99),
+  /* The optional extras ticked on this line (3.1.2). Ids only — the price is
+     read from the catalog, and an id the product does not offer is dropped. */
+  addonIds: z.array(z.string().min(1)).max(20).optional(),
 });
 
 const cartLineUpdateSchema = z.object({

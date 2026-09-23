@@ -13,11 +13,14 @@
  */
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
+  cartItemAddons,
   cartItems,
   carts,
+  orderItemAddons,
   orderItems,
   orders,
   pointEntries,
+  productAddons,
   productVariants,
   products,
   vendors,
@@ -37,6 +40,7 @@ import { priceFor } from "../shared/commerce/priceOffers.js";
 import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote } from "../shared/commerce/delivery.js";
 import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
+import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { addMoney, multiplyMoney, subtractMoney } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
@@ -153,6 +157,25 @@ async function priceableLines(
   const agreed = await liveOffersFor(db, userId, rows.map(row => row.variantId));
   const offerIds: number[] = [];
 
+  /*
+   * The extras the shopper ticked (3.1.2), priced from the catalog here for
+   * the same reason the goods are: the basket stores which, never what they
+   * cost, and this is the last moment the figure is allowed to move.
+   */
+  const extras = await db
+    .select({
+      variantId: cartItems.variantId,
+      id: productAddons.id,
+      kind: productAddons.kind,
+      label: productAddons.label,
+      price: productAddons.price,
+    })
+    .from(cartItemAddons)
+    .innerJoin(cartItems, eq(cartItems.id, cartItemAddons.cartItemId))
+    .innerJoin(productAddons, eq(productAddons.id, cartItemAddons.addonId))
+    .where(eq(cartItems.cartId, cartId))
+    .orderBy(productAddons.position);
+
   const lines = rows.map(row => {
     const offer = agreed.get(row.variantId) ?? null;
     const charged = priceFor(row.unitPrice, offer);
@@ -182,6 +205,9 @@ async function priceableLines(
       row.productPercent === null && row.productFixed === null
         ? null
         : { percent: row.productPercent, fixed: row.productFixed },
+    addons: extras
+      .filter(addon => addon.variantId === row.variantId)
+      .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
     };
   });
 
@@ -195,7 +221,17 @@ async function priceableLines(
   const codRules = new Map(rows.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
   for (const row of rows) {
     const charged = priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
-    const value = multiplyMoney(charged, row.quantity);
+    /* The extras are money spent with that seller, so they count toward their
+       free-delivery threshold exactly as the goods do. */
+    const value = addMoney(
+      multiplyMoney(charged, row.quantity),
+      addonsTotal(
+        extras
+          .filter(addon => addon.variantId === row.variantId)
+          .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
+        row.quantity,
+      ),
+    );
     const held = groups.get(row.vendorId);
     if (held) held.goods = addMoney(held.goods, value);
     else {
@@ -393,7 +429,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
       })
       .returning();
 
-    await db.insert(orderItems).values(
+    const writtenLines = await db.insert(orderItems).values(
       draft.lines.map(line => ({
         orderId: order.id,
         vendorId: line.vendorId,
@@ -414,7 +450,27 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         preordered: pools.get(line.variantId) === "preorder",
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
-    );
+    ).returning({ id: orderItems.id, variantId: orderItems.variantId });
+
+    /*
+     * The extras, copied beside the price. Everything is frozen and the
+     * reference is `set null`, for the reason every other fact on a line is: a
+     * seller may withdraw an extra or change what it costs, and an order from
+     * last year still has to say what was bought and be refundable at that
+     * figure.
+     */
+    const frozenAddons = draft.lines.flatMap(line => {
+      const written = writtenLines.find(row => row.variantId === line.variantId);
+      if (!written) return [];
+      return line.addons.map(addon => ({
+        orderItemId: written.id,
+        addonId: addon.id,
+        kind: addon.kind,
+        label: addon.label,
+        price: addon.price,
+      }));
+    });
+    if (frozenAddons.length) await db.insert(orderItemAddons).values(frozenAddons);
 
     /* A special price is spent once. Marking it here rather than when the
        shopper adds to the bag is deliberate: a grant is not consumed by
@@ -618,8 +674,24 @@ export async function getOrderFor(actor: Actor, orderId: number) {
 
   const allLines = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 
+  /*
+   * The extras that were bought with each line (3.1.2). The seller is who
+   * turns up to fit the thing, so an order desk that does not say a fitting
+   * was paid for is an order desk that gets somebody a sofa and no fitter.
+   */
+  const addonRows = allLines.length
+    ? await db
+        .select()
+        .from(orderItemAddons)
+        .where(inArray(orderItemAddons.orderItemId, allLines.map(line => line.id)))
+    : [];
+  const withAddons = allLines.map(line => ({
+    ...line,
+    addons: addonRows.filter(addon => addon.orderItemId === line.id),
+  }));
+
   if (actor.kind === "vendor") {
-    const mine = allLines.filter(line => line.vendorId === actor.vendorId);
+    const mine = withAddons.filter(line => line.vendorId === actor.vendorId);
     // Not their order at all: a refusal, rather than an order with no lines,
     // which would confirm that the order exists.
     if (mine.length === 0) return null;
@@ -634,6 +706,10 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         sku: line.sku,
         unitPrice: line.unitPrice,
         quantity: line.quantity,
+        /* The slice is arithmetic over `lineTotal`, which already covers the
+           extras, so re-summing them here would count them twice. */
+        addons: [],
+        addonsTotal: "0.000",
         lineTotal: line.lineTotal,
         commissionPercent: line.commissionPercent,
         commissionFixed: line.commissionFixed,
@@ -664,7 +740,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
     };
   }
 
-  return { order, lines: allLines, slices: null, scope: "admin" as const };
+  return { order, lines: withAddons, slices: null, scope: "admin" as const };
 }
 
 /**

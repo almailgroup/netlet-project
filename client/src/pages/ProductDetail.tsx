@@ -6,6 +6,7 @@ import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
+import { AddonPicker } from "@/components/product/AddonPicker";
 import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -678,6 +679,9 @@ export default function ProductDetail() {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [tab, setTab] = useState<"specifications" | "shipping" | "warranty" | "returns">("specifications");
   const [quantity, setQuantity] = useState(1);
+  /* Nothing ticked by default (3.1.2): a pre-ticked warranty is how somebody
+     pays for what they did not ask for and did not notice. */
+  const [chosenAddons, setChosenAddons] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const openRelated = (item: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(item.handle)}`));
 
@@ -742,7 +746,7 @@ export default function ProductDetail() {
   const addToCart = async () => {
     if (!product || !selectedVariant?.availableForSale) return;
     try {
-      await addItem(selectedVariant.id, quantity);
+      await addItem(selectedVariant.id, quantity, true, chosenAddons);
       toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
     } catch {
       toast.error(t("cart.addFailed"));
@@ -852,6 +856,11 @@ export default function ProductDetail() {
             <ProductAssistant handle={product.handle} />
 
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
+
+            {/* With the quantity and the buy button, because they are one
+                decision about one purchase — by the time somebody has scrolled
+                past the button they have bought it without the fitting. */}
+            <AddonPicker addons={product.addons ?? []} chosen={chosenAddons} onChange={setChosenAddons} />
 
             <div className="mt-6 flex items-center gap-3">
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
