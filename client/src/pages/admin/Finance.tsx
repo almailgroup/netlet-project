@@ -28,6 +28,7 @@ import { SETTLEMENT_DAYS, type PayoutDue } from "@shared/commerce/payoutSchedule
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, Coins, RotateCcw, Store, Wallet } from "lucide-react";
+import { toast } from "sonner";
 import type { ReactNode } from "react";
 
 export default function AdminFinance() {
@@ -76,6 +77,14 @@ function Finance() {
           );
         }}
       </QueryGate>
+
+      {/* Outside the "nothing sold yet" branch on purpose: a points balance can
+          exist without a sale behind it — an adjustment, a goodwill credit —
+          and a cash-out somebody is waiting on must not be hidden by an empty
+          sales table. */}
+      <div className="mt-8">
+        <CashOuts />
+      </div>
     </>
   );
 }
@@ -438,6 +447,90 @@ function PayoutsDue() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </Scroller>
+            )}
+          </section>
+        );
+      }}
+    </QueryGate>
+  );
+}
+
+/**
+ * Points cash-outs NetLet still owes (3.1.15).
+ *
+ * The points are already off the shopper's balance — they had to be, or the
+ * same points get spent in another tab while the transfer is arranged — so
+ * this is only the bank transfer and the record that it happened. It is beside
+ * the seller payouts because it is the same job: a report of what is owed,
+ * paid by a human, marked off here.
+ */
+function CashOuts() {
+  const { t } = useTranslation();
+  const money = useMoney();
+  const formatDate = useDateFormat();
+  const owed = trpc.rewards.pendingCashOuts.useQuery({});
+  const utils = trpc.useUtils();
+  const settle = trpc.rewards.settleCashOut.useMutation({
+    onSuccess: () => {
+      toast.success(t("admin.markPaidDone"));
+      void utils.rewards.pendingCashOuts.invalidate();
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  return (
+    <QueryGate queries={[owed]}>
+      {() => {
+        const rows = owed.data ?? [];
+        return (
+          <section>
+            <h2 id="finance-cashouts" className="text-sm font-extrabold text-[#0a285a]">{t("admin.cashOuts")}</h2>
+            <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.cashOutsNote")}</p>
+            {rows.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+                {t("admin.cashOutsEmpty")}
+              </p>
+            ) : (
+              <Scroller labelledBy="finance-cashouts">
+                <table className="w-full min-w-[560px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#d5dfeb]">
+                      <th scope="col" className={`${head} text-start`}>{t("admin.cashOutShopper")}</th>
+                      <th scope="col" className={`${head} text-end`}>{t("admin.cashOutPoints")}</th>
+                      <th scope="col" className={`${head} text-end`}>{t("admin.payoutOwed")}</th>
+                      <th scope="col" className={`${head} text-start`}>{t("admin.cashOutRequested")}</th>
+                      <th scope="col" className={`${head} text-end`}><span className="sr-only">{t("admin.markPaid")}</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(row => (
+                      <tr key={row.id} className="border-b border-[#eef1f6] last:border-0">
+                        <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}>
+                          <span dir="auto">{row.name ?? ""}</span>{" "}
+                          <bdi dir="ltr" className="font-normal ink-muted">{row.email}</bdi>
+                        </th>
+                        <td className={`${cell} text-end text-[#536b8c]`}>
+                          <bdi dir="ltr">{t("rewards.balance", { points: row.points })}</bdi>
+                        </td>
+                        <td className={`${cell} text-end font-extrabold text-[#0a285a]`}>
+                          <bdi dir="ltr">{money({ amount: row.value, currencyCode: "KWD" })}</bdi>
+                        </td>
+                        <td className={`${cell} text-start text-[#536b8c]`}>{formatDate(row.requestedAt)}</td>
+                        <td className={`${cell} text-end`}>
+                          <button
+                            type="button"
+                            disabled={settle.isPending}
+                            onClick={() => settle.mutate({ entryId: row.id })}
+                            className="glass-navy type-control pressable rounded-full px-3 py-1.5 disabled:opacity-60"
+                          >
+                            {t("admin.markPaid")}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </Scroller>

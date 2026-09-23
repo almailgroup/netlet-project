@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
+import { captureReferral } from "@/lib/referral";
 import { lazy, Suspense, useEffect } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import LiquidGlassFilters from "./components/ui/LiquidGlassFilters";
@@ -71,11 +72,27 @@ function LegacyAdminRedirect() {
   return null;
 }
 
+/**
+ * Put aside the `?ref=` an invitation link carries (3.1.14).
+ *
+ * Here rather than on the home page because a shared link may point anywhere —
+ * a product, a gift list — and the code has to survive until whenever the new
+ * shopper gets round to making an account.
+ */
+function ReferralCapture() {
+  const [location] = useLocation();
+  useEffect(() => {
+    captureReferral(window.location.search);
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
     // sub-directory (GitHub Pages). It is "" for a root deployment.
     <WouterRouter base={BASE_PATH}>
+      <ReferralCapture />
       <Suspense fallback={<RouteFallback />}>
       <Switch>
         <Route path="/" component={Home} />

@@ -625,6 +625,57 @@ ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "payment_collected_at" timestamp w
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "accepts_cod" boolean DEFAULT true NOT NULL;
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "cod_ceiling" numeric(12, 3);
 
+-- ===== 0026_redundant_micromacro.sql =====
+CREATE TABLE IF NOT EXISTS "point_entries" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"points" integer NOT NULL,
+	"reason" varchar(32) NOT NULL,
+	"order_id" integer,
+	"referral_id" integer,
+	"note" varchar(200),
+	"settled_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "referrals" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"referrer_id" integer NOT NULL,
+	"referred_id" integer NOT NULL,
+	"qualified_order_id" integer,
+	"qualified_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "points_spent" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "points_value" numeric(12, 3) DEFAULT '0.000' NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_referral_id_referrals_id_fk" FOREIGN KEY ("referral_id") REFERENCES "public"."referrals"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "referrals" ADD CONSTRAINT "referrals_referrer_id_users_id_fk" FOREIGN KEY ("referrer_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "referrals" ADD CONSTRAINT "referrals_referred_id_users_id_fk" FOREIGN KEY ("referred_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "referrals" ADD CONSTRAINT "referrals_qualified_order_id_orders_id_fk" FOREIGN KEY ("qualified_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "point_entries_user_idx" ON "point_entries" USING btree ("user_id","created_at");
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_referral_reason_unique" ON "point_entries" USING btree ("referral_id","reason") WHERE "point_entries"."referral_id" is not null;
+CREATE UNIQUE INDEX IF NOT EXISTS "referrals_referred_unique" ON "referrals" USING btree ("referred_id");
+CREATE INDEX IF NOT EXISTS "referrals_referrer_idx" ON "referrals" USING btree ("referrer_id","created_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -662,6 +713,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  26 AS migrations_in_this_file,
+  27 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

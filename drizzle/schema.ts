@@ -1205,6 +1205,22 @@ export const orders = pgTable(
     /** NetLet's cut across every line, for reporting without a re-sum. */
     commissionTotal: numeric("commission_total", { precision: 12, scale: 3 }).notNull().default("0.000"),
     /**
+     * Loyalty points spent on this order, and what they took off (3.1.15).
+     *
+     * Frozen beside every other figure, for the reason the commission rate is:
+     * an order is an obligation and what the shopper was charged is not
+     * recomputed later. `grand_total` is already net of `points_value`, so the
+     * column that says what is owed needs no arithmetic to read.
+     *
+     * **It comes out of NetLet's cut and never the seller's.** No line changes:
+     * `line_total`, `commission_amount` and `vendor_net` are what they would
+     * have been, so a seller is paid the same whether or not the shopper spent
+     * points. A marketing scheme funded out of somebody else's revenue is one
+     * they never agreed to.
+     */
+    pointsSpent: integer("points_spent").notNull().default(0),
+    pointsValue: numeric("points_value", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    /**
      * Who charged what to deliver, frozen beside the total.
      *
      * An order is an obligation, so the breakdown is copied the way the
@@ -1326,6 +1342,107 @@ export const orderItems = pgTable(
     index("order_items_order_id_idx").on(table.orderId),
     index("order_items_vendor_id_idx").on(table.vendorId),
     index("order_items_fulfilment_idx").on(table.fulfilment),
+  ]
+);
+
+/* ------------------------------------------------------------- referrals --- */
+
+/**
+ * Who brought whom, and the points that came of it.
+ *
+ * Requirements 3.1.14 (two tracks) and 3.1.15 (spend the points or cash out at
+ * a tenth). The arithmetic is in `shared/commerce/referral.ts` and is pure;
+ * these two tables are the record it sums.
+ *
+ * **A referral is a fact about the referred account, so the unique index is on
+ * that column.** One shopper can bring a hundred friends; nobody can be
+ * brought twice. Enforcing it here rather than by a read-then-insert is the
+ * same argument the price-offer index makes — two tabs beat a check in
+ * application code, and the second credit is money.
+ *
+ * No code is stored. It is derived from the account id, so one account has one
+ * code for ever and there is no second copy to edit into a collision.
+ */
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: serial("id").primaryKey(),
+    /** Who did the inviting. Cascade: their referrals go with the account. */
+    referrerId: integer("referrer_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Who arrived. One row per person, for ever — see the index below. */
+    referredId: integer("referred_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /**
+     * The order that earned it, and null until one completes.
+     *
+     * Points are paid on a *sale*, never on a sign-up: a referral scheme that
+     * pays for registrations pays for registrations, and the people who notice
+     * that first are not the ones a shop wants. `set null`, because an order
+     * that later disappears does not undo a payout that already happened.
+     */
+    qualifiedOrderId: integer("qualified_order_id").references(() => orders.id, { onDelete: "set null" }),
+    qualifiedAt: timestamp("qualified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("referrals_referred_unique").on(table.referredId),
+    index("referrals_referrer_idx").on(table.referrerId, table.createdAt),
+  ]
+);
+
+/**
+ * The points ledger. Every movement, with its reason.
+ *
+ * **There is no balance column anywhere**, and that is the design rather than
+ * an omission. A stored balance beside a list of entries is two records of one
+ * fact, and the first write that fails halfway makes them disagree — with the
+ * shop's own answer being the one nobody can audit. `balanceOf` sums, which is
+ * cheap and cannot drift.
+ *
+ * Every row carries why it exists, because "your balance went up" is not
+ * something a shopper can check and "because Noura placed her first order" is.
+ */
+export const pointEntries = pgTable(
+  "point_entries",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Positive earns, negative spends. Never zero: an entry moving nothing is noise. */
+    points: integer("points").notNull(),
+    /** One of `POINT_REASONS`. Kept as text rather than an enum so a new reason is not a migration. */
+    reason: varchar("reason", { length: 32 }).notNull(),
+    /** What it was about, when there is something: an order, a referral. */
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    referralId: integer("referral_id").references(() => referrals.id, { onDelete: "set null" }),
+    /** An admin's own words on an adjustment, so the ledger explains itself. */
+    note: varchar("note", { length: 200 }),
+    /**
+     * When NetLet actually paid a cash-out.
+     *
+     * Only ever set on a `cashed_out` row. The *entry* is written when the
+     * shopper asks, because the balance has to fall then or the same points
+     * get spent in another tab; this records when the money left, which is a
+     * separate fact a human does by bank transfer — the same arrangement the
+     * seller payout report already describes.
+     */
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("point_entries_user_idx").on(table.userId, table.createdAt),
+    /*
+     * One welcome credit and one referrer bonus per referral, whatever races.
+     * The partial index is on the rows that name a referral; spends and
+     * adjustments name none and are unconstrained.
+     */
+    uniqueIndex("point_entries_referral_reason_unique")
+      .on(table.referralId, table.reason)
+      .where(sql`${table.referralId} is not null`),
   ]
 );
 
@@ -1466,3 +1583,6 @@ export type CartRow = typeof carts.$inferSelect;
 export type CartItemRow = typeof cartItems.$inferSelect;
 
 export type AuditEntry = typeof auditLog.$inferSelect;
+
+export type Referral = typeof referrals.$inferSelect;
+export type PointEntryRow = typeof pointEntries.$inferSelect;

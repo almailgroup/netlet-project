@@ -17,6 +17,7 @@ import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
+import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { WishlistManager } from "@/components/account/WishlistManager";
@@ -41,6 +42,7 @@ const SECTIONS = [
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "offers", label: "offers.mine" },
+  { id: "rewards", label: "account.sectionRewards" },
   { id: "selling", label: "account.sectionSelling" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
@@ -153,6 +155,13 @@ export default function Account() {
                   shopper acts on rather than with the things they configure. */}
               <Section id="offers" title={t("offers.mine")}>
                 <AccountOffers />
+              </Section>
+
+              {/* After the things a shopper is waiting on and before the
+                  settings: an invitation is something to act on, and the
+                  balance beside it is the reason to. */}
+              <Section id="rewards" title={t("account.sectionRewards")}>
+                <AccountRewards />
               </Section>
 
               {/* Only for somebody who has the second identity — the server

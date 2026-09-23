@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 258 columns across 23 tables.
+-- Expected: 275 columns across 25 tables.
 
 WITH expected AS (
   SELECT
@@ -26,11 +26,13 @@ WITH expected AS (
     ('followed_products', 'back_in_stock,created_at,id,last_notified_price,price_drop,product_id,updated_at,user_id'),
     ('order_items', 'commission_amount,commission_fixed,commission_percent,created_at,delivered_at,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,email,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,reference,status,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,email,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
+    ('point_entries', 'created_at,id,note,order_id,points,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),
     ('product_variants', 'compare_at_price,created_at,id,low_stock_at,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
     ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
+    ('referrals', 'created_at,id,qualified_at,qualified_order_id,referred_id,referrer_id'),
     ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),
     ('saved_products', 'created_at,id,product_id,user_id'),
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),

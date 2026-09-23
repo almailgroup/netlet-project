@@ -14,6 +14,8 @@ import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { useAuth } from "@/hooks/useAuth";
+import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
+import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -84,6 +86,26 @@ export default function Checkout() {
     isAuthenticated && cart?.id && items.length && cart?.cod.available && form.addressLine.trim(),
   );
 
+  /*
+   * The loyalty balance, and what it would take off this basket (3.1.15).
+   *
+   * Asked for only when somebody is signed in, because points belong to an
+   * account and the procedure refuses an anonymous caller — a query that is
+   * always going to 401 is a request nobody should be making.
+   *
+   * The figure here is a *display*: the server reads the balance again and
+   * caps it again at placement, so a stale page cannot spend what is no longer
+   * there. What it must not do is disagree with the button, which is why both
+   * use `pointsSpendableOn` over the same total.
+   */
+  const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const [usePoints, setUsePoints] = useState(false);
+  const balance = rewards.data?.balance ?? 0;
+  const orderTotal = cart?.total.amount ?? subtotal.amount;
+  const pointsApplied = usePoints ? pointsSpendableOn(balance, orderTotal) : 0;
+  const pointsOff = spendValue(pointsApplied);
+  const payable = subtractMoney(orderTotal, pointsOff);
+
   return (
     <main className="type-body min-h-screen bg-background text-[#0a285a]">
       <header className="border-b border-[#d5dfeb] bg-background/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label={t("checkout.return")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><LockKeyhole className="size-4 ink-accent" /> {t("checkout.mockBadge")}</div><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2.5"><ArrowLeft className="size-3.5 rtl:-scale-x-100" /> {t("header.continueShopping")}</a></div></header>
@@ -122,7 +144,12 @@ export default function Checkout() {
           </section>
 
           <aside className="h-fit rounded-[1.5rem] border border-[#d5dfeb] bg-[#0a285a] p-5 text-white shadow-[0_18px_50px_rgba(10,40,90,.13)] sm:p-6"><p className="type-label tracking-[.16em] text-[#ffcc64] uppercase">{t("checkout.orderSummary")}</p><h2 className="type-display mt-2 text-3xl">{t("checkout.summaryTitle")}</h2><div className="mt-6 space-y-4 border-y border-[#49658d] py-5">{items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? item.productTitle} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p className="type-product">{item.productTitle}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
-                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={String(row.vendorId ?? row.vendorName)} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div><div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money(cart?.total ?? subtotal)}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
+                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={String(row.vendorId ?? row.vendorName)} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div>{/* Points are offered where the money is, not in a panel of their own:
+                    the question "do I spend them" is one somebody asks while
+                    reading the total, and nowhere else. The control is absent
+                    rather than disabled for a balance of nothing — a checkbox
+                    that can only be ticked to no effect is the dead control
+                    rule again. */}{balance > 0 ? (<label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already
                 follow. */}
             <button
@@ -134,6 +161,7 @@ export default function Checkout() {
                 deliveryZoneId: deliveryZoneId ?? null,
                 addressLine: form.addressLine.trim(),
                 addressNotes: form.addressNotes.trim() || null,
+                usePoints,
               })}
               disabled={!canPlace || place.isPending}
               className="glass glass-navy type-control pressable mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-60"

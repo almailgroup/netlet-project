@@ -35,6 +35,7 @@ import { useOverlay } from "@/hooks/useOverlay";
 import { logoImage } from "@/lib/brandAssets";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { clearReferral, storedReferral } from "@/lib/referral";
 
 type Mode = "signin" | "register" | "reset";
 
@@ -100,7 +101,9 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
     onError: err => setError(err.message),
   });
   const register = trpc.auth.register.useMutation({
-    onSuccess: user => void settle(user.name),
+    /* Forgotten once it has been used, so an invitation cannot ride along on a
+       second account made from the same browser. */
+    onSuccess: user => { clearReferral(); void settle(user.name); },
     onError: err => setError(err.message),
   });
   const reset = trpc.auth.requestPasswordReset.useMutation({
@@ -113,6 +116,10 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
   const pending = login.isPending || register.isPending || reset.isPending;
   const isRegister = mode === "register";
   const isReset = mode === "reset";
+
+  /* Read once: the dialog is open for a minute, and a code that arrives in
+     that minute belongs to the next visit rather than this one. */
+  const invited = useMemo(() => storedReferral(), []);
 
   const verdict = useMemo(() => checkPassword(password), [password]);
   const emailLooksRight = EMAIL_SHAPE.test(email.trim());
@@ -127,7 +134,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
     setError("");
     // Firebase localises the reset email from the locale we send.
     if (isReset) reset.mutate({ email: email.trim(), locale });
-    else if (isRegister) register.mutate({ email: email.trim(), password, name: name.trim() || undefined });
+    else if (isRegister) register.mutate({ email: email.trim(), password, name: name.trim() || undefined, referral: storedReferral() });
     else login.mutate({ email: email.trim(), password });
   };
 
@@ -164,6 +171,16 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
           <p className="type-label mt-1 text-[#536b8c]">
             {t(isReset ? "auth.resetNote" : isRegister ? "auth.createNote" : "auth.signInNote")}
           </p>
+
+          {/* Somebody who followed a friend's link is told what it gets them,
+              on the pane where they are deciding whether to register at all
+              (3.1.14). Absent when there is no invitation, rather than a line
+              explaining a scheme they are not in. */}
+          {isRegister && invited ? (
+            <p className="mt-3 rounded-xl bg-[#f3f2ed] px-4 py-3 text-xs leading-5 text-[#536b8c]">
+              {t("auth.referralInvited")}
+            </p>
+          ) : null}
 
           {!isReset && (
             <ModeTabs mode={mode} onChange={next => { setMode(next); setError(""); }} />

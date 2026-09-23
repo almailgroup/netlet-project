@@ -232,6 +232,10 @@ export type OrderRefusal =
   | "order.noAddress"
   /* The method the shopper chose is not available on this basket (3.2.2). */
   | "order.paymentUnavailable"
+  /* The points were spent somewhere else between pressing and placing
+     (3.1.15). Refused rather than charged in full: quietly taking more than
+     the button said is the one outcome worse than refusing. */
+  | "order.pointsGone"
   | "order.zeroPriced";
 
 export function refusalFor(

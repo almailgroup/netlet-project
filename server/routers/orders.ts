@@ -95,6 +95,10 @@ export const ordersRouter = router({
       deliveryZoneId: z.string().trim().max(64).nullish(),
       addressLine: z.string().trim().min(1).max(500),
       addressNotes: z.string().trim().max(500).nullish(),
+      /* Whether to spend the balance (3.1.15). How much it covers is the
+         server's arithmetic — a figure sent from a browser is a figure to
+         check against the one read here anyway. */
+      usePoints: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -107,8 +111,14 @@ export const ordersRouter = router({
           deliveryZoneId: input.deliveryZoneId ?? null,
           addressLine: input.addressLine,
           addressNotes: input.addressNotes ?? null,
+          usePoints: input.usePoints ?? false,
         });
-        return { reference: placed.order.reference, total: placed.totals.grandTotal };
+        return {
+          reference: placed.order.reference,
+          total: placed.totals.grandTotal,
+          pointsSpent: placed.totals.pointsSpent,
+          pointsValue: placed.totals.pointsValue,
+        };
       } catch (error) {
         /* Every refusal is already a message key, so the client says it in the
            shopper's own language rather than showing an English sentence. */

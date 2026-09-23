@@ -32,6 +32,7 @@ import { createAccount, EmailTakenError } from "../_core/accounts.js";
 import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
 import { loadUser, updateUserEmail, updateUserName, updateUserPasswordHash } from "../profile.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../rateLimit.js";
+import { recordReferral } from "../referral.js";
 import type { User } from "../../drizzle/schema.js";
 
 const credentials = z.object({
@@ -59,6 +60,14 @@ const newPassword = z
 const registration = credentials.extend({
   password: newPassword,
   name: z.string().trim().min(1).max(255).optional(),
+  /*
+   * The referral code the new shopper arrived with (3.1.14), from `?ref=` on
+   * whatever link a friend sent them. Optional and never validated here: a
+   * code naming nobody is a quiet no rather than a failed registration, since
+   * refusing an account over a mistyped invitation loses a customer to fix
+   * nothing.
+   */
+  referral: z.string().trim().max(32).optional(),
 });
 
 /**
@@ -184,6 +193,10 @@ export const authRouter = router({
       if (error instanceof EmailTakenError) throw emailTaken;
       throw error;
     }
+
+    /* Recorded, not paid. The points land when this account's first order is
+       paid for — a scheme that pays at registration pays for registrations. */
+    if (input.referral) await recordReferral(user.id, input.referral);
 
     const token = await signSession(user.id);
     ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });

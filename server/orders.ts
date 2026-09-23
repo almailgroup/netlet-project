@@ -17,6 +17,7 @@ import {
   carts,
   orderItems,
   orders,
+  pointEntries,
   productVariants,
   products,
   vendors,
@@ -35,8 +36,10 @@ import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote } from "../shared/commerce/delivery.js";
 import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
-import { addMoney, multiplyMoney } from "../shared/money.js";
+import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
+import { addMoney, multiplyMoney, subtractMoney } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
+import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -67,6 +70,15 @@ export type PlaceOrderDetails = {
    * the finance panel that nobody has collected.
    */
   paymentMethod?: string | null;
+  /**
+   * Whether to spend the shopper's loyalty points on this order (3.1.15).
+   *
+   * A yes-or-no rather than a number, because the balance is the server's to
+   * know: a figure passed in would be a figure to check, and the only answer
+   * that check could give is the one read here anyway. How much it covers is
+   * capped at the order — points are a discount, not a deposit.
+   */
+  usePoints?: boolean;
 };
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
@@ -329,6 +341,30 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     throw new OrderRefused("order.outOfStock");
   }
 
+  /*
+   * Points are taken next, and *after* the stock rather than before it: every
+   * take from here on has to be undone if a later one fails, and a refusal
+   * thrown between two of them is the one place that is easy to get wrong.
+   * This one was — the out-of-stock refusal above returned the units and left
+   * the shopper's points spent on an order that never existed.
+   *
+   * Refusing outright when the balance has moved under them is deliberate.
+   * Placing the order at full price instead would charge somebody more than
+   * the button they pressed said, which is worse than refusing.
+   */
+  const wantedPoints = details.usePoints && details.userId
+    ? pointsSpendableOn(await balanceFor(db, details.userId), draft.totals.grandTotal)
+    : 0;
+  const pointsEntryId = wantedPoints > 0 && details.userId
+    ? await takePoints(db, details.userId, wantedPoints, "spent_on_order")
+    : null;
+  if (wantedPoints > 0 && pointsEntryId === null) {
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    throw new OrderRefused("order.pointsGone");
+  }
+  const pointsSpent = pointsEntryId === null ? 0 : wantedPoints;
+  const pointsValue = spendValue(pointsSpent);
+
   try {
     const [order] = await db
       .insert(orders)
@@ -338,7 +374,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         email: details.email.trim().toLowerCase(),
         itemsTotal: draft.totals.itemsTotal,
         deliveryTotal: draft.totals.deliveryTotal,
-        grandTotal: draft.totals.grandTotal,
+        /* Net of the points, so the column that says what is owed needs no
+           arithmetic to read — and no line moves, because the discount comes
+           out of NetLet's cut rather than the seller's net. */
+        grandTotal: subtractMoney(draft.totals.grandTotal, pointsValue),
+        pointsSpent,
+        pointsValue,
         commissionTotal: draft.totals.commissionTotal,
         /* Frozen beside the total, so an order from last year still says who
            charged what — the reason the commission rate is copied too. */
@@ -381,15 +422,26 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
        is null`, so two tabs checking out cannot both claim it. */
     await markOffersUsed(db, offerIds, order.id);
 
+    /* The entry exists already — it had to, to close the race — so this is
+       only it learning what it bought. */
+    if (pointsEntryId !== null) {
+      await db.update(pointEntries).set({ orderId: order.id }).where(eq(pointEntries.id, pointsEntryId));
+    }
+
     // The basket has become the order; leaving it would let the same items be
     // bought twice from a stale tab.
     await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
 
-    return { order, lines: draft.lines, totals: draft.totals };
+    return {
+      order,
+      lines: draft.lines,
+      totals: { ...draft.totals, grandTotal: order.grandTotal, pointsSpent, pointsValue },
+    };
   } catch (error) {
     // Back to the pool each line came from. Handing a pre-ordered line back as
     // real stock would invent inventory out of a failed write.
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
     throw error;
   }
 }
@@ -615,7 +667,11 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
   const db = await getDb();
   if (!db) return false;
 
-  const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  const [order] = await db
+    .select({ id: orders.id, userId: orders.userId })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
   if (!order) return false;
 
   /* Scoped like every other order read: a vendor may only touch an order that
@@ -633,5 +689,16 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
     ))
     .returning({ id: orders.id });
 
-  return updated.length > 0;
+  if (updated.length === 0) return false;
+
+  /*
+   * This is the moment a referral pays (3.1.14), and it is here rather than at
+   * placement on purpose: a cash order nobody collects has earned nobody
+   * anything. It rides on the update having landed, so the exactly-once the
+   * predicate above gives the payment gives the points too — and
+   * `qualifyReferral` claims its row with a predicate of its own regardless.
+   */
+  if (order.userId) await qualifyReferral(db, order.userId, orderId);
+
+  return true;
 }

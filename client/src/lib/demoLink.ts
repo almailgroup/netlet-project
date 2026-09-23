@@ -17,6 +17,7 @@ import type { AppRouter } from "../../../server/routers";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
+import { MIN_CASH_OUT_POINTS, referralCodeFor } from "@shared/commerce/referral";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
 const CURRENCY = "KWD";
@@ -358,6 +359,31 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "offers.setStoreOpen":
     case "offers.setProductOpen":
       return { ok: true };
+
+    /*
+     * The demo has a shopper with no history, so the honest balance is zero —
+     * and a demo that handed out points would be inventing a payout. The code
+     * is real, because it is derived from an account id rather than stored.
+     */
+    case "rewards.mine":
+      return {
+        code: referralCodeFor(1),
+        balance: 0,
+        spendValue: "0.000",
+        cashOutValue: "0.000",
+        cashOut: { ok: false, shortBy: MIN_CASH_OUT_POINTS },
+        minimumCashOut: MIN_CASH_OUT_POINTS,
+        invited: 0,
+        qualified: 0,
+        entries: [],
+      };
+    /* Nothing to cash out, and the page refuses before asking. */
+    case "rewards.cashOut":
+      throw new Error("rewards.cannotCashOut");
+    case "rewards.pendingCashOuts":
+      return [];
+    case "rewards.settleCashOut":
+      return { settled: false };
 
     /* The demo signs in as a vendor `manager`; the payouts read is scoped to
        their own store, so it is reachable and honestly empty. */
