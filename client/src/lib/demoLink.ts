@@ -308,6 +308,11 @@ function resolve(path: string, rawInput: unknown): unknown {
        `manager`, who cannot reach `platform.viewAll`, so neither is reachable
        — answered anyway, because a procedure the demo cannot name throws the
        day the fixture's role changes. */
+    /* The demo portal signs in as a vendor `manager`, so the selling section
+       on /account is genuinely reachable there and names the fixture's store. */
+    case "inventory.myStore":
+      return { id: 1, name: "Demo Store" };
+
     case "inventory.sellerChanges":
       return { rows: [], unseen: 0, seenAt: null };
     case "inventory.markAuditSeen":

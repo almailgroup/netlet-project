@@ -17,6 +17,7 @@ import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
+import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -28,6 +29,7 @@ import { useState } from "react";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { useTranslation } from "@/hooks/useTranslation";
+import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronRight, LogIn, LogOut, ShoppingBag, UserPlus, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -39,6 +41,7 @@ const SECTIONS = [
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "offers", label: "offers.mine" },
+  { id: "selling", label: "account.sectionSelling" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
   { id: "activity", label: "account.sectionActivity" },
@@ -51,6 +54,14 @@ export default function Account() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { t } = useTranslation();
+  /*
+   * Whether this account also sells (3.4.17). Asked of the server rather than
+   * inferred from anything the client holds, cached hard because it only
+   * changes when an administrator adds somebody to a store, and `retry: false`
+   * because a shopper's 403 here is the ordinary answer, not a failure.
+   */
+  const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
+  const isSeller = Boolean(me.data && me.data.kind !== "customer");
   const openAuth = () => DEMO_MODE
     ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
     : setAuthOpen(true);
@@ -109,7 +120,7 @@ export default function Account() {
 
         {!loading && isAuthenticated && user ? (
           <div className="mt-8 lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:items-start lg:gap-8">
-            <SectionNav />
+            <SectionNav selling={isSeller} />
 
             <div className="space-y-10">
               <AccountIdentity user={user} />
@@ -143,6 +154,16 @@ export default function Account() {
               <Section id="offers" title={t("offers.mine")}>
                 <AccountOffers />
               </Section>
+
+              {/* Only for somebody who has the second identity — the server
+                  decides, and a shopper never sees the section at all. It sits
+                  above the settings because switching is something you do,
+                  not something you configure. */}
+              {isSeller ? (
+                <Section id="selling" title={t("account.sectionSelling")}>
+                  <SellerMode />
+                </Section>
+              ) : null}
 
               <Section id="details" title={t("account.sectionProfile")}>
                 <ProfileManager user={user} />
@@ -185,13 +206,16 @@ export default function Account() {
  * On a phone the page is short enough to scroll and a nav would be one more
  * thing between somebody and the first setting.
  */
-function SectionNav() {
+function SectionNav({ selling }: { selling: boolean }) {
   const { t } = useTranslation();
   return (
     <nav aria-label={t("account.jumpTo")} className="sticky top-6 hidden lg:block">
       <p className="text-[10px] font-extrabold tracking-[.12em] ink-muted uppercase">{t("account.jumpTo")}</p>
       <ul className="mt-3 space-y-1">
-        {SECTIONS.map(section => (
+        {/* The selling anchor is dropped for a shopper along with the
+            section itself: a nav entry that jumps to nothing is the same dead
+            control as the section being empty. */}
+        {SECTIONS.filter(section => section.id !== "selling" || selling).map(section => (
           <li key={section.id}>
             <a
               href={`#${section.id}`}

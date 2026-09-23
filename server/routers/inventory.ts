@@ -47,6 +47,7 @@ import {
   setVendorCommission,
   setVendorStatus,
   stockHistory,
+  myStore,
   updateProduct,
   vendorHealthFor,
 } from "../inventory.js";
@@ -404,6 +405,11 @@ export const inventoryRouter = router({
       await markAuditSeen(await resolveActor(ctx.user));
       return { ok: true } as const;
     })),
+
+  /** Which store the caller acts for, by name. Null for an admin. */
+  myStore: protectedProcedure
+    .input(vendorScope.optional())
+    .query(async ({ ctx, input }) => guard(async () => myStore(await resolveActor(ctx.user, input?.vendorId)))),
 
   /** A vendor's own performance numbers, or any vendor's for an admin. */
   health: protectedProcedure

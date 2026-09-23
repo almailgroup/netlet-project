@@ -409,6 +409,24 @@ describe("the admin portal's reports", () => {
   });
 });
 
+/* Requirement 3.4.17: one account sells and shops, and the door between the
+   two only exists for somebody who actually has both identities. */
+describe("which store the caller acts for", () => {
+  it("names a vendor member's own store", async () => {
+    expect(await inv.myStore(ownerActor())).toMatchObject({ id: ids.acme, name: "Acme" });
+  });
+
+  /* An administrator acts for NetLet rather than for a store, so there is no
+     name to give — and inventing one would put them inside a company. */
+  it("is null for an administrator", async () => {
+    expect(await inv.myStore(adminActor())).toBeNull();
+  });
+
+  it("is null for a shopper, which is what hides the switch", async () => {
+    expect(await inv.myStore({ kind: "customer", userId: ids.staff })).toBeNull();
+  });
+});
+
 describe("the audit trail", () => {
   it("records a commission edit with both sides of the change", async () => {
     await inv.setVendorCommission(adminActor(), ids.acme, "12.50", "1.000");

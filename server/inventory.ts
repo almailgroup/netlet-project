@@ -69,6 +69,30 @@ export async function resolveActor(
 }
 
 /**
+ * The store the caller acts for, by name.
+ *
+ * Deliberately not a field on `Actor`: that type is the *permission* shape
+ * both sides import to decide what somebody may do, and a display name has no
+ * business in an answer about access. This is the one read that wants it — the
+ * card telling a seller which hat they are putting on.
+ *
+ * Null for an administrator, who acts for NetLet rather than for a store, and
+ * for a shopper who is in none.
+ */
+export async function myStore(actor: Actor): Promise<{ id: number; name: string } | null> {
+  if (actor.kind !== "vendor") return null;
+  assertCan(actor, "vendor.viewMembers", actor.vendorId);
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({ id: vendors.id, name: vendors.name })
+    .from(vendors)
+    .where(eq(vendors.id, actor.vendorId))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
  * The actor as the audit trail wants them: id plus the address at the time.
  *
  * One extra read per audited operation, which are rare and consequential by
