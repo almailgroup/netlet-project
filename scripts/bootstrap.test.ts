@@ -101,7 +101,9 @@ describe("the Supabase bootstrap generator", () => {
     const missing: string[] = [];
     for (const table of Object.values(snapshot.tables) as { name: string; columns: Record<string, { name: string }> }[]) {
       for (const column of Object.values(table.columns)) {
-        if (!audit.includes(`('${table.name}', '${column.name}')`)) {
+        // Packed one row per table, so the check is on the table's column list.
+        const packed = new RegExp(`\\('${table.name}', '([^']*)'\\)`).exec(audit);
+        if (!packed || !packed[1].split(",").includes(column.name)) {
           missing.push(`${table.name}.${column.name}`);
         }
       }

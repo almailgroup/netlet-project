@@ -76,8 +76,17 @@ function RelatedCard({ product }: { product: Product }) {
  */
 const RAIL_LIMIT = 5;
 const RAIL_LIMIT_NARROW = 4;
-/** Magnification applied by the hover lens, as a multiple of natural size. */
+/** Magnification applied by the hover lens, as a multiple of displayed size. */
 const LENS_ZOOM = 2.5;
+/**
+ * The zoom pane's width in px.
+ *
+ * A constant rather than only a Tailwind class, because the lens geometry has
+ * to know it: the lens rectangle is *derived* from what the pane can show, and
+ * a number in the stylesheet that the arithmetic guesses at is how the two
+ * stopped agreeing in the first place.
+ */
+const LENS_PANE_WIDTH = 520;
 
 /**
  * Full-screen viewer: every image as a grid on the left, the selected one large
@@ -226,7 +235,17 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   const image = media[selectedImageIndex] ?? media[0];
   const isVideo = image?.kind === "video";
   const hasMultipleImages = media.length > 1;
-  const [lens, setLens] = useState<{ x: number; y: number } | null>(null);
+  /*
+   * Resolved geometry, not a pointer fraction.
+   *
+   * The lens rectangle and the zoom pane have to describe the same region, and
+   * the only way to guarantee that is to compute one from the other rather than
+   * to derive each from the pointer independently.
+   */
+  const [lens, setLens] = useState<{
+    left: number; top: number; width: number; height: number;
+    bgX: number; bgY: number; bgWidth: number; bgHeight: number; paneHeight: number;
+  } | null>(null);
   const [canHover, setCanHover] = useState(false);
   const [narrowRail, setNarrowRail] = useState(false);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -260,12 +279,79 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   const overflow = media.length - railLimit;
   const railImages = overflow > 0 ? media.slice(0, railLimit) : media;
 
+  /**
+   * Point the magnifier at what the cursor is actually over.
+   *
+   * Two things were wrong here and they compounded, which is why the pane
+   * showed a different part of the product from the one under the lens:
+   *
+   * 1. **The pointer was measured against the container, not the picture.**
+   *    The box is `p-6` and the image is `object-contain`, so a tall-ish photo
+   *    in a wide box is letterboxed — and the fraction was taken across the
+   *    whole box including that empty margin. At the centre it looked nearly
+   *    right; at the edges it was off by the width of the letterbox, which is
+   *    exactly what a shopper notices.
+   * 2. **`background-size: 250% 250%` is a percentage of the *pane*, not of
+   *    the image**, and applied to each axis independently — so the zoomed
+   *    copy was stretched to the pane's aspect ratio as well as being at the
+   *    wrong scale. The 130px lens square then had no relationship at all to
+   *    the region the pane displayed.
+   *
+   * So: measure the rendered `<img>`, work in pixels, and derive the lens
+   * rectangle from the pane rather than choosing it separately. The pane shows
+   * `paneWidth / zoom` by `paneHeight / zoom` of displayed image, and that is
+   * precisely the rectangle drawn on the photo — the two cannot disagree
+   * because there is one calculation.
+   */
   const trackLens = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!canHover || !image) return;
+    if (!canHover || !image) return setLens(null);
+
+    /* The element, not a ref on `Thumb`: a broken image renders a `<span>`
+       fallback instead, and there is nothing to magnify about that. */
+    const picture = event.currentTarget.querySelector("img");
+    if (!picture) return setLens(null);
+
     const box = event.currentTarget.getBoundingClientRect();
-    const x = Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
-    const y = Math.min(1, Math.max(0, (event.clientY - box.top) / box.height));
-    setLens({ x, y });
+    const rect = picture.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return setLens(null);
+
+    /* `getBoundingClientRect` measures the border box, but an absolutely
+       positioned child is placed against the padding box — so the stage's 1px
+       border offsets the lens by exactly that much unless it is taken off.
+       Small, and precisely the kind of small that reads as "not quite on the
+       pointer". `clientLeft`/`clientTop` are the border widths. */
+    const borderX = event.currentTarget.clientLeft;
+    const borderY = event.currentTarget.clientTop;
+
+    // Over the padding rather than the product: nothing to show.
+    const outside =
+      event.clientX < rect.left || event.clientX > rect.right ||
+      event.clientY < rect.top || event.clientY > rect.bottom;
+    if (outside) return setLens(null);
+
+    const paneWidth = LENS_PANE_WIDTH;
+    const paneHeight = box.height;
+    const bgWidth = rect.width * LENS_ZOOM;
+    const bgHeight = rect.height * LENS_ZOOM;
+
+    const fractionX = (event.clientX - rect.left) / rect.width;
+    const fractionY = (event.clientY - rect.top) / rect.height;
+
+    /* Centre the pane on the pointer, then hold it inside the picture, so the
+       edges show image rather than empty pane. `Math.min(0, …)` keeps the
+       range valid when the zoomed image is smaller than the pane. */
+    const clamp = (value: number, min: number) => Math.min(0, Math.max(min, value));
+    const bgX = clamp(paneWidth / 2 - fractionX * bgWidth, Math.min(0, paneWidth - bgWidth));
+    const bgY = clamp(paneHeight / 2 - fractionY * bgHeight, Math.min(0, paneHeight - bgHeight));
+
+    setLens({
+      // The same region, divided back down out of zoomed pixels.
+      left: (rect.left - box.left - borderX) + -bgX / LENS_ZOOM,
+      top: (rect.top - box.top - borderY) + -bgY / LENS_ZOOM,
+      width: Math.min(paneWidth / LENS_ZOOM, rect.width),
+      height: Math.min(paneHeight / LENS_ZOOM, rect.height),
+      bgX, bgY, bgWidth, bgHeight, paneHeight,
+    });
   };
 
   const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -360,10 +446,14 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
               />
             )}
             {lens && image && !isVideo ? (
+              /* Physical `left`/`top`, deliberately: these are measured from
+                 `getBoundingClientRect`, which is physical in both directions,
+                 so a logical property here would mirror a number that has
+                 already accounted for the mirroring. */
               <span
                 aria-hidden
-                className="pointer-events-none absolute size-[130px] rounded-sg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
-                style={{ left: `calc(${lens.x * 100}% - 65px)`, top: `calc(${lens.y * 100}% - 65px)` }}
+                className="pointer-events-none absolute rounded-sg border-2 border-[#0a285a]/35 bg-[#0a285a]/8"
+                style={{ left: lens.left, top: lens.top, width: lens.width, height: lens.height }}
               />
             ) : null}
             {hasMultipleImages ? (
@@ -389,11 +479,16 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           {lens && image ? (
             <div
               aria-hidden
-              className="pointer-events-none absolute start-[calc(100%+1rem)] top-0 z-30 hidden h-full w-[520px] rounded-[1.25rem] border border-[#e2e5eb] bg-white bg-no-repeat shadow-[0_18px_50px_rgba(10,40,90,.18)] lg:block"
+              className="pointer-events-none absolute start-[calc(100%+1rem)] top-0 z-30 hidden overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white bg-no-repeat shadow-[0_18px_50px_rgba(10,40,90,.18)] lg:block"
               style={{
+                width: LENS_PANE_WIDTH,
+                height: lens.paneHeight,
                 backgroundImage: `url("${image.url}")`,
-                backgroundSize: `${LENS_ZOOM * 100}% ${LENS_ZOOM * 100}%`,
-                backgroundPosition: `${lens.x * 100}% ${lens.y * 100}%`,
+                /* Pixels off the picture's own size, so the zoomed copy keeps
+                   its aspect ratio. As a percentage this resolved against the
+                   pane and stretched each axis to fit it. */
+                backgroundSize: `${lens.bgWidth}px ${lens.bgHeight}px`,
+                backgroundPosition: `${lens.bgX}px ${lens.bgY}px`,
               }}
             />
           ) : null}
