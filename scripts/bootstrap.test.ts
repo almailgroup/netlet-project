@@ -58,4 +58,29 @@ describe("the Supabase bootstrap generator", () => {
       expect(bootstrap).toContain(tag);
     }
   });
+
+  /*
+   * A paste that gets cut short fails silently, and always loses the *end* of
+   * the file — which is where the newest migrations are, and so exactly the
+   * schema the deployed code has just started selecting from. The symptom
+   * arrives later and somewhere else, as "products will not load".
+   *
+   * The file therefore ends by announcing that it finished. The SQL editor
+   * shows the last statement's result, so a reader who cannot see that row
+   * knows the paste was truncated. This keeps the announcement there.
+   */
+  it("ends by announcing that the whole file ran", () => {
+    const bootstrap = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8").trimEnd();
+    expect(bootstrap).toMatch(/'bootstrap complete' AS status/);
+    // Last statement, or the editor shows something else and the signal is lost.
+    expect(bootstrap.endsWith(";")).toBe(true);
+    const lastSelect = bootstrap.lastIndexOf("SELECT\n  'bootstrap complete'");
+    expect(bootstrap.slice(lastSelect)).not.toContain("INSERT INTO");
+  });
+
+  it("states the migration count it actually carries", () => {
+    const bootstrap = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
+    const journal = JSON.parse(readFileSync(path.join(root, "drizzle/meta/_journal.json"), "utf-8"));
+    expect(bootstrap).toContain(`${journal.entries.length} AS migrations_in_this_file`);
+  });
 });

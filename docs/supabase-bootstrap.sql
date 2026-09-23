@@ -554,3 +554,21 @@ ON CONFLICT (slug) DO NOTHING;
 INSERT INTO vendors (slug, name, name_ar, status, auto_publish, commission_percent) VALUES
   ('netlet', 'NetLet', 'نتلت', 'approved', true, '0.00')
 ON CONFLICT (slug) DO NOTHING;
+
+-- ===== did the whole file run? =====
+--
+-- A paste that gets cut short fails *silently*, and it always loses the end of
+-- the file — which is where the newest migrations are. That is the worst
+-- possible half to lose: the schema the deployed code has just started
+-- selecting from. It has happened twice, and the symptom arrives later and
+-- somewhere else, as "products will not load".
+--
+-- So the file ends by saying so. The SQL editor shows the last statement's
+-- result: if you can read this row, everything above it ran. If you cannot,
+-- the paste was truncated — scroll to the end of what you pasted, and run the
+-- rest from there.
+SELECT
+  'bootstrap complete' AS status,
+  16 AS migrations_in_this_file,
+  (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
+  (SELECT count(*) FROM categories) AS departments;

@@ -31,14 +31,30 @@ you have the repository cloned and Node available. Do one, not both.
 
 1. In your project, open **SQL Editor** → **New query**.
 2. Open [`docs/supabase-bootstrap.sql`](./supabase-bootstrap.sql) in this
-   repository, copy the whole file, paste it into the editor.
+   repository. **Use the Raw view**, or Supabase's own *Import SQL file*
+   (the ⌄ beside the tab name) — see the warning below. Paste it in.
 3. **Run**.
 
-That creates all fifteen tables and seeds the five departments and the house
-vendor. It is safe to run more than once.
+That creates every table and seeds the five departments and the house vendor.
+It is safe to run more than once, on a fresh database or on one that is behind.
 
-To confirm: **Table Editor** should now list `products`, `vendors`, `carts`,
-`users` and the rest, and `categories` should hold five rows.
+**Check for the confirmation row.** The file ends with a `SELECT` that returns:
+
+| status | migrations_in_this_file | tables | departments |
+|---|---|---|---|
+| bootstrap complete | … | … | 5 |
+
+> **A truncated paste is the failure to watch for, and it is silent.**
+> Copying from GitHub's rendered file view only takes the lines currently on
+> screen, so the paste stops partway — and because the newest migrations sit at
+> the *end* of the file, what gets lost is exactly the schema the deployed code
+> has just started using. Nothing complains at the time. The symptom turns up
+> later and somewhere else, as pages that will not load with
+> *"column … does not exist"*.
+>
+> If you do not see the confirmation row, that is what happened. Scroll to the
+> end of what you actually pasted and run the remainder from there, or paste
+> the file in a few parts. Re-running costs nothing.
 
 ### Route B — from a clone
 
