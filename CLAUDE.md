@@ -851,6 +851,76 @@ on it punishes the seller for our missing field — the direction
 claim about a saving, so it needs no paperwork, and a vendor who typed the same
 number twice should not be told otherwise.
 
+## Asking for a price
+
+A shopper may ask a seller for a special price, and the seller answers. The
+rules are in `shared/commerce/priceOffers.ts` and are pure, for the reason the
+order arithmetic is: what they decide is money somebody pays.
+
+**Four stored states, two derived.** `pending`, `offered`, `declined` and
+`withdrawn` live in the row; *expired* comes from `expires_at` and *used* from
+`used_on_order_id`, neither of them stored. A stored `expired` needs something
+to go round and write it, and until that something runs the row claims a price
+is still good when it is not — the same decision the discount permit makes, and
+nothing has to run here either.
+
+**An agreed price is a ceiling, never a floor.** If the catalog falls below what
+the seller agreed, the shopper pays the catalog price. Charging somebody more
+than the shelf says because they once asked for a discount is the single worst
+thing this feature could do, and `priceFor` is the one place that decides so
+there is nowhere for a second answer to live.
+
+**The cart still stores no price.** A grant is a fact about a shopper and a
+variant, so the bag and the order look it up against `carts.userId` rather than
+writing it onto the line: `cart_items` is untouched and "a cart is a list of
+intentions" survives whole, with the grant simply part of what it costs *for
+that shopper*. An anonymous bag has no owner and so has no grants — a discount
+somebody can collect again by clearing their cookies is not a discount.
+
+**It is deliberately not the offer machinery.** No `compareAtPrice`, no
+strikethrough, no `−27%` badge. Those are how the shop *advertises* a saving,
+which Kuwaiti law requires a Ministry of Commerce permit for; this is a figure
+quoted to one shopper who asked for it, and it is shown as what it is —
+"Your agreed price · listed at KWD 240". The permit rule is untouched.
+
+**The vendor opts in and a product overrides its vendor**, in both directions.
+Same three-state shape as the per-product commission rate, and for the same
+reason: "not this one" and "no opinion about this one" are different
+instructions, and a boolean would have lost the second. A seller who will move
+on a sofa and not on batteries needs both. Turning it on for a store is
+`vendor.editProfile` — an owner's own decision, because what it switches on is
+their inbox — while answering is `offer.answer` at `manager`, since quoting a
+price is a pricing decision and `staff` moves stock.
+
+**One open request per shopper per variant, enforced by a partial unique
+index.** Two browser tabs are enough to beat a read-then-insert check, and a
+seller reading the same question twice is how they stop reading the inbox at
+all. Catching that violation needs walking the error's `cause` chain: what
+Drizzle throws says "Failed query: insert into …" and the constraint name is
+only on the driver error underneath. Reading the top-level message looked
+right, matched nothing, and turned a refusal the shopper can act on into a 500
+— caught by a test against real Postgres, not by reasoning.
+
+Throttled in Postgres **by account**, which is the opposite of every other
+ceiling here and follows from what is being protected: asking needs signing in,
+so there is a real identity to count, and what runs out is a seller's patience
+rather than NetLet's money. An address key would have one household's shoppers
+locking each other out.
+
+The seller has `ASK_WINDOW_DAYS` to reply and the shopper `OFFER_WINDOW_DAYS`
+to spend it — shorter on purpose, because an open-ended personal price is one
+the seller can never withdraw. A price still spendable is never described as
+gone: the last hours read as their own sentence rather than "0 days left".
+
+Two defects came out of driving it in a browser rather than from any test. The
+account page's link to the product went to `/product/…`, and the route is
+`/products/:handle` — a 404 on the only useful thing to do with an agreed
+price. And running axe with a **toast actually on screen** found sonner's own
+success ink at 4.37:1 on its own background: every "added to your cart" and
+every "Saved" in the portal, in both languages, under the bar. It survived
+every earlier audit because a toast is transient and the audits measured pages
+with none.
+
 ## Warranty and returns
 
 Three policy tabs, not one. Returns and buyer protection used to sit at the
@@ -1169,7 +1239,13 @@ Variants cannot be stacked on these: write `hover:text-[#a44a2b]`, not
 `hover:ink-accent`, which resolves to nothing at all.
 
 `axe-core` over the storefront and the portal in both languages is what found
-all of it. **Run it against a catalog with products in it, and with some of
+all of it. **Run it with a toast on screen too** — sonner's own success ink
+measured 4.37:1 on its own background, on every "added to your cart" and every
+"Saved" in the portal, and survived every audit before that because a toast is
+transient and the runs measured pages with none. `[data-sonner-toast]` in
+`index.css` is the correction, in inks the codebase already carries.
+
+**Run it against a catalog with products in it, and with some of
 them on offer** — an empty shop never renders a product card, and a shop where
 nothing is discounted never renders the `−27%` badge. Half of these only
 appeared once there was something on the shelf; the badge only appeared once

@@ -297,6 +297,33 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "finance.report":
       return { totals: { gross: "0.000", refunded: "0.000", net: "0.000", commission: "0.000", vendorNet: "0.000", paidLines: 0, refundedLines: 0 }, vendors: [], months: [], truncated: false };
 
+    /*
+     * Price requests (3.1.13) in a demo with no backend. `openOn` answers an
+     * empty list, so the panel is absent on every product rather than drawn
+     * over a button nothing can answer — the same call the assistant makes
+     * below. The rest are answered anyway, because a procedure the demo cannot
+     * name throws the day the fixture opts a product in.
+     */
+    case "offers.openOn":
+      return [];
+    case "offers.mine":
+      return null;
+    case "offers.list":
+      return [];
+    case "offers.inbox":
+      return { rows: [], total: 0, page: 1, pageSize: 50 };
+    case "offers.waiting":
+      return 0;
+    case "offers.storeOpen":
+      return false;
+    case "offers.request":
+    case "offers.withdraw":
+    case "offers.answer":
+    case "offers.decline":
+    case "offers.setStoreOpen":
+    case "offers.setProductOpen":
+      return { ok: true };
+
     case "assistant.available":
       return { available: false };
     /* Unreachable while `available` is false — the panel is never drawn — but

@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ClipboardCheck, Coins, Gauge, LayoutGrid, PackageSearch, ScrollText, ShieldCheck, Store, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, ScrollText, ShieldCheck, Store, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -103,6 +103,7 @@ export function AdminShell({ need, children }: {
     { href: "/admin/products", label: "admin.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
     { href: "/admin/stock", label: "admin.stock", icon: <PackageSearch className="size-4" />, need: "product.view" },
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
+    { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
     { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
     { href: "/admin/finance", label: "admin.finance", icon: <Coins className="size-4" />, need: "platform.viewAll" },

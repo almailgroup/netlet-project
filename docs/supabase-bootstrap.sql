@@ -536,6 +536,59 @@ ALTER TABLE "product_images" ADD COLUMN IF NOT EXISTS "poster_url" text;
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "discount_licence_number" varchar(120);
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "discount_licence_expires_at" timestamp with time zone;
 
+-- ===== 0017_amused_joseph.sql =====
+CREATE TABLE IF NOT EXISTS "price_offers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"variant_id" integer NOT NULL,
+	"product_id" integer,
+	"vendor_id" integer,
+	"product_title" varchar(255) NOT NULL,
+	"list_price" numeric(12, 3) NOT NULL,
+	"asked_price" numeric(12, 3) NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"shopper_note" text,
+	"vendor_note" text,
+	"status" varchar(20) DEFAULT 'pending' NOT NULL,
+	"offered_price" numeric(12, 3),
+	"expires_at" timestamp with time zone,
+	"answered_at" timestamp with time zone,
+	"answered_by" integer,
+	"used_on_order_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "accepts_offers" boolean;
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "accepts_offers" boolean DEFAULT false NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_answered_by_users_id_fk" FOREIGN KEY ("answered_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_used_on_order_id_orders_id_fk" FOREIGN KEY ("used_on_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "price_offers_open_unique" ON "price_offers" USING btree ("user_id","variant_id") WHERE "price_offers"."status" in ('pending', 'offered') and "price_offers"."used_on_order_id" is null;
+CREATE INDEX IF NOT EXISTS "price_offers_vendor_idx" ON "price_offers" USING btree ("vendor_id","status","created_at");
+CREATE INDEX IF NOT EXISTS "price_offers_user_idx" ON "price_offers" USING btree ("user_id","created_at");
+CREATE INDEX IF NOT EXISTS "price_offers_variant_idx" ON "price_offers" USING btree ("variant_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -573,6 +626,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  17 AS migrations_in_this_file,
+  18 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

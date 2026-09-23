@@ -16,6 +16,7 @@ import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AccountActivity } from "@/components/account/AccountActivity";
+import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -37,6 +38,7 @@ const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
+  { id: "offers", label: "offers.mine" },
   { id: "details", label: "account.sectionProfile" },
   { id: "preferences", label: "account.sectionPreferences" },
   { id: "activity", label: "account.sectionActivity" },
@@ -133,6 +135,13 @@ export default function Account() {
 
               <Section id="wishlists" title={t("account.sectionWishlists")}>
                 <WishlistManager />
+              </Section>
+
+              {/* After the wishlists and before the settings: an answered
+                  price runs out in days, so it belongs with the things a
+                  shopper acts on rather than with the things they configure. */}
+              <Section id="offers" title={t("offers.mine")}>
+                <AccountOffers />
               </Section>
 
               <Section id="details" title={t("account.sectionProfile")}>

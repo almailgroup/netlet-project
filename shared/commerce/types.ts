@@ -160,6 +160,17 @@ export type CartItem = {
   variantTitle: string;
   image: Image | null;
   unitPrice: Money;
+  /**
+   * The shelf price, when this shopper is paying less than it because the
+   * seller agreed a special price with them (requirement 3.1.13). Null the
+   * rest of the time, which is nearly always.
+   *
+   * Deliberately not `compareAtPrice`: that field drives the public
+   * strikethrough and the `−27%` badge, which are an advertised claim and need
+   * a Ministry of Commerce permit. This is a private answer to one shopper who
+   * asked, and it is shown as what it is.
+   */
+  agreedFrom?: Money | null;
   quantity: number;
   lineTotal: Money;
   /**

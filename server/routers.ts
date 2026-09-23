@@ -3,6 +3,7 @@ import { router } from "./_core/trpc.js";
 import { commerceRouter } from "./routers/commerce.js";
 import { customerRouter } from "./routers/customer.js";
 import { inventoryRouter } from "./routers/inventory.js";
+import { offersRouter } from "./routers/offers.js";
 import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
 import { assistantRouter } from "./routers/assistant.js";
@@ -17,6 +18,7 @@ export const appRouter = router({
   commerce: commerceRouter,
   customer: customerRouter,
   inventory: inventoryRouter,
+  offers: offersRouter,
   orders: ordersRouter,
   recommendations: recommendationsRouter,
   assistant: assistantRouter,

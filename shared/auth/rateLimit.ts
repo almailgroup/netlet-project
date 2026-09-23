@@ -73,6 +73,24 @@ export const LOOKUP_WINDOW_MS = 60 * 60 * 1000;
 export const MAX_ASSISTANT_PER_ADDRESS = 30;
 export const ASSISTANT_WINDOW_MS = 60 * 60 * 1000;
 
+/**
+ * How many special-price requests one account may send in a day.
+ *
+ * Keyed on the **account** rather than the address, which is the opposite of
+ * every other ceiling here and follows from what is being protected: asking
+ * for a discount needs signing in, so there is a real identity to count, and
+ * what runs out is a seller's patience rather than NetLet's money. An address
+ * key would let one household's four shoppers lock each other out; an account
+ * key lets each of them ask for what they want and stops one person papering
+ * a shop with twenty requests an hour.
+ *
+ * Every request counts, not every refusal — a request a seller has to read and
+ * decline costs them exactly as much as one they accept, which is the same
+ * argument the gift lookup makes about a reply that is identical either way.
+ */
+export const MAX_OFFER_REQUESTS_PER_ACCOUNT = 12;
+export const OFFER_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
 export type RateVerdict =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };

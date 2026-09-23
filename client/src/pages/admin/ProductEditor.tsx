@@ -85,6 +85,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
+  const setOffers = trpc.offers.setProductOpen.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
   const setStatus = trpc.inventory.products.setStatus.useMutation({
     onSuccess: status => {
       refresh();
@@ -189,6 +193,30 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             {t(save.isPending ? "admin.saving" : "admin.save")}
           </button>
         ) : null}
+      </section>
+
+      {/* Its own control saving on its own, like every section of a store's
+          page: one Save across the page writes a change somebody made while
+          editing something else entirely. Three states, not a checkbox —
+          "always", "never" and "follow the store" are different instructions
+          and a boolean would have lost the third, exactly as the per-product
+          commission rate does. */}
+      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        <Labelled label={t("admin.offersProductOpen")}>
+          <select
+            value={row.acceptsOffers === null || row.acceptsOffers === undefined ? "" : String(row.acceptsOffers)}
+            disabled={!mayEdit || setOffers.isPending}
+            onChange={e => setOffers.mutate({
+              productId: row.id,
+              accepts: e.target.value === "" ? null : e.target.value === "true",
+            })}
+            className={field}
+          >
+            <option value="">{t("admin.offersProductInherit")}</option>
+            <option value="true">{t("admin.offersProductYes")}</option>
+            <option value="false">{t("admin.offersProductNo")}</option>
+          </select>
+        </Labelled>
       </section>
 
       {/* Images are saved as a whole list, in order, so removing the third

@@ -32,6 +32,8 @@ import {
 import type { Pool } from "../shared/commerce/preorder.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { priceFor } from "../shared/commerce/priceOffers.js";
+import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -69,7 +71,11 @@ export class OrderRefused extends Error {
  * same way `getCart` drops it, and `refusalFor` then refuses an order that has
  * nothing left in it.
  */
-async function priceableLines(db: Db, cartId: string): Promise<PriceableLine[]> {
+async function priceableLines(
+  db: Db,
+  cartId: string,
+  userId: number | null | undefined,
+): Promise<{ lines: PriceableLine[]; offerIds: number[] }> {
   const rows = await db
     .select({
       variantId: productVariants.id,
@@ -101,13 +107,29 @@ async function priceableLines(db: Db, cartId: string): Promise<PriceableLine[]> 
       ),
     );
 
-  return rows.map(row => ({
+  /*
+   * A price the seller agreed with this shopper wins over the shelf, and
+   * `priceFor` is the one place that decides — including the case where the
+   * shelf has since fallen below the agreement, where the shopper pays the
+   * lower figure. Read here, one last time, for the same reason the price is:
+   * the basket was priced a moment ago and this is the number that gets frozen.
+   */
+  const agreed = await liveOffersFor(db, userId, rows.map(row => row.variantId));
+  const offerIds: number[] = [];
+
+  const lines = rows.map(row => {
+    const offer = agreed.get(row.variantId) ?? null;
+    const charged = priceFor(row.unitPrice, offer);
+    // Only an agreement that actually moved the price is spent. One the shelf
+    // has undercut leaves the shopper free to use it another day.
+    if (offer && charged !== row.unitPrice) offerIds.push(offer.id);
+    return {
     variantId: row.variantId,
     productId: row.productId,
     vendorId: row.vendorId,
     vendorName: row.vendorName,
     quantity: row.quantity,
-    unitPrice: row.unitPrice,
+    unitPrice: charged,
     productTitle: row.productTitle,
     variantTitle: row.variantTitle,
     sku: row.sku,
@@ -124,7 +146,10 @@ async function priceableLines(db: Db, cartId: string): Promise<PriceableLine[]> 
       row.productPercent === null && row.productFixed === null
         ? null
         : { percent: row.productPercent, fixed: row.productFixed },
-  }));
+    };
+  });
+
+  return { lines, offerIds };
 }
 
 /**
@@ -216,7 +241,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const lines = await priceableLines(db, cartId);
+  const { lines, offerIds } = await priceableLines(db, cartId, details.userId);
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
 
@@ -279,6 +304,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
     );
+
+    /* A special price is spent once. Marking it here rather than when the
+       shopper adds to the bag is deliberate: a grant is not consumed by
+       interest, only by a purchase. The write is guarded by `used_on_order_id
+       is null`, so two tabs checking out cannot both claim it. */
+    await markOffersUsed(db, offerIds, order.id);
 
     // The basket has become the order; leaving it would let the same items be
     // bought twice from a stale tab.

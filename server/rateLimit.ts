@@ -21,6 +21,8 @@ import {
   MAX_FAILURES_PER_ADDRESS,
   MAX_ASSISTANT_PER_ADDRESS,
   ASSISTANT_WINDOW_MS,
+  MAX_OFFER_REQUESTS_PER_ACCOUNT,
+  OFFER_REQUEST_WINDOW_MS,
   MAX_LOOKUPS_PER_ADDRESS,
   limitVerdict,
   strictest,
@@ -28,7 +30,7 @@ import {
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant";
+export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -207,5 +209,41 @@ export async function recordAssistantCall(address: string | null | undefined): P
   await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "assistant" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "assistant"), lt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS))),
+  );
+}
+
+/**
+ * May this shopper send another special-price request?
+ *
+ * Account, not address — the one ceiling here keyed that way, because asking
+ * needs signing in and what is being protected is a seller's attention rather
+ * than NetLet's bill. Throttling a household's shared address would have four
+ * people locking each other out of asking for four different things.
+ */
+export async function checkOfferRequestAllowed(email: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !email) return ALLOWED;
+
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(
+      and(
+        eq(authAttempts.bucket, accountBucket(email)),
+        eq(authAttempts.kind, "offerRequest"),
+        gt(authAttempts.createdAt, new Date(Date.now() - OFFER_REQUEST_WINDOW_MS)),
+      ),
+    );
+
+  return limitVerdict(rows.map(row => row.at), MAX_OFFER_REQUESTS_PER_ACCOUNT, new Date(), OFFER_REQUEST_WINDOW_MS);
+}
+
+/** Count one request. A seller reads it whether they accept it or not. */
+export async function recordOfferRequest(email: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !email) return;
+  await db.insert(authAttempts).values([{ bucket: accountBucket(email), kind: "offerRequest" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "offerRequest"), lt(authAttempts.createdAt, new Date(Date.now() - OFFER_REQUEST_WINDOW_MS))),
   );
 }

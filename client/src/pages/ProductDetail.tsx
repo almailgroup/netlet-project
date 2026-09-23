@@ -2,6 +2,7 @@ import { useCart } from "@/contexts/CartContext";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
+import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { QuickView } from "@/components/product/QuickView";
@@ -862,6 +863,13 @@ export default function ProductDetail() {
               : null}
 
             <div className="mt-3"><FollowProduct product={product} compact /></div>
+
+            {/* Below the buy buttons, not above them: the ordinary way to buy
+                this is at the price on the page, and a shop that leads with
+                "or haggle" has made its own price look provisional. */}
+            {selectedVariant
+              ? <PriceOfferPanel variantId={selectedVariant.id} listPrice={selectedVariant.price.amount} />
+              : null}
 
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}

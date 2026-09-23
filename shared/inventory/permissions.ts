@@ -44,6 +44,14 @@ export type Capability =
   | "product.publish"
   | "product.delete"
   | "stock.adjust"
+  /*
+   * Quoting one shopper a special price, and reading the requests for one.
+   * They are a single capability rather than a view and an answer, because a
+   * rank that may read the inbox and not reply is a rank that watches requests
+   * expire. `manager` rather than `staff`: this is a pricing decision, and
+   * `staff` moves stock.
+   */
+  | "offer.answer"
   | "vendor.viewMembers"
   | "vendor.manageMembers"
   | "vendor.editProfile"
@@ -63,6 +71,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "product.edit": "manager",
   "product.publish": "manager",
   "product.delete": "manager",
+  "offer.answer": "manager",
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",
 };

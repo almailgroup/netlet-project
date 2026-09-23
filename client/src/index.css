@@ -404,6 +404,28 @@
   .ink-accent-on-dark { color: var(--ink-accent-on-dark); }
   .ink-muted { color: var(--ink-muted); }
 
+  /*
+   * Sonner's own success and error inks fail AA on its own backgrounds.
+   * #008a2e on #ecfdf3 measures 4.37:1 and the text is 13px, nowhere near
+   * large-text size — so every "added to your cart" and every "Saved" in the
+   * portal was below the bar, in both languages.
+   *
+   * It survived every earlier audit because a toast is transient: axe was run
+   * against pages with none on screen. It only turned up when a run added
+   * something to the bag first, which is the same lesson as running the audit
+   * against a catalog that has products in it.
+   *
+   * The replacements are inks this codebase already carries rather than new
+   * hues — #2f5d33 is the in-stock line, #8c2f22 the refusal red — and they
+   * measure 7.2:1 and 7.5:1 on the surfaces sonner pairs them with.
+   */
+  [data-sonner-toast] {
+    --success-text: #2f5d33;
+    --error-text: #8c2f22;
+    --warning-text: #7a4a10;
+    --info-text: #234b7d;
+  }
+
   .glass-navy {
     color: #fffdf9;
     /* Opaque brand navy. The tint was translucent so the backdrop could show

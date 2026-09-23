@@ -447,6 +447,16 @@ export const vendors = pgTable(
     discountLicenceNumber: varchar("discount_licence_number", { length: 120 }),
     discountLicenceExpiresAt: timestamp("discount_licence_expires_at", { withTimezone: true }),
     /**
+     * Whether shoppers may ask this seller for a special price.
+     *
+     * Off until a seller says otherwise: a "make me an offer" button on a shop
+     * that will never answer one is a dead control, and the inbox it fills is
+     * the seller's time. Deliberately *not* governed by the discount permit —
+     * that covers advertising a saving to the public, and a figure quoted to
+     * one shopper who asked for it is not an advertisement.
+     */
+    acceptsOffers: boolean("accepts_offers").notNull().default(false),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller
@@ -567,6 +577,17 @@ export const products = pgTable(
      */
     commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }),
     commissionFixed: numeric("commission_fixed", { precision: 12, scale: 3 }),
+    /**
+     * Whether *this* product may be haggled over, overriding the vendor's own
+     * answer in either direction.
+     *
+     * Nullable for the reason the commission columns are: "not this one" and
+     * "no opinion about this one" are different instructions, and a boolean
+     * defaulting to false would lose the second. A seller who will move on a
+     * sofa and not on batteries needs both. `negotiable()` in
+     * `shared/commerce/priceOffers.ts` resolves the pair.
+     */
+    acceptsOffers: boolean("accepts_offers"),
     /**
      * Spec rows, and the review score the cards and PDP read.
      *
@@ -933,6 +954,96 @@ export const reviews = pgTable(
     index("reviews_product_idx").on(table.productId, table.createdAt),
     index("reviews_vendor_idx").on(table.vendorId, table.createdAt),
     index("reviews_user_idx").on(table.userId),
+  ]
+);
+
+/* --------------------------------------------------------- price offers --- */
+
+/**
+ * A shopper asking the seller for a better price, and the seller's answer.
+ *
+ * Requirement 3.1.13. The rules are in `shared/commerce/priceOffers.ts` and are
+ * pure; this is where the negotiation lives.
+ *
+ * **Four stored states, two derived.** `expired` comes from `expires_at` and
+ * `used` from `used_on_order_id`, neither of them stored — a stored `expired`
+ * needs a job to go round and write it, and until that job runs the row claims
+ * a price is still good when it is not. The same decision the discount permit
+ * makes, for the same reason.
+ *
+ * **The cart still stores no price.** A granted price is a fact about a shopper
+ * and a variant, so the cart and the order look it up rather than carrying it:
+ * `cart_items` is untouched, and "a cart is a list of intentions" survives
+ * intact. The order freezes the resolved figure the way it freezes every other.
+ */
+export const priceOffers = pgTable(
+  "price_offers",
+  {
+    id: serial("id").primaryKey(),
+    /*
+     * Signed in, always. A grant is attached to an account because a discount
+     * somebody can collect again by clearing their cookies is not a discount,
+     * and an anonymous cart token is not an identity.
+     */
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /*
+     * The variant rather than the product: two sizes of the same thing are two
+     * prices, and a discount agreed on the large one is not an answer about
+     * the small one. Cascade, because a price for a variant that no longer
+     * exists cannot be honoured.
+     */
+    variantId: integer("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    /** Copied, so an answered request still names what it was about. */
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    /**
+     * What the shelf said when the shopper asked.
+     *
+     * Frozen for the reason an order line freezes its price: the seller is
+     * answering a question about a number, and if the catalog moves underneath
+     * them the inbox would quietly rewrite what they were asked.
+     */
+    listPrice: numeric("list_price", { precision: 12, scale: 3 }).notNull(),
+    /** What the shopper asked to pay, per unit. */
+    askedPrice: numeric("asked_price", { precision: 12, scale: 3 }).notNull(),
+    /** How many they said they wanted — context for the seller, not a reservation. */
+    quantity: integer("quantity").notNull().default(1),
+    /** What the shopper wrote, and what the seller wrote back. */
+    shopperNote: text("shopper_note"),
+    vendorNote: text("vendor_note"),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    /** The seller's answer, per unit. Null until they give one. */
+    offeredPrice: numeric("offered_price", { precision: 12, scale: 3 }),
+    /**
+     * When this stops meaning anything — the seller's deadline to reply while
+     * it is pending, the shopper's deadline to buy once it is answered.
+     */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+    answeredBy: integer("answered_by").references(() => users.id, { onDelete: "set null" }),
+    /** Set null rather than cascade: spending it is a fact even if the order goes. */
+    usedOnOrderId: integer("used_on_order_id").references(() => orders.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    /*
+     * One live request per shopper per variant, enforced here rather than by a
+     * check in application code: two browser tabs are enough to make a
+     * read-then-insert race, and a seller looking at the same question twice
+     * is the kind of noise that makes them stop reading the inbox.
+     */
+    uniqueIndex("price_offers_open_unique")
+      .on(table.userId, table.variantId)
+      .where(sql`${table.status} in ('pending', 'offered') and ${table.usedOnOrderId} is null`),
+    index("price_offers_vendor_idx").on(table.vendorId, table.status, table.createdAt),
+    index("price_offers_user_idx").on(table.userId, table.createdAt),
+    index("price_offers_variant_idx").on(table.variantId),
   ]
 );
 

@@ -32,6 +32,16 @@ function Overview({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
   const counts = trpc.inventory.overview.useQuery();
   const health = trpc.inventory.health.useQuery(undefined, { retry: false });
+  /*
+   * Asked before the early returns below, so the hook order never changes
+   * between renders — `enabled` is what stops a staff member's browser asking
+   * a question the server would refuse.
+   */
+  const vendorScope = actor.kind === "vendor" ? actor.vendorId : undefined;
+  const waitingOffers = trpc.offers.waiting.useQuery(
+    { vendorId: vendorScope },
+    { enabled: can(actor, "offer.answer", vendorScope) },
+  );
 
   if (counts.isLoading || counts.isError) return <QueryGate queries={[counts]}>{() => null}</QueryGate>;
   const data = counts.data;
@@ -50,6 +60,10 @@ function Overview({ actor }: { actor: Actor }) {
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),
     { label: "admin.countOutOfStock" as const, value: data.outOfStock, href: "/admin/stock", tone: "urgent" as const },
     { label: "admin.countLowStock" as const, value: data.lowStock, href: "/admin/stock", tone: "urgent" as const },
+    /* A shopper waiting on a price is work, and it runs out: a request nobody
+       answers inside the week expires, so this belongs beside the review queue
+       rather than among the standing totals. */
+    { label: "admin.offersWaiting" as const, value: waitingOffers.data ?? 0, href: "/admin/offers", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

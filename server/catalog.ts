@@ -37,6 +37,8 @@ import type { Measure } from "../shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
+import { priceFor } from "../shared/commerce/priceOffers.js";
+import { liveOffersFor } from "./offers.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 
@@ -198,6 +200,13 @@ function sumMinor(values: { amount: string; quantity: number }[]): string {
  * A line whose variant or product has since been unpublished is dropped
  * rather than shown: the shopper cannot buy it, and a cart row they cannot
  * remove the reason for is worse than one that quietly went away.
+ *
+ * **A personally agreed price is applied here, and the line still stores
+ * none.** A grant is a fact about a shopper and a variant, so it is looked up
+ * against `carts.userId` rather than written onto `cart_items` — which keeps
+ * "a cart is a list of intentions and the price is whatever it costs when the
+ * shopper looks" true, with the grant simply being part of what it costs for
+ * that shopper. An anonymous bag has no owner and so has no grants.
  */
 export async function getCart(cartId: string): Promise<Cart | null> {
   const db = await getDb();
@@ -241,20 +250,34 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const imageFor = new Map<number, { url: string; altText: string | null }>();
   for (const image of images) if (!imageFor.has(image.productId)) imageFor.set(image.productId, image);
 
-  const items: CartItem[] = rows.map(row => ({
+  /* `priceFor` decides what each line actually costs: the agreed price while
+     it is live, and the shelf price the moment the shelf is cheaper. */
+  const agreed = await liveOffersFor(db, cart.userId, rows.map(row => row.variantId));
+  const priced = rows.map(row => ({
+    ...row,
+    charged: priceFor(row.price, agreed.get(row.variantId) ?? null),
+  }));
+
+  const items: CartItem[] = priced.map(row => ({
     lineId: String(row.lineId),
     variantId: String(row.variantId),
     productHandle: row.productHandle,
     productTitle: row.productTitle,
     variantTitle: row.variantTitle,
     image: imageFor.get(row.productId) ?? null,
-    unitPrice: money(row.price),
+    unitPrice: money(row.charged),
+    /* The shelf price beside it, but only when it is genuinely higher — this
+       is the one place a shopper is shown what they are saving, because they
+       asked for it. It is never `compareAtPrice`: that field drives the public
+       strikethrough and the `−27%` badge, which are the machinery of an
+       advertised claim and need a Ministry permit this does not. */
+    agreedFrom: row.charged === row.price ? null : money(row.price),
     quantity: row.quantity,
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
-    lineTotal: money(sumMinor([{ amount: row.price, quantity: row.quantity }])),
+    lineTotal: money(sumMinor([{ amount: row.charged, quantity: row.quantity }])),
   }));
 
-  const subtotal = sumMinor(rows.map(row => ({ amount: row.price, quantity: row.quantity })));
+  const subtotal = sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity })));
 
   return {
     id: cart.id,
