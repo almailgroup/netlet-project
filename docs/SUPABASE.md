@@ -56,6 +56,23 @@ It is safe to run more than once, on a fresh database or on one that is behind.
 > end of what you actually pasted and run the remainder from there, or paste
 > the file in a few parts. Re-running costs nothing.
 
+### Is this database complete?
+
+[`docs/schema-audit.sql`](./schema-audit.sql) answers that in one read-only
+query: of every table and column the code expects, which are absent? Paste it
+into the SQL editor and run it.
+
+**No rows is the good result.** Any row names something missing, and the fix is
+always the same — run `docs/supabase-bootstrap.sql` again in full, and check for
+its "bootstrap complete" row.
+
+Worth running whenever a page fails with *"column … does not exist"*: the error
+names one column, but a partial apply usually costs several, and fixing them one
+reload at a time is a slow way to find that out.
+
+`node scripts/build-schema-audit.mjs` regenerates it from the Drizzle snapshot
+after a schema change.
+
 ### Route B — from a clone
 
 ```sh

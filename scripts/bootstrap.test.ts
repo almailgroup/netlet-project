@@ -16,7 +16,7 @@
  * This is that thing, in the suite.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { DEPARTMENTS } from "../shared/commerce/departments.js";
 
@@ -82,5 +82,30 @@ describe("the Supabase bootstrap generator", () => {
     const bootstrap = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
     const journal = JSON.parse(readFileSync(path.join(root, "drizzle/meta/_journal.json"), "utf-8"));
     expect(bootstrap).toContain(`${journal.entries.length} AS migrations_in_this_file`);
+  });
+
+  /*
+   * `docs/schema-audit.sql` answers "what is this database missing?" in one
+   * read-only query. It only helps if it lists what the code actually expects,
+   * so it is checked against the same snapshot it was generated from — an
+   * audit that has fallen behind reports a clean bill on a database that is
+   * broken, which is worse than having no audit.
+   */
+  it("has a schema audit covering every column in the current snapshot", () => {
+    const audit = readFileSync(path.join(root, "docs/schema-audit.sql"), "utf-8");
+    const snapshots = readdirSync(path.join(root, "drizzle/meta"))
+      .filter(name => /^\d+_snapshot\.json$/.test(name))
+      .sort();
+    const snapshot = JSON.parse(readFileSync(path.join(root, "drizzle/meta", snapshots.at(-1)!), "utf-8"));
+
+    const missing: string[] = [];
+    for (const table of Object.values(snapshot.tables) as { name: string; columns: Record<string, { name: string }> }[]) {
+      for (const column of Object.values(table.columns)) {
+        if (!audit.includes(`('${table.name}', '${column.name}')`)) {
+          missing.push(`${table.name}.${column.name}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });
