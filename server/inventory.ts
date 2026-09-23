@@ -78,9 +78,13 @@ export async function resolveActor(
  */
 async function auditActor(actor: Actor) {
   const db = await getDb();
-  if (!db) return { id: actor.userId, email: null };
+  /* The rank comes off the resolved actor rather than from the database,
+     because that is what the guard just checked them against — reading the
+     membership row again could disagree with the decision already made. */
+  const role = actor.kind === "vendor" ? actor.role : actor.kind;
+  if (!db) return { id: actor.userId, email: null, role };
   const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, actor.userId)).limit(1);
-  return { id: actor.userId, email: row?.email ?? null };
+  return { id: actor.userId, email: row?.email ?? null, role };
 }
 
 /* --------------------------------------------------------------- reading --- */

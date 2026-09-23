@@ -597,6 +597,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0019_numerous_silverclaw.sql =====
+ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_role" varchar(20);
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "audit_seen_at" timestamp with time zone;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -634,6 +638,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  19 AS migrations_in_this_file,
+  20 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -304,6 +304,15 @@ function resolve(path: string, rawInput: unknown): unknown {
      * below. The rest are answered anyway, because a procedure the demo cannot
      * name throws the day the fixture opts a product in.
      */
+    /* Requirement 3.3.8's reads. The demo portal signs in as a vendor
+       `manager`, who cannot reach `platform.viewAll`, so neither is reachable
+       — answered anyway, because a procedure the demo cannot name throws the
+       day the fixture's role changes. */
+    case "inventory.sellerChanges":
+      return { rows: [], unseen: 0, seenAt: null };
+    case "inventory.markAuditSeen":
+      return { ok: true };
+
     case "offers.openOn":
       return [];
     case "offers.mine":

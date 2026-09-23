@@ -51,7 +51,7 @@ import {
   vendorHealthFor,
 } from "../inventory.js";
 import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
-import { listAudit, type AuditAction } from "../audit.js";
+import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../audit.js";
 import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 
 /**
@@ -384,6 +384,26 @@ export const inventoryRouter = router({
         });
       });
     }),
+
+  /**
+   * What sellers changed, and how much of it this administrator has not seen.
+   *
+   * Requirement 3.3.8. Separate from `audit` rather than a filter on it,
+   * because the question is different: the trail answers "what happened", this
+   * answers "what happened that I have not read", and folding the second into
+   * the first would make every caller pass a flag to opt out of it.
+   */
+  sellerChanges: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .query(async ({ ctx, input }) =>
+      guard(async () => sellerChangesForAdmin(await resolveActor(ctx.user), input?.limit ?? 100))),
+
+  /** Mark the trail read. A mutation, because it writes. */
+  markAuditSeen: protectedProcedure
+    .mutation(async ({ ctx }) => guard(async () => {
+      await markAuditSeen(await resolveActor(ctx.user));
+      return { ok: true } as const;
+    })),
 
   /** A vendor's own performance numbers, or any vendor's for an admin. */
   health: protectedProcedure

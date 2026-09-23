@@ -14,8 +14,9 @@
  * the failure is logged instead. The alternative is an audit system that takes
  * the site down, which is how audit logging gets switched off.
  */
-import { and, desc, eq, gte, sql } from "drizzle-orm";
-import { auditLog } from "../drizzle/schema.js";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { auditLog, users } from "../drizzle/schema.js";
+import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { describeError } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 
@@ -39,6 +40,8 @@ export type AuditAction =
 export type AuditActor = {
   id?: number | null;
   email?: string | null;
+  /** `admin`, `owner`, `manager`, `staff` — what they were at the time. */
+  role?: string | null;
 };
 
 export type AuditRecord = {
@@ -117,6 +120,7 @@ export async function recordAudit(actor: AuditActor, record: AuditRecord): Promi
       subjectLabel: record.subjectLabel ?? null,
       actorId: actor.id ?? null,
       actorEmail: actor.email ?? null,
+      actorRole: actor.role ?? null,
       authorisedById: chain.id,
       authorisedByEmail: chain.email,
       vendorId: record.vendorId ?? null,
@@ -168,6 +172,65 @@ export async function listAudit(options: {
 }
 
 /**
+ * The ranks that are a seller rather than NetLet.
+ *
+ * A list rather than "not admin", because a null role — a row written before
+ * the column existed, or by something with no actor at all — is not evidence
+ * that a seller did it, and counting it as one would put NetLet's own
+ * automatic acts in a report about vendors.
+ */
+const SELLER_ROLES = ["owner", "manager", "staff"] as const;
+
+/** The acts a seller performs on their own catalogue, which an admin watches. */
+const SELLER_ACTIONS: AuditAction[] = [
+  "product.create",
+  "product.delete",
+  "product.priceChange",
+  "product.setStatus",
+];
+
+/**
+ * What sellers changed, and how much of it is new to this administrator.
+ *
+ * Requirement 3.3.8 asks for a vendor's product changes to be *visible to an
+ * admin*. They were already logged, which is not the same thing: a trail
+ * nobody opens is a filing cabinet, and the requirement is about being told.
+ *
+ * `since` is the administrator's own last read rather than a fixed window, so
+ * the count answers "what have I not seen" instead of "what happened this
+ * week" — the second is a number that never reaches zero and therefore never
+ * means anything.
+ */
+export async function sellerChanges(options: { since?: Date | null; vendorId?: number; limit?: number } = {}) {
+  const db = await getDb();
+  if (!db) return { rows: [], unseen: 0 };
+
+  const scope = and(
+    inArray(auditLog.actorRole, [...SELLER_ROLES]),
+    inArray(auditLog.action, SELLER_ACTIONS),
+    options.vendorId ? eq(auditLog.vendorId, options.vendorId) : undefined,
+  );
+
+  const rows = await db
+    .select()
+    .from(auditLog)
+    .where(scope)
+    // Ends on the id for the reason `listAudit` does: `createdAt` ties.
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+    .limit(options.limit ?? 100);
+
+  /* Counted in SQL rather than over the page just fetched: a count taken from
+     100 loaded rows silently stops at 100 and reports a shop that has been
+     busy as one that has been quiet. */
+  const [counted] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(auditLog)
+    .where(options.since ? and(scope, gte(auditLog.createdAt, options.since)) : scope);
+
+  return { rows, unseen: counted?.n ?? 0 };
+}
+
+/**
  * How many warnings a vendor has accumulated.
  *
  * The requirements suspend a vendor automatically after three violations, and
@@ -182,4 +245,41 @@ export async function violationCount(vendorId: number): Promise<number> {
     .from(auditLog)
     .where(and(eq(auditLog.vendorId, vendorId), eq(auditLog.action, "product.review"), sql`${auditLog.after} ->> 'approved' = 'false'`));
   return row?.count ?? 0;
+}
+
+/**
+ * The seller changes waiting for this administrator, and how many are new.
+ *
+ * Guarded here rather than in the router alone, next to the query it protects
+ * — the rule the whole data layer follows. `platform.viewAll`, because this is
+ * every seller's activity and a vendor reading it would be reading their
+ * competitors'.
+ */
+export async function sellerChangesForAdmin(actor: Actor, limit = 100) {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return { rows: [], unseen: 0, seenAt: null };
+
+  const [me] = await db
+    .select({ seenAt: users.auditSeenAt })
+    .from(users)
+    .where(eq(users.id, actor.userId))
+    .limit(1);
+
+  const { rows, unseen } = await sellerChanges({ since: me?.seenAt ?? null, limit });
+  return { rows, unseen, seenAt: me?.seenAt ?? null };
+}
+
+/**
+ * Mark the trail read, up to now.
+ *
+ * Called when an administrator actually opens the page rather than when the
+ * count is fetched: a badge that clears itself because a tile rendered
+ * somewhere else is a badge that hides work.
+ */
+export async function markAuditSeen(actor: Actor): Promise<void> {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ auditSeenAt: new Date() }).where(eq(users.id, actor.userId));
 }

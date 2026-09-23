@@ -9,14 +9,14 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 244 columns across 23 tables.
+-- Expected: 246 columns across 23 tables.
 
 WITH expected AS (
   SELECT
     packed.table_name,
     unnest(string_to_array(packed.columns, ',')) AS column_name
   FROM (VALUES
-    ('audit_log', 'action,actor_email,actor_id,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
+    ('audit_log', 'action,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
     ('auth_attempts', 'bucket,created_at,id,kind'),
     ('cart_items', 'cart_id,created_at,id,quantity,updated_at,variant_id'),
     ('carts', 'created_at,id,updated_at,user_id'),
@@ -34,7 +34,7 @@ WITH expected AS (
     ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),
     ('saved_products', 'created_at,id,product_id,user_id'),
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
-    ('users', 'created_at,email,firebase_uid,id,last_signed_in,name,password_hash,role,updated_at'),
+    ('users', 'audit_seen_at,created_at,email,firebase_uid,id,last_signed_in,name,password_hash,role,updated_at'),
     ('vendor_members', 'created_at,id,role,user_id,vendor_id'),
     ('vendors', 'accepts_offers,address_line,auto_publish,badges,commission_fixed,commission_percent,contact_email,contact_phone,created_at,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_number,logo_url,name,name_ar,payout_iban,slug,status,updated_at'),
     ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at,id,note,product_id,quantity,updated_at,wishlist_id'),

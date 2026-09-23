@@ -79,6 +79,15 @@ export const users = pgTable(
     name: varchar("name", { length: 255 }),
     role: userRole("role").notNull().default("user"),
     lastSignedIn: timestamp("last_signed_in", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * When this administrator last read the audit trail.
+     *
+     * Requirement 3.3.8 asks for a vendor's product changes to be *visible to
+     * an admin*, and a log nobody opens is not visibility. This is what makes
+     * "since you last looked" a real question. Null means never, which counts
+     * everything — the honest answer for somebody arriving for the first time.
+     */
+    auditSeenAt: timestamp("audit_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -842,6 +851,17 @@ export const auditLog = pgTable(
     subjectLabel: varchar("subject_label", { length: 255 }),
     actorId: integer("actor_id").references(() => users.id, { onDelete: "set null" }),
     actorEmail: varchar("actor_email", { length: 320 }),
+    /**
+     * What the actor was when they did it: `admin`, or a vendor rank.
+     *
+     * Frozen rather than joined, for the reason every other fact on this row
+     * is: somebody promoted from `staff` to `manager` next week did not have
+     * that rank when they changed the price, and a trail that answers with
+     * today's rank is answering a different question. It is also what makes
+     * "changes a seller made" a column filter rather than a join against a
+     * membership table that has moved since.
+     */
+    actorRole: varchar("actor_role", { length: 20 }),
     /** Which vendor the action touched, when it was scoped to one. */
     vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
     /**

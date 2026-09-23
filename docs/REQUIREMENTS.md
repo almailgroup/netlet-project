@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 22 |
-| Partial | 10 |
+| Built | 23 |
+| Partial | 9 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
 | Not started | 43 |
 
-*Last updated after landing the commission authorisation chain (3.3.9). Payments and
+*Last updated after making seller changes visible to an admin (3.3.8). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 7 built, 2 partial, 13 absent
+## 3.3 Vendor experience — 8 built, 1 partial, 13 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -88,7 +88,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 5 | AI auto-categorises on bulk upload | Not started | |
 | 6 | AI reviews products, alerts admin | Not started | The review queue is entirely human. |
 | 7 | Trusted companies publish directly | **Built** | `autoPublish`. |
-| 8 | Vendor product changes visible to admin | **Partial** | Logged — `product.priceChange`, `product.create`, `product.delete`. Not notified. |
+| 8 | Vendor product changes visible to admin | **Built** | They were always logged, which is not the same thing: a trail nobody opens is a filing cabinet, and the requirement is about being told. The audit row now freezes **the rank the actor held at the time** — `owner`, `manager`, `staff` or `admin` — so "what the sellers changed" is a column filter rather than a join against a membership table that has since moved, and a person promoted next week does not retroactively change what they were. `/admin` carries an unread count that hides itself at zero like every other tile there, and `/admin/audit` has a Seller-changes view narrowed **on the server**, because a filter over the hundred rows already fetched reports a quiet week for a shop that has been busy. The count is what this administrator has not read rather than a rolling window — a window never reaches zero and so never means anything — and only pressing the button clears it, never a tile rendering somewhere else, which would hide work by drawing. Marking read changes nothing in the trail itself. |
 | 9 | Commission admin-only, log who changed it and who authorised them | **Built** | No vendor rank reaches `vendor.setCommission` at any level, the row records the actor and both sides of the change, and it now also records **who granted that actor their administrator rights**. The chain is read out of the trail's own `user.setAdmin` rows rather than a second table — the grant was already recorded, and a parallel record of one fact is one that eventually disagrees — and it is resolved at write time and frozen, because an audit row states what was true at that moment. The most recent *grant* wins and a revocation is skipped, or demoting and restoring somebody would name whoever took the rights away as the person who conferred them. A null is ordinary and honest: the first administrator was made one by whoever ran the bootstrap, and there is no row to point at. Only the acts no vendor rank can reach carry the chain, so the extra query is not spent on a stock adjustment. |
 | 10 | Vendor trust badges | **Built** | |
 | 11 | Bundles, including cross-vendor | Not started | |

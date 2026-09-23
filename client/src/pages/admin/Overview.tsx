@@ -42,6 +42,13 @@ function Overview({ actor }: { actor: Actor }) {
     { vendorId: vendorScope },
     { enabled: can(actor, "offer.answer", vendorScope) },
   );
+  /* Requirement 3.3.8: a seller's changes have always been logged, and a log
+     nobody opens is not visibility. This is the count of what this
+     administrator has not read. */
+  const sellerChanges = trpc.inventory.sellerChanges.useQuery(
+    { limit: 1 },
+    { enabled: can(actor, "platform.viewAll") },
+  );
 
   if (counts.isLoading || counts.isError) return <QueryGate queries={[counts]}>{() => null}</QueryGate>;
   const data = counts.data;
@@ -64,6 +71,10 @@ function Overview({ actor }: { actor: Actor }) {
        answers inside the week expires, so this belongs beside the review queue
        rather than among the standing totals. */
     { label: "admin.offersWaiting" as const, value: waitingOffers.data ?? 0, href: "/admin/offers", tone: "urgent" as const },
+    /* Unread rather than "this week": a rolling window never reaches zero and
+       therefore never means anything, and the tile hides itself at zero like
+       every other one here. */
+    { label: "admin.sellerChanges" as const, value: sellerChanges.data?.unseen ?? 0, href: "/admin/audit", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

@@ -494,6 +494,58 @@ describe("the audit trail", () => {
     if (row) expect(row.authorisedByEmail).toBeNull();
   });
 
+  /*
+   * Requirement 3.3.8. The changes were always logged; the requirement is
+   * that an admin can *see* them, which needs the seller's rank on the row
+   * and a count of what has not been read.
+   */
+  describe("seller changes reaching an admin", () => {
+    it("separates what a seller changed from what NetLet did", async () => {
+      await inv.saveVariant(ownerActor(), {
+        id: ids.acmeVariant, productId: ids.acmeProduct, title: "Default", price: "44.000",
+      });
+      await inv.setProductStatus(adminActor(), ids.acmeProduct, "draft");
+
+      const { rows } = await audit.sellerChanges({});
+      expect(rows.every(row => ["owner", "manager", "staff"].includes(row.actorRole ?? ""))).toBe(true);
+      expect(rows.some(row => row.action === "product.priceChange")).toBe(true);
+      // The admin's own status change is NetLet acting, not a seller.
+      expect(rows.some(row => row.actorRole === "admin")).toBe(false);
+      await inv.setProductStatus(adminActor(), ids.acmeProduct, "published");
+    });
+
+    it("freezes the rank the actor held rather than the one they hold now", async () => {
+      await inv.saveVariant(ownerActor(), {
+        id: ids.acmeVariant, productId: ids.acmeProduct, title: "Default", price: "45.000",
+      });
+      const { rows } = await audit.sellerChanges({});
+      expect(rows[0].actorRole).toBe("owner");
+    });
+
+    it("counts only what this administrator has not read, and clears on request", async () => {
+      const before = await audit.sellerChangesForAdmin(adminActor());
+      expect(before.unseen).toBeGreaterThan(0);
+
+      await audit.markAuditSeen(adminActor());
+      const after = await audit.sellerChangesForAdmin(adminActor());
+      expect(after.unseen).toBe(0);
+      // Marking read hides nothing: the trail itself is unchanged.
+      expect(after.rows.length).toBe(before.rows.length);
+
+      await inv.saveVariant(ownerActor(), {
+        id: ids.acmeVariant, productId: ids.acmeProduct, title: "Default", price: "46.000",
+      });
+      expect((await audit.sellerChangesForAdmin(adminActor())).unseen).toBe(1);
+    });
+
+    /* Every seller's activity, so a vendor reading it would be reading their
+       competitors'. */
+    it("refuses a vendor owner entirely", async () => {
+      await expect(audit.sellerChangesForAdmin(ownerActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
+      await expect(audit.markAuditSeen(ownerActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
+    });
+  });
+
   it("records a price change, and only when the price actually moved", async () => {
     const before = (await audit.listAudit({ action: "product.priceChange" })).length;
     await inv.saveVariant(ownerActor(), {
