@@ -921,6 +921,139 @@ every "Saved" in the portal, in both languages, under the bar. It survived
 every earlier audit because a toast is transient and the audits measured pages
 with none.
 
+## Delivery
+
+Four requirements, one area, and the rules are all in `shared/` because every
+one of them is either money a shopper pays or a promise they decide on.
+
+**Each seller charges their own delivery and the shopper pays each.**
+`shared/commerce/delivery.ts`. A basket from three shops is three parcels from
+three warehouses, and one averaged figure charges the cheap seller's customers
+for the expensive one. Free-over is measured against *that seller's* goods and
+never across the basket, or a shopper with KWD 20 at one shop and KWD 5 at
+another gets free delivery the second seller never agreed to. The shortfall is
+shown — "add KWD 3.500 from Acme" — because a threshold nobody can see is just
+a higher price with a rumour attached. A seller who recorded no fee delivers
+free, which errs toward the shopper: charging a number they never typed would
+be inventing a price.
+
+**The order computes the delivery total rather than taking it.** It was a
+parameter on the honest grounds that there was no rate card; there is one now,
+and leaving it a parameter would let whoever posts the order set their own
+postage. The per-seller breakdown is frozen beside the total, so an old order
+still says who charged what. An agreed special price counts toward the
+threshold, because it is what the shopper actually spends.
+
+**A shipping speed is a band the seller picks, and the line says so.**
+`shared/commerce/deliverySpeed.ts`. NetLet integrates with no carrier, so
+anything calling itself an ETA would be invented, and a shop that presents a
+seller's estimate as its own guarantee owns the complaint when it slips.
+Product overrides store in the shape the commission rate uses; null from both
+draws nothing, because a default band would be NetLet promising for a seller.
+Made to order has no window rather than a guessed one, and a pre-ordered line
+shows none of it — the release date is the promise there, and two answers about
+one parcel is how a shopper believes the wrong one.
+
+**The weekend is Friday and Saturday**, and arrival dates are counted in
+business days across it. Plain calendar arithmetic would promise a Thursday
+order on a Saturday; a same-day order placed on a Friday goes out on Sunday.
+
+**The vehicle is derived, never a second dropdown.** `shared/commerce/vehicle.ts`.
+Two fields that must agree eventually do not, and a seller can answer "how big"
+without a tape measure. A declared class beats weight because it captures shape
+— a mattress is light and needs a van — and quantity can push the answer up.
+The largest line decides the whole delivery, and a line nobody measured is
+skipped rather than counted small, so one unmeasured item cannot talk a
+dispatcher down from a van. Unknown is a real answer: guessing small is how a
+sofa gets dispatched on a motorcycle.
+
+**The carrier is free text.** A fixed list would be this codebase asserting
+which companies exist in Kuwait, and the name claims nothing about tracking.
+
+## Payouts and placement
+
+`shared/commerce/payouts.ts` reads what each seller is owed, week by week, off
+the same frozen lines the finance panel uses — `vendorNet` was copied at the
+moment of sale, so a rate change today cannot rewrite last month. **A week runs
+Sunday to Saturday**, the Kuwaiti working week, and the page says so. **A refund
+is subtracted from the week it was sold in**, not the week it came back:
+moving a reversal later makes two weeks wrong to make one look tidy. **A
+negative week is shown rather than clamped** — a week of refunds against
+nothing sold means the seller owes NetLet, and a zero there is how a payout run
+quietly overpays. Scoped in the query, so a vendor cannot read a competitor's
+revenue.
+
+Selling under NetLet's own licence is **recorded rather than inferred from a
+blank licence number**. A seller who has not handed their paperwork in is not
+the same as one trading under ours, and collapsing the two would put NetLet's
+name behind somebody who never asked for it.
+
+`shared/commerce/placement.ts` puts sellers who are actually discounting first
+among equals. **Only a permitted, live saving earns it — and that is not
+checked there, because it cannot arrive there**: `fromInventory` has already
+dropped `compareAtPrice` when the Ministry permit lapsed, so an unlicensed
+offer is indistinguishable from none. It **sharpens and never overturns**: the
+boost applies to the default view only, and the moment a shopper picks their
+own order that choice wins outright, because a "price low to high" that quietly
+puts discounters first is not price low to high. The boost stops growing past a
+point, or the catalogue sorts by desperation, and the reorder is stable so a
+page does not shuffle under somebody reloading it.
+
+## Specification rows
+
+`shared/commerce/attributeSchema.ts` gives each department the rows a shopper
+compares on, **in code beside the departments themselves** — a table and an
+editor for it would be a second product to maintain before anybody asked.
+
+**The schema offers rows, it never restricts them.** Anything a seller typed
+that it does not know about is kept, listed and untouched: a schema that
+deletes merchant data on first save is one nobody uses twice.
+
+**The key is stable and the label is translated.** `ram` is what a facet would
+group on; "Memory" and "الذاكرة" are what people read. That is the fix for the
+same fact arriving as "RAM", "Ram Size" and "Memory (GB)" from three sellers.
+**The unit belongs to the field**, so "16 GB" and "16" cannot split a facet in
+two. A blank clears a row rather than storing "", which renders as a label with
+nothing after it.
+
+## The audit chain
+
+The trail records **who did it and who authorised them** (3.3.9). The chain is
+read out of the trail's own `user.setAdmin` rows rather than a second table,
+and frozen at write time, because an audit row states what was true at that
+moment. The most recent *grant* wins and a revocation is skipped, or demoting
+and restoring somebody would name whoever took the rights away as the person
+who conferred them. A null is ordinary: the first administrator was made one by
+whoever ran the bootstrap.
+
+It also freezes **the rank the actor held at the time**, which is what makes
+"what the sellers changed" a column filter rather than a join against a
+membership table that has since moved. `/admin` carries an unread count of
+those changes and `/admin/audit` narrows to them **on the server** — a filter
+over the hundred rows already fetched reports a quiet week for a busy shop. The
+count is what this administrator has not read rather than a rolling window,
+which never reaches zero and so never means anything, and only pressing the
+button clears it — never a tile rendering somewhere else, which would hide work
+by drawing.
+
+`listAudit` ends on the id. `createdAt` ties when several rows are written in
+one request, and Postgres orders ties freely, so "the most recent entry" was a
+coin toss — the rule every paged admin list already followed, missed here
+because this query is capped rather than paged.
+
+## Selling and shopping are one account
+
+A vendor member is a shopper with a `vendor_members` row, and for a long time
+there was no door between the two: the portal carried "Back to the store" and
+nothing pointed the other way. The Selling section on `/account` is that leg,
+naming the store and the rank so somebody is told which hat they are putting
+on. It is drawn only for an account that has the second identity, and the
+server decides — a switch a shopper can see leads to a page refusing them.
+
+The store's name is a separate read rather than a field on `Actor`: that type
+is the permission shape both sides import to decide what somebody may do, and a
+display name has no business in an answer about access.
+
 ## Warranty and returns
 
 Three policy tabs, not one. Returns and buyer protection used to sit at the
