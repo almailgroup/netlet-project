@@ -63,6 +63,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   const [draft, setDraft] = useState({
     name: "", nameAr: "", contactEmail: "", contactPhone: "",
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
+    discountLicenceNumber: "", discountLicenceExpiresAt: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -74,6 +75,11 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       contactEmail: row.contactEmail ?? "", contactPhone: row.contactPhone ?? "",
       governorate: row.governorate ?? "", addressLine: row.addressLine ?? "",
       licenceNumber: row.licenceNumber ?? "", payoutIban: row.payoutIban ?? "",
+      discountLicenceNumber: row.discountLicenceNumber ?? "",
+      // <input type="date"> speaks yyyy-mm-dd and nothing else.
+      discountLicenceExpiresAt: row.discountLicenceExpiresAt
+        ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
+        : "",
       description: row.description ?? "", descriptionAr: row.descriptionAr ?? "",
       logoUrl: row.logoUrl ?? "",
     });
@@ -141,6 +147,16 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <Labelled label={t("admin.licenceNumber")}>
             <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={field} />
           </Labelled>
+          {/* The Ministry of Commerce discount permit. Without a valid one the
+              storefront stops showing this store's savings — on read, because
+              a permit expires with nobody saving anything. */}
+          <Labelled label={t("admin.discountLicence")}>
+            <input dir="ltr" value={draft.discountLicenceNumber} onChange={e => set("discountLicenceNumber", e.target.value)} className={field} />
+          </Labelled>
+          <Labelled label={t("admin.discountLicenceExpires")}>
+            <input type="date" value={draft.discountLicenceExpiresAt} onChange={e => set("discountLicenceExpiresAt", e.target.value)} className={field} />
+          </Labelled>
+          <p className="text-[11px] ink-muted sm:col-span-2">{t("admin.discountLicenceHint")}</p>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
           </Labelled>
@@ -164,6 +180,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             governorate: blank(draft.governorate),
             addressLine: blank(draft.addressLine),
             licenceNumber: blank(draft.licenceNumber),
+            discountLicenceNumber: blank(draft.discountLicenceNumber),
+            discountLicenceExpiresAt: draft.discountLicenceExpiresAt ? new Date(draft.discountLicenceExpiresAt) : null,
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

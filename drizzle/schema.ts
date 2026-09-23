@@ -428,6 +428,24 @@ export const vendors = pgTable(
      * looking first, which the requirements ask for by name.
      */
     autoPublish: boolean("auto_publish").notNull().default(false),
+
+    /**
+     * The Ministry of Commerce discount permit, which Kuwaiti law requires
+     * before a shop may advertise a saving.
+     *
+     * A number and a window rather than a flag, because that is what is
+     * actually issued — and the window is the part that matters: a permit
+     * stops being valid on a date without anybody editing a product, so the
+     * rule is applied when the storefront *reads* an offer and not only when a
+     * vendor writes one. `shared/inventory/discountLicence.ts` is the rule.
+     *
+     * Nullable, like every other store detail: an admin recording a seller
+     * should not be blocked because the permit is on a document nobody has
+     * scanned. What it costs is the ability to run an offer, which is the
+     * honest consequence rather than a refused save.
+     */
+    discountLicenceNumber: varchar("discount_licence_number", { length: 120 }),
+    discountLicenceExpiresAt: timestamp("discount_licence_expires_at", { withTimezone: true }),
     /**
      * Trust badges shown beside the vendor's name on a product page.
      *

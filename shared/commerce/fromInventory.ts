@@ -22,6 +22,7 @@ import type {
 import { visibleBadges } from "../inventory/vendorHealth.js";
 import type { Measure } from "./units.js";
 import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
+import { discountAllowed, type DiscountLicence } from "../inventory/discountLicence.js";
 
 /**
  * The dinar, everywhere.
@@ -97,6 +98,15 @@ export type ProductContext = {
   vendorNameAr?: string | null;
   /** Awarded badges, unfiltered — `visibleBadges` drops anything unknown. */
   vendorBadges?: string[] | null;
+  /**
+   * The vendor's Kuwaiti discount permit, checked on every read.
+   *
+   * Absent means unchecked rather than invalid, so a caller that predates this
+   * keeps its old answer — but every storefront read passes it, because a
+   * permit expires on a date with no write happening and a check only at save
+   * time would leave the shop advertising a saving it may no longer advertise.
+   */
+  vendorDiscountLicence?: DiscountLicence | null;
   /** Display name of its category — what the storefront calls productType. */
   categoryName?: string | null;
   categoryNameAr?: string | null;
@@ -166,7 +176,24 @@ export function optionsFromVariants(variants: InventoryVariantRow[]): ProductOpt
   return [...seen].map(([name, values]) => ({ name, values }));
 }
 
-function toVariant(row: InventoryVariantRow): ProductVariant {
+/**
+ * Whether this product may show a struck-through price at all.
+ *
+ * Applied here rather than at three call sites, so the strikethrough, the
+ * `−27%` badge and the savings line disappear together: they all read
+ * `compareAtPrice`, and dropping it is the one change that reaches all of
+ * them. The price itself does not move and the product is not hidden — an
+ * expired permit means the shop may not call it a discount, not that the thing
+ * cannot be sold, and pulling it off the shelf would punish a shopper for a
+ * vendor's paperwork.
+ */
+function mayAdvertiseDiscount(context: ProductContext): boolean {
+  return context.vendorDiscountLicence === undefined
+    ? true
+    : discountAllowed(context.vendorDiscountLicence).allowed;
+}
+
+function toVariant(row: InventoryVariantRow, allowDiscount = true): ProductVariant {
   const levels = {
     stock: row.stock,
     preorderStock: row.preorderStock ?? 0,
@@ -179,7 +206,7 @@ function toVariant(row: InventoryVariantRow): ProductVariant {
     title: row.title,
     sku: row.sku,
     price: money(row.price),
-    compareAtPrice: row.compareAtPrice ? money(row.compareAtPrice) : null,
+    compareAtPrice: allowDiscount && row.compareAtPrice ? money(row.compareAtPrice) : null,
     // There is still no "continue selling when out of stock" flag, because
     // overselling a marketplace's vendors is a support ticket rather than a
     // sale. A pre-order is not that flag: it is a second, bounded pool the
@@ -224,7 +251,8 @@ export function toStorefrontProduct(
   context: ProductContext = {},
   locale: LocalePick = "en",
 ): Product {
-  const variants = [...row.variants].map(toVariant);
+  const allowDiscount = mayAdvertiseDiscount(context);
+  const variants = [...row.variants].map(variant => toVariant(variant, allowDiscount));
   const description = pick(locale, row.description, row.descriptionAr);
   const title = pick(locale, row.title, row.titleAr);
 

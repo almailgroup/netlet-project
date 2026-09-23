@@ -532,6 +532,10 @@ END $$;
 ALTER TABLE "product_images" ADD COLUMN IF NOT EXISTS "kind" "media_kind" DEFAULT 'image' NOT NULL;
 ALTER TABLE "product_images" ADD COLUMN IF NOT EXISTS "poster_url" text;
 
+-- ===== 0016_zippy_mother_askani.sql =====
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "discount_licence_number" varchar(120);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "discount_licence_expires_at" timestamp with time zone;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -569,6 +573,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  16 AS migrations_in_this_file,
+  17 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

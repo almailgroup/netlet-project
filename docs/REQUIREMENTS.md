@@ -9,14 +9,14 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 18 |
+| Built | 19 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 46 |
+| Not started | 45 |
 
-*Last updated after landing product videos (3.1.9). Payments and everything
-gated on them are deliberately untouched — see the note under 3.2.*
+*Last updated after landing the Kuwaiti discount permit (3.3.19). Payments and
+everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
 derives them from the rows and `scripts/requirements.test.ts` fails the build
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 5 built, 3 partial, 14 absent
+## 3.3 Vendor experience — 6 built, 3 partial, 13 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -99,7 +99,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 16 | Individuals selling under NetLet's licence, weekly payout report | Not started | |
 | 17 | Switch between vendor and customer mode | Not started | One account holds both roles; there is no switch. |
 | 18 | Auto-suspend after 3 warnings | **Built** | `violationCount` is read in `inventory.ts` and suspends. |
-| 19 | Discount licence required on an offer (Kuwait law) | Not started | |
+| 19 | Discount licence required on an offer (Kuwait law) | **Built** | The Ministry of Commerce permit is a number and a *window* on the vendor, because that is what is issued — and the window is why the rule is applied when the storefront **reads** an offer, not only when a vendor writes one: a permit lapses on a date with nobody saving anything, and a write-time check alone would leave the shop advertising a saving it may no longer advertise. `fromInventory` drops `compareAtPrice`, so the strikethrough, the `−27%` badge and the savings line disappear together by construction. Both doors onto the shelf refuse an unlicensed offer, with two reasons rather than one — "record a permit" and "renew the permit" are different things to go and do. The price does not move and the product is not hidden: an expired permit stops the claim, not the trade. |
 | 20 | Vendors who join discounts get better placement | Not started | |
 | 21 | Auto payouts: COD 14 business days, others 1–3 | Not started | |
 | 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |

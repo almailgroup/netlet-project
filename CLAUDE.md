@@ -754,6 +754,42 @@ the call: a request that times out has still spent the money. The product is
 deliberately not a bucket, or one script could make a popular item unaskable
 for everybody.
 
+## The discount permit
+
+Kuwaiti law requires a Ministry of Commerce discount permit before a shop may
+advertise a saving, and what is issued is a number and a **period** — not a
+flag. The period is the whole design.
+
+**The rule is applied on the read, not only on the write.** A check when an
+offer is created is the obvious thing and is not enough: a permit lapses on a
+Tuesday, no vendor saves anything, and the shop goes on advertising a
+struck-through price it is no longer permitted to advertise. `fromInventory`
+drops `compareAtPrice` when `shared/inventory/discountLicence.ts` says the
+permit is not valid *now*, so the strikethrough, the `−27%` badge and the
+savings line all vanish together — they all read that one field, which is what
+makes this hold by construction rather than at three call sites.
+
+**The price does not move and the product is not hidden.** An expired permit
+means the shop may not call it a discount; it does not mean the thing cannot be
+sold, and pulling it off the shelf would punish a shopper for a vendor's
+paperwork.
+
+Both doors onto the shelf refuse an unlicensed offer — `setProductStatus` and
+the review queue's approval, the pair `assertPriced` already guards — and they
+refuse at *publish* rather than at save, because a price and a permit arrive in
+either order and a vendor setting up a sale before the paperwork clears is
+ordinary. Two reasons travel, not one: "record a permit" and "renew the permit"
+are different things for an admin to go and do.
+
+**A number with no end date is allowed.** An expiry the vendor has not recorded
+is a gap in our own form rather than evidence they have no permit, and refusing
+on it punishes the seller for our missing field — the direction
+`missingStoreDetails` and the return window both err in.
+
+`isOffer` is only a compare-at price *above* the price. Equal or lower is not a
+claim about a saving, so it needs no paperwork, and a vendor who typed the same
+number twice should not be told otherwise.
+
 ## Warranty and returns
 
 Three policy tabs, not one. Returns and buyer protection used to sit at the

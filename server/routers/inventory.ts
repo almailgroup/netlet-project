@@ -96,6 +96,14 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "UNPRICED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.unpriced" });
     }
+    /* Two reasons, not one refusal: "record a permit" and "renew the permit"
+       are different things for an admin to go and do. */
+    if (message === "DISCOUNT_LICENCE_MISSING") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.discountLicenceMissing" });
+    }
+    if (message === "DISCOUNT_LICENCE_EXPIRED") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.discountLicenceExpired" });
+    }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
     }
@@ -130,6 +138,10 @@ const storeDetails = {
   addressLine: z.string().trim().max(500).nullish(),
   licenceNumber: z.string().trim().max(60).nullish(),
   payoutIban: blankOr(z.string().trim().refine(isValidIban, "admin.invalidIban")),
+  /* The Ministry of Commerce discount permit. Kuwaiti law requires one before
+     a shop may advertise a saving — `shared/inventory/discountLicence.ts`. */
+  discountLicenceNumber: z.string().trim().max(120).nullish(),
+  discountLicenceExpiresAt: z.coerce.date().nullish(),
 };
 
 export const inventoryRouter = router({

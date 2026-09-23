@@ -22,6 +22,7 @@ import {
   vendors,
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
+import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
 import { recordAudit, violationCount } from "./audit.js";
 import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
@@ -366,6 +367,40 @@ async function assertPriced(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, 
   if (rows.some(row => Number.parseFloat(row.price) <= 0)) throw new Error("UNPRICED");
 }
 
+/**
+ * A product carrying an offer needs its vendor's discount permit — Kuwaiti law.
+ *
+ * Refused at the door onto the shelf rather than at the moment a compare-at
+ * price is typed, because a price and a permit arrive in either order: a vendor
+ * setting up a sale before their paperwork clears is ordinary, and blocking the
+ * save would make them delete the price and type it again later. Publishing is
+ * where the claim actually reaches a shopper.
+ *
+ * The storefront checks it *again* on read, and that is not belt and braces:
+ * a permit expires on a date with nobody publishing anything, and only the read
+ * catches that.
+ */
+async function assertDiscountLicensed(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  productId: number,
+  vendorId: number,
+) {
+  const rows = await db
+    .select({ price: productVariants.price, compareAtPrice: productVariants.compareAtPrice })
+    .from(productVariants)
+    .where(eq(productVariants.productId, productId));
+
+  if (!rows.some(row => isOffer(row.price, row.compareAtPrice))) return;
+
+  const vendor = (await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1))[0];
+  const verdict = discountAllowed({
+    number: vendor?.discountLicenceNumber,
+    expiresAt: vendor?.discountLicenceExpiresAt,
+  });
+  // The reason travels, so the portal can say "expired" rather than "no".
+  if (!verdict.allowed) throw new Error(`DISCOUNT_LICENCE_${verdict.reason.toUpperCase()}`);
+}
+
 export async function setProductStatus(
   actor: Actor,
   productId: number,
@@ -378,7 +413,10 @@ export async function setProductStatus(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.publish", row.vendorId);
 
-  if (target === "published") await assertPriced(db, productId);
+  if (target === "published") {
+    await assertPriced(db, productId);
+    await assertDiscountLicensed(db, productId, row.vendorId);
+  }
 
   let status: typeof row.status = target;
   if (target === "published" && actor.kind === "vendor") {
@@ -399,8 +437,13 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
   if (!was) throw new Error("NOT_FOUND");
 
   // The review queue is the other door onto the shelf, and it has to be shut
-  // against an unpriced product too — an admin approving is publishing.
-  if (approve) await assertPriced(db, productId);
+  // against an unpriced product too — an admin approving is publishing. The
+  // discount permit rides along for the same reason: approving an offer is
+  // advertising it.
+  if (approve) {
+    await assertPriced(db, productId);
+    await assertDiscountLicensed(db, productId, was.vendorId);
+  }
 
   await db
     .update(products)
@@ -1292,6 +1335,8 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   addressLine?: string | null;
   licenceNumber?: string | null;
   payoutIban?: string | null;
+  discountLicenceNumber?: string | null;
+  discountLicenceExpiresAt?: Date | null;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();
@@ -1313,6 +1358,12 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
     ...(patch.licenceNumber !== undefined ? { licenceNumber: patch.licenceNumber?.trim() || null } : {}),
     ...(patch.payoutIban !== undefined
       ? { payoutIban: patch.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null }
+      : {}),
+    ...(patch.discountLicenceNumber !== undefined
+      ? { discountLicenceNumber: patch.discountLicenceNumber?.trim() || null }
+      : {}),
+    ...(patch.discountLicenceExpiresAt !== undefined
+      ? { discountLicenceExpiresAt: patch.discountLicenceExpiresAt ?? null }
       : {}),
   };
   if (Object.keys(next).length === 0) return was;
