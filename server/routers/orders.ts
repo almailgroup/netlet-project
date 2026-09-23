@@ -13,7 +13,9 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { getOrderForUser, listOrdersForUser } from "../orders.js";
+import { getOrderForUser, listOrdersForUser, OrderRefused, placeOrder } from "../orders.js";
+import { PAYMENT_METHODS } from "../../shared/commerce/payment.js";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../shared/commerce/returns.js";
 
@@ -68,5 +70,52 @@ export const ordersRouter = router({
           ),
         })),
       };
+    }),
+
+  /**
+   * Place the basket as a cash-on-delivery order (3.2.2).
+   *
+   * This is the first thing in NetLet that creates a real order, and it is
+   * possible only because cash needs no provider: nothing is authorised or
+   * captured. The order is written `pending_payment` and stays there until a
+   * seller records that the driver collected — saying `paid` here would put
+   * revenue in the finance panel that nobody has.
+   *
+   * `protectedProcedure`, because an order somebody can neither find nor
+   * return is not an order. The address and contact come from the form; the
+   * prices, the delivery and whether cash is even available are all decided
+   * server-side, so the caller cannot set their own.
+   */
+  place: protectedProcedure
+    .input(z.object({
+      cartId: z.string().min(1).max(64),
+      paymentMethod: z.enum(PAYMENT_METHODS),
+      contactName: z.string().trim().max(255).nullish(),
+      contactPhone: z.string().trim().max(40).nullish(),
+      deliveryZoneId: z.string().trim().max(64).nullish(),
+      addressLine: z.string().trim().min(1).max(500),
+      addressNotes: z.string().trim().max(500).nullish(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const placed = await placeOrder(input.cartId, {
+          email: ctx.user.email,
+          userId: ctx.user.id,
+          paymentMethod: input.paymentMethod,
+          contactName: input.contactName ?? ctx.user.name ?? null,
+          contactPhone: input.contactPhone ?? null,
+          deliveryZoneId: input.deliveryZoneId ?? null,
+          addressLine: input.addressLine,
+          addressNotes: input.addressNotes ?? null,
+        });
+        return { reference: placed.order.reference, total: placed.totals.grandTotal };
+      } catch (error) {
+        /* Every refusal is already a message key, so the client says it in the
+           shopper's own language rather than showing an English sentence. */
+        if (error instanceof OrderRefused) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
+        }
+        throw error;
+      }
     }),
 });

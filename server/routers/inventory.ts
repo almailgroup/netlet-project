@@ -164,6 +164,9 @@ const storeDetails = {
   /* Selling under NetLet's own licence (3.3.16) — a recorded fact about the
      arrangement, not an inference from a blank licence number. */
   underPlatformLicence: z.boolean().optional(),
+  /* Cash on delivery (3.2.2). On unless the seller says otherwise. */
+  acceptsCod: z.boolean().optional(),
+  codCeiling: blankOr(moneySchema),
 };
 
 export const inventoryRouter = router({

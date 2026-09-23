@@ -228,5 +228,13 @@ export type Cart = {
    * averaged figure hides which seller is expensive. The shopper sees each.
    */
   delivery: { perVendor: CartDeliveryLine[]; total: Money };
+  /**
+   * Whether cash on delivery is available on this basket (3.2.2), and which
+   * seller refused if not.
+   *
+   * Resolved on the server so the page cannot offer a method the API would
+   * refuse — the rule the password floor already follows.
+   */
+  cod: { available: true } | { available: false; because: { kind: "seller"; vendorName: string } | { kind: "ceiling"; vendorName: string; ceiling: string } };
   total: Money;
 };

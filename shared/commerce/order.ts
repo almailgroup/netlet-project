@@ -230,6 +230,8 @@ export type OrderRefusal =
   | "order.empty"
   | "order.noContact"
   | "order.noAddress"
+  /* The method the shopper chose is not available on this basket (3.2.2). */
+  | "order.paymentUnavailable"
   | "order.zeroPriced";
 
 export function refusalFor(

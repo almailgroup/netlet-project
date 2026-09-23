@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 31 |
+| Built | 32 |
 | Partial | 7 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 37 |
+| Not started | 36 |
 
-*Last updated after landing the per-department attribute schema (3.1.7). Payments and
+*Last updated after landing cash on delivery (3.2.2), which places the first real orders. Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -63,12 +63,12 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 20 | AI size guide | Not started | |
 | 21 | Frequently bought together, cross-vendor | **Built** | `shared/commerce/together.ts`, scored on **lift** rather than raw co-occurrence — a bestseller shares baskets with everything, so counting pairs surfaces bestsellers and not complements. Reads orders *and* carts (3:1), so the rail works today rather than waiting on payments. Cross-vendor complements are kept and labelled "Another seller", which is where the value is. Draws nothing below `MIN_SUPPORT` baskets or `MIN_LIFT`, because the heading is a claim. |
 
-## 3.2 Checkout & payments — 2 built, 2 partial, 5 absent
+## 3.2 Checkout & payments — 3 built, 2 partial, 4 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | KNET, cards, Deema BNPL, payment link | **Not started — set aside** | No provider touched, by instruction. Everything below waits on it. |
-| 2 | COD by default, disableable | Not started | |
+| 2 | COD by default, disableable | **Built** | Cash on delivery is **not a payment integration**, which is why it lands while 3.2.1 does not: nothing is authorised, captured or settled. `shared/commerce/payment.ts` is the rule and is pure. On by default — a seller opts *out* — so a new store that has recorded nothing is still buyable from, and a seller may set the most they will send a driver to collect. **A basket is one payment, so one refusing seller refuses the basket**: quietly dropping them would be editing somebody's basket to make a button work. Availability is decided server-side and checked again at order time, because a seller may turn cash off between the page rendering and the button. **This is the first thing in NetLet that places a real order.** It is written `pending_payment` and stays there until a seller records the driver collected — marking it paid at checkout would put revenue in the finance panel that nobody has. The collection predicate is inside the `UPDATE`, so two people pressing it cannot both be told they recorded it. |
 | 3 | Points, gift card, discount codes | Not started | |
 | 4 | Multi-vendor cart, delivery cost per vendor | **Built** | The cart was already multi-vendor and `sliceByVendor` already grouped an order that way; what was missing was the money. `shared/commerce/delivery.ts` is the arithmetic and is pure. Each seller charges their own fee and the shopper pays each — a basket from three shops is three parcels, and one averaged figure charges the cheap seller's customers for the expensive one. **Free-over is measured per seller, never across the basket**, or one seller's money pays for another's sale, and **the shortfall is shown** because a threshold nobody can see is just a higher price with a rumour attached. A seller who recorded no fee delivers free, which errs toward the shopper. The order **computes the total rather than taking it from the caller** — it used to be a parameter on the honest grounds that there was no rate card, and leaving it one now would let whoever posts the order set their own postage — and freezes the per-seller breakdown beside it, so an old order still says who charged what. The bag and the checkout summary read Subtotal / Delivery / Total, with a line per seller that charges. |
 | 5 | Delivery speed per product | **Built** | A band the seller picks — same day, next day, 2–4 days, within a week, made to order — resolved product-over-store in the shape the commission rate already uses, so "no opinion about this one" stays a different instruction from choosing the slowest band. `shared/commerce/deliverySpeed.ts` is the rule and is pure. **The Kuwaiti weekend is Friday and Saturday**, and the arrival dates are counted in business days across it: plain calendar arithmetic would promise a Thursday order on a Saturday, which nobody here can keep. A same-day order placed on a Friday goes out on Sunday for the same reason. It is **the seller's statement and the line says so** — NetLet has no carrier integration, so anything calling itself an ETA would be invented — and nothing is drawn when nothing was stated, because a default band would be NetLet promising on a seller's behalf. Made to order has no window at all rather than a guessed one. A pre-ordered line shows none of it: the release date is the promise there, and two answers about one parcel is how a shopper believes the wrong one. One component draws it on the product page and in Quick View, so they cannot disagree. |

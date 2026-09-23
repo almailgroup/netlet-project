@@ -510,6 +510,19 @@ export const vendors = pgTable(
      */
     underPlatformLicence: boolean("under_platform_licence").notNull().default(false),
     /**
+     * Cash on delivery (3.2.2), and the most this seller will send a driver
+     * to collect.
+     *
+     * On by default — the requirement says so, and a seller has to opt out —
+     * because a new store that has recorded nothing must still be buyable
+     * from. The ceiling is the seller's own risk appetite: a driver carrying a
+     * thousand dinars is a different proposition from one carrying twenty.
+     * Null means no ceiling, the honest reading of a seller who has not
+     * thought about it.
+     */
+    acceptsCod: boolean("accepts_cod").notNull().default(true),
+    codCeiling: numeric("cod_ceiling", { precision: 12, scale: 3 }),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller
@@ -1200,6 +1213,17 @@ export const orders = pgTable(
      * A list rather than a third table, for the reason the per-vendor view of
      * an order is derived from its lines rather than stored twice.
      */
+    /**
+     * How the shopper said they would pay.
+     *
+     * Only `cod` today, and the order stays `pending_payment` until somebody
+     * records that the driver collected — nothing is authorised or captured,
+     * so marking it paid at checkout would record a payment that has not
+     * happened, which the finance panel would then report as revenue.
+     */
+    paymentMethod: varchar("payment_method", { length: 20 }),
+    /** When the cash actually arrived, which is what makes the order paid. */
+    paymentCollectedAt: timestamp("payment_collected_at", { withTimezone: true }),
     deliveryBreakdown: jsonb("delivery_breakdown").$type<{ vendorId: number | null; vendorName: string; fee: string }[] | null>(),
 
     /* Where it goes, as it was given. */

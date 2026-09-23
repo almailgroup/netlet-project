@@ -66,7 +66,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
     deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "", deliveryProvider: "",
-    underPlatformLicence: false,
+    underPlatformLicence: false, acceptsCod: true, codCeiling: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -84,6 +84,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       deliverySpeed: row.deliverySpeed ?? "",
       deliveryProvider: row.deliveryProvider ?? "",
       underPlatformLicence: row.underPlatformLicence ?? false,
+      acceptsCod: row.acceptsCod ?? true,
+      codCeiling: row.codCeiling ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -212,6 +214,25 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               <span className="block text-[11px] leading-5 ink-muted">{t("admin.underPlatformLicenceHint")}</span>
             </span>
           </label>
+          {/* Cash on delivery (3.2.2). On by default — a seller opts out — so a
+              new store that has recorded nothing is still buyable from. The
+              ceiling is their own risk appetite: a driver carrying a thousand
+              dinars is a different proposition from one carrying twenty. */}
+          <label className="flex items-start gap-2.5 sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.acceptsCod}
+              onChange={e => setDraft(d => ({ ...d, acceptsCod: e.target.checked }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="block text-[11px] font-extrabold text-[#0a285a]">{t("admin.acceptsCod")}</span>
+              <span className="block text-[11px] leading-5 ink-muted">{t("admin.acceptsCodHint")}</span>
+            </span>
+          </label>
+          <Labelled label={t("admin.codCeiling")}>
+            <input dir="ltr" inputMode="decimal" value={draft.codCeiling} onChange={e => set("codCeiling", e.target.value)} className={field} />
+          </Labelled>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
           </Labelled>
@@ -245,6 +266,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             deliverySpeed: (blank(draft.deliverySpeed) as DeliverySpeed | null),
             deliveryProvider: blank(draft.deliveryProvider),
             underPlatformLicence: draft.underPlatformLicence,
+            acceptsCod: draft.acceptsCod,
+            codCeiling: blank(draft.codCeiling),
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

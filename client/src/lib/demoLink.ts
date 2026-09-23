@@ -46,6 +46,9 @@ function emptyCart(id: string): Cart {
        same branch a real store with no fee recorded takes — not a special
        case, so the empty state the bag draws is the honest one. */
     delivery: { perVendor: [], total: fromFils(0) },
+    /* The demo's sellers take cash, which is the default a store that has
+       recorded nothing gets — not a special case. */
+    cod: { available: true as const },
     total: fromFils(0),
   };
 }
@@ -65,6 +68,7 @@ function recalculate(cart: Cart): Cart {
     itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: fromFils(subtotalFils),
     delivery: { perVendor: [], total: fromFils(0) },
+    cod: { available: true as const },
     total: fromFils(subtotalFils),
   };
 }
@@ -327,6 +331,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { rows: [], unseen: 0, seenAt: null };
     case "inventory.markAuditSeen":
       return { ok: true };
+
+    /* The demo has no server to place an order against, and saying it
+       succeeded would be the dishonesty the Publish button avoids. */
+    case "orders.place":
+      throw new Error("checkout.placeFailed");
 
     case "offers.openOn":
       return [];

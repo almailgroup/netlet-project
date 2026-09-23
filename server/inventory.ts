@@ -1430,6 +1430,8 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   deliverySpeed?: string | null;
   deliveryProvider?: string | null;
   underPlatformLicence?: boolean;
+  acceptsCod?: boolean;
+  codCeiling?: string | null;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();

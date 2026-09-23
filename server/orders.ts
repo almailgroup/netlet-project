@@ -34,6 +34,7 @@ import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagina
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote } from "../shared/commerce/delivery.js";
+import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { getDb } from "./db.js";
@@ -58,6 +59,14 @@ export type PlaceOrderDetails = {
    * reason the line prices are read one last time here rather than trusted
    * from the basket that was priced a moment ago.
    */
+  /**
+   * How the shopper says they will pay (3.2.2). Only `cod` today.
+   *
+   * The order is written `pending_payment` whatever this says: cash has not
+   * changed hands at checkout, and recording it as paid would put revenue in
+   * the finance panel that nobody has collected.
+   */
+  paymentMethod?: string | null;
 };
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
@@ -81,7 +90,12 @@ async function priceableLines(
   db: Db,
   cartId: string,
   userId: number | null | undefined,
-): Promise<{ lines: PriceableLine[]; offerIds: number[]; delivery: DeliveryQuote }> {
+): Promise<{
+  lines: PriceableLine[];
+  offerIds: number[];
+  delivery: DeliveryQuote;
+  cod: ReturnType<typeof codAvailability>;
+}> {
   const rows = await db
     .select({
       variantId: productVariants.id,
@@ -98,6 +112,8 @@ async function priceableLines(
       preorderReleaseAt: productVariants.preorderReleaseAt,
       deliveryFlat: vendors.deliveryFlat,
       deliveryFreeOver: vendors.deliveryFreeOver,
+      acceptsCod: vendors.acceptsCod,
+      codCeiling: vendors.codCeiling,
       vendorPercent: vendors.commissionPercent,
       vendorFixed: vendors.commissionFixed,
       productPercent: products.commissionPercent,
@@ -164,6 +180,7 @@ async function priceableLines(
    * a seller's free-delivery threshold, because it is what the shopper spent.
    */
   const groups = new Map<number, DeliveryGroup>();
+  const codRules = new Map(rows.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
   for (const row of rows) {
     const charged = priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
     const value = multiplyMoney(charged, row.quantity);
@@ -179,7 +196,16 @@ async function priceableLines(
     }
   }
 
-  return { lines, offerIds, delivery: quoteDelivery([...groups.values()]) };
+  return {
+    lines,
+    offerIds,
+    delivery: quoteDelivery([...groups.values()]),
+    cod: codAvailability([...groups.values()].map(group => ({
+      vendorName: group.vendorName,
+      goods: group.goods,
+      rule: codRules.get(group.vendorId ?? -1) ?? COD_DEFAULT,
+    }))),
+  };
 }
 
 /**
@@ -271,9 +297,19 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds, delivery } = await priceableLines(db, cartId, details.userId);
+  const { lines, offerIds, delivery, cod } = await priceableLines(db, cartId, details.userId);
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
+
+  /*
+   * Checked here rather than trusted from the basket that was priced a moment
+   * ago, for the reason the prices and the delivery are: a seller may have
+   * turned cash off, or the basket may have grown past their ceiling, between
+   * the page rendering and the button being pressed.
+   */
+  if (details.paymentMethod === "cod" && !cod.available) {
+    throw new OrderRefused("order.paymentUnavailable");
+  }
 
   const draft = draftOrder(lines, delivery.total);
 
@@ -307,6 +343,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         /* Frozen beside the total, so an order from last year still says who
            charged what — the reason the commission rate is copied too. */
         deliveryBreakdown: freezeDelivery(delivery),
+        paymentMethod: details.paymentMethod ?? null,
         contactName: details.contactName ?? null,
         contactPhone: details.contactPhone ?? null,
         deliveryZoneId: details.deliveryZoneId ?? null,
@@ -561,4 +598,40 @@ export async function setLineFulfilment(
 
   await db.update(orderItems).set({ fulfilment }).where(eq(orderItems.id, lineId));
   return { ...line, fulfilment };
+}
+
+/**
+ * Record that a driver collected the cash (3.2.2).
+ *
+ * This is the moment a cash order becomes paid, and it is deliberately a
+ * separate act from placing it: at checkout nothing had changed hands, and
+ * marking it `paid` there would have put revenue in the finance panel that
+ * nobody had collected.
+ *
+ * The predicate lives inside the `UPDATE`, the way the stock take does, so two
+ * people pressing it cannot both be told they were the one who recorded it.
+ */
+export async function recordCashCollected(actor: Actor, orderId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) return false;
+
+  /* Scoped like every other order read: a vendor may only touch an order that
+     holds one of their lines, and the guard is beside the query. */
+  const scope = await getOrderFor(actor, orderId);
+  if (!scope) return false;
+
+  const updated = await db
+    .update(orders)
+    .set({ status: "paid", paymentCollectedAt: new Date() })
+    .where(and(
+      eq(orders.id, orderId),
+      eq(orders.paymentMethod, "cod"),
+      eq(orders.status, "pending_payment"),
+    ))
+    .returning({ id: orders.id });
+
+  return updated.length > 0;
 }

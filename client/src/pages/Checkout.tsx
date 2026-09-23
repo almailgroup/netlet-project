@@ -7,13 +7,18 @@ import { Thumb } from "@/components/product/Thumb";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { CHECKOUT_IS_MOCK_ONLY, KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
+import { KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Check, ChevronDown, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
+import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { toast } from "sonner";
+import { ArrowLeft, Check, LoaderCircle, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
 
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
 
@@ -53,6 +58,31 @@ export default function Checkout() {
   const money = useMoney();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
+  const { isAuthenticated } = useAuth();
+  const { deliveryZoneId } = useCustomer();
+  const [, navigate] = useLocation();
+  const [form, setForm] = useState({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "" });
+
+  /*
+   * The first thing in NetLet that creates a real order. It is possible only
+   * because cash needs no provider: nothing is authorised or captured, so the
+   * order is written `pending_payment` and stays there until a seller records
+   * that the driver collected.
+   */
+  const place = trpc.orders.place.useMutation({
+    onSuccess: reply => {
+      toast.success(t("checkout.placed", { reference: reply.reference }));
+      /* The basket has become the order, so the drawer's copy of it is stale. */
+      void utils.commerce.cart.get.invalidate();
+      navigate("/account");
+    },
+    onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("checkout.placeFailed")),
+  });
+  const utils = trpc.useUtils();
+
+  const canPlace = Boolean(
+    isAuthenticated && cart?.id && items.length && cart?.cod.available && form.addressLine.trim(),
+  );
 
   return (
     <main className="type-body min-h-screen bg-background text-[#0a285a]">
@@ -64,12 +94,56 @@ export default function Checkout() {
           <section className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 shadow-[0_18px_50px_rgba(10,40,90,.05)] sm:p-8">
 	            <div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">1</div><div><h2 className="type-heading text-base">{t("checkout.deliveryDetails")}</h2><p className="type-body text-[#536b8c]">{t("checkout.deliveryQuestion")}</p></div></div>
 	            <CheckoutDeliveryZone />
-	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.area")} className="sm:col-span-2"><select defaultValue="" className={fieldClass}><option value="" disabled>{t("checkout.selectArea")}</option>{CHECKOUT_AREAS.map(area => <option key={area}>{t(area)}</option>)}</select></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
-            <div className="mt-8 border-t border-[#d5dfeb] pt-7"><div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">2</div><div><h2 className="type-heading text-base">{t("checkout.paymentMethod")}</h2><p className="type-body text-[#536b8c]">{t("checkout.paymentNote")}</p></div></div><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{KUWAIT_PAYMENT_METHODS.map((method) => <div key={method.id} className="flex min-h-16 items-center justify-center rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3"><PaymentMark id={method.id} label={method.label} /></div>)}</div><p className="type-label mt-4 flex items-start gap-2 rounded-xl bg-[#fff7e3] p-3 text-[#705523]"><LockKeyhole className="mt-0.5 size-3.5 shrink-0" />{CHECKOUT_IS_MOCK_ONLY ? t("checkout.paymentDisclaimer") : ""}</p></div>
+	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.area")} className="sm:col-span-2"><select defaultValue="" className={fieldClass}><option value="" disabled>{t("checkout.selectArea")}</option>{CHECKOUT_AREAS.map(area => <option key={area}>{t(area)}</option>)}</select></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
+            <div className="mt-8 border-t border-[#d5dfeb] pt-7"><div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">2</div><div><h2 className="type-heading text-base">{t("checkout.paymentMethod")}</h2><p className="type-body text-[#536b8c]">{t("checkout.paymentNote")}</p></div></div>{/* Cash on delivery is the one method NetLet can take today (3.2.2),
+                  and it is the only one drawn. The card marks below are what the
+                  shop will accept once 3.2.1 lands; they are shown as logos and
+                  never as buttons, because a payment button that does nothing is
+                  the dead-control rule on the page where it costs most. */}
+              <fieldset className="mt-5">
+                <legend className="type-label text-[#0a285a]">{t("checkout.payMethod")}</legend>
+                {cart?.cod.available === false ? (
+                  <p className="type-body mt-3 rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-6 text-[#8c2f22]">
+                    {cart.cod.because.kind === "seller"
+                      ? t("checkout.codUnavailableSeller", { name: cart.cod.because.vendorName })
+                      : t("checkout.codUnavailableCeiling", { name: cart.cod.because.vendorName, amount: money({ amount: cart.cod.because.ceiling, currencyCode: "KWD" }) })}
+                  </p>
+                ) : (
+                  <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#0a285a]/20 bg-[#f3f2ed] p-4">
+                    <input type="radio" name="pay" checked readOnly className="mt-0.5 size-4" />
+                    <span>
+                      <span className="type-heading block text-sm">{t("checkout.payCod")}</span>
+                      <span className="type-body block text-[13px] leading-5 text-[#536b8c]">{t("checkout.payCodNote")}</span>
+                    </span>
+                  </label>
+                )}
+              </fieldset>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{KUWAIT_PAYMENT_METHODS.map((method) => <div key={method.id} className="flex min-h-16 items-center justify-center rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3"><PaymentMark id={method.id} label={method.label} /></div>)}</div><p className="type-label mt-3 text-[#536b8c]">{t("checkout.otherMethodsSoon")}</p></div>
           </section>
 
           <aside className="h-fit rounded-[1.5rem] border border-[#d5dfeb] bg-[#0a285a] p-5 text-white shadow-[0_18px_50px_rgba(10,40,90,.13)] sm:p-6"><p className="type-label tracking-[.16em] text-[#ffcc64] uppercase">{t("checkout.orderSummary")}</p><h2 className="type-display mt-2 text-3xl">{t("checkout.summaryTitle")}</h2><div className="mt-6 space-y-4 border-y border-[#49658d] py-5">{items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? item.productTitle} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p className="type-product">{item.productTitle}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
-                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={String(row.vendorId ?? row.vendorName)} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div><div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money(cart?.total ?? subtotal)}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div><button disabled className="glass glass-accent type-control mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-full px-5 py-4 opacity-65">{t("checkout.paymentSoon")} <ChevronDown className="size-4" /></button></aside>
+                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={String(row.vendorId ?? row.vendorName)} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div><div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money(cart?.total ?? subtotal)}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
+                this label is small, which is the rule the dialogs already
+                follow. */}
+            <button
+              onClick={() => place.mutate({
+                cartId: cart!.id,
+                paymentMethod: "cod",
+                contactName: form.contactName.trim() || null,
+                contactPhone: form.contactPhone.trim() || null,
+                deliveryZoneId: deliveryZoneId ?? null,
+                addressLine: form.addressLine.trim(),
+                addressNotes: form.addressNotes.trim() || null,
+              })}
+              disabled={!canPlace || place.isPending}
+              className="glass glass-navy type-control pressable mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {place.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />}
+              {t(place.isPending ? "checkout.placing" : "checkout.placeOrder")}
+            </button>
+            {!isAuthenticated ? (
+              <p className="type-label mt-3 text-[#d9e7f7]">{t("checkout.signInToOrder")}</p>
+            ) : null}</aside>
         </div>
 
         <section className="type-label mt-8 grid gap-3 border-t border-[#d5dfeb] pt-6 text-[#536b8c] sm:grid-cols-3"><div className="flex items-center gap-2"><MapPin className="size-4 ink-accent" /> {t("checkout.builtForKuwait")}</div><div className="flex items-center gap-2"><Truck className="size-4 ink-accent" /> {t("checkout.clearSetup")}</div><div className="flex items-center gap-2"><Check className="size-4 ink-accent" /> {t("checkout.paymentPlanned")}</div></section>

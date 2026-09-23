@@ -39,6 +39,7 @@ import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
+import { codAvailability } from "../shared/commerce/payment.js";
 import { liveOffersFor } from "./offers.js";
 
 /* ------------------------------------------------------------- the shelf --- */
@@ -243,6 +244,9 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       vendorName: vendors.name,
       deliveryFlat: vendors.deliveryFlat,
       deliveryFreeOver: vendors.deliveryFreeOver,
+      /* Cash on delivery is decided per seller (3.2.2). */
+      acceptsCod: vendors.acceptsCod,
+      codCeiling: vendors.codCeiling,
     })
     .from(cartItems)
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -291,6 +295,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 
   const subtotal = sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity })));
   const quote = deliveryFor(priced);
+  /* One row per seller, so the COD rules line up with the delivery groups. */
+  const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
   return {
     id: cart.id,
@@ -300,6 +306,18 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     items,
     itemCount: items.reduce((count, item) => count + item.quantity, 0),
     subtotal: money(subtotal),
+    /* Whether the one payment method NetLet can take today is available on
+       this basket, and if not, which seller refused and why. */
+    cod: codAvailability(
+      quote.perVendor.map(row => ({
+        vendorName: row.vendorName,
+        goods: row.goods,
+        rule: {
+          accepts: rules.get(row.vendorId ?? -1)?.accepts ?? true,
+          ceiling: rules.get(row.vendorId ?? -1)?.ceiling ?? null,
+        },
+      })),
+    ),
     delivery: {
       perVendor: quote.perVendor.map(row => ({
         vendorId: row.vendorId,

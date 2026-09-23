@@ -264,6 +264,76 @@ async function bagFor(userId: number | null, variantId = ids.variant, quantity =
   return cart.id;
 }
 
+/* Requirement 3.2.2: cash on delivery, the one method that needs no provider. */
+describe("cash on delivery", () => {
+  beforeEach(async () => {
+    await db.update(vendors).set({ acceptsCod: true, codCeiling: null });
+  });
+
+  it("is available by default and places a pending order", async () => {
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.cod).toEqual({ available: true });
+
+    const placed = await orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      paymentMethod: "cod",
+    });
+    const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, placed.order.id));
+    expect(row.paymentMethod).toBe("cod");
+    /* Nothing has been paid: saying so would put revenue in the finance panel
+       that nobody has collected. */
+    expect(row.status).toBe("pending_payment");
+    expect(row.paymentCollectedAt).toBeNull();
+  });
+
+  it("names the seller who turned it off, and refuses the order", async () => {
+    await db.update(vendors).set({ acceptsCod: false }).where(eq(vendors.id, ids.acme));
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.cod).toMatchObject({ available: false, because: { kind: "seller", vendorName: "Acme" } });
+
+    await expect(orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      paymentMethod: "cod",
+    })).rejects.toThrow("order.paymentUnavailable");
+  });
+
+  /*
+   * Checked at order time rather than trusted from the basket: a seller may
+   * have turned cash off between the page rendering and the button.
+   */
+  it("refuses a basket that has grown past the seller's ceiling", async () => {
+    await db.update(vendors).set({ codCeiling: "150.000" }).where(eq(vendors.id, ids.acme));
+    await expect(orders.placeOrder(await bagFor(ids.shopper, ids.variant, 2), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      paymentMethod: "cod",
+    })).rejects.toThrow("order.paymentUnavailable");
+  });
+
+  /* The predicate is inside the UPDATE, so two people pressing it cannot both
+     be told they were the one who recorded it. */
+  it("records the collection exactly once", async () => {
+    const placed = await orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      paymentMethod: "cod",
+    });
+    expect(await orders.recordCashCollected(acmeManager(), placed.order.id)).toBe(true);
+    expect(await orders.recordCashCollected(acmeManager(), placed.order.id)).toBe(false);
+
+    const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, placed.order.id));
+    expect(row.status).toBe("paid");
+    expect(row.paymentCollectedAt).not.toBeNull();
+  });
+
+  /* Scoped like every other order read: not their order, not their business. */
+  it("refuses a seller with no line on the order", async () => {
+    const placed = await orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      paymentMethod: "cod",
+    });
+    expect(await orders.recordCashCollected(otherOwner(), placed.order.id)).toBe(false);
+  });
+});
+
 /* Requirement 3.2.4. The arithmetic is proved pure in delivery.test.ts; what
    is here is that the fee reaches the bag and the order, per seller. */
 describe("delivery, per seller", () => {
