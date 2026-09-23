@@ -9,11 +9,11 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 28 |
+| Built | 29 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 39 |
+| Not started | 38 |
 
 *Last updated after landing the delivery cluster — cost, speed, carrier and vehicle (3.2.4, 3.2.5, 3.4.13, 3.4.14). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 11 built, 1 partial, 10 absent
+## 3.3 Vendor experience — 12 built, 1 partial, 9 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -100,7 +100,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 17 | Switch between vendor and customer mode | **Built** | One account already held both identities — a vendor member is a shopper with a `vendor_members` row — and there was simply no door between them: the portal has carried "Back to the store" since it existed, and nothing in the storefront pointed the other way. A Selling section on `/account` is that missing leg, naming the store and the rank so somebody is told which hat they are putting on. **Drawn only for an account that has the second identity**, decided by the server rather than guessed on the client — a switch a shopper can see leads to a page refusing them, which is the dead-control rule. The anchor in the side nav goes with it, since a jump to nothing is the same fault. The store's name is a separate read rather than a field on `Actor`: that type is the permission shape both sides import, and a display name has no business in an answer about access. |
 | 18 | Auto-suspend after 3 warnings | **Built** | `violationCount` is read in `inventory.ts` and suspends. |
 | 19 | Discount licence required on an offer (Kuwait law) | **Built** | The Ministry of Commerce permit is a number and a *window* on the vendor, because that is what is issued — and the window is why the rule is applied when the storefront **reads** an offer, not only when a vendor writes one: a permit lapses on a date with nobody saving anything, and a write-time check alone would leave the shop advertising a saving it may no longer advertise. `fromInventory` drops `compareAtPrice`, so the strikethrough, the `−27%` badge and the savings line disappear together by construction. Both doors onto the shelf refuse an unlicensed offer, with two reasons rather than one — "record a permit" and "renew the permit" are different things to go and do. The price does not move and the product is not hidden: an expired permit stops the claim, not the trade. |
-| 20 | Vendors who join discounts get better placement | Not started | |
+| 20 | Vendors who join discounts get better placement | **Built** | `shared/commerce/placement.ts` is the rule and is pure. **Only a permitted, live saving earns anything, and it is not checked here because it cannot arrive here**: `fromInventory` has already dropped `compareAtPrice` when the Ministry permit is not valid now, so an unlicensed offer is indistinguishable from none — the rule holds by construction rather than at a call site. It **sharpens and never overturns**: the boost applies to the default view only, and the moment a shopper picks their own order that choice wins outright, because a "price low to high" that quietly puts discounters first is not price low to high. Nothing sold out is lifted, the same rule `isRecommendable` applies. The boost scales with depth and then stops, since past a point a bigger number is a clearance sale rather than a better shop. The reorder is stable, so a page does not shuffle under somebody reloading it. |
 | 21 | Auto payouts: COD 14 business days, others 1–3 | Not started | |
 | 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |
 

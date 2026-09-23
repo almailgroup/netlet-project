@@ -280,3 +280,27 @@ describe("activeFilterCount", () => {
     expect(activeFilterCount({ ...EMPTY_FILTERS, sort: "price-low" })).toBe(0);
   });
 });
+
+/* Requirement 3.4.20: a seller who is actually discounting comes first among
+   equals — and only where the shopper has not asked for an order of their own. */
+describe("discount placement", () => {
+  const discounted = (id: string, price: string, was?: string) =>
+    product({ id, variants: [variant(price, was ? { was } : {})] });
+
+  it("lifts a discounting seller on the default view", () => {
+    const page = browse([discounted("plain", "100.000"), discounted("cut", "60.000", "100.000")], EMPTY_FILTERS);
+    expect(page.map(p => p.id)).toEqual(["cut", "plain"]);
+  });
+
+  /*
+   * A "price low to high" that quietly puts discounters first is not price low
+   * to high. The shopper's own choice wins outright.
+   */
+  it("does not touch an order the shopper asked for", () => {
+    const page = browse(
+      [discounted("cheap", "10.000"), discounted("cut", "60.000", "100.000")],
+      { ...EMPTY_FILTERS, sort: "price-low" },
+    );
+    expect(page.map(p => p.id)).toEqual(["cheap", "cut"]);
+  });
+});

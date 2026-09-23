@@ -15,6 +15,7 @@
  */
 import { isExpressEligible, productRating } from "./productDetail.js";
 import type { Product } from "./types.js";
+import { withPlacement } from "./placement.js";
 
 export type BrowseSort = "relevance" | "price-low" | "price-high" | "discount" | "rating" | "newest";
 
@@ -226,6 +227,13 @@ export function applyFilters(products: Product[], filters: BrowseFilters): Produ
  * "Relevance" keeps catalog order — the merchant's own arrangement — rather
  * than inventing a score from data we do not have. Every other order falls back
  * to price so the result is stable rather than dependent on array order.
+ *
+ * **Discount placement applies to relevance and to nothing else** (3.4.20).
+ * A seller who is actually discounting comes first among equals on the default
+ * view; the moment a shopper picks an order of their own, their choice wins
+ * outright. A "price low to high" that quietly puts discounters first is not
+ * price low to high, and a shop where promotion beats what somebody asked for
+ * is an advert.
  */
 export function sortProducts(products: Product[], sort: BrowseSort): Product[] {
   const sorted = products.slice();
@@ -242,7 +250,7 @@ export function sortProducts(products: Product[], sort: BrowseSort): Product[] {
       // Newest first, as the catalog is returned oldest-first by the adapter.
       return sorted.reverse();
     default:
-      return sorted;
+      return withPlacement(sorted);
   }
 }
 
