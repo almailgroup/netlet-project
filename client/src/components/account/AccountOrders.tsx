@@ -23,6 +23,7 @@ import { Thumb } from "@/components/product/Thumb";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, PackageSearch, RotateCcw } from "lucide-react";
@@ -53,17 +54,6 @@ const FULFILMENT: Record<string, { label: MessageKey; className: string }> = {
 
 function Pill({ label, className }: { label: string; className: string }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
-}
-
-/** A date in the reader's own language, spelled out rather than numeric. */
-function useDateFormat() {
-  const { isArabic } = useTranslation();
-  return (value: string | Date) =>
-    new Date(value).toLocaleDateString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
 }
 
 export function AccountOrders() {

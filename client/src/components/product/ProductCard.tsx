@@ -9,6 +9,7 @@ import { isExpressEligible, productRating, savingsPercent } from "@shared/commer
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { Thumb } from "@/components/product/Thumb";
 import { UnitPrice } from "@/components/product/UnitPrice";
+import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, LoaderCircle, Minus, Plus, Share2, ShoppingBag, Star, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -335,6 +336,9 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           {savings > 0 ? (
             <span dir="ltr" className="rounded-full bg-[#f2683a] px-2 py-1 text-[10px] font-extrabold text-white shadow-sm">−{savings}%</span>
           ) : null}
+          {/* A pre-order is the fact that changes what the shopper is buying,
+              so it joins the flags rather than waiting for the product page. */}
+          <PreorderBadge variant={variant} className="shadow-sm" />
           {express ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-1 text-[9px] font-extrabold text-white shadow-sm">
               <Zap className="size-2.5 fill-current" />{t("product.express")}

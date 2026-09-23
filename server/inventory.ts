@@ -483,6 +483,8 @@ export async function saveVariant(actor: Actor, input: {
   options?: Record<string, string>;
   unit?: SellUnit;
   stepAmount?: number;
+  preorderStock?: number;
+  preorderReleaseAt?: Date | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -499,6 +501,19 @@ export async function saveVariant(actor: Actor, input: {
   const measure = { unit: input.unit ?? "each", stepAmount: input.stepAmount ?? 1 };
   if (!isValidMeasure(measure)) throw new Error("INVALID_MEASURE");
 
+  /*
+   * The pre-order allowance is a promise to a shopper, so it is checked here
+   * for the same reason: a negative allowance would make the `>=` predicate
+   * behave strangely, and a fractional one is not a number of parcels.
+   *
+   * A release date in the past is accepted rather than refused — a date slips,
+   * and refusing the save would leave the vendor unable to edit anything else
+   * about the variant until they invent a new one. `preorder.ts` stops showing
+   * a stale date instead, which is where that belongs.
+   */
+  const preorderStock = input.preorderStock ?? 0;
+  if (!Number.isInteger(preorderStock) || preorderStock < 0) throw new Error("INVALID_PREORDER");
+
   const values = {
     productId: input.productId,
     title: input.title,
@@ -509,6 +524,8 @@ export async function saveVariant(actor: Actor, input: {
     options: input.options ?? {},
     unit: measure.unit,
     stepAmount: String(measure.stepAmount),
+    preorderStock,
+    preorderReleaseAt: input.preorderReleaseAt ?? null,
   };
   if (input.id) {
     // A price change is singled out because the requirements want every one

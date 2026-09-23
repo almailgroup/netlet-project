@@ -112,8 +112,14 @@ const sections = migrations.map(name => {
 /* Read the departments out of the TypeScript rather than re-listing them:
    the point of the file living in `shared` is that there is one copy. */
 const departmentsSource = readFileSync(path.join(root, "shared/commerce/departments.ts"), "utf-8");
+/* `[^}]*` after the position, rather than an immediate `}`: the four fields
+   this seed needs are not the only ones a department carries. It gained a
+   label, an icon and a tint when the departments got icons, and a pattern that
+   insisted `position` came last stopped matching — which the guard below
+   caught, but only because somebody ran the generator. `bootstrap.test.ts`
+   runs this parse now so a fifth field cannot break it quietly. */
 const departments = [...departmentsSource.matchAll(
-  /\{\s*slug:\s*"([^"]+)",\s*name:\s*"([^"]+)",\s*nameAr:\s*"([^"]+)",\s*position:\s*(\d+)\s*\}/g,
+  /\{\s*slug:\s*"([^"]+)",\s*name:\s*"([^"]+)",\s*nameAr:\s*"([^"]+)",\s*position:\s*(\d+)[^}]*\}/g,
 )].map(([, slug, name, nameAr, position]) => ({ slug, name, nameAr, position }));
 
 if (departments.length === 0) {

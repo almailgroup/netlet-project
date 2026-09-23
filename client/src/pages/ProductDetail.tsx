@@ -2,6 +2,7 @@ import { useCart } from "@/contexts/CartContext";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { UnitPrice } from "@/components/product/UnitPrice";
+import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -27,10 +28,8 @@ import {
   ArrowLeft,
   ArrowRight,
   BadgeCheck,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CircleAlert,
   Heart,
   ListTree,
   LoaderCircle,
@@ -617,9 +616,12 @@ export default function ProductDetail() {
             <hr className="my-6 border-[#0a285a]/8" />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {inStock
-                ? <p className="flex items-center gap-2 text-sm font-semibold text-[#28a745]"><CheckCircle2 className="size-[18px]" />{t("product.inStock")}</p>
-                : <p className="flex items-center gap-2 text-sm font-semibold text-[#e61c38]"><CircleAlert className="size-[18px]" />{t("product.outOfStock")}</p>}
+              {/* One component for all three answers, shared with the card and
+                  Quick View so they cannot disagree about the same variant.
+                  This also retired the last `#28a745` in the storefront: 3.13:1
+                  on pearl, where everything else had already taken the
+                  darkening to #2f5d33. */}
+              <AvailabilityLine variant={selectedVariant} />
               <div role="tablist" aria-label={t("product.information")} className="inline-flex gap-1 rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
                 <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={`${tabClass(tab === "specifications")} max-sm:flex-1 max-sm:justify-center`}><ListTree className="size-3.5" />{t("product.specifications")}</button>
                 <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={`${tabClass(tab === "shipping")} max-sm:flex-1 max-sm:justify-center`}><Truck className="size-3.5" />{t("product.shippingPolicy")}</button>
@@ -641,9 +643,13 @@ export default function ProductDetail() {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(inStock ? "product.addToCart" : "product.unavailable")}</button>
+              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
+
+            {selectedVariant?.preorder
+              ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>
+              : null}
 
             <div className="mt-3"><FollowProduct product={product} compact /></div>
 

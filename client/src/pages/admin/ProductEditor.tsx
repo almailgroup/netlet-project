@@ -369,10 +369,10 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
 }
 
 function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
-  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null };
+  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null };
   mayEdit: boolean;
   mayStock: boolean;
-  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number }) => void;
+  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null }) => void;
   onAdjust: (delta: number, reason: (typeof REASONS)[number]) => void;
   pending: boolean;
 }) {
@@ -384,6 +384,11 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
     compareAtPrice: variant.compareAtPrice ?? "",
     unit: (variant.unit ?? "each") as SellUnit,
     stepAmount: String(variant.stepAmount ?? 1),
+    preorderStock: String(variant.preorderStock ?? 0),
+    // <input type="date"> speaks yyyy-mm-dd and nothing else.
+    preorderReleaseAt: variant.preorderReleaseAt
+      ? new Date(variant.preorderReleaseAt).toISOString().slice(0, 10)
+      : "",
   });
 
   const measure = { unit: values.unit, stepAmount: Number(values.stepAmount) };
@@ -393,6 +398,13 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
    * A half-gram step is what puts floating point back into the arithmetic.
    */
   const measureOk = isValidMeasure(measure);
+  /*
+   * Same shape as the measure check: the form refuses what the server refuses,
+   * so Save is never a button that produces an error. A fractional or negative
+   * allowance is not a number of parcels.
+   */
+  const preorderAllowance = Number(values.preorderStock);
+  const preorderOk = Number.isInteger(preorderAllowance) && preorderAllowance >= 0;
   const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
@@ -451,6 +463,37 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       </div>
       {!measureOk ? <p className="mt-1 text-[12px] font-semibold text-[#8c2f22]">{t("admin.variantStepInvalid")}</p> : null}
 
+      {/* Pre-order: a second, bounded pool the vendor chooses the size of.
+          Beside the stock figure rather than in a panel of its own, because the
+          question it answers — how many may I sell — is the same question. */}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Labelled label={t("admin.preorderStock")}>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={values.preorderStock}
+            onChange={event => setValues(v => ({ ...v, preorderStock: event.target.value }))}
+            disabled={!mayEdit}
+            aria-invalid={!preorderOk}
+            aria-describedby={`preorder-hint-${variant.id}`}
+            className={field}
+          />
+          <p id={`preorder-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderStockHint")}</p>
+        </Labelled>
+        <Labelled label={t("admin.preorderReleaseAt")}>
+          <input
+            type="date"
+            value={values.preorderReleaseAt}
+            onChange={event => setValues(v => ({ ...v, preorderReleaseAt: event.target.value }))}
+            disabled={!mayEdit || preorderAllowance <= 0}
+            aria-describedby={`release-hint-${variant.id}`}
+            className={field}
+          />
+          <p id={`release-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderReleaseHint")}</p>
+        </Labelled>
+      </div>
+
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <p className="text-[12px] font-semibold text-[#536b8c]">
           {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#e61c38]" : "text-[#0a285a]"}>{variant.stock}</strong>
@@ -461,8 +504,10 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
               title: values.title, sku: values.sku || null, price: values.price,
               compareAtPrice: values.compareAtPrice || null,
               unit: measure.unit, stepAmount: measure.stepAmount,
+              preorderStock: preorderAllowance,
+              preorderReleaseAt: values.preorderReleaseAt ? new Date(values.preorderReleaseAt) : null,
             })}
-            disabled={pending || !measureOk}
+            disabled={pending || !measureOk || !preorderOk}
             className="glass pressable rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
           >
             {t("admin.save")}

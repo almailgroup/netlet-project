@@ -16,8 +16,9 @@ import { appPath } from "@/lib/basePath";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
+import { AvailabilityLine } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
-import { ArrowRight, Check, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
+import { ArrowRight, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FollowProduct } from "@/components/product/FollowProduct";
@@ -127,9 +128,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] font-semibold">
-              {inStock
-                ? <span className="flex items-center gap-1.5 text-[#2f5d33]"><Check className="size-4" />{t("product.inStock")}</span>
-                : <span className="flex items-center gap-1.5 text-[#e61c38]">{t("product.outOfStock")}</span>}
+              <AvailabilityLine variant={variant} size="small" />
               {isExpressEligible(product) ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
                   <Zap className="size-2.5 fill-current" />{t("product.express")}
@@ -176,7 +175,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 className="glass pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 text-xs font-extrabold text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}
-                {t(!inStock ? "product.unavailable" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
+                {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
               </button>
               <button
                 onClick={() => void add(true)}

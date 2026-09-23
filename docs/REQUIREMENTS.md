@@ -9,14 +9,14 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 16 |
+| Built | 17 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 48 |
+| Not started | 47 |
 
-*Last updated after landing category icons (3.1.12). Payments and everything
-gated on them are deliberately untouched — see the note under 3.2.*
+*Last updated after landing pre-order (3.1.3). Payments and everything gated on
+them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
 derives them from the rows and `scripts/requirements.test.ts` fails the build
@@ -37,13 +37,13 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 8 built, 1 partial, 1 drawn, 11 absent
+## 3.1 Customer experience — 9 built, 1 partial, 1 drawn, 10 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | Back-in-stock request, vendor sees demand | **Built** | `followed_products`; `customer.follows.demand` is public so the "N people are waiting" line can render. Vendor-side surfacing needs a panel. |
 | 2 | Optional installation fees, extended warranty | Not started | |
-| 3 | Pre-order | Not started | |
+| 3 | Pre-order | **Built** | A pre-order is not an exemption from `stock >= n`; it is a second pool carrying the same predicate. `product_variants.preorder_stock` is what the vendor will promise ahead of arrival, taken with `preorder_stock = preorder_stock - n WHERE preorder_stock >= n`, so a vendor who promises 50 sells 50 and the fifty-first is refused by the same race-safe mechanism. The allowance is also the flag — two columns that must agree eventually do not. A line is wholly stocked or wholly pre-ordered, never split. `shared/commerce/preorder.ts` is the rule and is pure; the order line freezes whether it was a pre-order and the date promised, beside the price and the commission rate. |
 | 4 | Public/private wishlists, found by phone | **Built** | `wishlists`, `wishlist_items`, phone key, claim holds, lookup throttle. |
 | 5 | AI personalised recommendations | **Built** | `shared/commerce/taste.ts` + model reorder pass. |
 | 6 | AI visual search (photo or description) | **Drawn, not wired** | `SearchModes.tsx` has every state designed. `SEARCH_MODES_WIRED` governs one line of copy; nothing is listening. |

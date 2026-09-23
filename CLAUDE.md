@@ -577,6 +577,56 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+## Pre-order
+
+**A pre-order is not an exemption from the stock predicate; it is a second pool
+carrying the same predicate.** `stock = stock - n WHERE stock >= n` is the whole
+safety property, and a "sell anyway" flag would delete it. A variant carries
+`preorderStock` — how many the vendor will promise before any exist — and taking
+one is `preorder_stock = preorder_stock - n WHERE preorder_stock >= n`, exactly
+the shape of the real take. A vendor who promises 50 sells 50, and the
+fifty-first shopper is refused by the same mechanism as the one racing for the
+last item on the shelf.
+
+The allowance is also the flag. There is no separate boolean, because "may be
+pre-ordered" and "has allowance left" are one question, and two columns that
+must agree eventually do not.
+
+**A line is wholly stocked or wholly pre-ordered, never split.** Three in the
+warehouse and an order for five is refused rather than served as three now and
+two later: the line is what carries a fulfilment state and a promise, and
+nobody pressed a button asking for two of those. It also means the ceiling on a
+line is the *larger* pool and never the sum, or the stepper would offer a
+quantity checkout then refuses.
+
+**Stock first, always.** A variant with three on the shelf and an allowance
+behind it sells the three as ordinary stock — calling that a pre-order would
+delay a parcel that could have gone out today. And the pool is decided inside
+`takeUnits`, against the row the write locks, rather than trusted from the read
+that priced the basket: between those two moments somebody else may have
+emptied the shelf.
+
+Rollback returns units to the pool they came from. Handing a pre-ordered line
+back as real stock would invent inventory out of a failed write.
+
+`order_items.preordered` and `.preorder_release_at` are frozen beside the price
+for the reason the commission rate is: an order is an obligation, and what the
+shopper was told at the moment of sale is what a complaint is measured against.
+Moving the expected date in October must not rewrite September's promise.
+`fulfilment` stays the same lifecycle — a pre-ordered line sits at `pending`
+for longer, and a state of its own would put one fact in two places.
+
+**A date that has already passed is shown as no date at all.** "Ships 3
+February" read in September does not inform anybody; it says the shop stopped
+paying attention. The shopper gets "ships as soon as it arrives", which is
+vaguer and true. `shared/commerce/preorder.ts` nulls it, so no display code
+carries a stale-date branch.
+
+`AvailabilityLine` is the one component all three surfaces use — product page,
+card, Quick View — so they cannot give different answers about the same
+variant. The buy button says which act it is: "Add to cart" on something that
+has not been made yet asks the shopper to find out later.
+
 ## Selling by weight
 
 A supermarket has two kinds of shelf: most of it is counted, and some of it is

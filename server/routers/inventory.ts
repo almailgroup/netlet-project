@@ -275,6 +275,9 @@ export const inventoryRouter = router({
         /* The grocery shelf. `each` and 1 are what every product is today. */
         unit: z.enum(SELL_UNITS).optional(),
         stepAmount: z.number().positive().max(1_000_000).optional(),
+        /* Pre-order: how many the vendor will promise ahead of stock, and when. */
+        preorderStock: z.number().int().min(0).max(1_000_000).optional(),
+        preorderReleaseAt: z.coerce.date().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);

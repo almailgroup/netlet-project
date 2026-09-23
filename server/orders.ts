@@ -29,6 +29,7 @@ import {
   type OrderRefusal,
   type PriceableLine,
 } from "../shared/commerce/order.js";
+import type { Pool } from "../shared/commerce/preorder.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
@@ -80,6 +81,9 @@ async function priceableLines(db: Db, cartId: string): Promise<PriceableLine[]> 
       productTitle: products.title,
       variantTitle: productVariants.title,
       sku: productVariants.sku,
+      stock: productVariants.stock,
+      preorderStock: productVariants.preorderStock,
+      preorderReleaseAt: productVariants.preorderReleaseAt,
       vendorPercent: vendors.commissionPercent,
       vendorFixed: vendors.commissionFixed,
       productPercent: products.commissionPercent,
@@ -107,6 +111,11 @@ async function priceableLines(db: Db, cartId: string): Promise<PriceableLine[]> 
     productTitle: row.productTitle,
     variantTitle: row.variantTitle,
     sku: row.sku,
+    levels: {
+      stock: row.stock,
+      preorderStock: row.preorderStock,
+      preorderReleaseAt: row.preorderReleaseAt,
+    },
     vendorRule: { percent: row.vendorPercent, fixed: row.vendorFixed },
     // Null on both columns is the absence of an override, not an override of
     // zero — `resolveRule` depends on being handed null rather than a zeroed
@@ -140,11 +149,51 @@ async function takeStock(db: Db, variantId: number, quantity: number): Promise<b
   return taken.length > 0;
 }
 
-/** Put stock back, for a line that could not be completed. */
-async function returnStock(db: Db, variantId: number, quantity: number): Promise<void> {
+/**
+ * Take from the pre-order allowance, or refuse.
+ *
+ * The same predicate on a different column, and that is the entire design of
+ * pre-order in this codebase: a vendor who promises 50 sells 50, and the
+ * fifty-first shopper is refused by the same race-safe mechanism as the one
+ * reaching for the last item on the shelf. A pre-order is a second pool, never
+ * an exemption from the rule.
+ */
+async function takePreorder(db: Db, variantId: number, quantity: number): Promise<boolean> {
+  const taken = await db
+    .update(productVariants)
+    .set({ preorderStock: sql`${productVariants.preorderStock} - ${quantity}` })
+    .where(and(eq(productVariants.id, variantId), sql`${productVariants.preorderStock} >= ${quantity}`))
+    .returning({ id: productVariants.id });
+  return taken.length > 0;
+}
+
+/**
+ * Take the line's units from whichever pool can serve it, and say which.
+ *
+ * Stock first: a variant with three on the shelf and an allowance behind it
+ * sells the three as ordinary stock, because calling that a pre-order would
+ * delay a parcel that could have gone out today.
+ *
+ * The decision is made *here*, against the row the write locks, rather than
+ * trusted from the read that priced the basket. Between those two moments
+ * somebody else may have emptied the shelf, and a line that was offered from
+ * stock then has to fall through to the allowance — otherwise the order would
+ * record a promise the warehouse cannot keep.
+ */
+async function takeUnits(db: Db, variantId: number, quantity: number): Promise<Pool | null> {
+  if (await takeStock(db, variantId, quantity)) return "stock";
+  if (await takePreorder(db, variantId, quantity)) return "preorder";
+  return null;
+}
+
+/** Put units back in the pool they came from, for a line that could not be completed. */
+async function returnUnits(db: Db, variantId: number, quantity: number, pool: Pool): Promise<void> {
+  const column = pool === "stock" ? productVariants.stock : productVariants.preorderStock;
   await db
     .update(productVariants)
-    .set({ stock: sql`${productVariants.stock} + ${quantity}` })
+    .set(pool === "stock"
+      ? { stock: sql`${column} + ${quantity}` }
+      : { preorderStock: sql`${column} + ${quantity}` })
     .where(eq(productVariants.id, variantId));
 }
 
@@ -173,15 +222,19 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
 
   const draft = draftOrder(lines, details.deliveryTotal ?? "0.000");
 
-  // Take every line's stock first. Anything already taken goes back if a later
-  // line cannot be served, so a part-served basket never half-happens.
-  const taken: { variantId: number; quantity: number }[] = [];
+  // Take every line's units first. Anything already taken goes back to the pool
+  // it came from if a later line cannot be served, so a part-served basket
+  // never half-happens.
+  const taken: { variantId: number; quantity: number; pool: Pool }[] = [];
+  const pools = new Map<number, Pool>();
   for (const line of draft.lines) {
-    if (await takeStock(db, line.variantId, line.quantity)) {
-      taken.push({ variantId: line.variantId, quantity: line.quantity });
+    const pool = await takeUnits(db, line.variantId, line.quantity);
+    if (pool) {
+      taken.push({ variantId: line.variantId, quantity: line.quantity, pool });
+      pools.set(line.variantId, pool);
       continue;
     }
-    for (const done of taken) await returnStock(db, done.variantId, done.quantity);
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     throw new OrderRefused("order.outOfStock");
   }
 
@@ -221,6 +274,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         commissionFixed: line.commissionFixed,
         commissionAmount: line.commissionAmount,
         vendorNet: line.vendorNet,
+        /* What was actually taken, not what was offered a moment earlier. */
+        preordered: pools.get(line.variantId) === "preorder",
+        preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
     );
 
@@ -230,7 +286,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
 
     return { order, lines: draft.lines, totals: draft.totals };
   } catch (error) {
-    for (const done of taken) await returnStock(db, done.variantId, done.quantity);
+    // Back to the pool each line came from. Handing a pre-ordered line back as
+    // real stock would invent inventory out of a failed write.
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     throw error;
   }
 }
@@ -392,6 +450,8 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         commissionFixed: line.commissionFixed,
         commissionAmount: line.commissionAmount,
         vendorNet: line.vendorNet,
+        preordered: line.preordered,
+        preorderReleaseAt: line.preorderReleaseAt,
       })),
     );
     return {

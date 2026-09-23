@@ -596,6 +596,24 @@ export const productVariants = pgTable(
     stock: integer("stock").notNull().default(0),
     /** Warn the vendor at or below this. Null means never. */
     lowStockAt: integer("low_stock_at"),
+
+    /**
+     * How many of these the vendor will promise before any exist.
+     *
+     * A second pool, deliberately not a "sell anyway" flag: taking from it is
+     * `preorder_stock = preorder_stock - n WHERE preorder_stock >= n`, exactly
+     * the shape of the real stock take, so the property that stops two
+     * shoppers being sold the same last item is not weakened by a pre-order —
+     * it is applied twice. A vendor who promises 50 sells 50 and the
+     * fifty-first is refused by the same mechanism.
+     *
+     * The allowance is also the flag. "May be pre-ordered" and "has allowance
+     * left" are one question, and two columns that must agree eventually do
+     * not. `shared/commerce/preorder.ts` is the rule.
+     */
+    preorderStock: integer("preorder_stock").notNull().default(0),
+    /** When it is expected. Null means the vendor has not committed to a date. */
+    preorderReleaseAt: timestamp("preorder_release_at", { withTimezone: true }),
     /*
      * Selling things that are not counted — the grocery shelf.
      *
@@ -970,6 +988,24 @@ export const orderItems = pgTable(
     commissionAmount: numeric("commission_amount", { precision: 12, scale: 3 }).notNull().default("0.000"),
     /** What the vendor is owed for this line: line total less commission. */
     vendorNet: numeric("vendor_net", { precision: 12, scale: 3 }).notNull().default("0.000"),
+
+    /*
+     * Whether this line was sold before the goods existed, and when it was
+     * promised for.
+     *
+     * Frozen beside the price for the same reason the commission rate is: an
+     * order is an obligation, and what the shopper was told at the moment of
+     * sale is the fact a complaint or a refund is measured against. A vendor
+     * moving the expected date in October must not rewrite what was promised
+     * in September — they can still say so, but the order records what was
+     * agreed.
+     *
+     * `fulfilment` stays the same lifecycle. A pre-ordered line sits at
+     * `pending` for longer; it does not need a state of its own, and adding
+     * one would put the same fact in two places.
+     */
+    preordered: boolean("preordered").notNull().default(false),
+    preorderReleaseAt: timestamp("preorder_release_at", { withTimezone: true }),
 
     fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
     /*

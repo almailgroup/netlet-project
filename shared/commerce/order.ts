@@ -16,6 +16,7 @@
  */
 import { commissionFor, type CommissionRule } from "../inventory/commission.js";
 import { addMoney, multiplyMoney, money } from "../money.js";
+import { fulfilmentFor, type StockLevels } from "./preorder.js";
 
 /** A basket line, with everything needed to price and attribute it. */
 export type PriceableLine = {
@@ -29,6 +30,14 @@ export type PriceableLine = {
   variantTitle: string | null;
   vendorName: string | null;
   sku: string | null;
+  /**
+   * Both stock pools, so the take can decide which one serves this line.
+   *
+   * Optional because the pure arithmetic does not need it — `freezeLine` only
+   * records what was promised — and a caller that predates pre-order stays
+   * correct by defaulting to no allowance.
+   */
+  levels?: StockLevels | null;
   /** The vendor's rate card, and the product's override if it has one. */
   vendorRule: CommissionRule;
   productRule?: CommissionRule | null;
@@ -50,6 +59,20 @@ export type FrozenLine = {
   commissionFixed: string;
   commissionAmount: string;
   vendorNet: string;
+  /**
+   * Whether this was sold before the goods existed, and what date was given.
+   *
+   * Frozen like the price and the commission rate: an order is an obligation,
+   * so what the shopper was told at the moment of sale is what a complaint is
+   * measured against. Moving the expected date later must not rewrite it.
+   *
+   * `freezeLine` sets this from the levels it was handed, which is the
+   * *offer* — the server re-decides it against the row it actually took from,
+   * because between reading and taking, somebody else may have emptied the
+   * shelf.
+   */
+  preordered: boolean;
+  preorderReleaseAt: Date | null;
 };
 
 export type OrderTotals = {
@@ -88,7 +111,22 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     commissionFixed: money(split.fixedApplied),
     commissionAmount: split.commission,
     vendorNet: split.net,
+    ...promiseFor(line, quantity),
   };
+}
+
+/**
+ * What this line promises the shopper, from the levels as they read now.
+ *
+ * A line with no levels at all is an ordinary stocked line: every caller that
+ * predates pre-order keeps its old answer rather than acquiring a new one.
+ */
+function promiseFor(line: PriceableLine, quantity: number): { preordered: boolean; preorderReleaseAt: Date | null } {
+  if (!line.levels) return { preordered: false, preorderReleaseAt: null };
+  const fulfilment = fulfilmentFor(line.levels, quantity);
+  return fulfilment.kind === "preorder"
+    ? { preordered: true, preorderReleaseAt: fulfilment.releaseAt }
+    : { preordered: false, preorderReleaseAt: null };
 }
 
 /**

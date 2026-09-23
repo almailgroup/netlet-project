@@ -205,6 +205,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       variantTitle: productVariants.title,
       price: productVariants.price,
       stock: productVariants.stock,
+      preorderStock: productVariants.preorderStock,
+      preorderReleaseAt: productVariants.preorderReleaseAt,
       unit: productVariants.unit,
       stepAmount: productVariants.stepAmount,
       productHandle: products.handle,

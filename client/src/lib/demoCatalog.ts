@@ -95,6 +95,14 @@ type Seed = {
   price: number;
   compareAt?: number;
   soldOut?: boolean;
+  /**
+   * Days from now this arrives, for a seed sold ahead of stock.
+   *
+   * One seed carries it, so the demo build shows the pre-order state at all.
+   * A feature that only renders against a real database cannot be reviewed on
+   * the build most people actually open.
+   */
+  preorderInDays?: number;
   options?: { name: string; values: string[] };
   /** Review score out of 5, and how many reviews produced it. */
   rating?: [score: number, count: number];
@@ -131,6 +139,9 @@ const SEEDS: Seed[] = [
     rating: [4.8, 96],
     views: 9,
     palette: ["#d5dced", "#b9c6de"],
+    // The one pre-order in the demo, so the state renders on the build most
+    // people open rather than only against a real database.
+    preorderInDays: 45,
   },
   {
     handle: "atlas-32-curved-gaming-monitor",
@@ -393,9 +404,17 @@ function toProduct(seed: Seed, index: number): Product {
     compareAtPrice: seed.compareAt ? money(seed.compareAt) : null,
     // Sold-out seeds are fully unavailable; otherwise the last variant of a
     // multi-option product is out of stock so the picker's disabled state shows.
-    availableForSale: seed.soldOut
-      ? false
-      : !(optionValues.length > 2 && variantIndex === optionValues.length - 1),
+    availableForSale: seed.preorderInDays !== undefined
+      ? true
+      : seed.soldOut
+        ? false
+        : !(optionValues.length > 2 && variantIndex === optionValues.length - 1),
+    // Nothing on the shelf, a promised date behind it — the shape
+    // `fromInventory` produces for a variant whose only pool is the allowance.
+    preorder: seed.preorderInDays === undefined
+      ? null
+      : { releaseAt: new Date(Date.now() + seed.preorderInDays * 86_400_000).toISOString() },
+    maxQuantity: seed.soldOut && seed.preorderInDays === undefined ? 0 : 20,
     // Counted, like every product in the demo catalog. The grocery shelf is
     // built but not stocked; inventing a price-per-kilo here would be
     // inventing a shop that does not exist.

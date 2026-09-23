@@ -47,7 +47,24 @@ export type ProductVariant = {
   sku: string | null;
   price: Money;
   compareAtPrice: Money | null;
+  /**
+   * Whether this can be bought at all, from either pool.
+   *
+   * True for a variant with nothing on the shelf but a pre-order allowance
+   * behind it — the buy button works, it just promises a later parcel. What
+   * kind of promise is `preorder`.
+   */
   availableForSale: boolean;
+  /**
+   * Non-null exactly when buying this is a pre-order rather than a purchase
+   * off the shelf. `releaseAt` is an ISO date, or null when the vendor has
+   * committed to no date — which is also what a date that has already passed
+   * becomes, because a stale date reads as a shop that stopped paying
+   * attention. See `shared/commerce/preorder.ts`.
+   */
+  preorder: { releaseAt: string | null } | null;
+  /** The most that may be taken in one line. The two pools do not add up. */
+  maxQuantity: number;
   /**
    * What this variant is sold in, when it is not simply counted.
    *

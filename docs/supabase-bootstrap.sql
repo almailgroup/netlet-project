@@ -518,6 +518,12 @@ END $$;
 ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "unit" "sell_unit" DEFAULT 'each' NOT NULL;
 ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "step_amount" numeric(12, 3) DEFAULT '1' NOT NULL;
 
+-- ===== 0014_legal_sumo.sql =====
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "preordered" boolean DEFAULT false NOT NULL;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "preorder_release_at" timestamp with time zone;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "preorder_stock" integer DEFAULT 0 NOT NULL;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "preorder_release_at" timestamp with time zone;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.

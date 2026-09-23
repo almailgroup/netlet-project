@@ -33,6 +33,7 @@ const ids = {
   admin: 0, shopper: 0, acmeOwner: 0, otherOwner: 0,
   acme: 0, other: 0,
   lamp: 0, lampVariant: 0, kettle: 0, kettleVariant: 0,
+  press: 0, pressVariant: 0,
 };
 
 beforeAll(async () => {
@@ -84,8 +85,18 @@ beforeAll(async () => {
   const [kettleVariant] = await db.insert(productVariants).values({
     productId: kettle.id, title: "Default", sku: "KETTLE", price: "11.250", stock: 4,
   }).returning();
+  // Nothing on the shelf, three promised: the shape a pre-order actually has.
+  const [press] = await db.insert(products).values({
+    vendorId: acme.id, handle: "acme-press", title: "Bellwether Press", status: "published",
+  }).returning();
+  const [pressVariant] = await db.insert(productVariants).values({
+    productId: press.id, title: "Default", sku: "PRESS", price: "40.000",
+    stock: 0, preorderStock: 3, preorderReleaseAt: new Date("2027-03-15T00:00:00Z"),
+  }).returning();
+
   ids.lamp = lamp.id; ids.lampVariant = lampVariant.id;
   ids.kettle = kettle.id; ids.kettleVariant = kettleVariant.id;
+  ids.press = press.id; ids.pressVariant = pressVariant.id;
 }, 60_000);
 
 beforeEach(async () => {
@@ -95,6 +106,9 @@ beforeEach(async () => {
   await db.delete(carts);
   await db.update(productVariants).set({ stock: 10 }).where(eq(productVariants.id, ids.lampVariant));
   await db.update(productVariants).set({ stock: 4 }).where(eq(productVariants.id, ids.kettleVariant));
+  await db.update(productVariants)
+    .set({ stock: 0, preorderStock: 3, preorderReleaseAt: new Date("2027-03-15T00:00:00Z") })
+    .where(eq(productVariants.id, ids.pressVariant));
 });
 
 const DETAILS = {
@@ -115,6 +129,9 @@ async function basket(lines: { variantId: number; quantity: number }[], userId?:
 
 const stockOf = async (variantId: number) =>
   (await db.select().from(productVariants).where(eq(productVariants.id, variantId)))[0].stock;
+
+const preorderStockOf = async (variantId: number) =>
+  (await db.select().from(productVariants).where(eq(productVariants.id, variantId)))[0].preorderStock;
 
 const adminActor = (): Actor => ({ kind: "admin", userId: ids.admin });
 const acmeActor = (): Actor => ({ kind: "vendor", userId: ids.acmeOwner, vendorId: ids.acme, role: "owner" });
@@ -377,5 +394,112 @@ describe("moving a line through the warehouse", () => {
     const after = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
     expect(after.find(line => line.vendorId === ids.acme)!.fulfilment).toBe("shipped");
     expect(after.find(line => line.vendorId === ids.other)!.fulfilment).toBe("pending");
+  });
+});
+
+/*
+ * Pre-order, against the real thing.
+ *
+ * The rule the whole feature turns on is that a pre-order is not an exemption
+ * from `stock >= n` but a second pool carrying the same predicate — and a
+ * predicate inside an UPDATE is exactly what a pure test cannot exercise.
+ */
+describe("pre-order", () => {
+  it("sells a variant with nothing on the shelf, and says so on the line", async () => {
+    const cartId = await basket([{ variantId: ids.pressVariant, quantity: 2 }], ids.shopper);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(line.preordered).toBe(true);
+    expect(line.preorderReleaseAt).toEqual(new Date("2027-03-15T00:00:00Z"));
+    // Taken from the allowance, and the shelf is untouched rather than negative.
+    expect(await preorderStockOf(ids.pressVariant)).toBe(1);
+    expect(await stockOf(ids.pressVariant)).toBe(0);
+  });
+
+  it("refuses the order that would exceed the allowance, exactly as it refuses stock", async () => {
+    const cartId = await basket([{ variantId: ids.pressVariant, quantity: 4 }]);
+    await expect(ordersModule.placeOrder(cartId, DETAILS)).rejects.toThrow();
+    // Nothing consumed by the refusal.
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+  });
+
+  /*
+   * Two shoppers after the last two of a promised three: exactly one gets
+   * them, and the vendor is never left owing four parcels having promised
+   * three.
+   *
+   * Honest about what this proves. PGlite runs one connection, so the two
+   * calls serialise rather than genuinely race — what is exercised is that the
+   * `>=` predicate inside the UPDATE refuses the second draw, which is the
+   * property. A true simultaneous race needs two connections to a real server,
+   * and the predicate is what makes that safe either way.
+   */
+  it("lets only one of two shoppers have the last of the allowance", async () => {
+    const first = await basket([{ variantId: ids.pressVariant, quantity: 2 }]);
+    const second = await basket([{ variantId: ids.pressVariant, quantity: 2 }]);
+
+    const results = await Promise.allSettled([
+      ordersModule.placeOrder(first, DETAILS),
+      ordersModule.placeOrder(second, DETAILS),
+    ]);
+
+    expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    expect(await preorderStockOf(ids.pressVariant)).toBe(1);
+  });
+
+  it("prefers the shelf when the shelf can serve it", async () => {
+    // Two on the shelf as well as the promised three.
+    await db.update(productVariants).set({ stock: 2 }).where(eq(productVariants.id, ids.pressVariant));
+
+    const cartId = await basket([{ variantId: ids.pressVariant, quantity: 2 }]);
+    const placed = await ordersModule.placeOrder(cartId, DETAILS);
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    // Calling this a pre-order would delay a parcel that could go out today.
+    expect(line.preordered).toBe(false);
+    expect(line.preorderReleaseAt).toBeNull();
+    expect(await stockOf(ids.pressVariant)).toBe(0);
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+  });
+
+  /*
+   * Three on the shelf and an order for five is refused rather than split, and
+   * this is what proves the refusal does not quietly eat the allowance on the
+   * way past.
+   */
+  it("never draws one line from both pools", async () => {
+    await db.update(productVariants).set({ stock: 2 }).where(eq(productVariants.id, ids.pressVariant));
+
+    const cartId = await basket([{ variantId: ids.pressVariant, quantity: 4 }]);
+    await expect(ordersModule.placeOrder(cartId, DETAILS)).rejects.toThrow();
+
+    expect(await stockOf(ids.pressVariant)).toBe(2);
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+  });
+
+  /*
+   * A part-served basket never half-happens, and the units have to go back to
+   * the pool they came from — handing a pre-ordered line back as real stock
+   * would invent inventory out of a failed order.
+   */
+  it("returns pre-ordered units to the allowance when a later line cannot be served", async () => {
+    const cartId = await basket([
+      { variantId: ids.pressVariant, quantity: 2 },
+      { variantId: ids.kettleVariant, quantity: 99 },
+    ]);
+    await expect(ordersModule.placeOrder(cartId, DETAILS)).rejects.toThrow();
+
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+    expect(await stockOf(ids.pressVariant)).toBe(0);
+    expect(await stockOf(ids.kettleVariant)).toBe(4);
+  });
+
+  it("leaves an ordinary line saying it was not a pre-order", async () => {
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }]);
+    const placed = await ordersModule.placeOrder(cartId, DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(line.preordered).toBe(false);
+    expect(line.preorderReleaseAt).toBeNull();
   });
 });

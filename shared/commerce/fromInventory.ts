@@ -21,6 +21,7 @@ import type {
 } from "./types.js";
 import { visibleBadges } from "../inventory/vendorHealth.js";
 import type { Measure } from "./units.js";
+import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
 
 /**
  * The dinar, everywhere.
@@ -60,6 +61,9 @@ export type InventoryVariantRow = {
   price: string;
   compareAtPrice: string | null;
   stock: number;
+  /** Absent on a caller that predates pre-order, which means no allowance. */
+  preorderStock?: number | null;
+  preorderReleaseAt?: Date | string | null;
   options: Record<string, string>;
   /* Optional so a caller that predates the grocery shelf still type-checks. */
   unit?: string | null;
@@ -160,16 +164,28 @@ export function optionsFromVariants(variants: InventoryVariantRow[]): ProductOpt
 }
 
 function toVariant(row: InventoryVariantRow): ProductVariant {
+  const levels = {
+    stock: row.stock,
+    preorderStock: row.preorderStock ?? 0,
+    preorderReleaseAt: row.preorderReleaseAt ?? null,
+  };
+  const offer = offerFor(levels);
+
   return {
     id: String(row.id),
     title: row.title,
     sku: row.sku,
     price: money(row.price),
     compareAtPrice: row.compareAtPrice ? money(row.compareAtPrice) : null,
-    // Stock is the whole of availability here. There is no "continue selling
-    // when out of stock" flag, because overselling a marketplace's vendors is
-    // a support ticket rather than a sale.
-    availableForSale: row.stock > 0,
+    // There is still no "continue selling when out of stock" flag, because
+    // overselling a marketplace's vendors is a support ticket rather than a
+    // sale. A pre-order is not that flag: it is a second, bounded pool the
+    // vendor chose the size of, and `preorder.ts` owns the rule.
+    availableForSale: buyable(levels),
+    preorder: offer.kind === "preorder"
+      ? { releaseAt: offer.releaseAt ? offer.releaseAt.toISOString() : null }
+      : null,
+    maxQuantity: maxQuantityFor(levels),
     // Defaults to `each` for every product that predates the grocery shelf.
     measure: {
       unit: (row.unit ?? "each") as Measure["unit"],
