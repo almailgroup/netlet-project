@@ -93,6 +93,16 @@ function Trail() {
                       ? t("admin.auditAutomatic")
                       : t("admin.auditBy", { name: entry.actorEmail })}
                   </span>
+                  {/* "And who authorised them" — the half of requirement 3.3.9
+                      the trail could not answer. Shown only where it was
+                      resolved: absent means the actor is this installation's
+                      first administrator, and a row reading "authorised by
+                      nobody" would be an accusation rather than a fact. */}
+                  {entry.authorisedByEmail ? (
+                    <span className="ink-muted">
+                      {t("admin.auditAuthorisedBy", { name: entry.authorisedByEmail })}
+                    </span>
+                  ) : null}
                 </p>
               </li>
             );

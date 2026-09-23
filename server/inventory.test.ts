@@ -433,6 +433,67 @@ describe("the audit trail", () => {
     await inv.setUserAdmin(adminActor(), ids.staff, false);
   });
 
+  /*
+   * Requirement 3.3.9 asks for who changed the commission **and who authorised
+   * them**. The trail knew both facts separately and nothing joined them.
+   */
+  it("names who granted the actor their administrator rights", async () => {
+    // `staff@` is made an administrator by `admin@`, and then uses it.
+    await inv.setUserAdmin(adminActor(), ids.staff, true);
+    await inv.setVendorCommission({ kind: "admin", userId: ids.staff }, ids.acme, "9.00", null);
+
+    const [row] = await audit.listAudit({ action: "vendor.setCommission" });
+    expect(row.authorisedByEmail).toBe("admin@netlet.test");
+    expect(row.authorisedById).toBe(ids.admin);
+    await inv.setUserAdmin(adminActor(), ids.staff, false);
+  });
+
+  /*
+   * Null is ordinary and honest: the first administrator was made one by
+   * whoever ran the bootstrap, and there is no row to point at. Inventing
+   * "system" there would assert something the trail does not know.
+   */
+  it("leaves the chain empty for the installation's first administrator", async () => {
+    /*
+     * A fresh administrator with no grant row, rather than the fixture's own
+     * `admin@` — which other tests in this file promote and demote, so it does
+     * have a grant and is not the first administrator any more. The premise
+     * had to be built rather than assumed, which is the whole point of the
+     * case: "nobody granted this" is a fact about one specific account.
+     */
+    const [founder] = await db.insert(users).values({ email: "founder@netlet.test", role: "admin" }).returning();
+    await inv.setVendorCommission({ kind: "admin", userId: founder.id }, ids.acme, "11.00", null);
+
+    const [row] = await audit.listAudit({ action: "vendor.setCommission" });
+    expect(row.actorEmail).toBe("founder@netlet.test");
+    expect(row.authorisedByEmail).toBeNull();
+    expect(row.authorisedById).toBeNull();
+  });
+
+  /*
+   * `user.setAdmin` records revocations too. Taking the most recent row
+   * without reading it would name whoever removed the rights as the person
+   * who conferred them.
+   */
+  it("names the grant and not the revocation before it", async () => {
+    await inv.setUserAdmin(adminActor(), ids.staff, true);
+    await inv.setUserAdmin(adminActor(), ids.staff, false);
+    await inv.setUserAdmin({ kind: "admin", userId: ids.owner }, ids.staff, true);
+
+    await inv.setVendorCommission({ kind: "admin", userId: ids.staff }, ids.acme, "8.00", null);
+    const [row] = await audit.listAudit({ action: "vendor.setCommission" });
+    expect(row.authorisedByEmail).toBe("owner@acme.test");
+    await inv.setUserAdmin(adminActor(), ids.staff, false);
+  });
+
+  /* One extra query per row is worth paying on an act no vendor can reach and
+     not on a stock adjustment, so the list is short and deliberate. */
+  it("does not spend the lookup on ordinary acts", async () => {
+    await inv.adjustStock(adminActor(), ids.acmeVariant, 1, "correction");
+    const [row] = await audit.listAudit({ action: "product.priceChange" });
+    if (row) expect(row.authorisedByEmail).toBeNull();
+  });
+
   it("records a price change, and only when the price actually moved", async () => {
     const before = (await audit.listAudit({ action: "product.priceChange" })).length;
     await inv.saveVariant(ownerActor(), {

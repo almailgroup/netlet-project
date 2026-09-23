@@ -844,6 +844,25 @@ export const auditLog = pgTable(
     actorEmail: varchar("actor_email", { length: 320 }),
     /** Which vendor the action touched, when it was scoped to one. */
     vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    /**
+     * Who granted the actor the administrator rights they used.
+     *
+     * The requirement asks for "who changed it **and who authorised them**",
+     * and the second half was missing: the trail knew that `alice@` set a
+     * commission and, separately, that `bob@` made `alice@` an administrator,
+     * with nothing joining the two. This resolves that chain at write time and
+     * freezes it, because an audit row records what was true at the moment —
+     * reading it back later against a permission table that has since changed
+     * would answer a different question. The same instinct the order lines
+     * follow.
+     *
+     * Null is ordinary and means one of two honest things: the actor is the
+     * installation's first administrator, granted by whoever set the database
+     * up, or the grant predates this column. Neither is a gap worth inventing
+     * a name for.
+     */
+    authorisedById: integer("authorised_by_id").references(() => users.id, { onDelete: "set null" }),
+    authorisedByEmail: varchar("authorised_by_email", { length: 320 }),
     before: jsonb("before").$type<Record<string, unknown> | null>(),
     after: jsonb("after").$type<Record<string, unknown> | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

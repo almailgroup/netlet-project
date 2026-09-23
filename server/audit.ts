@@ -51,10 +51,65 @@ export type AuditRecord = {
   after?: Record<string, unknown> | null;
 };
 
+/**
+ * The acts that carry the authorisation chain as well as the actor.
+ *
+ * Deliberately a short list rather than every row. These are the acts no
+ * vendor rank can reach at any level — the ones where "and who let them?" is
+ * the real question, which is exactly how requirement 3.3.9 words it about
+ * commission. Resolving the chain costs one extra query, and spending it on a
+ * stock adjustment would be paying for an answer nobody asks.
+ */
+export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
+  "vendor.setCommission",
+  "user.setAdmin",
+  "vendor.setStatus",
+]);
+
+/**
+ * Who made this actor an administrator.
+ *
+ * Read out of the trail's own `user.setAdmin` rows rather than from a second
+ * table: the grant was already recorded, and a parallel record of the same
+ * fact is one that eventually disagrees. The most recent grant wins, because
+ * an administrator revoked and restored was authorised by whoever restored
+ * them.
+ *
+ * Returns null rather than guessing. The first administrator of an
+ * installation was made one by whoever ran the bootstrap, and there is no row
+ * to point at — inventing "system" there would be asserting something the
+ * trail does not know.
+ */
+async function authorisedBy(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  actorId: number | null | undefined,
+): Promise<{ id: number | null; email: string | null }> {
+  if (!actorId) return { id: null, email: null };
+  const [grant] = await db
+    .select({ id: auditLog.actorId, email: auditLog.actorEmail })
+    .from(auditLog)
+    .where(
+      and(
+        eq(auditLog.action, "user.setAdmin"),
+        eq(auditLog.subjectId, actorId),
+        /* The grant, not the revocation: `user.setAdmin` records both, and a
+           demotion followed by a promotion would otherwise name whoever took
+           the rights away as the person who conferred them. */
+        sql`${auditLog.after} ->> 'role' = 'admin'`,
+      ),
+    )
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+    .limit(1);
+  return { id: grant?.id ?? null, email: grant?.email ?? null };
+}
+
 export async function recordAudit(actor: AuditActor, record: AuditRecord): Promise<void> {
   try {
     const db = await getDb();
     if (!db) return;
+    const chain = CHAIN_ACTIONS.has(record.action)
+      ? await authorisedBy(db, actor.id)
+      : { id: null, email: null };
     await db.insert(auditLog).values({
       action: record.action,
       subjectType: record.subjectType,
@@ -62,6 +117,8 @@ export async function recordAudit(actor: AuditActor, record: AuditRecord): Promi
       subjectLabel: record.subjectLabel ?? null,
       actorId: actor.id ?? null,
       actorEmail: actor.email ?? null,
+      authorisedById: chain.id,
+      authorisedByEmail: chain.email,
       vendorId: record.vendorId ?? null,
       before: record.before ?? null,
       after: record.after ?? null,
@@ -98,7 +155,15 @@ export async function listAudit(options: {
         options.since ? gte(auditLog.createdAt, options.since) : undefined,
       ),
     )
-    .orderBy(desc(auditLog.createdAt))
+    /*
+     * Ends on the id, which is unique. `createdAt` alone ties — several rows
+     * written inside one request share a microsecond — and Postgres orders
+     * ties freely between two queries, so "the most recent entry" was a coin
+     * toss and the page could show the same act twice in a different order on
+     * a refresh. The same rule every paged admin list already follows; this
+     * one was missed because it is capped rather than paged.
+     */
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
     .limit(options.limit ?? 100);
 }
 

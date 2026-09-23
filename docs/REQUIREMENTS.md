@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 21 |
-| Partial | 11 |
+| Built | 22 |
+| Partial | 10 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
 | Not started | 43 |
 
-*Last updated after landing special-price requests (3.1.13). Payments and
+*Last updated after landing the commission authorisation chain (3.3.9). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 6 built, 3 partial, 13 absent
+## 3.3 Vendor experience — 7 built, 2 partial, 13 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -89,7 +89,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 6 | AI reviews products, alerts admin | Not started | The review queue is entirely human. |
 | 7 | Trusted companies publish directly | **Built** | `autoPublish`. |
 | 8 | Vendor product changes visible to admin | **Partial** | Logged — `product.priceChange`, `product.create`, `product.delete`. Not notified. |
-| 9 | Commission admin-only, log who changed it and who authorised them | **Partial** | Outside every vendor rank ✓, `vendor.setCommission` logs the actor ✓. Which admin granted that employee the permission is not recorded. |
+| 9 | Commission admin-only, log who changed it and who authorised them | **Built** | No vendor rank reaches `vendor.setCommission` at any level, the row records the actor and both sides of the change, and it now also records **who granted that actor their administrator rights**. The chain is read out of the trail's own `user.setAdmin` rows rather than a second table — the grant was already recorded, and a parallel record of one fact is one that eventually disagrees — and it is resolved at write time and frozen, because an audit row states what was true at that moment. The most recent *grant* wins and a revocation is skipped, or demoting and restoring somebody would name whoever took the rights away as the person who conferred them. A null is ordinary and honest: the first administrator was made one by whoever ran the bootstrap, and there is no row to point at. Only the acts no vendor rank can reach carry the chain, so the extra query is not spent on a stock adjustment. |
 | 10 | Vendor trust badges | **Built** | |
 | 11 | Bundles, including cross-vendor | Not started | |
 | 12 | Commission: % or fixed, per vendor or per product | **Built** | Explicit zero is an override; absent is not. |

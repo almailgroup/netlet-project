@@ -589,6 +589,14 @@ CREATE INDEX IF NOT EXISTS "price_offers_vendor_idx" ON "price_offers" USING btr
 CREATE INDEX IF NOT EXISTS "price_offers_user_idx" ON "price_offers" USING btree ("user_id","created_at");
 CREATE INDEX IF NOT EXISTS "price_offers_variant_idx" ON "price_offers" USING btree ("variant_id");
 
+-- ===== 0018_famous_ultron.sql =====
+ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "authorised_by_id" integer;
+ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "authorised_by_email" varchar(320);
+DO $$ BEGIN
+  ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_authorised_by_id_users_id_fk" FOREIGN KEY ("authorised_by_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -626,6 +634,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  18 AS migrations_in_this_file,
+  19 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

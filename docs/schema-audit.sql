@@ -9,14 +9,14 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 242 columns across 23 tables.
+-- Expected: 244 columns across 23 tables.
 
 WITH expected AS (
   SELECT
     packed.table_name,
     unnest(string_to_array(packed.columns, ',')) AS column_name
   FROM (VALUES
-    ('audit_log', 'action,actor_email,actor_id,after,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
+    ('audit_log', 'action,actor_email,actor_id,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
     ('auth_attempts', 'bucket,created_at,id,kind'),
     ('cart_items', 'cart_id,created_at,id,quantity,updated_at,variant_id'),
     ('carts', 'created_at,id,updated_at,user_id'),
