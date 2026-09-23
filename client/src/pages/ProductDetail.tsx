@@ -1,6 +1,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
+import { ProductAssistant } from "@/components/product/ProductAssistant";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { QuickView } from "@/components/product/QuickView";
@@ -17,14 +18,16 @@ import {
   isExpressEligible,
   productRating,
   savingsPercent,
+  merchantWarranty,
   specifications,
 } from "@shared/commerce/productDetail";
+import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { relatedProducts } from "@shared/commerce/related";
 import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import { ArrowLeft, ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, ShoppingBasket, Star, Tag, Truck, Wallet, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -41,13 +44,26 @@ import type { MessageKey } from "@shared/i18n/dictionary";
  * storefront promises on every item. The Express row only appears for products
  * the merchant has actually tagged for it.
  */
+type PolicyRow = { icon: typeof Truck; title: MessageKey; body: MessageKey };
+
+/*
+ * Three panels, not one.
+ *
+ * Returns and buyer protection used to sit at the bottom of the shipping list,
+ * which is where a shopper looking for "what if it breaks" never thinks to
+ * look — shipping answers "when does it arrive". They are separate questions
+ * and they get separate tabs.
+ */
 const SHIPPING_POLICY = [
   { icon: Truck, title: "shipping.standard.title", body: "shipping.standard.body" },
   { icon: Tag, title: "shipping.charges.title", body: "shipping.charges.body" },
   { icon: Wallet, title: "shipping.payment.title", body: "shipping.payment.body" },
-  { icon: RotateCcw, title: "shipping.returns.title", body: "shipping.returns.body" },
+] as const satisfies readonly PolicyRow[];
+
+const WARRANTY_POLICY = [
   { icon: ShieldCheck, title: "shipping.protection.title", body: "shipping.protection.body" },
-] as const satisfies readonly { icon: typeof Truck; title: MessageKey; body: MessageKey }[];
+  { icon: Wrench, title: "warranty.claim.title", body: "warranty.claim.body" },
+] as const satisfies readonly PolicyRow[];
 
 function RelatedCard({ product }: { product: Product }) {
   const { t } = useTranslation();
@@ -561,10 +577,10 @@ function SpecificationsPanel({ product, t }: { product: Product; t: Translate })
   );
 }
 
-function ShippingPolicyPanel({ express, t }: { express: boolean; t: Translate }) {
-  const rows = express
-    ? [{ icon: Zap, title: "product.expressTitle", body: "shipping.express.body" } as const, ...SHIPPING_POLICY]
-    : SHIPPING_POLICY;
+/**
+ * One row of a policy list. The three panels differ in content, not in shape.
+ */
+function PolicyRows({ rows, t }: { rows: readonly PolicyRow[]; t: Translate }) {
   return (
     <div className="flex flex-col gap-4">
       {rows.map((row) => (
@@ -580,20 +596,85 @@ function ShippingPolicyPanel({ express, t }: { express: boolean; t: Translate })
   );
 }
 
+/**
+ * What the seller promised, and what NetLet covers regardless.
+ *
+ * The merchant's own term leads when there is one, shown as they typed it and
+ * attributed to them — "12 months" from a seller and NetLet's buyer protection
+ * are different promises from different parties, and merging them into one
+ * sentence would leave a shopper unable to tell who they are owed by. When the
+ * seller recorded nothing the panel says exactly that rather than inventing a
+ * default, which is the same rule the store-details page follows: report what
+ * is absent instead of guessing at it.
+ */
+function WarrantyPanel({ product, t }: { product: Product; t: Translate }) {
+  const stated = merchantWarranty(product.attributes);
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-3.5">
+        <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]"><ShieldCheck className="size-4" /></span>
+        <div>
+          <strong className="block text-sm font-bold text-[#1f2229]">{t("warranty.seller.title")}</strong>
+          {stated
+            ? <span dir="auto" className="block text-[13px] leading-[1.55] text-[#404553]">{t("warranty.seller.stated", { value: stated })}</span>
+            : <span className="block text-[13px] leading-[1.55] text-[#404553]">{t("warranty.seller.none")}</span>}
+        </div>
+      </div>
+      <PolicyRows rows={WARRANTY_POLICY} t={t} />
+    </div>
+  );
+}
+
+/**
+ * The refund window, taken from the constant the server enforces.
+ *
+ * `RETURN_WINDOW_DAYS` is the same number `shared/commerce/returns.ts` uses to
+ * decide whether a return is actually open, so the page cannot promise a
+ * fortnight while the API refuses on day eight. The old copy spelled "14 days"
+ * into both dictionaries, which meant the policy lived in three places and two
+ * of them were prose.
+ */
+function ReturnsPanel({ t }: { t: Translate }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-3.5">
+        <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]"><RotateCcw className="size-4" /></span>
+        <div>
+          <strong className="block text-sm font-bold text-[#1f2229]">{t("shipping.returns.title")}</strong>
+          <span className="text-[13px] leading-[1.55] text-[#404553]">{t("returns.window.body", { days: RETURN_WINDOW_DAYS })}</span>
+        </div>
+      </div>
+      <PolicyRows rows={RETURNS_POLICY} t={t} />
+    </div>
+  );
+}
+
+const RETURNS_POLICY = [
+  { icon: PackageOpen, title: "returns.condition.title", body: "returns.condition.body" },
+  { icon: Wallet, title: "returns.refund.title", body: "returns.refund.body" },
+] as const satisfies readonly PolicyRow[];
+
+function ShippingPolicyPanel({ express, t }: { express: boolean; t: Translate }) {
+  const rows = express
+    ? [{ icon: Zap, title: "product.expressTitle", body: "shipping.express.body" } as const, ...SHIPPING_POLICY]
+    : SHIPPING_POLICY;
+  return <PolicyRows rows={rows} t={t} />;
+}
+
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:handle");
   const [, navigate] = useLocation();
   const handle = params?.handle ?? "";
   const { data: product, isLoading, error } = trpc.commerce.products.byHandle.useQuery({ handle }, { enabled: Boolean(handle) });
   const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 24 });
-  const { addItem, openCart, itemCount, loading: cartLoading } = useCart();
+  const { addItem, openCart, loading: cartLoading } = useCart();
   const { savedIds, toggleSaved } = useCustomer();
   const { direction, t } = useTranslation();
   const money = useMoney();
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
-  const [tab, setTab] = useState<"specifications" | "shipping">("specifications");
+  const [tab, setTab] = useState<"specifications" | "shipping" | "warranty" | "returns">("specifications");
   const [quantity, setQuantity] = useState(1);
   const [search, setSearch] = useState("");
   const openRelated = (item: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(item.handle)}`));
@@ -667,7 +748,6 @@ export default function ProductDetail() {
   };
   // The cart drawer lives on the home route, and `isOpen` is held in the cart
   // context above the router — so opening it before navigating carries across.
-  const viewCart = () => { openCart(); navigate("/"); };
 
   if (isLoading) return <main className="min-h-screen bg-background px-4 py-8"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-10 w-32 rounded-full bg-[#e7edf5]" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><div className="aspect-square rounded-[1.5rem] bg-[#e7edf5]" /><div className="space-y-5 pt-7"><div className="h-5 w-24 rounded bg-[#dce5e9]" /><div className="h-16 w-4/5 rounded bg-[#dce5e9]" /><div className="h-20 rounded bg-[#e7edf5]" /></div></div></div></main>;
 
@@ -740,16 +820,28 @@ export default function ProductDetail() {
                   on pearl, where everything else had already taken the
                   darkening to #2f5d33. */}
               <AvailabilityLine variant={selectedVariant} />
-              <div role="tablist" aria-label={t("product.information")} className="inline-flex gap-1 rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
-                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={`${tabClass(tab === "specifications")} max-sm:flex-1 max-sm:justify-center`}><ListTree className="size-3.5" />{t("product.specifications")}</button>
-                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={`${tabClass(tab === "shipping")} max-sm:flex-1 max-sm:justify-center`}><Truck className="size-3.5" />{t("product.shippingPolicy")}</button>
+              <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
+                {/* Four tabs will not divide a phone's width into anything
+                    readable, so below `sm` the row scrolls instead of each tab
+                    taking a quarter and clipping its own label. */}
+                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={tabClass(tab === "specifications")}><ListTree className="size-3.5 shrink-0" />{t("product.specifications")}</button>
+                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={tabClass(tab === "shipping")}><Truck className="size-3.5 shrink-0" />{t("product.shippingPolicy")}</button>
+                <button role="tab" id="tab-warranty" aria-selected={tab === "warranty"} aria-controls="panel-warranty" onClick={() => setTab("warranty")} className={tabClass(tab === "warranty")}><ShieldCheck className="size-3.5 shrink-0" />{t("product.warrantyPolicy")}</button>
+                <button role="tab" id="tab-returns" aria-selected={tab === "returns"} aria-controls="panel-returns" onClick={() => setTab("returns")} className={tabClass(tab === "returns")}><RotateCcw className="size-3.5 shrink-0" />{t("product.returnsPolicy")}</button>
               </div>
             </div>
 
             <div className="mt-5 min-h-[120px]">
               <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} t={t} /></div>
               <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
+              <div role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden={tab !== "warranty"}><WarrantyPanel product={product} t={t} /></div>
+              <div role="tabpanel" id="panel-returns" aria-labelledby="tab-returns" hidden={tab !== "returns"}><ReturnsPanel t={t} /></div>
             </div>
+
+            {/* Under the tabs, because it answers what the tabs did not: a
+                spec block is written for somebody who already knows the
+                category. */}
+            <ProductAssistant handle={product.handle} />
 
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
 
@@ -771,7 +863,6 @@ export default function ProductDetail() {
 
             <div className="mt-3"><FollowProduct product={product} compact /></div>
 
-            <button onClick={viewCart} className="pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-[#0a285a] bg-white/50 px-5 py-3.5 text-[15px] font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a] hover:text-white"><ShoppingBasket className="size-[18px]" />{itemCount ? t("product.viewCartCount", { count: itemCount }) : t("product.viewCart")}</button>
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
           </div>

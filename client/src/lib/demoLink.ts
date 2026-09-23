@@ -278,6 +278,23 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "together.forProduct":
       return [];
 
+    /*
+     * Off in a demo, and the panel is absent rather than broken.
+     *
+     * There is no key in a static build and no server to hold one, so a panel
+     * that rendered would be a box that answers nothing — the dead control
+     * this codebase refuses everywhere else. `available: false` is the same
+     * answer a real deployment with no key gives, so the demo exercises the
+     * real branch rather than a special case.
+     */
+    case "assistant.available":
+      return { available: false };
+    /* Unreachable while `available` is false — the panel is never drawn — but
+       answered anyway, because a procedure the demo cannot name is a procedure
+       that throws the day somebody flips the switch above. */
+    case "assistant.ask":
+      return { kind: "unavailable" };
+
     case "reviews.forProduct":
       return { items: [], summary: null, total: 0 };
     case "reviews.mine":

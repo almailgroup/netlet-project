@@ -124,3 +124,26 @@ export function specifications(
     text: product.description.trim(),
   };
 }
+
+/**
+ * The warranty the merchant recorded, if they recorded one.
+ *
+ * Returned as the merchant typed it rather than parsed into months: "12
+ * months", "سنتان", "2 years (parts only)" are all things a seller writes, and
+ * a parser that understands the first and drops the third would quietly lose a
+ * term the shopper is entitled to. The page shows the text and says who said
+ * it; NetLet's own cover is stated separately and never merged with it.
+ *
+ * Any namespace, because this is a merchant fact rather than one NetLet writes
+ * — unlike the review attributes, which the platform owns and which therefore
+ * get a namespace of their own.
+ */
+export function merchantWarranty(attributes: ProductAttribute[]): string | null {
+  const found = attributes.find(
+    attribute =>
+      attribute.namespace !== REVIEW_NAMESPACE &&
+      attribute.key.trim().toLowerCase().replace(/[\s_-]+/g, "") === "warranty",
+  );
+  const value = found?.value.trim();
+  return value ? value : null;
+}

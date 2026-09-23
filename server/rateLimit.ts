@@ -19,6 +19,8 @@ import {
   LOOKUP_WINDOW_MS,
   MAX_FAILURES_PER_ACCOUNT,
   MAX_FAILURES_PER_ADDRESS,
+  MAX_ASSISTANT_PER_ADDRESS,
+  ASSISTANT_WINDOW_MS,
   MAX_LOOKUPS_PER_ADDRESS,
   limitVerdict,
   strictest,
@@ -26,7 +28,7 @@ import {
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup";
+export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -169,4 +171,41 @@ export async function attemptCount(bucket: string): Promise<number> {
     .from(authAttempts)
     .where(eq(authAttempts.bucket, bucket));
   return row?.n ?? 0;
+}
+
+/**
+ * Whether this address may ask the assistant another question.
+ *
+ * Address only, like the gift lookup and for a related reason: the caller is
+ * usually signed out, because somebody deciding whether to buy has not
+ * necessarily got an account. The product being asked about is deliberately
+ * *not* a bucket — throttling by the product would let one script make a
+ * popular item unaskable for everybody else.
+ */
+export async function checkAssistantAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(
+      and(
+        eq(authAttempts.bucket, addressBucket(address)),
+        eq(authAttempts.kind, "assistant"),
+        gt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS)),
+      ),
+    );
+
+  return limitVerdict(rows.map(row => row.at), MAX_ASSISTANT_PER_ADDRESS, new Date(), ASSISTANT_WINDOW_MS);
+}
+
+/** Count one question, answered or not — a refusal costs the same money. */
+export async function recordAssistantCall(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "assistant" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "assistant"), lt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS))),
+  );
 }

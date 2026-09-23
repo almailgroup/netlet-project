@@ -57,6 +57,22 @@ export const MAX_FAILURES_PER_ADDRESS = 30;
 export const MAX_LOOKUPS_PER_ADDRESS = 60;
 export const LOOKUP_WINDOW_MS = 60 * 60 * 1000;
 
+/**
+ * How many product questions one address may ask the model in an hour.
+ *
+ * A ceiling here is not about abuse of a shopper's account — the assistant is
+ * open to a signed-out browser, deliberately, because that is who is deciding
+ * whether to buy. It is about cost: every call spends money at a third party,
+ * so an unthrottled endpoint is somebody else's bill waiting to be run up by a
+ * loop. Thirty is more than a shopper comparing four products will ever reach
+ * and far too few to be worth scripting.
+ *
+ * Every request counts, not every failure, for the reason the gift lookup
+ * counts every request: a refusal costs the same money as an answer.
+ */
+export const MAX_ASSISTANT_PER_ADDRESS = 30;
+export const ASSISTANT_WINDOW_MS = 60 * 60 * 1000;
+
 export type RateVerdict =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };
