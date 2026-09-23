@@ -49,6 +49,7 @@ function emptyCart(id: string): Cart {
     /* The demo's sellers take cash, which is the default a store that has
        recorded nothing gets — not a special case. */
     cod: { available: true as const },
+    recovery: { remind: false as const },
     total: fromFils(0),
   };
 }
@@ -69,6 +70,7 @@ function recalculate(cart: Cart): Cart {
     subtotal: fromFils(subtotalFils),
     delivery: { perVendor: [], total: fromFils(0) },
     cod: { available: true as const },
+    recovery: { remind: false as const },
     total: fromFils(subtotalFils),
   };
 }

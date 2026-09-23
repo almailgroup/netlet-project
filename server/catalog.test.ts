@@ -12,6 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
+  cartItems,
   carts,
   categories,
   productImages,
@@ -315,4 +316,30 @@ describe("who ships it and in what", () => {
     expect((await catalog.getProductByHandle("desk-lamp"))?.deliveryProvider).toBeNull();
   });
 
+});
+
+/* Requirement 3.1.17: the basket somebody forgot, resolved on the read. */
+describe("a forgotten basket", () => {
+  it("says nothing while they are probably still shopping", async () => {
+    const [cart] = await db.insert(carts).values({ id: "recovery-fresh" }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.lampSmall, quantity: 1 });
+    expect((await catalog.getCart(cart.id))?.recovery).toEqual({ remind: false });
+  });
+
+  it("says so once the basket is old enough", async () => {
+    const [cart] = await db.insert(carts).values({ id: "recovery-old" }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.lampSmall, quantity: 2 });
+    /* Set after the insert: `updatedAt` has an `$onUpdate`, so writing the
+       items first and the date second is the only order that sticks. */
+    await db.update(carts).set({ updatedAt: new Date(Date.now() - 30 * 60 * 60 * 1000) }).where(eq(carts.id, cart.id));
+
+    const recovery = (await catalog.getCart(cart.id))?.recovery;
+    expect(recovery).toMatchObject({ remind: true, itemCount: 2 });
+  });
+
+  it("says nothing about an empty basket, which is empty rather than forgotten", async () => {
+    const [cart] = await db.insert(carts).values({ id: "recovery-empty" }).returning();
+    await db.update(carts).set({ updatedAt: new Date(Date.now() - 30 * 60 * 60 * 1000) }).where(eq(carts.id, cart.id));
+    expect((await catalog.getCart(cart.id))?.recovery).toEqual({ remind: false });
+  });
 });

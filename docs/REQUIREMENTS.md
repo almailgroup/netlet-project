@@ -9,11 +9,11 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 32 |
+| Built | 33 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 35 |
+| Not started | 34 |
 
 *Last updated after landing cash on delivery (3.2.2), which places the first real orders. Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
@@ -37,7 +37,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 12 built, 0 partial, 1 drawn, 8 absent
+## 3.1 Customer experience — 13 built, 0 partial, 1 drawn, 7 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -57,7 +57,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 14 | Referral, two tracks | Not started | |
 | 15 | Referral points, spend or cash out at 10% | Not started | No points ledger. |
 | 16 | Reviews: verified purchase, after delivery | **Built** | `reviews`, keyed on an **order line** — so "verified" is structural rather than a flag, and one purchase buys one review. Gated on `order_items.delivered_at`, a column that now exists. Product page shows the average, a histogram and every review; `/account` lists each delivered line with a form or the reason there is none. Vendors reply, admins hide (never delete). Verified end to end in a browser against a real paid, delivered order. |
-| 17 | Cart recovery reminder | Not started | |
+| 17 | Cart recovery reminder | **Built** | `shared/commerce/cartRecovery.ts` is the rule and is pure, and the interesting decision is not the arithmetic — it is being honest about what NetLet can do. **There is no mail provider and no scheduler**: Firebase sends the auth emails and nothing else, and nothing here runs on a timer. A recovery *email* needs both, and a reminder that depends on a cron nobody runs is a dead feature that looks finished. So it is **resolved on the read**, the way the discount permit and the pre-order date are: the moment a shopper with a stale basket opens their bag, the shop says so. Nothing has to run, it cannot go stale, and it reaches exactly the person it is about — and when a mail provider exists, this same function decides who gets the email. Quiet, and bounded at both ends: under `ABANDON_AFTER_HOURS` they are still shopping and a banner is nagging; past `STALE_AFTER_DAYS` the basket has been re-priced enough that "you left these" is a worse message than silence. It carries a count and an age and **never a total**, because a cart stores no prices and quoting a figure that has since moved is the shop arguing with its own page. |
 | 18 | Price-drop alerts | **Built** | Same follow mechanism. |
 | 19 | Subscribe & Save | Not started | |
 | 20 | AI size guide | Not started | |

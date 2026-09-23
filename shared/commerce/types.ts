@@ -236,5 +236,13 @@ export type Cart = {
    * refuse — the rule the password floor already follows.
    */
   cod: { available: true } | { available: false; because: { kind: "seller"; vendorName: string } | { kind: "ceiling"; vendorName: string; ceiling: string } };
+  /**
+   * Whether this basket looks forgotten (3.1.17), and for how long.
+   *
+   * A count and an age, never a total: a cart stores no prices, so an old
+   * basket is re-priced on every read and a reminder quoting a figure that has
+   * since moved is a shop arguing with its own page.
+   */
+  recovery: { remind: true; itemCount: number; hours: number } | { remind: false };
   total: Money;
 };

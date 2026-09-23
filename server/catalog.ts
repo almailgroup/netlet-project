@@ -40,6 +40,7 @@ import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
 import { codAvailability } from "../shared/commerce/payment.js";
+import { recoveryFor } from "../shared/commerce/cartRecovery.js";
 import { liveOffersFor } from "./offers.js";
 
 /* ------------------------------------------------------------- the shelf --- */
@@ -306,6 +307,13 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     items,
     itemCount: items.reduce((count, item) => count + item.quantity, 0),
     subtotal: money(subtotal),
+    /*
+     * Whether this is a basket somebody forgot (3.1.17). Resolved on the read
+     * rather than sent by a job, because there is no scheduler and no mail
+     * provider — a reminder that depends on a cron nobody runs is a dead
+     * feature that looks finished.
+     */
+    recovery: recoveryFor({ updatedAt: cart.updatedAt, itemCount: items.reduce((n, item) => n + item.quantity, 0) }),
     /* Whether the one payment method NetLet can take today is available on
        this basket, and if not, which seller refused and why. */
     cod: codAvailability(
