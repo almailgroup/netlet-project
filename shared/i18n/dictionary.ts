@@ -93,6 +93,19 @@ export const en = {
   "checkout.pointsRow": "Points",
   "auth.referralInvited": "A friend invited you. You both earn points when your first order is paid for.",
   /* The admin's side: what NetLet still owes in cash-outs. */
+  /* What the review queue's second pair of eyes found (3.6.2). */
+  "admin.flagsNone": "Nothing found in this listing.",
+  "admin.flagNoImages": "No pictures",
+  "admin.flagZeroPrice": "A variant is priced at nothing — publishing will be refused",
+  "admin.flagNoCategory": "No department chosen",
+  "admin.flagThinDescription": "Barely any description",
+  "admin.flagContactInText": "Contact details in the listing — this takes the buyer off NetLet",
+  "admin.flagShoutingTitle": "The title is in capitals",
+  "admin.flagBannedClaim": "A claim the shop cannot stand behind",
+  "admin.flagModelConcern": "NetLet AI flagged this",
+  "admin.flagModelAsk": "Ask NetLet AI to read it",
+  "admin.flagModelAsked": "NetLet AI has read it",
+  "admin.flagModelNothing": "NetLet AI found nothing to raise.",
   /* The optional extras a seller offers with a product (3.1.2). */
   "product.addons": "Add to this order",
   "product.addonInstallation": "Installation",
@@ -1381,6 +1394,19 @@ export const ar: Record<MessageKey, string> = {
   "checkout.pointsRow": "النقاط",
   "auth.referralInvited": "دعاك صديق. تكسبان كلاكما نقاطاً عند دفع ثمن أول طلب لك.",
   /* جانب الإدارة: ما تدين به نت‑لت من صرف نقدي. */
+  /* ما وجدته المراجعة الآلية في قائمة المنتجات المنتظرة. */
+  "admin.flagsNone": "لم نجد شيئاً في هذه القائمة.",
+  "admin.flagNoImages": "لا صور",
+  "admin.flagZeroPrice": "أحد الخيارات سعره صفر — سيُرفض النشر",
+  "admin.flagNoCategory": "لم يُختر قسم",
+  "admin.flagThinDescription": "الوصف شبه خالٍ",
+  "admin.flagContactInText": "بيانات تواصل داخل القائمة — تنقل المشتري خارج نت‑لت",
+  "admin.flagShoutingTitle": "العنوان بأحرف كبيرة",
+  "admin.flagBannedClaim": "ادعاء لا يمكن للمتجر أن يقف خلفه",
+  "admin.flagModelConcern": "أشار إليه ذكاء نت‑لت",
+  "admin.flagModelAsk": "اطلب من ذكاء نت‑لت قراءتها",
+  "admin.flagModelAsked": "قرأها ذكاء نت‑لت",
+  "admin.flagModelNothing": "لم يجد ذكاء نت‑لت ما يشير إليه.",
   /* الإضافات الاختيارية التي يعرضها البائع مع المنتج. */
   "product.addons": "أضف إلى هذا الطلب",
   "product.addonInstallation": "تركيب",

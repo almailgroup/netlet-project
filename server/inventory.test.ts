@@ -17,6 +17,7 @@ import type { Actor } from "../shared/inventory/permissions.js";
 let db: ReturnType<typeof drizzle>;
 let inv: typeof import("./inventory");
 let audit: typeof import("./audit");
+let inv2: typeof import("./productReview");
 
 const ids = { acme: 0, other: 0, admin: 0, owner: 0, staff: 0, acmeProduct: 0, acmeVariant: 0, otherProduct: 0 };
 
@@ -56,6 +57,7 @@ beforeAll(async () => {
   }));
   inv = await import("./inventory");
   audit = await import("./audit");
+  inv2 = await import("./productReview");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [owner] = await db.insert(users).values({ email: "owner@acme.test" }).returning();
@@ -231,6 +233,44 @@ describe("creating", () => {
  * index, that a category name is resolved to an id rather than invented, and
  * that a failure leaves the shelf exactly as it was.
  */
+/*
+ * The review queue's triage (3.6.2). The checks are proved pure in
+ * `shared/inventory/productReview.test.ts`; what is here is that it reads the
+ * right rows — the variants' prices and the image count come from two other
+ * tables, and a product with none of either is the ordinary case.
+ */
+describe("reviewing what is waiting", () => {
+  it("reads a product's own variants and images", async () => {
+    const [made] = await db.insert(products).values({
+      vendorId: ids.acme,
+      handle: "flagged-lamp",
+      title: "Lamp",
+      description: "Call 9123 4567",
+      status: "pending_review",
+    }).returning();
+    await db.insert(productVariants).values({ productId: made.id, title: "Default", price: "0.000" });
+
+    const [reviewed] = await inv2.reviewProducts(adminActor(), [made.id]);
+    expect(reviewed.attention).toBe(true);
+    const findings = reviewed.flags.map(flag => flag.finding);
+    expect(findings).toEqual(expect.arrayContaining(["contactInText", "zeroPrice", "noImages", "noCategory"]));
+  });
+
+  it("refuses somebody who does not review products", async () => {
+    await expect(inv2.reviewProducts(staffActor(), [ids.acmeProduct])).rejects.toThrow("FORBIDDEN:product.review");
+  });
+
+  it("asks for nothing when given nothing", async () => {
+    expect(await inv2.reviewProducts(adminActor(), [])).toEqual([]);
+  });
+
+  /* With no key the pass is absent rather than broken — the branch a real
+     deployment without one takes. */
+  it("has no model opinion without a key", async () => {
+    expect(await inv2.modelConcernFor({ title: "Lamp", description: "A lamp." })).toBeNull();
+  });
+});
+
 describe("importing a spreadsheet", () => {
   const row = (over: Partial<Parameters<typeof inv.bulkCreateProducts>[1]["rows"][number]> = {}) => ({
     title: "Imported Lamp", sku: null, price: "10.000", compareAtPrice: null,

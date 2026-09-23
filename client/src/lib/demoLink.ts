@@ -343,6 +343,20 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Reading the file is pure and happens in the browser, so the demo's
        import page previews a real spreadsheet — only the write has nowhere to
        go, and saying it succeeded would be the lie the Publish button avoids. */
+    /*
+     * The review queue's own checks are pure and would run happily here, but
+     * the demo's fixtures hold no pending products for them to run over — so
+     * the honest answer is an empty list rather than invented findings.
+     */
+    case "inventory.products.flags":
+      return [];
+    /* No key in a demo build, which is the branch a real deployment without
+       one takes too rather than a special case. */
+    case "inventory.products.modelFlag":
+      return { available: false, flag: null };
+    case "inventory.products.modelReviewAvailable":
+      return { available: false };
+
     /* The demo portal can draw the extras editor and cannot save it, the same
        branch every other write there takes. */
     case "inventory.products.setAddons":

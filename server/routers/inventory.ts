@@ -62,6 +62,7 @@ import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
 import { ADDON_KINDS } from "../../shared/commerce/addons.js";
+import { modelConcernFor, modelReviewAvailable, reviewProducts } from "../productReview.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
 /**
@@ -364,6 +365,48 @@ export const inventoryRouter = router({
      * The whole list at once, like the images: these are read as a set, and a
      * per-row endpoint turns reordering two of them into four calls.
      */
+    /**
+     * What is wrong with the listings waiting for review (3.6.2).
+     *
+     * Takes the ids the queue is already showing rather than running its own
+     * query, so the triage is over the page an administrator has in front of
+     * them — and the model pass is asked for separately, because it costs
+     * money and a page of twenty would spend twenty calls on a scroll.
+     */
+    flags: protectedProcedure
+      .input(z.object({ ids: z.array(z.number().int().positive()).max(100) }))
+      .query(async ({ ctx, input }) => guard(async () =>
+        reviewProducts(await resolveActor(ctx.user), input.ids))),
+
+    /**
+     * Whether the model pass can run at all (3.6.2).
+     *
+     * Asked once for the page, so the button is **absent** with no key rather
+     * than present and answering "nothing found" — which would be a claim
+     * about a question nobody asked. The same choice the shopper's assistant
+     * makes with its whole panel.
+     */
+    modelReviewAvailable: protectedProcedure.query(() => ({ available: modelReviewAvailable() })),
+
+    /**
+     * A model's opinion on one listing, when a key is configured.
+     *
+     * One product at a time and only when asked, the same shape the shopper's
+     * assistant uses: nothing is spent on somebody scrolling past.
+     */
+    modelFlag: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => guard(async () => {
+        const actor = await resolveActor(ctx.user);
+        assertCan(actor, "product.review");
+        const product = await getProduct(actor, input.id);
+        if (!product) return { flag: null, available: modelReviewAvailable() };
+        return {
+          available: modelReviewAvailable(),
+          flag: await modelConcernFor({ title: product.title, description: product.description }),
+        };
+      })),
+
     setAddons: protectedProcedure
       .input(z.object({
         id: z.number().int().positive(),
