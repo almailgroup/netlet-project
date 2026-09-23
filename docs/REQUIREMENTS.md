@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 30 |
-| Partial | 8 |
+| Built | 31 |
+| Partial | 7 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
 | Not started | 37 |
 
-*Last updated after landing weekly payouts (3.3.16). Payments and
+*Last updated after landing the per-department attribute schema (3.1.7). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -37,7 +37,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 11 built, 1 partial, 1 drawn, 8 absent
+## 3.1 Customer experience — 12 built, 0 partial, 1 drawn, 8 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -47,7 +47,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 4 | Public/private wishlists, found by phone | **Built** | `wishlists`, `wishlist_items`, phone key, claim holds, lookup throttle. |
 | 5 | AI personalised recommendations | **Built** | `shared/commerce/taste.ts` + model reorder pass. |
 | 6 | AI visual search (photo or description) | **Drawn, not wired** | `SearchModes.tsx` has every state designed. `SEARCH_MODES_WIRED` governs one line of copy; nothing is listening. |
-| 7 | Variants: colour swaps photo, zoom, per-category attributes | **Partial** | Swatches and zoom are built. Attributes are free-form `jsonb` — there is no per-category attribute schema. |
+| 7 | Variants: colour swaps photo, zoom, per-category attributes | **Built** | Swatches and zoom were already built; the missing half was the attribute schema. `shared/commerce/attributeSchema.ts` gives each department the rows a shopper actually compares on, **in code beside the departments themselves** — a table and an editor for it would be a second product to maintain before anybody asked for one. **The schema offers rows, it never restricts them**: anything a seller typed that it does not know about is kept, listed and untouched, because a schema that deletes merchant data on first save is one nobody uses twice. **The key is stable and the label is translated** — `ram` is what a facet groups on, "Memory" and "الذاكرة" are what people read — which is the fix for the same fact arriving as "RAM", "Ram Size" and "Memory (GB)" from three sellers. **The unit belongs to the field**, so one seller typing "16 GB" and another "16" cannot split a facet in two. A blank clears a row rather than storing an empty string, which would render as a label with nothing after it. |
 | 8 | AI virtual try-on | Not started | |
 | 9 | Product videos | **Built** | One ordered gallery with a `kind` column, not a second table: a video belongs *between* the photographs, and two ordered lists would force an interleave rule with no right answer. `Product.media` is the gallery and `Product.images` is the same list with the video removed — so every card, rail and thumbnail reads `images` and cannot render a video frame by construction. The player is the browser's own (`controls`, no autoplay, `preload="metadata"`), and the poster is optional because refusing the video over its garnish would be refusing the feature. |
 | 10 | AI pulls manufacturer images | Not started | There is no image pipeline at all — vendors type URLs. |

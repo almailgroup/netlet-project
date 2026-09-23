@@ -48,6 +48,7 @@ import {
   setVendorStatus,
   stockHistory,
   myStore,
+  setProductAttributes,
   setProductDeliverySpeed,
   setProductSizeClass,
   updateProduct,
@@ -246,6 +247,31 @@ export const inventoryRouter = router({
         const actor = await resolveActor(ctx.user);
         return guard(async () => {
           await setProductDeliverySpeed(actor, input.productId, input.speed);
+          return { ok: true } as const;
+        });
+      }),
+
+    /**
+     * The product's specification rows (3.1.7).
+     *
+     * Replaces the whole list, because the client sends what the schema editor
+     * produced *including* the free-form rows it kept — merging again here
+     * would be two places deciding what survives, and they would disagree.
+     */
+    setAttributes: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        attributes: z.array(z.object({
+          namespace: z.string().max(40),
+          key: z.string().max(60),
+          label: z.string().max(120),
+          value: z.string().max(500),
+        })).max(60),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(async () => {
+          await setProductAttributes(actor, input.id, input.attributes);
           return { ok: true } as const;
         });
       }),

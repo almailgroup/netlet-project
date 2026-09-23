@@ -92,6 +92,27 @@ export async function setProductDeliverySpeed(
 }
 
 /**
+ * The product's specification rows (3.1.7).
+ *
+ * The whole list is replaced with what the caller sends, which already
+ * contains the free-form rows `mergeAttributes` kept — merging a second time
+ * here would be two places deciding what survives, and eventually they
+ * disagree. `product.edit`, guarded beside the query.
+ */
+export async function setProductAttributes(
+  actor: Actor,
+  productId: number,
+  attributes: { namespace: string; key: string; label: string; value: string }[],
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+  await db.update(products).set({ attributes }).where(eq(products.id, productId));
+}
+
+/**
  * How big this product is for delivery (3.4.14).
  *
  * `null` clears it and means unknown, which is a real answer rather than a

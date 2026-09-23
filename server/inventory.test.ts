@@ -411,6 +411,28 @@ describe("the admin portal's reports", () => {
 
 /* Requirement 3.4.17: one account sells and shops, and the door between the
    two only exists for somebody who actually has both identities. */
+/* Requirement 3.1.7: the rows a department expects, written back without
+   losing what a seller typed before the schema existed. */
+describe("specification rows", () => {
+  it("saves the schema's rows and keeps a free-form one", async () => {
+    const kept = { namespace: "spec", key: "boxcontents", label: "In the box", value: "Cable" };
+    await inv.setProductAttributes(adminActor(), ids.acmeProduct, [
+      kept,
+      { namespace: "spec", key: "ram", label: "Memory", value: "16" },
+    ]);
+    const [row] = await db.select({ attributes: products.attributes }).from(products).where(eq(products.id, ids.acmeProduct));
+    expect(row.attributes).toContainEqual(kept);
+    expect(row.attributes).toContainEqual({ namespace: "spec", key: "ram", label: "Memory", value: "16" });
+  });
+
+  /* Checked against the product's own vendor, so another seller's id is a
+     refusal rather than a write. */
+  it("refuses a seller reaching for another seller's product", async () => {
+    await expect(inv.setProductAttributes(ownerActor(), ids.otherProduct, []))
+      .rejects.toThrow("FORBIDDEN:product.edit");
+  });
+});
+
 /* Requirement 3.4.14: the size class the seller picks, which decides the
    vehicle a dispatcher sends. */
 describe("how big it is for delivery", () => {

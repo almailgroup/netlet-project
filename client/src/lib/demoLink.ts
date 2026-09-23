@@ -316,6 +316,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* The demo portal signs in as a vendor `manager`, so the selling section
        on /account is genuinely reachable there and names the fixture's store. */
     case "inventory.products.setDeliverySpeed":
+    case "inventory.products.setAttributes":
     case "inventory.products.setSizeClass":
       return { ok: true };
 

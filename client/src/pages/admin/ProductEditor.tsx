@@ -20,6 +20,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { SIZE_CLASSES, vehicleFor, type SizeClass } from "@shared/commerce/vehicle";
+import { fieldsFor, freeFormRows, mergeAttributes, valueOf } from "@shared/commerce/attributeSchema";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
@@ -38,14 +39,15 @@ export default function AdminProductEditor() {
   return <AdminShell>{actor => <Editor actor={actor} productId={id} />}</AdminShell>;
 }
 
-const field = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+const inputClass = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
 
 function Editor({ actor, productId }: { actor: Actor; productId: number }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const utils = trpc.useUtils();
   const product = trpc.inventory.products.get.useQuery({ id: productId }, { enabled: productId > 0 });
   const categories = trpc.inventory.categories.useQuery();
 
+  const [specs, setSpecs] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", categoryId: "", tags: "" });
   const [images, setImages] = useState<{ url: string; altText: string; kind: "image" | "video"; posterUrl: string }[]>([]);
   useEffect(() => {
@@ -57,6 +59,14 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       categoryId: product.data.categoryId ? String(product.data.categoryId) : "",
       tags: product.data.tags.join(", "),
     });
+    /* Seed the specification form from what the product already holds, keyed
+       the way the schema keys it — so a second save replaces rather than
+       duplicating. */
+    setSpecs(Object.fromEntries(
+      (product.data.attributes ?? [])
+        .filter(row => row.namespace === "spec")
+        .map(row => [row.key, row.value]),
+    ));
     // The raw rows carry `kind` and `posterUrl`, so a video already on the
     // product comes back as a video rather than being silently rewritten to a
     // photograph on the next save.
@@ -84,6 +94,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
 
   const save = trpc.inventory.products.update.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+  const saveSpecs = trpc.inventory.products.setAttributes.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
@@ -127,6 +141,15 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const mayEdit = can(actor, "product.edit", row.vendorId);
   /* Derived from the class the seller picked, so the two cannot disagree. */
   const needsVehicle = vehicleFor({ sizeClass: row.sizeClass });
+  /*
+   * Which specification rows this department expects (3.1.7). Resolved from
+   * the category's slug rather than its name, because the name is what a
+   * merchant reads and the slug is what code groups on — the same split the
+   * attribute keys themselves exist to make.
+   */
+  const departmentSlug = (categories.data ?? []).find(c => String(c.id) === String(row.categoryId))?.slug ?? null;
+  const schemaFields = fieldsFor(departmentSlug);
+  const extraRows = freeFormRows(row.attributes ?? [], departmentSlug);
   const mayPublish = can(actor, "product.publish", row.vendorId);
   const mayStock = can(actor, "stock.adjust", row.vendorId);
   /* No vendor rank reaches this, so the whole panel is absent for one rather
@@ -167,13 +190,13 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <Labelled label={t("admin.fieldTitle")}>
-            <input dir="auto" value={draft.title} disabled={!mayEdit} onChange={e => setDraft({ ...draft, title: e.target.value })} className={field} />
+            <input dir="auto" value={draft.title} disabled={!mayEdit} onChange={e => setDraft({ ...draft, title: e.target.value })} className={inputClass} />
           </Labelled>
           <Labelled label={t("admin.fieldTitleAr")}>
-            <input dir="rtl" value={draft.titleAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, titleAr: e.target.value })} className={field} />
+            <input dir="rtl" value={draft.titleAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, titleAr: e.target.value })} className={inputClass} />
           </Labelled>
           <Labelled label={t("admin.fieldCategory")} className="sm:col-span-2">
-            <select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={field}>
+            <select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={inputClass}>
               <option value="">{t("admin.fieldNoCategory")}</option>
               {(categories.data ?? []).map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
@@ -181,10 +204,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             </select>
           </Labelled>
           <Labelled label={t("admin.fieldDescription")} className="sm:col-span-2">
-            <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} className={`${field} h-28 py-2`} />
+            <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} className={`${inputClass} h-28 py-2`} />
           </Labelled>
           <Labelled label={t("admin.fieldTags")} hint={t("admin.tagsHint")} className="sm:col-span-2">
-            <input value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={field} />
+            <input value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={inputClass} />
           </Labelled>
         </div>
 
@@ -224,7 +247,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             value={row.deliverySpeed ?? ""}
             disabled={!mayEdit || setSpeed.isPending}
             onChange={e => setSpeed.mutate({ productId: row.id, speed: e.target.value === "" ? null : (e.target.value as DeliverySpeed) })}
-            className={field}
+            className={inputClass}
           >
             <option value="">{t("admin.speedInherit")}</option>
             {DELIVERY_SPEEDS.map(speed => (
@@ -232,6 +255,60 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             ))}
           </select>
         </Labelled>
+        {/* The rows this department expects (3.1.7). The schema *offers* rows
+            rather than restricting them: anything a seller typed that it does
+            not know about is listed below, untouched, because a schema that
+            deletes merchant data on first save is one nobody uses twice. */}
+        {schemaFields.length ? (
+          <div className="mb-4">
+            <p className="text-[11px] font-extrabold text-[#0a285a]">{t("admin.specifications")}</p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              {schemaFields.map(spec => (
+                <Labelled
+                  key={spec.key}
+                  label={locale === "ar" ? spec.labelAr : spec.label}
+                  hint={spec.unit ?? undefined}
+                >
+                  {spec.options ? (
+                    <select
+                      value={specs[spec.key] ?? ""}
+                      disabled={!mayEdit}
+                      onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
+                      className={inputClass}
+                    >
+                      <option value="">{t("admin.sizeUnset")}</option>
+                      {spec.options.map(option => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      dir="auto"
+                      value={specs[spec.key] ?? ""}
+                      disabled={!mayEdit}
+                      onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
+                      className={inputClass}
+                    />
+                  )}
+                </Labelled>
+              ))}
+            </div>
+            {extraRows.length ? (
+              <p className="mt-2 text-[11px] ink-muted">
+                {t("admin.specificationsKept", { rows: extraRows.map(r => r.label).join(", ") })}
+              </p>
+            ) : null}
+            {mayEdit ? (
+              <button
+                onClick={() => saveSpecs.mutate({ id: row.id, attributes: mergeAttributes(row.attributes ?? [], departmentSlug, specs) })}
+                disabled={saveSpecs.isPending}
+                className="glass glass-navy pressable mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
+              >
+                {saveSpecs.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
+                {t(saveSpecs.isPending ? "admin.saving" : "admin.save")}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* How big it is, and what that means for dispatch (3.4.14). The
             vehicle is derived rather than a second dropdown: two fields that
             must agree eventually do not, and the seller can answer the first
@@ -241,7 +318,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             value={row.sizeClass ?? ""}
             disabled={!mayEdit || setSize.isPending}
             onChange={e => setSize.mutate({ productId: row.id, sizeClass: e.target.value === "" ? null : (e.target.value as SizeClass) })}
-            className={field}
+            className={inputClass}
           >
             <option value="">{t("admin.sizeUnset")}</option>
             {SIZE_CLASSES.map(size => (
@@ -262,7 +339,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               productId: row.id,
               accepts: e.target.value === "" ? null : e.target.value === "true",
             })}
-            className={field}
+            className={inputClass}
           >
             <option value="">{t("admin.offersProductInherit")}</option>
             <option value="true">{t("admin.offersProductYes")}</option>
@@ -305,7 +382,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                     placeholder={t("admin.imageUrl")}
                     aria-label={t("admin.imageUrl")}
                     onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, url: e.target.value } : entry))}
-                    className={field}
+                    className={inputClass}
                   />
                   <input
                     dir="auto"
@@ -314,7 +391,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                     placeholder={t("admin.imageAlt")}
                     aria-label={t("admin.imageAlt")}
                     onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
-                    className={field}
+                    className={inputClass}
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="text-[11px] font-extrabold ink-muted" htmlFor={`media-kind-${index}`}>{t("admin.mediaKind")}</label>
@@ -339,7 +416,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                         aria-label={t("admin.mediaPoster")}
                         aria-describedby={`poster-hint-${index}`}
                         onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, posterUrl: e.target.value } : entry))}
-                        className={field}
+                        className={inputClass}
                       />
                       <p id={`poster-hint-${index}`} className="text-[11px] ink-muted">{t("admin.mediaPosterHint")}</p>
                     </>
@@ -457,7 +534,7 @@ function CommissionPanel({
             inputMode="decimal"
             value={draft.percent}
             onChange={event => setDraft({ ...draft, percent: event.target.value })}
-            className={field}
+            className={inputClass}
           />
         </Labelled>
         <Labelled label={t("admin.commissionFixed")} className="w-32">
@@ -466,7 +543,7 @@ function CommissionPanel({
             inputMode="decimal"
             value={draft.fixed}
             onChange={event => setDraft({ ...draft, fixed: event.target.value })}
-            className={field}
+            className={inputClass}
           />
         </Labelled>
         <button
@@ -537,16 +614,16 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
     <div className="rounded-xl border border-[#e6e9ef] bg-[#fbfcfe] p-4">
       <div className="grid gap-3 sm:grid-cols-4">
         <Labelled label={t("admin.variantTitle")}>
-          <input dir="auto" value={values.title} disabled={!mayEdit} onChange={e => setValues({ ...values, title: e.target.value })} className={field} />
+          <input dir="auto" value={values.title} disabled={!mayEdit} onChange={e => setValues({ ...values, title: e.target.value })} className={inputClass} />
         </Labelled>
         <Labelled label={t("admin.variantSku")}>
-          <input dir="ltr" value={values.sku} disabled={!mayEdit} onChange={e => setValues({ ...values, sku: e.target.value })} className={field} />
+          <input dir="ltr" value={values.sku} disabled={!mayEdit} onChange={e => setValues({ ...values, sku: e.target.value })} className={inputClass} />
         </Labelled>
         <Labelled label={t("admin.variantPrice")} hint={t("admin.priceHint")}>
-          <input dir="ltr" inputMode="decimal" value={values.price} disabled={!mayEdit} onChange={e => setValues({ ...values, price: e.target.value })} className={field} />
+          <input dir="ltr" inputMode="decimal" value={values.price} disabled={!mayEdit} onChange={e => setValues({ ...values, price: e.target.value })} className={inputClass} />
         </Labelled>
         <Labelled label={t("admin.variantCompareAt")}>
-          <input dir="ltr" inputMode="decimal" value={values.compareAtPrice} disabled={!mayEdit} onChange={e => setValues({ ...values, compareAtPrice: e.target.value })} className={field} />
+          <input dir="ltr" inputMode="decimal" value={values.compareAtPrice} disabled={!mayEdit} onChange={e => setValues({ ...values, compareAtPrice: e.target.value })} className={inputClass} />
         </Labelled>
       </div>
 
@@ -561,7 +638,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             value={values.unit}
             disabled={!mayEdit}
             onChange={e => setValues({ ...values, unit: e.target.value as SellUnit, stepAmount: e.target.value === "each" ? "1" : values.stepAmount })}
-            className={field}
+            className={inputClass}
           >
             {SELL_UNITS.map(unit => <option key={unit} value={unit}>{t(`unit.${unit}` as MessageKey)}</option>)}
           </select>
@@ -572,7 +649,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             disabled={!mayEdit || values.unit === "each"}
             onChange={e => setValues({ ...values, stepAmount: e.target.value })}
             aria-invalid={!measureOk}
-            className={field}
+            className={inputClass}
           />
         </Labelled>
         <Labelled label={t("admin.variantUnitPrice")}>
@@ -601,7 +678,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             disabled={!mayEdit}
             aria-invalid={!preorderOk}
             aria-describedby={`preorder-hint-${variant.id}`}
-            className={field}
+            className={inputClass}
           />
           <p id={`preorder-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderStockHint")}</p>
         </Labelled>
@@ -612,7 +689,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             onChange={event => setValues(v => ({ ...v, preorderReleaseAt: event.target.value }))}
             disabled={!mayEdit || preorderAllowance <= 0}
             aria-describedby={`release-hint-${variant.id}`}
-            className={field}
+            className={inputClass}
           />
           <p id={`release-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderReleaseHint")}</p>
         </Labelled>
@@ -646,12 +723,12 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
           <Labelled label={t("admin.adjustBy")}>
             <div className="inline-flex items-center gap-1">
               <button onClick={() => setDelta(d => d - 1)} aria-label={t("product.decreaseQuantity")} className="glass pressable grid size-9 place-items-center rounded-lg"><Minus className="size-3.5" /></button>
-              <input dir="ltr" inputMode="numeric" value={delta} onChange={e => setDelta(Number(e.target.value) || 0)} className={`${field} w-20 text-center`} />
+              <input dir="ltr" inputMode="numeric" value={delta} onChange={e => setDelta(Number(e.target.value) || 0)} className={`${inputClass} w-20 text-center`} />
               <button onClick={() => setDelta(d => d + 1)} aria-label={t("product.increaseQuantity")} className="glass pressable grid size-9 place-items-center rounded-lg"><Plus className="size-3.5" /></button>
             </div>
           </Labelled>
           <Labelled label={t("admin.reason")}>
-            <select value={reason} onChange={e => setReason(e.target.value as (typeof REASONS)[number])} className={field}>
+            <select value={reason} onChange={e => setReason(e.target.value as (typeof REASONS)[number])} className={inputClass}>
               {REASONS.map(entry => <option key={entry} value={entry}>{t(`reason.${entry}` as MessageKey)}</option>)}
             </select>
           </Labelled>
