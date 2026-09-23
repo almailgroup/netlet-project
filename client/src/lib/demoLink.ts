@@ -287,6 +287,16 @@ function resolve(path: string, rawInput: unknown): unknown {
      * answer a real deployment with no key gives, so the demo exercises the
      * real branch rather than a special case.
      */
+    /*
+     * Empty in a demo, and honestly so: the demo portal signs in as a vendor
+     * `manager`, who cannot reach `platform.viewAll` — so the link is not in
+     * the navigation and this is unreachable. Answered anyway, because a
+     * procedure the demo cannot name throws the day the fixture's role
+     * changes.
+     */
+    case "finance.report":
+      return { totals: { gross: "0.000", refunded: "0.000", net: "0.000", commission: "0.000", vendorNet: "0.000", paidLines: 0, refundedLines: 0 }, vendors: [], months: [], truncated: false };
+
     case "assistant.available":
       return { available: false };
     /* Unreachable while `available` is false — the panel is never drawn — but

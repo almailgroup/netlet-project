@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 19 |
+| Built | 20 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 45 |
+| Not started | 44 |
 
-*Last updated after landing the Kuwaiti discount permit (3.3.19). Payments and
+*Last updated after landing the finance panel (3.6.1). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -124,11 +124,11 @@ window and review eligibility both become correct for free.
 Chat + WhatsApp + voice contact centre (**named a Phase 1 top priority**) ·
 automatic return/exchange handling · AI-generated tutorial videos.
 
-## 3.6 Admin panels — 1 built, 1 partial, 1 n/a, 3 absent
+## 3.6 Admin panels — 2 built, 1 partial, 1 n/a, 2 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
-| 1 | Finance panel | Not started | Commission is calculated and frozen per order line; nothing reports on it. |
+| 1 | Finance panel | **Built** | `/admin/finance`, admin-only, reading figures the order already froze — `lineTotal`, `commissionAmount` and `vendorNet` have been copied onto every line since orders landed and nothing asked for them back. `shared/commerce/finance.ts` is the arithmetic and is pure; it sums in fils and reports gross, refunded and net as three figures rather than one blended number, because a single net hides the refund rate. Commission reverses with a refund. Broken out per seller and per calendar month, with every column of both tables shown so a reader can check the row: `sales − refunded = net` and `commission + owed = net`, exactly. Nothing places a paid order in NetLet yet, so the panel says plainly that it is empty rather than showing four convincing zeros. |
 | 2 | Product approval panel, AI-backed | **Partial** | `/admin/review` is built and paged. The AI alerts are absent. |
 | 3 | Automatic audit trail | **Built** | 14 actions, covering commission edits, approvals, permission changes and admin sign-ins. |
 | 4 | No HR panel | n/a | Correctly absent. |

@@ -577,6 +577,67 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+## The finance panel
+
+`/admin/finance` reports what the orders already froze. Almost none of this was
+new arithmetic: `order_items` has carried `lineTotal`, `commissionAmount` and
+`vendorNet` since the day orders landed, copied at the moment of sale, and
+nothing ever asked for them back. `shared/commerce/finance.ts` is the sum and
+is pure, for the reason the order arithmetic is — the failure mode is not a
+crash, it is a shop quietly paying its sellers the wrong amount.
+
+**Nothing is recomputed, ever.** Not the rate, not the percentage, not the net.
+Re-deriving commission from today's rate would make September's report change
+in October, which is the exact failure `order_items` was built to prevent, and
+`server/finance.test.ts` moves a vendor's rate afterwards to prove the report
+does not follow.
+
+**Gross, refunded and net are three figures, never one.** A blended number
+hides the refund rate, which is among the first things anybody opens a finance
+panel to find. Commission reverses with a refund: a platform that books its cut
+on money it gave back is reporting revenue it does not have.
+
+**Gross means everything that was charged, refunds included.** The first
+version left a refunded line out of gross *and* still subtracted it, so a shop
+that sold 100 and refunded 100 reported a net of zero when it had sold 200 and
+kept half. Every figure was individually defensible and the set of them was
+wrong. That is why the thing under test is now the **identity** rather than any
+one number: `commission + vendorNet === net`, exactly, in fils — which holds
+because the commission split froze `commission + net === lineTotal` on every
+line.
+
+**The tables show every step, because a reader has to be able to check the
+row.** Lines, sales, refunded, net, commission, owed: `sales − refunded = net`
+and `commission + owed = net`, both visible. Six money-ish columns is more than
+a table usually wants and this is the table that earns them; the alternative is
+two figures and an accountant asked to trust that a subtraction happened off
+screen. It was caught only by rendering the page against real orders — the
+first draft read 180 net, 22 cut, 198 owed on one seller, which does not add up
+and which every test at the time passed.
+
+Seven columns do not fit a phone, so each table scrolls sideways in a box that
+carries `tabIndex={0}`, `role="region"` and its own heading as the name — a
+region a mouse can drag and a keyboard cannot reach has no way to read the last
+column without a pointer. That audit also turned up the admin header's "Back to
+store" link, icon-only below `sm` with no accessible name at all, on every page
+of the portal.
+
+Months are bucketed in **UTC and the page says so**. Kuwait is UTC+3, so a sale
+at 2am on the first falls in the previous month by this reckoning; stating it
+beats a silent local-time conversion inside the arithmetic, and the fix when it
+matters is a timezone an admin chooses.
+
+`server/finance.ts` is the database half, outside `db.ts` for the reason
+`profile.ts` and `orders.ts` are, and it guards with `platform.viewAll` — a
+vendor sees their own figures on their own pages, and the platform's cut across
+every seller is not one of them. It reads at most `LINE_CEILING` lines and says
+so when it hit the ceiling, rather than under-reporting in silence.
+
+**The panel will be empty on a real deployment, and says so in words.** Nothing
+places a paid order yet — the honest state written down under Orders — and an
+empty table that looks like a working one is the exact lie `QueryGate` exists
+to stop, so four convincing zeros are replaced by a sentence.
+
 ## Product video
 
 **One ordered gallery with a `kind` column, not a second table.** A video

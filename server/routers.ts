@@ -6,6 +6,7 @@ import { inventoryRouter } from "./routers/inventory.js";
 import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
 import { assistantRouter } from "./routers/assistant.js";
+import { financeRouter } from "./routers/finance.js";
 import { reviewsRouter } from "./routers/reviews.js";
 import { searchRouter } from "./routers/search.js";
 import { togetherRouter } from "./routers/together.js";
@@ -19,6 +20,7 @@ export const appRouter = router({
   orders: ordersRouter,
   recommendations: recommendationsRouter,
   assistant: assistantRouter,
+  finance: financeRouter,
   reviews: reviewsRouter,
   search: searchRouter,
   together: togetherRouter,
