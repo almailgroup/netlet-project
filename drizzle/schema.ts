@@ -480,6 +480,15 @@ export const vendors = pgTable(
     deliveryFlat: numeric("delivery_flat", { precision: 12, scale: 3 }),
     deliveryFreeOver: numeric("delivery_free_over", { precision: 12, scale: 3 }),
     /**
+     * How soon this store usually ships, as a band (3.2.5).
+     *
+     * A band rather than hours, because that is what a seller can honestly
+     * commit to. Null says nothing, and nothing is what the page shows — a
+     * default would be NetLet promising on a seller's behalf.
+     * `shared/commerce/deliverySpeed.ts` is the rule.
+     */
+    deliverySpeed: varchar("delivery_speed", { length: 20 }),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller
@@ -611,6 +620,15 @@ export const products = pgTable(
      * `shared/commerce/priceOffers.ts` resolves the pair.
      */
     acceptsOffers: boolean("accepts_offers"),
+    /**
+     * How soon *this* product ships, overriding the store's usual band.
+     *
+     * Nullable in the shape the commission rate and the price-request flag
+     * both use: "no opinion about this one" is a different instruction from
+     * picking the slowest band, and a non-null column would lose it. A sofa
+     * built to order and a cable off the shelf leave the same warehouse.
+     */
+    deliverySpeed: varchar("delivery_speed", { length: 20 }),
     /**
      * Spec rows, and the review score the cards and PDP read.
      *

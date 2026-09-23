@@ -23,6 +23,7 @@ import { visibleBadges } from "../inventory/vendorHealth.js";
 import type { Measure } from "./units.js";
 import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
 import { discountAllowed, type DiscountLicence } from "../inventory/discountLicence.js";
+import { resolveSpeed } from "./deliverySpeed.js";
 
 /**
  * The dinar, everywhere.
@@ -98,6 +99,8 @@ export type ProductContext = {
   vendorNameAr?: string | null;
   /** Awarded badges, unfiltered — `visibleBadges` drops anything unknown. */
   vendorBadges?: string[] | null;
+  /* The store's usual band, which this product may override (3.2.5). */
+  vendorDeliverySpeed?: string | null;
   /**
    * The vendor's Kuwaiti discount permit, checked on every read.
    *
@@ -272,6 +275,10 @@ export function toStorefrontProduct(
     productType: pick(locale, context.categoryName, context.categoryNameAr) || null,
     vendor: pick(locale, context.vendorName, context.vendorNameAr) || null,
     vendorBadges: visibleBadges(context.vendorBadges),
+    /* Resolved here, once, so no page has to know the override rule — the
+       same reason `images` is derived from `media` rather than filtered at
+       every call site. */
+    deliverySpeed: resolveSpeed(context.vendorDeliverySpeed, (row as { deliverySpeed?: string | null }).deliverySpeed),
     tags: row.tags ?? [],
     attributes: row.attributes ?? [],
     /*

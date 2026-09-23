@@ -15,6 +15,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -64,7 +65,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     name: "", nameAr: "", contactEmail: "", contactPhone: "",
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
-    deliveryFlat: "", deliveryFreeOver: "",
+    deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -79,6 +80,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       discountLicenceNumber: row.discountLicenceNumber ?? "",
       deliveryFlat: row.deliveryFlat ?? "",
       deliveryFreeOver: row.deliveryFreeOver ?? "",
+      deliverySpeed: row.deliverySpeed ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -159,6 +161,17 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <Labelled label={t("admin.discountLicenceExpires")}>
             <input type="date" value={draft.discountLicenceExpiresAt} onChange={e => set("discountLicenceExpiresAt", e.target.value)} className={field} />
           </Labelled>
+          {/* The store's usual band (3.2.5). Blank states nothing, and nothing
+              is what the storefront shows — a default would be NetLet
+              promising on the seller's behalf. */}
+          <Labelled label={t("admin.fieldDeliverySpeed")} className="sm:col-span-2">
+            <select value={draft.deliverySpeed} onChange={e => set("deliverySpeed", e.target.value)} className={field}>
+              <option value="">{t("admin.speedUnset")}</option>
+              {DELIVERY_SPEEDS.map(speed => (
+                <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
+              ))}
+            </select>
+          </Labelled>
           <p className="text-[11px] ink-muted sm:col-span-2">{t("admin.discountLicenceHint")}</p>
           {/* What this store charges to deliver (3.2.4). Blank is free, which
               errs toward the shopper: charging a number the seller never typed
@@ -201,6 +214,10 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             discountLicenceExpiresAt: draft.discountLicenceExpiresAt ? new Date(draft.discountLicenceExpiresAt) : null,
             deliveryFlat: blank(draft.deliveryFlat),
             deliveryFreeOver: blank(draft.deliveryFreeOver),
+            /* The select only ever offers the listed bands, and the server
+               validates against the same list — this cast reconciles the draft's
+               plain string with that, it does not widen what is accepted. */
+            deliverySpeed: (blank(draft.deliverySpeed) as DeliverySpeed | null),
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

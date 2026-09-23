@@ -48,12 +48,14 @@ import {
   setVendorStatus,
   stockHistory,
   myStore,
+  setProductDeliverySpeed,
   updateProduct,
   vendorHealthFor,
 } from "../inventory.js";
 import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../audit.js";
 import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
+import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -148,6 +150,10 @@ const storeDetails = {
      errs toward the shopper rather than inventing a price. */
   deliveryFlat: blankOr(moneySchema),
   deliveryFreeOver: blankOr(moneySchema),
+  /* The store's usual shipping band (3.2.5). Validated against the list rather
+     than accepted as free text, so a typo cannot reach a page that then has no
+     translation for it. */
+  deliverySpeed: blankOr(z.enum(DELIVERY_SPEEDS)),
 };
 
 export const inventoryRouter = router({
@@ -216,6 +222,23 @@ export const inventoryRouter = router({
         const { id, ...patch } = input;
         const actor = await resolveActor(ctx.user);
         return guard(() => updateProduct(actor, id, patch));
+      }),
+
+    /**
+     * This product's own shipping band, or null to follow the store's.
+     *
+     * Its own procedure saving on its own, like every section of a store's
+     * page: one Save across the editor writes a change somebody made while
+     * editing something else.
+     */
+    setDeliverySpeed: protectedProcedure
+      .input(z.object({ productId: z.number().int().positive(), speed: z.enum(DELIVERY_SPEEDS).nullable() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(async () => {
+          await setProductDeliverySpeed(actor, input.productId, input.speed);
+          return { ok: true } as const;
+        });
       }),
 
     /**

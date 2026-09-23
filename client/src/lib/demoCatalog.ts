@@ -433,6 +433,10 @@ function toProduct(seed: Seed, index: number): Product {
 
   return {
     id: `demo-product-${index + 1}`,
+    /* The fixture's sellers state a band, so the demo shows the line rather
+       than the absent case — which the real catalogue already exercises for
+       any seller who has not set one. */
+    deliverySpeed: index % 3 === 0 ? ("next_day" as const) : index % 3 === 1 ? ("two_to_four" as const) : null,
     handle: seed.handle,
     title: seed.title,
     description: seed.description,

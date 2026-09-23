@@ -315,6 +315,9 @@ function resolve(path: string, rawInput: unknown): unknown {
        day the fixture's role changes. */
     /* The demo portal signs in as a vendor `manager`, so the selling section
        on /account is genuinely reachable there and names the fixture's store. */
+    case "inventory.products.setDeliverySpeed":
+      return { ok: true };
+
     case "inventory.myStore":
       return { id: 1, name: "Demo Store" };
 

@@ -608,6 +608,10 @@ ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_breakdown" jsonb;
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "delivery_flat" numeric(12, 3);
 ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "delivery_free_over" numeric(12, 3);
 
+-- ===== 0022_lively_luke_cage.sql =====
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "delivery_speed" varchar(20);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "delivery_speed" varchar(20);
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -645,6 +649,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  22 AS migrations_in_this_file,
+  23 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

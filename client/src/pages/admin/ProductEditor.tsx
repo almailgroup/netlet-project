@@ -18,6 +18,7 @@ import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
+import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
@@ -82,6 +83,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
 
   const save = trpc.inventory.products.update.useMutation({
+    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+  const setSpeed = trpc.inventory.products.setDeliverySpeed.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
@@ -202,6 +207,24 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           and a boolean would have lost the third, exactly as the per-product
           commission rate does. */}
       <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        {/* This product's own band, overriding the store's (3.2.5). Same
+            three-state shape as the price-request flag beside it: "follow the
+            store" is a different instruction from choosing a band, and a
+            two-state control would lose it. A sofa built to order and a cable
+            off the shelf leave the same warehouse. */}
+        <Labelled label={t("admin.fieldDeliverySpeedProduct")} className="mb-4">
+          <select
+            value={row.deliverySpeed ?? ""}
+            disabled={!mayEdit || setSpeed.isPending}
+            onChange={e => setSpeed.mutate({ productId: row.id, speed: e.target.value === "" ? null : (e.target.value as DeliverySpeed) })}
+            className={field}
+          >
+            <option value="">{t("admin.speedInherit")}</option>
+            {DELIVERY_SPEEDS.map(speed => (
+              <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
+            ))}
+          </select>
+        </Labelled>
         <Labelled label={t("admin.offersProductOpen")}>
           <select
             value={row.acceptsOffers === null || row.acceptsOffers === undefined ? "" : String(row.acceptsOffers)}

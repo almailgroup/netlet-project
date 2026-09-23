@@ -274,3 +274,27 @@ describe("the cart", () => {
     expect(row.userId).toBe(ids.shopper);
   });
 });
+
+/* Requirement 3.2.5: the seller's band, resolved once on the read so no page
+   has to know the override rule. */
+describe("the shipping band", () => {
+  it("takes the store's band when the product has no opinion", async () => {
+    await db.update(vendors).set({ deliverySpeed: "two_to_four" }).where(eq(vendors.id, ids.acme));
+    await db.update(products).set({ deliverySpeed: null }).where(eq(products.id, ids.lampProduct));
+    const product = await catalog.getProductByHandle("desk-lamp");
+    expect(product?.deliverySpeed).toBe("two_to_four");
+  });
+
+  it("lets the product override it in either direction", async () => {
+    await db.update(vendors).set({ deliverySpeed: "up_to_week" }).where(eq(vendors.id, ids.acme));
+    await db.update(products).set({ deliverySpeed: "same_day" }).where(eq(products.id, ids.lampProduct));
+    expect((await catalog.getProductByHandle("desk-lamp"))?.deliverySpeed).toBe("same_day");
+  });
+
+  /* A default band would be NetLet promising on a seller's behalf. */
+  it("is null when neither has said anything", async () => {
+    await db.update(vendors).set({ deliverySpeed: null }).where(eq(vendors.id, ids.acme));
+    await db.update(products).set({ deliverySpeed: null }).where(eq(products.id, ids.lampProduct));
+    expect((await catalog.getProductByHandle("desk-lamp"))?.deliverySpeed).toBeNull();
+  });
+});

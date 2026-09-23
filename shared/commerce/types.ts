@@ -1,4 +1,5 @@
 import type { Measure } from "./units.js";
+import type { DeliverySpeed } from "./deliverySpeed.js";
 /**
  * Backend-agnostic commerce types.
  *
@@ -141,6 +142,15 @@ export type Product = {
   /** Available option dimensions (e.g. Size, Color) for the variant picker. */
   options: ProductOption[];
   variants: ProductVariant[];
+  /**
+   * How soon the seller says this ships, as a band (3.2.5).
+   *
+   * Already resolved — the product's own answer over its store's — so no page
+   * has to know the override rule, and null means the seller has said nothing
+   * rather than "slow". The band is the seller's statement, not a computed
+   * guarantee: NetLet has no carrier integration to compute one from.
+   */
+  deliverySpeed: DeliverySpeed | null;
 };
 
 export type Collection = {

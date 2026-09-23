@@ -49,6 +49,8 @@ type VendorNamed = Named & {
   badges: string[] | null;
   discountLicenceNumber: string | null;
   discountLicenceExpiresAt: Date | null;
+  /* The store's usual shipping band, which a product may override (3.2.5). */
+  deliverySpeed: string | null;
 };
 
 /**
@@ -64,7 +66,7 @@ async function contextFor(
 
   const [vendorRows, categoryRows] = await Promise.all([
     vendorIds.length
-      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt }).from(vendors).where(inArray(vendors.id, vendorIds))
+      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed }).from(vendors).where(inArray(vendors.id, vendorIds))
       : Promise.resolve([] as VendorNamed[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
@@ -92,6 +94,7 @@ function shape(
       vendorName: vendor?.name,
       vendorNameAr: vendor?.nameAr,
       vendorBadges: vendor?.badges,
+      vendorDeliverySpeed: vendor?.deliverySpeed,
       /* Checked on every read, because a permit expires on a date with nobody
          saving anything. See `shared/inventory/discountLicence.ts`. */
       vendorDiscountLicence: vendor

@@ -69,6 +69,29 @@ export async function resolveActor(
 }
 
 /**
+ * This product's own shipping band, overriding its store's.
+ *
+ * `null` clears the override rather than setting a band — "follow the store"
+ * is a third state, the same one the per-product commission rate and the
+ * price-request flag both keep. `product.edit`, because it is a fact about the
+ * listing, and guarded here rather than in the router alone.
+ */
+export async function setProductDeliverySpeed(
+  actor: Actor,
+  productId: number,
+  speed: string | null,
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  // Checked against the product's own vendor, so somebody else's id is a
+  // refusal rather than a write.
+  assertCan(actor, "product.edit", row.vendorId);
+  await db.update(products).set({ deliverySpeed: speed }).where(eq(products.id, productId));
+}
+
+/**
  * The store the caller acts for, by name.
  *
  * Deliberately not a field on `Actor`: that type is the *permission* shape
@@ -1367,6 +1390,7 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   discountLicenceExpiresAt?: Date | null;
   deliveryFlat?: string | null;
   deliveryFreeOver?: string | null;
+  deliverySpeed?: string | null;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();

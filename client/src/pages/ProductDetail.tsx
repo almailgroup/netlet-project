@@ -3,6 +3,7 @@ import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
+import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { QuickView } from "@/components/product/QuickView";
@@ -821,6 +822,12 @@ export default function ProductDetail() {
                   on pearl, where everything else had already taken the
                   darkening to #2f5d33. */}
               <AvailabilityLine variant={selectedVariant} />
+              {/* Beside availability, because "is it in stock" and "when does
+                  it get here" are one question a shopper asks twice. Absent on
+                  a pre-order, where the release date is the promise. */}
+              {selectedVariant?.preorder
+                ? null
+                : <DeliverySpeedLine speed={product.deliverySpeed} className="mt-1.5 text-[13px]" />}
               <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
                 {/* Four tabs will not divide a phone's width into anything
                     readable, so below `sm` the row scrolls instead of each tab

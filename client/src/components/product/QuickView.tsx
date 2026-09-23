@@ -17,6 +17,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { AvailabilityLine } from "@/components/product/Availability";
+import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import type { Product } from "@shared/commerce/types";
 import { ArrowRight, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -129,6 +130,11 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] font-semibold">
               <AvailabilityLine variant={variant} size="small" />
+              {/* The same component the product page uses, so the two cannot
+                  give different answers about one product. */}
+              {variant?.preorder
+                ? null
+                : <DeliverySpeedLine speed={product.deliverySpeed} className="mt-1 text-[12px]" />}
               {isExpressEligible(product) ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
                   <Zap className="size-2.5 fill-current" />{t("product.express")}
