@@ -7,15 +7,26 @@
  * heading appearing on the Arabic storefront.
  */
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 
-export const categoryRail = [
-  { key: "category.all", query: "All", color: "#dce5e9" },
-  { key: "category.electronics", query: "Electronics", color: "#dce5e9" },
-  { key: "category.homeKitchen", query: "Home & Kitchen", color: "#f5e4c9" },
-  { key: "category.beauty", query: "Beauty", color: "#f6d9d2" },
-  { key: "category.style", query: "Style", color: "#e4dfd0" },
-  { key: "category.grocery", query: "Grocery", color: "#dce7cf" },
-] as const satisfies readonly { key: MessageKey; query: string; color: string }[];
+/**
+ * The departments, as the home page draws them.
+ *
+ * Derived rather than written out: this was a second copy of the list in
+ * `shared/commerce/departments.ts`, carrying its own tints and message keys,
+ * which is exactly the drift that file exists to prevent — a department added
+ * in one place and missing from the other. "All" leads, because it is the
+ * absence of a filter rather than a department and so is not in the list
+ * itself.
+ */
+export const categoryRail: readonly { key: MessageKey; query: string; color: string }[] = [
+  { key: ALL_DEPARTMENTS.label, query: ALL_DEPARTMENTS.query, color: ALL_DEPARTMENTS.tint },
+  ...DEPARTMENTS.map(department => ({
+    key: department.label,
+    query: department.name,
+    color: department.tint,
+  })),
+];
 
 export const homeRailDefinitions = [
   { id: "deals", title: "rail.deals.title", description: "rail.deals.description", treatment: "light" },

@@ -9,15 +9,14 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 15 |
+| Built | 16 |
 | Partial | 11 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 49 |
+| Not started | 48 |
 
-*Last updated after landing sell-by-weight for the grocery section (3.9, and the
-same work under 4.3). Payments and everything gated on them are deliberately
-untouched — see the note under 3.2.*
+*Last updated after landing category icons (3.1.12). Payments and everything
+gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
 derives them from the rows and `scripts/requirements.test.ts` fails the build
@@ -38,7 +37,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 7 built, 1 partial, 1 drawn, 12 absent
+## 3.1 Customer experience — 8 built, 1 partial, 1 drawn, 11 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -53,7 +52,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 9 | Product videos | Not started | No video anywhere in the schema or the client. |
 | 10 | AI pulls manufacturer images | Not started | There is no image pipeline at all — vendors type URLs. |
 | 11 | Quick View with quantity | **Built** | On every page that draws a card. |
-| 12 | Category icons | Not started | Departments carry a colour each, no icon. |
+| 12 | Category icons | **Built** | The icon lives on the department in `shared/commerce/departments.ts` as a name of what it depicts, and one client component turns that into a drawing — so the four surfaces that list a department cannot disagree. The home page *had* icons, chosen by array index through a nested ternary: Style drew `ArrowDownRight`, the same glyph used below it as the browse chevron, and every merchant department past the sixth drew a shopping bag. A department NetLet does not know gets a label tag rather than a guess. |
 | 13 | Request a special discount (vendor opt-in) | Not started | |
 | 14 | Referral, two tracks | Not started | |
 | 15 | Referral points, spend or cash out at 10% | Not started | No points ledger. |
