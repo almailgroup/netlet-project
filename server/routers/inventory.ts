@@ -160,6 +160,9 @@ const storeDetails = {
      with no carrier and a fixed list would be asserting which companies exist
      in Kuwait. */
   deliveryProvider: blankOr(z.string().trim().max(120)),
+  /* Selling under NetLet's own licence (3.3.16) — a recorded fact about the
+     arrangement, not an inference from a blank licence number. */
+  underPlatformLicence: z.boolean().optional(),
 };
 
 export const inventoryRouter = router({

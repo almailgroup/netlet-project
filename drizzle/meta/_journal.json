@@ -169,6 +169,13 @@
       "when": 1790190870884,
       "tag": "0023_thin_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790191616995,
+      "tag": "0024_cold_blizzard",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "vendors" ADD COLUMN "under_platform_licence" boolean DEFAULT false NOT NULL;

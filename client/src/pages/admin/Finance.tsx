@@ -66,6 +66,7 @@ function Finance() {
                 <Headline totals={data.totals} />
                 <VendorTable rows={data.vendors} />
                 <MonthTable rows={data.months} />
+                <Payouts />
               </>
             )}
           </div>
@@ -267,5 +268,92 @@ function MonthTable({ rows }: { rows: MonthTotals[] }) {
         </table>
       </Scroller>
     </section>
+  );
+}
+
+/**
+ * What each seller is owed, week by week.
+ *
+ * Requirement 3.3.16. On the finance page rather than a page of its own,
+ * because it reads the same frozen lines the report above does — two pages
+ * over one table is how two answers about one figure appear.
+ *
+ * **Weeks run Sunday to Saturday** and the page says so: the Kuwaiti weekend
+ * is Friday and Saturday, so a week starting Monday would cut one in half.
+ * A negative week is shown rather than hidden — a week of refunds against
+ * nothing sold means the seller owes NetLet, and a zero there is how a payout
+ * run quietly overpays.
+ */
+function Payouts() {
+  const { t } = useTranslation();
+  const money = useMoney();
+  const payouts = trpc.finance.payouts.useQuery({});
+  const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
+
+  return (
+    <QueryGate queries={[payouts]}>
+      {() => {
+        const data = payouts.data;
+        if (!data) return null;
+        return (
+          <section>
+            <h2 id="finance-payouts" className="text-sm font-extrabold text-[#0a285a]">{t("admin.payouts")}</h2>
+            <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.payoutsNote")}</p>
+            <p className="mt-0.5 text-[11px] ink-muted">{t("admin.payoutWeekStarts")}</p>
+
+            {data.vendors.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+                {t("admin.payoutsEmpty")}
+              </p>
+            ) : (
+              <>
+                <Scroller labelledBy="finance-payouts">
+                  <table className="w-full min-w-[680px] border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#d5dfeb]">
+                        <th scope="col" className={`${head} text-start`}>{t("admin.financeSeller")}</th>
+                        <th scope="col" className={`${head} text-start`}>{t("admin.payoutWeekColumn")}</th>
+                        <th scope="col" className={`${head} text-end`}>{t("admin.financeLinesColumn")}</th>
+                        <th scope="col" className={`${head} text-end`}>{t("admin.financeSales")}</th>
+                        <th scope="col" className={`${head} text-end`}>{t("admin.financeRefunded")}</th>
+                        <th scope="col" className={`${head} text-end`}>{t("admin.financeCommission")}</th>
+                        <th scope="col" className={`${head} text-end`}>{t("admin.payoutOwed")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.vendors.flatMap(vendor => vendor.weeks.map((week, index) => (
+                        <tr key={`${vendor.vendorId}-${week.weekStart}`} className="border-b border-[#eef1f6] last:border-0">
+                          {/* The seller's name is on every row for a screen
+                              reader, which announces rows one at a time and
+                              would otherwise be told nothing — but hidden
+                              after the first for somebody reading the table,
+                              where repeating it is noise to filter out. An
+                              empty row header is its own violation, which is
+                              what the first attempt at this produced. */}
+                          <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}>
+                            <span dir="auto" className={index === 0 ? "" : "sr-only"}>{vendor.vendorName}</span>
+                          </th>
+                          <td className={`${cell} text-start text-[#536b8c]`}>
+                            <bdi dir="ltr">{week.weekStart}</bdi>
+                          </td>
+                          <td className={`${cell} text-end text-[#536b8c]`}><bdi dir="ltr">{week.lines}</bdi></td>
+                          <td className={`${cell} text-end text-[#404553]`}><bdi dir="ltr">{amount(week.gross)}</bdi></td>
+                          <td className={`${cell} text-end text-[#404553]`}><bdi dir="ltr">{amount(week.refunded)}</bdi></td>
+                          <td className={`${cell} text-end text-[#404553]`}><bdi dir="ltr">{amount(week.commission)}</bdi></td>
+                          <td className={`${cell} text-end font-extrabold text-[#0a285a]`}><bdi dir="ltr">{amount(week.owed)}</bdi></td>
+                        </tr>
+                      )))}
+                    </tbody>
+                  </table>
+                </Scroller>
+                <p className="mt-2 text-[13px] font-extrabold text-[#0a285a]">
+                  {t("admin.payoutTotalOwed")}: <bdi dir="ltr">{amount(data.owed)}</bdi>
+                </p>
+              </>
+            )}
+          </section>
+        );
+      }}
+    </QueryGate>
   );
 }

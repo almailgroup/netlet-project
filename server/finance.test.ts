@@ -19,6 +19,7 @@ import { addMoney } from "../shared/money.js";
 
 let db: ReturnType<typeof drizzle>;
 let finance: typeof import("./finance.js");
+let payouts: typeof import("./payouts.js");
 
 const ids = { admin: 0, vendorOwner: 0, acme: 0, other: 0 };
 
@@ -36,6 +37,7 @@ beforeAll(async () => {
     getDb: async () => db,
   }));
   finance = await import("./finance.js");
+  payouts = await import("./payouts.js");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [owner] = await db.insert(users).values({ email: "owner@acme.test" }).returning();
@@ -176,5 +178,54 @@ describe("what the report counts", () => {
     expect(report.vendors).toEqual([]);
     expect(report.months).toEqual([]);
     expect(report.truncated).toBe(false);
+  });
+});
+
+/* Requirement 3.3.16: what each seller is owed, by week. */
+describe("the weekly payout report", () => {
+  it("groups a seller's frozen net into Sunday weeks", async () => {
+    await order("paid", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-23T10:00:00Z"));
+    await order("paid", [acmeLine("50.000", "5.000", "45.000")], new Date("2026-09-24T10:00:00Z"));
+    await order("paid", [acmeLine("20.000", "2.000", "18.000")], new Date("2026-10-01T10:00:00Z"));
+
+    const report = await payouts.payoutReport(adminActor());
+    const acme = report.vendors.find(v => v.vendorName === "Acme")!;
+    expect(acme.weeks.map(w => w.weekStart)).toEqual(["2026-09-20", "2026-09-27"]);
+    expect(acme.weeks[0].owed).toBe("135.000");
+    expect(acme.owed).toBe("153.000");
+    expect(report.owed).toBe("153.000");
+  });
+
+  /* Subtracted from the week of the sale, not the week it came back. */
+  it("takes a refund off the week it was sold in", async () => {
+    await order("paid", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-23T10:00:00Z"));
+    await order("refunded", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-24T10:00:00Z"));
+
+    const report = await payouts.payoutReport(adminActor());
+    expect(report.vendors[0].weeks[0].owed).toBe("0.000");
+    expect(report.owed).toBe("0.000");
+  });
+
+  /*
+   * A vendor sees their own weeks and nobody else's — the whole payout run
+   * would be their competitors' revenue.
+   */
+  it("shows a vendor only their own store", async () => {
+    await order("paid", [acmeLine("100.000", "10.000", "90.000")]);
+    await order("paid", [{ vendorId: ids.other, vendorName: "Other", lineTotal: "300.000", commissionAmount: "30.000", vendorNet: "270.000" }]);
+
+    const mine = await payouts.payoutReport(vendorActor());
+    expect(mine.vendors.map(v => v.vendorName)).toEqual(["Acme"]);
+    expect(mine.owed).toBe("90.000");
+
+    const all = await payouts.payoutReport(adminActor());
+    expect(all.vendors.length).toBe(2);
+  });
+
+  /* It names companies, and one seller learning another has no licence of
+     their own is not a fact NetLet should hand out. */
+  it("refuses a vendor the list of sellers under NetLet's licence", async () => {
+    await expect(payouts.sellersUnderPlatformLicence(vendorActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
+    await expect(payouts.sellersUnderPlatformLicence(adminActor())).resolves.toEqual([]);
   });
 });

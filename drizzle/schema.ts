@@ -499,6 +499,17 @@ export const vendors = pgTable(
      */
     deliveryProvider: varchar("delivery_provider", { length: 120 }),
     /**
+     * Selling under NetLet's own commercial licence rather than their own.
+     *
+     * Requirement 3.3.16: an individual who has no trade licence sells through
+     * NetLet's. It is a fact about the arrangement, so it is recorded rather
+     * than inferred from `licenceNumber` being blank — a seller who simply has
+     * not handed their paperwork in is not the same as one trading under ours,
+     * and collapsing the two would put NetLet's name behind somebody who never
+     * asked for it.
+     */
+    underPlatformLicence: boolean("under_platform_licence").notNull().default(false),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller

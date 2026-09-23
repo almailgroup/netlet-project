@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 253 columns across 23 tables.
+-- Expected: 254 columns across 23 tables.
 
 WITH expected AS (
   SELECT
@@ -36,7 +36,7 @@ WITH expected AS (
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
     ('users', 'audit_seen_at,created_at,email,firebase_uid,id,last_signed_in,name,password_hash,role,updated_at'),
     ('vendor_members', 'created_at,id,role,user_id,vendor_id'),
-    ('vendors', 'accepts_offers,address_line,auto_publish,badges,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_number,logo_url,name,name_ar,payout_iban,slug,status,updated_at'),
+    ('vendors', 'accepts_offers,address_line,auto_publish,badges,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_number,logo_url,name,name_ar,payout_iban,slug,status,under_platform_licence,updated_at'),
     ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at,id,note,product_id,quantity,updated_at,wishlist_id'),
     ('wishlists', 'created_at,id,owner_name,share_token,title,updated_at,user_id,visibility')
   ) AS packed (table_name, columns)

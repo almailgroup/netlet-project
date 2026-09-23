@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 29 |
+| Built | 30 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 38 |
+| Not started | 37 |
 
-*Last updated after landing the delivery cluster — cost, speed, carrier and vehicle (3.2.4, 3.2.5, 3.4.13, 3.4.14). Payments and
+*Last updated after landing weekly payouts (3.3.16). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,7 +77,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment already lives on the *line*, not the order, which is the hard half — and each line now carries its own `delivered_at`, so the return window and review eligibility are per product rather than per order. Return and re-pickup as operations are absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 12 built, 1 partial, 9 absent
+## 3.3 Vendor experience — 13 built, 1 partial, 8 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -96,7 +96,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 13 | Per-vendor delivery provider | **Built** | Each store records who it ships with, and the storefront shows it beside the shipping band, attributed. **Free text, deliberately**: NetLet integrates with no carrier, and a fixed list would be this codebase asserting which companies exist in Kuwait. It claims nothing about tracking — a carrier name beside a live-tracking promise the shop cannot keep would be worse than no name. A blank is nobody rather than an empty name a page then renders. |
 | 14 | Size/type → required vehicle type | **Built** | `shared/commerce/vehicle.ts` is the rule and is pure. A seller picks a size class — small, medium, large, oversize — and the vehicle is **derived** rather than asked for separately, because two fields that must agree eventually do not. The declared class beats weight, since it captures shape as well as bulk: a mattress is light and still needs a van. Weight is the fallback, and quantity can push the answer up — ten of something a bike carries is not a bike delivery. **The largest line decides the whole delivery**, and a line nobody measured is skipped rather than counted small, so one unmeasured item cannot talk a dispatcher down from a van. Unknown is a real answer: guessing small is how a sofa gets dispatched on a motorcycle. |
 | 15 | Self-service featured placement and ad booking | Not started | |
-| 16 | Individuals selling under NetLet's licence, weekly payout report | Not started | |
+| 16 | Individuals selling under NetLet's licence, weekly payout report | **Built** | Two halves of one thing. The licence is **recorded rather than inferred from a blank licence number** — a seller who has not handed their paperwork in is not the same as one trading under ours, and collapsing the two would put NetLet's name behind somebody who never asked for it. `shared/commerce/payouts.ts` is the report and is pure. Nothing is recomputed: `vendorNet` was frozen on the line at the moment of sale, so a rate change today cannot rewrite last month, and a real-Postgres test moves the rate afterwards to prove it. **A week runs Sunday to Saturday**, the Kuwaiti working week, and the page says so; a week starting Monday would cut one in half. **A refund is subtracted from the week it was sold in**, not the week it came back — moving a reversal later makes two weeks wrong to make one look tidy. **A negative week is shown rather than clamped**: a week of refunds against nothing sold means the seller owes NetLet, and a zero there is how a payout run quietly overpays. Scoped in the query — a vendor sees their own weeks, an admin sees every seller's — so a vendor cannot read a competitor's revenue. The payment *run* itself is absent and waits on payments, as 3.3.21 says. |
 | 17 | Switch between vendor and customer mode | **Built** | One account already held both identities — a vendor member is a shopper with a `vendor_members` row — and there was simply no door between them: the portal has carried "Back to the store" since it existed, and nothing in the storefront pointed the other way. A Selling section on `/account` is that missing leg, naming the store and the rank so somebody is told which hat they are putting on. **Drawn only for an account that has the second identity**, decided by the server rather than guessed on the client — a switch a shopper can see leads to a page refusing them, which is the dead-control rule. The anchor in the side nav goes with it, since a jump to nothing is the same fault. The store's name is a separate read rather than a field on `Actor`: that type is the permission shape both sides import, and a display name has no business in an answer about access. |
 | 18 | Auto-suspend after 3 warnings | **Built** | `violationCount` is read in `inventory.ts` and suspends. |
 | 19 | Discount licence required on an offer (Kuwait law) | **Built** | The Ministry of Commerce permit is a number and a *window* on the vendor, because that is what is issued — and the window is why the rule is applied when the storefront **reads** an offer, not only when a vendor writes one: a permit lapses on a date with nobody saving anything, and a write-time check alone would leave the shop advertising a saving it may no longer advertise. `fromInventory` drops `compareAtPrice`, so the strikethrough, the `−27%` badge and the savings line disappear together by construction. Both doors onto the shelf refuse an unlicensed offer, with two reasons rather than one — "record a permit" and "renew the permit" are different things to go and do. The price does not move and the product is not hidden: an expired permit stops the claim, not the trade. |

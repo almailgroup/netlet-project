@@ -66,6 +66,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
     deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "", deliveryProvider: "",
+    underPlatformLicence: false,
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -82,6 +83,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       deliveryFreeOver: row.deliveryFreeOver ?? "",
       deliverySpeed: row.deliverySpeed ?? "",
       deliveryProvider: row.deliveryProvider ?? "",
+      underPlatformLicence: row.underPlatformLicence ?? false,
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -194,6 +196,22 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <p className="text-[11px] ink-muted sm:col-span-2">
             {t("admin.fieldDeliveryFlatHint")} {t("admin.fieldDeliveryFreeOverHint")} {t("admin.fieldDeliveryProviderHint")}
           </p>
+          {/* Recorded rather than inferred from a blank licence number (3.3.16):
+              a seller who has not handed their paperwork in is not the same as
+              one trading under ours, and collapsing the two would put NetLet's
+              name behind somebody who never asked for it. */}
+          <label className="flex items-start gap-2.5 sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={draft.underPlatformLicence}
+              onChange={e => setDraft(d => ({ ...d, underPlatformLicence: e.target.checked }))}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="block text-[11px] font-extrabold text-[#0a285a]">{t("admin.underPlatformLicence")}</span>
+              <span className="block text-[11px] leading-5 ink-muted">{t("admin.underPlatformLicenceHint")}</span>
+            </span>
+          </label>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
           </Labelled>
@@ -226,6 +244,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                plain string with that, it does not widen what is accepted. */
             deliverySpeed: (blank(draft.deliverySpeed) as DeliverySpeed | null),
             deliveryProvider: blank(draft.deliveryProvider),
+            underPlatformLicence: draft.underPlatformLicence,
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

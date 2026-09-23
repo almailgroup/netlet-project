@@ -347,6 +347,13 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "offers.setProductOpen":
       return { ok: true };
 
+    /* The demo signs in as a vendor `manager`; the payouts read is scoped to
+       their own store, so it is reachable and honestly empty. */
+    case "finance.payouts":
+      return { vendors: [], owed: "0.000", truncated: false };
+    case "finance.platformLicensed":
+      return [];
+
     case "assistant.available":
       return { available: false };
     /* Unreachable while `available` is false — the panel is never drawn — but
