@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  cartItems, carts, priceOffers, products, productVariants, users, vendors,
+  cartItems, carts, orders as ordersTable, priceOffers, products, productVariants, users, vendors,
 } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 
@@ -263,6 +263,82 @@ async function bagFor(userId: number | null, variantId = ids.variant, quantity =
   await db.insert(cartItems).values({ cartId: cart.id, variantId, quantity });
   return cart.id;
 }
+
+/* Requirement 3.2.4. The arithmetic is proved pure in delivery.test.ts; what
+   is here is that the fee reaches the bag and the order, per seller. */
+describe("delivery, per seller", () => {
+  beforeEach(async () => {
+    await db.update(vendors).set({ deliveryFlat: null, deliveryFreeOver: null });
+  });
+
+  it("charges the seller's own fee on the bag and adds it to the total", async () => {
+    await db.update(vendors).set({ deliveryFlat: "1.500" }).where(eq(vendors.id, ids.acme));
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.delivery.total.amount).toBe("1.500");
+    expect(cart?.delivery.perVendor[0]).toMatchObject({ vendorName: "Acme", fee: { amount: "1.500" }, free: false });
+    expect(cart?.subtotal.amount).toBe("100.000");
+    expect(cart?.total.amount).toBe("101.500");
+  });
+
+  it("waives it once this seller's goods clear their own threshold", async () => {
+    await db.update(vendors).set({ deliveryFlat: "1.500", deliveryFreeOver: "150.000" }).where(eq(vendors.id, ids.acme));
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 2));
+    expect(cart?.delivery.total.amount).toBe("0.000");
+    expect(cart?.delivery.perVendor[0]).toMatchObject({ free: true, toFree: null });
+  });
+
+  it("says how much more would make it free", async () => {
+    await db.update(vendors).set({ deliveryFlat: "1.500", deliveryFreeOver: "150.000" }).where(eq(vendors.id, ids.acme));
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.delivery.perVendor[0].toFree?.amount).toBe("50.000");
+  });
+
+  /* A price agreed with this shopper is what they spend, so it is what the
+     threshold measures — not the shelf price they are not paying. */
+  it("counts an agreed price toward the threshold, not the shelf price", async () => {
+    await db.update(vendors).set({ deliveryFlat: "1.500", deliveryFreeOver: "90.000" }).where(eq(vendors.id, ids.acme));
+    const view = await ask();
+    await offers.answerOffer(acmeManager(), { offerId: view.id, offeredPrice: "85.000" });
+
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.items[0].unitPrice.amount).toBe("85.000");
+    // 85 is under the 90 threshold, so the fee stands and the shortfall is 5.
+    expect(cart?.delivery.total.amount).toBe("1.500");
+    expect(cart?.delivery.perVendor[0].toFree?.amount).toBe("5.000");
+  });
+
+  it("freezes who charged what onto the order, and sums to the same figure", async () => {
+    await db.update(vendors).set({ deliveryFlat: "2.250" }).where(eq(vendors.id, ids.acme));
+    const placed = await orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+    });
+    expect(placed.totals.deliveryTotal).toBe("2.250");
+    expect(placed.totals.grandTotal).toBe("102.250");
+
+    const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, placed.order.id));
+    expect(row.deliveryBreakdown).toEqual([{ vendorId: ids.acme, vendorName: "Acme", fee: "2.250" }]);
+  });
+
+  /*
+   * The figure used to be a parameter, on the honest grounds that there was no
+   * rate card. There is one now, so taking it from the caller would let
+   * whoever posts the order set their own postage.
+   */
+  it("ignores a delivery total the caller tries to supply", async () => {
+    await db.update(vendors).set({ deliveryFlat: "2.250" }).where(eq(vendors.id, ids.acme));
+    const placed = await orders.placeOrder(await bagFor(ids.shopper, ids.variant, 1), {
+      email: "shopper@example.test", userId: ids.shopper, addressLine: "Block 4, Salmiya",
+      ...({ deliveryTotal: "0.000" } as Record<string, string>),
+    });
+    expect(placed.totals.deliveryTotal).toBe("2.250");
+  });
+
+  it("delivers free for a seller who recorded nothing", async () => {
+    const cart = await catalog.getCart(await bagFor(ids.shopper, ids.variant, 1));
+    expect(cart?.delivery.total.amount).toBe("0.000");
+    expect(cart?.total.amount).toBe(cart?.subtotal.amount);
+  });
+});
 
 describe("the agreed price", () => {
   it("is what the bag charges, with the shelf price shown beside it", async () => {

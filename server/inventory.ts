@@ -1365,6 +1365,8 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   payoutIban?: string | null;
   discountLicenceNumber?: string | null;
   discountLicenceExpiresAt?: Date | null;
+  deliveryFlat?: string | null;
+  deliveryFreeOver?: string | null;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();

@@ -64,6 +64,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     name: "", nameAr: "", contactEmail: "", contactPhone: "",
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
+    deliveryFlat: "", deliveryFreeOver: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -76,6 +77,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       governorate: row.governorate ?? "", addressLine: row.addressLine ?? "",
       licenceNumber: row.licenceNumber ?? "", payoutIban: row.payoutIban ?? "",
       discountLicenceNumber: row.discountLicenceNumber ?? "",
+      deliveryFlat: row.deliveryFlat ?? "",
+      deliveryFreeOver: row.deliveryFreeOver ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -157,6 +160,20 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             <input type="date" value={draft.discountLicenceExpiresAt} onChange={e => set("discountLicenceExpiresAt", e.target.value)} className={field} />
           </Labelled>
           <p className="text-[11px] ink-muted sm:col-span-2">{t("admin.discountLicenceHint")}</p>
+          {/* What this store charges to deliver (3.2.4). Blank is free, which
+              errs toward the shopper: charging a number the seller never typed
+              would be inventing a price. The threshold is measured against
+              this store's own goods, never the whole basket — otherwise one
+              seller's money pays for another seller's sale. */}
+          <Labelled label={t("admin.fieldDeliveryFlat")}>
+            <input dir="ltr" inputMode="decimal" value={draft.deliveryFlat} onChange={e => set("deliveryFlat", e.target.value)} className={field} />
+          </Labelled>
+          <Labelled label={t("admin.fieldDeliveryFreeOver")}>
+            <input dir="ltr" inputMode="decimal" value={draft.deliveryFreeOver} onChange={e => set("deliveryFreeOver", e.target.value)} className={field} />
+          </Labelled>
+          <p className="text-[11px] ink-muted sm:col-span-2">
+            {t("admin.fieldDeliveryFlatHint")} {t("admin.fieldDeliveryFreeOverHint")}
+          </p>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
           </Labelled>
@@ -182,6 +199,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             licenceNumber: blank(draft.licenceNumber),
             discountLicenceNumber: blank(draft.discountLicenceNumber),
             discountLicenceExpiresAt: draft.discountLicenceExpiresAt ? new Date(draft.discountLicenceExpiresAt) : null,
+            deliveryFlat: blank(draft.deliveryFlat),
+            deliveryFreeOver: blank(draft.deliveryFreeOver),
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

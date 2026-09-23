@@ -466,6 +466,20 @@ export const vendors = pgTable(
      */
     acceptsOffers: boolean("accepts_offers").notNull().default(false),
     /**
+     * What this seller charges to deliver, and when they stop charging.
+     *
+     * Per seller rather than per platform, because a NetLet basket is three
+     * parcels from three warehouses and one averaged figure charges the cheap
+     * seller's customers for the expensive one. `shared/commerce/delivery.ts`
+     * is the rule and is pure.
+     *
+     * Both nullable, and null means "not set": a seller with no fee recorded
+     * delivers free, which errs toward the shopper. Charging them a number the
+     * seller never typed would be inventing a price.
+     */
+    deliveryFlat: numeric("delivery_flat", { precision: 12, scale: 3 }),
+    deliveryFreeOver: numeric("delivery_free_over", { precision: 12, scale: 3 }),
+    /**
      * Trust badges shown beside the vendor's name on a product page.
      *
      * Awarded by an admin rather than claimed by the vendor — a badge a seller
@@ -1127,6 +1141,16 @@ export const orders = pgTable(
     grandTotal: numeric("grand_total", { precision: 12, scale: 3 }).notNull(),
     /** NetLet's cut across every line, for reporting without a re-sum. */
     commissionTotal: numeric("commission_total", { precision: 12, scale: 3 }).notNull().default("0.000"),
+    /**
+     * Who charged what to deliver, frozen beside the total.
+     *
+     * An order is an obligation, so the breakdown is copied the way the
+     * commission rate is: recomputing last year's delivery against today's
+     * fees is how a refund comes out at a different figure from the payment.
+     * A list rather than a third table, for the reason the per-vendor view of
+     * an order is derived from its lines rather than stored twice.
+     */
+    deliveryBreakdown: jsonb("delivery_breakdown").$type<{ vendorId: number | null; vendorName: string; fee: string }[] | null>(),
 
     /* Where it goes, as it was given. */
     contactName: varchar("contact_name", { length: 160 }),

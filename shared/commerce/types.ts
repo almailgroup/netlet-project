@@ -181,6 +181,21 @@ export type CartItem = {
   measure: Measure;
 };
 
+/** One seller's delivery charge on this basket (requirement 3.2.4). */
+export type CartDeliveryLine = {
+  vendorId: number | null;
+  vendorName: string;
+  /** What this seller's goods come to, which is what the threshold measures. */
+  goods: Money;
+  fee: Money;
+  free: boolean;
+  /**
+   * What to add *at this seller* to stop paying, while that is still a nudge.
+   * Null once cleared, and null when they have no threshold at all.
+   */
+  toFree: Money | null;
+};
+
 export type Cart = {
   id: string;
   /** Where checkout lives. A NetLet path, not an external host. */
@@ -188,5 +203,12 @@ export type Cart = {
   items: CartItem[];
   itemCount: number;
   subtotal: Money;
+  /**
+   * Delivery, per seller and summed.
+   *
+   * Per seller because a basket from three shops is three parcels, and one
+   * averaged figure hides which seller is expensive. The shopper sees each.
+   */
+  delivery: { perVendor: CartDeliveryLine[]; total: Money };
   total: Money;
 };

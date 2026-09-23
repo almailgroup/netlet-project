@@ -141,6 +141,20 @@
       "when": 1790189188054,
       "tag": "0019_numerous_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790189788951,
+      "tag": "0020_glamorous_hedge_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790189836348,
+      "tag": "0021_same_secret_warriors",
+      "breakpoints": true
     }
   ]
 }

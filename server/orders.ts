@@ -33,6 +33,8 @@ import type { Pool } from "../shared/commerce/preorder.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
+import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote } from "../shared/commerce/delivery.js";
+import { addMoney, multiplyMoney } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { getDb } from "./db.js";
 
@@ -47,11 +49,15 @@ export type PlaceOrderDetails = {
   addressLine?: string | null;
   addressNotes?: string | null;
   /**
-   * Passed in rather than computed, because delivery has no price yet: it
-   * needs a rate card per governorate that does not exist. Threading it
-   * through now means the day it does exist, nothing here changes.
+   * Delivery is **computed here, never passed in**.
+   *
+   * It used to be a parameter, on the honest grounds that there was no rate
+   * card to compute it from. There is one now — each seller's own fee, per
+   * `shared/commerce/delivery.ts` — and taking the figure from the caller
+   * would be letting whoever posts the order set their own postage. The same
+   * reason the line prices are read one last time here rather than trusted
+   * from the basket that was priced a moment ago.
    */
-  deliveryTotal?: string;
 };
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
@@ -75,7 +81,7 @@ async function priceableLines(
   db: Db,
   cartId: string,
   userId: number | null | undefined,
-): Promise<{ lines: PriceableLine[]; offerIds: number[] }> {
+): Promise<{ lines: PriceableLine[]; offerIds: number[]; delivery: DeliveryQuote }> {
   const rows = await db
     .select({
       variantId: productVariants.id,
@@ -90,6 +96,8 @@ async function priceableLines(
       stock: productVariants.stock,
       preorderStock: productVariants.preorderStock,
       preorderReleaseAt: productVariants.preorderReleaseAt,
+      deliveryFlat: vendors.deliveryFlat,
+      deliveryFreeOver: vendors.deliveryFreeOver,
       vendorPercent: vendors.commissionPercent,
       vendorFixed: vendors.commissionFixed,
       productPercent: products.commissionPercent,
@@ -149,7 +157,29 @@ async function priceableLines(
     };
   });
 
-  return { lines, offerIds };
+  /*
+   * Grouped here because the grouping needs the rows the query returned; the
+   * arithmetic on top is pure and lives in `shared/commerce/delivery.ts`.
+   * Charged prices, not shelf prices — a personally agreed price counts toward
+   * a seller's free-delivery threshold, because it is what the shopper spent.
+   */
+  const groups = new Map<number, DeliveryGroup>();
+  for (const row of rows) {
+    const charged = priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
+    const value = multiplyMoney(charged, row.quantity);
+    const held = groups.get(row.vendorId);
+    if (held) held.goods = addMoney(held.goods, value);
+    else {
+      groups.set(row.vendorId, {
+        vendorId: row.vendorId,
+        vendorName: row.vendorName,
+        goods: value,
+        rule: { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver },
+      });
+    }
+  }
+
+  return { lines, offerIds, delivery: quoteDelivery([...groups.values()]) };
 }
 
 /**
@@ -241,11 +271,11 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds } = await priceableLines(db, cartId, details.userId);
+  const { lines, offerIds, delivery } = await priceableLines(db, cartId, details.userId);
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
 
-  const draft = draftOrder(lines, details.deliveryTotal ?? "0.000");
+  const draft = draftOrder(lines, delivery.total);
 
   // Take every line's units first. Anything already taken goes back to the pool
   // it came from if a later line cannot be served, so a part-served basket
@@ -274,6 +304,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         deliveryTotal: draft.totals.deliveryTotal,
         grandTotal: draft.totals.grandTotal,
         commissionTotal: draft.totals.commissionTotal,
+        /* Frozen beside the total, so an order from last year still says who
+           charged what — the reason the commission rate is copied too. */
+        deliveryBreakdown: freezeDelivery(delivery),
         contactName: details.contactName ?? null,
         contactPhone: details.contactPhone ?? null,
         deliveryZoneId: details.deliveryZoneId ?? null,

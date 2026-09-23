@@ -143,6 +143,11 @@ const storeDetails = {
      a shop may advertise a saving — `shared/inventory/discountLicence.ts`. */
   discountLicenceNumber: z.string().trim().max(120).nullish(),
   discountLicenceExpiresAt: z.coerce.date().nullish(),
+  /* What this store charges to deliver (3.2.4). Blank or absent is free —
+     `shared/commerce/delivery.ts` treats an unset fee as no charge, which
+     errs toward the shopper rather than inventing a price. */
+  deliveryFlat: blankOr(moneySchema),
+  deliveryFreeOver: blankOr(moneySchema),
 };
 
 export const inventoryRouter = router({

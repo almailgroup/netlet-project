@@ -38,6 +38,7 @@ import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
+import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
 import { liveOffersFor } from "./offers.js";
 
 /* ------------------------------------------------------------- the shelf --- */
@@ -231,6 +232,12 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       productTitle: products.title,
       productTitleAr: products.titleAr,
       productId: products.id,
+      /* Delivery is per seller (3.2.4), so the seller comes back with the
+         line rather than being looked up again per group. */
+      vendorId: vendors.id,
+      vendorName: vendors.name,
+      deliveryFlat: vendors.deliveryFlat,
+      deliveryFreeOver: vendors.deliveryFreeOver,
     })
     .from(cartItems)
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -278,6 +285,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   }));
 
   const subtotal = sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity })));
+  const quote = deliveryFor(priced);
 
   return {
     id: cart.id,
@@ -287,10 +295,47 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     items,
     itemCount: items.reduce((count, item) => count + item.quantity, 0),
     subtotal: money(subtotal),
-    // Delivery and any fees are decided at checkout, where the address is
-    // known. Until then the total is the subtotal rather than a guess.
-    total: money(subtotal),
+    delivery: {
+      perVendor: quote.perVendor.map(row => ({
+        vendorId: row.vendorId,
+        vendorName: row.vendorName,
+        goods: money(row.goods),
+        fee: money(row.fee),
+        free: row.free,
+        toFree: row.toFree === null ? null : money(row.toFree),
+      })),
+      total: money(quote.total),
+    },
+    total: money(addMoney(subtotal, quote.total)),
   };
+}
+
+/**
+ * Group the priced lines by seller and ask what each charges to deliver.
+ *
+ * Grouped here rather than in `shared/`, because the grouping needs the rows
+ * the query returned; the arithmetic on top of it is pure and lives in
+ * `shared/commerce/delivery.ts`, which is what makes it checkable.
+ */
+function deliveryFor(rows: {
+  vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
+  charged: string; quantity: number;
+}[]) {
+  const groups = new Map<number, DeliveryGroup>();
+  for (const row of rows) {
+    const held = groups.get(row.vendorId);
+    const line = multiplyMoney(row.charged, row.quantity);
+    if (held) held.goods = addMoney(held.goods, line);
+    else {
+      groups.set(row.vendorId, {
+        vendorId: row.vendorId,
+        vendorName: row.vendorName,
+        goods: line,
+        rule: { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver },
+      });
+    }
+  }
+  return quoteDelivery([...groups.values()]);
 }
 
 type Line = { variantId: string; quantity: number };

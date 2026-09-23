@@ -42,6 +42,10 @@ function emptyCart(id: string): Cart {
     items: [],
     itemCount: 0,
     subtotal: fromFils(0),
+    /* The demo catalogue's sellers charge nothing to deliver, which is the
+       same branch a real store with no fee recorded takes — not a special
+       case, so the empty state the bag draws is the honest one. */
+    delivery: { perVendor: [], total: fromFils(0) },
     total: fromFils(0),
   };
 }
@@ -60,6 +64,7 @@ function recalculate(cart: Cart): Cart {
     items,
     itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: fromFils(subtotalFils),
+    delivery: { perVendor: [], total: fromFils(0) },
     total: fromFils(subtotalFils),
   };
 }

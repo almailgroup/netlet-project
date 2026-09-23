@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 24 |
-| Partial | 9 |
+| Built | 25 |
+| Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
 | Not started | 42 |
 
-*Last updated after landing the seller/shopper switch (3.4.17). Payments and
+*Last updated after landing per-seller delivery cost (3.2.4). Payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -63,14 +63,14 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 20 | AI size guide | Not started | |
 | 21 | Frequently bought together, cross-vendor | **Built** | `shared/commerce/together.ts`, scored on **lift** rather than raw co-occurrence — a bestseller shares baskets with everything, so counting pairs surfaces bestsellers and not complements. Reads orders *and* carts (3:1), so the rail works today rather than waiting on payments. Cross-vendor complements are kept and labelled "Another seller", which is where the value is. Draws nothing below `MIN_SUPPORT` baskets or `MIN_LIFT`, because the heading is a claim. |
 
-## 3.2 Checkout & payments — 0 built, 3 partial, 6 absent
+## 3.2 Checkout & payments — 1 built, 2 partial, 6 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | KNET, cards, Deema BNPL, payment link | **Not started — set aside** | No provider touched, by instruction. Everything below waits on it. |
 | 2 | COD by default, disableable | Not started | |
 | 3 | Points, gift card, discount codes | Not started | |
-| 4 | Multi-vendor cart, delivery cost per vendor | **Partial** | `sliceByVendor` groups an order by vendor already. No delivery cost anywhere. |
+| 4 | Multi-vendor cart, delivery cost per vendor | **Built** | The cart was already multi-vendor and `sliceByVendor` already grouped an order that way; what was missing was the money. `shared/commerce/delivery.ts` is the arithmetic and is pure. Each seller charges their own fee and the shopper pays each — a basket from three shops is three parcels, and one averaged figure charges the cheap seller's customers for the expensive one. **Free-over is measured per seller, never across the basket**, or one seller's money pays for another's sale, and **the shortfall is shown** because a threshold nobody can see is just a higher price with a rumour attached. A seller who recorded no fee delivers free, which errs toward the shopper. The order **computes the total rather than taking it from the caller** — it used to be a parameter on the honest grounds that there was no rate card, and leaving it one now would let whoever posts the order set their own postage — and freezes the per-seller breakdown beside it, so an old order still says who charged what. The bag and the checkout summary read Subtotal / Delivery / Total, with a line per seller that charges. |
 | 5 | Delivery speed per product | Not started | |
 | 6 | Different address per product | Not started | |
 | 7 | Map address picker | Not started | Governorate select only. |
