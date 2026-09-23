@@ -28,8 +28,15 @@ describe("dictionary completeness", () => {
   });
 
   it("has no untranslated English left in the Arabic", () => {
-    // Same three, for the same reason: "English" is Latin script on purpose.
-    const allowed = new Set<MessageKey>(["header.language", "account.english", "account.arabic"]);
+    // The first three are Latin script on purpose: "English" names the
+    // language you would switch to. The last two carry "CSV", which is a file
+    // format's initialism rather than English prose — an Arabic page still
+    // tells somebody to pick a CSV file, because that is what the Save As
+    // dialog says. Anything added here needs a reason of that kind.
+    const allowed = new Set<MessageKey>([
+      "header.language", "account.english", "account.arabic",
+      "admin.importNote", "admin.importChoose",
+    ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.
     const leaked = (Object.keys(ar) as MessageKey[]).filter(

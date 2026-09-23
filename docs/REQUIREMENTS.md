@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 35 |
+| Built | 37 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 32 |
+| Not started | 30 |
 
-*Last updated after landing referrals and the points ledger (3.1.14, 3.1.15). Card payments and
+*Last updated after landing the seller's order desk and bulk upload (3.3.3, 3.3.5). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,15 +77,15 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment lives on the *line*, not the order, which is the hard half, and it is now **operable**: `/admin/orders` puts a control on every line and none on the order, because an order spanning three sellers can be fully paid while two have shipped nothing. `setLineFulfilment` had been written since the tables landed with no caller at all, so `delivered_at` had no writer — every line said "delivered" with a null date and nothing downstream ever opened. It is stamped when a line is marked delivered and cleared when it is moved back off, which is the uncomfortable half and still right: a seller correcting a mis-click has said the parcel is not there, and leaving the date would hold a return window open on it. Return and re-pickup as operations are still absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 13 built, 2 partial, 7 absent
+## 3.3 Vendor experience — 15 built, 2 partial, 5 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | Self-registration: account → choose vendor → documents → contract → approval | **Not started** | Today an admin creates the vendor and its login. There is no self-serve path, no document upload, no contract step. |
 | 2 | Default commission shown at onboarding, propose custom | **Partial** | Commission is fully modelled; there is no onboarding to show it in. |
-| 3 | Bulk upload by Excel, AI-assisted entry | Not started | |
+| 3 | Bulk upload by Excel, AI-assisted entry | **Built** | `/admin/import`. `shared/inventory/bulkUpload.ts` is the reader and is pure — the file is parsed in the browser by the same function the server would have used, so a 400-row preview is one round trip rather than an upload endpoint and a second call. **CSV rather than `.xlsx`**: Excel writes CSV from Save As, and parsing the other means a zip reader, an XML parser and a dependency carrying both to arrive at the same rows; the page says so rather than leaving somebody to find out from an error. Three things about real exports are handled because they are what actually breaks an importer — Excel's UTF-8 BOM, which makes an exact match on `title` fail on every file a Windows seller sends; quoted fields carrying commas and newlines; and the CRLF that turns a price into `"12.000\r"` and then into NaN. **The preview is the feature**: every problem is reported against its own line number and nothing is written until the seller presses the button, because an importer that writes on upload is one they have to undo a row at a time. All of it or none of it, in one transaction — a half-finished import cannot be told apart from a finished one, and re-running the corrected file duplicates whatever landed. Everything arrives as a **draft**, because publishing has its own rules and an importer that can put four hundred rows in the shop can put four hundred mistakes there. Handles are allocated up front and remembered, since `uniqueHandle` reads what is committed and two rows with one title would otherwise collide at the very end. Verified in a browser in both languages against real Postgres, with a file carrying a BOM, CRLF, a quoted comma and Arabic titles. |
 | 4 | AI fixes images after upload | Not started | No upload exists. |
-| 5 | AI auto-categorises on bulk upload | Not started | |
+| 5 | AI auto-categorises on bulk upload | **Built** | `suggestDepartment`, scoring a title and description against each department's own words **in both languages** — an importer that only reads English auto-categorises half a Kuwaiti shop. **It never overrides a seller**: the guess is consulted only for a row that left the column blank, every guessed row is marked as guessed in the preview, and the count is stated so somebody who disagrees can fix the column and upload again. **Null is a real answer** — a product filed under the wrong department is harder to find than one filed under none, and a department this shop does not carry is never guessed into. Deterministic rather than a model call, which is the choice rather than a shortcut: this codebase's own rule is that a model reorders and never chooses, so the most one could honestly do here is pick among the departments already scored — for an answer a word match gets right on "Brass Reading Lamp", at the cost of a key, a network call and a timeout on the one path where being slow is most obvious. |
 | 6 | AI reviews products, alerts admin | Not started | The review queue is entirely human. |
 | 7 | Trusted companies publish directly | **Built** | `autoPublish`. |
 | 8 | Vendor product changes visible to admin | **Built** | They were always logged, which is not the same thing: a trail nobody opens is a filing cabinet, and the requirement is about being told. The audit row now freezes **the rank the actor held at the time** — `owner`, `manager`, `staff` or `admin` — so "what the sellers changed" is a column filter rather than a join against a membership table that has since moved, and a person promoted next week does not retroactively change what they were. `/admin` carries an unread count that hides itself at zero like every other tile there, and `/admin/audit` has a Seller-changes view narrowed **on the server**, because a filter over the hundred rows already fetched reports a quiet week for a shop that has been busy. The count is what this administrator has not read rather than a rolling window — a window never reaches zero and so never means anything — and only pressing the button clears it, never a tile rendering somewhere else, which would hide work by drawing. Marking read changes nothing in the trail itself. |

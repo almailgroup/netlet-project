@@ -11,7 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import { categories, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -221,6 +221,96 @@ describe("creating", () => {
   it("refuses to create inside another vendor", async () => {
     await expect(inv.createProduct(ownerActor(), { vendorId: ids.other, title: "Not mine" }))
       .rejects.toThrow("FORBIDDEN:product.create");
+  });
+});
+
+/*
+ * Bulk upload (3.3.3). The reading and the refusing are proved pure in
+ * `shared/inventory/bulkUpload.test.ts`; what is here is the half that cannot
+ * be — that a file naming one title twice does not collide on the handle
+ * index, that a category name is resolved to an id rather than invented, and
+ * that a failure leaves the shelf exactly as it was.
+ */
+describe("importing a spreadsheet", () => {
+  const row = (over: Partial<Parameters<typeof inv.bulkCreateProducts>[1]["rows"][number]> = {}) => ({
+    title: "Imported Lamp", sku: null, price: "10.000", compareAtPrice: null,
+    stock: 3, category: null, description: "", imageUrl: null, ...over,
+  });
+
+  it("creates a product and a priced variant for every row", async () => {
+    const { created } = await inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Import A", sku: "IMP-A", stock: 4 }), row({ title: "Import B", price: "2.500" })],
+    });
+    expect(created).toBe(2);
+
+    const [product] = await db.select().from(products).where(eq(products.handle, "import-a"));
+    expect(product.status).toBe("draft");
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.productId, product.id));
+    expect(variant).toMatchObject({ sku: "IMP-A", price: "10.000", stock: 4 });
+  });
+
+  /*
+   * `uniqueHandle` reads what is committed, and inside one transaction the
+   * rows above it are not — so two rows with one title would both ask for the
+   * same handle and fail the unique index at the very end, after everything
+   * looked fine.
+   */
+  it("gives two rows with the same title two different handles", async () => {
+    await inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Twin Lamp" }), row({ title: "Twin Lamp" }), row({ title: "Twin Lamp" })],
+    });
+    const made = await db.select().from(products).where(eq(products.vendorId, ids.acme));
+    const handles = made.map(p => p.handle).filter(handle => handle.startsWith("twin-lamp"));
+    expect(new Set(handles).size).toBe(handles.length);
+    expect(handles).toHaveLength(3);
+  });
+
+  it("files a row under a category the catalog actually has, and nowhere otherwise", async () => {
+    /* The migrations create the table; the departments come from the seed,
+       which these fixtures do not run. */
+    await db.insert(categories)
+      .values({ slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", position: 2 })
+      .onConflictDoNothing();
+
+    await inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Filed Lamp", category: "Home & Kitchen" }), row({ title: "Unfiled Lamp", category: "Invented" })],
+    });
+    const [filed] = await db.select().from(products).where(eq(products.handle, "filed-lamp"));
+    const [unfiled] = await db.select().from(products).where(eq(products.handle, "unfiled-lamp"));
+    expect(filed.categoryId).not.toBeNull();
+    expect(unfiled.categoryId).toBeNull();
+  });
+
+  /*
+   * A handle is ASCII, so an Arabic title reduces to the fallback `product` —
+   * import ten and they are `product`, `product-2`, `product-3`, which is a
+   * shop whose URLs say nothing. The seller's own code is the better seed.
+   */
+  it("names an Arabic-titled row after its code rather than nothing", async () => {
+    await inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "سماعات لاسلكية", sku: "IMP-BUDS" })],
+    });
+    const [made] = await db.select().from(products).where(eq(products.handle, "imp-buds"));
+    expect(made.title).toBe("سماعات لاسلكية");
+  });
+
+  it("falls back to the old handle when there is no code either", async () => {
+    await inv.bulkCreateProducts(ownerActor(), { vendorId: ids.acme, rows: [row({ title: "قهوة", sku: null })] });
+    const made = await db.select().from(products).where(eq(products.vendorId, ids.acme));
+    expect(made.some(p => p.handle.startsWith("product"))).toBe(true);
+  });
+
+  it("refuses to import into another vendor", async () => {
+    await expect(inv.bulkCreateProducts(ownerActor(), { vendorId: ids.other, rows: [row()] }))
+      .rejects.toThrow("FORBIDDEN:product.create");
+  });
+
+  it("writes nothing at all for an empty file", async () => {
+    expect(await inv.bulkCreateProducts(ownerActor(), { vendorId: ids.acme, rows: [] })).toEqual({ created: 0 });
   });
 });
 

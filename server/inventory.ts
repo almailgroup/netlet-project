@@ -367,6 +367,116 @@ export async function createProduct(actor: Actor, input: {
   return row;
 }
 
+/**
+ * Create a whole shelf from a spreadsheet (3.3.3, 3.3.5).
+ *
+ * `shared/inventory/bulkUpload.ts` has already read the file, found the
+ * columns, refused the rows that cannot be products and guessed a department
+ * for the ones that left it blank — all of it pure, and all of it shown to the
+ * seller before this is called. What is left is the half that needs a
+ * database: a unique handle per row, a category id per name, and the writes.
+ *
+ * **All of it or none of it.** A half-finished import is the worst outcome,
+ * because the seller cannot tell what landed and running the corrected file
+ * again duplicates whatever did. One transaction, so a failure on row 300
+ * leaves the shelf exactly as it was.
+ *
+ * Every product lands as a **draft**, whatever the file said. Publishing is
+ * its own decision with its own rules — a price, and a Ministry permit behind
+ * any advertised saving — and an importer that could put four hundred rows
+ * straight into the shop is an importer that can put four hundred mistakes
+ * there.
+ */
+export async function bulkCreateProducts(actor: Actor, input: {
+  vendorId: number;
+  rows: {
+    title: string;
+    sku: string | null;
+    price: string;
+    compareAtPrice: string | null;
+    stock: number;
+    category: string | null;
+    description: string;
+    imageUrl: string | null;
+  }[];
+}): Promise<{ created: number }> {
+  assertCan(actor, "product.create", input.vendorId);
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  if (input.rows.length === 0) return { created: 0 };
+
+  /* One read for every category the file mentions, rather than one per row.
+     A name the catalog does not carry leaves the product uncategorised rather
+     than creating a department from a typo. */
+  const known = await db.select({ id: categories.id, name: categories.name }).from(categories);
+  const idFor = (name: string | null) =>
+    known.find(row => row.name.toLowerCase() === (name ?? "").toLowerCase())?.id ?? null;
+
+  /*
+   * Handles are taken one at a time and remembered, because `uniqueHandle`
+   * reads what is committed — and inside a transaction the rows above are not
+   * yet visible to it, so a file with two "Brass Lamp"s would ask for the same
+   * handle twice and fail the unique index at the very end.
+   */
+  const taken = new Set<string>();
+  /*
+   * A handle is ASCII, so a title with none of it — which is half the catalog
+   * on a Kuwaiti shop — reduces to the fallback `product`, and importing ten
+   * Arabic-titled rows gives `product`, `product-2`, `product-3`. The seller's
+   * own code is the better seed: it is Latin by convention, it is unique in
+   * the file already, and `imp-buds` is a URL somebody can read.
+   *
+   * Arabic in the URL itself is the other answer and a larger one — every
+   * link, the router and the sitemap would have to agree about percent
+   * encoding — so it is deliberately not attempted here.
+   */
+  const seedFor = (row: { title: string; sku: string | null }) =>
+    /[a-z0-9]/i.test(row.title) || !row.sku ? row.title : row.sku;
+
+  const handleFor = async (title: string) => {
+    const base = await uniqueHandle(db, title);
+    let handle = base;
+    for (let suffix = 2; taken.has(handle); suffix += 1) handle = `${base}-${suffix}`;
+    taken.add(handle);
+    return handle;
+  };
+
+  const planned = [] as { handle: string; row: (typeof input.rows)[number] }[];
+  for (const row of input.rows) planned.push({ handle: await handleFor(seedFor(row)), row });
+
+  await db.transaction(async tx => {
+    for (const { handle, row } of planned) {
+      const [product] = await tx.insert(products).values({
+        vendorId: input.vendorId,
+        categoryId: idFor(row.category),
+        handle,
+        title: row.title,
+        description: row.description || null,
+        tags: [],
+        status: "draft",
+      }).returning({ id: products.id });
+
+      await tx.insert(productVariants).values({
+        productId: product.id,
+        title: "Default",
+        sku: row.sku,
+        price: row.price,
+        compareAtPrice: row.compareAtPrice,
+        stock: row.stock,
+      });
+
+      /* A picture is optional and a bad URL is ordinary — `Thumb` swaps a
+         failing image for a fallback, which is why one typed into a
+         spreadsheet is worth storing rather than validating away. */
+      if (row.imageUrl) {
+        await tx.insert(productImages).values({ productId: product.id, url: row.imageUrl, position: 0 });
+      }
+    }
+  });
+
+  return { created: planned.length };
+}
+
 export async function updateProduct(actor: Actor, productId: number, patch: {
   title?: string;
   titleAr?: string | null;

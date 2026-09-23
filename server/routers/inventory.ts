@@ -18,6 +18,7 @@ import {
   addMemberByEmail,
   addMemberWithNewAccount,
   adjustStock,
+  bulkCreateProducts,
   createProduct,
   createVendorWithOwner,
   sendMemberPasswordReset,
@@ -59,6 +60,7 @@ import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } fro
 import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
+import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -219,6 +221,40 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => createProduct(actor, input));
+      }),
+
+    /**
+     * A whole shelf from a spreadsheet (3.3.3, 3.3.5).
+     *
+     * The file is read on the client, by the same pure module the server would
+     * have used — `planUpload` has no database in it, so parsing a 400-row CSV
+     * in a browser and posting the *rows* is one round trip instead of two and
+     * an upload endpoint. What arrives here is still checked: the ceiling, the
+     * money shape and the vendor guard are all applied again, because the
+     * client is not where a rule lives.
+     */
+    bulkCreate: protectedProcedure
+      .input(z.object({
+        vendorId: z.number().int().positive(),
+        rows: z.array(z.object({
+          title: z.string().trim().min(1).max(255),
+          sku: z.string().trim().max(64).nullable(),
+          price: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+          compareAtPrice: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/).nullable(),
+          stock: z.number().int().min(0).max(1_000_000),
+          category: z.string().trim().max(120).nullable(),
+          description: z.string().max(20000),
+          imageUrl: z.string().trim().max(2000).nullable(),
+        }))
+          /* A ceiling, because one request writes every row inside a single
+             transaction: a file of fifty thousand lines would hold a
+             connection open long enough to look like an outage. */
+          .min(1)
+          .max(BULK_UPLOAD_LIMIT),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user, input.vendorId);
+        return guard(() => bulkCreateProducts(actor, input));
       }),
 
     update: protectedProcedure

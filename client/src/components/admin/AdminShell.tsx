@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ClipboardCheck, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldCheck, Store, Users } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldCheck, Store, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -105,6 +105,7 @@ export function AdminShell({ need, children }: {
     /* Above the review queue and below stock: what a seller opens the portal
        to do most days is pack what somebody bought. */
     { href: "/admin/orders", label: "admin.orders", icon: <Receipt className="size-4" />, need: "product.view" },
+    { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
     { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
     { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },

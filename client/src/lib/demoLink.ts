@@ -340,6 +340,12 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "orders.place":
       throw new Error("checkout.placeFailed");
 
+    /* Reading the file is pure and happens in the browser, so the demo's
+       import page previews a real spreadsheet — only the write has nowhere to
+       go, and saying it succeeded would be the lie the Publish button avoids. */
+    case "inventory.products.bulkCreate":
+      throw new Error("admin.saveFailed");
+
     /* The demo signs in as a vendor `manager` and its fixtures hold no orders,
        so the seller's desk is reachable and honestly empty — which is also the
        only state it could have without an order to act on. */
