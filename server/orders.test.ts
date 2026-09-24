@@ -34,6 +34,7 @@ import { addMoney } from "../shared/money.js";
 
 let db: ReturnType<typeof drizzle>;
 let ordersModule: typeof import("./orders.js");
+let fraud: typeof import("./fraud.js");
 
 const ids = {
   admin: 0, shopper: 0, acmeOwner: 0, otherOwner: 0,
@@ -56,6 +57,7 @@ beforeAll(async () => {
     getDb: async () => db,
   }));
   ordersModule = await import("./orders.js");
+  fraud = await import("./fraud.js");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [shopper] = await db.insert(users).values({ email: "shopper@example.test" }).returning();
@@ -629,6 +631,62 @@ describe("codes and gift cards", () => {
     const [card] = await db.select().from(giftCards).where(eq(giftCards.code, "NLGIFT3"));
     expect(card.remaining).toBe("10.000");
     await db.update(productVariants).set({ stock: 40 }).where(eq(productVariants.id, ids.lampVariant));
+  });
+});
+
+/*
+ * Fraud signals (3.6.5), against a real Postgres. The judgement is proved pure
+ * in `shared/commerce/fraudSignals.test.ts`; what is here is the counting it
+ * cannot do — the account's age at the moment of the order, how many *other*
+ * accounts have used that address, and that a vendor is refused the lot.
+ */
+describe("what an order looks like from the platform's side", () => {
+  it("says nothing about an ordinary order", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper },
+    );
+    const [judged] = await fraud.riskForOrders(adminActor(), [placed.order.id]);
+    expect(judged).toMatchObject({ risk: "low", flags: [] });
+  });
+
+  /* The goods leave the warehouse before any money exists. */
+  it("notices a large cash order, with the figure attached", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 10 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper, paymentMethod: "cod" },
+    );
+    const [judged] = await fraud.riskForOrders(adminActor(), [placed.order.id]);
+    expect(judged.flags.map(flag => flag.signal)).toContain("highValueCash");
+    expect(judged.risk).not.toBe("low");
+  });
+
+  /*
+   * The shopper's own repeat orders to their own address are the ordinary
+   * case and would drown the signal, so the count is of *other* accounts.
+   */
+  it("counts other accounts at one address and not the shopper's own orders", async () => {
+    for (let n = 0; n < 3; n += 1) {
+      await ordersModule.placeOrder(
+        await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+        { ...DETAILS, userId: ids.shopper },
+      );
+    }
+    const mine = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper },
+    );
+    const [judged] = await fraud.riskForOrders(adminActor(), [mine.order.id]);
+    expect(judged.flags.map(flag => flag.signal)).not.toContain("addressManyAccounts");
+  });
+
+  /* The signals name other accounts' behaviour, so a seller does not get them. */
+  it("refuses a vendor", async () => {
+    await expect(fraud.riskForOrders(acmeActor(), [1])).rejects.toThrow("FORBIDDEN:platform.viewAll");
+  });
+
+  it("asks for nothing when given nothing", async () => {
+    expect(await fraud.riskForOrders(adminActor(), [])).toEqual([]);
   });
 });
 

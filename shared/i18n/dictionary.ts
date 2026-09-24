@@ -93,6 +93,15 @@ export const en = {
   "checkout.pointsRow": "Points",
   "auth.referralInvited": "A friend invited you. You both earn points when your first order is paid for.",
   /* The admin's side: what NetLet still owes in cash-outs. */
+  /* What an order looks like from the platform's side (3.6.5). */
+  "admin.riskHigh": "Check before dispatch",
+  "admin.riskWatch": "Worth a look",
+  "admin.riskNewAccount": "An account {hours} hours old paying {total} in cash",
+  "admin.riskCash": "{total} in cash — the goods leave before the money exists",
+  "admin.riskAddress": "{accounts} accounts have ordered to this address in the last month",
+  "admin.riskRapid": "{orders} orders from this account in a day",
+  "admin.riskRefunds": "{refunded} of this account's {orders} orders were refunded",
+  "admin.riskQuantity": "{quantity} of one item on a first order",
   /* Seller self-registration (3.3.1). */
   "sell.eyebrow": "Sell on NetLet",
   "sell.title": "Open a store",
@@ -1497,6 +1506,15 @@ export const ar: Record<MessageKey, string> = {
   "checkout.pointsRow": "النقاط",
   "auth.referralInvited": "دعاك صديق. تكسبان كلاكما نقاطاً عند دفع ثمن أول طلب لك.",
   /* جانب الإدارة: ما تدين به نت‑لت من صرف نقدي. */
+  /* ما يبدو عليه الطلب من جهة المنصة. */
+  "admin.riskHigh": "راجعه قبل الإرسال",
+  "admin.riskWatch": "يستحق نظرة",
+  "admin.riskNewAccount": "حساب عمره {hours} ساعة يدفع {total} نقداً",
+  "admin.riskCash": "{total} نقداً — تخرج البضاعة قبل وجود المبلغ",
+  "admin.riskAddress": "طلب {accounts} حسابات إلى هذا العنوان خلال الشهر الماضي",
+  "admin.riskRapid": "{orders} طلبات من هذا الحساب في يوم واحد",
+  "admin.riskRefunds": "استُرجع {refunded} من أصل {orders} من طلبات هذا الحساب",
+  "admin.riskQuantity": "{quantity} من صنف واحد في أول طلب",
   /* تسجيل البائع بنفسه. */
   "sell.eyebrow": "بِع على نت‑لت",
   "sell.title": "افتح متجرك",

@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 41 |
+| Built | 42 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 26 |
+| Not started | 25 |
 
-*Last updated after landing seller self-registration (3.3.1). Card payments and
+*Last updated after landing fraud signals on the order desk (3.6.5). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -124,7 +124,7 @@ window and review eligibility both become correct for free.
 Chat + WhatsApp + voice contact centre (**named a Phase 1 top priority**) ·
 automatic return/exchange handling · AI-generated tutorial videos.
 
-## 3.6 Admin panels — 2 built, 1 partial, 1 n/a, 2 absent
+## 3.6 Admin panels — 3 built, 1 partial, 1 n/a, 1 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -132,7 +132,7 @@ automatic return/exchange handling · AI-generated tutorial videos.
 | 2 | Product approval panel, AI-backed | **Partial** | `/admin/review` is built and paged. The AI alerts are absent. |
 | 3 | Automatic audit trail | **Built** | 14 actions, covering commission edits, approvals, permission changes and admin sign-ins. |
 | 4 | No HR panel | n/a | Correctly absent. |
-| 5 | AI fraud detection | Not started | |
+| 5 | AI fraud detection | **Built** | `shared/commerce/fraudSignals.ts` is the judgement and is pure. **It flags and never blocks**: nothing cancels an order, refuses a checkout or holds a parcel — a heuristic that could refuse a sale refuses real customers at the till and the shop never learns which ones it turned away. **Cash is where the exposure actually is**, which is the whole reason this is worth having today: NetLet takes cash on delivery and nothing else, so the goods leave the warehouse before any money exists, and an uncollected cash order is a van, a driver and a parcel nobody paid for. The value thresholds therefore apply to cash and the card branches wait with 3.2.1. Six signals — a new account paying real money in cash, a large cash order, several accounts at one address, a burst of orders in a day, a refund history with enough orders behind it to mean anything, and ten of one thing on a first order — each carrying **the counts that produced it**, because "risk: high" is not something an administrator can disagree with and "five accounts have used this address" is. Three bands rather than a score, since a number asks somebody to decide what 62 means; `high` is one serious signal or three of anything, because several small oddities about one order is itself the pattern. **Admin-only, guarded beside the query**: the signals name other accounts' behaviour, so a vendor reading their own order desk does not get them. Verified in a browser in both languages against a real suspicious order, axe clean — and the browser is what caught the one real defect: a JS `Date` interpolated into a raw `count(*) filter` fragment, which PGlite accepts and postgres.js refuses, so every test passed and every request 500ed. Exactly the wishlist's `lt(column, date)` lesson, found the same way. |
 | 6 | E-invoice compliance | Not started | |
 
 ## 3.7 Affiliate marketing · 3.8 Vendor–customer chat

@@ -389,6 +389,12 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "orders.createGiftCard":
       throw new Error("admin.saveFailed");
 
+    /* The demo signs in as a vendor, and the signals are admin-only — so the
+       page never asks. Answered anyway, because a procedure the demo cannot
+       name is one that throws the day somebody signs in as an admin. */
+    case "orders.risk":
+      return [];
+
     /* The demo signs in as a vendor `manager` and its fixtures hold no orders,
        so the seller's desk is reachable and honestly empty — which is also the
        only state it could have without an order to act on. */

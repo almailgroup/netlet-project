@@ -27,6 +27,8 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { canRecordCollection } from "@shared/commerce/payment";
+import type { Flag as FraudFlag, RiskLevel } from "@shared/commerce/fraudSignals";
+import { can, type Actor } from "@shared/inventory/permissions";
 import { FULFILMENT_STATES, nextStates, type FulfilmentState } from "@shared/commerce/fulfilment";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -53,14 +55,23 @@ const PAYMENT_LABEL: Record<string, MessageKey> = {
 
 export default function AdminOrders() {
   usePageMeta(privatePageMeta("Orders"));
-  return <AdminShell need="product.view">{() => <Orders />}</AdminShell>;
+  return <AdminShell need="product.view">{actor => <Orders actor={actor} />}</AdminShell>;
 }
 
-function Orders() {
+function Orders({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<number | null>(null);
   const list = trpc.orders.forSeller.useQuery({ page }, { placeholderData: previous => previous });
+
+  /*
+   * How much attention each order wants (3.6.5), over the page already on
+   * screen. Admin-only: the signals name other accounts' behaviour, so the
+   * server refuses a vendor and the question is not asked on their behalf.
+   */
+  const ids = (list.data?.rows ?? []).map(row => row.id);
+  const risk = trpc.orders.risk.useQuery({ ids }, { enabled: ids.length > 0 && can(actor, "platform.viewAll") });
+  const riskFor = (id: number) => risk.data?.find(entry => entry.orderId === id);
 
   return (
     <>
@@ -83,6 +94,7 @@ function Orders() {
                 <OrderRow
                   key={row.id}
                   row={row}
+                  risk={riskFor(row.id)}
                   open={open === row.id}
                   onToggle={() => setOpen(open === row.id ? null : row.id)}
                 />
@@ -111,7 +123,37 @@ type Row = {
   vendorCount: number;
 };
 
-function OrderRow({ row, open, onToggle }: { row: Row; open: boolean; onToggle: () => void }) {
+const SIGNAL_LABEL: Record<string, MessageKey> = {
+  newAccountHighValue: "admin.riskNewAccount",
+  addressManyAccounts: "admin.riskAddress",
+  rapidOrders: "admin.riskRapid",
+  refundHistory: "admin.riskRefunds",
+  highValueCash: "admin.riskCash",
+  firstOrderLargeQuantity: "admin.riskQuantity",
+};
+
+type OrderRisk = { orderId: number; risk: RiskLevel; flags: FraudFlag[] };
+
+/**
+ * A signal's evidence, with its money formatted.
+ *
+ * The signals are pure and carry figures as decimal strings, which is right —
+ * `shared/` has no currency formatter and should not — but a bare "481.500" on
+ * a page where every other figure reads "KWD 481.500" looks like a different
+ * kind of number.
+ */
+function moneyDetail(
+  detail: Record<string, number | string>,
+  money: (value: { amount: string; currencyCode: string }) => string,
+): Record<string, string | number> {
+  return Object.fromEntries(
+    Object.entries(detail).map(([key, value]) =>
+      key === "total" ? [key, money({ amount: String(value), currencyCode: "KWD" })] : [key, value],
+    ),
+  );
+}
+
+function OrderRow({ row, risk, open, onToggle }: { row: Row; risk?: OrderRisk; open: boolean; onToggle: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
@@ -141,8 +183,34 @@ function OrderRow({ row, open, onToggle }: { row: Row; open: boolean; onToggle: 
         }`}>
           {t(PAYMENT_LABEL[row.status] ?? "admin.orderPendingPayment")}
         </span>
+        {/* A badge only when there is something to say: "low" on every row is
+            an alert that never stops firing, which teaches people to stop
+            reading the one that matters. */}
+        {risk && risk.risk !== "low" ? (
+          <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-extrabold ${
+            risk.risk === "high" ? "bg-[#8c2f22] text-white" : "bg-[#fff0ab] text-[#0a285a]"
+          }`}>
+            {t(risk.risk === "high" ? "admin.riskHigh" : "admin.riskWatch")}
+          </span>
+        ) : null}
         <span className="shrink-0 font-extrabold text-[#0a285a]"><bdi dir="ltr">{money({ amount: row.orderTotal, currencyCode: "KWD" })}</bdi></span>
       </button>
+
+      {/* The evidence, not the verdict: "four accounts have used this address"
+          is something an administrator can disagree with, and "risk: high" is
+          not. Nothing here has held the order — it is a reason to look. */}
+      {open && risk && risk.flags.length > 0 ? (
+        <ul className="border-t border-[#eef1f6] px-4 py-3">
+          {risk.flags.map(flag => (
+            <li
+              key={flag.signal}
+              className={`text-[12px] leading-5 ${flag.serious ? "font-extrabold text-[#8c2f22]" : "text-[#536b8c]"}`}
+            >
+              · {t(SIGNAL_LABEL[flag.signal] ?? "admin.riskWatch", moneyDetail(flag.detail, money))}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {open ? <OrderDetail orderId={row.id} /> : null}
     </div>

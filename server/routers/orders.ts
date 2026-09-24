@@ -25,6 +25,7 @@ import {
   setLineFulfilment,
 } from "../orders.js";
 import { resolveActor } from "../inventory.js";
+import { riskForOrders } from "../fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../vouchers.js";
 import { VOUCHER_KINDS } from "../../shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../shared/commerce/payment.js";
@@ -226,6 +227,18 @@ export const ordersRouter = router({
     .input(z.object({ orderId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => guard(async () =>
       getOrderFor(await resolveActor(ctx.user), input.orderId))),
+
+  /**
+   * How much attention each of these orders wants (3.6.5).
+   *
+   * Admin-only and guarded inside the query: the signals name other accounts'
+   * behaviour, so a vendor reading their own order desk does not get them.
+   * Takes the ids already on screen rather than running its own view.
+   */
+  risk: protectedProcedure
+    .input(z.object({ ids: z.array(z.number().int().positive()).max(100) }))
+    .query(async ({ ctx, input }) => guard(async () =>
+      riskForOrders(await resolveActor(ctx.user), input.ids))),
 
   /**
    * Move one line along (3.2.8).
