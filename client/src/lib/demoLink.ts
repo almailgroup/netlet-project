@@ -223,6 +223,14 @@ function resolve(path: string, rawInput: unknown): unknown {
       const items = cart.items.filter(item => !lineIds.includes(item.lineId));
       return writeCart(recalculate({ ...cart, items }));
     }
+    /*
+     * Sending a line to another door (3.2.6) needs an address book, and a book
+     * needs an account. Nobody is signed in here, so the bag comes back
+     * unchanged — which is exactly what a real deployment answers a guest, and
+     * the control is never drawn to ask in the first place.
+     */
+    case "commerce.cart.setDestination":
+      return requireCart(String(input.cartId));
 
     /* The live version asks Mistral to rewrite the query against the catalog.
        There is no API key in a static build, so fall back to the shopper's own
@@ -242,6 +250,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.notifications.list":
     case "customer.tracking.list":
     case "customer.follows.list":
+    /* Nobody is signed in, so there is no address book to keep — which is the
+       same answer a real deployment gives a guest, through the same branch
+       rather than a special case. */
+    case "customer.addresses.list":
       return [];
     /*
      * Nobody can buy anything in the demo — there is no payment anywhere yet,
@@ -518,6 +530,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.saved.set":
     case "customer.notifications.set":
     case "customer.follows.set":
+    /* The book needs an account and the demo has none, so these are accepted
+       and discarded like every other write here. */
+    case "customer.addresses.add":
+    case "customer.addresses.update":
+    case "customer.addresses.remove":
       return { success: true } as const;
 
     /* The admin portal. The demo has no server, so it answers as a vendor manager

@@ -218,6 +218,13 @@
       "when": 1790274306880,
       "tag": "0030_brave_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790275539540,
+      "tag": "0031_opposite_thor_girl",
+      "breakpoints": true
     }
   ]
 }

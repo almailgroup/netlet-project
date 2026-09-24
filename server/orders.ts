@@ -37,7 +37,9 @@ import type { Pool } from "../shared/commerce/preorder.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
-import { freezeDelivery, quoteDelivery, type DeliveryGroup, type DeliveryQuote } from "../shared/commerce/delivery.js";
+import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../shared/commerce/delivery.js";
+import { freezeDestination, type DestinedLine } from "../shared/commerce/addresses.js";
+import { destinationsForCart } from "./addresses.js";
 import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
@@ -131,6 +133,8 @@ async function priceableLines(
       vendorName: vendors.name,
       quantity: cartItems.quantity,
       bundleId: cartItems.bundleId,
+      /* Which door this line goes to (3.2.6); null is the order's own. */
+      addressId: cartItems.addressId,
       unitPrice: productVariants.price,
       productTitle: products.title,
       variantTitle: productVariants.title,
@@ -187,6 +191,13 @@ async function priceableLines(
    * the same reason the goods are: the basket stores which, never what they
    * cost, and this is the last moment the figure is allowed to move.
    */
+  /*
+   * The doors this basket points at (3.2.6), read here at the last moment for
+   * the reason the prices are: what gets frozen onto the line is what the
+   * address said when the order was placed, not when the bag was drawn.
+   */
+  const doors = await destinationsForCart(db, cartId);
+
   const extras = await db
     .select({
       variantId: cartItems.variantId,
@@ -225,6 +236,11 @@ async function priceableLines(
     },
     bundleId: inBundle?.bundleId ?? null,
     bundleName: inBundle?.bundleName ?? null,
+    /* Copied, never referenced: an address edited in March must not rewrite
+       where a parcel was sent in September. */
+    destination: row.addressId && doors.has(row.addressId)
+      ? freezeDestination(doors.get(row.addressId)!)
+      : null,
     vendorRule: { percent: row.vendorPercent, fixed: row.vendorFixed },
     // Null on both columns is the absence of an override, not an override of
     // zero — `resolveRule` depends on being handed null rather than a zeroed
@@ -245,9 +261,12 @@ async function priceableLines(
    * Charged prices, not shelf prices — a personally agreed price counts toward
    * a seller's free-delivery threshold, because it is what the shopper spent.
    */
-  const groups = new Map<number, DeliveryGroup>();
   const codRules = new Map(rows.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
-  for (const row of rows) {
+  const rules = new Map<number | null, DeliveryRule>(
+    rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver }]),
+  );
+
+  const destined: DestinedLine[] = rows.map(row => {
     const inBundle = bundled.get(row.variantId);
     const charged = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
     /* The extras are money spent with that seller, so they count toward their
@@ -261,27 +280,43 @@ async function priceableLines(
         row.quantity,
       ),
     );
-    const held = groups.get(row.vendorId);
-    if (held) held.goods = addMoney(held.goods, value);
-    else {
-      groups.set(row.vendorId, {
-        vendorId: row.vendorId,
-        vendorName: row.vendorName,
-        goods: value,
-        rule: { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver },
-      });
-    }
-  }
+    const destinationId = row.addressId && doors.has(row.addressId) ? row.addressId : null;
+    return {
+      vendorId: row.vendorId,
+      vendorName: row.vendorName,
+      destinationId,
+      destinationLabel: destinationId ? doors.get(destinationId)!.label : null,
+      value,
+    };
+  });
+
+  /* A parcel is a seller and a destination (3.2.6): two doors are two journeys
+     out of one warehouse, and each is measured against the threshold on its
+     own. The fold is pure, so the case worth checking needs no database. */
+  const groups = groupForDelivery(destined, rules);
 
   return {
     lines,
     offerIds,
-    delivery: quoteDelivery([...groups.values()]),
-    cod: codAvailability([...groups.values()].map(group => ({
-      vendorName: group.vendorName,
-      goods: group.goods,
-      rule: codRules.get(group.vendorId ?? -1) ?? COD_DEFAULT,
-    }))),
+    delivery: quoteDelivery(groups),
+    /*
+     * Cash is still decided per *seller*, not per parcel: a driver's ceiling is
+     * about how much cash one company will carry, and a shopper who split a
+     * basket across two doors has not changed what that seller is owed. So the
+     * parcels are folded back together before they are asked.
+     */
+    cod: codAvailability(
+      [...groups.reduce((byVendor, group) => {
+        const held = byVendor.get(group.vendorId);
+        if (held) held.goods = addMoney(held.goods, group.goods);
+        else byVendor.set(group.vendorId, { vendorName: group.vendorName, goods: group.goods });
+        return byVendor;
+      }, new Map<number | null, { vendorName: string; goods: string }>()).entries()].map(([vendorId, seller]) => ({
+        vendorName: seller.vendorName,
+        goods: seller.goods,
+        rule: codRules.get(vendorId ?? -1) ?? COD_DEFAULT,
+      })),
+    ),
   };
 }
 
@@ -532,6 +567,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         /* What was actually taken, not what was offered a moment earlier. */
         bundleId: line.bundleId ?? null,
         bundleName: line.bundleName ?? null,
+        destination: line.destination,
         preordered: pools.get(line.variantId) === "preorder",
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
@@ -839,6 +875,9 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         addonsTotal: "0.000",
         bundleId: line.bundleId,
         bundleName: line.bundleName,
+        /* The slice is arithmetic over money; where the parcel went does not
+           enter into it, and the desk reads the line's own copy. */
+        destination: null,
         lineTotal: line.lineTotal,
         commissionPercent: line.commissionPercent,
         commissionFixed: line.commissionFixed,

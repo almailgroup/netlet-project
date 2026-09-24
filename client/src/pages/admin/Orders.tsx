@@ -303,6 +303,18 @@ function OrderDetail({ orderId }: { orderId: number }) {
                         ))}
                       </ul>
                     ) : null}
+                    {/* Where this one went (3.2.6), when it did not go where
+                        the rest of the order went. The seller packs the
+                        parcels, so two lines for two doors are two parcels —
+                        and a desk that does not say so sends both to one. */}
+                    {line.destination ? (
+                      <p className="mt-1 text-[12px] font-bold ink-accent" dir="auto">
+                        {t("address.lineWent", { label: line.destination.label })}
+                        {line.destination.addressLine ? (
+                          <span className="ink-muted"> · {line.destination.addressLine}</span>
+                        ) : null}
+                      </p>
+                    ) : null}
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">

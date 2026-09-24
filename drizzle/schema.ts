@@ -906,6 +906,20 @@ export const cartItems = pgTable(
      * it under somebody.
      */
     bundleId: integer("bundle_id").references(() => bundles.id, { onDelete: "set null" }),
+    /**
+     * Where this line is going (3.2.6), when it is not going where the rest is.
+     *
+     * Null is the default rather than the unknown: it means "wherever this
+     * order goes", which is the address typed at checkout. So a shopper who
+     * never opens the control places exactly the order they always did, and a
+     * guest — who has no account and therefore no book to keep an address in —
+     * is untouched by the whole feature.
+     *
+     * `set null` for the same reason: deleting an address moves the line back
+     * to the order's own door rather than stranding it at one that no longer
+     * exists.
+     */
+    addressId: integer("address_id").references(() => customerAddresses.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -913,6 +927,49 @@ export const cartItems = pgTable(
     index("cart_items_cart_id_idx").on(table.cartId),
     uniqueIndex("cart_items_cart_variant_unique").on(table.cartId, table.variantId),
   ]
+);
+
+/**
+ * A shopper's address book.
+ *
+ * Requirement 3.2.6 asks for a different address per product, and that is only
+ * usable if there is somewhere to keep the addresses: typing a full street
+ * address per line at checkout is not a feature, it is a punishment.
+ *
+ * **It belongs to an account.** `user_id` is not null and cascades, because an
+ * anonymous bag has no owner to keep a book for and nothing to attach a line
+ * to — the same reason a price a seller agreed with one shopper is never
+ * granted to a guest. Checkout's own typed address still serves a guest whole.
+ *
+ * Everything but the label and the line is nullable, and `addressProblems`
+ * refuses only what is actively wrong rather than what is merely absent — the
+ * direction `missingStoreDetails` and the seller application both take.
+ *
+ * There is no `is_default` column. The default is the one the shopper picks at
+ * checkout, and a second notion of "default" stored here is a fact that must
+ * agree with that one and eventually does not.
+ */
+export const customerAddresses = pgTable(
+  "customer_addresses",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** What the shopper calls it — "Home", "المكتب". Their words, not a type. */
+    label: varchar("label", { length: 40 }).notNull(),
+    /** Who receives it there, which is not always the account holder. */
+    contactName: varchar("contact_name", { length: 160 }),
+    /** Kept as typed, including the +965: formatting a phone number loses it. */
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    /** One of the six governorates, by the id in `shared/customer.ts`. */
+    governorate: varchar("governorate", { length: 32 }),
+    addressLine: varchar("address_line", { length: 300 }).notNull(),
+    addressNotes: varchar("address_notes", { length: 300 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [index("customer_addresses_user_idx").on(table.userId)]
 );
 
 /**
@@ -1271,7 +1328,18 @@ export const orders = pgTable(
     paymentMethod: varchar("payment_method", { length: 20 }),
     /** When the cash actually arrived, which is what makes the order paid. */
     paymentCollectedAt: timestamp("payment_collected_at", { withTimezone: true }),
-    deliveryBreakdown: jsonb("delivery_breakdown").$type<{ vendorId: number | null; vendorName: string; fee: string }[] | null>(),
+    /**
+     * What each parcel cost, frozen beside the total.
+     *
+     * A parcel is a seller *and a destination* (3.2.6), so one seller asked
+     * for two doors appears twice. `destinationLabel` is optional rather than
+     * required because every order placed before a basket could go to two
+     * doors has a breakdown without one, and a row that reads as missing is
+     * honest where a backfilled "Home" would be an invention.
+     */
+    deliveryBreakdown: jsonb("delivery_breakdown").$type<
+      { vendorId: number | null; vendorName: string; destinationLabel?: string | null; fee: string }[] | null
+    >(),
 
     /* Where it goes, as it was given. */
     contactName: varchar("contact_name", { length: 160 }),
@@ -1359,6 +1427,27 @@ export const orderItems = pgTable(
      */
     bundleId: integer("bundle_id").references(() => bundles.id, { onDelete: "set null" }),
     bundleName: varchar("bundle_name", { length: 200 }),
+    /**
+     * Where this line went, when it did not go where the order went (3.2.6).
+     *
+     * Copied rather than referenced, for the reason the price and the
+     * commission rate are: an address edited in March must not rewrite where a
+     * parcel was sent in September, and an address deleted must not leave an
+     * order unable to say where it went.
+     *
+     * One jsonb column rather than six, because it is read as a whole and
+     * never filtered on, and because it is null on nearly every line there
+     * will ever be — the order's own address columns already say where the
+     * rest went, and copying them onto every line would store one fact twice.
+     */
+    destination: jsonb("destination").$type<{
+      label: string;
+      contactName: string | null;
+      contactPhone: string | null;
+      governorate: string | null;
+      addressLine: string | null;
+      addressNotes: string | null;
+    } | null>(),
 
     fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
     /*

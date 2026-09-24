@@ -386,7 +386,9 @@ describe("delivery, per seller", () => {
     expect(placed.totals.grandTotal).toBe("102.250");
 
     const [row] = await db.select().from(ordersTable).where(eq(ordersTable.id, placed.order.id));
-    expect(row.deliveryBreakdown).toEqual([{ vendorId: ids.acme, vendorName: "Acme", fee: "2.250" }]);
+    expect(row.deliveryBreakdown).toEqual([
+      { vendorId: ids.acme, vendorName: "Acme", destinationLabel: null, fee: "2.250" },
+    ]);
   });
 
   /*

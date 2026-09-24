@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
+import { AddressBook } from "@/components/account/AddressBook";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
@@ -45,6 +46,7 @@ const SECTIONS = [
   { id: "rewards", label: "account.sectionRewards" },
   { id: "selling", label: "account.sectionSelling" },
   { id: "details", label: "account.sectionProfile" },
+  { id: "addresses", label: "address.book" },
   { id: "preferences", label: "account.sectionPreferences" },
   { id: "activity", label: "account.sectionActivity" },
   { id: "signout", label: "account.sectionSignOut" },
@@ -176,6 +178,14 @@ export default function Account() {
 
               <Section id="details" title={t("account.sectionProfile")}>
                 <ProfileManager user={user} />
+              </Section>
+
+              {/* Ahead of the settings and behind the profile: an address is
+                  something a shopper comes here to change before a delivery,
+                  which is nearer to "where is my parcel" than to a language
+                  preference. */}
+              <Section id="addresses" title={t("address.book")}>
+                <AddressBook />
               </Section>
 
               <Section id="preferences" title={t("account.sectionPreferences")}>

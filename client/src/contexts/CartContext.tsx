@@ -61,6 +61,8 @@ type CartContextValue = {
   addItem: (variantId: string, quantity?: number, reveal?: boolean, addonIds?: string[], bundleId?: number) => Promise<void>;
   updateQuantity: (lineId: string, quantity: number) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
+  /** Where this line goes (3.2.6). Null puts it back on the order's address. */
+  setDestination: (lineId: string, addressId: number | null) => Promise<void>;
   clearCart: () => void;
   proceedToCheckout: () => void;
 };
@@ -195,6 +197,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cartId, utils.client]
   );
 
+  /**
+   * Send one line to a different door (3.2.6).
+   *
+   * Through the same context as every other line change, so the bag the whole
+   * app reads is the one that came back — the delivery quote moves when a line
+   * moves, since a parcel is a seller *and* a destination, and a page holding
+   * a stale quote would show a total the bill then disagrees with.
+   */
+  const setDestination = useCallback(
+    async (lineId: string, addressId: number | null) => {
+      if (!cartId) return;
+      setLoading(true);
+      try {
+        const updated = await utils.client.commerce.cart.setDestination.mutate({ cartId, lineId, addressId });
+        if (updated) setCart(updated);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [cartId, utils.client]
+  );
+
   const clearCart = useCallback(() => {
     writeStoredCartId(null);
     setCartId(null);
@@ -222,6 +246,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addItem,
       updateQuantity,
       removeItem,
+      setDestination,
       clearCart,
       proceedToCheckout,
     }),
@@ -235,6 +260,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addItem,
       updateQuantity,
       removeItem,
+      setDestination,
       clearCart,
       proceedToCheckout,
     ]

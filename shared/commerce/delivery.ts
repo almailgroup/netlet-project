@@ -26,8 +26,18 @@
  * form rather than evidence they deliver for nothing — and charging a shopper
  * a number the seller never set would be inventing a price. It errs toward the
  * shopper, the direction `missingStoreDetails` and the return window both take.
+ *
+ * ## And a fifth, once a basket could go to two doors
+ *
+ * **A parcel is a seller and a destination** (3.2.6). Two doors are two
+ * journeys out of one warehouse, so a seller asked for both charges for both,
+ * and the threshold is measured against what is going to *that* door. KWD 15
+ * home and KWD 15 to the office is not KWD 30 toward one KWD 20 threshold —
+ * that buys two deliveries with one threshold, which is the same money the
+ * per-basket rule already refuses to spend on somebody else's sale.
  */
 import { compareMoney, fromFils, toFils } from "../money.js";
+import { parcelKey, type DestinationId, type DestinedLine } from "./addresses.js";
 
 /** What a seller charges to deliver, as the store's page records it. */
 export type DeliveryRule = {
@@ -39,11 +49,19 @@ export type DeliveryRule = {
 
 export const FREE: DeliveryRule = { flat: null, freeOver: null };
 
-/** One seller's share of a basket, as the caller already grouped it. */
+/** One parcel: a seller, a destination, and what is going in it. */
 export type DeliveryGroup = {
   vendorId: number | null;
   vendorName: string;
-  /** What the goods from this seller come to, before delivery. */
+  /**
+   * Which door this parcel is for. Null is the order's own address, which is
+   * a destination like any other rather than the absence of one — the parcel
+   * still has to be carried and still has to be paid for.
+   */
+  destinationId?: DestinationId;
+  /** What the shopper calls that door. Null for the order's own address. */
+  destinationLabel?: string | null;
+  /** What the goods in this parcel come to, before delivery. */
   goods: string;
   rule: DeliveryRule;
 };
@@ -51,6 +69,8 @@ export type DeliveryGroup = {
 export type VendorDelivery = {
   vendorId: number | null;
   vendorName: string;
+  destinationId?: DestinationId;
+  destinationLabel?: string | null;
   goods: string;
   fee: string;
   /** True when a fee exists and the basket cleared this seller's threshold. */
@@ -92,7 +112,16 @@ export function quoteDelivery(groups: DeliveryGroup[]): DeliveryQuote {
 
     // No fee recorded is free, and there is no threshold to report against it.
     if (flat === null || flat <= 0n) {
-      return { vendorId: group.vendorId, vendorName: group.vendorName, goods: group.goods, fee: "0.000", free: true, toFree: null };
+      return {
+        vendorId: group.vendorId,
+        vendorName: group.vendorName,
+        destinationId: group.destinationId ?? null,
+        destinationLabel: group.destinationLabel ?? null,
+        goods: group.goods,
+        fee: "0.000",
+        free: true,
+        toFree: null,
+      };
     }
 
     const cleared = threshold !== null && goods >= threshold;
@@ -101,6 +130,8 @@ export function quoteDelivery(groups: DeliveryGroup[]): DeliveryQuote {
     return {
       vendorId: group.vendorId,
       vendorName: group.vendorName,
+      destinationId: group.destinationId ?? null,
+      destinationLabel: group.destinationLabel ?? null,
       goods: group.goods,
       fee: cleared ? "0.000" : fromFils(flat),
       free: cleared,
@@ -113,8 +144,20 @@ export function quoteDelivery(groups: DeliveryGroup[]): DeliveryQuote {
   return { perVendor, total: fromFils(total) };
 }
 
-/** The frozen shape an order keeps, so an old order still says who charged what. */
-export type FrozenDelivery = { vendorId: number | null; vendorName: string; fee: string }[];
+/**
+ * The frozen shape an order keeps, so an old order still says who charged what.
+ *
+ * `destinationLabel` is optional rather than required because every order
+ * placed before a basket could go to two doors has a breakdown without one, and
+ * a column that reads as missing on old rows is honest where a backfilled
+ * "Home" would be an invention.
+ */
+export type FrozenDelivery = {
+  vendorId: number | null;
+  vendorName: string;
+  destinationLabel?: string | null;
+  fee: string;
+}[];
 
 /**
  * The quote, reduced to what the order needs to remember.
@@ -125,7 +168,52 @@ export type FrozenDelivery = { vendorId: number | null; vendorName: string; fee:
  * different figure from the payment.
  */
 export function freezeDelivery(quote: DeliveryQuote): FrozenDelivery {
-  return quote.perVendor.map(row => ({ vendorId: row.vendorId, vendorName: row.vendorName, fee: row.fee }));
+  return quote.perVendor.map(row => ({
+    vendorId: row.vendorId,
+    vendorName: row.vendorName,
+    destinationLabel: row.destinationLabel ?? null,
+    fee: row.fee,
+  }));
+}
+
+/**
+ * Fold priced lines into one group per parcel.
+ *
+ * This is where "a parcel is a seller and a destination" actually happens, and
+ * it is here rather than in the server so the rule can be exercised without a
+ * database: the interesting case is one seller, two doors, and a threshold the
+ * combined total would have cleared and neither door does.
+ *
+ * `rules` answers what a given seller charges. A seller not in it delivers
+ * free, which is the same direction an unrecorded fee already errs in.
+ *
+ * Order is first-seen, so the quote lines up with however the bag is drawn
+ * rather than re-sorting it underneath the shopper.
+ */
+export function groupForDelivery(
+  lines: DestinedLine[],
+  rules: Map<number | null, DeliveryRule>,
+): DeliveryGroup[] {
+  const groups = new Map<string, DeliveryGroup>();
+
+  for (const line of lines) {
+    const key = parcelKey(line.vendorId, line.destinationId);
+    const held = groups.get(key);
+    if (held) {
+      held.goods = fromFils(toFils(held.goods) + toFils(line.value));
+      continue;
+    }
+    groups.set(key, {
+      vendorId: line.vendorId,
+      vendorName: line.vendorName,
+      destinationId: line.destinationId,
+      destinationLabel: line.destinationLabel,
+      goods: line.value,
+      rule: rules.get(line.vendorId) ?? FREE,
+    });
+  }
+
+  return [...groups.values()];
 }
 
 /** Whether a rule would ever charge anything, for a page deciding to draw it. */

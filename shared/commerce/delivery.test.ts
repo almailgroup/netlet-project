@@ -94,9 +94,11 @@ describe("what the order remembers", () => {
       group({ vendorId: 2, vendorName: "Other", rule: { flat: "2.250", freeOver: null } }),
     ]);
     const frozen = freezeDelivery(quote);
+    /* `destinationLabel` is null on a basket going to one door, which is
+       nearly every basket — the door only appears once one is chosen. */
     expect(frozen).toEqual([
-      { vendorId: 1, vendorName: "Acme", fee: "1.500" },
-      { vendorId: 2, vendorName: "Other", fee: "2.250" },
+      { vendorId: 1, vendorName: "Acme", destinationLabel: null, fee: "1.500" },
+      { vendorId: 2, vendorName: "Other", destinationLabel: null, fee: "2.250" },
     ]);
     expect(frozenTotal(frozen)).toBe(quote.total);
   });

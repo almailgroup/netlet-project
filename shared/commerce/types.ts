@@ -224,6 +224,15 @@ export type CartItem = {
    * so a shopper can see which set made it lower.
    */
   bundleName?: string | null;
+  /**
+   * The saved address this line is going to (3.2.6), when it is not going
+   * wherever the rest of the order goes.
+   *
+   * Null is the default rather than the unknown, so a shopper who never opens
+   * the control — and a guest, who has no book to keep an address in — sees
+   * nothing about destinations at all.
+   */
+  destination?: { id: number; label: string } | null;
   lineTotal: Money;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a
@@ -233,11 +242,19 @@ export type CartItem = {
   measure: Measure;
 };
 
-/** One seller's delivery charge on this basket (requirement 3.2.4). */
+/** One parcel's delivery charge on this basket (3.2.4, and 3.2.6 for the door). */
 export type CartDeliveryLine = {
   vendorId: number | null;
   vendorName: string;
-  /** What this seller's goods come to, which is what the threshold measures. */
+  /**
+   * Which door this parcel is for, when the basket is going to more than one.
+   *
+   * A parcel is a seller *and* a destination, so one seller asked for two
+   * doors appears twice — and a row that did not say which would read as a
+   * duplicate charge rather than as a second journey.
+   */
+  destinationLabel?: string | null;
+  /** What is in this parcel, which is what the threshold measures. */
   goods: Money;
   fee: Money;
   free: boolean;
@@ -262,6 +279,14 @@ export type Cart = {
    * averaged figure hides which seller is expensive. The shopper sees each.
    */
   delivery: { perVendor: CartDeliveryLine[]; total: Money };
+  /**
+   * The addresses this shopper could send a line to (3.2.6).
+   *
+   * Sent with the bag so the picker has something to offer without a second
+   * round trip, and empty for a guest — who has no account and therefore no
+   * book, which is what makes the control absent rather than broken for them.
+   */
+  addresses?: { id: number; label: string }[];
   /**
    * Whether cash on delivery is available on this basket (3.2.2), and which
    * seller refused if not.

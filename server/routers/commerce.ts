@@ -24,6 +24,8 @@ import {
 } from "../catalog.js";
 import { publicProcedure, router } from "../_core/trpc.js";
 import { bundlesForVariant } from "../bundles.js";
+import { AddressError, setLineDestination } from "../addresses.js";
+import { TRPCError } from "@trpc/server";
 
 /**
  * Which language to read merchant data in.
@@ -150,6 +152,36 @@ export const commerceRouter = router({
       )
       .mutation(async ({ input }) => {
         return removeCartLines(input.cartId, input.lineIds);
+      }),
+    /**
+     * Send one line to a different door (3.2.6).
+     *
+     * `publicProcedure` because the cart id is what identifies a bag and a
+     * guest has one — but the address has to belong to the signed-in shopper,
+     * which `setLineDestination` checks inside the query rather than here. A
+     * guest passing an id is refused for want of an account, not for want of
+     * that address, which is the same reason the lookup never says whether a
+     * number is registered.
+     *
+     * `null` puts the line back where the order is going, so clearing the
+     * control is the same call rather than a second procedure.
+     */
+    setDestination: publicProcedure
+      .input(
+        z.object({
+          cartId: z.string().min(1),
+          lineId: z.string().min(1),
+          addressId: z.number().int().positive().nullable(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await setLineDestination(input.cartId, ctx.user?.id ?? null, Number(input.lineId), input.addressId);
+        } catch (error) {
+          if (error instanceof AddressError) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          throw error;
+        }
+        return getCart(input.cartId);
       }),
   }),
 });

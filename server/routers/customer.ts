@@ -13,9 +13,35 @@ import {
 } from "../db.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { kuwaitDeliveryZones, notificationKinds } from "../../shared/customer.js";
+import { TRPCError } from "@trpc/server";
+import {
+  AddressError,
+  addAddress,
+  listAddresses,
+  removeAddress,
+  updateAddress,
+} from "../addresses.js";
+import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../shared/commerce/addresses.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);
+
+/**
+ * What a shopper may type into an address.
+ *
+ * The lengths are the schema's, so the form, the API and the column all refuse
+ * at the same point; *which* of them is wrong is `addressProblems`, the same
+ * pure function the page runs, so the API cannot accept what the form refuses
+ * or refuse what it accepts.
+ */
+const addressInput = z.object({
+  label: z.string().min(1).max(MAX_LABEL),
+  contactName: z.string().max(160).nullable().optional(),
+  contactPhone: z.string().max(40).nullable().optional(),
+  governorate: zoneIdSchema.nullable().optional(),
+  addressLine: z.string().min(1).max(MAX_LINE),
+  addressNotes: z.string().max(MAX_NOTES).nullable().optional(),
+});
 
 export const customerRouter = router({
   profile: router({
@@ -73,4 +99,45 @@ export const customerRouter = router({
   tracking: router({
     list: protectedProcedure.query(({ ctx }) => listOrderTrackingEvents(ctx.user.id)),
   }),
+
+  /**
+   * The shopper's address book (3.2.6).
+   *
+   * Protected throughout, because the book belongs to an account: an anonymous
+   * bag has no owner to keep one for. Every procedure passes `ctx.user.id`
+   * into the data layer rather than filtering after the fact — an address id
+   * is a serial and short enough to paste, so "update address 4" has to be
+   * refused by the query itself.
+   */
+  addresses: router({
+    list: protectedProcedure.query(({ ctx }) => listAddresses(ctx.user.id)),
+    add: protectedProcedure
+      .input(addressInput)
+      .mutation(({ ctx, input }) => refusable(() => addAddress(ctx.user.id, input))),
+    update: protectedProcedure
+      .input(addressInput.extend({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => refusable(() => updateAddress(ctx.user.id, input.id, input))),
+    remove: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => refusable(() => removeAddress(ctx.user.id, input.id))),
+  }),
 });
+
+
+/**
+ * Turn a refusal the shopper can act on into a 400 carrying its message key.
+ *
+ * The same shape the offer and bundle routers use: the data layer throws a key
+ * rather than a sentence, because the storefront is read in two languages and
+ * a server that composes English prose has already picked one.
+ */
+async function refusable<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof AddressError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    }
+    throw error;
+  }
+}

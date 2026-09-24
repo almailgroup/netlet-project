@@ -898,3 +898,128 @@ describe("pre-order", () => {
     expect(line.preorderReleaseAt).toBeNull();
   });
 });
+
+/**
+ * Different addresses for different things in one basket (3.2.6).
+ *
+ * The arithmetic — a parcel per seller per door, the threshold measured at
+ * each — is proved pure in `shared/commerce/addresses.test.ts`. What needs a
+ * database is that the door is scoped to the shopper who owns it, that it is
+ * *copied* onto the line rather than referenced, and that deleting the address
+ * afterwards leaves the order still able to say where the parcel went.
+ */
+describe("sending part of a basket somewhere else", () => {
+  let addressesModule: typeof import("./addresses.js");
+
+  beforeAll(async () => {
+    addressesModule = await import("./addresses.js");
+  });
+
+  const office = {
+    label: "Office",
+    contactName: "A Colleague",
+    contactPhone: "+96550111222",
+    governorate: "capital",
+    addressLine: "Block 1, Street 2, Tower 3",
+  };
+
+  it("freezes the door onto the line and leaves the rest alone", async () => {
+    const saved = await addressesModule.addAddress(ids.shopper, office);
+    const cartId = await basket(
+      [{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }],
+      ids.shopper,
+    );
+    const [lampLine] = await db
+      .select()
+      .from(cartItems)
+      .where(eq(cartItems.variantId, ids.lampVariant));
+    await addressesModule.setLineDestination(cartId, ids.shopper, lampLine.id, saved.id);
+
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const lamp = lines.find(line => line.variantId === ids.lampVariant)!;
+    const kettle = lines.find(line => line.variantId === ids.kettleVariant)!;
+
+    expect(lamp.destination?.label).toBe("Office");
+    expect(lamp.destination?.addressLine).toBe("Block 1, Street 2, Tower 3");
+    // Everything else went where the order went, so it carries no copy at all.
+    expect(kettle.destination).toBeNull();
+
+    /* Copied, not referenced: deleting the address must not take with it the
+       record of where a parcel was actually sent. */
+    await addressesModule.removeAddress(ids.shopper, saved.id);
+    const [reread] = await db.select().from(orderItems).where(eq(orderItems.id, lamp.id));
+    expect(reread.destination?.label).toBe("Office");
+  });
+
+  it("charges one seller twice for two doors, and freezes both", async () => {
+    await db.update(vendors)
+      .set({ deliveryFlat: "2.000", deliveryFreeOver: "60.000" })
+      .where(eq(vendors.id, ids.acme));
+    const saved = await addressesModule.addAddress(ids.shopper, office);
+
+    /*
+     * A lamp at 24.375 and a press at 40.000 is 64.375 with this seller — over
+     * their sixty, so sent to one door the delivery is free. Split across two
+     * doors it is two parcels and neither clears the threshold on its own,
+     * which is the whole rule: one threshold does not buy two deliveries.
+     */
+    const lines = [{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.pressVariant, quantity: 1 }];
+
+    const oneDoor = await basket(lines, ids.shopper);
+    const free = await ordersModule.placeOrder(oneDoor, { ...DETAILS, userId: ids.shopper });
+    const [asOne] = await db.select().from(orders).where(eq(orders.id, free.order.id));
+    expect(asOne.deliveryTotal).toBe("0.000");
+    expect(asOne.deliveryBreakdown?.filter(row => row.vendorId === ids.acme)).toHaveLength(1);
+
+    const twoDoors = await basket(lines, ids.shopper);
+    const lampLine = (await db.select().from(cartItems).where(eq(cartItems.cartId, twoDoors)))
+      .find(line => line.variantId === ids.lampVariant)!;
+    await addressesModule.setLineDestination(twoDoors, ids.shopper, lampLine.id, saved.id);
+
+    const split = await ordersModule.placeOrder(twoDoors, { ...DETAILS, userId: ids.shopper });
+    const [asTwo] = await db.select().from(orders).where(eq(orders.id, split.order.id));
+    const parcels = (asTwo.deliveryBreakdown ?? []).filter(row => row.vendorId === ids.acme);
+
+    expect(parcels).toHaveLength(2);
+    expect(new Set(parcels.map(row => row.destinationLabel ?? null))).toEqual(new Set(["Office", null]));
+    expect(parcels.every(row => row.fee === "2.000")).toBe(true);
+    expect(asTwo.deliveryTotal).toBe("4.000");
+
+    await addressesModule.removeAddress(ids.shopper, saved.id);
+    await db.update(vendors).set({ deliveryFlat: null, deliveryFreeOver: null }).where(eq(vendors.id, ids.acme));
+  });
+
+  it("refuses a door that is not this shopper's", async () => {
+    const [stranger] = await db.insert(users).values({ email: `stranger-${Date.now()}@example.test` }).returning();
+    const theirs = await addressesModule.addAddress(stranger.id, office);
+
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const [line] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+
+    await expect(
+      addressesModule.setLineDestination(cartId, ids.shopper, line.id, theirs.id),
+    ).rejects.toThrow("address.unknown");
+  });
+
+  it("refuses a guest, who has no book to pick from", async () => {
+    const saved = await addressesModule.addAddress(ids.shopper, office);
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }]);
+    const [line] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+
+    await expect(
+      addressesModule.setLineDestination(cartId, null, line.id, saved.id),
+    ).rejects.toThrow("address.needsAccount");
+    await addressesModule.removeAddress(ids.shopper, saved.id);
+  });
+
+  it("refuses an address that is actively wrong, and keeps one merely incomplete", async () => {
+    await expect(
+      addressesModule.addAddress(ids.shopper, { ...office, contactPhone: "12" }),
+    ).rejects.toThrow("address.badPhone");
+
+    const bare = await addressesModule.addAddress(ids.shopper, { label: "Mum's", addressLine: "Block 9" });
+    expect(bare.governorate).toBeNull();
+    await addressesModule.removeAddress(ids.shopper, bare.id);
+  });
+});

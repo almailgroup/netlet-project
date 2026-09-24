@@ -162,6 +162,11 @@ function OrderLines({ reference }: { reference: string }) {
                   <div className="min-w-0 flex-1">
                     <p dir="auto" className="type-product truncate text-sm text-[#0a285a]">{line.productTitle}</p>
                     {line.variantTitle ? <p dir="auto" className="truncate text-xs ink-muted">{line.variantTitle}</p> : null}
+                    {/* Where this one went (3.2.6), when it did not go where
+                        the rest of the order went — read off the line's own
+                        frozen copy, so it still says so after the address has
+                        been edited or deleted. */}
+                    {line.destination ? <p dir="auto" className="truncate text-xs ink-accent">{t("address.lineWent", { label: line.destination.label })}</p> : null}
                     <p className="mt-1 text-xs ink-muted">
                       {t("orders.quantityAndPrice", {
                         quantity: String(line.quantity),

@@ -65,7 +65,10 @@ export function AccountPreferences() {
         </p>
         <label className="mt-3 block">
           <span className="text-[11px] font-extrabold text-[#0a285a]">{t("delivery.governorate")}</span>
+          {/* The wrapping <label> would otherwise give this a name made of
+              every governorate in the list. */}
           <select
+            aria-label={t("delivery.governorate")}
             value={deliveryZoneId ?? ""}
             onChange={event => setDeliveryZoneId(event.target.value)}
             className="type-body mt-1.5 h-11 w-full max-w-xs rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a] focus:ring-2 focus:ring-[#f2683a]/25"

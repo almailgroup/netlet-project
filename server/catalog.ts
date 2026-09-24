@@ -42,7 +42,9 @@ import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
-import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
+import { groupForDelivery, quoteDelivery, type DeliveryRule } from "../shared/commerce/delivery.js";
+import type { DestinedLine } from "../shared/commerce/addresses.js";
+import { listAddresses } from "./addresses.js";
 import { codAvailability } from "../shared/commerce/payment.js";
 import { recoveryFor } from "../shared/commerce/cartRecovery.js";
 import { liveOffersFor } from "./offers.js";
@@ -232,6 +234,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       lineId: cartItems.id,
       quantity: cartItems.quantity,
       bundleId: cartItems.bundleId,
+      /* Which door this line is going to (3.2.6). Null is the order's own. */
+      addressId: cartItems.addressId,
       variantId: productVariants.id,
       variantTitle: productVariants.title,
       price: productVariants.price,
@@ -309,6 +313,14 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         .orderBy(productAddons.position)
     : [];
 
+  /*
+   * The shopper's address book, and which of them this basket points at
+   * (3.2.6). Both empty for a guest — an anonymous bag has no owner, so it has
+   * no book and the whole control is absent rather than broken.
+   */
+  const book = cart.userId ? await listAddresses(cart.userId) : [];
+  const doors = new Map(book.map(address => [address.id, address]));
+
   const priced = rows.map(row => {
     const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
     const inBundle = bundled.get(row.variantId);
@@ -344,6 +356,11 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     /* Named on the line, because a shopper who sees a lower figure should be
        able to see which set put it there. */
     bundleName: row.inBundle?.bundleName ?? null,
+    /* Only a door still in the book: an address deleted since leaves the line
+       going where the order goes, which is what `set null` already arranged. */
+    destination: row.addressId && doors.has(row.addressId)
+      ? { id: row.addressId, label: doors.get(row.addressId)!.label }
+      : null,
     quantity: row.quantity,
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     addons: row.extras.map(addon => ({
@@ -362,7 +379,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity }))),
     ...priced.map(row => row.extrasTotal),
   );
-  const quote = deliveryFor(priced);
+  const quote = deliveryFor(priced, doors);
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -393,10 +410,12 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         },
       })),
     ),
+    addresses: book.map(address => ({ id: address.id, label: address.label })),
     delivery: {
       perVendor: quote.perVendor.map(row => ({
         vendorId: row.vendorId,
         vendorName: row.vendorName,
+        destinationLabel: row.destinationLabel ?? null,
         goods: money(row.goods),
         fee: money(row.fee),
         free: row.free,
@@ -409,33 +428,40 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 }
 
 /**
- * Group the priced lines by seller and ask what each charges to deliver.
+ * Group the priced lines into parcels and ask what each costs to deliver.
  *
- * Grouped here rather than in `shared/`, because the grouping needs the rows
- * the query returned; the arithmetic on top of it is pure and lives in
- * `shared/commerce/delivery.ts`, which is what makes it checkable.
+ * A parcel is a seller **and a destination** (3.2.6): two doors are two
+ * journeys out of one warehouse, and charging once for both would hand a
+ * seller's van out for free. The fold itself is pure and lives in
+ * `shared/commerce/delivery.ts`, so the case worth checking — one seller, two
+ * doors, and a threshold their combined total would have cleared — can be
+ * exercised without a database.
  */
-function deliveryFor(rows: {
-  vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
-  charged: string; quantity: number; extrasTotal?: string;
-}[]) {
-  const groups = new Map<number, DeliveryGroup>();
-  for (const row of rows) {
-    const held = groups.get(row.vendorId);
+function deliveryFor(
+  rows: {
+    vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
+    charged: string; quantity: number; extrasTotal?: string; addressId?: number | null;
+  }[],
+  doors: Map<number, { label: string }>,
+) {
+  const rules = new Map<number | null, DeliveryRule>();
+  for (const row of rows) rules.set(row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver });
+
+  const lines: DestinedLine[] = rows.map(row => {
     /* The extras count toward a seller's free-delivery threshold: they are
        money spent with that seller, the same as an agreed price is. */
-    const line = addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal ?? "0.000");
-    if (held) held.goods = addMoney(held.goods, line);
-    else {
-      groups.set(row.vendorId, {
-        vendorId: row.vendorId,
-        vendorName: row.vendorName,
-        goods: line,
-        rule: { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver },
-      });
-    }
-  }
-  return quoteDelivery([...groups.values()]);
+    const value = addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal ?? "0.000");
+    const destinationId = row.addressId && doors.has(row.addressId) ? row.addressId : null;
+    return {
+      vendorId: row.vendorId,
+      vendorName: row.vendorName,
+      destinationId,
+      destinationLabel: destinationId ? doors.get(destinationId)!.label : null,
+      value,
+    };
+  });
+
+  return quoteDelivery(groupForDelivery(lines, rules));
 }
 
 /**

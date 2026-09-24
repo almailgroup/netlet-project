@@ -18,6 +18,7 @@ import { commissionFor, type CommissionRule } from "../inventory/commission.js";
 import { addMoney, multiplyMoney, money } from "../money.js";
 import { fulfilmentFor, type StockLevels } from "./preorder.js";
 import { addonsTotal, type ChosenAddon } from "./addons.js";
+import type { FrozenDestination } from "./addresses.js";
 
 /** A basket line, with everything needed to price and attribute it. */
 export type PriceableLine = {
@@ -58,6 +59,14 @@ export type PriceableLine = {
    */
   bundleId?: number | null;
   bundleName?: string | null;
+  /**
+   * Where this line is going (3.2.6), when it is not going where the order is.
+   *
+   * Already frozen by the time it arrives here: it is a copy of an address
+   * book row, not a reference to one, because an address edited in March must
+   * not rewrite where a parcel was sent in September.
+   */
+  destination?: FrozenDestination | null;
 };
 
 /** One line as it will be written, with nothing left to compute. */
@@ -77,6 +86,8 @@ export type FrozenLine = {
   /** The bundle it was sold in, copied for the same reason. */
   bundleId: number | null;
   bundleName: string | null;
+  /** The door it went to, copied for the same reason. Null: the order's own. */
+  destination: FrozenDestination | null;
   /** Those extras for the whole line: per unit, times the quantity. */
   addonsTotal: string;
   /** The goods and the extras together — everything this line is worth. */
@@ -145,6 +156,7 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     addonsTotal: extras,
     bundleId: line.bundleId ?? null,
     bundleName: line.bundleName ?? null,
+    destination: line.destination ?? null,
     lineTotal: addMoney(multiplyMoney(line.unitPrice, quantity), extras),
     commissionPercent: split.percentApplied,
     commissionFixed: money(split.fixedApplied),

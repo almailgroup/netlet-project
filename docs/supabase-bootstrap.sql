@@ -877,6 +877,31 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0031_opposite_thor_girl.sql =====
+CREATE TABLE IF NOT EXISTS "customer_addresses" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"label" varchar(40) NOT NULL,
+	"contact_name" varchar(160),
+	"contact_phone" varchar(40),
+	"governorate" varchar(32),
+	"address_line" varchar(300) NOT NULL,
+	"address_notes" varchar(300),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "address_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "destination" jsonb;
+DO $$ BEGIN
+  ALTER TABLE "customer_addresses" ADD CONSTRAINT "customer_addresses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "customer_addresses_user_idx" ON "customer_addresses" USING btree ("user_id");
+DO $$ BEGIN
+  ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_address_id_customer_addresses_id_fk" FOREIGN KEY ("address_id") REFERENCES "public"."customer_addresses"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -914,6 +939,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  31 AS migrations_in_this_file,
+  32 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;
