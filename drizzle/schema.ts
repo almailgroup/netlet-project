@@ -896,6 +896,16 @@ export const cartItems = pgTable(
     cartId: varchar("cart_id", { length: 64 }).notNull().references(() => carts.id, { onDelete: "cascade" }),
     variantId: integer("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }),
     quantity: integer("quantity").notNull().default(1),
+    /**
+     * The bundle this line came from (3.3.11), when one did.
+     *
+     * A column rather than a table, because a bundle becomes *ordinary lines*
+     * the moment it reaches the basket — everything downstream already
+     * understands those. `set null` so a bundle withdrawn from the shelf
+     * leaves the goods in the basket at their own prices rather than emptying
+     * it under somebody.
+     */
+    bundleId: integer("bundle_id").references(() => bundles.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -1340,6 +1350,15 @@ export const orderItems = pgTable(
      */
     preordered: boolean("preordered").notNull().default(false),
     preorderReleaseAt: timestamp("preorder_release_at", { withTimezone: true }),
+    /**
+     * The bundle this line was sold as part of (3.3.11).
+     *
+     * Copied beside the price for the reason everything else here is: a bundle
+     * can be withdrawn or re-priced, and an order from last year still has to
+     * say what was bought and why it cost what it did.
+     */
+    bundleId: integer("bundle_id").references(() => bundles.id, { onDelete: "set null" }),
+    bundleName: varchar("bundle_name", { length: 200 }),
 
     fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
     /*
@@ -1364,6 +1383,64 @@ export const orderItems = pgTable(
     index("order_items_vendor_id_idx").on(table.vendorId),
     index("order_items_fulfilment_idx").on(table.fulfilment),
   ]
+);
+
+/* --------------------------------------------------------------- bundles --- */
+
+/**
+ * Several things sold together for less than the sum of them (3.3.11).
+ *
+ * **A bundle is not a product.** It has no stock, no variants and no page to
+ * be bought from: buying one puts its members in the basket as ordinary lines,
+ * so the stock take, the delivery split, the commission and the fulfilment
+ * state all keep working with nothing new to understand.
+ *
+ * `vendor_id` is null for one NetLet put together, which is how a bundle spans
+ * two shops. A seller's own bundle carries theirs — and that is also whose
+ * Ministry discount permit governs it, because a bundle price is an advertised
+ * saving and `shared/commerce/bundles.ts` says so.
+ */
+export const bundles = pgTable(
+  "bundles",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    nameAr: varchar("name_ar", { length: 200 }),
+    /** Null means NetLet's own, which is the cross-vendor case. */
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
+    /** What the whole set costs together. The saving is this against the sum. */
+    bundlePrice: numeric("bundle_price", { precision: 12, scale: 3 }).notNull(),
+    /**
+     * Whether it is on the shelf.
+     *
+     * A flag here rather than a window, unlike the discount permit: a bundle is
+     * merchandising somebody turns on and off, and the *permit* is what carries
+     * a date — which is checked on the read, so a lapsed one takes the bundle
+     * down without anybody editing this.
+     */
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [index("bundles_vendor_idx").on(table.vendorId, table.active)]
+);
+
+/**
+ * What is in one.
+ *
+ * Cascade from the variant: a bundle naming something that no longer exists
+ * cannot be priced, and leaving it would put a broken set on the shelf.
+ */
+export const bundleItems = pgTable(
+  "bundle_items",
+  {
+    id: serial("id").primaryKey(),
+    bundleId: integer("bundle_id").notNull().references(() => bundles.id, { onDelete: "cascade" }),
+    variantId: integer("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(1),
+    position: integer("position").notNull().default(0),
+  },
+  table => [uniqueIndex("bundle_items_unique").on(table.bundleId, table.variantId)]
 );
 
 /* ---------------------------------------------------- seller applications --- */
@@ -1875,3 +1952,5 @@ export type DiscountCodeRow = typeof discountCodes.$inferSelect;
 export type GiftCardRow = typeof giftCards.$inferSelect;
 
 export type VendorApplication = typeof vendorApplications.$inferSelect;
+
+export type BundleRow = typeof bundles.$inferSelect;

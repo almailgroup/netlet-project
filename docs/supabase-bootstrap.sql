@@ -833,6 +833,50 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "vendor_applications_open_unique" ON "vendor_applications" USING btree ("user_id") WHERE "vendor_applications"."status" in ('draft', 'submitted');
 CREATE INDEX IF NOT EXISTS "vendor_applications_status_idx" ON "vendor_applications" USING btree ("status","created_at");
 
+-- ===== 0030_brave_nekra.sql =====
+CREATE TABLE IF NOT EXISTS "bundle_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"bundle_id" integer NOT NULL,
+	"variant_id" integer NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "bundles" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(200) NOT NULL,
+	"name_ar" varchar(200),
+	"vendor_id" integer,
+	"bundle_price" numeric(12, 3) NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "bundle_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "bundle_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "bundle_name" varchar(200);
+DO $$ BEGIN
+  ALTER TABLE "bundle_items" ADD CONSTRAINT "bundle_items_bundle_id_bundles_id_fk" FOREIGN KEY ("bundle_id") REFERENCES "public"."bundles"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "bundle_items" ADD CONSTRAINT "bundle_items_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "bundles" ADD CONSTRAINT "bundles_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "bundle_items_unique" ON "bundle_items" USING btree ("bundle_id","variant_id");
+CREATE INDEX IF NOT EXISTS "bundles_vendor_idx" ON "bundles" USING btree ("vendor_id","active");
+DO $$ BEGIN
+  ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_bundle_id_bundles_id_fk" FOREIGN KEY ("bundle_id") REFERENCES "public"."bundles"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_bundle_id_bundles_id_fk" FOREIGN KEY ("bundle_id") REFERENCES "public"."bundles"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -870,6 +914,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  30 AS migrations_in_this_file,
+  31 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

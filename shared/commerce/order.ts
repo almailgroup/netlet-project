@@ -49,6 +49,15 @@ export type PriceableLine = {
    * same shape `levels` uses for pre-order.
    */
   addons?: ChosenAddon[];
+  /**
+   * The bundle this line came from (3.3.11), when one did.
+   *
+   * The *price* is already the bundle's share — `unitPrice` carries it — so
+   * this is only the label the order freezes, for an order that has to say
+   * later why a sofa cost 180 rather than 200.
+   */
+  bundleId?: number | null;
+  bundleName?: string | null;
 };
 
 /** One line as it will be written, with nothing left to compute. */
@@ -65,6 +74,9 @@ export type FrozenLine = {
   quantity: number;
   /** What the shopper ticked (3.1.2), copied so an old order still says what. */
   addons: ChosenAddon[];
+  /** The bundle it was sold in, copied for the same reason. */
+  bundleId: number | null;
+  bundleName: string | null;
   /** Those extras for the whole line: per unit, times the quantity. */
   addonsTotal: string;
   /** The goods and the extras together — everything this line is worth. */
@@ -131,6 +143,8 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     quantity,
     addons,
     addonsTotal: extras,
+    bundleId: line.bundleId ?? null,
+    bundleName: line.bundleName ?? null,
     lineTotal: addMoney(multiplyMoney(line.unitPrice, quantity), extras),
     commissionPercent: split.percentApplied,
     commissionFixed: money(split.fixedApplied),

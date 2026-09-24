@@ -7,6 +7,7 @@ import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { AddonPicker } from "@/components/product/AddonPicker";
+import { BundleOffer } from "@/components/product/BundleOffer";
 import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -861,6 +862,10 @@ export default function ProductDetail() {
                 decision about one purchase — by the time somebody has scrolled
                 past the button they have bought it without the fitting. */}
             <AddonPicker addons={product.addons ?? []} chosen={chosenAddons} onChange={setChosenAddons} />
+
+            {/* A bundle is offered where the decision is made — the page for
+                one of its members — rather than on an index nobody browses. */}
+            <BundleOffer variantId={selectedVariant?.id} />
 
             <div className="mt-6 flex items-center gap-3">
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>

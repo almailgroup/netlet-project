@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 348 columns across 33 tables.
+-- Expected: 364 columns across 35 tables.
 
 WITH expected AS (
   SELECT
@@ -18,8 +18,10 @@ WITH expected AS (
   FROM (VALUES
     ('audit_log', 'action,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
     ('auth_attempts', 'bucket,created_at,id,kind'),
+    ('bundle_items', 'bundle_id,id,position,quantity,variant_id'),
+    ('bundles', 'active,bundle_price,created_at,id,name,name_ar,updated_at,vendor_id'),
     ('cart_item_addons', 'addon_id,cart_item_id,id'),
-    ('cart_items', 'cart_id,created_at,id,quantity,updated_at,variant_id'),
+    ('cart_items', 'bundle_id,cart_id,created_at,id,quantity,updated_at,variant_id'),
     ('carts', 'created_at,id,updated_at,user_id'),
     ('categories', 'created_at,id,name,name_ar,parent_id,position,slug'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
@@ -30,7 +32,7 @@ WITH expected AS (
     ('gift_card_uses', 'amount,created_at,gift_card_id,id,order_id'),
     ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
-    ('order_items', 'commission_amount,commission_fixed,commission_percent,created_at,delivered_at,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net'),
+    ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,created_at,delivered_at,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
     ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
     ('point_entries', 'created_at,id,note,order_id,points,reason,referral_id,settled_at,user_id'),

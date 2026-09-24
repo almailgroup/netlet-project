@@ -365,6 +365,15 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.bulkCreate":
       throw new Error("admin.saveFailed");
 
+    /* The demo's fixtures hold no bundles, and inventing one would put a set
+       on the shelf that cannot be bought. */
+    case "commerce.bundlesForVariant":
+    case "inventory.bundles.list":
+      return [];
+    case "inventory.bundles.save":
+    case "inventory.bundles.setActive":
+      throw new Error("admin.saveFailed");
+
     /* The demo signs in as a vendor `manager` who already has a store, so the
        honest answer is that they have no application waiting. */
     case "inventory.applications.mine":

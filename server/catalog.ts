@@ -41,6 +41,7 @@ import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
+import { bundlePricing } from "./bundles.js";
 import { quoteDelivery, type DeliveryGroup } from "../shared/commerce/delivery.js";
 import { codAvailability } from "../shared/commerce/payment.js";
 import { recoveryFor } from "../shared/commerce/cartRecovery.js";
@@ -230,6 +231,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     .select({
       lineId: cartItems.id,
       quantity: cartItems.quantity,
+      bundleId: cartItems.bundleId,
       variantId: productVariants.id,
       variantTitle: productVariants.title,
       price: productVariants.price,
@@ -275,6 +277,17 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const agreed = await liveOffersFor(db, cart.userId, rows.map(row => row.variantId));
 
   /*
+   * What the bundles in this basket make each line cost (3.3.11), by the same
+   * function `placeOrder` uses. Two implementations of this is precisely how a
+   * checkout summary comes to disagree with the bill.
+   */
+  const bundled = await bundlePricing(db, rows.map(row => ({
+    variantId: row.variantId,
+    quantity: row.quantity,
+    bundleId: row.bundleId,
+  })));
+
+  /*
    * The optional extras each line carries (3.1.2), priced from the catalog on
    * every read — `cart_item_addons` stores which, never what they cost, which
    * is the same rule that keeps a cart free of prices.
@@ -298,9 +311,14 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 
   const priced = rows.map(row => {
     const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
+    const inBundle = bundled.get(row.variantId);
     return {
       ...row,
-      charged: priceFor(row.price, agreed.get(row.variantId) ?? null),
+      inBundle,
+      /* A bundle is a set at a set price, so it decides before a personally
+         agreed price does: two reductions stacked on one line is two
+         discounts neither of which knew about the other. */
+      charged: inBundle ? inBundle.unitPrice : priceFor(row.price, agreed.get(row.variantId) ?? null),
       extras,
       extrasTotal: addonsTotal(
         extras.map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
@@ -322,7 +340,10 @@ export async function getCart(cartId: string): Promise<Cart | null> {
        asked for it. It is never `compareAtPrice`: that field drives the public
        strikethrough and the `−27%` badge, which are the machinery of an
        advertised claim and need a Ministry permit this does not. */
-    agreedFrom: row.charged === row.price ? null : money(row.price),
+    agreedFrom: row.charged === row.price || row.inBundle ? null : money(row.price),
+    /* Named on the line, because a shopper who sees a lower figure should be
+       able to see which set put it there. */
+    bundleName: row.inBundle?.bundleName ?? null,
     quantity: row.quantity,
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     addons: row.extras.map(addon => ({
@@ -424,7 +445,7 @@ function deliveryFor(rows: {
  * because the price comes from the catalog and anything the client says about
  * money is discarded.
  */
-type Line = { variantId: string; quantity: number; addonIds?: string[] };
+type Line = { variantId: string; quantity: number; addonIds?: string[]; bundleId?: number };
 
 /**
  * Only a buyable variant may enter a cart.
@@ -463,6 +484,7 @@ async function putLines(
       variantId: Number(line.variantId),
       quantity: line.quantity,
       addonIds: (line.addonIds ?? []).map(Number).filter(Number.isInteger),
+      bundleId: line.bundleId ?? null,
     }))
     .filter(line => Number.isInteger(line.variantId) && line.quantity > 0);
   const buyable = await buyableVariantIds(db, wanted.map(line => line.variantId));
@@ -473,10 +495,18 @@ async function putLines(
     // second one — which is what the composite unique is for.
     const [row] = await db
       .insert(cartItems)
-      .values({ cartId, variantId: line.variantId, quantity: line.quantity })
+      .values({ cartId, variantId: line.variantId, quantity: line.quantity, bundleId: line.bundleId })
       .onConflictDoUpdate({
         target: [cartItems.cartId, cartItems.variantId],
-        set: { quantity: sql`${cartItems.quantity} + ${line.quantity}`, updatedAt: new Date() },
+        /* Adding a bundled line over a plain one marks it as bundled; adding a
+           plain one over a bundled line leaves the bundle alone, because the
+           set is still in the basket and buying another of one member should
+           not cancel it. */
+        set: {
+          quantity: sql`${cartItems.quantity} + ${line.quantity}`,
+          bundleId: line.bundleId ?? sql`${cartItems.bundleId}`,
+          updatedAt: new Date(),
+        },
       })
       .returning({ id: cartItems.id });
 

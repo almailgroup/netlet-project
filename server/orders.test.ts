@@ -20,6 +20,8 @@ import {
   orderItemAddons,
   orderItems,
   orders,
+  bundleItems,
+  bundles as bundlesTable,
   discountCodes,
   giftCards,
   productAddons,
@@ -551,6 +553,79 @@ describe("optional extras", () => {
  * predicate inside the write, and that all three reductions land on the order
  * in the right order.
  */
+/*
+ * Bundles (3.3.11), against a real Postgres. The split is proved pure in
+ * `shared/commerce/bundles.test.ts`; what is here is what cannot be — that the
+ * saving reaches the order lines, that it comes off *both* sellers rather than
+ * one funding the other, and that taking a member out of the basket puts the
+ * rest back to their own prices.
+ */
+describe("bundles", () => {
+  async function aBundle(price: string) {
+    const [bundle] = await db.insert(bundlesTable).values({ name: "Lamp and kettle", bundlePrice: price }).returning();
+    await db.insert(bundleItems).values([
+      { bundleId: bundle.id, variantId: ids.lampVariant, quantity: 1, position: 0 },
+      { bundleId: bundle.id, variantId: ids.kettleVariant, quantity: 1, position: 1 },
+    ]);
+    return bundle;
+  }
+
+  async function bundledBasket(bundleId: number, both = true) {
+    const [cart] = await db.insert(carts).values({ id: `cart-${Math.random().toString(36).slice(2)}`, userId: ids.shopper }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.lampVariant, quantity: 1, bundleId });
+    if (both) await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.kettleVariant, quantity: 1, bundleId });
+    return cart.id;
+  }
+
+  /*
+   * The rule the cross-vendor case turns on: taking the whole saving off one
+   * line would have that seller paying for the other's promotion.
+   */
+  it("takes the saving off both sellers in proportion", async () => {
+    /* The lamp is 24.375 and the kettle 11.250 — 35.625 separately. */
+    const bundle = await aBundle("32.000");
+    const placed = await ordersModule.placeOrder(await bundledBasket(bundle.id), { ...DETAILS, userId: ids.shopper });
+
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(lines.every(line => line.bundleName === "Lamp and kettle")).toBe(true);
+
+    for (const line of lines) {
+      /* Each line is discounted, and by roughly the same share. */
+      const separately = line.variantId === ids.lampVariant ? 24.375 : 11.25;
+      expect(Number(line.unitPrice)).toBeLessThan(separately);
+      expect(Number(line.unitPrice) / separately).toBeCloseTo(32 / 35.625, 2);
+    }
+  });
+
+  /* The identity the finance panel is tested against, at a bundle price. */
+  it("keeps commission + vendorNet === lineTotal on every line", async () => {
+    const bundle = await aBundle("32.000");
+    const placed = await ordersModule.placeOrder(await bundledBasket(bundle.id), { ...DETAILS, userId: ids.shopper });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    for (const line of lines) {
+      expect(addMoney(line.commissionAmount, line.vendorNet)).toBe(line.lineTotal);
+    }
+  });
+
+  /* Two thirds of a bundle is a discount nobody agreed to. */
+  it("puts the rest back to their own prices when a member is missing", async () => {
+    const bundle = await aBundle("32.000");
+    const placed = await ordersModule.placeOrder(await bundledBasket(bundle.id, false), { ...DETAILS, userId: ids.shopper });
+
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(line.unitPrice).toBe("24.375");
+    expect(line.bundleId).toBeNull();
+  });
+
+  /* The shopper pays at most what the set says — never more. */
+  it("charges no more than the bundle price", async () => {
+    const bundle = await aBundle("32.000");
+    const placed = await ordersModule.placeOrder(await bundledBasket(bundle.id), { ...DETAILS, userId: ids.shopper });
+    expect(Number(placed.totals.itemsTotal)).toBeLessThanOrEqual(32);
+    expect(Number(placed.totals.itemsTotal)).toBeGreaterThan(31.99);
+  });
+});
+
 describe("codes and gift cards", () => {
   const buy = (cartId: string, voucherCode?: string) =>
     ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, voucherCode });

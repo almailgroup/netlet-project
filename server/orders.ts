@@ -42,6 +42,7 @@ import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
+import { bundlePricing } from "./bundles.js";
 import { quoteVoucher, recordGiftCardUse, recordRedemption, refundGiftCard, spendGiftCard } from "./vouchers.js";
 import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
@@ -129,6 +130,7 @@ async function priceableLines(
       vendorId: vendors.id,
       vendorName: vendors.name,
       quantity: cartItems.quantity,
+      bundleId: cartItems.bundleId,
       unitPrice: productVariants.price,
       productTitle: products.title,
       variantTitle: productVariants.title,
@@ -168,6 +170,19 @@ async function priceableLines(
   const offerIds: number[] = [];
 
   /*
+   * What the bundles in this basket make each line cost (3.3.11). Read here at
+   * the last moment like every other price, and it decides *before* the agreed
+   * price does: a bundle is a set at a set price, and a personal discount on
+   * one member would be two reductions stacked on one line, neither of which
+   * the other knew about.
+   */
+  const bundled = await bundlePricing(db, rows.map(row => ({
+    variantId: row.variantId,
+    quantity: row.quantity,
+    bundleId: row.bundleId,
+  })));
+
+  /*
    * The extras the shopper ticked (3.1.2), priced from the catalog here for
    * the same reason the goods are: the basket stores which, never what they
    * cost, and this is the last moment the figure is allowed to move.
@@ -187,8 +202,9 @@ async function priceableLines(
     .orderBy(productAddons.position);
 
   const lines = rows.map(row => {
-    const offer = agreed.get(row.variantId) ?? null;
-    const charged = priceFor(row.unitPrice, offer);
+    const inBundle = bundled.get(row.variantId);
+    const offer = inBundle ? null : agreed.get(row.variantId) ?? null;
+    const charged = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, offer);
     // Only an agreement that actually moved the price is spent. One the shelf
     // has undercut leaves the shopper free to use it another day.
     if (offer && charged !== row.unitPrice) offerIds.push(offer.id);
@@ -207,6 +223,8 @@ async function priceableLines(
       preorderStock: row.preorderStock,
       preorderReleaseAt: row.preorderReleaseAt,
     },
+    bundleId: inBundle?.bundleId ?? null,
+    bundleName: inBundle?.bundleName ?? null,
     vendorRule: { percent: row.vendorPercent, fixed: row.vendorFixed },
     // Null on both columns is the absence of an override, not an override of
     // zero — `resolveRule` depends on being handed null rather than a zeroed
@@ -230,7 +248,8 @@ async function priceableLines(
   const groups = new Map<number, DeliveryGroup>();
   const codRules = new Map(rows.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
   for (const row of rows) {
-    const charged = priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
+    const inBundle = bundled.get(row.variantId);
+    const charged = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
     /* The extras are money spent with that seller, so they count toward their
        free-delivery threshold exactly as the goods do. */
     const value = addMoney(
@@ -511,6 +530,8 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         commissionAmount: line.commissionAmount,
         vendorNet: line.vendorNet,
         /* What was actually taken, not what was offered a moment earlier. */
+        bundleId: line.bundleId ?? null,
+        bundleName: line.bundleName ?? null,
         preordered: pools.get(line.variantId) === "preorder",
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
@@ -816,6 +837,8 @@ export async function getOrderFor(actor: Actor, orderId: number) {
            extras, so re-summing them here would count them twice. */
         addons: [],
         addonsTotal: "0.000",
+        bundleId: line.bundleId,
+        bundleName: line.bundleName,
         lineTotal: line.lineTotal,
         commissionPercent: line.commissionPercent,
         commissionFixed: line.commissionFixed,

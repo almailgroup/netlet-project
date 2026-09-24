@@ -23,6 +23,7 @@ import {
   updateCartLines,
 } from "../catalog.js";
 import { publicProcedure, router } from "../_core/trpc.js";
+import { bundlesForVariant } from "../bundles.js";
 
 /**
  * Which language to read merchant data in.
@@ -38,6 +39,9 @@ const cartLineInputSchema = z.object({
   /* The optional extras ticked on this line (3.1.2). Ids only — the price is
      read from the catalog, and an id the product does not offer is dropped. */
   addonIds: z.array(z.string().min(1)).max(20).optional(),
+  /* Which bundle put this line here (3.3.11). The *price* is never sent: the
+     server reads the bundle and splits its price itself. */
+  bundleId: z.number().int().positive().optional(),
 });
 
 const cartLineUpdateSchema = z.object({
@@ -79,6 +83,18 @@ export const commerceRouter = router({
         return getCollectionByHandle(input.handle, input.locale ?? "en");
       }),
   }),
+  /**
+   * Bundles a shopper could buy (3.3.11).
+   *
+   * Public, because it is shelf information: what is in the set, what it
+   * saves, and whether every member can still be bought. The permit rule and
+   * the availability rule are both applied on the read in `loadBundles`, so a
+   * page cannot show a set the shop may not advertise.
+   */
+  bundlesForVariant: publicProcedure
+    .input(z.object({ variantId: z.string().min(1) }))
+    .query(({ input }) => bundlesForVariant(Number(input.variantId))),
+
   cart: router({
     create: publicProcedure
       .input(z.object({ lines: z.array(cartLineInputSchema).min(1).max(50) }))

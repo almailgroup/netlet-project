@@ -211,6 +211,13 @@
       "when": 1790272869584,
       "tag": "0029_late_cargill",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790274306880,
+      "tag": "0030_brave_nekra",
+      "breakpoints": true
     }
   ]
 }

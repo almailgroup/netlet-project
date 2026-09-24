@@ -217,6 +217,13 @@ export type CartItem = {
   addons?: { id: string; label: string; kind: string; price: Money }[];
   /** Those extras across the whole line. Included in `lineTotal`. */
   addonsTotal?: Money | null;
+  /**
+   * The bundle this line is priced as part of (3.3.11), when one is.
+   *
+   * A name rather than a figure: the price is already `unitPrice`, and this is
+   * so a shopper can see which set made it lower.
+   */
+  bundleName?: string | null;
   lineTotal: Money;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a

@@ -74,6 +74,7 @@ import {
   submitApplication,
 } from "../applications.js";
 import { APPLICATION_STATES } from "../../shared/inventory/sellerApplication.js";
+import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
 /**
@@ -190,6 +191,16 @@ const storeDetails = {
  * — the same arrangement `assertCan` and the order refusals already use, so a
  * reason can be read on an Arabic page.
  */
+/** A bundle's own refusals, as message keys the page can say in either language. */
+async function bundleGuard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof BundleError) throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
+    throw error;
+  }
+}
+
 async function applicationGuard<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
@@ -227,6 +238,44 @@ export const inventoryRouter = router({
    * `platform.manageUsers` beside its query — approving one creates a store
    * and attaches an owner, which is exactly what that grant is for.
    */
+  /**
+   * Bundles (3.3.11).
+   *
+   * The guards are inside `server/bundles.ts` beside each query, because who
+   * may make one depends on what is *in* it: a seller may bundle their own
+   * goods, and a set spanning two shops is NetLet's own merchandising.
+   */
+  bundles: router({
+    list: protectedProcedure.query(async ({ ctx }) => guard(async () =>
+      listBundles(await resolveActor(ctx.user)))),
+
+    save: protectedProcedure
+      .input(z.object({
+        id: z.number().int().positive().optional(),
+        name: z.string().trim().min(1).max(200),
+        nameAr: z.string().trim().max(200).nullable().optional(),
+        /* Null is NetLet's own, which is how a bundle spans two shops. */
+        vendorId: z.number().int().positive().nullable(),
+        bundlePrice: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+        active: z.boolean().optional(),
+        members: z.array(z.object({
+          variantId: z.number().int().positive(),
+          quantity: z.number().int().min(1).max(99),
+        })).min(2).max(20),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user, input.vendorId ?? undefined);
+        return guard(() => bundleGuard(() => saveBundle(actor, input)));
+      }),
+
+    setActive: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), active: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => bundleGuard(() => setBundleActive(actor, input.id, input.active)));
+      }),
+  }),
+
   applications: router({
     /** The applicant's own, or null. Never anybody else's. */
     mine: protectedProcedure.query(({ ctx }) => myApplication(ctx.user.id)),
