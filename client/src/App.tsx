@@ -41,6 +41,8 @@ const AdminStock = lazy(() => import("@/pages/admin/Stock"));
 const AdminOrders = lazy(() => import("@/pages/admin/Orders"));
 const AdminImport = lazy(() => import("@/pages/admin/Import"));
 const AdminPromotions = lazy(() => import("@/pages/admin/Promotions"));
+const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
+const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
 const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
@@ -104,6 +106,7 @@ function Router() {
         <Route path="/gifts/:token" component={GiftList} />
         <Route path="/gifts" component={GiftList} />
         <Route path="/checkout" component={Checkout} />
+        <Route path="/sell" component={Sell} />
         <Route path="/category/:slug" component={Category} />
         <Route path="/admin" component={AdminOverview} />
         <Route path="/admin/products" component={AdminProducts} />
@@ -113,6 +116,7 @@ function Router() {
         <Route path="/admin/orders" component={AdminOrders} />
         <Route path="/admin/import" component={AdminImport} />
         <Route path="/admin/promotions" component={AdminPromotions} />
+        <Route path="/admin/applications" component={AdminApplications} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />
         <Route path="/admin/vendors" component={AdminVendors} />

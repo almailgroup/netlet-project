@@ -791,6 +791,48 @@ CREATE INDEX IF NOT EXISTS "discount_redemptions_user_idx" ON "discount_redempti
 CREATE INDEX IF NOT EXISTS "gift_card_uses_card_idx" ON "gift_card_uses" USING btree ("gift_card_id","created_at");
 CREATE UNIQUE INDEX IF NOT EXISTS "gift_cards_code_unique" ON "gift_cards" USING btree ("code");
 
+-- ===== 0029_late_cargill.sql =====
+CREATE TABLE IF NOT EXISTS "vendor_applications" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"store_name" varchar(160) NOT NULL,
+	"store_name_ar" varchar(160),
+	"contact_email" varchar(320),
+	"contact_phone" varchar(32),
+	"governorate" varchar(32),
+	"address_line" varchar(300),
+	"licence_number" varchar(64),
+	"licence_expires_at" timestamp with time zone,
+	"licence_doc_url" varchar(2000),
+	"identity_doc_url" varchar(2000),
+	"payout_iban" varchar(42),
+	"under_platform_licence" boolean DEFAULT false NOT NULL,
+	"agreement_version" varchar(20),
+	"agreed_at" timestamp with time zone,
+	"status" varchar(20) DEFAULT 'draft' NOT NULL,
+	"rejection_reason" varchar(400),
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"vendor_id" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "licence_expires_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "vendor_applications" ADD CONSTRAINT "vendor_applications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "vendor_applications" ADD CONSTRAINT "vendor_applications_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "vendor_applications" ADD CONSTRAINT "vendor_applications_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "vendor_applications_open_unique" ON "vendor_applications" USING btree ("user_id") WHERE "vendor_applications"."status" in ('draft', 'submitted');
+CREATE INDEX IF NOT EXISTS "vendor_applications_status_idx" ON "vendor_applications" USING btree ("status","created_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -828,6 +870,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  29 AS migrations_in_this_file,
+  30 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

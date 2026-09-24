@@ -35,6 +35,8 @@ describe("NetLet home layout content", () => {
       .flatMap((group) => group.links)
       .filter((link) => !("query" in link) && !("href" in link) && !("route" in link))
       .map((link) => link.key);
-    expect(danglingLinks).toEqual(["footer.returns", "footer.contact", "footer.ourStory", "footer.sellWithUs"]);
+    // "Sell with us" left this list when self-registration landed (3.3.1) and
+    // gave it `/sell` to point at.
+    expect(danglingLinks).toEqual(["footer.returns", "footer.contact", "footer.ourStory"]);
   });
 });

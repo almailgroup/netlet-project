@@ -36,6 +36,10 @@ describe("dictionary completeness", () => {
     const allowed = new Set<MessageKey>([
       "header.language", "account.english", "account.arabic",
       "admin.importNote", "admin.importChoose",
+      // These two name the `https` scheme, which is what a seller has to type
+      // into the box — a literal, like the CSV above, rather than English
+      // prose somebody forgot to translate.
+      "sell.papersNote", "application.insecureDocument",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

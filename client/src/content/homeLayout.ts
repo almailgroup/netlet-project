@@ -79,7 +79,10 @@ export const footerGroups = [
     title: "footer.netlet",
     links: [
       { key: "footer.ourStory" },
-      { key: "footer.sellWithUs" },
+      /* Had no route at all until self-registration landed (3.3.1), which
+         made it the dead control this codebase keeps warning about: a link
+         that reads like an offer and answers a press with nothing. */
+      { key: "footer.sellWithUs", route: "/sell" },
       { key: "footer.kuwaitDelivery", route: "/checkout" },
       { key: "footer.account", route: "/account" },
     ],

@@ -365,6 +365,20 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.bulkCreate":
       throw new Error("admin.saveFailed");
 
+    /* The demo signs in as a vendor `manager` who already has a store, so the
+       honest answer is that they have no application waiting. */
+    case "inventory.applications.mine":
+      return null;
+    case "inventory.applications.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "inventory.applications.waiting":
+      return 0;
+    case "inventory.applications.save":
+    case "inventory.applications.submit":
+    case "inventory.applications.approve":
+    case "inventory.applications.reject":
+      throw new Error("admin.saveFailed");
+
     /* No codes and no cards in the fixtures, and inventing one would be a
        code somebody types into a real shop and finds does not exist. */
     case "orders.quoteVoucher":

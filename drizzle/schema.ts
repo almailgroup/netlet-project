@@ -548,6 +548,19 @@ export const vendors = pgTable(
     addressLine: text("address_line"),
     /** Kuwait trade licence. A string, never a number — it carries leading zeros. */
     licenceNumber: varchar("licence_number", { length: 60 }),
+    /**
+     * When that trade licence runs out.
+     *
+     * Deliberately not `discount_licence_expires_at` beside it: that one is the
+     * Ministry of Commerce *discount permit*, which governs whether a saving
+     * may be advertised, and this is whether the company may trade at all. Two
+     * facts in one column is how an expired permit would come to mean a closed
+     * shop.
+     *
+     * Added when self-registration landed, because an applicant gives it and
+     * approving used to drop it on the floor.
+     */
+    licenceExpiresAt: timestamp("licence_expires_at", { withTimezone: true }),
     /** Where payouts go. Stored as typed; validated as an IBAN, not parsed. */
     payoutIban: varchar("payout_iban", { length: 34 }),
 
@@ -1353,6 +1366,75 @@ export const orderItems = pgTable(
   ]
 );
 
+/* ---------------------------------------------------- seller applications --- */
+
+/**
+ * Somebody asking to sell on NetLet (3.3.1).
+ *
+ * A store could only exist because an administrator made one, so every seller
+ * arrived through a conversation. This is the self-serve path: a shopper fills
+ * this in, an administrator approves it, and approving is what creates the
+ * vendor and the membership.
+ *
+ * **One open application per account**, enforced by a partial unique index
+ * rather than a check in application code: two tabs beat a read-then-insert,
+ * and a reviewer reading the same store twice is how they stop reading the
+ * queue. Approved and rejected rows fall out of the index, so somebody whose
+ * application was rejected can correct it and send another, and somebody who
+ * already has a store can apply for a second one.
+ *
+ * Nothing here is a document. NetLet has no upload pipeline — a vendor types
+ * an image URL for a product for the same reason — so these are links, and
+ * `applicationProblems` refuses one that is not https.
+ */
+export const vendorApplications = pgTable(
+  "vendor_applications",
+  {
+    id: serial("id").primaryKey(),
+    /** Who is asking. Cascade: an account that goes takes its application. */
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    storeName: varchar("store_name", { length: 160 }).notNull(),
+    storeNameAr: varchar("store_name_ar", { length: 160 }),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    contactPhone: varchar("contact_phone", { length: 32 }),
+    governorate: varchar("governorate", { length: 32 }),
+    addressLine: varchar("address_line", { length: 300 }),
+    licenceNumber: varchar("licence_number", { length: 64 }),
+    licenceExpiresAt: timestamp("licence_expires_at", { withTimezone: true }),
+    licenceDocUrl: varchar("licence_doc_url", { length: 2000 }),
+    identityDocUrl: varchar("identity_doc_url", { length: 2000 }),
+    payoutIban: varchar("payout_iban", { length: 42 }),
+    /** Recorded, never inferred from a blank licence number. */
+    underPlatformLicence: boolean("under_platform_licence").notNull().default(false),
+    /**
+     * Which version of the seller agreement they accepted, and when.
+     *
+     * The version is frozen here for the reason an order freezes its
+     * commission rate: a term added next year must not retroactively become
+     * something last year's seller agreed to.
+     */
+    agreementVersion: varchar("agreement_version", { length: 20 }),
+    agreedAt: timestamp("agreed_at", { withTimezone: true }),
+    status: varchar("status", { length: 20 }).notNull().default("draft"),
+    /** Why it was refused, written onto the row the applicant reads. */
+    rejectionReason: varchar("rejection_reason", { length: 400 }),
+    reviewedBy: integer("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    /** The store this became, once approved. */
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("vendor_applications_open_unique")
+      .on(table.userId)
+      .where(sql`${table.status} in ('draft', 'submitted')`),
+    index("vendor_applications_status_idx").on(table.status, table.createdAt),
+  ]
+);
+
 /* -------------------------------------------------------------- vouchers --- */
 
 /**
@@ -1791,3 +1873,5 @@ export type OrderItemAddon = typeof orderItemAddons.$inferSelect;
 
 export type DiscountCodeRow = typeof discountCodes.$inferSelect;
 export type GiftCardRow = typeof giftCards.$inferSelect;
+
+export type VendorApplication = typeof vendorApplications.$inferSelect;

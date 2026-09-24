@@ -49,6 +49,11 @@ function Overview({ actor }: { actor: Actor }) {
     { limit: 1 },
     { enabled: can(actor, "platform.viewAll") },
   );
+  /* Somebody waiting to be let in is the most time-sensitive thing in the
+     portal: a seller who applied and heard nothing goes and sells elsewhere. */
+  const waitingApplications = trpc.inventory.applications.waiting.useQuery(undefined, {
+    enabled: can(actor, "platform.manageUsers"),
+  });
 
   if (counts.isLoading || counts.isError) return <QueryGate queries={[counts]}>{() => null}</QueryGate>;
   const data = counts.data;
@@ -63,6 +68,7 @@ function Overview({ actor }: { actor: Actor }) {
    * Mixing the two teaches people to stop reading the row.
    */
   const waiting: Tile[] = [
+    { label: "admin.applications" as const, value: waitingApplications.data ?? 0, href: "/admin/applications", tone: "urgent" as const },
     ...(mayReview ? [{ label: "admin.countPendingReview" as const, value: data.pendingReview, href: "/admin/review", tone: "urgent" as const }] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),
     { label: "admin.countOutOfStock" as const, value: data.outOfStock, href: "/admin/stock", tone: "urgent" as const },

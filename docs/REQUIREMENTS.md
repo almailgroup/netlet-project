@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 40 |
+| Built | 41 |
 | Partial | 8 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 27 |
+| Not started | 26 |
 
-*Last updated after landing gift cards and discount codes (3.2.3). Card payments and
+*Last updated after landing seller self-registration (3.3.1). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -77,11 +77,11 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 8 | Split an order into per-product operations | **Partial** | Fulfilment lives on the *line*, not the order, which is the hard half, and it is now **operable**: `/admin/orders` puts a control on every line and none on the order, because an order spanning three sellers can be fully paid while two have shipped nothing. `setLineFulfilment` had been written since the tables landed with no caller at all, so `delivered_at` had no writer — every line said "delivered" with a null date and nothing downstream ever opened. It is stamped when a line is marked delivered and cleared when it is moved back off, which is the uncomfortable half and still right: a seller correcting a mis-click has said the parcel is not there, and leaving the date would hold a return window open on it. Return and re-pickup as operations are still absent. |
 | 9 | Fast checkout | **Partial** | The page exists; there is nothing to pay with. |
 
-## 3.3 Vendor experience — 16 built, 2 partial, 4 absent
+## 3.3 Vendor experience — 17 built, 2 partial, 3 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
-| 1 | Self-registration: account → choose vendor → documents → contract → approval | **Not started** | Today an admin creates the vendor and its login. There is no self-serve path, no document upload, no contract step. |
+| 1 | Self-registration: account → choose vendor → documents → contract → approval | **Built** | `/sell`, on the storefront rather than in the portal, because the person filling it in has no portal to reach yet — and it is what the footer's "Sell with us" now points at, a link that had no destination at all. `shared/inventory/sellerApplication.ts` is the rule set and is pure. **Saving is easy and approving is strict**: a save refuses only what is actively wrong — a name it cannot exist without, an IBAN that fails mod-97 and would send money to an account that is not there, a document link that is not https — while everything merely absent is listed on the page, because refusing a save over a licence nobody has scanned is how a form goes unfinished. **Approving is the guarded step**, since approving is what creates the store, and both sides run the same `readyToApprove`, so the button cannot offer what the API refuses. **One approval, not two**: the vendor is written `approved` and the applicant attached as its owner in the same call, because a store left `pending` afterwards is a state somebody forgets and a seller who was told they were open and is not. A failure to attach the owner deletes the store again — a shop nobody can sign into looks finished, so nobody goes back to fix it. **One open application per account**, by partial unique index rather than a read-then-insert two tabs beat; approved and rejected rows fall out of it, so a rejection can be corrected and sent again and a second store can be applied for. The agreement is recorded **with its version**, because "they accepted the terms" means nothing without "which terms". Documents are links, not uploads, and the page says so rather than leaving somebody to find out — NetLet has no upload pipeline, which is the same reason a vendor types an image URL. A seller trading under NetLet's own licence is never asked for a number they do not have. Verified end to end in a browser in both languages, axe clean: applied, refused on a bad IBAN, completed, submitted, approved, and the new owner reached the portal and their store's Selling section. |
 | 2 | Default commission shown at onboarding, propose custom | **Partial** | Commission is fully modelled; there is no onboarding to show it in. |
 | 3 | Bulk upload by Excel, AI-assisted entry | **Built** | `/admin/import`. `shared/inventory/bulkUpload.ts` is the reader and is pure — the file is parsed in the browser by the same function the server would have used, so a 400-row preview is one round trip rather than an upload endpoint and a second call. **CSV rather than `.xlsx`**: Excel writes CSV from Save As, and parsing the other means a zip reader, an XML parser and a dependency carrying both to arrive at the same rows; the page says so rather than leaving somebody to find out from an error. Three things about real exports are handled because they are what actually breaks an importer — Excel's UTF-8 BOM, which makes an exact match on `title` fail on every file a Windows seller sends; quoted fields carrying commas and newlines; and the CRLF that turns a price into `"12.000\r"` and then into NaN. **The preview is the feature**: every problem is reported against its own line number and nothing is written until the seller presses the button, because an importer that writes on upload is one they have to undo a row at a time. All of it or none of it, in one transaction — a half-finished import cannot be told apart from a finished one, and re-running the corrected file duplicates whatever landed. Everything arrives as a **draft**, because publishing has its own rules and an importer that can put four hundred rows in the shop can put four hundred mistakes there. Handles are allocated up front and remembered, since `uniqueHandle` reads what is committed and two rows with one title would otherwise collide at the very end. Verified in a browser in both languages against real Postgres, with a file carrying a BOM, CRLF, a quoted comma and Arabic titles. |
 | 4 | AI fixes images after upload | Not started | No upload exists. |

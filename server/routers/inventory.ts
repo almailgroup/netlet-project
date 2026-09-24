@@ -63,6 +63,17 @@ import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
 import { ADDON_KINDS } from "../../shared/commerce/addons.js";
 import { modelConcernFor, modelReviewAvailable, reviewProducts } from "../productReview.js";
+import {
+  ApplicationError,
+  approveApplication,
+  countWaitingApplications,
+  listApplications,
+  myApplication,
+  rejectApplication,
+  saveApplication,
+  submitApplication,
+} from "../applications.js";
+import { APPLICATION_STATES } from "../../shared/inventory/sellerApplication.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
 /**
@@ -174,6 +185,22 @@ const storeDetails = {
   codCeiling: blankOr(moneySchema),
 };
 
+/**
+ * An application's own refusals, which are message keys rather than sentences
+ * — the same arrangement `assertCan` and the order refusals already use, so a
+ * reason can be read on an Arabic page.
+ */
+async function applicationGuard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ApplicationError) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
+    }
+    throw error;
+  }
+}
+
 export const inventoryRouter = router({
   /** Who the caller is, so the portal knows what to render before asking. */
   me: protectedProcedure
@@ -190,6 +217,69 @@ export const inventoryRouter = router({
     byHandle: publicProcedure
       .input(z.object({ handle: z.string().min(1).max(191) }))
       .query(({ input }) => publishedProduct(input.handle)),
+  }),
+
+  /**
+   * Seller self-registration (3.3.1).
+   *
+   * The applicant's half is `protectedProcedure` and scoped by `ctx.user.id`
+   * inside the data layer; the reviewer's half is guarded by
+   * `platform.manageUsers` beside its query — approving one creates a store
+   * and attaches an owner, which is exactly what that grant is for.
+   */
+  applications: router({
+    /** The applicant's own, or null. Never anybody else's. */
+    mine: protectedProcedure.query(({ ctx }) => myApplication(ctx.user.id)),
+
+    save: protectedProcedure
+      .input(z.object({
+        storeName: z.string().trim().min(1).max(160),
+        storeNameAr: z.string().trim().max(160).nullable().optional(),
+        contactEmail: z.string().trim().email().max(320).nullable().optional(),
+        contactPhone: z.string().trim().max(32).nullable().optional(),
+        governorate: z.string().trim().max(32).nullable().optional(),
+        addressLine: z.string().trim().max(300).nullable().optional(),
+        licenceNumber: z.string().trim().max(64).nullable().optional(),
+        licenceExpiresAt: z.coerce.date().nullable().optional(),
+        licenceDocUrl: z.string().trim().max(2000).nullable().optional(),
+        identityDocUrl: z.string().trim().max(2000).nullable().optional(),
+        payoutIban: z.string().trim().max(42).nullable().optional(),
+        underPlatformLicence: z.boolean().optional(),
+        /* The version they accepted, not a boolean: "they agreed" means
+           nothing without "to what". */
+        agreementVersion: z.string().trim().max(20).nullable().optional(),
+      }))
+      .mutation(({ ctx, input }) => applicationGuard(() => saveApplication(ctx.user.id, input))),
+
+    submit: protectedProcedure.mutation(({ ctx }) => applicationGuard(() => submitApplication(ctx.user.id))),
+
+    /* ------------------------------------------------------------ review --- */
+
+    list: protectedProcedure
+      .input(z.object({
+        status: z.enum(APPLICATION_STATES).optional(),
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
+      }).optional())
+      .query(async ({ ctx, input }) => guard(async () =>
+        listApplications(await resolveActor(ctx.user), input ?? {}))),
+
+    waiting: protectedProcedure.query(async ({ ctx }) =>
+      guard(async () => countWaitingApplications(await resolveActor(ctx.user)))),
+
+    approve: protectedProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => applicationGuard(() => approveApplication(actor, input.id)));
+      }),
+
+    reject: protectedProcedure
+      .input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(1).max(400) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => applicationGuard(() => rejectApplication(actor, input.id, input.reason)));
+      }),
   }),
 
   products: router({

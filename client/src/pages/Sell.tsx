@@ -1,0 +1,347 @@
+/**
+ * Asking to sell on NetLet.
+ *
+ * Requirement 3.3.1. A store could only exist because an administrator made
+ * one, so every seller arrived through a conversation and nobody could start
+ * on their own. This is the form that changes that, and it is on the
+ * storefront rather than in the portal, because the person filling it in has
+ * no portal to reach yet.
+ *
+ * **Saving and submitting are two acts.** An application is a draft somebody
+ * comes back to when they have found their licence number, and a queue that
+ * filled up every time somebody typed would be a queue nobody reads. Saving
+ * refuses only what is actively wrong; submitting is what asks for the same
+ * completeness an administrator will.
+ *
+ * **What is missing is listed, not hidden behind a disabled button.** A button
+ * that will not press and says nothing is the worst of both: the page names
+ * each gap, and the button follows.
+ */
+import AuthDialog from "@/components/auth/AuthDialog";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { useAuth } from "@/hooks/useAuth";
+import { usePageMeta } from "@/hooks/usePageMeta";
+import { useTranslation } from "@/hooks/useTranslation";
+import { appPath } from "@/lib/basePath";
+import { trpc } from "@/lib/trpc";
+import {
+  AGREEMENT_VERSION,
+  missingFromApplication,
+  type MissingField,
+} from "@shared/inventory/sellerApplication";
+import { GOVERNORATES } from "@shared/inventory/storeProfile";
+import type { MessageKey } from "@shared/i18n/dictionary";
+import { CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+const MISSING_LABEL: Record<MissingField, MessageKey> = {
+  contactEmail: "sell.fieldEmail",
+  contactPhone: "sell.fieldPhone",
+  governorate: "sell.fieldGovernorate",
+  addressLine: "sell.fieldAddress",
+  payoutIban: "sell.fieldIban",
+  licenceNumber: "sell.fieldLicence",
+  agreement: "sell.fieldAgreement",
+};
+
+const field =
+  "type-body h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[14px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+
+type Form = {
+  storeName: string;
+  storeNameAr: string;
+  contactEmail: string;
+  contactPhone: string;
+  governorate: string;
+  addressLine: string;
+  licenceNumber: string;
+  licenceDocUrl: string;
+  identityDocUrl: string;
+  payoutIban: string;
+  underPlatformLicence: boolean;
+  agreed: boolean;
+};
+
+const EMPTY: Form = {
+  storeName: "", storeNameAr: "", contactEmail: "", contactPhone: "", governorate: "",
+  addressLine: "", licenceNumber: "", licenceDocUrl: "", identityDocUrl: "", payoutIban: "",
+  underPlatformLicence: false, agreed: false,
+};
+
+export default function Sell() {
+  usePageMeta({
+    title: "Sell on NetLet",
+    description: "Open a store on NetLet: tell us about your business, accept the seller agreement, and we will review it.",
+    type: "website",
+  });
+  const { t, tError } = useTranslation();
+  const { isAuthenticated, loading } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [form, setForm] = useState<Form>(EMPTY);
+
+  const mine = trpc.inventory.applications.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const utils = trpc.useUtils();
+  const refresh = () => void utils.inventory.applications.mine.invalidate();
+
+  /*
+   * Sending saves first, because the form and the row have to agree before the
+   * completeness check runs on the server. That save is silent: "Saved" and
+   * "Sent" one after the other describes one press twice, and the second is
+   * the one that happened.
+   */
+  const [sending, setSending] = useState(false);
+  const save = trpc.inventory.applications.save.useMutation({
+    onSuccess: () => { if (!sending) toast.success(t("sell.saved")); refresh(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const submit = trpc.inventory.applications.submit.useMutation({
+    onSuccess: () => { toast.success(t("sell.submitted")); refresh(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+
+  /* Fill the form from whatever was saved, once it arrives. A draft somebody
+     comes back to is the ordinary case, not the exception. */
+  useEffect(() => {
+    const row = mine.data;
+    if (!row) return;
+    setForm({
+      storeName: row.storeName,
+      storeNameAr: row.storeNameAr ?? "",
+      contactEmail: row.contactEmail ?? "",
+      contactPhone: row.contactPhone ?? "",
+      governorate: row.governorate ?? "",
+      addressLine: row.addressLine ?? "",
+      licenceNumber: row.licenceNumber ?? "",
+      licenceDocUrl: row.licenceDocUrl ?? "",
+      identityDocUrl: row.identityDocUrl ?? "",
+      payoutIban: row.payoutIban ?? "",
+      underPlatformLicence: row.underPlatformLicence,
+      agreed: row.agreementVersion === AGREEMENT_VERSION,
+    });
+  }, [mine.data?.id, mine.data?.updatedAt]);
+
+  const state = mine.data?.status ?? "none";
+  const editable = state === "none" || state === "draft" || state === "rejected";
+
+  const missing = missingFromApplication({
+    ...form,
+    agreementVersion: form.agreed ? AGREEMENT_VERSION : null,
+  });
+
+  const payload = {
+    storeName: form.storeName.trim(),
+    storeNameAr: form.storeNameAr.trim() || null,
+    contactEmail: form.contactEmail.trim() || null,
+    contactPhone: form.contactPhone.trim() || null,
+    governorate: form.governorate || null,
+    addressLine: form.addressLine.trim() || null,
+    licenceNumber: form.licenceNumber.trim() || null,
+    licenceDocUrl: form.licenceDocUrl.trim() || null,
+    identityDocUrl: form.identityDocUrl.trim() || null,
+    payoutIban: form.payoutIban.trim() || null,
+    underPlatformLicence: form.underPlatformLicence,
+    agreementVersion: form.agreed ? AGREEMENT_VERSION : null,
+  };
+
+  const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(current => ({ ...current, [key]: value }));
+
+  return (
+    <main className="type-body min-h-screen bg-background text-[#0a285a]">
+      <StoreHeader />
+
+      <div id="main" className="container max-w-3xl py-8 sm:py-12">
+        <p className="type-label ink-accent uppercase">{t("sell.eyebrow")}</p>
+        <h1 className="type-display mt-2 text-3xl sm:text-4xl">{t("sell.title")}</h1>
+        <p className="mt-3 max-w-prose text-sm leading-6 text-[#536b8c]">{t("sell.note")}</p>
+
+        {loading ? null : !isAuthenticated ? (
+          /* An application belongs to an account — that is the first step the
+             requirement names — so this asks for one rather than collecting a
+             form it would then have nowhere to keep. */
+          <div className="mt-8 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-6">
+            <p className="text-sm leading-6 text-[#536b8c]">{t("sell.signInFirst")}</p>
+            <button
+              onClick={() => setAuthOpen(true)}
+              className="glass-navy type-control pressable mt-4 inline-flex items-center gap-2 rounded-full px-5 py-3"
+            >
+              <Store className="size-4" aria-hidden /> {t("sell.signIn")}
+            </button>
+          </div>
+        ) : (
+          <>
+            {state === "submitted" ? (
+              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#0a285a]">
+                <Clock className="mt-0.5 size-4 shrink-0 ink-accent" aria-hidden /> {t("sell.waiting")}
+              </p>
+            ) : null}
+
+            {state === "approved" ? (
+              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#bcd8c0] bg-[#e3efe4] px-4 py-3 text-[13px] leading-6 text-[#2f5d33]">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {t("sell.approved")}{" "}
+                <a href={appPath("/admin")} className="font-extrabold underline">{t("sell.openPortal")}</a>
+              </p>
+            ) : null}
+
+            {/* The reason is on the row the applicant reads, because a rejection
+                with no reason sends somebody back to guess. */}
+            {state === "rejected" ? (
+              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[13px] leading-6 text-[#8c2f22]">
+                <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span dir="auto">{mine.data?.rejectionReason || t("sell.rejected")}</span>
+              </p>
+            ) : null}
+
+            <fieldset disabled={!editable} className="mt-8 space-y-6">
+              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+                <h2 className="text-sm font-extrabold">{t("sell.aboutStore")}</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Labelled label={t("sell.fieldStoreName")}>
+                    <input dir="auto" value={form.storeName} onChange={e => set("storeName", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldStoreNameAr")}>
+                    <input dir="auto" value={form.storeNameAr} onChange={e => set("storeNameAr", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldEmail")}>
+                    <input dir="ltr" type="email" value={form.contactEmail} onChange={e => set("contactEmail", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldPhone")}>
+                    <input dir="ltr" inputMode="tel" placeholder="+965" value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldGovernorate")}>
+                    <select
+                      aria-label={t("sell.fieldGovernorate")}
+                      value={form.governorate}
+                      onChange={e => set("governorate", e.target.value)}
+                      className={field}
+                    >
+                      <option value="">{t("sell.choose")}</option>
+                      {GOVERNORATES.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </Labelled>
+                  <Labelled label={t("sell.fieldAddress")}>
+                    <input dir="auto" value={form.addressLine} onChange={e => set("addressLine", e.target.value)} className={field} />
+                  </Labelled>
+                </div>
+              </section>
+
+              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+                <h2 className="text-sm font-extrabold">{t("sell.papers")}</h2>
+                {/* Links rather than a file picker, because NetLet has no upload
+                    pipeline — a vendor types an image URL for a product for the
+                    same reason. Said here rather than discovered. */}
+                <p className="mt-1 max-w-prose text-[12px] leading-5 ink-muted">{t("sell.papersNote")}</p>
+
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
+                  <input
+                    type="checkbox"
+                    checked={form.underPlatformLicence}
+                    onChange={e => set("underPlatformLicence", e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
+                  />
+                  <span className="text-[13px] leading-5 text-[#0a285a]">{t("sell.underPlatformLicence")}</span>
+                </label>
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {/* Absent entirely for somebody trading under NetLet's licence:
+                      they have no number of their own, and a field they cannot
+                      fill is a field they will try to. */}
+                  {!form.underPlatformLicence ? (
+                    <Labelled label={t("sell.fieldLicence")}>
+                      <input dir="ltr" value={form.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={field} />
+                    </Labelled>
+                  ) : null}
+                  <Labelled label={t("sell.fieldIban")}>
+                    <input dir="ltr" value={form.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldLicenceDoc")}>
+                    <input dir="ltr" value={form.licenceDocUrl} onChange={e => set("licenceDocUrl", e.target.value)} className={field} />
+                  </Labelled>
+                  <Labelled label={t("sell.fieldIdentityDoc")}>
+                    <input dir="ltr" value={form.identityDocUrl} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
+                  </Labelled>
+                </div>
+              </section>
+
+              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+                <h2 className="text-sm font-extrabold">{t("sell.agreement")}</h2>
+                <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("sell.agreementNote")}</p>
+                <label className="mt-4 flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={form.agreed}
+                    onChange={e => set("agreed", e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
+                  />
+                  {/* The version is named, because "they accepted the terms"
+                      means nothing without "which terms". */}
+                  <span className="text-[13px] leading-5 text-[#0a285a]">
+                    {t("sell.agreementAccept", { version: AGREEMENT_VERSION })}
+                  </span>
+                </label>
+              </section>
+            </fieldset>
+
+            {editable ? (
+              <div className="mt-6">
+                {missing.length > 0 ? (
+                  /* Named rather than hidden behind a button that will not
+                     press and says nothing. */
+                  <div className="rounded-xl border border-[#d5dfeb] bg-white/70 px-4 py-3">
+                    <p className="text-[12px] font-extrabold ink-muted uppercase">{t("sell.stillNeeded")}</p>
+                    <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {missing.map(item => (
+                        <li key={item} className="text-[13px] text-[#536b8c]">· {t(MISSING_LABEL[item])}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    onClick={() => save.mutate(payload)}
+                    disabled={!form.storeName.trim() || save.isPending}
+                    className="glass type-control pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-5 py-3 disabled:opacity-60"
+                  >
+                    {save.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                    {t("sell.save")}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSending(true);
+                      try {
+                        await save.mutateAsync(payload);
+                        await submit.mutateAsync();
+                      } finally {
+                        setSending(false);
+                      }
+                    }}
+                    disabled={missing.length > 0 || !form.storeName.trim() || submit.isPending}
+                    className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-5 py-3 disabled:opacity-60"
+                  >
+                    {submit.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                    {t("sell.submit")}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+
+      <MobileTabBar />
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
+    </main>
+  );
+}
+
+function Labelled({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="type-label ink-muted">{label}</span>
+      <span className="mt-1 block">{children}</span>
+    </label>
+  );
+}
