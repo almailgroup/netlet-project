@@ -930,6 +930,66 @@ export const cartItems = pgTable(
 );
 
 /**
+ * A delivery company.
+ *
+ * Requirement 2.2 names five parties and this is the fifth: the one that, until
+ * this landed, had no interface anywhere in NetLet. A company is recorded so
+ * its people can have logins and so a parcel can be assigned to it.
+ *
+ * **This does not replace `vendors.delivery_provider`, and the free-text rule
+ * there still holds.** That field is the *seller's* declaration of who they
+ * usually ship with, and a fixed list would be this codebase asserting which
+ * companies exist in Kuwait. This table is the separate fact that NetLet has an
+ * arrangement with a named company and has given its staff accounts — recorded
+ * rather than inferred, the same distinction `under_platform_licence` draws
+ * between "no paperwork yet" and "trading under ours".
+ *
+ * `status` suspends a company without deleting it, the way a vendor's does: a
+ * suspended courier keeps its history and stops appearing in the assign list.
+ */
+export const couriers = pgTable(
+  "couriers",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    nameAr: varchar("name_ar", { length: 160 }),
+    /** Kept as typed, including the +965: formatting a phone number loses it. */
+    contactPhone: varchar("contact_phone", { length: 40 }),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    status: varchar("status", { length: 20 }).notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [index("couriers_status_idx").on(table.status)]
+);
+
+/**
+ * Somebody who works for a delivery company.
+ *
+ * The mirror of `vendor_members`, and deliberately without a `role`: a delivery
+ * company's people all do the same job here — collect and hand over — and
+ * inventing `driver` and `dispatcher` would be a permission model nobody asked
+ * for. One row is one login attached to one company.
+ */
+export const courierMembers = pgTable(
+  "courier_members",
+  {
+    id: serial("id").primaryKey(),
+    courierId: integer("courier_id")
+      .notNull()
+      .references(() => couriers.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("courier_members_unique").on(table.courierId, table.userId),
+    index("courier_members_user_idx").on(table.userId),
+  ]
+);
+
+/**
  * A shopper's address book.
  *
  * Requirement 3.2.6 asks for a different address per product, and that is only
@@ -1448,6 +1508,31 @@ export const orderItems = pgTable(
       addressLine: string | null;
       addressNotes: string | null;
     } | null>(),
+    /**
+     * Which delivery company was asked to carry this (2.2, 3.4.2).
+     *
+     * On the line rather than on the order, because a parcel is a seller and a
+     * destination: one order can be three parcels leaving three warehouses for
+     * two doors, and they are not all carried by the same van. Every line in
+     * one parcel is written together, so a parcel is never half-assigned.
+     *
+     * `set null` — a delivery company NetLet stops working with leaves its
+     * parcels unassigned rather than taking the order's history with it.
+     */
+    courierId: integer("courier_id").references(() => couriers.id, { onDelete: "set null" }),
+    /**
+     * How big and how heavy, frozen at the sale.
+     *
+     * Copied for the reason the price is: the vehicle is decided from these,
+     * and a dispatcher has to be able to ask what was agreed to be carried
+     * even after the product has been deleted or the seller has re-measured
+     * it. It also means dispatch needs no join to the catalog at all.
+     *
+     * Null on both is ordinary and is shown as "we do not know" rather than as
+     * "small" — guessing small is how a sofa gets sent on a motorcycle.
+     */
+    sizeClass: varchar("size_class", { length: 20 }),
+    weightGrams: integer("weight_grams"),
 
     fulfilment: fulfilmentStatus("fulfilment").notNull().default("pending"),
     /*

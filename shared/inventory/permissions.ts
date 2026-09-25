@@ -28,6 +28,17 @@ export type Actor =
   | { kind: "admin"; userId: number }
   /** Somebody acting for one vendor, at one rank. */
   | { kind: "vendor"; userId: number; vendorId: number; role: VendorRole }
+  /**
+   * Somebody acting for a delivery company (2.2, 3.4.2).
+   *
+   * The fifth party the requirements name, and the one that had no interface
+   * at all. There is no rank: a delivery company's people all do the same job,
+   * and inventing `driver`/`dispatcher` would be a permission model nobody
+   * asked for. Scope is the whole of it — they reach the parcels assigned to
+   * *their* company and nothing else, which the queries enforce the way vendor
+   * scope is enforced.
+   */
+  | { kind: "courier"; userId: number; courierId: number }
   /** Signed in, but neither — an ordinary shopper. */
   | { kind: "customer"; userId: number };
 
@@ -55,7 +66,16 @@ export type Capability =
   | "vendor.viewMembers"
   | "vendor.manageMembers"
   | "vendor.editProfile"
+  /*
+   * Dispatch (2.2, 3.4.2). `view` is the board; `move` is "collected" and
+   * "handed over", the two things a delivery company actually witnesses.
+   * Assigning a parcel to a company is admin-only and listed below — a courier
+   * who could assign would be helping themselves to a rival's work.
+   */
+  | "delivery.view"
+  | "delivery.move"
   /* Admin-only. Listed here so an attempt is answered rather than unhandled. */
+  | "delivery.assign"
   | "vendor.setCommission"
   | "vendor.approve"
   | "product.review"
@@ -85,6 +105,9 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
  * be inferred from an omission.
  */
 const ADMIN_ONLY: Capability[] = [
+  /* Who carries a parcel is NetLet's arrangement with a company, not a
+     decision either the seller or the driver gets to make. */
+  "delivery.assign",
   "vendor.setCommission",
   "vendor.approve",
   "product.review",
@@ -105,6 +128,13 @@ const ADMIN_ONLY: Capability[] = [
 export function can(actor: Actor, capability: Capability, vendorId?: number): boolean {
   if (actor.kind === "admin") return true;
   if (actor.kind === "customer") return false;
+  /*
+   * A delivery company reaches dispatch and nothing else — not a product, not
+   * a price, not another company's board. *Which* parcels is scoped inside the
+   * queries by `actor.courierId`, exactly as a vendor's rows are: a check up
+   * here would be one a second caller could skip.
+   */
+  if (actor.kind === "courier") return capability === "delivery.view" || capability === "delivery.move";
   if (ADMIN_ONLY.includes(capability)) return false;
 
   // Scope first: rank inside another vendor means nothing here.
@@ -132,5 +162,18 @@ export function assertCan(actor: Actor, capability: Capability, vendorId?: numbe
 export function readableVendors(actor: Actor): number[] | "all" {
   if (actor.kind === "admin") return "all";
   if (actor.kind === "vendor") return [actor.vendorId];
+  return [];
+}
+
+/**
+ * The delivery company whose parcels this actor may read, or "all".
+ *
+ * The mirror of `readableVendors`, and what the dispatch queries scope on.
+ * Anybody else gets an empty list rather than a throw, so a page that asks
+ * before checking gets nothing rather than an error.
+ */
+export function readableCouriers(actor: Actor): number[] | "all" {
+  if (actor.kind === "admin") return "all";
+  if (actor.kind === "courier") return [actor.courierId];
   return [];
 }

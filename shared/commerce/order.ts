@@ -67,6 +67,16 @@ export type PriceableLine = {
    * not rewrite where a parcel was sent in September.
    */
   destination?: FrozenDestination | null;
+  /**
+   * How big and how heavy, for the vehicle a dispatcher is sent (3.4.14, 2.2).
+   *
+   * Frozen for the reason the price is: the person carrying it has to be able
+   * to ask what was agreed to be carried, after the product has been deleted
+   * or the seller has re-measured it. Null on both is ordinary and reads as
+   * "we do not know" rather than as "small".
+   */
+  sizeClass?: string | null;
+  weightGrams?: number | null;
 };
 
 /** One line as it will be written, with nothing left to compute. */
@@ -88,6 +98,9 @@ export type FrozenLine = {
   bundleName: string | null;
   /** The door it went to, copied for the same reason. Null: the order's own. */
   destination: FrozenDestination | null;
+  /** What it takes to carry it, copied for the same reason. */
+  sizeClass: string | null;
+  weightGrams: number | null;
   /** Those extras for the whole line: per unit, times the quantity. */
   addonsTotal: string;
   /** The goods and the extras together — everything this line is worth. */
@@ -157,6 +170,8 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     bundleId: line.bundleId ?? null,
     bundleName: line.bundleName ?? null,
     destination: line.destination ?? null,
+    sizeClass: line.sizeClass ?? null,
+    weightGrams: line.weightGrams ?? null,
     lineTotal: addMoney(multiplyMoney(line.unitPrice, quantity), extras),
     commissionPercent: split.percentApplied,
     commissionFixed: money(split.fixedApplied),

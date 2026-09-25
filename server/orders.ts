@@ -39,6 +39,7 @@ import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
 import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../shared/commerce/delivery.js";
 import { freezeDestination, type DestinedLine } from "../shared/commerce/addresses.js";
+import { massGramsFor, type SellUnit } from "../shared/commerce/units.js";
 import { destinationsForCart } from "./addresses.js";
 import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
@@ -142,6 +143,12 @@ async function priceableLines(
       stock: productVariants.stock,
       preorderStock: productVariants.preorderStock,
       preorderReleaseAt: productVariants.preorderReleaseAt,
+      /* What it takes to carry it (2.2, 3.4.14). The size class is the
+         seller's declaration on the product; the weight is derived from the
+         unit it is sold in, and only where that unit is a mass. */
+      sizeClass: products.sizeClass,
+      unit: productVariants.unit,
+      stepAmount: productVariants.stepAmount,
       deliveryFlat: vendors.deliveryFlat,
       deliveryFreeOver: vendors.deliveryFreeOver,
       acceptsCod: vendors.acceptsCod,
@@ -241,6 +248,10 @@ async function priceableLines(
     destination: row.addressId && doors.has(row.addressId)
       ? freezeDestination(doors.get(row.addressId)!)
       : null,
+    sizeClass: row.sizeClass,
+    /* Per unit, so the parcel's own arithmetic multiplies it by the quantity
+       exactly once — `vehicleForQuantity` is what does that. */
+    weightGrams: massGramsFor({ unit: row.unit as SellUnit, stepAmount: Number(row.stepAmount) }, 1),
     vendorRule: { percent: row.vendorPercent, fixed: row.vendorFixed },
     // Null on both columns is the absence of an override, not an override of
     // zero — `resolveRule` depends on being handed null rather than a zeroed
@@ -568,6 +579,8 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         bundleId: line.bundleId ?? null,
         bundleName: line.bundleName ?? null,
         destination: line.destination,
+        sizeClass: line.sizeClass,
+        weightGrams: line.weightGrams,
         preordered: pools.get(line.variantId) === "preorder",
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
       })),
@@ -875,9 +888,12 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         addonsTotal: "0.000",
         bundleId: line.bundleId,
         bundleName: line.bundleName,
-        /* The slice is arithmetic over money; where the parcel went does not
-           enter into it, and the desk reads the line's own copy. */
+        /* The slice is arithmetic over money; where the parcel went and what
+           it takes to carry it do not enter into it, and both desks read the
+           line's own copy. */
         destination: null,
+        sizeClass: null,
+        weightGrams: null,
         lineTotal: line.lineTotal,
         commissionPercent: line.commissionPercent,
         commissionFixed: line.commissionFixed,

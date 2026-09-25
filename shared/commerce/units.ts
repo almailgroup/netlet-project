@@ -81,6 +81,24 @@ export function baseUnitsFor(measure: Measure, quantity: number): number {
 }
 
 /**
+ * How much `quantity` steps actually weigh, in grams — or null.
+ *
+ * This is what decides the vehicle for a line nobody gave a size class to
+ * (`shared/commerce/vehicle.ts`), so it is deliberately narrow: mass only.
+ *
+ * A litre of oil is *about* a kilo, and "about" is exactly the guess this
+ * codebase refuses everywhere else it touches dispatch — a density assumption
+ * dressed up as a measurement. Volume and count both answer null, and the
+ * seller's declared size class is what speaks for them; unknown beats guessing
+ * small, which is how a sofa gets sent on a motorcycle.
+ */
+export function massGramsFor(measure: Measure, quantity: number): number | null {
+  if (DIMENSION_OF[measure.unit] !== "mass") return null;
+  const grams = baseUnitsFor(measure, Math.max(1, Math.trunc(quantity)));
+  return Number.isFinite(grams) && grams > 0 ? grams : null;
+}
+
+/**
  * The price per canonical unit — per kilo, per litre — as a money string.
  *
  * This is the number the law and the shopper both care about, and the one that

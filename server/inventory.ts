@@ -19,6 +19,7 @@ import {
   productVariants,
   stockMovements,
   users,
+  courierMembers,
   vendorMembers,
   vendors,
 } from "../drizzle/schema.js";
@@ -60,6 +61,21 @@ export async function resolveActor(
   const membership = vendorId
     ? memberships.find(entry => entry.vendorId === vendorId)
     : memberships[0];
+
+  /*
+   * A delivery company's login (2.2, 3.4.2), which is the fifth party the
+   * requirements name. Asked only when there is no vendor membership, because
+   * the two are different jobs and nobody holds both — and asked *before*
+   * falling back to `customer`, or a driver would reach nothing at all.
+   */
+  if (!membership) {
+    const [courier] = await db
+      .select({ courierId: courierMembers.courierId })
+      .from(courierMembers)
+      .where(eq(courierMembers.userId, user.id))
+      .limit(1);
+    if (courier) return { kind: "courier", userId: user.id, courierId: courier.courierId };
+  }
 
   if (!membership) return { kind: "customer", userId: user.id };
   return {

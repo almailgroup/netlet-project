@@ -30,7 +30,15 @@ type Tile = { label: MessageKey; value: number; href: string; tone?: "urgent" | 
 
 function Overview({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
-  const counts = trpc.inventory.overview.useQuery();
+  /*
+   * A delivery company reaches no part of the catalog, so asking for the
+   * inventory counts would be asking a question the server refuses — and
+   * `QueryGate` would then show them a 403 as the first thing on the page. The
+   * overview answers "is anything waiting for me" for whoever is asking, which
+   * for a courier is parcels.
+   */
+  const isCourier = actor.kind === "courier";
+  const counts = trpc.inventory.overview.useQuery(undefined, { enabled: !isCourier });
   const health = trpc.inventory.health.useQuery(undefined, { retry: false });
   /*
    * Asked before the early returns below, so the hook order never changes
@@ -54,6 +62,29 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingApplications = trpc.inventory.applications.waiting.useQuery(undefined, {
     enabled: can(actor, "platform.manageUsers"),
   });
+  /* Parcels waiting for a driver (2.2, 3.4.2), counted through the same board
+     the tile links to so the two cannot disagree. */
+  const waitingParcels = trpc.dispatch.waiting.useQuery(undefined, {
+    enabled: can(actor, "delivery.view"),
+  });
+
+  if (isCourier) {
+    return (
+      <>
+        <h1 className="text-xl font-extrabold">{t("admin.overview")}</h1>
+        <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
+        {(waitingParcels.data ?? 0) > 0 ? (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Tile tile={{ label: "dispatch.waiting", value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" }} />
+          </div>
+        ) : (
+          <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
+            {t("dispatch.noneCourier")}
+          </p>
+        )}
+      </>
+    );
+  }
 
   if (counts.isLoading || counts.isError) return <QueryGate queries={[counts]}>{() => null}</QueryGate>;
   const data = counts.data;
@@ -81,6 +112,7 @@ function Overview({ actor }: { actor: Actor }) {
        therefore never means anything, and the tile hides itself at zero like
        every other one here. */
     { label: "admin.sellerChanges" as const, value: sellerChanges.data?.unseen ?? 0, href: "/admin/audit", tone: "urgent" as const },
+    { label: "dispatch.waiting" as const, value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

@@ -902,6 +902,42 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0032_sleepy_exiles.sql =====
+CREATE TABLE IF NOT EXISTS "courier_members" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"courier_id" integer NOT NULL,
+	"user_id" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "couriers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(160) NOT NULL,
+	"name_ar" varchar(160),
+	"contact_phone" varchar(40),
+	"contact_email" varchar(320),
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "courier_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "size_class" varchar(20);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "weight_grams" integer;
+DO $$ BEGIN
+  ALTER TABLE "courier_members" ADD CONSTRAINT "courier_members_courier_id_couriers_id_fk" FOREIGN KEY ("courier_id") REFERENCES "public"."couriers"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "courier_members" ADD CONSTRAINT "courier_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "courier_members_unique" ON "courier_members" USING btree ("courier_id","user_id");
+CREATE INDEX IF NOT EXISTS "courier_members_user_idx" ON "courier_members" USING btree ("user_id");
+CREATE INDEX IF NOT EXISTS "couriers_status_idx" ON "couriers" USING btree ("status");
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_courier_id_couriers_id_fk" FOREIGN KEY ("courier_id") REFERENCES "public"."couriers"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -939,6 +975,6 @@ ON CONFLICT (slug) DO NOTHING;
 -- rest from there.
 SELECT
   'bootstrap complete' AS status,
-  32 AS migrations_in_this_file,
+  33 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

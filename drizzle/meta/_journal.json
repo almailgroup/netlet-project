@@ -225,6 +225,13 @@
       "when": 1790275539540,
       "tag": "0031_opposite_thor_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790329281929,
+      "tag": "0032_sleepy_exiles",
+      "breakpoints": true
     }
   ]
 }

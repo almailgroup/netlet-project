@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldCheck, Store, Ticket, Upload, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -28,8 +28,19 @@ const ROLE_LABEL: Record<string, MessageKey> = {
   staff: "admin.roleStaff",
 };
 
+/**
+ * What this person is, in the header.
+ *
+ * A delivery company has no rank — its people all do the same job — so it is
+ * answered by *kind* rather than falling through to the `staff` default, which
+ * was calling a driver a store's staff member. The fallback stays for a vendor
+ * membership with a rank this build does not know, where "staff" is the least
+ * it could be.
+ */
 export function roleLabelKey(actor: Actor): MessageKey {
-  return actor.kind === "admin" ? "admin.roleAdmin" : ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
+  if (actor.kind === "admin") return "admin.roleAdmin";
+  if (actor.kind === "courier") return "admin.roleCourier";
+  return ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
 }
 
 export function AdminShell({ need, children }: {
@@ -105,6 +116,10 @@ export function AdminShell({ need, children }: {
     /* Above the review queue and below stock: what a seller opens the portal
        to do most days is pack what somebody bought. */
     { href: "/admin/orders", label: "admin.orders", icon: <Receipt className="size-4" />, need: "product.view" },
+    /* The delivery company's own board (2.2, 3.4.2). A courier clears
+       `delivery.view` and nothing else, so this is the only link they see. */
+    { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
+    { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
     { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
     { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },

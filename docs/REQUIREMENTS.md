@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 44 |
-| Partial | 8 |
+| Built | 46 |
+| Partial | 7 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 23 |
+| Not started | 22 |
 
-*Last updated after landing a different address per product (3.2.6). Card payments and
+*Last updated after giving the delivery company an interface (3.4.1, which closes 2.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -28,12 +28,12 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 
 ---
 
-## 2. Architectural principles
+## 2. Architectural principles — 1 built, 2 partial, 1 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 2.1 | Fully microservices-based | **Not started** | One Express + tRPC app, one Postgres, one Vercel function. The seams are clean — each `server/` module has 1–4 relative imports and **no cross-module transactions** — so splitting later is packaging, not a rewrite. See the note at the foot of this file. |
-| 2.2 | Easy for all five parties | **Partial** | Buyer, vendor and admin each have a real interface, and the person who processes orders now has one too: `/admin/orders` is the desk where a line is moved from pending to delivered and a driver's cash is recorded. **The delivery company still has no interface at all** — one of the five audiences is absent, not merely rough. |
+| 2.2 | Easy for all five parties | **Built** | All five now have a real interface, and the fifth was the whole of this gap. The buyer has the storefront; the vendor and the admin share `/admin`, scoped by the server; the person who processes orders has `/admin/orders`, where a line is moved from pending to delivered and a driver's cash is recorded; and the delivery company has `/admin/dispatch` — see 3.4.1. What is still thin is named under 3.4 and is not a missing audience: there is no map, no live ETA and no delivery rating. A courier can see every parcel assigned to them, what it takes to carry, where it goes and how much cash to collect, and can mark it collected and handed over. |
 | 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, Firebase-or-scrypt chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
@@ -104,20 +104,20 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 21 | Auto payouts: COD 14 business days, others 1–3 | **Partial** | The **schedule** is built and is what a seller can be told: `shared/commerce/payoutSchedule.ts` is pure, cash settles 14 business days after collection and everything else in 1–3, counted across the Friday–Saturday weekend. **The clock starts when the money arrived, not when the order was placed** — a cash order is placed the instant a shopper presses the button and the cash turns up days later, so counting from the press would promise a payout for money NetLet does not hold. A refunded line is not owed and gets no due date; an overdue one says so rather than hiding behind a comfortable number. What is absent is the *run* — nothing moves money, because there is no payout rail until 3.2.1 lands. That is the honest half: NetLet can now say when it owes and how much, which it has to be able to do before it can be held to it. |
 | 22 | Account Health Score | **Built** | Four evenly weighted components, each carrying its raw counts. |
 
-## 3.4 Delivery — 0 of 4, and one dependency now met
+## 3.4 Delivery — 1 built, 3 absent
 
-Multiple delivery companies · damage borne by the carrier · live map tracking
-with a moving ETA · delivery rating separate from the product rating.
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Multiple delivery companies | **Built** | The fifth party 2.2 names, and the one that had no interface anywhere. `shared/commerce/parcels.ts` is the rules and is pure. **A parcel is one seller's goods going to one door** — the same definition delivery pricing already uses (3.2.4, 3.2.6) — so one order can be several parcels, each collected and handed over on its own; a driver handed "order NL-…" would otherwise have to work out which half is theirs. **Derived, never stored**: there is no `parcels` table, because a parcel is an order's lines grouped two ways and a table would be a fourth thing to keep in step with them, the same argument `sliceByVendor` makes. What *is* stored is the one fact the grouping cannot derive — which company was asked to carry it — and it is written for every line of a parcel at once, so a box cannot go on two vans. **A parcel's state is its least advanced line**: it is not shipped because one of two things in it is, and a cancelled line drops out rather than holding it at `pending` for ever. **A delivery company is an actor kind, not a rank**: `{ kind: "courier" }` clears `delivery.view` and `delivery.move` and nothing else — no product, no price, no other company's board — and *which* parcels is scoped inside the queries by `actor.courierId` the way vendor scope already is. Assigning is admin-only: a courier who could assign would be helping themselves to a rival's work. **What a driver may do is narrower than what a seller may do**: `courierMoves` offers collected and handed over, never walking a line backwards (a seller correcting a mis-click) and never cancelling (the seller's or the shopper's decision). **The vehicle is shown, including when it is unknown** — `order_items` now freezes the size class and the weight at the sale, so a dispatcher can ask what was agreed to be carried after the product has been deleted or re-measured, and "nothing measured" is the answer that gets them to ring the seller rather than send a motorcycle for a sofa. Verified end to end in a browser in both languages against real Postgres, axe clean: a company recorded, a driver's login attached, an order of two parcels from one seller packed, assigned, collected and handed over, with the truck and the motorcycle each derived correctly. Three defects came out of driving it and out of nothing else — the cash line said "collect KWD 247.500" on *both* parcels of one order, which is an instruction to collect it twice; the header called a driver a store's `Staff`; and `/admin/products`, `/admin/stock` and the product editor carried no `need`, so a courier reached a page that drew its heading and then failed its query. |
+| 2 | Damage borne by the delivery company | Not started | Nothing records a damage claim, and there is no agreement behind one to record against. |
+| 3 | Live map tracking with a moving ETA | Not started | NetLet integrates with no carrier, so anything calling itself an ETA would be invented — the reason `shared/commerce/deliverySpeed.ts` shows a band the seller picked and nothing narrower. `order_tracking_events` exists and is vestigial: the account page reads its row count and nothing else. |
+| 4 | Delivery rating, separate from the product rating | Not started | Reviews are per product. A parcel now has an identity a rating could hang off, which is the dependency that was missing. |
 
-`order_tracking_events` exists and is vestigial — the account page reads its
-row count and nothing else. **This section and the two missing audiences in
-2.2 are the same hole.**
-
-One thing that was missing here has landed: `order_items.delivered_at`. Until
-now nothing in the system recorded *when* goods arrived, so the return window
-measured from `updatedAt` — which a vendor editing the line pushed forward.
-Whoever builds the courier integration writes that column, and the return
-window and review eligibility both become correct for free.
+One thing that was missing here has landed and is worth naming on its own:
+`order_items.delivered_at`. Until it existed nothing recorded *when* goods
+arrived, so the return window measured from `updatedAt` — which a vendor
+editing the line pushed forward. The dispatch board writes it, so the return
+window and review eligibility are both correct for free.
 
 ## 3.5 AI customer service — 0 of 3
 

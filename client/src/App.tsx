@@ -43,6 +43,8 @@ const AdminImport = lazy(() => import("@/pages/admin/Import"));
 const AdminPromotions = lazy(() => import("@/pages/admin/Promotions"));
 const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
 const AdminBundles = lazy(() => import("@/pages/admin/Bundles"));
+const AdminDispatch = lazy(() => import("@/pages/admin/Dispatch"));
+const AdminCouriers = lazy(() => import("@/pages/admin/Couriers"));
 const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
@@ -119,6 +121,12 @@ function Router() {
         <Route path="/admin/promotions" component={AdminPromotions} />
         <Route path="/admin/applications" component={AdminApplications} />
         <Route path="/admin/bundles" component={AdminBundles} />
+        {/* The fifth party's own board (2.2, 3.4.2), inside the same portal
+            rather than a shell of its own: scope is already decided by the
+            server, and two shells would be two navigations showing the same
+            links. A courier sees only these. */}
+        <Route path="/admin/dispatch" component={AdminDispatch} />
+        <Route path="/admin/couriers" component={AdminCouriers} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />
         <Route path="/admin/vendors" component={AdminVendors} />

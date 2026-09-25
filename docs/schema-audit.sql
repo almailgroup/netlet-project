@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 376 columns across 36 tables.
+-- Expected: 391 columns across 38 tables.
 
 WITH expected AS (
   SELECT
@@ -24,6 +24,8 @@ WITH expected AS (
     ('cart_items', 'address_id,bundle_id,cart_id,created_at,id,quantity,updated_at,variant_id'),
     ('carts', 'created_at,id,updated_at,user_id'),
     ('categories', 'created_at,id,name,name_ar,parent_id,position,slug'),
+    ('courier_members', 'courier_id,created_at,id,user_id'),
+    ('couriers', 'contact_email,contact_phone,created_at,id,name,name_ar,status,updated_at'),
     ('customer_addresses', 'address_line,address_notes,contact_name,contact_phone,created_at,governorate,id,label,updated_at,user_id'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
     ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
@@ -33,7 +35,7 @@ WITH expected AS (
     ('gift_card_uses', 'amount,created_at,gift_card_id,id,order_id'),
     ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
-    ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net'),
+    ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
     ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
     ('point_entries', 'created_at,id,note,order_id,points,reason,referral_id,settled_at,user_id'),

@@ -147,9 +147,14 @@ export type DestinedLine = {
  * Both halves are spelled into it rather than concatenated loosely, so a seller
  * with id 1 going to address 12 cannot collide with seller 11 going to address
  * 2 — the same reason browse facets are namespaced `opt.<name>`.
+ *
+ * The destination may be an id while a basket is being priced, or the frozen
+ * address itself once an order exists and there is no id left to point at.
+ * Both spell into the same key, so pricing and dispatch group a basket the
+ * same way rather than each inventing its own notion of "the same door".
  */
-export function parcelKey(vendorId: number | null, destinationId: DestinationId): string {
-  return `v${vendorId ?? "none"}|d${destinationId ?? "order"}`;
+export function parcelKey(vendorId: number | null, destination: DestinationId | string): string {
+  return `v${vendorId ?? "none"}|d${destination ?? "order"}`;
 }
 
 /**

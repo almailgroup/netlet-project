@@ -40,6 +40,10 @@ describe("dictionary completeness", () => {
       // into the box — a literal, like the CSV above, rather than English
       // prose somebody forgot to translate.
       "sell.papersNote", "application.insecureDocument",
+      // This one names the route `/admin/people`, which is a URL an
+      // administrator types into the address bar. A translated path would point
+      // at a page that does not exist — the same reason `https` is left alone.
+      "dispatch.addMemberNote",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

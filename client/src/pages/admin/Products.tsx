@@ -26,7 +26,7 @@ import { toast } from "sonner";
 
 export default function AdminProducts() {
   usePageMeta(privatePageMeta("Admin"));
-  return <AdminShell>{actor => <ProductTable actor={actor} />}</AdminShell>;
+  return <AdminShell need="product.view">{actor => <ProductTable actor={actor} />}</AdminShell>;
 }
 
 function ProductTable({ actor }: { actor: Actor }) {

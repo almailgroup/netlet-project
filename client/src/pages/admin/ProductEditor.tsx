@@ -37,7 +37,7 @@ export default function AdminProductEditor() {
   usePageMeta(privatePageMeta("Product"));
   const [, params] = useRoute("/admin/products/:id");
   const id = Number(params?.id ?? 0);
-  return <AdminShell>{actor => <Editor actor={actor} productId={id} />}</AdminShell>;
+  return <AdminShell need="product.view">{actor => <Editor actor={actor} productId={id} />}</AdminShell>;
 }
 
 const inputClass = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";

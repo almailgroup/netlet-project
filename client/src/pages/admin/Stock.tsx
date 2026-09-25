@@ -23,7 +23,7 @@ import { Link } from "wouter";
 
 export default function AdminStock() {
   usePageMeta(privatePageMeta("Stock"));
-  return <AdminShell>{() => <Stock />}</AdminShell>;
+  return <AdminShell need="product.view">{() => <Stock />}</AdminShell>;
 }
 
 function Stock() {

@@ -537,6 +537,30 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.addresses.remove":
       return { success: true } as const;
 
+    /*
+     * The dispatch board (2.2, 3.4.2). The demo signs in as a vendor manager,
+     * and a seller reaches no part of dispatch at all — so the honest answer is
+     * the one a real deployment gives them: not a courier, and an empty board.
+     * The page then draws nothing, through the same branch rather than a
+     * special case.
+     */
+    case "dispatch.me":
+      return { kind: "vendor" as const };
+    case "dispatch.board":
+      return { parcels: [], truncated: false };
+    case "dispatch.waiting":
+      return 0;
+    case "dispatch.couriers.list":
+    case "dispatch.couriers.members":
+      return [];
+    case "dispatch.assign":
+    case "dispatch.move":
+    case "dispatch.couriers.create":
+    case "dispatch.couriers.setStatus":
+    case "dispatch.couriers.addMember":
+    case "dispatch.couriers.removeMember":
+      return { success: true } as const;
+
     /* The admin portal. The demo has no server, so it answers as a vendor manager
        against fixtures — see demoInventory.ts. Writes are accepted and
        discarded; nothing here is persisted. */
