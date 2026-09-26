@@ -111,3 +111,46 @@ describe("the Supabase bootstrap generator", () => {
     expect(missing).toEqual([]);
   });
 });
+
+/*
+ * All or nothing.
+ *
+ * A paste cut short has now broken a live database three times, and it always
+ * loses the end of the file — the newest migrations, which are exactly the
+ * ones the deployed code has just started selecting from. Wrapping the file in
+ * one transaction makes that harmless: a truncated run never reaches the
+ * COMMIT, so nothing is applied and the database stays as it was rather than
+ * becoming a half-way state that matches neither the old code nor the new.
+ *
+ * The completion row deliberately comes *after* the COMMIT, so it is the last
+ * result the SQL editor shows and it reports something that has actually been
+ * kept rather than something still open in a transaction.
+ */
+describe("the bootstrap is atomic", () => {
+  const file = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
+
+  it("opens a transaction before the first statement and commits at the end", () => {
+    const begin = file.indexOf("\nBEGIN;");
+    const commit = file.lastIndexOf("\nCOMMIT;");
+    expect(begin).toBeGreaterThan(-1);
+    expect(commit).toBeGreaterThan(begin);
+
+    // Nothing that does work may sit outside the transaction.
+    const before = file.slice(0, begin).split("\n").filter(line => line.trim() && !line.trim().startsWith("--"));
+    expect(before).toEqual([]);
+  });
+
+  it("reports completion after the commit, so the row means it was kept", () => {
+    const commit = file.lastIndexOf("\nCOMMIT;");
+    expect(file.indexOf("'bootstrap complete'")).toBeGreaterThan(commit);
+  });
+
+  /*
+   * A transaction rules out the handful of statements Postgres refuses to run
+   * inside one. None appear today; this fails the build if one is ever
+   * generated, rather than letting it break the paste in somebody's dashboard.
+   */
+  it("holds no statement that cannot run inside a transaction", () => {
+    expect(file).not.toMatch(/CONCURRENTLY|ALTER TYPE .*ADD VALUE|^\s*VACUUM/im);
+  });
+});
