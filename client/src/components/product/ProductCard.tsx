@@ -237,7 +237,22 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
       the button does. The spinner is exempt: it is the only sign that a press
       was heard.
     */
-    <div className={`qty-inline glass [--qty-step-w:1.6rem] @[15rem]:[--qty-step-w:2.25rem] ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full items-center rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
+    /*
+     * `min-w-0` and `overflow-hidden` are load bearing, not tidying.
+     *
+     * A flex item's `min-width` defaults to `auto`, which floors it at its own
+     * min-content — and this pill's min-content includes two `shrink-0` steps
+     * and an icon that cannot compress. So once the row is side by side and the
+     * card is in the band where two pills plus their steps no longer fit, the
+     * pill stopped shrinking and simply hung over the card's edge: measured at
+     * 66px past it on a 300px card, with "Buy 9 now" printed on the page
+     * outside the card it belongs to.
+     *
+     * `min-w-0` lets it shrink so the label truncates the way it was always
+     * meant to, and `overflow-hidden` keeps anything left over inside the
+     * rounded shape rather than on the page.
+     */
+    <div className={`qty-inline glass @container [--qty-step-w:1.6rem] @[15rem]:[--qty-step-w:2.25rem] ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
       <button
         type="button"
         onClick={() => onQuantity(Math.max(1, quantity - 1))}
@@ -256,8 +271,24 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
         className="pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 px-1 text-xs font-extrabold @[15rem]:gap-2 @[15rem]:px-2 disabled:cursor-not-allowed"
       >
         {busy ? <LoaderCircle className="size-4 shrink-0 animate-spin" /> : <span className="shrink-0">{icon}</span>}
-        <span className="truncate @[12rem]:hidden">{shortLabel}</span>
-        <span className="hidden truncate @[12rem]:inline">{label}</span>
+        {/*
+          The threshold is the **pill's** width, not the card's.
+          It used to ask the card, and one card width means two very different
+          pill widths: stacked, a 300px card gives the pill 274px; side by side
+          it gives it 133px. So a card comfortably over the old 12rem still put
+          "Add 9 to cart" into a slot with 20px of room, and the label came out
+          as an ellipsis. Asking the pill is asking the thing the label has to
+          fit inside.
+
+          13rem is measured, like the threshold it replaces: the two steps, the
+          icon and the padding take ~120px before a letter is drawn, and the
+          full English label needs ~85px on top of that.
+
+          `min-w-0` because `truncate` cannot clip a flex child that is still
+          floored at its own text width.
+        */}
+        <span className="min-w-0 truncate @[13rem]:hidden">{shortLabel}</span>
+        <span className="hidden min-w-0 truncate @[13rem]:inline">{label}</span>
       </button>
 
       <button
