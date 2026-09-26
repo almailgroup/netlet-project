@@ -108,6 +108,9 @@ const LENS_ZOOM = 2.5;
  */
 const LENS_PANE_WIDTH = 520;
 
+/** How far one arrow press moves a zoomed picture, in px. */
+const PAN_STEP = 60;
+
 /**
  * Full-screen viewer: every image as a grid on the left, the selected one large
  * on the right, with step zoom. This is the "inspect it properly" surface — the
@@ -130,17 +133,128 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
   const hasMultipleImages = media.length > 1;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
-  // A new image at 3x would drop the shopper into a corner of it.
-  useEffect(() => setScale(1), [selectedImageIndex]);
+  /*
+   * Panning a zoomed picture.
+   *
+   * `scale()` does not change an element's layout size, so the stage had
+   * nothing to scroll and the magnified image simply hung off the edges with
+   * no way to reach them: you could enlarge a rug and never see its corner.
+   * The comment below used to claim a drag panned it, which is the kind of
+   * note that outlives the behaviour it describes.
+   *
+   * The offset is carried in the same transform as the scale, and **clamped to
+   * the overflow** — a picture can be moved exactly as far as it hangs over
+   * the stage and not one pixel further. Letting it go further is how a drag
+   * ends with an empty white square and nothing to drag back.
+   */
+  const stageRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragFrom = useRef<{ x: number; y: number; pan: { x: number; y: number } } | null>(null);
+  /** Whether there is anything to move: a video is played, not panned. */
+  const zoomable = scale > 1 && !isVideo;
+
+  /** How far the picture may move before its edge would come inside the stage. */
+  const panLimit = (atScale: number) => {
+    const stage = stageRef.current;
+    const frame = frameRef.current;
+    if (!stage || !frame) return { x: 0, y: 0 };
+    return {
+      x: Math.max(0, (frame.offsetWidth * atScale - stage.clientWidth) / 2),
+      y: Math.max(0, (frame.offsetHeight * atScale - stage.clientHeight) / 2),
+    };
+  };
+
+  const clampPan = (next: { x: number; y: number }, atScale: number) => {
+    const limit = panLimit(atScale);
+    return {
+      x: Math.min(limit.x, Math.max(-limit.x, next.x)),
+      y: Math.min(limit.y, Math.max(-limit.y, next.y)),
+    };
+  };
+
+  /*
+   * Zooming re-clamps, because the limits shrink with the scale: an image
+   * pushed into its corner at 3x and then zoomed back to 1.5x would otherwise
+   * stay off-centre with a band of white beside it.
+   */
+  const zoomTo = (next: number) => {
+    const atScale = Math.min(3, Math.max(1, +next.toFixed(1)));
+    setScale(atScale);
+    setPan(current => clampPan(current, atScale));
+  };
+
+  // A new image at 3x, or held in the corner the last one was dragged to,
+  // would drop the shopper somewhere they did not ask to be.
+  useEffect(() => { setScale(1); setPan({ x: 0, y: 0 }); }, [selectedImageIndex]);
+
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    /*
+     * Not on a control. The zoom, the arrows and the player all sit inside the
+     * stage, and capturing the pointer on their press retargets the click to
+     * the stage — so zooming back out stopped working the moment you had
+     * zoomed in, which is the only time anybody wants it. Found by pressing the
+     * button, not by reading the handler.
+     */
+    if ((event.target as HTMLElement).closest("button, a, input, video")) return;
+    swipeStart.current = { x: event.clientX, y: event.clientY };
+    // A secondary button is a context menu, not a drag.
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    if (scale <= 1 || isVideo) return;
+    dragFrom.current = { x: event.clientX, y: event.clientY, pan };
+    setDragging(true);
+    /* Captured, so a drag that runs off the window still ends here rather than
+       leaving the picture stuck to the cursor. */
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const from = dragFrom.current;
+    if (!from) return;
+    setPan(clampPan(
+      { x: from.pan.x + (event.clientX - from.x), y: from.pan.y + (event.clientY - from.y) },
+      scale,
+    ));
+  };
+
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragFrom.current) {
+      dragFrom.current = null;
+      setDragging(false);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
+    endSwipe(event);
+  };
 
   const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = swipeStart.current;
     swipeStart.current = null;
-    // Only while un-zoomed: past 1x a drag is how you pan around the image.
+    // Only while un-zoomed: past 1x a drag pans the picture instead.
     if (!start || !hasMultipleImages || scale > 1) return;
     const travelled = event.clientX - start.x;
     if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
     onChangeImage(swipeDirection(travelled, direction));
+  };
+
+  /*
+   * The same pan from a keyboard.
+   *
+   * A region a mouse can drag and a keyboard cannot reach has no way to see
+   * the far side of the picture without a pointer — the argument the finance
+   * panel's scrolling tables already make. The press is stopped from
+   * propagating so the page's own arrow handler does not also change the
+   * image underneath the shopper.
+   */
+  const panByKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (scale <= 1) return;
+    const step = { ArrowLeft: [PAN_STEP, 0], ArrowRight: [-PAN_STEP, 0], ArrowUp: [0, PAN_STEP], ArrowDown: [0, -PAN_STEP] }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setPan(current => clampPan({ x: current.x + step[0], y: current.y + step[1] }, scale));
   };
 
   return (
@@ -176,16 +290,65 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
         </div>
 
         <div
-          onPointerDown={(event) => { swipeStart.current = { x: event.clientX, y: event.clientY }; }}
-          onPointerUp={endSwipe}
-          onPointerCancel={() => { swipeStart.current = null; }}
-          className="relative order-1 flex min-h-[46vh] flex-1 touch-pan-y items-center justify-center overflow-auto lg:order-2 lg:min-h-[320px]"
+          ref={stageRef}
+          /* Focusable and named, so the pan is reachable without a pointer. */
+          tabIndex={0}
+          role="group"
+          aria-label={t("product.imageStage")}
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+          onPointerCancel={(event) => { swipeStart.current = null; endDrag(event); }}
+          onKeyDown={panByKey}
+          /* `touch-none` only once there is something to pan: at 1x the browser
+             still owns the vertical scroll and the swipe between images. */
+          className={`relative order-1 flex min-h-[46vh] flex-1 items-center justify-center overflow-hidden outline-none lg:order-2 lg:min-h-[320px] ${
+            zoomable ? (dragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none") : "touch-pan-y"
+          }`}
         >
-          <Thumb src={image?.url} alt={image?.altText ?? product.title} priority style={{ transform: `scale(${scale})` }} className="max-h-full max-w-full object-contain transition-transform duration-200" />
-          <div className="absolute end-2 top-2 flex flex-col gap-2">
-            <button onClick={() => setScale(s => Math.min(3, +(s + 0.5).toFixed(1)))} disabled={scale >= 3} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
-            <button onClick={() => setScale(s => Math.max(1, +(s - 0.5).toFixed(1)))} disabled={scale <= 1} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+          {/* The frame carries the transform and is measured for the clamp:
+              its layout size is the picture's own, which `scale()` leaves
+              alone. */}
+          <div
+            ref={frameRef}
+            className="flex max-h-full max-w-full"
+            style={{
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+              /* No easing while a finger or a cursor is on it: a 200ms
+                 transition on every pointer move is a picture that lags
+                 behind the hand moving it. */
+              transition: dragging ? "none" : "transform 200ms",
+            }}
+          >
+            {isVideo ? (
+              /* The browser's own player, as on the product page — the viewer
+                 used to hand a video URL to an `<img>`, so opening one full
+                 screen showed the broken-picture fallback. */
+              <video
+                src={image?.url}
+                poster={image?.posterUrl ?? undefined}
+                controls
+                playsInline
+                preload="metadata"
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              /* Not natively draggable: the browser's own image drag would
+                 take the gesture and leave a ghost trailing off the stage. */
+              <Thumb src={image?.url} alt={image?.altText ?? product.title} priority draggable={false} className="max-h-full max-w-full object-contain" />
+            )}
           </div>
+          <div className="absolute end-2 top-2 flex flex-col gap-2">
+            <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 3 || isVideo} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
+            <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1 || isVideo} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+          </div>
+          {/* Said once, and only while it applies: a hint that is always on
+              screen is one nobody reads by the third product. */}
+          {zoomable ? (
+            <p className="pointer-events-none absolute start-2 top-2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white">
+              {t("product.dragToPan")}
+            </p>
+          ) : null}
           {hasMultipleImages ? <>
             <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
             <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
