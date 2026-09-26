@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeError } from "./describeError.js";
+import { describeError, rootCauseOf } from "./describeError.js";
 
 describe("describeError", () => {
   // The case it exists for: drizzle says "Failed query", and the reason a
@@ -32,5 +32,36 @@ describe("describeError", () => {
 
   it("handles something thrown that is not an Error at all", () => {
     expect(describeError("just a string")).toBe("just a string");
+  });
+});
+
+describe("rootCauseOf", () => {
+  /*
+   * The shape a broken deploy actually throws: Drizzle's wrapper is a hundred
+   * characters of `select`, and the one line worth reading is underneath it.
+   */
+  it("digs past the failed-query wrapper to the database's own words", () => {
+    const pg = Object.assign(new Error('column products.size_class does not exist'), { code: "42703" });
+    const drizzle = new Error('Failed query: select "products"."id", "products"."size_class" from "products"', { cause: pg });
+    expect(rootCauseOf(drizzle)).toBe("column products.size_class does not exist");
+  });
+
+  it("keeps the outermost message when nothing is wrapped", () => {
+    expect(rootCauseOf(new Error("Database is not configured"))).toBe("Database is not configured");
+  });
+
+  it("survives a cycle and a non-error", () => {
+    const a = new Error("a");
+    const b = new Error("b", { cause: a });
+    (a as { cause?: unknown }).cause = b;
+    expect(() => rootCauseOf(a)).not.toThrow();
+    expect(rootCauseOf("just a string")).toBe("just a string");
+  });
+
+  /* Never an empty bubble: a page showing nothing at all is the failure mode
+     this whole gate exists to stop. */
+  it("says something even when the error says nothing", () => {
+    expect(rootCauseOf(new Error(""))).toBe("Unknown error");
+    expect(rootCauseOf(undefined)).toBe("Unknown error");
   });
 });

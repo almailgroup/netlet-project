@@ -31,3 +31,31 @@ export function describeError(error: unknown, depth = 4): string {
 
   return parts.join("\n  caused by ");
 }
+
+/**
+ * The innermost reason, on its own.
+ *
+ * `describeError` is for a log, where every layer is worth keeping. This is for
+ * the one line a person reads: the deepest message in the chain, which for a
+ * failed query is the database's own — `column products.size_class does not
+ * exist` rather than a hundred characters of `select`.
+ *
+ * Falls back to the outermost message when there is no cause, and to the
+ * string itself when what was thrown is not an `Error` at all.
+ */
+export function rootCauseOf(error: unknown, depth = 6): string {
+  let current: unknown = error;
+  let best = typeof error === "string" ? error : "";
+
+  for (let level = 0; level < depth && current; level += 1) {
+    if (!(current instanceof Error)) {
+      const text = String(current).trim();
+      if (text) best = text;
+      break;
+    }
+    if (current.message.trim()) best = current.message.trim();
+    current = current.cause;
+  }
+
+  return best || "Unknown error";
+}
