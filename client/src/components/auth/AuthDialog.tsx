@@ -4,7 +4,8 @@
  * Credentials go to NetLet's own `auth.login` / `auth.register`, which set an
  * httpOnly session cookie. Nothing token-shaped is ever held in JavaScript
  * here, which is also why there are no social sign-in buttons: those need a
- * provider configured in Firebase and a redirect the server has to trust, and
+ * provider configured in the auth service and a redirect the server has to trust,
+ * and
  * a button that looks like Google sign-in and does nothing is worse than no
  * button.
  *
@@ -15,7 +16,7 @@
  * - **The meter names what is missing.** A bar that goes red tells somebody
  *   they failed without telling them how to stop; `checkPassword` returns the
  *   unmet rules and they are listed.
- * - **Reset actually sends an email.** Firebase composes it, so the link is
+ * - **Reset actually sends an email.** Supabase composes it, so the link is
  *   real rather than decorative. The reply is identical for an address with no
  *   account, so this cannot be used to ask who is registered.
  *
@@ -132,7 +133,8 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    // Firebase localises the reset email from the locale we send.
+    /* The locale is for Firebase, which composes the legacy reset email from it.
+       Supabase's own templates are a dashboard setting rather than a parameter. */
     if (isReset) reset.mutate({ email: email.trim(), locale });
     else if (isRegister) register.mutate({ email: email.trim(), password, name: name.trim() || undefined, referral: storedReferral() });
     else login.mutate({ email: email.trim(), password });

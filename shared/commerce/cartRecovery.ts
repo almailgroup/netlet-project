@@ -7,7 +7,7 @@
  *
  * ## What this is, and why it is not email
  *
- * **There is no mail provider and no scheduler.** Firebase sends the auth
+ * **There is no mail provider and no scheduler.** Supabase sends the auth
  * emails and nothing else, and nothing in this deployment runs on a timer. A
  * recovery *email* would need both, and a reminder that depends on a cron
  * nobody runs is a dead feature that looks finished — the same dishonesty the
