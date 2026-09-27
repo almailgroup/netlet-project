@@ -141,17 +141,72 @@ export async function recordGiftCardUse(db: Db, code: string, orderId: number, a
  * the next shopper. `onConflictDoNothing` on the (code, order) index, because
  * a retry must not count twice.
  */
-export async function recordRedemption(
+/**
+ * Take one use of a code, or refuse.
+ *
+ * `quoteVoucher` counts the redemptions and compares them with the ceiling,
+ * and that is a read: two checkouts in two tabs both read "used 0 of 1" and
+ * both went through, so a code good for one customer came off two orders and a
+ * one-per-shopper code came off the same shopper twice. The only unique index
+ * is on `(code, order)`, which stops one order redeeming twice and nothing
+ * else.
+ *
+ * So the count is taken under a lock on the code's own row — the same shape
+ * `takePoints` uses, and for the same reason: no single row holds the total,
+ * so there is no column to hang a `>=` predicate off the way the stock take
+ * and the gift-card spend do. Inside the transaction the row is held, the
+ * count is re-read against the ceiling as it stands *now*, and the redemption
+ * is inserted before the lock is released. A second checkout waits, re-reads,
+ * and is refused.
+ *
+ * The row is claimed with no order behind it yet, because the order does not
+ * exist until the basket has cleared every other gate. `stampRedemption`
+ * attaches it afterwards and `returnRedemption` hands it back when a later
+ * step refuses — exactly as the stock and the points are handed back.
+ */
+export async function claimRedemption(
   db: Db,
   code: string,
-  input: { userId: number | null; orderId: number; amount: string },
-): Promise<void> {
-  const [row] = await db.select({ id: discountCodes.id }).from(discountCodes).where(eq(discountCodes.code, code)).limit(1);
-  if (!row) return;
-  await db
-    .insert(discountRedemptions)
-    .values({ codeId: row.id, userId: input.userId, orderId: input.orderId, amount: input.amount })
-    .onConflictDoNothing();
+  input: { userId: number | null; amount: string },
+): Promise<number | null> {
+  return db.transaction(async tx => {
+    const [row] = await tx
+      .select({ id: discountCodes.id, maxRedemptions: discountCodes.maxRedemptions, perShopper: discountCodes.perShopper })
+      .from(discountCodes)
+      .where(eq(discountCodes.code, code))
+      .for("update")
+      .limit(1);
+    if (!row) return null;
+
+    const [counts] = await tx
+      .select({
+        used: sql<string>`count(*)`,
+        mine: sql<string>`count(*) filter (where ${discountRedemptions.userId} = ${input.userId ?? -1})`,
+      })
+      .from(discountRedemptions)
+      .where(eq(discountRedemptions.codeId, row.id));
+
+    const used = Number(counts?.used ?? 0);
+    const mine = Number(counts?.mine ?? 0);
+    if (row.maxRedemptions !== null && used >= row.maxRedemptions) return null;
+    if (input.userId !== null && mine >= Math.max(1, row.perShopper)) return null;
+
+    const [claim] = await tx
+      .insert(discountRedemptions)
+      .values({ codeId: row.id, userId: input.userId, orderId: null, amount: input.amount })
+      .returning({ id: discountRedemptions.id });
+    return claim?.id ?? null;
+  });
+}
+
+/** Attach the order, once there is one. */
+export async function stampRedemption(db: Db, claimId: number, orderId: number): Promise<void> {
+  await db.update(discountRedemptions).set({ orderId }).where(eq(discountRedemptions.id, claimId));
+}
+
+/** Hand the use back, when a later step refuses the order. */
+export async function returnRedemption(db: Db, claimId: number): Promise<void> {
+  await db.delete(discountRedemptions).where(eq(discountRedemptions.id, claimId));
 }
 
 /* ------------------------------------------------------------- minting --- */

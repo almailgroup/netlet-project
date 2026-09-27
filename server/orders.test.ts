@@ -23,6 +23,7 @@ import {
   bundleItems,
   bundles as bundlesTable,
   discountCodes,
+  discountRedemptions,
   giftCards,
   productAddons,
   productVariants,
@@ -37,6 +38,7 @@ import { addMoney } from "../shared/money.js";
 let db: ReturnType<typeof drizzle>;
 let ordersModule: typeof import("./orders.js");
 let fraud: typeof import("./fraud.js");
+let bundlesModule: typeof import("./bundles.js");
 
 const ids = {
   admin: 0, shopper: 0, acmeOwner: 0, otherOwner: 0,
@@ -60,6 +62,7 @@ beforeAll(async () => {
   }));
   ordersModule = await import("./orders.js");
   fraud = await import("./fraud.js");
+  bundlesModule = await import("./bundles.js");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [shopper] = await db.insert(users).values({ email: "shopper@example.test" }).returning();
@@ -578,6 +581,50 @@ describe("bundles", () => {
   }
 
   /*
+   * What the shop quotes is what the bag charges.
+   *
+   * The split prices each member per unit and rounds down, so the parts come
+   * to a fil or two under the figure the seller typed. The offer printed the
+   * seller's figure while the bag summed the parts, so a set advertised at
+   * KWD 90.000 was billed at 89.997 — two numbers for one price, and the one
+   * the shopper agreed to was not the one they paid.
+   *
+   * Three units cannot share seven fils evenly, so the quote follows the parts
+   * rather than the parts chasing the quote. This pins the quote to the sum of
+   * the members and to what a real basket comes to, which is what the first
+   * fix got wrong: quoting the reduced figure while the pricing path re-split
+   * it took the fils off twice.
+   */
+  it("quotes exactly what the basket will charge, to the fil", async () => {
+    /* A price the per-unit split cannot divide evenly: three lamps at 24.375
+       and one kettle at 11.250 is 84.375 separately. */
+    const [bundle] = await db.insert(bundlesTable).values({ name: "Three lamps", bundlePrice: "70.001" }).returning();
+    await db.insert(bundleItems).values([
+      { bundleId: bundle.id, variantId: ids.lampVariant, quantity: 3, position: 0 },
+      { bundleId: bundle.id, variantId: ids.kettleVariant, quantity: 1, position: 1 },
+    ]);
+
+    const [view] = await bundlesModule.loadBundles(db, { ids: [bundle.id] });
+    /* The fixture genuinely exercises the rounding: three lamps and a kettle
+       cannot share 70.001 evenly, and the parts come to 69.999. A fixture that
+       divided cleanly would pass whether this was fixed or not. */
+    expect(view.bundlePrice).not.toBe("70.001");
+    const fromMembers = addMoney(...view.members.map(member => member.lineTotal));
+    expect(view.bundlePrice).toBe(fromMembers);
+    /* Never above what the seller set — the direction to be wrong in. */
+    expect(Number(view.bundlePrice)).toBeLessThanOrEqual(70.001);
+
+    const [cart] = await db.insert(carts).values({ id: `cart-${Math.random().toString(36).slice(2)}`, userId: ids.shopper }).returning();
+    await db.insert(cartItems).values([
+      { cartId: cart.id, variantId: ids.lampVariant, quantity: 3, bundleId: bundle.id },
+      { cartId: cart.id, variantId: ids.kettleVariant, quantity: 1, bundleId: bundle.id },
+    ]);
+    const placed = await ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper });
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    expect(order.itemsTotal).toBe(view.bundlePrice);
+  });
+
+  /*
    * The rule the cross-vendor case turns on: taking the whole saving off one
    * line would have that seller paying for the other's promotion.
    */
@@ -1021,5 +1068,73 @@ describe("sending part of a basket somewhere else", () => {
     const bare = await addressesModule.addAddress(ids.shopper, { label: "Mum's", addressLine: "Block 9" });
     expect(bare.governorate).toBeNull();
     await addressesModule.removeAddress(ids.shopper, bare.id);
+  });
+});
+
+/**
+ * A discount code's ceiling, under two tabs.
+ *
+ * The stock take, the gift-card spend and the one-open-price-request all put
+ * their guard *inside* the write — a predicate in the UPDATE or a partial
+ * unique index — because a read followed by a write is two tabs away from
+ * being wrong. The discount code counted its redemptions in a SELECT and then
+ * inserted, and the only unique index is on `(code, order)`, which stops one
+ * order redeeming twice and nothing else.
+ */
+describe("a discount code's ceiling", () => {
+  beforeEach(async () => {
+    await db.delete(discountRedemptions);
+    await db.delete(discountCodes);
+  });
+
+  it("is not exceeded by two checkouts at once", async () => {
+    await db.insert(discountCodes).values({
+      code: "ONLYONE", kind: "percent", value: "10.00", active: true, maxRedemptions: 1,
+    });
+
+    const first = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const second = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+
+    const results = await Promise.allSettled([
+      ordersModule.placeOrder(first, { ...DETAILS, userId: ids.shopper, voucherCode: "ONLYONE" }),
+      ordersModule.placeOrder(second, { ...DETAILS, userId: ids.shopper, voucherCode: "ONLYONE" }),
+    ]);
+
+    const placed = results.filter(r => r.status === "fulfilled");
+    const refused = results.filter(r => r.status === "rejected");
+    const redemptions = await db.select().from(discountRedemptions);
+    const discounted = (await db.select().from(orders)).filter(row => Number(row.discountValue) > 0);
+
+    /* One gets it. The other is refused rather than quietly charged the full
+       price — the rule the code already follows for a voucher that stops
+       working between the page and the button. */
+    expect(placed).toHaveLength(1);
+    expect(refused).toHaveLength(1);
+    expect((refused[0] as PromiseRejectedResult).reason.message).toBe("order.voucherGone");
+    expect(redemptions).toHaveLength(1);
+    expect(discounted).toHaveLength(1);
+  });
+
+  it("is not exceeded one shopper at a time either", async () => {
+    await db.insert(discountCodes).values({
+      code: "ONCEEACH", kind: "percent", value: "10.00", active: true, perShopper: 1,
+    });
+
+    const first = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const second = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+
+    await Promise.allSettled([
+      ordersModule.placeOrder(first, { ...DETAILS, userId: ids.shopper, voucherCode: "ONCEEACH" }),
+      ordersModule.placeOrder(second, { ...DETAILS, userId: ids.shopper, voucherCode: "ONCEEACH" }),
+    ]);
+
+    const discounted = (await db.select().from(orders)).filter(row => Number(row.discountValue) > 0);
+    expect(discounted).toHaveLength(1);
+
+    /* And the row that records it names the shopper, so the next attempt by
+       the same account is refused by the count rather than by luck. */
+    const redemptions = await db.select().from(discountRedemptions);
+    expect(redemptions).toHaveLength(1);
+    expect(redemptions[0].userId).toBe(ids.shopper);
   });
 });

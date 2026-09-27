@@ -46,7 +46,7 @@ import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
-import { quoteVoucher, recordGiftCardUse, recordRedemption, refundGiftCard, spendGiftCard } from "./vouchers.js";
+import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
 import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
@@ -484,7 +484,24 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     throw new OrderRefused("order.voucherGone");
   }
-  const discountValue = quoted?.ok && quoted.kind === "discount" ? quoted.amount : "0.000";
+  /*
+   * The code's use is *taken* here, not recorded afterwards.
+   *
+   * `quoteVoucher` counts the redemptions and compares them with the ceiling,
+   * and a count is a read: two tabs both saw "used 0 of 1" and both went
+   * through, so a code good for one customer came off two orders. Taking it
+   * before the order exists — under a lock, like the points, and handed back
+   * like the stock — is what makes the ceiling true.
+   */
+  const claimId = quoted?.ok && quoted.kind === "discount"
+    ? await claimRedemption(db, quoted.code, { userId: details.userId ?? null, amount: quoted.amount })
+    : null;
+  if (quoted?.ok && quoted.kind === "discount" && claimId === null) {
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    throw new OrderRefused("order.voucherGone");
+  }
+
+  const discountValue = claimId !== null && quoted?.ok ? quoted.amount : "0.000";
   const afterDiscount = subtractMoney(draft.totals.grandTotal, discountValue);
 
   const wantedPoints = details.usePoints && details.userId
@@ -495,6 +512,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     : null;
   if (wantedPoints > 0 && pointsEntryId === null) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    if (claimId !== null) await returnRedemption(db, claimId);
     throw new OrderRefused("order.pointsGone");
   }
   const pointsSpent = pointsEntryId === null ? 0 : wantedPoints;
@@ -513,6 +531,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   if (toFils(giftAsked) > 0n && !giftTaken) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
+    if (claimId !== null) await returnRedemption(db, claimId);
     throw new OrderRefused("order.voucherGone");
   }
   const giftCardValue = giftTaken ? giftAsked : "0.000";
@@ -618,15 +637,10 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
       await db.update(pointEntries).set({ orderId: order.id }).where(eq(pointEntries.id, pointsEntryId));
     }
 
-    /* The redemption row *is* the count of how often a code has been used, so
-       this is also what makes "all used up" true for the next shopper. */
-    if (toFils(discountValue) > 0n && quoted?.ok) {
-      await recordRedemption(db, quoted.code, {
-        userId: details.userId ?? null,
-        orderId: order.id,
-        amount: discountValue,
-      });
-    }
+    /* The redemption row was already taken above — it *is* the count of how
+       often a code has been used, so it had to exist before anybody else could
+       be told the code was still good. This only attaches the order to it. */
+    if (claimId !== null) await stampRedemption(db, claimId, order.id);
     if (giftTaken && quoted?.ok) await recordGiftCardUse(db, quoted.code, order.id, giftCardValue);
 
     // The basket has become the order; leaving it would let the same items be
@@ -653,6 +667,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     /* A card charged for an order that does not exist has to go back, the same
        as the stock and the points. */
     if (giftTaken && quoted?.ok) await refundGiftCard(db, quoted.code, giftCardValue);
+    if (claimId !== null) await returnRedemption(db, claimId);
     throw error;
   }
 }

@@ -15,11 +15,13 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { bundleItems, bundles, productVariants, products, vendors } from "../drizzle/schema.js";
 import {
   isSellableBundle,
+  chargedTotal,
   savingOf,
   separatelyTotal,
   splitBundlePrice,
   type Bundle,
 } from "../shared/commerce/bundles.js";
+import { multiplyMoney } from "../shared/money.js";
 import { discountAllowed } from "../shared/inventory/discountLicence.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
@@ -46,6 +48,9 @@ export type BundleView = Omit<Bundle, "members"> & {
     variantTitle: string | null;
     vendorName: string | null;
     availableForSale: boolean;
+    /** What one of these costs inside the set, and what the line comes to. */
+    bundleUnitPrice: string;
+    lineTotal: string;
   })[];
 };
 
@@ -149,12 +154,46 @@ export async function loadBundles(
         variantTitle: member.variantTitle,
         vendorName: member.vendorName,
         availableForSale: member.stock + member.preorderStock > 0,
+        /* Filled by the split below; a member cannot know its own share. */
+        bundleUnitPrice: member.unitPrice,
+        lineTotal: multiplyMoney(member.unitPrice, member.quantity),
       })),
       separately: "0.000",
       saving: "0.000",
       crossVendor: new Set(mine.map(member => member.vendorId)).size > 1,
     };
     view.separately = separatelyTotal(view.members);
+
+    /*
+     * **Split once, here, and quoted at what it will actually charge.**
+     *
+     * The split prices each member per unit and rounds down, so the parts can
+     * come to a fil or two under the figure the seller typed — one fil per
+     * unit at worst. The offer used to print the seller's figure while the bag
+     * summed the parts, so a set advertised at KWD 90.000 was billed at
+     * 89.997: two numbers for one price, and the one the shopper agreed to was
+     * not the one they paid.
+     *
+     * Rounding the other way cannot fix it. `lineTotal = unitPrice × quantity`
+     * is an identity the order arithmetic holds exactly, and three units
+     * cannot share seven fils evenly however they are rounded. So the shop
+     * quotes the sum of the parts — the seller's price or a hair under it,
+     * never over.
+     *
+     * The split is done **once** and carried on the members, rather than
+     * recomputed by whoever needs it. Quoting the reduced figure while the
+     * pricing path re-split it from scratch took the fils off twice, which is
+     * what the first attempt at this did: 90.000 became 89.997 on the page and
+     * 89.995 in the bag. One split, one set of numbers.
+     */
+    const priced = splitBundlePrice(view);
+    const shareOf = new Map(priced.map(share => [share.variantId, share]));
+    for (const member of view.members) {
+      const share = shareOf.get(member.variantId);
+      member.bundleUnitPrice = share?.bundleUnitPrice ?? member.unitPrice;
+      member.lineTotal = share?.lineTotal ?? multiplyMoney(member.unitPrice, member.quantity);
+    }
+    view.bundlePrice = chargedTotal(priced);
     view.saving = savingOf(view);
 
     /* A bundle that saves nothing is a set of products with a heading. */
@@ -203,12 +242,13 @@ export async function bundlePricing(
     );
     if (!complete) continue;
 
-    for (const share of splitBundlePrice(bundle)) {
-      /* The split already hands back a per-unit figure, because everything
-         downstream — the line total, the commission split, the delivery
-         grouping — multiplies by quantity itself. */
-      priced.set(share.variantId, {
-        unitPrice: share.bundleUnitPrice,
+    for (const member of bundle.members) {
+      /* The share `loadBundles` already worked out. Re-splitting here is what
+         made the page and the bag disagree, and a per-unit figure is what
+         everything downstream wants anyway — the line total, the commission
+         split and the delivery grouping all multiply by quantity themselves. */
+      priced.set(member.variantId, {
+        unitPrice: member.bundleUnitPrice,
         bundleId: bundle.id,
         bundleName: bundle.name,
       });
