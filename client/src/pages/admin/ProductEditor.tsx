@@ -636,7 +636,10 @@ function CommissionPanel({
       <h2 className="text-sm font-extrabold">{t("admin.productCommission")}</h2>
       <p className="mt-1 text-[11px] text-[#536b8c]">{t("admin.productCommissionNote")}</p>
       <div className="mt-4 flex flex-wrap items-end gap-3">
-        <Labelled label={t("admin.commissionPercent")} className="w-32">
+        {/* The ceiling is on the label, because the API refuses above it and a
+            form that does not say so leaves an admin typing 500 and reading
+            "Could not save". */}
+        <Labelled label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")} className="w-32">
           <input
             dir="ltr"
             inputMode="decimal"

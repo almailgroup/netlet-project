@@ -302,7 +302,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               </span>
             ) : null}
           </div>
-          <Labelled label={t("admin.commissionPercent")}>
+          <Labelled label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")}>
             <input
               dir="ltr"
               inputMode="decimal"
@@ -565,8 +565,10 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
   );
 }
 
-function Labelled({ label, problem, className = "", children }: {
+function Labelled({ label, hint, problem, className = "", children }: {
   label: string;
+  /** What the field will accept, for a rule the API enforces and the label otherwise would not state. */
+  hint?: string;
   problem?: MessageKey;
   className?: string;
   children: React.ReactNode;
@@ -575,6 +577,7 @@ function Labelled({ label, problem, className = "", children }: {
   return (
     <label className={`block ${className}`}>
       <span className="text-[11px] font-extrabold text-[#0a285a]">{label}</span>
+      {hint ? <span className="ms-2 text-[10px] font-semibold ink-muted">{hint}</span> : null}
       <span className="mt-1.5 block">{children}</span>
       {problem ? <span className="mt-1 block text-[10px] font-bold text-[#8c2f22]">{t(problem)}</span> : null}
     </label>

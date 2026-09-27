@@ -13,11 +13,12 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { appPath } from "@/lib/basePath";
+import { useOverlay } from "@/hooks/useOverlay";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
-import { canUseGalleryKeyboard, galleryIndex } from "@shared/commerce/gallery";
+import { canUseGalleryKeyboard, galleryIndex, galleryOf } from "@shared/commerce/gallery";
 import {
   isExpressEligible,
   productRating,
@@ -124,10 +125,28 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
   onChangeImage: (direction: "previous" | "next") => void;
 }) {
   const { direction, t } = useTranslation();
+  const closeButton = useRef<HTMLButtonElement | null>(null);
+  /*
+   * The full-screen viewer is a modal, so it owes what every other one here
+   * does. It had re-derived exactly one of the three: Escape closed it, the
+   * page behind went on scrolling, and closing dropped the keyboard on
+   * `<body>` — the shopper tabbing back through the whole header to reach the
+   * product they were looking at, which is the failure `useOverlay`'s own
+   * comment describes.
+   *
+   * The order of these two matters and is why focus is moved here rather than
+   * with `autoFocus`. Effects in one component run in the order they are
+   * declared, so `useOverlay` reads `document.activeElement` — still the button
+   * that opened this — before anything moves it. React applies `autoFocus`
+   * during the commit, which is earlier than either, so the opener it recorded
+   * was this dialog's own close button and there was nothing to go back to.
+   */
+  useOverlay(true, onClose);
+  useEffect(() => closeButton.current?.focus(), []);
   const [scale, setScale] = useState(1);
   /* The same list the gallery indexes into, or "image 4" would mean two
      different things on the two surfaces the moment a video is in the set. */
-  const media = product.media.length ? product.media : product.images.map(item => ({ ...item, kind: "image" as const, posterUrl: null }));
+  const media = galleryOf(product);
   const image = media[selectedImageIndex] ?? media[0];
   const isVideo = image?.kind === "video";
   const hasMultipleImages = media.length > 1;
@@ -263,7 +282,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
         <div>
           <h2 className="border-b-2 border-[#0a285a] pb-2 text-lg font-extrabold text-[#0a285a]">{t("product.images")}</h2>
         </div>
-        <button autoFocus onClick={onClose} aria-label={t("product.closeViewer")} className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
+        <button ref={closeButton} onClick={onClose} aria-label={t("product.closeViewer")} className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
       </div>
 
       {/* On a phone the grid used to sit above the image, so opening the viewer
@@ -414,7 +433,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
    * the photographs, which is what "alongside photos" asks for. Cards and
    * rails keep reading `images`, so none of them can render a video frame.
    */
-  const media = product.media.length ? product.media : product.images.map(image => ({ ...image, kind: "image" as const, posterUrl: null }));
+  const media = galleryOf(product);
   const image = media[selectedImageIndex] ?? media[0];
   const isVideo = image?.kind === "video";
   const hasMultipleImages = media.length > 1;
@@ -867,7 +886,9 @@ export default function ProductDetail() {
   }, [product?.id]);
 
   useEffect(() => {
-    const imageCount = product?.images.length ?? 0;
+    /* The gallery, not the photographs: with a video in the set these two
+       differ by one, and the arrows would wrap short of the clip. */
+    const imageCount = product ? galleryOf(product).length : 0;
     if (imageCount <= 1) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.altKey || event.ctrlKey || event.metaKey || !canUseGalleryKeyboard(event.target)) return;
@@ -880,20 +901,13 @@ export default function ProductDetail() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [direction, product?.id, product?.images.length]);
-
-  useEffect(() => {
-    if (!zoomOpen) return;
-    const closeZoom = (event: KeyboardEvent) => { if (event.key === "Escape") setZoomOpen(false); };
-    window.addEventListener("keydown", closeZoom);
-    return () => window.removeEventListener("keydown", closeZoom);
-  }, [zoomOpen]);
+  }, [direction, product?.id, product?.media.length, product?.images.length]);
 
   const selectedVariant = product?.variants.find(variant => variant.id === selectedVariantId) ?? product?.variants[0];
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
   const isSaved = product ? savedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  const galleryImageCount = product?.images.length ?? 0;
+  const galleryImageCount = product ? galleryOf(product).length : 0;
 
   const changeImage = (direction: "previous" | "next") => setSelectedImageIndex(current => galleryIndex(current, galleryImageCount, direction));
 

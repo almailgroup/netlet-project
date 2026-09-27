@@ -651,7 +651,10 @@ matters is a timezone an admin chooses.
 `server/finance.ts` is the database half, outside `db.ts` for the reason
 `profile.ts` and `orders.ts` are, and it guards with `platform.viewAll` — a
 vendor sees their own figures on their own pages, and the platform's cut across
-every seller is not one of them. It reads at most `LINE_CEILING` lines and says
+every seller is not one of them. The router's `guard` is what turns that
+refusal into a 403, and `report` was the one procedure in the file that skipped
+it — so a shopper or a vendor asking got precisely the 500 that looks like a bug
+which the file's own comment says `guard` exists to prevent. It reads at most `LINE_CEILING` lines and says
 so when it hit the ceiling, rather than under-reporting in silence.
 
 **The panel will be empty on a real deployment, and says so in words.** Nothing
@@ -680,7 +683,21 @@ rather than by every consumer remembering to filter.
 
 The product page and its lightbox both index into `media`, not one into each:
 the moment a video is in the set, "image 4" would otherwise mean two different
-things on the two surfaces.
+things on the two surfaces. **And the page counts `media` too**, which is the
+half that went wrong: both surfaces derived the gallery for themselves while the
+index that drives them was bounded by `images.length`, so a product with a clip
+had one item the arrows and the next button could never reach, and with the clip
+first the counter and the picture named different things. `galleryOf` in
+`shared/commerce/gallery.ts` is the derivation now — one function, so a page
+cannot disagree with itself about how long its own gallery is.
+
+**The full-screen viewer is a modal and owes what every modal here does.** It
+had re-derived exactly one of `useOverlay`'s three: Escape closed it, the page
+behind went on scrolling, and closing dropped the keyboard on `<body>`. Focus is
+moved in by an effect declared *after* `useOverlay` rather than by `autoFocus`,
+because React applies `autoFocus` during the commit — earlier than either effect
+— so the opener the hook recorded was the dialog's own close button and there was
+nothing to go back to.
 
 The player is the browser's own — `controls`, `playsInline`, no autoplay,
 `preload="metadata"`. A hand-rolled player would have to earn back keyboard

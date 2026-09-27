@@ -36,10 +36,12 @@ export const financeRouter = router({
       from: z.coerce.date().nullish(),
       to: z.coerce.date().nullish(),
     }).optional())
-    .query(async ({ ctx, input }) => {
-      const actor = await resolveActor(ctx.user);
-      return financeReport(actor, { from: input?.from ?? null, to: input?.to ?? null });
-    }),
+    /* Through `guard`, like the three below it. It was the one procedure in
+       this file that skipped the translator the file's own comment explains —
+       so a shopper or a vendor asking for the platform's figures got exactly
+       the 500 that looks like a bug, rather than the 403 they are owed. */
+    .query(async ({ ctx, input }) => guard(async () =>
+      financeReport(await resolveActor(ctx.user), { from: input?.from ?? null, to: input?.to ?? null }))),
 
   /**
    * What each seller is owed, by week (3.3.16).
