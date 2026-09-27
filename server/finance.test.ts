@@ -196,14 +196,45 @@ describe("the weekly payout report", () => {
     expect(report.owed).toBe("153.000");
   });
 
-  /* Subtracted from the week of the sale, not the week it came back. */
-  it("takes a refund off the week it was sold in", async () => {
+  /*
+   * A refund belongs to the week of the sale, not the week it came back — and
+   * owes the seller nothing there. Two sofas sold, one given back: the seller
+   * is owed the other. This asserted "0.000" against the report that subtracted
+   * a sale never added, which is how the panel came to show one seller owed
+   * 431.400 in one table and 221.400 in the two beside it.
+   */
+  it("leaves the week of the sale owing the sale that stuck", async () => {
     await order("paid", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-23T10:00:00Z"));
     await order("refunded", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-24T10:00:00Z"));
 
     const report = await payouts.payoutReport(adminActor());
-    expect(report.vendors[0].weeks[0].owed).toBe("0.000");
-    expect(report.owed).toBe("0.000");
+    const week = report.vendors[0].weeks[0];
+    expect(week).toMatchObject({ gross: "200.000", refunded: "100.000", commission: "10.000", owed: "90.000" });
+    /* The identity the finance report beside it is tested on, here too. */
+    expect(Number(week.commission) + Number(week.owed)).toBeCloseTo(Number(week.gross) - Number(week.refunded), 3);
+    expect(report.owed).toBe("90.000");
+  });
+
+  /*
+   * All three tables answer "what is this seller owed", on one page, from the
+   * same frozen lines. They gave three answers — 431.400 by seller, 221.400
+   * weekly and 221.400 in the due list — and each looked defensible on its own.
+   * This is the assertion that would have caught it.
+   */
+  it("agrees with the finance report and the due list about what a seller is owed", async () => {
+    await order("paid", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-23T10:00:00Z"));
+    await order("refunded", [acmeLine("100.000", "10.000", "90.000")], new Date("2026-09-24T10:00:00Z"));
+    await order("paid", [acmeLine("40.000", "4.000", "36.000")], new Date("2026-10-01T10:00:00Z"));
+
+    const report = await finance.financeReport(adminActor());
+    const seller = report.vendors.find(v => v.vendorName === "Acme")!;
+
+    const weekly = await payouts.payoutReport(adminActor());
+    expect(weekly.vendors[0].owed).toBe(seller.vendorNet);
+
+    const due = await payouts.payoutDueList(adminActor());
+    const dueTotal = due.reduce((sum, row) => sum + Number(row.owed), 0);
+    expect(dueTotal).toBeCloseTo(Number(seller.vendorNet), 3);
   });
 
   /*
@@ -261,12 +292,17 @@ describe("when a payout is due", () => {
     }
   });
 
-  /* Money that went back is not a payout waiting to happen. */
-  it("reports a refunded order as refunded rather than due", async () => {
+  /*
+   * Money that went back is not a payout waiting to happen — and not a debt
+   * either. This asserted `-36.000`, so the table told a seller they owed
+   * NetLet 36 for an order whose money had gone straight back to the shopper.
+   * There is no ledger of payout runs for a clawback to reverse against.
+   */
+  it("reports a refunded order as refunded, owing nothing", async () => {
     await order("refunded", [acmeLine("40.000", "4.000", "36.000")]);
     const [entry] = await payouts.payoutDueList(adminActor());
     expect(entry.due.state).toBe("refunded");
-    expect(entry.owed).toBe("-36.000");
+    expect(entry.owed).toBe("0.000");
   });
 
   it("shows a vendor only their own", async () => {

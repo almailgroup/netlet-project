@@ -68,7 +68,11 @@ async function recentBaskets(): Promise<{ baskets: Basket[]; observations: Array
     .from(orderItems)
     .innerJoin(orders, eq(orders.id, orderItems.orderId))
     .where(inArray(orders.status, ["paid", "refunded"]))
-    .orderBy(sql`${orderItems.orderId} desc`)
+    /* The id breaks the tie, because one order has several items and
+       `order_id` alone does not order them — so which of a boundary basket's
+       lines fell inside the cap was whatever Postgres chose that time. The same
+       rule the audit list and the catalogue read follow. */
+    .orderBy(sql`${orderItems.orderId} desc`, sql`${orderItems.id} desc`)
     .limit(BASKET_LIMIT);
 
   for (const row of bought) {

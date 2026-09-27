@@ -18,9 +18,30 @@
  * change what a seller was owed in September when their rate moves in
  * October, which is the exact failure `order_items` exists to prevent.
  *
- * **A refunded line is subtracted from the week it was sold in**, not the week
- * it came back. A payout run covers the sales in a period, and moving a
- * reversal into a later week makes two weeks wrong to make one look tidy.
+ * **A refunded line belongs to the week it was sold in**, not the week it came
+ * back. A payout run covers the sales in a period, and moving a reversal into a
+ * later week makes two weeks wrong to make one look tidy.
+ *
+ * **And there it earns the seller nothing — it is not a debt.** This is the
+ * rule that was wrong, and it was wrong by the whole net of every refund.
+ * `owed` subtracted `vendorNet` on a refunded line, as a reversal of the sale;
+ * but an order carries one status, so once it reads `refunded` the sale it
+ * reverses was never added anywhere. A seller who sold one sofa and refunded
+ * another in the same week was shown as owed nothing when they were owed the
+ * first sofa, and a week of refunds alone showed them owing NetLet money they
+ * had never been sent.
+ *
+ * `shared/commerce/finance.ts` had it right and says so in its own header — "a
+ * refunded line adds no commission and no vendor net" — and the two reports
+ * render on one page, so the panel showed a seller owed 431.400 in one table
+ * and 221.400 in the two beside it. Measured by rendering it, not by reading
+ * it: every test at the time passed, because the tests asserted the bug.
+ *
+ * What follows from that is that a week cannot come out negative. This report
+ * recomputes history rather than logging transfers — there is no payout-run
+ * table for a later refund to claw back against — so a week is the sum of the
+ * sales that stuck, and that sum is never below zero. If payout runs are ever
+ * recorded, a clawback is a row in *that* ledger, not a negative here.
  *
  * **A week runs Sunday to Saturday.** That is the Kuwaiti working week — the
  * weekend is Friday and Saturday — so a week that starts on Monday would cut
@@ -51,7 +72,7 @@ export type PayoutWeek = {
   gross: string;
   refunded: string;
   commission: string;
-  /** What the seller is owed for the week. Can be negative. */
+  /** What the seller is owed for the week: the net on the sales that stuck. */
   owed: string;
   lines: number;
 };
@@ -105,10 +126,12 @@ export function weeksFor(lines: PayoutLine[]): PayoutWeek[] {
     week.gross += total;
     week.lines += 1;
     if (line.orderStatus === "refunded") {
-      /* Subtracted from the week it was *sold* in. Moving a reversal into a
-         later week makes two weeks wrong to make one look tidy. */
+      /* Counted in the week it was *sold* in, and counted as nothing owed.
+         The money went back, so the seller earned nothing on it — and
+         subtracting `vendorNet` here took off a sale that was never added,
+         because an order carries one status and this one now reads `refunded`.
+         The same rule `finance.ts` states for the report beside this one. */
       week.refunded += total;
-      week.owed -= toFils(line.vendorNet);
     } else {
       week.commission += toFils(line.commissionAmount);
       week.owed += toFils(line.vendorNet);
@@ -123,9 +146,10 @@ export function weeksFor(lines: PayoutLine[]): PayoutWeek[] {
       gross: fromFils(week.gross),
       refunded: fromFils(week.refunded),
       commission: fromFils(week.commission),
-      /* Negative is shown rather than clamped: a week of refunds against
-         nothing sold means the seller owes NetLet, and a zero there is how a
-         payout run quietly overpays. */
+      /* The sales that stuck, so never below zero. A clawback against a payout
+         already made would belong to a ledger of payout runs, which does not
+         exist yet — inventing it as a negative here made the seller owe money
+         nobody had sent them. */
       owed: fromFils(week.owed),
       lines: week.lines,
     }));

@@ -33,19 +33,35 @@ describe("what a seller is owed", () => {
   });
 
   /*
-   * Subtracted from the week it was sold in. Moving a reversal into a later
-   * week makes two weeks wrong to make one look tidy.
+   * A refund belongs to the week of the sale, and earns the seller nothing
+   * there. These two assertions used to read `owed: "0.000"` and `-90.000`,
+   * which is the bug they were written to lock in: `owed` subtracted
+   * `vendorNet` as a reversal, but an order carries one status, so the sale it
+   * reverses was never added. The seller here sold two sofas and gave one back:
+   * they are owed the other one.
    */
-  it("takes a refund off the week of the sale", () => {
+  it("leaves the week of the sale owing the sale that stuck", () => {
     const weeks = weeksFor([line(), line({ orderStatus: "refunded" })]);
     expect(weeks).toHaveLength(1);
-    expect(weeks[0]).toMatchObject({ owed: "0.000", refunded: "100.000", gross: "200.000" });
+    expect(weeks[0]).toMatchObject({ owed: "90.000", refunded: "100.000", gross: "200.000" });
   });
 
-  /* A zero there is how a payout run quietly overpays. */
-  it("shows a negative week rather than clamping it", () => {
+  /* The identity the panel rests on, and the one the two tables disagreed
+     about: what stuck, split between the platform and the seller. */
+  it("keeps commission and owed adding up to the sales that stuck", () => {
+    const [week] = weeksFor([line(), line({ orderStatus: "refunded" })]);
+    const net = Number(week.gross) - Number(week.refunded);
+    expect(Number(week.commission) + Number(week.owed)).toBeCloseTo(net, 3);
+  });
+
+  /*
+   * A week of refunds alone owes nothing, and is not a debt. There is no ledger
+   * of payout runs for a clawback to reverse against, so a negative here was
+   * money the seller had never been sent.
+   */
+  it("owes nothing for a week of refunds, rather than going negative", () => {
     const weeks = weeksFor([line({ orderStatus: "refunded" })]);
-    expect(weeks[0].owed).toBe("-90.000");
+    expect(weeks[0]).toMatchObject({ owed: "0.000", commission: "0.000", refunded: "100.000" });
   });
 
   it("counts nothing from an order that never completed", () => {

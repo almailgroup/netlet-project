@@ -229,15 +229,36 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
   disabled: boolean;
 }) {
   const { t } = useTranslation();
-  const step = "qty-step pressable grid h-full shrink-0 place-items-center disabled:cursor-not-allowed disabled:opacity-40";
+  /*
+   * The step's width comes from the **pill**, not the card.
+   *
+   * It asked the card, which is the same mistake the label threshold below
+   * already carries a comment about — and here it was worse, because the space
+   * a step takes comes out of the pill while the width it takes was chosen by
+   * something else. Two pills side by side in a 260px card are ~120px each: the
+   * card cleared `15rem` so each step took 36px, 72px of a 120px pill, and the
+   * label was left 16px to draw "Add 9" in. Measured on the home rails at a
+   * 1100px viewport, in both languages.
+   *
+   * `9rem` is where two full-width steps, the icon and the longest label
+   * actually fit: 72 + 22 + 8 of padding + 42 for "أضف 9" is 144px.
+   */
+  const step = "qty-step pressable grid h-full shrink-0 place-items-center [--qty-step-w:1.6rem] @[9rem]:[--qty-step-w:2.25rem] disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     /*
       A narrow rail card is 172px, and two 36px steps plus an icon clipped the
-      label to "Add…". The steps give back 8px each below `@[15rem]` and the
+      label to "Add…". The steps give back 8px each on a narrow pill and the
       static icon stands down entirely — the words are the part that says what
       the button does. The spinner is exempt: it is the only sign that a press
       was heard.
+
+      Every threshold in this pill is on a descendant and asks the pill, which
+      is the only width any of them is spending. The gap and the padding were
+      the last two still asking the card, and they spend the same 10px the label
+      needs: a 130px pill inside a 270px card took `px-2` and `gap-2` because
+      the *card* cleared 15rem. Each number's own comment says where it came
+      from.
     */
     /*
      * `min-w-0` and `overflow-hidden` are load bearing, not tidying.
@@ -254,7 +275,7 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
      * meant to, and `overflow-hidden` keeps anything left over inside the
      * rounded shape rather than on the page.
      */
-    <div className={`qty-inline glass @container [--qty-step-w:1.6rem] @[15rem]:[--qty-step-w:2.25rem] ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
+    <div className={`qty-inline glass @container ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
       <button
         type="button"
         onClick={() => onQuantity(current => Math.max(1, current - 1))}
@@ -270,9 +291,21 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
         onClick={onAct}
         disabled={disabled}
         aria-label={name}
-        className="pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 px-1 text-xs font-extrabold @[15rem]:gap-2 @[15rem]:px-2 disabled:cursor-not-allowed"
+        className="pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 px-1 text-xs font-extrabold @[13rem]:gap-2 @[13rem]:px-2 disabled:cursor-not-allowed"
       >
-        {busy ? <LoaderCircle className="size-4 shrink-0 animate-spin" /> : <span className="shrink-0">{icon}</span>}
+        {/*
+          The icon goes before the label does.
+          It is decorative — `aria-label` carries what the button means — and
+          the label is the only place the count appears at all, so on a pill too
+          narrow for both the words win. `8rem` is the width below which the
+          narrow steps, the padding and the longest label leave the icon no
+          room: 51 + 8 + 42 is 101px, and the icon and its gap want 22 more.
+          The spinner is exempt at every width: it is the only sign a press was
+          heard.
+        */}
+        {busy
+          ? <LoaderCircle className="size-4 shrink-0 animate-spin" />
+          : <span className="hidden shrink-0 @[8rem]:block">{icon}</span>}
         {/*
           The threshold is the **pill's** width, not the card's.
           It used to ask the card, and one card width means two very different

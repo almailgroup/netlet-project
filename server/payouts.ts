@@ -135,6 +135,22 @@ export async function payoutDueList(actor: Actor, limit = 200) {
     .orderBy(desc(orders.placedAt), desc(orders.id))
     .limit(limit);
 
+  /*
+   * What this order owes its seller.
+   *
+   * Nothing on an order nobody has paid for: the figure is what *would* be due,
+   * and inventing it before the money exists is how a seller plans around a
+   * number that may never arrive.
+   *
+   * And nothing on a refunded one either, which is the half that was wrong. It
+   * read `-net`, as a reversal — but there is no payout-run ledger for it to
+   * reverse against, so a refund did not cancel a payment, it invented a debt:
+   * the "When it is due" table showed a seller owing NetLet 210 for an order
+   * whose money had gone straight back to the shopper. `finance.ts` states the
+   * rule this now follows: a refunded line adds no commission and no vendor net.
+   */
+  const owedOn = (status: string, net: bigint) => (status === "paid" ? net : 0n);
+
   const now = new Date();
   /* One row per order per seller: an order spanning three sellers is three
      obligations with three different owners, even though it settled once. */
@@ -144,7 +160,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
     const held = byKey.get(key);
     const net = toFils(row.vendorNet);
     if (held) {
-      held.owed += row.status === "pending_payment" ? 0n : row.status === "refunded" ? -net : net;
+      held.owed += owedOn(row.status, net);
       continue;
     }
     byKey.set(key, {
@@ -152,10 +168,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
       reference: row.reference,
       vendorId: row.vendorId,
       vendorName: row.vendorName,
-      /* Nothing is owed on an order nobody has paid for; the figure is what
-         would be due, and inventing it before the money exists is how a
-         seller plans around a number that may never arrive. */
-      owed: row.status === "pending_payment" ? 0n : row.status === "refunded" ? -net : net,
+      owed: owedOn(row.status, net),
       due: payoutDue(row, now),
     });
   }

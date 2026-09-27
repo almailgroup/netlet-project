@@ -313,6 +313,18 @@ button cannot contain a button** — nested, the markup is invalid and the
 browser decides for itself what a click meant. The wrapper carries the fill and
 the rounding so the three read as one control.
 
+**Every threshold inside the pill asks the pill.** Three of them did not, and
+each spent width the label needed: the step's own `--qty-step-w`, and the middle
+button's gap and padding, were all chosen by the *card's* container query. Two
+pills side by side in a 260px card are about 120px each — the card cleared
+`15rem`, so each step took 36px, 72px of a 120px pill, and "Add 9" was left 16px
+to draw 37px in, in both languages, on the home rails at a laptop width. The
+icon's stand-down was described in a comment and never implemented. The numbers
+are measured and each carries its own: `9rem` for the full-width steps, `8rem`
+below which the decorative icon goes so the words can stay, `13rem` for the
+short label and for the tighter gap. Checked by sweeping every viewport width
+from 320 to 1600 in both languages — 602 labels, none clipped.
+
 `.qty-step` reveals on hover **and never only on hover**: `:focus-within`
 brings it out for a keyboard, and below `@media (hover: hover) and (pointer:
 fine)` it is simply present, which is every phone this shop sells to. A
@@ -1014,12 +1026,33 @@ which companies exist in Kuwait, and the name claims nothing about tracking.
 the same frozen lines the finance panel uses — `vendorNet` was copied at the
 moment of sale, so a rate change today cannot rewrite last month. **A week runs
 Sunday to Saturday**, the Kuwaiti working week, and the page says so. **A refund
-is subtracted from the week it was sold in**, not the week it came back:
-moving a reversal later makes two weeks wrong to make one look tidy. **A
-negative week is shown rather than clamped** — a week of refunds against
-nothing sold means the seller owes NetLet, and a zero there is how a payout run
-quietly overpays. Scoped in the query, so a vendor cannot read a competitor's
-revenue.
+belongs to the week it was sold in**, not the week it came back: moving a
+reversal later makes two weeks wrong to make one look tidy. Scoped in the query,
+so a vendor cannot read a competitor's revenue.
+
+**And in that week it earns the seller nothing — it is not a debt.** This was
+wrong, by the whole net of every refund. `owed` subtracted `vendorNet` on a
+refunded line as a reversal of the sale; but an order carries one status, so
+once it reads `refunded` the sale being reversed was never added anywhere. A
+seller who sold one sofa and refunded another in the same week was shown as owed
+nothing when they were owed the first, and a week of refunds alone showed them
+owing NetLet money they had never been sent. The per-order "when it is due"
+table had the same sign, so it read `−KWD 210` against an order whose money went
+straight back to the shopper.
+
+The rule it follows now is the one `finance.ts` had already written down — "a
+refunded line adds no commission and no vendor net" — and it follows from that
+that **a week cannot come out negative**: this report recomputes history rather
+than logging transfers, and there is no payout-run ledger for a clawback to
+reverse against. When payout runs are recorded, a clawback is a row in *that*
+ledger.
+
+**It was found by rendering the panel, and it could not have been found any
+other way**: three tables answer "what is this seller owed" on one page, and
+they said 431.400, 221.400 and 221.400. Each figure was defensible alone. Every
+test passed, because the tests asserted the arithmetic that was wrong — which is
+the sharpest case yet for the habit this file keeps recommending. The assertion
+that would have caught it is in `server/finance.test.ts` now: the three agree.
 
 Selling under NetLet's own licence is **recorded rather than inferred from a
 blank licence number**. A seller who has not handed their paperwork in is not
@@ -1078,6 +1111,14 @@ by drawing.
 one request, and Postgres orders ties freely, so "the most recent entry" was a
 coin toss — the rule every paged admin list already followed, missed here
 because this query is capped rather than paged.
+
+Three more capped queries had it: `publishedCatalog` on `updatedAt`,
+`stockHistory` on `createdAt`, and the "bought together" read on `order_id`,
+which is not unique across an order's own items. The first is the one that
+mattered — it is the storefront's catalogue, the sitemap and the candidate set
+every recommendation is drawn from, so *which* hundred products the shop
+displayed could change between two page loads. A cap needs the tiebreak as much
+as a page does: paging repeats rows, but a cap decides membership.
 
 ## Selling and shopping are one account
 

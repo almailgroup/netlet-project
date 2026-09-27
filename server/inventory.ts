@@ -234,7 +234,13 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
         options.categoryId ? eq(products.categoryId, options.categoryId) : undefined,
       ),
     )
-    .orderBy(desc(products.updatedAt))
+    /* Ends on the id, for the reason `listAudit` does. `updatedAt` is not
+       unique — a bulk import gives a hundred rows the same microsecond — and
+       Postgres orders ties freely, so with a cap of 100 *which* products the
+       shop displays was a coin toss that could change between two page loads.
+       This read is the storefront's catalogue, the sitemap and the candidate
+       set every recommendation is drawn from. */
+    .orderBy(desc(products.updatedAt), desc(products.id))
     .limit(options.limit ?? 100);
   return hydrate(db, rows.map(row => row.p));
 }
@@ -1163,7 +1169,10 @@ export async function stockHistory(actor: Actor, options: { variantId?: number; 
         options.variantId ? eq(stockMovements.variantId, options.variantId) : undefined,
       ),
     )
-    .orderBy(desc(stockMovements.createdAt))
+    /* And here, which is the `listAudit` case exactly: a bulk adjustment
+       writes several rows in one request, they tie on `createdAt`, and "the
+       most recent movement" was whichever Postgres felt like. */
+    .orderBy(desc(stockMovements.createdAt), desc(stockMovements.id))
     .limit(options.limit ?? 100);
 }
 
