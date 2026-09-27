@@ -120,6 +120,25 @@ read. It clears the other credential columns when it adopts a row, or the row
 would have two password stores and the answer to "which" would be whichever was
 checked first.
 
+**Adoption is sign-in's alone, and registering must refuse instead.** What makes
+adoption safe on sign-in is that a service has just checked the password — the
+caller holds proof that whoever is asking owns the address. Registering holds no
+proof: somebody typed an address into a form. `createLogin` wrote through
+`linkExternalUser` anyway, and because a store cannot answer "already registered"
+for an address it has never held, **registering the address of any account whose
+password was somewhere else took that account over** — the row's id, its orders,
+its `role`, and a session cookie for it. A local-digest shopper or an
+administrator left behind in Firebase was claimable by anybody who typed their
+address into Create account. It writes through `createUser` now, which refuses an
+address that has a row whatever credential that row carries, and the credential
+just created is handed back so it cannot hold the address against the honest
+retry.
+
+The pattern predates Supabase — the Firebase path had the same shape, one case
+narrower — and it was found by writing the test rather than by reading the code,
+which is the argument for testing the adoption branch as a rule about *who is
+asking* rather than as a row update that works.
+
 Those three writes live in `server/logins.ts`, not `db.ts`, for the reason
 `profile.ts` and `orders.ts` do: a function declared inside `db.ts` calls that
 file's module-local `getDb`, which nothing outside can redirect, so it cannot be

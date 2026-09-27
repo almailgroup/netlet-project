@@ -108,6 +108,13 @@ export type AuthProvider = "supabase" | "firebase";
  * the service has already accepted. It is also what makes "add a user in the
  * Supabase dashboard" a working way to create a NetLet login.
  *
+ * **Only sign-in may call this.** What makes adoption safe is that the service
+ * has already checked the password — the caller is holding proof that whoever is
+ * asking owns the address. Registration holds no such proof, so it writes through
+ * `createUser`, which refuses an address that already has a row; calling this
+ * from there hands the existing account, its orders and its role to whoever typed
+ * the address into a form. See the rule spelled out above `passwordStore.createLogin`.
+ *
  * When a row for the address exists but predates the service, it is adopted:
  * the uid is written onto it and **every other credential column cleared**, so
  * the shopper keeps their saved products instead of starting a second account

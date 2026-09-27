@@ -107,6 +107,25 @@ export function isUsable(user: Pick<User, "supabaseUid" | "firebaseUid" | "passw
  * account with no NetLet row, and the next sign-in creates that row through
  * `linkExternalUser`. The reverse order would leave a NetLet row that can never
  * be signed into — the failure that cannot be recovered by trying again.
+ *
+ * ## It writes with `createUser`, never `linkExternalUser`, and that is the rule
+ *
+ * Adoption belongs to sign-in and nowhere else, because what makes it safe there
+ * is that a service has just vouched for the password. Registering vouches for
+ * nothing: somebody typed an address into a form. Routed through
+ * `linkExternalUser` — which is how this read until it was tested — registering
+ * an address that already had a NetLet row *took that row over*, because the
+ * store's own "already registered" refusal cannot fire for an address the store
+ * has never held. So a row whose password was the local scrypt digest, or in
+ * Firebase, was claimable by anyone who typed its address into Create account:
+ * same `id`, same orders, same `role`, and a session cookie for it. An admin
+ * account included.
+ *
+ * `createUser` refuses an address that has a row, whichever credential column
+ * that row carries, and the credential just created is handed back so it cannot
+ * hold the address against a later, correct attempt. Every rollback below exists
+ * for that: an orphan in the service is a login into nothing, and it would make
+ * the honest retry fail forever.
  */
 export async function createLogin(input: {
   email: string;
@@ -126,12 +145,8 @@ export async function createLogin(input: {
       if (isSupabaseEmailTaken(error)) throw new EmailTakenError();
       throw error;
     }
-    const user = await linkExternalUser({ provider: "supabase", uid, email: input.email, name });
+    const user = await createUser({ email: input.email, supabaseUid: uid, name });
     if (!user) {
-      /* The address is taken by a row this uid cannot own. Hand the credential
-         back rather than leaving an account in Supabase that nothing points at
-         — an orphan there is a login into nothing, and it would also hold the
-         address against a later, correct attempt. */
       await deleteSupabaseUser(uid).catch(() => {});
       throw new EmailTakenError();
     }
@@ -153,8 +168,14 @@ export async function createLogin(input: {
       if (isFirebaseEmailInUse(error)) throw new EmailTakenError();
       throw error;
     }
-    const user = await linkExternalUser({ provider: "firebase", uid, email: input.email, name: input.name ?? null });
-    if (!user) throw new EmailTakenError();
+    const user = await createUser({ email: input.email, firebaseUid: uid, name: input.name ?? null });
+    if (!user) {
+      /* Hand it back here too. This branch used to leave it, so a registration
+         that lost the address once could never win it: Firebase answered every
+         retry with email-already-in-use for a credential nothing pointed at. */
+      await auth.deleteUser(uid).catch(() => {});
+      throw new EmailTakenError();
+    }
     return user;
   }
 

@@ -170,6 +170,56 @@ describe("creating a login", () => {
     await expect(store.createLogin({ email: "twice@shop.test", password: "Harbour-Falcon-2026" }))
       .rejects.toBeInstanceOf(store.EmailTakenError);
   });
+
+  /*
+   * The takeover. Registering cannot adopt a row, because the store's own
+   * "already registered" refusal is silent for an address the store has never
+   * held — which is every account whose password is somewhere else. Both of
+   * these passed as a *takeover* before `createLogin` stopped writing through
+   * `linkExternalUser`: same id, same role, and the register procedure then
+   * signs a session cookie for it.
+   *
+   * Asserted on the row as well as on the refusal, because the damage is done by
+   * the UPDATE rather than by what is returned: a cleared `password_hash` locks
+   * the real owner out even if the attacker is handed nothing.
+   */
+  it("refuses an address whose row holds a local digest, and leaves that digest alone", async () => {
+    await db.insert(users).values({
+      email: "shopper@shop.test", passwordHash: "scrypt-digest", name: "Shopper", role: "admin",
+    });
+
+    await expect(store.createLogin({ email: "shopper@shop.test", password: "Attacker-Pass-2026" }))
+      .rejects.toBeInstanceOf(store.EmailTakenError);
+
+    const after = await row("shopper@shop.test");
+    expect(after.passwordHash).toBe("scrypt-digest");
+    expect(after.supabaseUid).toBeNull();
+    expect(after.role).toBe("admin");
+  });
+
+  it("refuses an address whose row names Firebase, even with Firebase switched off", async () => {
+    firebaseOn = false;
+    await db.insert(users).values({ email: "old@shop.test", firebaseUid: "fb-gone", name: "Old" });
+
+    await expect(store.createLogin({ email: "old@shop.test", password: "Attacker-Pass-2026" }))
+      .rejects.toBeInstanceOf(store.EmailTakenError);
+
+    const after = await row("old@shop.test");
+    expect(after.firebaseUid).toBe("fb-gone");
+    expect(after.supabaseUid).toBeNull();
+  });
+
+  /*
+   * And the credential it had just made goes back, or the address is held
+   * against the honest retry forever — the store would answer "already
+   * registered" for a user nothing points at.
+   */
+  it("hands back the credential it created when the address turns out to be taken", async () => {
+    await db.insert(users).values({ email: "taken@shop.test", passwordHash: "scrypt-digest" });
+    await expect(store.createLogin({ email: "taken@shop.test", password: "Attacker-Pass-2026" }))
+      .rejects.toBeInstanceOf(store.EmailTakenError);
+    expect(asked).toEqual(["supabase.create", "supabase.delete"]);
+  });
 });
 
 describe("signing in", () => {
