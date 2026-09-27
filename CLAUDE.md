@@ -599,12 +599,16 @@ resolves the state and sends the answer rather than the ingredients, so the
 clock is the server's and nobody reopens a closed window by changing their
 system date.
 
-Two things there are deliberately wrong in a known direction. `order_items` has
-**no `delivered_at`**, so the router stands `updatedAt` in for it — which pushes
-a window out rather than shortening it, the safe way to be wrong, and is one
-line to change when the column lands. And an **unknown delivery date counts as
-open**, because refusing a return over a gap in our own schema puts our problem
-on the shopper.
+**The window is measured from `order_items.delivered_at`.** It used to stand
+`updatedAt` in for a column that did not exist — wrong in a known direction,
+since a vendor editing the line pushed the window out rather than shortening it —
+and the column is real now, so the one line that comment promised would change
+has changed. The date outlives the status on purpose: a line delivered and then
+returned keeps its arrival date, which is what lets the window and a review both
+still make sense afterwards.
+
+And an **unknown delivery date counts as open**, because refusing a return over a
+gap in our own schema puts our problem on the shopper.
 
 The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
