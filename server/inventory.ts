@@ -33,7 +33,7 @@ import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealt
 import { getDb } from "./db.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
-import { isFirebaseConfigured, sendFirebasePasswordReset } from "./_core/firebase.js";
+import { canSendReset, deleteLogin, sendReset } from "./_core/passwordStore.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -1631,8 +1631,14 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
 
   let ownerUserId: number | null = null;
   if (input.owner) {
+    /* Held outside the try so the catch can undo it. The account is made before
+       the membership that gives it a reason to exist, and if that insert fails
+       the login is left over — which with the credential in Supabase Auth means
+       a row on the Authentication page for a store that no longer exists, on the
+       one page somebody looks at to see who has an account. */
+    let account: Awaited<ReturnType<typeof createAccount>> | null = null;
     try {
-      const account = await createAccount({
+      account = await createAccount({
         email: ownerEmail!,
         password: input.owner.password,
         name: input.owner.name ?? null,
@@ -1644,8 +1650,10 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
       });
       ownerUserId = account.id;
     } catch (error) {
-      // Undo the store rather than leave one nobody can sign into.
+      // Undo the store rather than leave one nobody can sign into, and the
+      // login with it rather than leave one that signs into nothing.
       await db.delete(vendors).where(eq(vendors.id, vendor.id));
+      if (account) await deleteLogin(account);
       if (error instanceof EmailTakenError) throw new Error("EMAIL_TAKEN");
       throw error;
     }
@@ -1816,7 +1824,7 @@ export async function sendMemberPasswordReset(actor: Actor, userId: number, loca
   const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!target) throw new Error("NOT_FOUND");
 
-  await sendFirebasePasswordReset(target.email, locale);
+  await sendReset(target.email, locale);
 
   await recordAudit(await auditActor(actor), {
     action: "user.sendPasswordReset",
@@ -1829,9 +1837,12 @@ export async function sendMemberPasswordReset(actor: Actor, userId: number, loca
 
   /*
    * Whether a link could actually be sent, which is not the same question as
-   * whether the request was accepted. Without Firebase there is no mail to
-   * send, and an administrator told "sent" would wait for an email that was
-   * never going to arrive.
+   * whether the request was accepted. With neither Supabase Auth nor Firebase
+   * configured there is no mail to send, and an administrator told "sent" would
+   * wait for an email that was never going to arrive.
+   *
+   * Said plainly here, unlike the shopper-facing reset, because this takes a
+   * user id already on screen rather than an address somebody could be guessing.
    */
-  return { sent: isFirebaseConfigured(), email: target.email };
+  return { sent: canSendReset(), email: target.email };
 }

@@ -239,6 +239,13 @@
       "when": 1790510112095,
       "tag": "0033_clean_cerise",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790523908099,
+      "tag": "0034_shallow_karma",
+      "breakpoints": true
     }
   ]
 }

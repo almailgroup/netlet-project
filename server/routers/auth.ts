@@ -1,11 +1,14 @@
 /**
  * Registration, sign-in and sign-out.
  *
- * Accounts live in Firebase Authentication when it is configured: Firebase
- * holds the password, and `users` keeps a mirror row so the rest of the
- * shopper's data can stay ordinary foreign keys. With no Firebase credentials
- * set the same endpoints fall back to the local scrypt digest, so a deployment
- * that has not been pointed at a Firebase project still signs people in.
+ * Accounts live in **Supabase Auth** when it is configured, which is why a
+ * registration appears under Authentication → Users in the Supabase dashboard;
+ * `users` keeps a mirror row so the rest of the shopper's data can stay ordinary
+ * foreign keys. Accounts made before that move still live in Firebase and still
+ * work, and a deployment pointed at neither falls back to the local scrypt
+ * digest. Which of the three holds a given password is
+ * `server/_core/passwordStore.ts`'s business and not this file's — every
+ * procedure below asks it rather than naming a service.
  *
  * Three behaviours here are deliberate rather than incidental:
  *
@@ -26,11 +29,20 @@ import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth.js";
 import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
-import { hashPassword, verifyPassword } from "../_core/password.js";
-import { getFirebaseAuth, isEmailInUse, isFirebaseConfigured, sendFirebasePasswordReset, verifyFirebasePassword } from "../_core/firebase.js";
-import { createAccount, EmailTakenError } from "../_core/accounts.js";
-import { getUserByEmail, linkFirebaseUser, touchLastSignedIn } from "../db.js";
-import { loadUser, updateUserEmail, updateUserName, updateUserPasswordHash } from "../profile.js";
+import {
+  EmailTakenError,
+  canSendReset,
+  revertEmail,
+  sendReset,
+  setDisplayName,
+  setEmail,
+  setPassword,
+  signIn,
+  verifyCurrent,
+} from "../_core/passwordStore.js";
+import { createAccount } from "../_core/accounts.js";
+import { touchLastSignedIn } from "../db.js";
+import { loadUser, updateUserEmail, updateUserName } from "../profile.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../rateLimit.js";
 import { recordReferral } from "../referral.js";
 import type { User } from "../../drizzle/schema.js";
@@ -71,7 +83,7 @@ const registration = credentials.extend({
 });
 
 /**
- * The shape sent to the client: never the hash, and never the Firebase uid.
+ * The shape sent to the client: never the hash, and never a store's uid.
  *
  * The two dates are here so the account page can say when the account was
  * opened and when it was last used — a shopper's own facts, and the ones that
@@ -117,38 +129,14 @@ const wrongPassword = new TRPCError({ code: "UNAUTHORIZED", message: "auth.wrong
 /**
  * Re-checks the password of somebody already signed in.
  *
- * Whichever store holds it: Firebase when the account has a uid, the local
- * scrypt digest otherwise. An account with neither cannot be verified, and is
- * refused rather than waved through — the failure mode of the alternative is
- * silent and total.
+ * Against the store that owns their account rather than the one new accounts go
+ * to, which `verifyCurrent` decides: a shopper whose password is still in
+ * Firebase must be able to confirm it in order to change their email. An
+ * account no store can vouch for is refused rather than waved through — the
+ * failure mode of the alternative is silent and total.
  */
 async function assertCurrentPassword(user: User, password: string): Promise<void> {
-  if (isFirebaseConfigured() && user.firebaseUid) {
-    const verified = await verifyFirebasePassword(user.email, password);
-    if (!verified) throw wrongPassword;
-    return;
-  }
-  if (!user.passwordHash) throw wrongPassword;
-  if (!(await verifyPassword(password, user.passwordHash))) throw wrongPassword;
-}
-
-/** Firebase checks the password; the local row is created on first sight. */
-async function signInWithFirebase(email: string, password: string): Promise<User | null> {
-  const verified = await verifyFirebasePassword(email, password);
-  if (!verified) return null;
-  return linkFirebaseUser({ firebaseUid: verified.uid, email: verified.email, name: verified.name });
-}
-
-/** The fallback path: NetLet's own scrypt digest, used when Firebase is unset. */
-async function signInLocally(email: string, password: string): Promise<User | null> {
-  const user = await getUserByEmail(email);
-  if (!user?.passwordHash) {
-    // Hash anyway. Returning early for an unknown address would make sign-in
-    // measurably faster for addresses that do not exist.
-    await hashPassword(password);
-    return null;
-  }
-  return (await verifyPassword(password, user.passwordHash)) ? user : null;
+  if (!(await verifyCurrent(user, password))) throw wrongPassword;
 }
 
 /**
@@ -218,13 +206,10 @@ export const authRouter = router({
       const updated = await updateUserName(ctx.user.id, name);
       if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
 
-      // Firebase holds the display name too when it owns the account, and a
+      // The store holds a display name too when it owns the account, and a
       // mirror that disagrees is the kind of drift nobody notices until a
       // reset email is addressed to the wrong name.
-      const auth = getFirebaseAuth();
-      if (auth && updated.firebaseUid) {
-        await auth.updateUser(updated.firebaseUid, { displayName: name ?? undefined });
-      }
+      await setDisplayName(updated, name);
       return toPublicUser(updated);
     }),
 
@@ -242,24 +227,21 @@ export const authRouter = router({
       if (next === current.email) return toPublicUser(current);
 
       /*
-       * Firebase first, then the mirror. The reverse order would leave a local
-       * row claiming an address the shopper cannot actually sign in with —
-       * and sign-in goes to Firebase, so the mirror would be the lie.
+       * The store first, then the mirror. The reverse order would leave a local
+       * row claiming an address the shopper cannot actually sign in with — and
+       * sign-in goes to the store, so the mirror would be the lie.
        */
-      const auth = getFirebaseAuth();
-      if (auth && current.firebaseUid) {
-        try {
-          await auth.updateUser(current.firebaseUid, { email: next });
-        } catch (error) {
-          if (isEmailInUse(error)) throw emailTaken;
-          throw error;
-        }
+      try {
+        await setEmail(current, next);
+      } catch (error) {
+        if (error instanceof EmailTakenError) throw emailTaken;
+        throw error;
       }
 
       const updated = await updateUserEmail(ctx.user.id, next);
       if (!updated) {
-        // Put Firebase back, or the two disagree about the login address.
-        if (auth && current.firebaseUid) await auth.updateUser(current.firebaseUid, { email: current.email });
+        // Put the store back, or the two disagree about the login address.
+        await revertEmail(current, current.email);
         throw emailTaken;
       }
       return toPublicUser(updated);
@@ -275,17 +257,12 @@ export const authRouter = router({
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
       await assertCurrentPassword(current, input.currentPassword);
 
-      const auth = getFirebaseAuth();
-      if (auth && current.firebaseUid) {
-        await auth.updateUser(current.firebaseUid, { password: input.newPassword });
-      } else {
-        await updateUserPasswordHash(ctx.user.id, await hashPassword(input.newPassword));
-      }
+      await setPassword(current, input.newPassword);
       return { changed: true } as const;
     }),
 
   /**
-   * Asks Firebase to email a reset link.
+   * Asks whichever service is configured to email a reset link.
    *
    * Always answers the same way, whether or not the address has an account —
    * the same discipline as sign-in, for the same reason: a different answer
@@ -293,7 +270,7 @@ export const authRouter = router({
    * therefore says "if that address has an account, a link is on its way"
    * rather than confirming anything.
    *
-   * Silent when Firebase is unconfigured: the local scrypt fallback has no
+   * Silent when no service is configured: the local scrypt fallback has no
    * email to send from, so there is nothing honest to do but accept the
    * request. The dialog says the same sentence either way.
    */
@@ -311,7 +288,7 @@ export const authRouter = router({
       await assertNotThrottled(caller, "reset");
       await recordAuthAttempt(caller, "reset");
       try {
-        await sendFirebasePasswordReset(input.email, input.locale);
+        await sendReset(input.email, input.locale);
       } catch (error) {
         // A fault on our side is logged, never surfaced: the shopper cannot
         // act on it, and the reply must not vary by address.
@@ -326,9 +303,7 @@ export const authRouter = router({
     const caller = callerOf(ctx, input.email);
     await assertNotThrottled(caller, "login");
 
-    const user = isFirebaseConfigured()
-      ? await signInWithFirebase(input.email, input.password)
-      : await signInLocally(input.email, input.password);
+    const user = await signIn(input.email, input.password);
     if (!user) {
       // Only a failure is counted, which is what makes the per-address ceiling
       // safe: an office where everybody signs in successfully never nears it.

@@ -12,6 +12,23 @@ import {
 } from "../drizzle/schema.js";
 import { ENV } from './_core/env.js';
 
+/*
+ * `createUser`, `linkExternalUser` and `deleteUserRow` are in
+ * `server/logins.ts`, not here, and are deliberately *not* re-exported from
+ * this file.
+ *
+ * They had to move, because a function declared inside this file calls its
+ * module-local `getDb`, which nothing outside can redirect — the same reason
+ * `profile.ts`, `orders.ts` and `inventory.ts` are their own files.
+ * `linkExternalUser` is what keeps an account from ending up with two password
+ * stores, which is not a rule to leave untested.
+ *
+ * Re-exporting them from here would have saved touching two imports and cost a
+ * cycle: `db.ts` → `logins.ts` → `db.ts`. A test that redirects `getDb` then
+ * hands the mock to one half and the real module to the other, and the writes
+ * run against no database at all. Import them from `logins.js`.
+ */
+
 let _db: ReturnType<typeof drizzle> | null = null;
 
 /**
@@ -36,50 +53,6 @@ export async function getDb() {
 }
 
 /**
- * Creates an account. Returns null when the address is already registered,
- * rather than throwing, so the caller can answer without leaking which
- * addresses exist.
- *
- * `email` is lowercased here — the single place it is written — so the unique
- * index is case-insensitive regardless of the column's collation.
- */
-export async function createUser(input: {
-  email: string;
-  /** Null when Firebase holds the password for this account. */
-  passwordHash?: string | null;
-  /** Set when the account was created in Firebase Authentication. */
-  firebaseUid?: string | null;
-  name?: string | null;
-}): Promise<User | null> {
-  const db = await getDb();
-  if (!db) throw new Error("Database is not configured");
-
-  const email = input.email.trim().toLowerCase();
-  if (await getUserByEmail(email)) return null;
-
-  // The owner, if configured, is an admin from the moment they register.
-  const role = ENV.ownerEmail && email === ENV.ownerEmail.trim().toLowerCase() ? "admin" : "user";
-
-  try {
-    await db.insert(users).values({
-      email,
-      passwordHash: input.passwordHash ?? null,
-      firebaseUid: input.firebaseUid ?? null,
-      name: input.name ?? null,
-      role,
-      lastSignedIn: new Date(),
-    });
-  } catch (error) {
-    // Two concurrent registrations for one address: the unique index rejects
-    // the loser, which is the correct outcome, not an error worth surfacing.
-    if (isDuplicateKeyError(error)) return null;
-    throw error;
-  }
-
-  return (await getUserByEmail(email)) ?? null;
-}
-
-/**
  * Postgres unique-violation, SQLSTATE 23505.
  *
  * Drizzle wraps driver errors in a DrizzleQueryError, so the SQLSTATE is on the
@@ -96,55 +69,11 @@ export function isDuplicateKeyError(error: unknown): boolean {
   return false;
 }
 
-export async function getUserByEmail(email: string): Promise<User | undefined> {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
-  return rows[0];
-}
-
 export async function getUserById(id: number): Promise<User | undefined> {
   const db = await getDb();
   if (!db) return undefined;
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return rows[0];
-}
-
-/**
- * The local row for a Firebase account, created on first sign-in if missing.
- *
- * A shopper can exist in Firebase without a row here — registered against
- * another deployment, added by hand in the console, or created before this
- * database was restored. Sign-in is the moment to reconcile that, rather than
- * refusing an account Firebase has already accepted the password for.
- *
- * When a row for the address exists but predates Firebase, it is adopted:
- * the uid is written onto it and the local digest cleared, so the shopper keeps
- * their saved products instead of starting a second account beside them.
- */
-export async function linkFirebaseUser(input: {
-  firebaseUid: string;
-  email: string;
-  name?: string | null;
-}): Promise<User | null> {
-  const db = await getDb();
-  if (!db) throw new Error("Database is not configured");
-
-  const email = input.email.trim().toLowerCase();
-
-  const byUid = await db.select().from(users).where(eq(users.firebaseUid, input.firebaseUid)).limit(1);
-  if (byUid[0]) return byUid[0];
-
-  const existing = await getUserByEmail(email);
-  if (existing) {
-    await db
-      .update(users)
-      .set({ firebaseUid: input.firebaseUid, passwordHash: null, name: existing.name ?? input.name ?? null })
-      .where(eq(users.id, existing.id));
-    return (await getUserByEmail(email)) ?? null;
-  }
-
-  return createUser({ email, firebaseUid: input.firebaseUid, name: input.name ?? null });
 }
 
 export async function touchLastSignedIn(id: number): Promise<void> {

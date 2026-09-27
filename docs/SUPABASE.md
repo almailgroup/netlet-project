@@ -6,6 +6,14 @@ invented fixtures and nothing you add in `/admin` exists.
 
 About fifteen minutes. Free tier is enough to start.
 
+> **Registered shoppers appear in two places in this project, and they are
+> different pages.** The password lives in Supabase Auth, so a registration shows
+> up under **Authentication → Users**; the shopper's row — the one every other
+> table's foreign keys point at — is under **Table Editor → `users`**. Setting up
+> the first is [SUPABASE-AUTH.md](./SUPABASE-AUTH.md) and takes three values.
+> Without them the Authentication page stays empty, because nothing writes to it,
+> while registrations still land in `public.users` exactly as before.
+
 There are two routes through this. **Route A needs nothing installed** — you
 work from the Supabase and Vercel dashboards in a browser. Route B is for when
 you have the repository cloned and Node available. Do one, not both.

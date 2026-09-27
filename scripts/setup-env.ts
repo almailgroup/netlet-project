@@ -129,20 +129,26 @@ console.log(`${created ? "Created" : "Updated"} ${ENV_PATH}`);
 if (set.length) console.log(`  set:  ${set.join(", ")}`);
 if (kept.length) console.log(`  kept: ${kept.join(", ")} (already had a value)`);
 
+/*
+ * The Firebase four are deliberately not listed. They are legacy — only needed
+ * for accounts created before the move to Supabase Auth — so naming them as
+ * "still to fill in" on a fresh deployment would send somebody through a
+ * fifteen-minute setup they do not need.
+ */
 const stillEmpty = [
   "DATABASE_URL",
-  "FIREBASE_PROJECT_ID",
-  "FIREBASE_CLIENT_EMAIL",
-  "FIREBASE_PRIVATE_KEY",
-  "FIREBASE_API_KEY",
+  "SUPABASE_URL",
+  "SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
 ].filter(key => !readValue(env, key));
 
 if (stillEmpty.length) {
   console.log("\nStill to fill in, by hand:");
   for (const key of stillEmpty) console.log(`  ${key}`);
-  console.log("\n.env.example documents each one. docs/FIREBASE.md covers the Firebase four.");
-  if (stillEmpty.some(key => key.startsWith("FIREBASE_"))) {
-    console.log("Shortcut for three of them:  pnpm setup:env path/to/serviceAccountKey.json --api-key=AIza...");
+  console.log("\n.env.example documents each one.");
+  if (stillEmpty.some(key => key.startsWith("SUPABASE_"))) {
+    console.log("docs/SUPABASE-AUTH.md has all three, from Project Settings, in about five minutes.");
+    console.log("Without them, registrations will not appear under Authentication in the Supabase dashboard.");
   }
 }
 console.log("\nThen check it with:  pnpm preflight");

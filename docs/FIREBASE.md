@@ -1,7 +1,20 @@
-# Firebase Authentication for NetLet
+# Firebase Authentication for NetLet — legacy
 
-Registered accounts live in Firebase. This is what to click, in order, and what
-each value is for.
+> **Registered accounts live in Supabase Auth now.** See
+> [SUPABASE-AUTH.md](./SUPABASE-AUTH.md), which is five minutes rather than
+> fifteen because the project already exists.
+>
+> This page is still here for one reason: accounts created before the move have
+> their password in Firebase and nowhere else. A Firebase password hash cannot be
+> carried into Supabase, so those accounts go on signing in through Firebase
+> until their owner resets a password, or until
+> `scripts/migrate-auth-to-supabase.mjs` moves them — which asks every one of
+> them to set a new password, and is therefore a deliberate step.
+>
+> **A fresh deployment does not need any of this.** Leave the four `FIREBASE_*`
+> values blank.
+
+This is what to click, in order, and what each value is for.
 
 Time: about fifteen minutes. Cost: nothing — Firebase Authentication's free tier
 covers email/password sign-in with no card on file.

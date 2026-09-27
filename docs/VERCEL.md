@@ -98,7 +98,23 @@ a product with no picture.
 
 The two variables above are already what accounts need. Beyond them:
 
-Then the four Firebase values from `docs/FIREBASE.md`:
+Then the three Supabase Auth values from `docs/SUPABASE-AUTH.md`, which are what
+put a registration on the dashboard's Authentication page:
+
+```
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+None of the three needs quoting — they are single-line values.
+**`SUPABASE_SERVICE_ROLE_KEY` is a full-power secret**: it bypasses row-level
+security, so keep it out of any `VITE_` name and rotate it in the dashboard if it
+is ever exposed.
+
+Only if accounts were created in Firebase before the move, the four values from
+`docs/FIREBASE.md` as well — those accounts cannot have their passwords carried
+across, so Firebase goes on holding them:
 
 ```
 FIREBASE_PROJECT_ID

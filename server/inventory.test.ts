@@ -35,26 +35,32 @@ beforeAll(async () => {
   /*
    * The data layer reaches for the app's pool; point it at this one.
    *
-   * `createUser` is here too because `createAccount` calls it, and `getDb` is
-   * module-local inside db.ts — overriding the export would not redirect it.
-   * It writes to this same database, so the row the test reads back is real;
-   * the duplicate-address rule it does NOT reimplement, because
-   * `createVendorWithOwner` checks that against the real table itself.
+   * The rest of the module is kept, not replaced. It used to be stubbed out
+   * wholesale with a hand-rolled `createUser`, which stopped being necessary
+   * when the credential writes moved to `logins.ts`: that module takes `getDb`
+   * as an import, so redirecting it here points the *real* `createUser` at this
+   * database. Spreading the actual module also means a helper added to `db.ts`
+   * later does not silently arrive here as `undefined`.
    */
-  vi.doMock("./db", () => ({
-    getDb: async () => db,
-    createUser: async (input: { email: string; passwordHash?: string | null; name?: string | null }) => {
-      /* One address stands in for the race the pre-check cannot close: the
-         real `createUser` returns null when the address was taken between the
-         check and the write, and that is what drives the rollback. */
-      if (input.email.trim().toLowerCase() === "race@netlet.test") return null;
-      const [row] = await db
-        .insert(users)
-        .values({ email: input.email.trim().toLowerCase(), passwordHash: input.passwordHash ?? null, name: input.name ?? null })
-        .returning();
-      return row;
-    },
-  }));
+  vi.doMock("./db", async () => {
+    const actual = await vi.importActual<typeof import("./db.js")>("./db.js");
+    return { ...actual, getDb: async () => db };
+  });
+
+  /*
+   * One address stands in for the race the pre-check cannot close: the real
+   * `createUser` returns null when the address was taken between the check and
+   * the write, and that is what drives the store rollback. Everything else
+   * delegates, so the rollback is tested against the real write.
+   */
+  vi.doMock("./logins", async () => {
+    const actual = await vi.importActual<typeof import("./logins.js")>("./logins.js");
+    return {
+      ...actual,
+      createUser: async (input: Parameters<typeof actual.createUser>[0]) =>
+        input.email.trim().toLowerCase() === "race@netlet.test" ? null : actual.createUser(input),
+    };
+  });
   inv = await import("./inventory");
   audit = await import("./audit");
   inv2 = await import("./productReview");

@@ -83,6 +83,40 @@ if (process.env.JWT_SECRET?.trim() || !process.env.DATABASE_URL?.trim()) {
     "Set JWT_SECRET to a long random string: openssl rand -base64 32");
 }
 
+/* ------------------------------------------------------- supabase auth --- */
+
+/*
+ * All three or none, for the reason the Firebase block below says: with any one
+ * missing the server quietly uses the next store down, which looks like
+ * "Supabase Auth isn't working" rather than like a typo. Naming the missing one
+ * is the whole point.
+ */
+const supabaseAuthVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"] as const;
+const supabaseAuthMissing = supabaseAuthVars.filter(name => !process.env[name]?.trim());
+
+if (supabaseAuthMissing.length === 0) {
+  const url = process.env.SUPABASE_URL ?? "";
+  const anon = process.env.SUPABASE_ANON_KEY ?? "";
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (!/^https:\/\//.test(url)) {
+    add("blocked", "SUPABASE_URL", "is not an https URL",
+      "Project Settings -> Data API -> Project URL, e.g. https://abcdefghijklm.supabase.co");
+  } else if (anon === service) {
+    /* The likeliest way to get this wrong, and the most expensive: the sign-in
+       endpoint would then carry the key that owns the whole project. */
+    add("blocked", "SUPABASE_SERVICE_ROLE_KEY", "is the same value as SUPABASE_ANON_KEY",
+      "They are two different keys. Project Settings -> API Keys has both — anon/public and service_role");
+  } else {
+    add("ok", "Supabase Auth", `accounts are stored in ${new URL(url).host}`);
+  }
+} else if (supabaseAuthMissing.length === supabaseAuthVars.length) {
+  add("warn", "Supabase Auth", "not set — registrations will not appear under Authentication in the Supabase dashboard",
+    "Optional, and the reason that page is empty. docs/SUPABASE-AUTH.md has the setup");
+} else {
+  add("blocked", "Supabase Auth", `partly set: ${supabaseAuthMissing.join(", ")} missing, so a different password store is used instead`,
+    "Set all three, or clear them all — see docs/SUPABASE-AUTH.md");
+}
+
 /* ------------------------------------------------------------- firebase --- */
 
 // All four or none: with any one missing the server quietly uses the local
@@ -105,11 +139,19 @@ if (firebaseMissing.length === 0) {
     add("blocked", "FIREBASE_PRIVATE_KEY", "is a single line with no newlines — every signature will fail",
       'Keep the JSON\'s \\n escapes: FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIE...\\n-----END PRIVATE KEY-----\\n"');
   } else {
-    add("ok", "Firebase", `accounts are stored in project ${process.env.FIREBASE_PROJECT_ID}`);
+    add("ok", "Firebase", supabaseAuthMissing.length === 0
+      ? `still read for accounts made before the move, in project ${process.env.FIREBASE_PROJECT_ID}`
+      : `accounts are stored in project ${process.env.FIREBASE_PROJECT_ID}`);
   }
 } else if (firebaseMissing.length === firebaseVars.length) {
-  add("warn", "Firebase", "not set — registration and sign-in use the local password digest instead",
-    "Optional. docs/FIREBASE.md has the fifteen-minute setup");
+  /* Not a warning when Supabase Auth is set: Firebase is legacy, and a fresh
+     deployment leaving it blank is the expected state rather than a gap. */
+  if (supabaseAuthMissing.length === 0) {
+    add("ok", "Firebase", "not set, which is right — Supabase Auth holds the passwords");
+  } else {
+    add("warn", "Firebase", "not set — registration and sign-in use the local password digest instead",
+      "Legacy. New deployments use Supabase Auth: see docs/SUPABASE-AUTH.md");
+  }
 } else {
   add("blocked", "Firebase", `partly set: ${firebaseMissing.join(", ")} missing, so the local password path is used instead`,
     "Set all four, or clear them all to stay on the local path — see docs/FIREBASE.md");

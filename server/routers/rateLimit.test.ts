@@ -44,8 +44,6 @@ beforeAll(async () => {
     return {
       ...actual,
       getDb: async () => db,
-      getUserByEmail: async (email: string) =>
-        (await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1))[0],
       touchLastSignedIn: async () => {},
     };
   });

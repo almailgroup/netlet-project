@@ -1,8 +1,8 @@
 # NetLet
 
 Kuwait-first marketplace storefront. React + Vite client, Express + tRPC server,
-Supabase Postgres for the catalog, the cart and accounts. Firebase holds the
-passwords. Vercel runs it.
+Supabase Postgres for the catalog, the cart and accounts, and Supabase Auth for
+the passwords. Vercel runs it.
 
 ## Layout
 
@@ -58,19 +58,70 @@ are what makes the glass legible at all.
 
 ## Accounts
 
-Registered accounts live in **Firebase Authentication** — the password, and
-later the reset and verification flows that come with it. `users` in Postgres
-keeps one mirror row per shopper, linked by `firebase_uid`, because saved
-products, delivery area, notification preferences and order tracking are all
-foreign keys to its serial `id`.
+Registered accounts live in **Supabase Auth** — the password, and the reset and
+verification flows that come with it. `users` in Postgres keeps one mirror row
+per shopper, linked by `supabase_uid`, because saved products, delivery area,
+notification preferences and order tracking are all foreign keys to its serial
+`id`.
 
-The password is checked server-side, through Identity Toolkit rather than the
-Firebase Web SDK, so no Firebase code ships to the client and the session stays
-the same httpOnly cookie. `docs/FIREBASE.md` is the setup.
+**They were in Firebase, and the move was asked for by somebody looking at the
+wrong page.** Supabase's dashboard has an Authentication page; it reads
+`auth.users`, which belongs to Supabase's own auth service. NetLet wrote the
+password to Firebase and only a mirror row to `public.users`, so that page was
+empty however many people registered — the accounts were always in Supabase, one
+page over in the table editor, but the page somebody checks to answer "did that
+registration work" said nothing. A store of record nobody can see is a store of
+record nobody trusts.
 
-With the four `FIREBASE_*` variables unset, the same endpoints fall back to the
-local scrypt digest in `password_hash`. Exactly one of the two is set on any
-given account.
+The password is checked server-side, through the token endpoint's password grant
+rather than a client SDK, so no Supabase code ships to the browser and the
+session stays the same httpOnly cookie NetLet signs itself. The tokens the grant
+returns are read for the user they name and dropped. `docs/SUPABASE-AUTH.md` is
+the setup, and it is three values from Project Settings.
+
+**Two keys, and they are not interchangeable.** The anon key is a public
+identifier and is what the password grant and the reset endpoint take; the
+service-role key bypasses row-level security, owns the whole project, and only
+ever goes to the admin endpoints. Sending the service key to the sign-in
+endpoint would put it in every sign-in request, where one misplaced log line is
+a breach rather than a nuisance. `pnpm preflight` refuses the likeliest mistake
+outright: the two variables holding the same value.
+
+**Which store holds a password is which column the row has**, and exactly one is
+ever set: `supabase_uid`, `firebase_uid`, or the local scrypt digest in
+`password_hash`. Three columns rather than one `auth_uid` and a provider name,
+because the column *is* the provider — two fields that must agree eventually do
+not, and this is the mutual exclusion `firebase_uid` and `password_hash` already
+had. `server/_core/passwordStore.ts` is the only place that reads which, so the
+five callers that used to write their own `if (firebase && uid)` now ask one
+question.
+
+**Firebase is still read, and that is not indecision.** A Firebase password hash
+cannot be imported into Supabase — that is a property of hashes, not a missing
+feature — so an account made before the move keeps signing in through Firebase
+until its owner resets a password. Sign-in tries the active store first, then the
+legacy one for a row that names it. `scripts/migrate-auth-to-supabase.mjs` moves
+the rest when you want them moved, and it is a deliberate step because everybody
+it moves has to set a new password. Once no row has a `firebase_uid`, the four
+`FIREBASE_*` values and `server/_core/firebase.ts` can go.
+
+**A credential added by hand in the dashboard becomes a NetLet login on first
+sign-in.** `linkExternalUser` creates the missing mirror row rather than refusing
+an account the service has already accepted the password for — which is what
+makes the Authentication page somewhere an admin can work from rather than only
+read. It clears the other credential columns when it adopts a row, or the row
+would have two password stores and the answer to "which" would be whichever was
+checked first.
+
+Those three writes live in `server/logins.ts`, not `db.ts`, for the reason
+`profile.ts` and `orders.ts` do: a function declared inside `db.ts` calls that
+file's module-local `getDb`, which nothing outside can redirect, so it cannot be
+pointed at a test database. That was survivable while it was one insert. It
+stopped being survivable when one of them became the thing that keeps an account
+from having two passwords. They are deliberately *not* re-exported from `db.ts`
+either — that made a cycle, and a test redirecting `getDb` then handed the mock
+to one half of it and the real module to the other, so the writes ran against no
+database while reporting success.
 
 ## Signing in
 
@@ -85,11 +136,15 @@ deliberate:
   somebody they failed without telling them how to stop. Only length and a
   common-shape check actually block: composition rules that refuse a long
   passphrase in favour of `P@ss1` make passwords worse.
-- **Reset sends a real email.** Firebase composes and sends it through
-  `accounts:sendOobCode`, so there is no mail provider to configure — which is
-  the only reason the link can be real rather than decorative. The reply is
-  identical for an address with no account, like sign-in, so it cannot be used
-  to ask who is registered.
+- **Reset sends a real email.** Supabase composes and sends it through
+  `/auth/v1/recover`, so there is no mail provider to configure — which is the
+  only reason the link can be real rather than decorative. The reply is identical
+  for an address with no account, like sign-in, so it cannot be used to ask who
+  is registered. Both services are asked when both are configured, for that same
+  reason: looking up which one holds the address would make the reply vary by
+  address. The project's default mailer is rate-limited and meant for
+  development; a real deployment points Supabase at its own SMTP, which is a
+  dashboard setting rather than code.
 
 `ProfileManager` on `/account` is the other half: display name, sign-in email
 and password, each its own small form with its own Save. One Save across all
@@ -1318,10 +1373,11 @@ looks finished, so nobody goes back to fix it. The owner is optional: a store
 recorded today whose owner arrives next week is a real case.
 
 `server/_core/accounts.ts` is the one place an account gets made, for the
-storefront's own registration and for that page alike. The Firebase-or-scrypt
-branch used to live inside the auth router, where the second caller would
-either import a router or grow a copy — and a copy is how one of them quietly
-stops using Firebase.
+storefront's own registration and for that page alike. The which-store branch
+used to live inside the auth router, where the second caller would either import
+a router or grow a copy — and a copy is how one of them quietly stops using the
+configured store. It is a pass-through to `passwordStore.createLogin` now, which
+is where that decision belongs once there are three stores to decide between.
 
 A store's details are all nullable, and `missingStoreDetails` reports what is
 absent rather than the database refusing the save: an admin should not be
@@ -1349,11 +1405,11 @@ Owner" asks whoever is choosing to already know the permission model.
 
 An administrator can send any member a reset link from the store's page, which
 closes the one hole in the account flows: a vendor who forgot their password
-previously needed somebody to open the Firebase console. Unlike the
+previously needed somebody to open a provider's console. Unlike the
 shopper-facing reset — which is deliberately silent about whether an address
 is registered — this one reports what happened, because it takes a user id
 the caller already has on screen rather than an address they could be
-guessing. It also reports *honestly* when Firebase is unconfigured and no mail
+guessing. It also reports *honestly* when no service is configured and no mail
 could be sent, since an administrator told "sent" would wait for an email that
 was never coming.
 
@@ -1780,5 +1836,9 @@ Postgres in-process via PGlite, applying the generated migration verbatim, so
 Configuration lives in `.env.example`, annotated with what each value switches
 off — nothing throws at boot, so a missing value shows up as a dead feature.
 `pnpm setup:env` writes the `.env` from it; given the Firebase service-account
-JSON it also writes the three values whose escaping is the usual failure.
-`pnpm preflight` then says what is still missing, by name.
+JSON it also writes the three values whose escaping is the usual failure, which
+matters only for a deployment that still has accounts there. `pnpm preflight`
+then says what is still missing, by name — and refuses two Supabase Auth
+mistakes outright: a project URL that is not https, and the anon and
+service-role variables holding the same value, which is the one that would put
+the key owning the whole project into every sign-in request.

@@ -20,10 +20,22 @@ export const ENV = {
    */
   mediaHost: process.env.MEDIA_HOST ?? "",
   mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
-  /* Firebase Authentication. The first three come from a service-account key
-     and are secret; the API key is the project's public Web key, and is only
-     here because the password check runs on the server rather than in the
-     browser. All four must be set before Firebase is used at all. */
+  /* Supabase Auth, where registered accounts live.
+     All three must be set before it is used at all. The anon key is a public
+     identifier and is only here rather than under a VITE_ name because the
+     password check runs on the server; the service-role key is a full-power
+     secret that bypasses row-level security and must never reach the client.
+     They are kept as two values rather than one because they go to different
+     endpoints — see server/_core/supabaseAuth.ts. */
+  supabaseUrl: process.env.SUPABASE_URL ?? "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
+  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  /* Firebase Authentication — legacy, for accounts made before the move to
+     Supabase Auth. Still read so those accounts can still sign in: a Firebase
+     password hash cannot be carried across, so the rows stay where they are
+     until their owner resets a password. The first three come from a
+     service-account key and are secret; the API key is the project's public
+     Web key. All four must be set before Firebase is used at all. */
   firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? "",
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",

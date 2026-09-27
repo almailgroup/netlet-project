@@ -48,17 +48,30 @@ export const notificationKind = pgEnum("notification_kind", notificationKinds);
 /**
  * Shoppers, identified by email address.
  *
- * Where the credential lives depends on how the deployment is configured.
- * With Firebase Authentication set up, Firebase holds the password and this row
- * is a mirror: `firebaseUid` links the two, and `passwordHash` is null. Without
- * it, the server falls back to its own scrypt digest (see
- * `server/_core/password.ts`) in `passwordHash` and `firebaseUid` is null.
- * Exactly one of the two is set for any given account.
+ * **Where the password lives is which of three columns this row has**, and
+ * exactly one of them is ever set:
  *
- * The row exists in both cases because the serial `id` is what
+ * - `supabaseUid` — Supabase Auth holds it. This is where a new account goes,
+ *   and it is why a registration shows up under Authentication → Users in the
+ *   Supabase dashboard.
+ * - `firebaseUid` — Firebase Authentication holds it. Legacy: accounts made
+ *   before the move. A Firebase password hash cannot be carried into Supabase,
+ *   so these rows stay where they are and keep signing in, until their owner
+ *   resets a password or `scripts/migrate-auth-to-supabase.mjs` moves them.
+ * - `passwordHash` — NetLet's own scrypt digest (`server/_core/password.ts`),
+ *   which is what a deployment with neither service configured falls back to.
+ *
+ * Three columns rather than one `auth_uid` plus a provider name, because the
+ * column *is* the provider: two fields that must agree eventually do not, and
+ * this is the same mutual exclusion `firebaseUid` and `passwordHash` have had
+ * from the start. `server/_core/passwordStore.ts` is the one place that reads
+ * which is set.
+ *
+ * The row exists in all three cases because the serial `id` is what
  * `customer_preferences`, `saved_products`, `customer_notification_preferences`
- * and `order_tracking_events` all point at. Moving accounts to Firebase must
- * not turn four foreign keys into string lookups against a remote service.
+ * and `order_tracking_events` all point at. Moving the *credential* to a
+ * hosted service must not turn four foreign keys into string lookups against
+ * it.
  *
  * The address is stored lowercased so that a unique index is genuinely
  * case-insensitive regardless of the column's collation.
@@ -71,11 +84,18 @@ export const users = pgTable(
     email: varchar("email", { length: 320 }).notNull(),
     /**
      * scrypt digest with its parameters embedded, so the cost can be raised
-     * later. Null for accounts whose password Firebase holds.
+     * later. Null for accounts whose password a hosted service holds.
      */
     passwordHash: varchar("password_hash", { length: 255 }),
-    /** Firebase Authentication's uid for this shopper, when Firebase owns it. */
+    /** Firebase Authentication's uid, on accounts that predate the move. */
     firebaseUid: varchar("firebase_uid", { length: 128 }),
+    /**
+     * Supabase Auth's user id — a uuid, held as text for the reason every
+     * other external id here is: the column's job is to match what the service
+     * returns, and a uuid type would make a malformed one a database error
+     * rather than a caller's problem to report.
+     */
+    supabaseUid: varchar("supabase_uid", { length: 64 }),
     /** Optional display name; the shopper may never supply one. */
     name: varchar("name", { length: 255 }),
     role: userRole("role").notNull().default("user"),
@@ -97,6 +117,8 @@ export const users = pgTable(
     // Partial, so the many rows with no Firebase account do not all collide on
     // a single null.
     uniqueIndex("users_firebase_uid_unique").on(table.firebaseUid).where(sql`${table.firebaseUid} is not null`),
+    // Partial for the same reason as the one above it.
+    uniqueIndex("users_supabase_uid_unique").on(table.supabaseUid).where(sql`${table.supabaseUid} is not null`),
   ]
 );
 
