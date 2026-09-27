@@ -15,8 +15,14 @@
  * That is why this is a script you run on purpose rather than something that
  * happens on deploy. **Everybody it moves has to set a new password.** For a
  * shop that has not opened yet that is three test accounts; for a live one it is
- * a decision with a support cost, and the alternative — leaving them where they
- * are until each one resets naturally — is supported and needs no script at all.
+ * a decision with a support cost.
+ *
+ * There is no alternative that avoids it, which is worth being plain about: an
+ * account whose row names Firebase stays there through a reset (Firebase sends
+ * that mail and handles the new password) and through a change from `/account`
+ * (`storeFor` writes to the store the row names). Waiting is not a migration
+ * strategy. Leaving them in Firebase indefinitely *is* supported — but then the
+ * four `FIREBASE_*` values stay set for as long as one row has a `firebase_uid`.
  *
  * ## What it does per account, in this order
  *

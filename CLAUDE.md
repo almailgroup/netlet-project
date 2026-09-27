@@ -98,12 +98,19 @@ question.
 
 **Firebase is still read, and that is not indecision.** A Firebase password hash
 cannot be imported into Supabase — that is a property of hashes, not a missing
-feature — so an account made before the move keeps signing in through Firebase
-until its owner resets a password. Sign-in tries the active store first, then the
-legacy one for a row that names it. `scripts/migrate-auth-to-supabase.mjs` moves
-the rest when you want them moved, and it is a deliberate step because everybody
-it moves has to set a new password. Once no row has a `firebase_uid`, the four
-`FIREBASE_*` values and `server/_core/firebase.ts` can go.
+feature — so an account made before the move goes on signing in through Firebase.
+Sign-in tries the active store first, then the legacy one for a row that names it.
+
+**Nothing moves such an account by itself, including a password reset.** A
+Firebase reset happens on Firebase's own page and a change from `/account` writes
+to Firebase, because that is where `storeFor` says the password is; either way the
+row still names Firebase afterwards. So the only way off is
+`scripts/migrate-auth-to-supabase.mjs`, which is a deliberate step because
+everybody it moves has to set a new password. Saying otherwise would be worse than
+saying nothing: it would promise that waiting is a plan. Once no row has a
+`firebase_uid`, the four `FIREBASE_*` values and `server/_core/firebase.ts` can
+go — and until then, unsetting them locks those accounts out, with no reset to
+recover by, since the mail for one is Firebase's to send.
 
 **A credential added by hand in the dashboard becomes a NetLet login on first
 sign-in.** `linkExternalUser` creates the missing mirror row rather than refusing

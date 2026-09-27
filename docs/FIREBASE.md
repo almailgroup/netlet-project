@@ -7,9 +7,11 @@
 > This page is still here for one reason: accounts created before the move have
 > their password in Firebase and nowhere else. A Firebase password hash cannot be
 > carried into Supabase, so those accounts go on signing in through Firebase
-> until their owner resets a password, or until
-> `scripts/migrate-auth-to-supabase.mjs` moves them — which asks every one of
-> them to set a new password, and is therefore a deliberate step.
+> until `scripts/migrate-auth-to-supabase.mjs` moves them — which asks every one
+> of them to set a new password, and is therefore a deliberate step. Nothing
+> moves them on its own: a reset for such an account is Firebase's own email and
+> leaves it where it was, so keep these four values set until that script has
+> run, or those accounts cannot be signed into at all.
 >
 > **A fresh deployment does not need any of this.** Leave the four `FIREBASE_*`
 > values blank.
