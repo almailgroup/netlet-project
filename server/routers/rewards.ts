@@ -13,6 +13,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import { pendingCashOuts, requestCashOut, rewardsFor, settleCashOut } from "../referral.js";
 import { resolveActor } from "../inventory.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
@@ -55,7 +56,7 @@ export const rewardsRouter = router({
 
   /** Record that one was paid. */
   settleCashOut: protectedProcedure
-    .input(z.object({ entryId: z.number().int().positive() }))
+    .input(z.object({ entryId: rowId }))
     .mutation(async ({ ctx, input }) => guard(async () =>
       ({ settled: await settleCashOut(await resolveActor(ctx.user), input.entryId) }))),
 });

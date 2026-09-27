@@ -776,7 +776,22 @@ export const productVariants = pgTable(
   },
   table => [
     index("product_variants_product_id_idx").on(table.productId),
-    uniqueIndex("product_variants_sku_unique").on(table.sku),
+    /*
+     * A SKU is unique **within its product**, not across the shop.
+     *
+     * It was global, which is the wrong grain for a marketplace: a SKU is a
+     * seller's own code, "BATT-1" is the code two independent shops would both
+     * reach for, and the second one to type it was refused — with a raw
+     * Postgres sentence, because nothing translated the violation. A seller
+     * reusing one across two of their *own* products is a real mistake and is
+     * still caught, by `assertSkuFree` in `server/inventory.ts`, which is
+     * where the vendor grain can be expressed; an index cannot reach through
+     * `products` to `vendor_id`.
+     *
+     * NULLs stay distinct, which is Postgres's default and is what lets every
+     * variant nobody gave a code to coexist.
+     */
+    uniqueIndex("product_variants_product_sku_unique").on(table.productId, table.sku),
   ]
 );
 

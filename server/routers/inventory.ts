@@ -12,6 +12,7 @@
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
+import { percentSchema, rowId } from "../_core/schemas.js";
 import { SELL_UNITS } from "../../shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
@@ -115,6 +116,14 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "SLUG_REQUIRED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.slugRequired" });
     }
+    /* A seller's own code, already on one of their own products. It used to
+       reach here as a raw "duplicate key value violates unique constraint",
+       which is a 500 for something the seller fixes by typing a different
+       code — and the index it bounced off was global, so the code they had to
+       change might have been taken by a shop they have never heard of. */
+    if (message === "SKU_TAKEN") {
+      throw new TRPCError({ code: "CONFLICT", message: "admin.skuTaken" });
+    }
     // A refusal the admin can act on: they are one field away from fixing it.
     if (message === "UNPRICED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.unpriced" });
@@ -137,7 +146,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 /** Money as a decimal string. Never a float — three decimal places is money. */
 const moneySchema = z.string().regex(/^\d{1,9}(\.\d{1,3})?$/, "Expected an amount like 24.500");
 
-const vendorScope = z.object({ vendorId: z.number().int().positive().optional() });
+const vendorScope = z.object({ vendorId: rowId.optional() });
 
 /*
  * A store's details.
@@ -251,15 +260,15 @@ export const inventoryRouter = router({
 
     save: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive().optional(),
+        id: rowId.optional(),
         name: z.string().trim().min(1).max(200),
         nameAr: z.string().trim().max(200).nullable().optional(),
         /* Null is NetLet's own, which is how a bundle spans two shops. */
-        vendorId: z.number().int().positive().nullable(),
+        vendorId: rowId.nullable(),
         bundlePrice: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
         active: z.boolean().optional(),
         members: z.array(z.object({
-          variantId: z.number().int().positive(),
+          variantId: rowId,
           quantity: z.number().int().min(1).max(99),
         })).min(2).max(20),
       }))
@@ -269,7 +278,7 @@ export const inventoryRouter = router({
       }),
 
     setActive: protectedProcedure
-      .input(z.object({ id: z.number().int().positive(), active: z.boolean() }))
+      .input(z.object({ id: rowId, active: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => bundleGuard(() => setBundleActive(actor, input.id, input.active)));
@@ -317,14 +326,14 @@ export const inventoryRouter = router({
       guard(async () => countWaitingApplications(await resolveActor(ctx.user)))),
 
     approve: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: rowId }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => applicationGuard(() => approveApplication(actor, input.id)));
       }),
 
     reject: protectedProcedure
-      .input(z.object({ id: z.number().int().positive(), reason: z.string().trim().min(1).max(400) }))
+      .input(z.object({ id: rowId, reason: z.string().trim().min(1).max(400) }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => applicationGuard(() => rejectApplication(actor, input.id, input.reason)));
@@ -345,7 +354,7 @@ export const inventoryRouter = router({
       }),
 
     get: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: rowId }))
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => getProduct(actor, input.id));
@@ -353,11 +362,11 @@ export const inventoryRouter = router({
 
     create: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         title: z.string().trim().min(1).max(255),
         titleAr: z.string().trim().max(255).nullable().optional(),
         description: z.string().max(20000).nullable().optional(),
-        categoryId: z.number().int().positive().nullable().optional(),
+        categoryId: rowId.nullable().optional(),
         tags: z.array(z.string().max(60)).max(40).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -377,7 +386,7 @@ export const inventoryRouter = router({
      */
     bulkCreate: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         rows: z.array(z.object({
           title: z.string().trim().min(1).max(255),
           sku: z.string().trim().max(64).nullable(),
@@ -401,12 +410,12 @@ export const inventoryRouter = router({
 
     update: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         title: z.string().trim().min(1).max(255).optional(),
         titleAr: z.string().trim().max(255).nullable().optional(),
         description: z.string().max(20000).nullable().optional(),
         descriptionAr: z.string().max(20000).nullable().optional(),
-        categoryId: z.number().int().positive().nullable().optional(),
+        categoryId: rowId.nullable().optional(),
         tags: z.array(z.string().max(60)).max(40).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -423,7 +432,7 @@ export const inventoryRouter = router({
      * editing something else.
      */
     setDeliverySpeed: protectedProcedure
-      .input(z.object({ productId: z.number().int().positive(), speed: z.enum(DELIVERY_SPEEDS).nullable() }))
+      .input(z.object({ productId: rowId, speed: z.enum(DELIVERY_SPEEDS).nullable() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(async () => {
@@ -441,7 +450,7 @@ export const inventoryRouter = router({
      */
     setAttributes: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         attributes: z.array(z.object({
           namespace: z.string().max(40),
           key: z.string().max(60),
@@ -459,7 +468,7 @@ export const inventoryRouter = router({
 
     /** How big it is for delivery, or null for unknown (3.4.14). */
     setSizeClass: protectedProcedure
-      .input(z.object({ productId: z.number().int().positive(), sizeClass: z.enum(SIZE_CLASSES).nullable() }))
+      .input(z.object({ productId: rowId, sizeClass: z.enum(SIZE_CLASSES).nullable() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(async () => {
@@ -477,7 +486,7 @@ export const inventoryRouter = router({
      */
     setImages: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         images: z.array(z.object({
           url: z.string().url().max(2000).refine(
             value => /^https?:\/\//i.test(value),
@@ -513,7 +522,7 @@ export const inventoryRouter = router({
      * money and a page of twenty would spend twenty calls on a scroll.
      */
     flags: protectedProcedure
-      .input(z.object({ ids: z.array(z.number().int().positive()).max(100) }))
+      .input(z.object({ ids: z.array(rowId).max(100) }))
       .query(async ({ ctx, input }) => guard(async () =>
         reviewProducts(await resolveActor(ctx.user), input.ids))),
 
@@ -534,7 +543,7 @@ export const inventoryRouter = router({
      * assistant uses: nothing is spent on somebody scrolling past.
      */
     modelFlag: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: rowId }))
       .mutation(async ({ ctx, input }) => guard(async () => {
         const actor = await resolveActor(ctx.user);
         assertCan(actor, "product.review");
@@ -548,7 +557,7 @@ export const inventoryRouter = router({
 
     setAddons: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         addons: z.array(z.object({
           kind: z.enum(ADDON_KINDS),
           label: z.string().trim().min(1).max(160),
@@ -567,8 +576,15 @@ export const inventoryRouter = router({
      */
     setCommission: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
-        percent: moneySchema.nullable().optional(),
+        id: rowId,
+        /* A percentage, not an amount. It was `moneySchema`, which allows
+           nine integer digits: 50123456 overflowed `numeric(5, 2)` as a 500,
+           and 500 was accepted outright. `commissionFor` clamps the cut to the
+           line, so 500% does not go negative — it takes the whole line and
+           pays the seller nothing, which is a rate nobody means to set. The
+           store-level rate beside it already had a pattern of its own; now both
+           use the same one. */
+        percent: percentSchema.nullable().optional(),
         fixed: moneySchema.nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -578,7 +594,7 @@ export const inventoryRouter = router({
 
     setStatus: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         status: z.enum(["draft", "published", "archived"]),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -589,7 +605,7 @@ export const inventoryRouter = router({
     /** Admin only — the data layer refuses anyone else. */
     review: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive(),
+        id: rowId,
         approve: z.boolean(),
         note: z.string().max(2000).optional(),
       }))
@@ -602,8 +618,8 @@ export const inventoryRouter = router({
   variants: router({
     save: protectedProcedure
       .input(z.object({
-        id: z.number().int().positive().optional(),
-        productId: z.number().int().positive(),
+        id: rowId.optional(),
+        productId: rowId,
         title: z.string().trim().min(1).max(255),
         sku: z.string().trim().max(120).nullable().optional(),
         price: moneySchema,
@@ -624,7 +640,7 @@ export const inventoryRouter = router({
 
     adjustStock: protectedProcedure
       .input(z.object({
-        variantId: z.number().int().positive(),
+        variantId: rowId,
         delta: z.number().int().min(-1_000_000).max(1_000_000),
         reason: z.enum(["received", "sold", "damaged", "correction", "returned"]),
         note: z.string().max(500).optional(),
@@ -661,7 +677,7 @@ export const inventoryRouter = router({
 
   stockHistory: protectedProcedure
     .input(z.object({
-      variantId: z.number().int().positive().optional(),
+      variantId: rowId.optional(),
       limit: z.number().int().min(1).max(200).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
@@ -688,7 +704,7 @@ export const inventoryRouter = router({
     .input(z.object({
       action: z.string().max(64).optional(),
       subjectType: z.string().max(32).optional(),
-      vendorId: z.number().int().positive().optional(),
+      vendorId: rowId.optional(),
       limit: z.number().int().min(1).max(200).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
@@ -750,7 +766,7 @@ export const inventoryRouter = router({
       }),
 
     setAdmin: protectedProcedure
-      .input(z.object({ userId: z.number().int().positive(), isAdmin: z.boolean() }))
+      .input(z.object({ userId: rowId, isAdmin: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => setUserAdmin(actor, input.userId, input.isAdmin));
@@ -758,7 +774,7 @@ export const inventoryRouter = router({
 
     addToVendor: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         email: z.string().trim().email().max(320),
         role: z.enum(VENDOR_ROLES),
       }))
@@ -768,7 +784,7 @@ export const inventoryRouter = router({
       }),
 
     removeFromVendor: protectedProcedure
-      .input(z.object({ vendorId: z.number().int().positive(), userId: z.number().int().positive() }))
+      .input(z.object({ vendorId: rowId, userId: rowId }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => removeMemberAsAdmin(actor, input.vendorId, input.userId));
@@ -787,7 +803,7 @@ export const inventoryRouter = router({
       }),
 
     get: protectedProcedure
-      .input(z.object({ vendorId: z.number().int().positive() }))
+      .input(z.object({ vendorId: rowId }))
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => getVendor(actor, input.vendorId));
@@ -826,7 +842,7 @@ export const inventoryRouter = router({
 
     updateProfile: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         name: z.string().trim().min(1).max(255).optional(),
         ...storeDetails,
       }))
@@ -837,7 +853,7 @@ export const inventoryRouter = router({
       }),
 
     members: protectedProcedure
-      .input(z.object({ vendorId: z.number().int().positive() }))
+      .input(z.object({ vendorId: rowId }))
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => listMembers(actor, input.vendorId));
@@ -845,8 +861,8 @@ export const inventoryRouter = router({
 
     setMemberRole: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
-        userId: z.number().int().positive(),
+        vendorId: rowId,
+        userId: rowId,
         role: z.enum(VENDOR_ROLES),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -855,7 +871,7 @@ export const inventoryRouter = router({
       }),
 
     removeMember: protectedProcedure
-      .input(z.object({ vendorId: z.number().int().positive(), userId: z.number().int().positive() }))
+      .input(z.object({ vendorId: rowId, userId: rowId }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => removeMember(actor, input.vendorId, input.userId));
@@ -869,7 +885,7 @@ export const inventoryRouter = router({
      */
     addNewMember: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         email: z.string().trim().email().max(320),
         // The same floor the storefront's own registration uses, so an admin
         // cannot set a weaker password than the person could set themselves.
@@ -886,7 +902,7 @@ export const inventoryRouter = router({
     /** Emails a member a link to set a new password. Admin only. */
     sendPasswordReset: protectedProcedure
       .input(z.object({
-        userId: z.number().int().positive(),
+        userId: rowId,
         locale: z.enum(["en", "ar"]).default("en"),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -896,7 +912,7 @@ export const inventoryRouter = router({
 
     setBadges: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         badges: z.array(z.enum(TRUST_BADGES)).max(TRUST_BADGES.length),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -906,8 +922,8 @@ export const inventoryRouter = router({
 
     setCommission: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
-        percent: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/),
+        vendorId: rowId,
+        percent: percentSchema,
         fixed: moneySchema.nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
@@ -917,7 +933,7 @@ export const inventoryRouter = router({
 
     setStatus: protectedProcedure
       .input(z.object({
-        vendorId: z.number().int().positive(),
+        vendorId: rowId,
         status: z.enum(["pending", "approved", "suspended"]),
       }))
       .mutation(async ({ ctx, input }) => {

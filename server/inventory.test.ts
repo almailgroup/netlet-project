@@ -291,6 +291,39 @@ describe("importing a spreadsheet", () => {
   });
 
   /*
+   * The same SKU rule the editor applies. Both doors onto the shelf, for the
+   * reason `assertPriced` guards both: a rule enforced at one of them is a rule
+   * somebody works around by using the other.
+   */
+  it("refuses a file naming one code twice", async () => {
+    await expect(inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Twin A", sku: "TWIN-1" }), row({ title: "Twin B", sku: "TWIN-1" })],
+    })).rejects.toThrow("SKU_TAKEN");
+  });
+
+  it("refuses a code already on this store's shelf", async () => {
+    await inv.saveVariant(ownerActor(), {
+      productId: ids.acmeProduct, title: "On the shelf", sku: "SHELF-1", price: "3.000",
+    });
+    await expect(inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Clashing", sku: "SHELF-1" })],
+    })).rejects.toThrow("SKU_TAKEN");
+  });
+
+  it("accepts a code another store already uses", async () => {
+    await inv.saveVariant(adminActor(), {
+      productId: ids.otherProduct, title: "Their code", sku: "THEIRS-1", price: "3.000",
+    });
+    const { created } = await inv.bulkCreateProducts(ownerActor(), {
+      vendorId: ids.acme,
+      rows: [row({ title: "Same code, our shop", sku: "THEIRS-1" })],
+    });
+    expect(created).toBe(1);
+  });
+
+  /*
    * `uniqueHandle` reads what is committed, and inside one transaction the
    * rows above it are not — so two rows with one title would both ask for the
    * same handle and fail the unique index at the very end, after everything
@@ -1241,5 +1274,60 @@ describe("paging rows that tie on the sort key", () => {
     const once = await inv.listProductsFor(actor, tiedVendor, { page: 2, pageSize: 10 });
     const twice = await inv.listProductsFor(actor, tiedVendor, { page: 2, pageSize: 10 });
     expect(once.rows.map(row => row.handle)).toEqual(twice.rows.map(row => row.handle));
+  });
+});
+
+/**
+ * A SKU is the seller's own code, and the namespace it lives in is theirs.
+ *
+ * It was one namespace for the whole marketplace, so the first shop to type
+ * "BATT-1" owned the string and every shop after it was refused — with the
+ * index's own sentence, because nothing translated the violation into a
+ * refusal. Both halves are tested: the grain, and the answer.
+ */
+describe("a variant's SKU", () => {
+  it("lets two different stores use the same code", async () => {
+    const acme = await inv.saveVariant(adminActor(), {
+      productId: ids.acmeProduct, title: "Batteries", sku: "BATT-1", price: "1.500",
+    });
+    const other = await inv.saveVariant(adminActor(), {
+      productId: ids.otherProduct, title: "Batteries", sku: "BATT-1", price: "1.750",
+    });
+    expect(acme).toBeGreaterThan(0);
+    expect(other).toBeGreaterThan(0);
+    expect(other).not.toBe(acme);
+  });
+
+  it("refuses a code already on another of the same store's products", async () => {
+    const [second] = await db
+      .insert(products)
+      .values({ vendorId: ids.acme, handle: "acme-torch", title: "Acme Torch" })
+      .returning();
+
+    await inv.saveVariant(adminActor(), {
+      productId: ids.acmeProduct, title: "Cell", sku: "CELL-9", price: "2.000",
+    });
+
+    await expect(
+      inv.saveVariant(adminActor(), { productId: second.id, title: "Cell", sku: "CELL-9", price: "2.000" }),
+    ).rejects.toThrow("SKU_TAKEN");
+  });
+
+  it("lets a variant keep the code it already has", async () => {
+    const id = await inv.saveVariant(adminActor(), {
+      productId: ids.acmeProduct, title: "Fuse", sku: "FUSE-2", price: "0.750",
+    });
+    // The same code on the same row is not a clash with itself — which is the
+    // case an `exceptVariantId` the guard forgot would have broken on every
+    // ordinary edit.
+    await expect(
+      inv.saveVariant(adminActor(), { id, productId: ids.acmeProduct, title: "Fuse", sku: "FUSE-2", price: "0.800" }),
+    ).resolves.toBe(id);
+  });
+
+  it("lets any number of variants carry no code at all", async () => {
+    const first = await inv.saveVariant(adminActor(), { productId: ids.acmeProduct, title: "Plain A", price: "1.000" });
+    const second = await inv.saveVariant(adminActor(), { productId: ids.acmeProduct, title: "Plain B", sku: "", price: "1.000" });
+    expect(first).not.toBe(second);
   });
 });

@@ -31,6 +31,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import {
   addItem,
   claimItem,
@@ -75,7 +76,7 @@ const guard = async <T>(run: () => Promise<T>): Promise<T> => {
   }
 };
 
-const listId = z.object({ listId: z.number().int().positive() });
+const listId = z.object({ listId: rowId });
 
 /**
  * The phone number as typed, refined by the *same* function the server
@@ -144,7 +145,7 @@ export const wishlistsRouter = router({
     })),
 
   removeItem: protectedProcedure
-    .input(listId.extend({ itemId: z.number().int().positive() }))
+    .input(listId.extend({ itemId: rowId }))
     .mutation(({ ctx, input }) => guard(() => removeItem(ctx.user.id, input.listId, input.itemId))),
 
   /* ------------------------------------------------------------ phone --- */

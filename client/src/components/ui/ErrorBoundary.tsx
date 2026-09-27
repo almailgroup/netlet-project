@@ -1,3 +1,4 @@
+import { readStored } from "@/lib/browserStore";
 import { cn } from "@/lib/utils";
 import { translate } from "@shared/i18n/dictionary";
 import { AlertTriangle, RotateCcw } from "lucide-react";
@@ -10,11 +11,7 @@ import { Component, ReactNode } from "react";
  * handler for a throw.
  */
 function crashLocale(): "en" | "ar" {
-  try {
-    return window.localStorage.getItem("netlet:locale") === "ar" ? "ar" : "en";
-  } catch {
-    return "en";
-  }
+  return readStored("netlet:locale") === "ar" ? "ar" : "en";
 }
 
 interface Props {

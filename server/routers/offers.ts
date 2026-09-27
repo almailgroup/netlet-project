@@ -16,6 +16,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import {
   answerOffer,
   countOpenOffers,
@@ -81,12 +82,12 @@ export const offersRouter = router({
    * offer" on a shop that will never answer one is the dead-control rule.
    */
   openOn: publicProcedure
-    .input(z.object({ variantIds: z.array(z.number().int()).max(50) }))
+    .input(z.object({ variantIds: z.array(rowId).max(50) }))
     .query(async ({ input }) => [...(await offersOpenOn(input.variantIds))]),
 
   /** What this shopper has going on one variant, and nothing about anybody else. */
   mine: protectedProcedure
-    .input(z.object({ variantId: z.number().int() }))
+    .input(z.object({ variantId: rowId }))
     .query(({ ctx, input }) => offerForVariant(ctx.user.id, input.variantId)),
 
   /** Every request this shopper has sent, for the account page. */
@@ -101,7 +102,7 @@ export const offersRouter = router({
    */
   request: protectedProcedure
     .input(z.object({
-      variantId: z.number().int(),
+      variantId: rowId,
       askedPrice: amount,
       quantity: z.number().int().min(1).max(999).default(1),
       note: z.string().trim().max(MAX_NOTE).nullish(),
@@ -121,7 +122,7 @@ export const offersRouter = router({
 
   /** Take a request back. Scoped by `ctx.user.id` inside the write. */
   withdraw: protectedProcedure
-    .input(z.object({ offerId: z.number().int() }))
+    .input(z.object({ offerId: rowId }))
     .mutation(({ ctx, input }) => guard(async () => {
       await withdrawOffer(ctx.user.id, input.offerId);
       return { ok: true } as const;
@@ -135,7 +136,7 @@ export const offersRouter = router({
       page: z.number().int().min(1).optional(),
       pageSize: z.number().int().min(1).max(100).optional(),
       open: z.boolean().optional(),
-      vendorId: z.number().int().optional(),
+      vendorId: rowId.optional(),
     }).optional())
     .query(({ ctx, input }) => guard(async () =>
       listOffersForVendor(await resolveActor(ctx.user, input?.vendorId), input ?? {})),
@@ -143,7 +144,7 @@ export const offersRouter = router({
 
   /** How many are waiting, for the portal's overview tile. */
   waiting: protectedProcedure
-    .input(z.object({ vendorId: z.number().int().optional() }).optional())
+    .input(z.object({ vendorId: rowId.optional() }).optional())
     .query(({ ctx, input }) => guard(async () =>
       countOpenOffers(await resolveActor(ctx.user, input?.vendorId))),
     ),
@@ -151,10 +152,10 @@ export const offersRouter = router({
   /** Quote a price. Checked against the price frozen on the request. */
   answer: protectedProcedure
     .input(z.object({
-      offerId: z.number().int(),
+      offerId: rowId,
       offeredPrice: amount,
       note: z.string().trim().max(MAX_NOTE).nullish(),
-      vendorId: z.number().int().optional(),
+      vendorId: rowId.optional(),
     }))
     .mutation(({ ctx, input }) => guard(async () => {
       await answerOffer(await resolveActor(ctx.user, input.vendorId), { ...input, actorUserId: ctx.user.id });
@@ -165,14 +166,14 @@ export const offersRouter = router({
 
   /** Whether this store answers price requests, for the switch on the inbox. */
   storeOpen: protectedProcedure
-    .input(z.object({ vendorId: z.number().int().optional() }).optional())
+    .input(z.object({ vendorId: rowId.optional() }).optional())
     .query(({ ctx, input }) => guard(async () =>
       vendorAcceptsOffers(await resolveActor(ctx.user, input?.vendorId), input?.vendorId)),
     ),
 
   /** A vendor owner turning their own inbox on or off. */
   setStoreOpen: protectedProcedure
-    .input(z.object({ vendorId: z.number().int(), accepts: z.boolean() }))
+    .input(z.object({ vendorId: rowId, accepts: z.boolean() }))
     .mutation(({ ctx, input }) => guard(async () => {
       await setVendorAcceptsOffers(await resolveActor(ctx.user, input.vendorId), input.vendorId, input.accepts);
       return { ok: true } as const;
@@ -183,7 +184,7 @@ export const offersRouter = router({
    * goes back to inheriting the store's.
    */
   setProductOpen: protectedProcedure
-    .input(z.object({ productId: z.number().int(), accepts: z.boolean().nullable() }))
+    .input(z.object({ productId: rowId, accepts: z.boolean().nullable() }))
     .mutation(({ ctx, input }) => guard(async () => {
       await setProductAcceptsOffers(await resolveActor(ctx.user), input.productId, input.accepts);
       return { ok: true } as const;
@@ -192,9 +193,9 @@ export const offersRouter = router({
   /** Say no, with a reason if there is one worth giving. */
   decline: protectedProcedure
     .input(z.object({
-      offerId: z.number().int(),
+      offerId: rowId,
       note: z.string().trim().max(MAX_NOTE).nullish(),
-      vendorId: z.number().int().optional(),
+      vendorId: rowId.optional(),
     }))
     .mutation(({ ctx, input }) => guard(async () => {
       await declineOffer(await resolveActor(ctx.user, input.vendorId), { ...input, actorUserId: ctx.user.id });

@@ -59,3 +59,35 @@ export function rootCauseOf(error: unknown, depth = 6): string {
 
   return best || "Unknown error";
 }
+
+/**
+ * Did this write bounce off a particular unique index?
+ *
+ * The chain is walked rather than the message read, because what is thrown is
+ * Drizzle's own wrapper — its `message` is "Failed query: insert into …" and
+ * the constraint name is only on the driver error underneath it. Reading the
+ * top-level message looked right, matched nothing, and turned a refusal
+ * somebody can act on into a 500.
+ *
+ * Both spellings are checked: node-postgres and PGlite put the name on
+ * `constraint`, postgres.js on `constraint_name`. `23505` is Postgres's unique
+ * violation. A violation carrying no name at all is taken as this one, since a
+ * driver that withholds it leaves nothing else to go on; a violation naming a
+ * *different* index is not, so a second index added later cannot be quietly
+ * reported as this one.
+ *
+ * It lives here rather than beside its first caller because there are two now:
+ * the one-open-request index on `price_offers` and the per-product SKU index on
+ * `product_variants`. A copy is how one of them stops matching.
+ */
+export function violatesUnique(error: unknown, constraint: string): boolean {
+  for (let current: unknown = error, depth = 0; current && depth < 6; depth += 1) {
+    const step = current as { code?: unknown; constraint?: unknown; constraint_name?: unknown; cause?: unknown };
+    if (step.code === "23505") {
+      const named = step.constraint ?? step.constraint_name;
+      if (typeof named !== "string" || named === constraint) return true;
+    }
+    current = step.cause;
+  }
+  return false;
+}

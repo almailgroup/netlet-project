@@ -15,6 +15,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import {
   deleteReview,
   editReview,
@@ -75,12 +76,12 @@ export const reviewsRouter = router({
   mine: protectedProcedure.query(({ ctx }) => reviewableLinesFor(ctx.user.id)),
 
   write: protectedProcedure
-    .input(z.object({ orderItemId: z.number().int().positive(), rating, title, body }))
+    .input(z.object({ orderItemId: rowId, rating, title, body }))
     .mutation(({ ctx, input }) => guard(() => writeReview(ctx.user.id, input))),
 
   edit: protectedProcedure
     .input(z.object({
-      reviewId: z.number().int().positive(),
+      reviewId: rowId,
       rating: rating.optional(),
       title,
       body,
@@ -91,7 +92,7 @@ export const reviewsRouter = router({
     })),
 
   remove: protectedProcedure
-    .input(z.object({ reviewId: z.number().int().positive() }))
+    .input(z.object({ reviewId: rowId }))
     .mutation(({ ctx, input }) => guard(() => deleteReview(ctx.user.id, input.reviewId))),
 
   /**
@@ -102,7 +103,7 @@ export const reviewsRouter = router({
    * change, and answering in somebody else's voice is exactly the abuse.
    */
   reply: protectedProcedure
-    .input(z.object({ reviewId: z.number().int().positive(), reply: z.string().trim().max(MAX_REVIEW_BODY) }))
+    .input(z.object({ reviewId: rowId, reply: z.string().trim().max(MAX_REVIEW_BODY) }))
     .mutation(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
       // Only somebody acting *for a vendor* may answer. An admin is not a
@@ -114,7 +115,7 @@ export const reviewsRouter = router({
   /** Moderation. Hides rather than deletes; see `setReviewHidden`. */
   setHidden: adminProcedure
     .input(z.object({
-      reviewId: z.number().int().positive(),
+      reviewId: rowId,
       hidden: z.boolean(),
       reason: z.string().trim().max(200).optional(),
     }))

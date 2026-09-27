@@ -11,6 +11,7 @@
  */
 
 import { z } from "zod";
+import { rowId, rowIdText } from "../_core/schemas.js";
 import {
   addCartLines,
   createCart,
@@ -36,18 +37,18 @@ import { TRPCError } from "@trpc/server";
 const localeSchema = z.enum(["en", "ar"]).optional();
 
 const cartLineInputSchema = z.object({
-  variantId: z.string().min(1),
+  variantId: rowIdText,
   quantity: z.number().int().min(1).max(99),
   /* The optional extras ticked on this line (3.1.2). Ids only — the price is
      read from the catalog, and an id the product does not offer is dropped. */
-  addonIds: z.array(z.string().min(1)).max(20).optional(),
+  addonIds: z.array(rowIdText).max(20).optional(),
   /* Which bundle put this line here (3.3.11). The *price* is never sent: the
      server reads the bundle and splits its price itself. */
-  bundleId: z.number().int().positive().optional(),
+  bundleId: rowId.optional(),
 });
 
 const cartLineUpdateSchema = z.object({
-  lineId: z.string().min(1),
+  lineId: rowIdText,
   /** 0 means "remove this line" — the route forwards to removeLines. */
   quantity: z.number().int().min(0).max(99),
 });
@@ -147,7 +148,7 @@ export const commerceRouter = router({
       .input(
         z.object({
           cartId: z.string().min(1),
-          lineIds: z.array(z.string().min(1)).min(1).max(50),
+          lineIds: z.array(rowIdText).min(1).max(50),
         })
       )
       .mutation(async ({ input }) => {
@@ -170,8 +171,8 @@ export const commerceRouter = router({
       .input(
         z.object({
           cartId: z.string().min(1),
-          lineId: z.string().min(1),
-          addressId: z.number().int().positive().nullable(),
+          lineId: rowIdText,
+          addressId: rowId.nullable(),
         })
       )
       .mutation(async ({ ctx, input }) => {

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import {
   countFollowers,
   getCustomerProfile,
@@ -115,10 +116,10 @@ export const customerRouter = router({
       .input(addressInput)
       .mutation(({ ctx, input }) => refusable(() => addAddress(ctx.user.id, input))),
     update: protectedProcedure
-      .input(addressInput.extend({ id: z.number().int().positive() }))
+      .input(addressInput.extend({ id: rowId }))
       .mutation(({ ctx, input }) => refusable(() => updateAddress(ctx.user.id, input.id, input))),
     remove: protectedProcedure
-      .input(z.object({ id: z.number().int().positive() }))
+      .input(z.object({ id: rowId }))
       .mutation(({ ctx, input }) => refusable(() => removeAddress(ctx.user.id, input.id))),
   }),
 });

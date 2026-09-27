@@ -9,7 +9,7 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   categories,
   productAddons,
@@ -26,6 +26,7 @@ import {
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
 import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
+import { violatesUnique } from "./_core/describeError.js";
 import { recordAudit, violationCount } from "./audit.js";
 import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
@@ -466,6 +467,29 @@ export async function bulkCreateProducts(actor: Actor, input: {
   const planned = [] as { handle: string; row: (typeof input.rows)[number] }[];
   for (const row of input.rows) planned.push({ handle: await handleFor(seedFor(row)), row });
 
+  /*
+   * The same SKU rule the editor applies, at the other door onto the shelf.
+   *
+   * Both the file and the shelf are checked, because a spreadsheet naming one
+   * code twice is as much a mistake as one naming a code already in use — and
+   * the per-product index cannot catch either, since every row here becomes a
+   * new product. Left out, the two doors would disagree: typing a duplicate
+   * into the editor is refused while pasting it in a file is not.
+   *
+   * The whole file is refused rather than the offending rows skipped, which is
+   * what the transaction below already promises: a seller who fixes one cell
+   * and imports again knows what they have, where a partial import leaves them
+   * guessing which rows landed.
+   */
+  const codes = new Set<string>();
+  for (const { row } of planned) {
+    const sku = row.sku?.trim() || null;
+    if (!sku) continue;
+    if (codes.has(sku)) throw new Error("SKU_TAKEN");
+    codes.add(sku);
+    await assertSkuFree(db, input.vendorId, sku);
+  }
+
   await db.transaction(async tx => {
     for (const { handle, row } of planned) {
       const [product] = await tx.insert(products).values({
@@ -627,6 +651,60 @@ async function assertPriced(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, 
 
   if (rows.length === 0) throw new Error("UNPRICED");
   if (rows.some(row => Number.parseFloat(row.price) <= 0)) throw new Error("UNPRICED");
+}
+
+/**
+ * Run a variant write, turning the SKU index's refusal into one of ours.
+ *
+ * `assertSkuFree` below catches this a moment earlier and with the better
+ * grain, so reaching here means two writes raced. The index is what actually
+ * holds the line; this is what keeps the answer a refusal the seller can read
+ * rather than "duplicate key value violates unique constraint".
+ */
+async function skuAware<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write();
+  } catch (error) {
+    if (violatesUnique(error, "product_variants_product_sku_unique")) throw new Error("SKU_TAKEN");
+    throw error;
+  }
+}
+
+/**
+ * Is this SKU free across the whole of this seller's shelf?
+ *
+ * A SKU is how a seller finds one variant among thousands, so two of their own
+ * products carrying the same one makes that lookup ambiguous — a real mistake,
+ * worth telling them about. It is *not* checked across sellers: a SKU is the
+ * seller's own code, "BATT-1" is what two independent shops would both reach
+ * for, and a marketplace that let the first to type it own the string forever
+ * is refusing a listing over somebody else's filing.
+ *
+ * The check is here rather than in the router for the reason every other guard
+ * in this file is, and the vendor grain is here rather than in an index because
+ * an index cannot reach through `products` to `vendor_id`. What the index does
+ * hold is the per-product case, which is the one two tabs could race; a seller
+ * beating this check by one browser tab ends up with the same code on two of
+ * their products, which is untidy rather than expensive.
+ */
+async function assertSkuFree(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  vendorId: number | null,
+  sku: string | null,
+  exceptVariantId?: number,
+) {
+  if (!sku) return;
+  const clash = await db
+    .select({ id: productVariants.id })
+    .from(productVariants)
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .where(and(
+      eq(productVariants.sku, sku),
+      vendorId === null ? isNull(products.vendorId) : eq(products.vendorId, vendorId),
+      exceptVariantId === undefined ? undefined : ne(productVariants.id, exceptVariantId),
+    ))
+    .limit(1);
+  if (clash.length) throw new Error("SKU_TAKEN");
 }
 
 /**
@@ -824,10 +902,13 @@ export async function saveVariant(actor: Actor, input: {
   const preorderStock = input.preorderStock ?? 0;
   if (!Number.isInteger(preorderStock) || preorderStock < 0) throw new Error("INVALID_PREORDER");
 
+  const sku = input.sku?.trim() || null;
+  await assertSkuFree(db, product.vendorId, sku, input.id);
+
   const values = {
     productId: input.productId,
     title: input.title,
-    sku: input.sku ?? null,
+    sku,
     price: input.price,
     compareAtPrice: input.compareAtPrice ?? null,
     stock: input.stock ?? 0,
@@ -838,10 +919,13 @@ export async function saveVariant(actor: Actor, input: {
     preorderReleaseAt: input.preorderReleaseAt ?? null,
   };
   if (input.id) {
+    // Bound to a const because the write below runs inside a closure, where
+    // the narrowing this `if` just established does not reach.
+    const variantId = input.id;
     // A price change is singled out because the requirements want every one
     // visible to the admin. The row says what it moved from and to.
-    const [was] = await db.select().from(productVariants).where(eq(productVariants.id, input.id)).limit(1);
-    await db.update(productVariants).set(values).where(eq(productVariants.id, input.id));
+    const [was] = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).limit(1);
+    await skuAware(() => db.update(productVariants).set(values).where(eq(productVariants.id, variantId)));
     if (was && was.price !== values.price) {
       await recordAudit(await auditActor(actor), {
         action: "product.priceChange",
@@ -855,7 +939,7 @@ export async function saveVariant(actor: Actor, input: {
     }
     return input.id;
   }
-  const [row] = await db.insert(productVariants).values(values).returning();
+  const [row] = await skuAware(() => db.insert(productVariants).values(values).returning());
   return row.id;
 }
 

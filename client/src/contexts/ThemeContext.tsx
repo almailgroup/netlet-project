@@ -1,3 +1,4 @@
+import { readStored, writeStored } from "@/lib/browserStore";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
@@ -23,7 +24,10 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (switchable) {
-      const stored = localStorage.getItem("theme");
+      // Through `lib/browserStore`: with site data blocked the getter throws,
+      // and this one runs inside a `useState` initialiser, where a throw takes
+      // the tree down rather than losing a preference.
+      const stored = readStored("theme");
       return (stored as Theme) || defaultTheme;
     }
     return defaultTheme;
@@ -38,7 +42,7 @@ export function ThemeProvider({
     }
 
     if (switchable) {
-      localStorage.setItem("theme", theme);
+      writeStored("theme", theme);
     }
   }, [theme, switchable]);
 

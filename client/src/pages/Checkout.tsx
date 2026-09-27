@@ -46,6 +46,21 @@ function CheckoutField({ label, children, className = "" }: { label: string; chi
   return <label className={`type-label text-[#0a285a] ${className}`}>{label}{children}</label>;
 }
 
+/*
+ * The governorate is the only region control on this page, and there used to be
+ * two.
+ *
+ * An "Area" dropdown sat in the form below with no `value`, no `onChange` and
+ * options carrying no `value` attribute — so a shopper picked Salmiya and it
+ * went nowhere. Nothing downstream could have taken it either: an order stores
+ * `delivery_zone_id`, `address_line` and `address_notes`, and a saved address
+ * has the same three, so there is no field for an area to be. It was also the
+ * dishonest half of the pair — five hard-coded names out of the dozens Kuwait
+ * has, beside a governorate list that is complete.
+ *
+ * The street and the district go in the address line, which is what the account
+ * page's own address form does.
+ */
 function CheckoutDeliveryZone() {
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const { isArabic, t } = useTranslation();
@@ -53,7 +68,6 @@ function CheckoutDeliveryZone() {
   return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")} {t("delivery.awaitingSetup")}</p></div></div></div>;
 }
 
-const CHECKOUT_AREAS: MessageKey[] = ["checkout.areaSalmiya", "checkout.areaHawally", "checkout.areaKuwaitCity", "checkout.areaSabahAlSalem", "checkout.areaFahaheel"];
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
@@ -150,7 +164,7 @@ export default function Checkout() {
           <section className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 shadow-[0_18px_50px_rgba(10,40,90,.05)] sm:p-8">
 	            <div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">1</div><div><h2 className="type-heading text-base">{t("checkout.deliveryDetails")}</h2><p className="type-body text-[#536b8c]">{t("checkout.deliveryQuestion")}</p></div></div>
 	            <CheckoutDeliveryZone />
-	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.area")} className="sm:col-span-2"><select defaultValue="" className={fieldClass}><option value="" disabled>{t("checkout.selectArea")}</option>{CHECKOUT_AREAS.map(area => <option key={area}>{t(area)}</option>)}</select></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
+	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
             <ItemDestinations />
             <div className="mt-8 border-t border-[#d5dfeb] pt-7"><div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">2</div><div><h2 className="type-heading text-base">{t("checkout.paymentMethod")}</h2><p className="type-body text-[#536b8c]">{t("checkout.paymentNote")}</p></div></div>{/* Cash on delivery is the one method NetLet can take today (3.2.2),
                   and it is the only one drawn. The card marks below are what the

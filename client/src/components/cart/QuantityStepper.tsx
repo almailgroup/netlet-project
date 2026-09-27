@@ -11,6 +11,7 @@
  * The buttons disable at the ends rather than silently refusing, so the
  * control says where its limits are before you hit them.
  */
+import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Minus, Plus } from "lucide-react";
 
@@ -19,7 +20,15 @@ export const MAX_QUANTITY = 99;
 
 export function QuantityStepper({ value, onChange, size = "regular", disabled = false }: {
   value: number;
-  onChange: (next: number) => void;
+  /*
+   * A React setter, so a press can say "one more than whatever it is now"
+   * rather than "one more than what it was when I rendered". Several presses
+   * inside one batch — a held Enter on a focused button is the ordinary way —
+   * all read the same stale `value` and the count advances once for all of
+   * them. Every caller already passes `setQuantity`, so this is the type it
+   * always had.
+   */
+  onChange: Dispatch<SetStateAction<number>>;
   /** `compact` is the card; `regular` is the product page. */
   size?: "regular" | "compact";
   disabled?: boolean;
@@ -32,7 +41,7 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
     <div className={`inline-flex items-center rounded-full border border-[#d5dfeb] bg-white ${compact ? "h-9" : ""}`}>
       <button
         type="button"
-        onClick={() => onChange(Math.max(1, value - 1))}
+        onClick={() => onChange(current => Math.max(1, current - 1))}
         disabled={disabled || value <= 1}
         aria-label={t("product.decreaseQuantity")}
         className={`${button} pressable rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}
@@ -49,7 +58,7 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
       </span>
       <button
         type="button"
-        onClick={() => onChange(Math.min(MAX_QUANTITY, value + 1))}
+        onClick={() => onChange(current => Math.min(MAX_QUANTITY, current + 1))}
         disabled={disabled || value >= MAX_QUANTITY}
         aria-label={t("product.increaseQuantity")}
         className={`${button} pressable rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}

@@ -1,3 +1,4 @@
+import { readStored, removeStored, writeStored } from "@/lib/browserStore";
 import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,15 +27,14 @@ import {
 
 const CART_STORAGE_KEY = "commerce:cart-id";
 
-function readStoredCartId(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(CART_STORAGE_KEY);
-}
+/* Through `lib/browserStore`, because a browser with site data blocked throws
+   on the getter rather than answering null — and a guest cart that cannot be
+   remembered is a cart to rebuild, not a page to crash. */
+const readStoredCartId = () => readStored(CART_STORAGE_KEY);
 
 function writeStoredCartId(value: string | null) {
-  if (typeof window === "undefined") return;
-  if (value) window.localStorage.setItem(CART_STORAGE_KEY, value);
-  else window.localStorage.removeItem(CART_STORAGE_KEY);
+  if (value) writeStored(CART_STORAGE_KEY, value);
+  else removeStored(CART_STORAGE_KEY);
 }
 
 type CartContextValue = {

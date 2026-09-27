@@ -162,6 +162,15 @@ the department rail and the hover-to-expand behaviour, which only earn their
 place on the page you land on. Checkout keeps a bare one: every extra exit on a
 payment page is an invitation to take it.
 
+**Checkout asks for the region once.** It asked twice: the governorate, which is
+complete and is what the order stores, and an "Area" dropdown with no `value`,
+no `onChange` and options carrying no `value` attribute — five hard-coded names
+out of the dozens Kuwait has, beside a list that is honest. A shopper picked
+Salmiya and it went nowhere, and nothing downstream could have taken it either,
+since an order stores `delivery_zone_id`, `address_line` and `address_notes` and
+a saved address has the same three. The street and the district go in the
+address line, which is what the account page's own address form does.
+
 **Both headers carry the same four controls in the same order**: saved,
 language, account, cart. Both have drifted into it at some point, which is what
 two copies do — most recently `StoreHeader`, which had language and saved the
@@ -486,6 +495,18 @@ identifier in the middle of an Arabic page. A vendor with nothing yet scores
 100 — a new seller has done nothing wrong. `verified` is the one badge no
 amount of good behaviour earns: a human checked the documents, and a badge a
 seller could earn by behaving well would be saying something else.
+
+**A SKU belongs to the seller who typed it, not to the marketplace.** It was
+globally unique, so the first shop to record "BATT-1" owned the string and every
+shop after it was refused — for a code a marketplace should expect two
+independent sellers to reach for. The index is `(product_id, sku)` now, and
+`assertSkuFree` in `server/inventory.ts` carries the grain an index cannot,
+since it cannot reach through `products` to `vendor_id`: a seller reusing a code
+across two of their *own* products is a real mistake and still refused. Both
+doors check it, the editor and the spreadsheet import, for the reason
+`assertPriced` guards both. And the refusal is a refusal: it used to arrive as
+"duplicate key value violates unique constraint", which is a 500 for something
+the seller fixes by typing a different code.
 
 A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
@@ -1502,6 +1523,59 @@ prose containing a literal `<img>`, and half the files discuss `dir="ltr"` by
 name — and a guard that reports its own documentation trains everybody to ignore
 it. The image scan also tracks brace depth rather than matching to the first
 `>`, because `onError={() => reset()}` contains one.
+
+## What an input may say
+
+`server/_core/schemas.ts` holds the shapes a column can actually hold, and there
+are two of them because both were getting written out per router and missing
+from one of them.
+
+**A row id is bounded to what a Postgres `integer` holds**, which every `serial`
+primary key here is. `.positive()` is not enough and that is the part that is
+easy to miss: 2147483648 is positive, passes every check a router made, and
+fails inside the database with "value is out of range for type integer" — a 500,
+a raw Postgres sentence where a message key belongs, and a line in the error log
+for something a shopper did by typing in the address bar. `/admin/products/2147483648`
+was all it took. Every `offerId` in `routers/offers.ts` had no bound at all.
+
+A row id that travels as text gets `rowIdText`. A cart line's id is a string in
+`shared/commerce/types.ts`, so the data layer turns it back into a number, and
+`Number("oops")` is `NaN` — which reaches Postgres as `NaN` and comes back the
+same way.
+
+**A percentage is not an amount.** The per-product commission rate was validated
+with the money pattern, which allows nine integer digits: a rate of 50123456
+overflowed `numeric(5, 2)`, and 500 was simply accepted. `commissionFor` clamps
+the cut to the line so nothing goes negative, which means a 500% rate does not
+fail — it takes the whole line and pays the seller nothing. The store-level rate
+beside it already had a pattern of its own; both use one now, capped at 100.
+
+A zod schema looser than its column moves the refusal from the router to the
+driver, and a driver refusal is always the wrong answer. That is what makes the
+shape of the column part of the contract rather than an implementation detail.
+
+## Browser storage
+
+**Reading `localStorage` is not a safe operation.** With site data blocked —
+Chrome's "block all cookies", a restrictive WebView, which is what the iOS shell
+is — the *getter* throws a `SecurityError` before any key is named; in a full
+private window `setItem` throws a quota error. Neither returns null.
+
+`CustomerProvider` reads the stored locale while it renders and sits near the
+root of the tree, so one unguarded `getItem` there was not a lost preference: it
+was every page of the shop replaced by "An unexpected error occurred", for every
+visitor with site data off. Three callers wrapped their access and four did not,
+and `referral.ts` had the rule written down in prose next to one of them — which
+is exactly how a rule kept beside one caller fails to reach the others.
+
+`client/src/lib/browserStore.ts` is the rule now and nothing else may touch
+`window.localStorage`; `browserStore.test.ts` fails on anything that does. **A
+read that fails reads as absent**, which is true — there is nothing stored and
+there was never going to be — and **a write that fails is dropped in silence**.
+Everything kept there is a per-viewer convenience: the language in use, the
+delivery area, the guest cart's id, a referral code. Losing one costs a shopper
+a preference they can set again, and that trade is only available because
+anything NetLet actually needs is on the server.
 
 ## Deploys
 

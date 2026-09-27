@@ -232,6 +232,13 @@
       "when": 1790329281929,
       "tag": "0032_sleepy_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790510112095,
+      "tag": "0033_clean_cerise",
+      "breakpoints": true
     }
   ]
 }

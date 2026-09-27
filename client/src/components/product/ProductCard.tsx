@@ -5,6 +5,7 @@
  * the card they saved from, rather than a second, subtly different one that
  * drifts every time the first is touched.
  */
+import type { Dispatch, SetStateAction } from "react";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { Thumb } from "@/components/product/Thumb";
@@ -222,7 +223,8 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
   /** The accessible name for the action itself, which already counts. */
   name: string;
   quantity: number;
-  onQuantity: (next: number) => void;
+  /** A setter, for the reason `QuantityStepper` takes one. */
+  onQuantity: Dispatch<SetStateAction<number>>;
   onAct: () => void;
   disabled: boolean;
 }) {
@@ -255,7 +257,7 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
     <div className={`qty-inline glass @container [--qty-step-w:1.6rem] @[15rem]:[--qty-step-w:2.25rem] ${tone === "accent" ? "glass-accent" : "border border-[#0a285a]/15 text-[#0a285a]"} flex h-11 w-full min-w-0 items-center overflow-hidden rounded-xl @[15rem]:w-auto @[15rem]:flex-1 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
       <button
         type="button"
-        onClick={() => onQuantity(Math.max(1, quantity - 1))}
+        onClick={() => onQuantity(current => Math.max(1, current - 1))}
         disabled={disabled || quantity <= 1}
         aria-label={t("product.decreaseQuantity")}
         className={step}
@@ -293,7 +295,7 @@ function ActionWithQuantity({ tone, icon, label, shortLabel, name, quantity, onQ
 
       <button
         type="button"
-        onClick={() => onQuantity(Math.min(MAX_QUANTITY, quantity + 1))}
+        onClick={() => onQuantity(current => Math.min(MAX_QUANTITY, current + 1))}
         disabled={disabled || quantity >= MAX_QUANTITY}
         aria-label={t("product.increaseQuantity")}
         className={step}

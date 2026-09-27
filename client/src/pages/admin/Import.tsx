@@ -19,6 +19,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { isMessageKey } from "@shared/i18n/dictionary";
 import { trpc } from "@/lib/trpc";
 import { BULK_UPLOAD_LIMIT, planUpload, templateCsv, type UploadPlan } from "@shared/inventory/bulkUpload";
 import { DEPARTMENTS } from "@shared/commerce/departments";
@@ -69,7 +70,16 @@ function Import({ actor }: { actor: Actor }) {
       void utils.inventory.products.list.invalidate();
       navigate("/admin/products");
     },
-    onError: error => toast.error(error.message === "product.create" ? t("admin.forbidden") : error.message),
+    /* A message key is translated; anything else is not shown. The server's
+       own sentence used to go straight into the toast, so a refusal from the
+       database arrived as "duplicate key value violates unique constraint" —
+       untranslated on an Arabic page, and naming an index to somebody holding
+       a spreadsheet. */
+    onError: error => toast.error(
+      error.message === "product.create" ? t("admin.forbidden")
+        : isMessageKey(error.message) ? t(error.message)
+        : t("admin.saveFailed"),
+    ),
   });
 
   const vendorId =

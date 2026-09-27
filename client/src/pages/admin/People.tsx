@@ -241,11 +241,26 @@ function AddToVendor({ vendors, pending, onAdd }: {
           placeholder={t("admin.emailPlaceholder")}
           className={field}
         />
-        <select value={vendorId} onChange={event => setVendorId(event.target.value)} className={`${field} sm:w-44`}>
+        {/* Both carry a name of their own, because neither sits in a label:
+            this row is four controls side by side under one heading, and a
+            heading names a section rather than a field. Without these the
+            store and the rank are two unnamed comboboxes — nothing for a
+            screen reader to read out, and nothing to say by voice. */}
+        <select
+          aria-label={t("admin.productVendor")}
+          value={vendorId}
+          onChange={event => setVendorId(event.target.value)}
+          className={`${field} sm:w-44`}
+        >
           <option value="">{t("admin.fieldNoCategory")}</option>
           {vendors.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
         </select>
-        <select value={role} onChange={event => setRole(event.target.value as VendorRole)} className={`${field} sm:w-36`}>
+        <select
+          aria-label={t("admin.memberRole")}
+          value={role}
+          onChange={event => setRole(event.target.value as VendorRole)}
+          className={`${field} sm:w-36`}
+        >
           {VENDOR_ROLES.map(entry => <option key={entry} value={entry}>{t(ROLE_LABEL[entry])}</option>)}
         </select>
         <button

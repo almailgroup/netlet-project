@@ -13,6 +13,7 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import {
   getOrderFor,
   getOrderForUser,
@@ -224,7 +225,7 @@ export const ordersRouter = router({
    * an order with no lines would confirm that the order exists.
    */
   forSellerDetail: protectedProcedure
-    .input(z.object({ orderId: z.number().int().positive() }))
+    .input(z.object({ orderId: rowId }))
     .query(async ({ ctx, input }) => guard(async () =>
       getOrderFor(await resolveActor(ctx.user), input.orderId))),
 
@@ -236,7 +237,7 @@ export const ordersRouter = router({
    * Takes the ids already on screen rather than running its own view.
    */
   risk: protectedProcedure
-    .input(z.object({ ids: z.array(z.number().int().positive()).max(100) }))
+    .input(z.object({ ids: z.array(rowId).max(100) }))
     .query(async ({ ctx, input }) => guard(async () =>
       riskForOrders(await resolveActor(ctx.user), input.ids))),
 
@@ -248,7 +249,7 @@ export const ordersRouter = router({
    */
   setFulfilment: protectedProcedure
     .input(z.object({
-      lineId: z.number().int().positive(),
+      lineId: rowId,
       fulfilment: z.enum(FULFILMENT_STATES),
     }))
     .mutation(async ({ ctx, input }) => guard(async () =>
@@ -263,7 +264,7 @@ export const ordersRouter = router({
    * already paid, is not a cash order, or is not theirs.
    */
   markCollected: protectedProcedure
-    .input(z.object({ orderId: z.number().int().positive() }))
+    .input(z.object({ orderId: rowId }))
     .mutation(async ({ ctx, input }) => guard(async () =>
       ({ recorded: await recordCashCollected(await resolveActor(ctx.user), input.orderId) }))),
 });

@@ -58,18 +58,28 @@ export default function Account() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { t } = useTranslation();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   /*
    * Whether this account also sells (3.4.17). Asked of the server rather than
    * inferred from anything the client holds, cached hard because it only
    * changes when an administrator adds somebody to a store, and `retry: false`
    * because a shopper's 403 here is the ordinary answer, not a failure.
+   *
+   * Gated on being signed in, because it is a protected procedure and this
+   * page is reachable signed out — it is where the sign-in panel lives. Left
+   * ungated it fired on every guest visit, spent a request to be refused, and
+   * logged `Please login` to the console through the global query handler,
+   * which is how a real failure gets lost among ones that were expected.
    */
-  const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
+  const me = trpc.inventory.me.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
+  });
   const isSeller = Boolean(me.data && me.data.kind !== "customer");
   const openAuth = () => DEMO_MODE
     ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
     : setAuthOpen(true);
-  const { user, loading, isAuthenticated, logout } = useAuth();
 
   return (
     <main className="min-h-screen bg-background pb-12 text-[#0a285a]">

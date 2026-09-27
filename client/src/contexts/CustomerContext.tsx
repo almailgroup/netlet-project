@@ -1,3 +1,4 @@
+import { readStored, readStoredList, removeStored, writeStored } from "@/lib/browserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
@@ -8,25 +9,19 @@ const SAVED_STORAGE_KEY = "netlet:saved-product-ids";
 const DELIVERY_STORAGE_KEY = "netlet:delivery-zone";
 const LOCALE_STORAGE_KEY = "netlet:locale";
 
-function readList(key: string): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(key) ?? "[]");
-    return Array.isArray(stored) ? stored.filter((value): value is string => typeof value === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function readText(key: string): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(key);
-}
-
+/*
+ * Every access goes through `lib/browserStore`, which cannot throw.
+ *
+ * This provider reads the stored locale while it renders and sits near the root
+ * of the tree, so an access that throws is not a lost preference — it is the
+ * whole storefront replaced by "An unexpected error occurred", on every page,
+ * for every visitor whose browser blocks site data. The list reader here was
+ * already wrapped and the text reader beside it was not, which is how one of a
+ * pair ends up carrying the rule and the other does not.
+ */
 function writeValue(key: string, value: string | string[] | null) {
-  if (typeof window === "undefined") return;
-  if (value === null) window.localStorage.removeItem(key);
-  else window.localStorage.setItem(key, Array.isArray(value) ? JSON.stringify(value) : value);
+  if (value === null) removeStored(key);
+  else writeStored(key, Array.isArray(value) ? JSON.stringify(value) : value);
 }
 
 type CustomerContextValue = {
@@ -47,9 +42,9 @@ const CustomerContext = createContext<CustomerContextValue | null>(null);
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const [guestSavedIds, setGuestSavedIds] = useState(() => readList(SAVED_STORAGE_KEY));
-  const [guestDeliveryZoneId, setGuestDeliveryZoneId] = useState(() => readText(DELIVERY_STORAGE_KEY));
-  const [locale, setLocaleState] = useState<LocaleCode>(() => readText(LOCALE_STORAGE_KEY) === "ar" ? "ar" : "en");
+  const [guestSavedIds, setGuestSavedIds] = useState(() => readStoredList(SAVED_STORAGE_KEY));
+  const [guestDeliveryZoneId, setGuestDeliveryZoneId] = useState(() => readStored(DELIVERY_STORAGE_KEY));
+  const [locale, setLocaleState] = useState<LocaleCode>(() => readStored(LOCALE_STORAGE_KEY) === "ar" ? "ar" : "en");
   const syncedGuestIds = useRef<string | null>(null);
   const profile = trpc.customer.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const saved = trpc.customer.saved.list.useQuery(undefined, { enabled: isAuthenticated });

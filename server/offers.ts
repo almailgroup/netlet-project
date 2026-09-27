@@ -31,6 +31,7 @@ import {
 } from "../shared/commerce/priceOffers.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -76,32 +77,6 @@ export class OfferError extends Error {
   }
 }
 
-/**
- * Did this write bounce off the one-open-request index?
- *
- * The chain is walked rather than the message read, because what is thrown is
- * Drizzle's own wrapper — its `message` is "Failed query: insert into …" and
- * the constraint name is only on the driver error underneath it. Reading the
- * top-level message looked right, passed nothing, and turned a refusal a
- * shopper can act on into a 500.
- *
- * Both spellings are checked: node-postgres and PGlite put the name on
- * `constraint`, postgres.js on `constraint_name`. `23505` is Postgres's unique
- * violation, and `price_offers` has exactly one unique index — but the name is
- * still matched when it is there, so a second index added later cannot be
- * silently reported as this one.
- */
-function violates(error: unknown, constraint: string): boolean {
-  for (let current: unknown = error, depth = 0; current && depth < 6; depth += 1) {
-    const step = current as { code?: unknown; constraint?: unknown; constraint_name?: unknown; cause?: unknown };
-    if (step.code === "23505") {
-      const named = step.constraint ?? step.constraint_name;
-      if (typeof named !== "string" || named === constraint) return true;
-    }
-    current = step.cause;
-  }
-  return false;
-}
 
 const trimNote = (note: string | null | undefined) => {
   const text = note?.trim();
@@ -238,7 +213,7 @@ export async function requestOffer(input: {
      * its violation is the honest way to report the collision: asking first
      * and inserting second would still let both through.
      */
-    if (violates(error, "price_offers_open_unique")) throw new OfferError("ALREADY_OPEN");
+    if (violatesUnique(error, "price_offers_open_unique")) throw new OfferError("ALREADY_OPEN");
     throw error;
   }
 

@@ -11,6 +11,7 @@
  * read without signing in would be a list of every shopper's address.
  */
 import { z } from "zod";
+import { rowId } from "../_core/schemas.js";
 import { TRPCError } from "@trpc/server";
 import {
   DispatchError,
@@ -29,7 +30,7 @@ import { resolveActor } from "../inventory.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
 
 /** A parcel has no id of its own: it is named by its order and its key. */
-const parcelRef = z.object({ orderId: z.number().int().positive(), key: z.string().min(1).max(200) });
+const parcelRef = z.object({ orderId: rowId, key: z.string().min(1).max(200) });
 
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -65,7 +66,7 @@ export const dispatchRouter = router({
     .input(
       z.object({
         state: z.enum(["waiting", "transit", "done"]).optional(),
-        courierId: z.number().int().positive().optional(),
+        courierId: rowId.optional(),
       }).optional(),
     )
     .query(async ({ ctx, input }) => {
@@ -79,7 +80,7 @@ export const dispatchRouter = router({
   }),
 
   assign: protectedProcedure
-    .input(parcelRef.extend({ courierId: z.number().int().positive().nullable() }))
+    .input(parcelRef.extend({ courierId: rowId.nullable() }))
     .mutation(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
       await guard(() => assignParcel(actor, input.orderId, input.key, input.courierId));
@@ -120,27 +121,27 @@ export const dispatchRouter = router({
         return guard(() => createCourier(actor, input));
       }),
     setStatus: protectedProcedure
-      .input(z.object({ courierId: z.number().int().positive(), status: z.enum(["active", "suspended"]) }))
+      .input(z.object({ courierId: rowId, status: z.enum(["active", "suspended"]) }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         await guard(() => setCourierStatus(actor, input.courierId, input.status));
         return { success: true } as const;
       }),
     members: protectedProcedure
-      .input(z.object({ courierId: z.number().int().positive() }))
+      .input(z.object({ courierId: rowId }))
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => listCourierMembers(actor, input.courierId));
       }),
     addMember: protectedProcedure
-      .input(z.object({ courierId: z.number().int().positive(), userId: z.number().int().positive() }))
+      .input(z.object({ courierId: rowId, userId: rowId }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         await guard(() => addCourierMember(actor, input.courierId, input.userId));
         return { success: true } as const;
       }),
     removeMember: protectedProcedure
-      .input(z.object({ courierId: z.number().int().positive(), userId: z.number().int().positive() }))
+      .input(z.object({ courierId: rowId, userId: rowId }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         await guard(() => removeCourierMember(actor, input.courierId, input.userId));

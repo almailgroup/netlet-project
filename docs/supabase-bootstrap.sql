@@ -947,6 +947,10 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0033_clean_cerise.sql =====
+DROP INDEX IF EXISTS "product_variants_sku_unique";
+CREATE UNIQUE INDEX IF NOT EXISTS "product_variants_product_sku_unique" ON "product_variants" USING btree ("product_id","sku");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -990,6 +994,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  33 AS migrations_in_this_file,
+  34 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

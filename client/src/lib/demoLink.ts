@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { readStored, writeStored } from "@/lib/browserStore";
 import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
@@ -77,21 +78,19 @@ function recalculate(cart: Cart): Cart {
 }
 
 function readCart(): Cart | null {
+  const raw = readStored(CART_STORAGE_KEY);
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(CART_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Cart) : null;
+    return JSON.parse(raw) as Cart;
   } catch {
     return null;
   }
 }
 
 function writeCart(cart: Cart): Cart {
-  try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-  } catch {
-    // Storage unavailable (private mode / blocked cookies) — the cart still
-    // works for this page view, it just won't survive a reload.
-  }
+  // Storage unavailable (private mode / blocked site data) — the cart still
+  // works for this page view, it just won't survive a reload.
+  writeStored(CART_STORAGE_KEY, JSON.stringify(cart));
   return cart;
 }
 

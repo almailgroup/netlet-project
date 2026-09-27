@@ -8,9 +8,12 @@
  * `localStorage` is exactly the right store for this and exactly the wrong one
  * for anything else here: it is a per-viewer convenience, it never reaches the
  * server on its own, and losing it costs one referral rather than a fact NetLet
- * needs. Every read and write is wrapped, because a private window and blocked
- * site data both throw rather than returning nothing.
+ * needs. The wrapping that makes a private window and blocked site data safe
+ * lives in `lib/browserStore` — it was written down here first and then missed
+ * by three other callers, which is the argument for it being one function.
  */
+import { readStored, removeStored, writeStored } from "@/lib/browserStore";
+
 const KEY = "netlet.referral";
 
 /** Codes are short and shaped; anything else is somebody editing the URL. */
@@ -20,27 +23,16 @@ const SHAPE = /^[A-Za-z0-9]{2,32}$/;
 export function captureReferral(search: string): void {
   const code = new URLSearchParams(search).get("ref")?.trim();
   if (!code || !SHAPE.test(code)) return;
-  try {
-    window.localStorage.setItem(KEY, code.toUpperCase());
-  } catch {
-    /* Private window, blocked site data. The invitation is lost, not the visit. */
-  }
+  /* Private window, blocked site data: the invitation is lost, not the visit. */
+  writeStored(KEY, code.toUpperCase());
 }
 
 /** The code to send with a registration, if one was ever seen. */
 export function storedReferral(): string | undefined {
-  try {
-    return window.localStorage.getItem(KEY) ?? undefined;
-  } catch {
-    return undefined;
-  }
+  return readStored(KEY) ?? undefined;
 }
 
 /** Forget it once it has been used, so it cannot ride along on a second account. */
 export function clearReferral(): void {
-  try {
-    window.localStorage.removeItem(KEY);
-  } catch {
-    /* Nothing to do: the next registration sends a code that records nothing. */
-  }
+  removeStored(KEY);
 }
