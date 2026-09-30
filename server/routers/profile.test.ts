@@ -1,9 +1,9 @@
 /**
  * Changing your own name, address and password, against a real Postgres.
  *
- * Firebase is unconfigured here, so these exercise the local scrypt path —
- * which is the fallback a deployment without Firebase actually runs on, and
- * the one where NetLet itself holds the digest.
+ * Supabase Auth is unconfigured here, so these exercise the local scrypt path —
+ * the fallback a deployment with nothing configured runs on, and the one where
+ * NetLet itself holds the digest.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";

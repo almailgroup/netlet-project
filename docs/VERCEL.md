@@ -112,22 +112,6 @@ None of the three needs quoting — they are single-line values.
 security, so keep it out of any `VITE_` name and rotate it in the dashboard if it
 is ever exposed.
 
-Only if accounts were created in Firebase before the move, the four values from
-`docs/FIREBASE.md` as well — those accounts cannot have their passwords carried
-across, so Firebase goes on holding them:
-
-```
-FIREBASE_PROJECT_ID
-FIREBASE_CLIENT_EMAIL
-FIREBASE_PRIVATE_KEY
-FIREBASE_API_KEY
-```
-
-**`FIREBASE_PRIVATE_KEY` on Vercel:** paste the key from the service-account
-JSON **with its `\n` escapes intact**, exactly as the JSON writes it, quotes
-included. Vercel stores it verbatim; the server converts the escapes back. This
-is the same trap as the `.env` file, and the same fix.
-
 ### Optional
 
 ```
@@ -220,10 +204,12 @@ made a production fault a guessing game.
 ## Node version
 
 The function needs **Node 22.x**. `engines.node` in `package.json` asks for it,
-but Vercel's own **Settings → General → Node.js Version** overrides that — so if
-the function crashes at load with `ERR_REQUIRE_ESM`, set it there.
+but Vercel's own **Settings → General → Node.js Version** overrides that, so set
+it there too.
 
-The reason: `firebase-admin` depends on `jwks-rsa`, which `require()`s `jose`,
-and jose 6 is ESM-only. Requiring an ES module from CommonJS only works from
-Node 22.12 onward.
+It used to matter sharply: `firebase-admin` pulled in `jwks-rsa`, which
+`require()`d the ESM-only `jose`, and requiring an ES module from CommonJS only
+works from Node 22.12 onward — below that the function was dead at load with
+`ERR_REQUIRE_ESM`. That dependency is gone and nothing left here uses
+`require()`, so 22.x is now just what the project is built and tested against.
 

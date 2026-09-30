@@ -88,29 +88,31 @@ a breach rather than a nuisance. `pnpm preflight` refuses the likeliest mistake
 outright: the two variables holding the same value.
 
 **Which store holds a password is which column the row has**, and exactly one is
-ever set: `supabase_uid`, `firebase_uid`, or the local scrypt digest in
-`password_hash`. Three columns rather than one `auth_uid` and a provider name,
-because the column *is* the provider — two fields that must agree eventually do
-not, and this is the mutual exclusion `firebase_uid` and `password_hash` already
-had. `server/_core/passwordStore.ts` is the only place that reads which, so the
-five callers that used to write their own `if (firebase && uid)` now ask one
+ever set: `supabase_uid`, or the local scrypt digest in `password_hash`. Two
+columns rather than one `auth_uid` and a provider name, because the column *is*
+the provider — two fields that must agree eventually do not.
+`server/_core/passwordStore.ts` is the only place that reads which, so the six
+callers that used to write their own `if (configured && uid)` now ask one
 question.
 
-**Firebase is still read, and that is not indecision.** A Firebase password hash
-cannot be imported into Supabase — that is a property of hashes, not a missing
-feature — so an account made before the move goes on signing in through Firebase.
-Sign-in tries the active store first, then the legacy one for a row that names it.
+**The local digest is the no-configuration fallback, not a second option.** It
+exists so `pnpm dev` runs before any third-party account does, which is the same
+rule every other value in `.env.example` follows: an unset variable turns a
+feature off rather than stopping the server. A real deployment configures
+Supabase and never reaches it. It is still a real store, though — `storeFor`
+answers it for any row written before Supabase was configured, and those rows go
+on working afterwards.
 
-**Nothing moves such an account by itself, including a password reset.** A
-Firebase reset happens on Firebase's own page and a change from `/account` writes
-to Firebase, because that is where `storeFor` says the password is; either way the
-row still names Firebase afterwards. So the only way off is
-`scripts/migrate-auth-to-supabase.mjs`, which is a deliberate step because
-everybody it moves has to set a new password. Saying otherwise would be worse than
-saying nothing: it would promise that waiting is a plan. Once no row has a
-`firebase_uid`, the four `FIREBASE_*` values and `server/_core/firebase.ts` can
-go — and until then, unsetting them locks those accounts out, with no reset to
-recover by, since the mail for one is Firebase's to send.
+**Firebase is gone, and the shape of its removal is the point.** It held every
+password until the move; the branches stayed only while a row still carried a
+`firebase_uid`, and once none did they went — the client, the four `FIREBASE_*`
+values, the `firebase-admin` dependency and the migration script with them. What
+is left is one vestigial column, `users.firebase_uid`, which nothing writes and
+nothing reads. It was not dropped because `DROP COLUMN` destroys what is in it
+and a live database is the wrong place to find out you wanted it; the only thing
+it is still good for is telling an operator a row came from that era. Dropping it
+is a migration of its own whenever somebody decides it is worth one. That
+dependency going also took the `jwks-rsa` → `jose` trap under Deploys with it.
 
 **A credential added by hand in the dashboard becomes a NetLet login on first
 sign-in.** `linkExternalUser` creates the missing mirror row rather than refusing
@@ -128,13 +130,13 @@ proof: somebody typed an address into a form. `createLogin` wrote through
 for an address it has never held, **registering the address of any account whose
 password was somewhere else took that account over** — the row's id, its orders,
 its `role`, and a session cookie for it. A local-digest shopper or an
-administrator left behind in Firebase was claimable by anybody who typed their
-address into Create account. It writes through `createUser` now, which refuses an
+administrator whose row had no usable credential at all was claimable by anybody
+who typed their address into Create account. It writes through `createUser` now, which refuses an
 address that has a row whatever credential that row carries, and the credential
 just created is handed back so it cannot hold the address against the honest
 retry.
 
-The pattern predates Supabase — the Firebase path had the same shape, one case
+The pattern predated Supabase — the Firebase path had the same shape, one case
 narrower — and it was found by writing the test rather than by reading the code,
 which is the argument for testing the adoption branch as a rule about *who is
 asking* rather than as a row update that works.
@@ -225,7 +227,7 @@ purpose, so there is no failure to count. The abuse being stopped is using
 NetLet to post mail into somebody else's inbox.
 
 **There is no social sign-in, on purpose.** It needs a provider configured in
-the Firebase console and a redirect the server has to trust; a button that
+the provider's console and a redirect the server has to trust; a button that
 looks like Google sign-in and does nothing is worse than no button. The
 showcase panel carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never
@@ -1861,9 +1863,10 @@ Postgres in-process via PGlite, applying the generated migration verbatim, so
 
 Configuration lives in `.env.example`, annotated with what each value switches
 off — nothing throws at boot, so a missing value shows up as a dead feature.
-`pnpm setup:env` writes the `.env` from it; given the Firebase service-account
-JSON it also writes the three values whose escaping is the usual failure, which
-matters only for a deployment that still has accounts there. `pnpm preflight`
+`pnpm setup:env` writes the `.env` from it and generates `JWT_SECRET`; it used
+to take a Firebase service-account JSON too, because that key's newline escaping
+was the usual way the setup failed, and Supabase's three values are ordinary
+one-line strings with nothing to get wrong. `pnpm preflight`
 then says what is still missing, by name — and refuses two Supabase Auth
 mistakes outright: a project URL that is not https, and the anon and
 service-role variables holding the same value, which is the one that would put

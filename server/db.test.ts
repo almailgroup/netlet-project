@@ -169,30 +169,30 @@ describe("followed products", () => {
   });
 });
 
-describe("firebase-backed accounts", () => {
-  // The partial index is what lets Firebase and local accounts share the table:
+describe("accounts whose password Supabase Auth holds", () => {
+  // The partial index is what lets hosted and local accounts share the table:
   // without the WHERE clause, the second local account collides on null.
-  it("allows many accounts with no firebase uid, but only one per uid", async () => {
+  it("allows many accounts with no supabase uid, but only one per uid", async () => {
     await db.insert(users).values([
       { email: "local-one@example.com", passwordHash: "scrypt$1$1$1$a$b" },
       { email: "local-two@example.com", passwordHash: "scrypt$1$1$1$a$b" },
     ]);
-    await db.insert(users).values({ email: "fb-one@example.com", firebaseUid: "uid-shared" });
+    await db.insert(users).values({ email: "sb-one@example.com", supabaseUid: "uid-shared" });
 
     await expect(
-      db.insert(users).values({ email: "fb-two@example.com", firebaseUid: "uid-shared" }),
+      db.insert(users).values({ email: "sb-two@example.com", supabaseUid: "uid-shared" }),
     ).rejects.toThrow();
   });
 
-  // A Firebase account has no local digest, which is the whole point of the
-  // column becoming nullable.
+  // Such an account has no local digest, which is the whole point of the
+  // column being nullable.
   it("stores an account with no password hash", async () => {
     const [row] = await db
       .insert(users)
-      .values({ email: "no-digest@example.com", firebaseUid: "uid-no-digest" })
+      .values({ email: "no-digest@example.com", supabaseUid: "uid-no-digest" })
       .returning();
     expect(row.passwordHash).toBeNull();
-    expect(row.firebaseUid).toBe("uid-no-digest");
+    expect(row.supabaseUid).toBe("uid-no-digest");
   });
 });
 

@@ -82,7 +82,6 @@ skips silently.
 | [`docs/VERCEL.md`](docs/VERCEL.md) | Deploying — the supported target |
 | [`docs/SUPABASE.md`](docs/SUPABASE.md) | Database setup |
 | [`docs/SUPABASE-AUTH.md`](docs/SUPABASE-AUTH.md) | Authentication setup — where registered accounts live |
-| [`docs/FIREBASE.md`](docs/FIREBASE.md) | The authentication it replaced, for accounts still there |
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
 | [`docs/MISTRAL.md`](docs/MISTRAL.md) | The search-refinement API contract |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | What was asked for |

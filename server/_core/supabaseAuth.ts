@@ -40,9 +40,9 @@
  * ## Everything degrades
  *
  * With the three variables unset, `isSupabaseAuthConfigured()` answers false
- * and the caller falls back — to Firebase if that is configured, otherwise to
- * the local scrypt digest. `passwordStore.ts` is what makes that choice; this
- * module only ever speaks to Supabase.
+ * and the caller falls back to the local scrypt digest, which is what lets
+ * `pnpm dev` run before any of this exists. `passwordStore.ts` is what makes
+ * that choice; this module only ever speaks to Supabase.
  */
 import { ENV } from "./env.js";
 
@@ -210,10 +210,10 @@ export async function verifySupabasePassword(email: string, password: string): P
  * that is a fault to fix rather than an answer to give.
  *
  * The locale rides along as `gotrue_meta_security` is not the place for it —
- * Supabase localises from the template, not the request — so this takes the
- * locale only to keep one signature with the Firebase path it replaces. When
- * the templates are translated in the dashboard, this is where the redirect
- * would carry the language.
+ * Supabase localises from the template, not the request — so the locale is
+ * taken and not sent. It stays in the signature because when the templates are
+ * translated in the dashboard, this is where the redirect would carry the
+ * language, and the callers already have it to hand.
  */
 export async function sendSupabasePasswordReset(email: string, _locale: "en" | "ar"): Promise<void> {
   if (!isSupabaseAuthConfigured()) return;

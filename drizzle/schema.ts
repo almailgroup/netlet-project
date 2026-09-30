@@ -48,24 +48,25 @@ export const notificationKind = pgEnum("notification_kind", notificationKinds);
 /**
  * Shoppers, identified by email address.
  *
- * **Where the password lives is which of three columns this row has**, and
+ * **Where the password lives is which of two columns this row has**, and
  * exactly one of them is ever set:
  *
  * - `supabaseUid` — Supabase Auth holds it. This is where a new account goes,
  *   and it is why a registration shows up under Authentication → Users in the
  *   Supabase dashboard.
- * - `firebaseUid` — Firebase Authentication holds it. Legacy: accounts made
- *   before the move. A Firebase password hash cannot be carried into Supabase,
- *   so these rows stay where they are and keep signing in, until their owner
- *   resets a password or `scripts/migrate-auth-to-supabase.mjs` moves them.
  * - `passwordHash` — NetLet's own scrypt digest (`server/_core/password.ts`),
- *   which is what a deployment with neither service configured falls back to.
+ *   which is what a deployment with nothing configured falls back to.
  *
- * Three columns rather than one `auth_uid` plus a provider name, because the
- * column *is* the provider: two fields that must agree eventually do not, and
- * this is the same mutual exclusion `firebaseUid` and `passwordHash` have had
- * from the start. `server/_core/passwordStore.ts` is the one place that reads
- * which is set.
+ * Two columns rather than one `auth_uid` plus a provider name, because the
+ * column *is* the provider: two fields that must agree eventually do not.
+ * `server/_core/passwordStore.ts` is the one place that reads which is set.
+ *
+ * `firebaseUid` is the third, and it is vestigial. Firebase held every password
+ * until the move to Supabase Auth; nothing writes it and nothing reads it now.
+ * It is left in place rather than dropped because a `DROP COLUMN` against a live
+ * database destroys whatever is in it, and the one thing this column is still
+ * good for is telling an operator that a row came from that era. Dropping it is
+ * a migration of its own, whenever somebody decides it is worth one.
  *
  * The row exists in all three cases because the serial `id` is what
  * `customer_preferences`, `saved_products`, `customer_notification_preferences`
@@ -87,7 +88,7 @@ export const users = pgTable(
      * later. Null for accounts whose password a hosted service holds.
      */
     passwordHash: varchar("password_hash", { length: 255 }),
-    /** Firebase Authentication's uid, on accounts that predate the move. */
+    /** Vestigial — see the note above. Nothing reads it. */
     firebaseUid: varchar("firebase_uid", { length: 128 }),
     /**
      * Supabase Auth's user id — a uuid, held as text for the reason every
@@ -114,7 +115,7 @@ export const users = pgTable(
   },
   table => [
     uniqueIndex("users_email_unique").on(table.email),
-    // Partial, so the many rows with no Firebase account do not all collide on
+    // Partial, so the many rows with no value here do not all collide on
     // a single null.
     uniqueIndex("users_firebase_uid_unique").on(table.firebaseUid).where(sql`${table.firebaseUid} is not null`),
     // Partial for the same reason as the one above it.

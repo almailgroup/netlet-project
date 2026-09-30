@@ -1576,8 +1576,8 @@ export type NewVendorInput = {
  * attaching them — three systems, one of which was a SQL console.
  *
  * The order matters. The vendor is written first because it is the row that
- * can fail on a duplicate slug, and a failed slug after creating a Firebase
- * account would leave a login belonging to no store. If the account then
+ * can fail on a duplicate slug, and a failed slug after creating the credential
+ * would leave a login belonging to no store. If the account then
  * fails, the vendor is removed again: a half-made store that looks finished
  * is worse than one that was never made, because nobody goes looking for it.
  */
@@ -1596,8 +1596,8 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
    * Check the address before writing anything.
    *
    * `createAccount` would refuse a duplicate anyway, but only after asking
-   * Firebase to make the account — and a Firebase user created for a store
-   * that is then rolled back is an orphan nothing here will ever clean up.
+   * Supabase Auth to make the account — and a credential created for a store
+   * that is then rolled back is an orphan on the Authentication page.
    * This is still not the only guard: the race between the check and the
    * write is what `EmailTakenError` remains the backstop for.
    */
@@ -1783,7 +1783,7 @@ export async function addMemberWithNewAccount(
 
   const email = input.email.trim().toLowerCase();
   // Checked here rather than left to `createAccount`, so a duplicate never
-  // reaches Firebase and leaves an account belonging to no store.
+  // reaches Supabase and leaves an account belonging to no store.
   const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (taken) throw new Error("EMAIL_TAKEN");
 
@@ -1807,7 +1807,7 @@ export async function addMemberWithNewAccount(
  * Sends somebody a link to set a new password.
  *
  * The gap this closes: a vendor who forgets their password had no way back
- * that did not involve an administrator opening the Firebase console. The
+ * that did not involve an administrator opening the provider's console. The
  * shopper-facing reset already existed, but it is deliberately silent about
  * whether an address is registered — useless to an administrator, who needs
  * to know the link actually went somewhere.
@@ -1837,8 +1837,8 @@ export async function sendMemberPasswordReset(actor: Actor, userId: number, loca
 
   /*
    * Whether a link could actually be sent, which is not the same question as
-   * whether the request was accepted. With neither Supabase Auth nor Firebase
-   * configured there is no mail to send, and an administrator told "sent" would
+   * whether the request was accepted. With Supabase Auth unconfigured there is
+   * no mail to send at all, and an administrator told "sent" would
    * wait for an email that was never going to arrive.
    *
    * Said plainly here, unlike the shopper-facing reset, because this takes a

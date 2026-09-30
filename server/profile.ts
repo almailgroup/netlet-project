@@ -59,7 +59,7 @@ export async function updateUserEmail(id: number, email: string): Promise<User |
   }
 }
 
-/** Replaces the local scrypt digest. Only used when Firebase holds nothing. */
+/** Replaces the local scrypt digest. Only used when Supabase Auth is unset. */
 export async function updateUserPasswordHash(id: number, passwordHash: string): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");

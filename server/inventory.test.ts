@@ -1113,7 +1113,7 @@ describe("publishing an unpriced product", () => {
 
 describe("sending a member a password reset", () => {
   it("says it sent nothing when there is no mail to send with", async () => {
-    // Firebase is unconfigured in these tests, which is exactly the case an
+    // Supabase Auth is unconfigured here, which is exactly the case an
     // administrator must not be told "sent" for: they would wait for an email
     // that was never going to arrive.
     const result = await inv.sendMemberPasswordReset(adminActor(), ids.owner, "en");

@@ -30,14 +30,4 @@ export const ENV = {
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-  /* Firebase Authentication — legacy, for accounts made before the move to
-     Supabase Auth. Still read so those accounts can still sign in: a Firebase
-     password hash cannot be carried across, so the rows stay where they are
-     until their owner resets a password. The first three come from a
-     service-account key and are secret; the API key is the project's public
-     Web key. All four must be set before Firebase is used at all. */
-  firebaseProjectId: process.env.FIREBASE_PROJECT_ID ?? "",
-  firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ?? "",
-  firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ?? "",
-  firebaseApiKey: process.env.FIREBASE_API_KEY ?? "",
 };

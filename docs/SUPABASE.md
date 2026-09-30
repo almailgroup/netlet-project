@@ -183,7 +183,7 @@ reads the same tables the admin portal writes.
 Worth being clear, because Supabase offers all of these and NetLet uses none of
 them:
 
-- **Not Supabase Auth.** Passwords are in Firebase, and the session is our own
+- **Not Supabase Auth's tables.** The session is our own
   httpOnly cookie. Supabase holds the `users` mirror row, nothing more.
 - **Not Supabase's client SDK.** Nothing Supabase-shaped ships to the browser.
   The server talks to Postgres over the connection string and the client only

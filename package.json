@@ -12,7 +12,6 @@
     "drizzle-orm": "^0.44.5",
     "express": "^4.21.2",
     "express-rate-limit": "^8.7.0",
-    "firebase-admin": "^14.3.0",
     "helmet": "^8.3.0",
     "jose": "6.1.0",
     "lucide-react": "^0.453.0",

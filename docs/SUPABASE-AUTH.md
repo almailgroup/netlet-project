@@ -13,7 +13,7 @@ one holding the database.
 If you have been looking at **Authentication → Users** in the Supabase dashboard
 and finding it empty after somebody registered, this is the reason. That page
 reads `auth.users`, which belongs to Supabase's own auth service. NetLet used to
-keep passwords in Firebase and write only a mirror row into `public.users`, so
+keep passwords in Firebase and wrote only a mirror row into `public.users`, so
 the accounts were always in Supabase — one page over, in the table editor — while
 the page you would naturally check was empty by construction.
 
@@ -36,7 +36,7 @@ session stays exactly what it was: NetLet's own httpOnly cookie. The tokens the
 sign-in grant returns are read for the user they name and then dropped.
 
 **Nothing throws if you skip this.** With the three values unset, registration
-and sign-in fall back to Firebase if that is configured, and to the local scrypt
+and sign-in fall back to the local scrypt
 digest if it is not.
 
 ---
@@ -105,7 +105,7 @@ outright: a `SUPABASE_URL` that is not https, and the two keys being the same
 value — which is the likeliest way to get this wrong and the most expensive.
 
 On Vercel, the same three under **Settings → Environment Variables**. Unlike
-`FIREBASE_PRIVATE_KEY`, none of these need quoting: they are single-line values.
+None of these need quoting: they are single-line values copied from a page.
 
 ---
 
@@ -125,27 +125,6 @@ the shopper's language to the reset call but Supabase localises from the
 template, not the request.
 
 ---
-
-## Accounts that were already in Firebase
-
-**They keep working, and they are not moved automatically.** A Firebase password
-hash cannot be carried into Supabase — that is a property of the hashes, not a
-missing feature — so the only ways across are "the shopper resets their password"
-and "everybody is asked to".
-
-So:
-
-- Leave the four `FIREBASE_*` values set. `users.firebase_uid` still names those
-  accounts, and sign-in still checks Firebase for them.
-- New registrations go to Supabase from the moment the three values above are
-  set.
-- When you want the rest moved, `node scripts/migrate-auth-to-supabase.mjs`
-  creates a Supabase account for every remaining login and emails each owner a
-  reset link. It prints what it would do and changes nothing until you add
-  `--commit`. **Everybody it moves has to set a new password**, which is why it
-  is a deliberate step and not something that happens on deploy.
-- Once `select count(*) from public.users where firebase_uid is not null` is
-  zero, the four `FIREBASE_*` values can go, and so can `server/_core/firebase.ts`.
 
 ## One thing to check while you are in the dashboard
 
@@ -186,7 +165,6 @@ last signed in.
 select id, email, name, role, created_at, last_signed_in,
        case
          when supabase_uid is not null then 'supabase'
-         when firebase_uid is not null then 'firebase (legacy)'
          when password_hash is not null then 'local digest'
          else 'none — cannot sign in'
        end as password_store
@@ -194,6 +172,11 @@ from public.users
 order by created_at desc;
 ```
 
-Exactly one of those three columns is ever set. `server/_core/passwordStore.ts`
-is the only place that reads which, and `server/logins.ts` is what keeps the
-other two clear when an account moves between them.
+Exactly one of those columns is ever set. `server/_core/passwordStore.ts` is the
+only place that reads which, and `server/logins.ts` is what clears the other when
+an account moves between them.
+
+`users.firebase_uid` is still in the table and is vestigial: Firebase held every
+password until this move, and nothing writes or reads that column now. It was
+left rather than dropped because `DROP COLUMN` destroys what is in it, and what
+is in it is the only remaining record that a row came from that era.

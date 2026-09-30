@@ -2,13 +2,13 @@
  * Which store owns an account, and the order sign-in asks them in.
  *
  * Against a real Postgres, because the part worth testing is what happens to
- * the *row*: a Firebase account adopted by Supabase has to end up with one
- * credential column set and the others cleared, or `storeFor` answers whichever
- * it happens to check first and the account is signed in against a service that
- * does not hold its password.
+ * the *row*: an account adopted by Supabase has to end up with one credential
+ * column set and the other cleared, or `storeFor` answers whichever it happens
+ * to check first and the account is signed in against a service that does not
+ * hold its password.
  *
- * The two services are stubbed. What they answer is their own modules' tests;
- * this is about the dispatch.
+ * Supabase is stubbed. What it answers is its own module's tests; this is about
+ * the dispatch.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -25,11 +25,9 @@ let store: typeof import("./passwordStore.js");
 let asked: string[];
 /** Which passwords each service accepts, keyed `email:password`. */
 const supabaseKnows = new Map<string, { uid: string; name: string | null }>();
-const firebaseKnows = new Map<string, { uid: string; name: string | null }>();
 /** Stands in for the real `SupabaseEmailTaken`, which the stub replaces. */
 class SupabaseEmailTakenStub extends Error {}
 let supabaseOn = true;
-let firebaseOn = true;
 
 beforeAll(async () => {
   const client = new PGlite();
@@ -45,9 +43,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   asked = [];
   supabaseKnows.clear();
-  firebaseKnows.clear();
   supabaseOn = true;
-  firebaseOn = true;
   await db.delete(users);
   vi.resetModules();
 
@@ -76,17 +72,6 @@ beforeEach(async () => {
     SupabaseEmailTaken: SupabaseEmailTakenStub,
   }));
 
-  vi.doMock("./firebase.js", () => ({
-    isFirebaseConfigured: () => firebaseOn,
-    verifyFirebasePassword: async (email: string, password: string) => {
-      asked.push("firebase.verify");
-      return firebaseKnows.get(`${email}:${password}`) ? { ...firebaseKnows.get(`${email}:${password}`)!, email } : null;
-    },
-    sendFirebasePasswordReset: async () => { asked.push("firebase.reset"); },
-    getFirebaseAuth: () => (firebaseOn ? { updateUser: async () => { asked.push("firebase.update"); }, deleteUser: async () => { asked.push("firebase.delete"); }, createUser: async () => ({ uid: "fb-new" }) } : null),
-    isEmailInUse: () => false,
-  }));
-
   /* `logins.ts` takes `getDb` from `db.ts` as an import, which is the whole
      reason those three writes live outside it — so this redirects the real
      thing rather than reimplementing it in the mock. */
@@ -105,19 +90,18 @@ const row = async (email: string) => (await db.select().from(users).where(eq(use
 describe("which store owns an account", () => {
   /* The column is the provider, so there is no flag to disagree with it. */
   it("reads it off the column that is set", () => {
-    expect(store.storeFor({ supabaseUid: "s", firebaseUid: null, passwordHash: null })).toBe("supabase");
-    expect(store.storeFor({ supabaseUid: null, firebaseUid: "f", passwordHash: null })).toBe("firebase");
-    expect(store.storeFor({ supabaseUid: null, firebaseUid: null, passwordHash: "h" })).toBe("local");
+    expect(store.storeFor({ supabaseUid: "s", passwordHash: null })).toBe("supabase");
+    expect(store.storeFor({ supabaseUid: null, passwordHash: "h" })).toBe("local");
   });
 
   /*
    * Supabase wins a row that somehow has both. It has to be a fixed order
-   * rather than "whichever we notice", and the newer store is the right one:
-   * `linkExternalUser` clears the other column precisely so this never happens,
-   * and if it did, the account was most recently moved to Supabase.
+   * rather than "whichever we notice", and the hosted store is the right one:
+   * `linkExternalUser` clears the digest precisely so this never happens, and
+   * if it did, the account was most recently moved to Supabase.
    */
   it("prefers Supabase on a row that has both, rather than answering at random", () => {
-    expect(store.storeFor({ supabaseUid: "s", firebaseUid: "f", passwordHash: "h" })).toBe("supabase");
+    expect(store.storeFor({ supabaseUid: "s", passwordHash: "h" })).toBe("supabase");
   });
 
   /*
@@ -126,12 +110,12 @@ describe("which store owns an account", () => {
    */
   it("still names the service when that service is unconfigured", () => {
     supabaseOn = false;
-    expect(store.storeFor({ supabaseUid: "s", firebaseUid: null, passwordHash: null })).toBe("supabase");
-    expect(store.isUsable({ supabaseUid: "s", firebaseUid: null, passwordHash: null })).toBe(false);
+    expect(store.storeFor({ supabaseUid: "s", passwordHash: null })).toBe("supabase");
+    expect(store.isUsable({ supabaseUid: "s", passwordHash: null })).toBe(false);
   });
 
   it("calls an account with no credential at all unusable", () => {
-    expect(store.isUsable({ supabaseUid: null, firebaseUid: null, passwordHash: null })).toBe(false);
+    expect(store.isUsable({ supabaseUid: null, passwordHash: null })).toBe(false);
   });
 });
 
@@ -140,10 +124,10 @@ describe("where a new account goes", () => {
     expect(store.activeStore()).toBe("supabase");
   });
 
-  it("falls back to Firebase, then to the local digest", async () => {
+  /* The fallback is what lets `pnpm dev` run before any third-party account
+     exists, which is the whole reason the local digest is still here. */
+  it("falls back to the local digest when it is not", async () => {
     supabaseOn = false;
-    expect(store.activeStore()).toBe("firebase");
-    firebaseOn = false;
     expect(store.activeStore()).toBe("local");
   });
 });
@@ -152,14 +136,12 @@ describe("creating a login", () => {
   it("puts the credential in Supabase and mirrors the row", async () => {
     const user = await store.createLogin({ email: "new@shop.test", password: "Harbour-Falcon-2026", name: "Noura" });
     expect(user.supabaseUid).toBe("sb-1");
-    expect(user.firebaseUid).toBeNull();
     expect(user.passwordHash).toBeNull();
     expect((await row("new@shop.test")).supabaseUid).toBe("sb-1");
   });
 
   it("uses the local digest when nothing is configured", async () => {
     supabaseOn = false;
-    firebaseOn = false;
     const user = await store.createLogin({ email: "local@shop.test", password: "Harbour-Falcon-2026" });
     expect(user.supabaseUid).toBeNull();
     expect(user.passwordHash).toBeTruthy();
@@ -197,16 +179,22 @@ describe("creating a login", () => {
     expect(after.role).toBe("admin");
   });
 
-  it("refuses an address whose row names Firebase, even with Firebase switched off", async () => {
-    firebaseOn = false;
-    await db.insert(users).values({ email: "old@shop.test", firebaseUid: "fb-gone", name: "Old" });
+  /*
+   * And a row with no usable credential at all is refused too, which is the
+   * sharper case: it looks like an address going spare, and it is not. Rows
+   * like this exist — a `firebase_uid` left behind after that service was
+   * dropped, or an account whose credential was removed in a dashboard. The
+   * orders and the role hanging off that id are still somebody's.
+   */
+  it("refuses an address whose row has no usable credential", async () => {
+    await db.insert(users).values({ email: "old@shop.test", firebaseUid: "fb-gone", name: "Old", role: "admin" });
 
     await expect(store.createLogin({ email: "old@shop.test", password: "Attacker-Pass-2026" }))
       .rejects.toBeInstanceOf(store.EmailTakenError);
 
     const after = await row("old@shop.test");
-    expect(after.firebaseUid).toBe("fb-gone");
     expect(after.supabaseUid).toBeNull();
+    expect(after.role).toBe("admin");
   });
 
   /*
@@ -232,22 +220,12 @@ describe("signing in", () => {
   });
 
   /*
-   * The whole reason the Firebase path stays. An account made before the move
-   * has its password in Firebase and nowhere else; checking only the active
-   * store would lock it out on the day the move happened.
+   * An account written before Supabase was configured keeps working after it
+   * is, which is the property that makes turning it on a safe change: the
+   * active store is asked first and the row's own store second.
    */
-  it("still signs in an account whose password is in Firebase", async () => {
-    await db.insert(users).values({ email: "old@shop.test", firebaseUid: "fb-7", name: "Old Hand" });
-    firebaseKnows.set("old@shop.test:Harbour-Falcon-2026", { uid: "fb-7", name: "Old Hand" });
-
-    const user = await store.signIn("old@shop.test", "Harbour-Falcon-2026");
-    expect(user?.id).toBeGreaterThan(0);
-    expect(asked).toEqual(["supabase.verify", "firebase.verify"]);
-  });
-
   it("still signs in an account on the local digest", async () => {
     supabaseOn = false;
-    firebaseOn = false;
     await store.createLogin({ email: "hash@shop.test", password: "Harbour-Falcon-2026" });
     supabaseOn = true;
     const user = await store.signIn("hash@shop.test", "Harbour-Falcon-2026");
@@ -273,13 +251,12 @@ describe("signing in", () => {
    * password stores and `storeFor` picks one of them.
    */
   it("clears the old credential when it adopts a row", async () => {
-    await db.insert(users).values({ email: "moving@shop.test", firebaseUid: "fb-9", passwordHash: "old-digest" });
+    await db.insert(users).values({ email: "moving@shop.test", passwordHash: "old-digest" });
     supabaseKnows.set("moving@shop.test:Harbour-Falcon-2026", { uid: "sb-moved", name: null });
 
     await store.signIn("moving@shop.test", "Harbour-Falcon-2026");
     const after = await row("moving@shop.test");
     expect(after.supabaseUid).toBe("sb-moved");
-    expect(after.firebaseUid).toBeNull();
     expect(after.passwordHash).toBeNull();
   });
 
@@ -295,12 +272,14 @@ describe("signing in", () => {
 
 describe("confirming the current password", () => {
   it("asks the store that holds it, not the one new accounts use", async () => {
-    await db.insert(users).values({ email: "old2@shop.test", firebaseUid: "fb-11" });
-    firebaseKnows.set("old2@shop.test:right", { uid: "fb-11", name: null });
+    supabaseOn = false;
+    await store.createLogin({ email: "old2@shop.test", password: "Harbour-Falcon-2026" });
+    supabaseOn = true;
     const user = await row("old2@shop.test");
 
-    await expect(store.verifyCurrent(user, "right")).resolves.toBe(true);
-    expect(asked).toEqual(["firebase.verify"]);
+    await expect(store.verifyCurrent(user, "Harbour-Falcon-2026")).resolves.toBe(true);
+    /* Supabase is the active store and was never asked: the row decides. */
+    expect(asked).toEqual([]);
     await expect(store.verifyCurrent(user, "wrong")).resolves.toBe(false);
   });
 
@@ -314,18 +293,17 @@ describe("confirming the current password", () => {
 
 describe("sending a reset", () => {
   /*
-   * Both, when both are configured: the address could belong to either, and
-   * looking up which would make the reply vary by address — the enumeration
-   * this endpoint is built not to allow.
+   * Without looking the address up first. Asking which store holds it would
+   * make the reply vary by address, which is the enumeration this endpoint is
+   * built not to allow.
    */
-  it("asks every configured service, without looking up the address first", async () => {
+  it("asks the configured service, without looking up the address first", async () => {
     await store.sendReset("whoever@shop.test", "en");
-    expect(asked).toEqual(["supabase.reset", "firebase.reset"]);
+    expect(asked).toEqual(["supabase.reset"]);
   });
 
-  it("reports honestly that nothing can be sent when neither is configured", async () => {
+  it("reports honestly that nothing can be sent when none is configured", async () => {
     supabaseOn = false;
-    firebaseOn = false;
     expect(store.canSendReset()).toBe(false);
     await store.sendReset("whoever@shop.test", "en");
     expect(asked).toEqual([]);

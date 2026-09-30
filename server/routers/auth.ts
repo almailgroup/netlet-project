@@ -4,11 +4,10 @@
  * Accounts live in **Supabase Auth** when it is configured, which is why a
  * registration appears under Authentication → Users in the Supabase dashboard;
  * `users` keeps a mirror row so the rest of the shopper's data can stay ordinary
- * foreign keys. Accounts made before that move still live in Firebase and still
- * work, and a deployment pointed at neither falls back to the local scrypt
- * digest. Which of the three holds a given password is
- * `server/_core/passwordStore.ts`'s business and not this file's — every
- * procedure below asks it rather than naming a service.
+ * foreign keys. A deployment with it unconfigured falls back to the local scrypt
+ * digest, so this runs before any third-party account exists. Which of the two
+ * holds a given password is `server/_core/passwordStore.ts`'s business and not
+ * this file's — every procedure below asks it rather than naming a service.
  *
  * Three behaviours here are deliberate rather than incidental:
  *
@@ -130,10 +129,9 @@ const wrongPassword = new TRPCError({ code: "UNAUTHORIZED", message: "auth.wrong
  * Re-checks the password of somebody already signed in.
  *
  * Against the store that owns their account rather than the one new accounts go
- * to, which `verifyCurrent` decides: a shopper whose password is still in
- * Firebase must be able to confirm it in order to change their email. An
- * account no store can vouch for is refused rather than waved through — the
- * failure mode of the alternative is silent and total.
+ * to, which `verifyCurrent` decides — the two differ for a row written before
+ * the current configuration. An account no store can vouch for is refused rather
+ * than waved through: the failure mode of the alternative is silent and total.
  */
 async function assertCurrentPassword(user: User, password: string): Promise<void> {
   if (!(await verifyCurrent(user, password))) throw wrongPassword;

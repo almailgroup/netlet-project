@@ -26,11 +26,12 @@ const add = (status: Status, title: string, detail: string, fix?: string) =>
 /* ------------------------------------------------------------- toolchain --- */
 
 /*
- * 22.12 is not arbitrary. `firebase-admin` pulls in `jwks-rsa`, which is
- * CommonJS and does `require('jose')` — and jose 6 is ESM-only. Node gained
- * `require()` of an ES module in 22.12, so below that the import throws
- * ERR_REQUIRE_ESM and the whole server is dead at load. It is the same reason
- * `engines.node` is pinned for Vercel.
+ * 22.12 was not arbitrary: `firebase-admin` pulled in `jwks-rsa`, CommonJS,
+ * which did `require('jose')` on an ESM-only package, and `require()` of an ES
+ * module arrived in 22.12 — below that the whole server was dead at load. That
+ * dependency is gone and nothing here reaches for `require()` any more, so the
+ * floor now simply matches `engines.node` and what Vercel runs. It is kept
+ * because raising a floor later is harder than holding one.
  */
 const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(n => Number.parseInt(n, 10));
 const nodeNewEnough = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 12);
@@ -86,10 +87,9 @@ if (process.env.JWT_SECRET?.trim() || !process.env.DATABASE_URL?.trim()) {
 /* ------------------------------------------------------- supabase auth --- */
 
 /*
- * All three or none, for the reason the Firebase block below says: with any one
- * missing the server quietly uses the next store down, which looks like
- * "Supabase Auth isn't working" rather than like a typo. Naming the missing one
- * is the whole point.
+ * All three or none: with any one missing the server quietly uses the local
+ * password digest instead, which looks like "Supabase Auth isn't working"
+ * rather than like a typo. Naming the missing one is the whole point.
  */
 const supabaseAuthVars = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"] as const;
 const supabaseAuthMissing = supabaseAuthVars.filter(name => !process.env[name]?.trim());
@@ -126,46 +126,6 @@ if (supabaseAuthMissing.length === 0) {
 } else {
   add("blocked", "Supabase Auth", `partly set: ${supabaseAuthMissing.join(", ")} missing, so a different password store is used instead`,
     "Set all three, or clear them all — see docs/SUPABASE-AUTH.md");
-}
-
-/* ------------------------------------------------------------- firebase --- */
-
-// All four or none: with any one missing the server quietly uses the local
-// password digest instead, which looks like "Firebase isn't working" rather
-// than like a typo. Naming the missing ones is the whole point of this check.
-const firebaseVars = [
-  "FIREBASE_PROJECT_ID",
-  "FIREBASE_CLIENT_EMAIL",
-  "FIREBASE_PRIVATE_KEY",
-  "FIREBASE_API_KEY",
-] as const;
-const firebaseMissing = firebaseVars.filter(name => !process.env[name]?.trim());
-
-if (firebaseMissing.length === 0) {
-  const key = process.env.FIREBASE_PRIVATE_KEY ?? "";
-  if (!key.includes("BEGIN PRIVATE KEY")) {
-    add("blocked", "FIREBASE_PRIVATE_KEY", "does not look like a PEM private key",
-      "Copy the private_key value from the service-account JSON verbatim, in double quotes");
-  } else if (!key.includes("\\n") && !key.includes("\n")) {
-    add("blocked", "FIREBASE_PRIVATE_KEY", "is a single line with no newlines — every signature will fail",
-      'Keep the JSON\'s \\n escapes: FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nMIIE...\\n-----END PRIVATE KEY-----\\n"');
-  } else {
-    add("ok", "Firebase", supabaseAuthMissing.length === 0
-      ? `still read for accounts made before the move, in project ${process.env.FIREBASE_PROJECT_ID}`
-      : `accounts are stored in project ${process.env.FIREBASE_PROJECT_ID}`);
-  }
-} else if (firebaseMissing.length === firebaseVars.length) {
-  /* Not a warning when Supabase Auth is set: Firebase is legacy, and a fresh
-     deployment leaving it blank is the expected state rather than a gap. */
-  if (supabaseAuthMissing.length === 0) {
-    add("ok", "Firebase", "not set, which is right — Supabase Auth holds the passwords");
-  } else {
-    add("warn", "Firebase", "not set — registration and sign-in use the local password digest instead",
-      "Legacy. New deployments use Supabase Auth: see docs/SUPABASE-AUTH.md");
-  }
-} else {
-  add("blocked", "Firebase", `partly set: ${firebaseMissing.join(", ")} missing, so the local password path is used instead`,
-    "Set all four, or clear them all to stay on the local path — see docs/FIREBASE.md");
 }
 
 /* ---------------------------------------------------------------- build --- */

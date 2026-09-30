@@ -133,8 +133,9 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
-    /* The locale is for Firebase, which composes the legacy reset email from it.
-       Supabase's own templates are a dashboard setting rather than a parameter. */
+    /* The locale is sent and currently unused: Supabase composes the reset mail
+       from a dashboard template rather than from the request. It is here for
+       when those templates are translated, which is a dashboard change. */
     if (isReset) reset.mutate({ email: email.trim(), locale });
     else if (isRegister) register.mutate({ email: email.trim(), password, name: name.trim() || undefined, referral: storedReferral() });
     else login.mutate({ email: email.trim(), password });
