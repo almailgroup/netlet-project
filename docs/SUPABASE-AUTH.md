@@ -50,6 +50,13 @@ All from **Project Settings** in the Supabase dashboard.
 **Project Settings → Data API → Project URL.** Looks like
 `https://abcdefghijklm.supabase.co`.
 
+**The origin alone, with no path after it.** That page also shows a RESTful
+endpoint ending in `/rest/v1`, directly beside it. Every call here appends its
+own path, so copying that one produces `/rest/v1/auth/v1/admin/users` — answered
+by PostgREST with a 404, which reaches the register form as a redacted 500 with
+the reason only in the log. `pnpm preflight` refuses a URL with a path and
+prints the value you should have used instead.
+
 **This is not `DATABASE_URL`.** They point at the same project and are otherwise
 nothing alike: `DATABASE_URL` is a Postgres connection string with your database
 password in it, and this is the project's API origin with no secret in it at all.

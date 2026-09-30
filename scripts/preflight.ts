@@ -101,6 +101,17 @@ if (supabaseAuthMissing.length === 0) {
   if (!/^https:\/\//.test(url)) {
     add("blocked", "SUPABASE_URL", "is not an https URL",
       "Project Settings -> Data API -> Project URL, e.g. https://abcdefghijklm.supabase.co");
+  } else if (new URL(url).pathname.replace(/\/+$/, "") !== "") {
+    /*
+     * The origin, not an endpoint on it. Every call appends its own path, so a
+     * value carrying one produces `/rest/v1/auth/v1/admin/users` — a 404 from
+     * PostgREST rather than an answer from the auth service. The RESTful
+     * endpoint sits directly beside the Project URL on that settings page,
+     * which is how this gets copied, and in production it surfaces as a
+     * redacted 500 on the register form with the reason only in the log.
+     */
+    add("blocked", "SUPABASE_URL", `ends in ${new URL(url).pathname}, and should be the origin alone`,
+      `Drop everything after the host: https://${new URL(url).host}`);
   } else if (anon === service) {
     /* The likeliest way to get this wrong, and the most expensive: the sign-in
        endpoint would then carry the key that owns the whole project. */
