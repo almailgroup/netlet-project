@@ -74,6 +74,10 @@ function idempotent(statement) {
   // Dropping an index a fresh database never had is the ordinary case here:
   // the file is one paste for a database at any version.
   if (/^DROP INDEX "/.test(sql)) return sql.replace(/^DROP INDEX /, "DROP INDEX IF EXISTS ");
+  // Same for a column: a database provisioned after the drop never had it, and
+  // one provisioned before is exactly who is pasting this. The column's own
+  // indexes go with it, so no DROP INDEX is needed beside this.
+  if (/^ALTER TABLE .+ DROP COLUMN /.test(sql)) return sql.replace(/ DROP COLUMN /, " DROP COLUMN IF EXISTS ");
 
   // Dropping a NOT NULL that is already gone, or a default that is already
   // gone, is a no-op in Postgres, so both are re-runnable as written. Named

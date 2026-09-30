@@ -176,7 +176,7 @@ Exactly one of those columns is ever set. `server/_core/passwordStore.ts` is the
 only place that reads which, and `server/logins.ts` is what clears the other when
 an account moves between them.
 
-`users.firebase_uid` is still in the table and is vestigial: Firebase held every
-password until this move, and nothing writes or reads that column now. It was
-left rather than dropped because `DROP COLUMN` destroys what is in it, and what
-is in it is the only remaining record that a row came from that era.
+`users.firebase_uid` used to be a third: Firebase held every password until this
+move. It was kept for one release, then dropped in migration 0035 once no row
+carried one. Re-running `docs/supabase-bootstrap.sql` is what removes it from a
+database that still has it.

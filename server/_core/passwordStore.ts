@@ -31,9 +31,9 @@
  * ## Firebase used to be here
  *
  * It held every password until the move to Supabase Auth, and the branches
- * stayed for as long as one row carried a `firebase_uid`. None does, so they
- * are gone — `git log` has them if the reasoning is ever wanted. `users`
- * still has the column; nothing reads it.
+ * stayed for as long as one row carried a `firebase_uid`. None did, so they went,
+ * and the column went after them — `git log` has both if the reasoning is ever
+ * wanted.
  *
  * Nothing here tells a caller *why* a sign-in failed. Every store returns null
  * for a wrong password, an unknown address and a disabled account alike, which

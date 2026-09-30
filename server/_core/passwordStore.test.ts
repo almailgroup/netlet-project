@@ -182,12 +182,12 @@ describe("creating a login", () => {
   /*
    * And a row with no usable credential at all is refused too, which is the
    * sharper case: it looks like an address going spare, and it is not. Rows
-   * like this exist — a `firebase_uid` left behind after that service was
-   * dropped, or an account whose credential was removed in a dashboard. The
-   * orders and the role hanging off that id are still somebody's.
+   * like this exist — an account whose credential was removed in the Supabase
+   * dashboard, or a row left behind by a provider this codebase has since
+   * dropped. The orders and the role hanging off that id are still somebody's.
    */
   it("refuses an address whose row has no usable credential", async () => {
-    await db.insert(users).values({ email: "old@shop.test", firebaseUid: "fb-gone", name: "Old", role: "admin" });
+    await db.insert(users).values({ email: "old@shop.test", name: "Old", role: "admin" });
 
     await expect(store.createLogin({ email: "old@shop.test", password: "Attacker-Pass-2026" }))
       .rejects.toBeInstanceOf(store.EmailTakenError);

@@ -61,12 +61,9 @@ export const notificationKind = pgEnum("notification_kind", notificationKinds);
  * column *is* the provider: two fields that must agree eventually do not.
  * `server/_core/passwordStore.ts` is the one place that reads which is set.
  *
- * `firebaseUid` is the third, and it is vestigial. Firebase held every password
- * until the move to Supabase Auth; nothing writes it and nothing reads it now.
- * It is left in place rather than dropped because a `DROP COLUMN` against a live
- * database destroys whatever is in it, and the one thing this column is still
- * good for is telling an operator that a row came from that era. Dropping it is
- * a migration of its own, whenever somebody decides it is worth one.
+ * There was a third, `firebase_uid`: Firebase held every password until the move
+ * to Supabase Auth. It was kept vestigial for one release so an operator could
+ * still see which rows came from that era, then dropped once nothing did.
  *
  * The row exists in all three cases because the serial `id` is what
  * `customer_preferences`, `saved_products`, `customer_notification_preferences`
@@ -88,8 +85,6 @@ export const users = pgTable(
      * later. Null for accounts whose password a hosted service holds.
      */
     passwordHash: varchar("password_hash", { length: 255 }),
-    /** Vestigial — see the note above. Nothing reads it. */
-    firebaseUid: varchar("firebase_uid", { length: 128 }),
     /**
      * Supabase Auth's user id — a uuid, held as text for the reason every
      * other external id here is: the column's job is to match what the service
@@ -115,10 +110,8 @@ export const users = pgTable(
   },
   table => [
     uniqueIndex("users_email_unique").on(table.email),
-    // Partial, so the many rows with no value here do not all collide on
-    // a single null.
-    uniqueIndex("users_firebase_uid_unique").on(table.firebaseUid).where(sql`${table.firebaseUid} is not null`),
-    // Partial for the same reason as the one above it.
+    // Partial, so the many rows with no value here — every account on the
+    // local digest — do not all collide on a single null.
     uniqueIndex("users_supabase_uid_unique").on(table.supabaseUid).where(sql`${table.supabaseUid} is not null`),
   ]
 );

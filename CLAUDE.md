@@ -106,13 +106,23 @@ on working afterwards.
 **Firebase is gone, and the shape of its removal is the point.** It held every
 password until the move; the branches stayed only while a row still carried a
 `firebase_uid`, and once none did they went — the client, the four `FIREBASE_*`
-values, the `firebase-admin` dependency and the migration script with them. What
-is left is one vestigial column, `users.firebase_uid`, which nothing writes and
-nothing reads. It was not dropped because `DROP COLUMN` destroys what is in it
-and a live database is the wrong place to find out you wanted it; the only thing
-it is still good for is telling an operator a row came from that era. Dropping it
-is a migration of its own whenever somebody decides it is worth one. That
-dependency going also took the `jwks-rsa` → `jose` trap under Deploys with it.
+values, the `firebase-admin` dependency, the migration script and finally the
+column itself, in that order. Each step was safe only because the one before it
+had happened, which is the whole reason it was not one change. That dependency
+going also took the `jwks-rsa` → `jose` trap under Deploys with it.
+
+**`DROP COLUMN` was this file's first, and it needed the generator taught.**
+`scripts/build-bootstrap.mjs` rewrites each migration into something re-runnable
+and reports any shape it does not recognise; a drop was not one of them, so it
+would have been passed through unhandled. It is `DROP COLUMN IF EXISTS` now, and
+the column's indexes go with it rather than needing their own statement.
+
+That was also the moment the bootstrap started being *run* rather than only read.
+Every statement before this either created something or no-opped on a second
+pass; a drop is the first where "run it twice" and "run it on a database that
+never had the thing" are different questions. `scripts/bootstrap.test.ts` now
+applies the file to a real Postgres — twice on a fresh database, and again on one
+where the column has been put back — and checks all three land in the same place.
 
 **A credential added by hand in the dashboard becomes a NetLet login on first
 sign-in.** `linkExternalUser` creates the missing mirror row rather than refusing

@@ -15,6 +15,7 @@
  *
  * This is that thing, in the suite.
  */
+import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -153,4 +154,67 @@ describe("the bootstrap is atomic", () => {
   it("holds no statement that cannot run inside a transaction", () => {
     expect(file).not.toMatch(/CONCURRENTLY|ALTER TYPE .*ADD VALUE|^\s*VACUUM/im);
   });
+});
+
+/*
+ * Reading the file is not the same as running it, and everything above only
+ * reads. "Idempotent" is a claim about what Postgres does with these statements,
+ * so it is checked by giving them to Postgres — twice, against an empty database,
+ * which is the shape the file promises to handle at any version.
+ *
+ * It earned a place when the first `DROP COLUMN` landed. Until then every
+ * statement either created something or was a no-op on a second run; a drop is
+ * the first shape where "run it again" and "run it on a database that never had
+ * the thing" are different questions, and the generator's rewrite for it was new.
+ */
+describe("the bootstrap file, actually executed", () => {
+  const file = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
+
+  it("stands a database up, and running it again changes nothing", async () => {
+    const db = new PGlite();
+    const columns = async () =>
+      (await db.query<{ column_name: string }>(
+        "select column_name from information_schema.columns where table_name = 'users' order by 1",
+      )).rows.map(row => row.column_name);
+    const departments = async () =>
+      (await db.query<{ n: number }>("select count(*)::int as n from categories")).rows[0].n;
+
+    await db.exec(file);
+    const afterFirst = await columns();
+    expect(afterFirst).toContain("supabase_uid");
+    expect(await departments()).toBe(DEPARTMENTS.length);
+
+    await db.exec(file);
+    expect(await columns()).toEqual(afterFirst);
+    /* Seeded with ON CONFLICT, so a second paste must not double the list. */
+    expect(await departments()).toBe(DEPARTMENTS.length);
+
+    await db.close();
+  }, 120_000);
+
+  /*
+   * The drop is what this file has to get right for a database that predates it:
+   * migration 0001 adds the column and 0035 takes it away, so a single paste has
+   * to leave a database at either version in the same place.
+   */
+  it("leaves no firebase_uid, whichever version it was pasted onto", async () => {
+    const fresh = new PGlite();
+    await fresh.exec(file);
+    const freshColumns = (await fresh.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_name = 'users'",
+    )).rows.map(row => row.column_name);
+    expect(freshColumns).not.toContain("firebase_uid");
+    await fresh.close();
+
+    /* And onto one that already has the column, which is the real migration. */
+    const older = new PGlite();
+    await older.exec(file);
+    await older.exec('ALTER TABLE "users" ADD COLUMN "firebase_uid" varchar(128)');
+    await older.exec(file);
+    const olderColumns = (await older.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_name = 'users'",
+    )).rows.map(row => row.column_name);
+    expect(olderColumns).not.toContain("firebase_uid");
+    await older.close();
+  }, 120_000);
 });

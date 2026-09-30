@@ -955,6 +955,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "product_variants_product_sku_unique" ON "prod
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "supabase_uid" varchar(64);
 CREATE UNIQUE INDEX IF NOT EXISTS "users_supabase_uid_unique" ON "users" USING btree ("supabase_uid") WHERE "users"."supabase_uid" is not null;
 
+-- ===== 0035_loving_taskmaster.sql =====
+DROP INDEX IF EXISTS "users_firebase_uid_unique";
+ALTER TABLE "users" DROP COLUMN IF EXISTS "firebase_uid";
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -998,6 +1002,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  35 AS migrations_in_this_file,
+  36 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

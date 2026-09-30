@@ -57,7 +57,6 @@ describe("auth.me", () => {
     // every page load.
     expect(me).not.toHaveProperty("passwordHash");
     expect(me).not.toHaveProperty("supabaseUid");
-    expect(me).not.toHaveProperty("firebaseUid");
     // Pinned rather than merely spot-checked, so a field added to `users` has
     // to be admitted here on purpose before it can reach the client. The two
     // dates were admitted for the account page, which shows when the account
@@ -124,7 +123,6 @@ describe("auth with Supabase Auth as the password store", () => {
     id: 42,
     email: "supa@example.com",
     passwordHash: null,
-    firebaseUid: null,
     supabaseUid: "b7f1e0c2-0000-4000-8000-000000000001",
   } as User;
 
@@ -188,7 +186,7 @@ describe("auth with Supabase Auth as the password store", () => {
 
     const user = await api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026" });
     expect(user).not.toHaveProperty("supabaseUid");
-    expect(user).not.toHaveProperty("firebaseUid");
+    expect(user).not.toHaveProperty("supabaseUid");
     expect(user).not.toHaveProperty("passwordHash");
   });
 
