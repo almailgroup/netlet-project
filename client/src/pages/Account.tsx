@@ -21,6 +21,7 @@ import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
+import { AccountMessages } from "@/components/account/AccountMessages";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -40,6 +41,7 @@ import type { ReactNode } from "react";
 /** The sections, in page order. The nav and the page read from one list. */
 const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
+  { id: "messages", label: "chat.sectionMessages" },
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "offers", label: "offers.mine" },
@@ -146,6 +148,12 @@ export default function Account() {
                   order here is the order there. */}
               <Section id="orders" title={t("account.sectionOrders")}>
                 <AccountOrders />
+              </Section>
+
+              {/* Directly after orders: a conversation with a shop is most often
+                  about something bought from it. */}
+              <Section id="messages" title={t("chat.sectionMessages")}>
+                <AccountMessages />
               </Section>
 
               {/* Second, ahead of the settings: a wishlist is something other

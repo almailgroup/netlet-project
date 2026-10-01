@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, MessagesSquare, PackageSearch, Receipt, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -133,6 +133,7 @@ export function AdminShell({ need, children }: {
     { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
     { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
+    { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
     { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
     { href: "/admin/applications", label: "admin.applications", icon: <ClipboardList className="size-4" />, need: "platform.manageUsers" },

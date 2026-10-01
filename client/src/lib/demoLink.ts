@@ -428,6 +428,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { recorded: false };
     /* A demo shopper has no orders, so there is no parcel to rate or claim
        on — the server's own answer to a reference it cannot find. */
+    /* Messages (3.8). The demo shopper is a guest with nobody to talk to, and
+       the demo manager's store has no shoppers, so every inbox is empty and a
+       send is refused the way a real server refuses a product it cannot find. */
+    case "chat.mine":
+    case "chat.seller.list":
+      return [];
+    case "chat.unread":
+    case "chat.seller.unread":
+      return 0;
+    case "chat.thread":
+    case "chat.seller.thread":
+    case "chat.send":
+    case "chat.seller.reply":
+      throw new Error("chat.notFound");
     case "orders.rateDelivery":
     case "orders.claimDamage":
       throw new Error("parcel.notFound");

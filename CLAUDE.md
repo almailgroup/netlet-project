@@ -1147,6 +1147,44 @@ sofa gets dispatched on a motorcycle.
 **The carrier is free text.** A fixed list would be this codebase asserting
 which companies exist in Kuwait, and the name claims nothing about tracking.
 
+## Talking to a seller
+
+**The filter is the feature.** A chat between a shopper and a seller is, on day
+one, the easiest way to take a sale off the platform — and the order that
+leaves has no protection, no return window and no record, and NetLet is still
+who the shopper blames. `shared/commerce/contactFilter.ts` refuses a message
+carrying a phone number, an email, a link or a handle on another platform, and
+it is pure and shared for the password floor's reason: the composer names what
+it found as somebody types and disables Send, and the server refuses the same
+message, so the page cannot send what the API would bounce and nothing refused
+is ever stored. It names the *kind* back, never the match — repeating the
+number in the warning is one more place it is on screen.
+
+**The obfuscations and the false positives are both the requirement, and both
+are tested by name.** Nobody getting round a filter types `99887766`; they type
+it in Arabic-Indic digits, spaced, spelled out, or `noura at gmail dot com`.
+And a filter that refuses "I need two by Thursday", an order reference, a date,
+or a price beside its currency is one people learn to route around. A run of
+digits is a phone at eight digits (seven with `+`/`00`); a date is let through
+only if it is a real date, so `9988-77-66` is not one; a price only beside a
+currency, because letting every decimal through would be the hole. Arabic
+spelled digits are matched as whole tokens with an optional و, since `\b` does
+not see Arabic letters.
+
+It is mitigation, not proof, which is why an administrator can read every
+thread. **Reading is all they do**: a moderator looking is not the shop having
+answered, so it marks nothing read, and answering as a store you do not belong
+to would put words in its mouth.
+
+**One thread per shopper and store, and every thread starts from something** —
+a published product or one of the shopper's own orders with that store's lines
+in it. A store whose shelf was emptied by suspension takes no new
+conversations: one opening with it is a sale being arranged around the
+suspension. The shopper is named to the store by first name and initial, by
+`reviews.ts`'s `displayName`, never by email. Read state is a timestamp per
+side, so unread is derived — and the open thread refreshes the list's badge,
+because the list was fetched before opening marked it read.
+
 ## After the door: ratings and damage
 
 `server/parcelCare.ts` is both, because both start from the same thing — a

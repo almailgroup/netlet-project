@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 48 |
+| Built | 50 |
 | Partial | 7 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 20 |
+| Not started | 18 |
 
-*Last updated after delivery ratings (3.4.4) and damage claims against the carrier (3.4.2). Card payments and
+*Last updated after vendor–customer chat with its contact filter (3.8), delivery ratings (3.4.4) and damage claims against the carrier (3.4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -135,16 +135,17 @@ automatic return/exchange handling · AI-generated tutorial videos.
 | 5 | AI fraud detection | **Built** | `shared/commerce/fraudSignals.ts` is the judgement and is pure. **It flags and never blocks**: nothing cancels an order, refuses a checkout or holds a parcel — a heuristic that could refuse a sale refuses real customers at the till and the shop never learns which ones it turned away. **Cash is where the exposure actually is**, which is the whole reason this is worth having today: NetLet takes cash on delivery and nothing else, so the goods leave the warehouse before any money exists, and an uncollected cash order is a van, a driver and a parcel nobody paid for. The value thresholds therefore apply to cash and the card branches wait with 3.2.1. Six signals — a new account paying real money in cash, a large cash order, several accounts at one address, a burst of orders in a day, a refund history with enough orders behind it to mean anything, and ten of one thing on a first order — each carrying **the counts that produced it**, because "risk: high" is not something an administrator can disagree with and "five accounts have used this address" is. Three bands rather than a score, since a number asks somebody to decide what 62 means; `high` is one serious signal or three of anything, because several small oddities about one order is itself the pattern. **Admin-only, guarded beside the query**: the signals name other accounts' behaviour, so a vendor reading their own order desk does not get them. Verified in a browser in both languages against a real suspicious order, axe clean — and the browser is what caught the one real defect: a JS `Date` interpolated into a raw `count(*) filter` fragment, which PGlite accepts and postgres.js refuses, so every test passed and every request 500ed. Exactly the wishlist's `lt(column, date)` lesson, found the same way. |
 | 6 | E-invoice compliance | Not started | |
 
-## 3.7 Affiliate marketing · 3.8 Vendor–customer chat
+## 3.7 Affiliate marketing — 0 of 2
 
-Both absent. Two notes worth keeping:
+Absent. One note worth keeping: **3.7 shares a ledger with 3.1's referral
+points.** Build one points ledger, not two.
 
-- **3.8's hard part is the filter, not the chat.** Blocking phone numbers,
-  emails and handles — including the ways people spell them to get around a
-  filter — is the requirement. A chat without it leaks every customer off the
-  platform on day one.
-- **3.7 shares a ledger with 3.1's referral points.** Build one points ledger,
-  not two.
+## 3.8 Vendor–customer chat — 2 built
+
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Customers and vendors message each other | **Built** | `server/chat.ts`, `conversations` and `conversation_messages`. **One thread per shopper and store**, not per product — a shopper asking about the sofa and then the cushions is having one conversation with one shop — and each message carries what it is about (the product, or one of their orders). **A conversation is opened from something**: a published product (from "Ask the seller" on the product page) or one of the shopper's own orders holding that store's lines; a draft is not found and a suspended store is refused, since a thread opening with a store whose shelf was emptied is a sale arranged around the suspension. **Scope is in the query**: a shopper reads their own threads, a seller their own store's at any rank that clears `chat.answer` (`staff` — whoever is on the shop floor answers "is the blue one in stock"), and an administrator reads every store's for moderation **without answering or marking anything read** — a moderator looking is not the shop having replied. Another party's conversation is *not found*, never forbidden. The shopper is named to the store by first name and initial, never by email. Read state is a timestamp per side, so unread is derived rather than written per message; unread replies show on the account, and shoppers waiting on a store are a tile on its overview. Throttled per account in Postgres. No push or email notification: there is no mail provider beyond Supabase's auth mail. Verified in a browser in both languages and at phone width against real Postgres, axe clean. |
+| 2 | Block phone numbers, emails and handles, including the ways people get round a filter | **Built** | `shared/commerce/contactFilter.ts`, pure and imported by both sides — the composer names what it found as somebody types and disables Send, and the server refuses the same message for the same reason, so nothing refused is ever stored. **The obfuscations are the requirement**: Arabic-Indic and Persian digits, full-width digits, digits spelled out in English or Arabic (with the و prefix), any separator between digits, `+`/`00` prefixes, ` at `/` dot `/`(at)`/`[dot]` and their Arabic forms, addresses typed letter by letter, `wa.me`/`t.me`/bare domains, `@handles`, and platform names in both scripts. **So are the false positives**: an order reference, a real date, a price beside its currency, "I need two by Thursday", "install" — each let through by name and each tested, because a filter that refuses ordinary messages is one people learn to route around. Four kinds are named back to the sender ("remove the phone number and the link"), never the match itself. Mitigation, not proof: a determined sender can describe a number in a way no rule anticipates, which is why NetLet can read every thread. |
 
 ## 3.9 Grocery — 1 built
 

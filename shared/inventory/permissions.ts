@@ -63,6 +63,13 @@ export type Capability =
    * `staff` moves stock.
    */
   | "offer.answer"
+  /*
+   * Answering shoppers' messages (3.8). `staff`, unlike quoting a price: a
+   * question about whether the blue one is in stock is answered by whoever is
+   * on the shop floor, and a rank that can see the inbox and not reply is a
+   * rank that watches questions go stale.
+   */
+  | "chat.answer"
   | "vendor.viewMembers"
   | "vendor.manageMembers"
   | "vendor.editProfile"
@@ -96,6 +103,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "stock.adjust": "staff",
   "vendor.viewMembers": "staff",
   "delivery.fileClaim": "staff",
+  "chat.answer": "staff",
   "product.create": "manager",
   "product.edit": "manager",
   "product.publish": "manager",

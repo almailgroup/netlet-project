@@ -214,7 +214,7 @@ export type PublicReview = {
  * same rule reads correctly for a two-part name ("Yusuf Ahmed" → "Yusuf A.").
  * Found by a test written against a real Kuwaiti name rather than "John Smith".
  */
-function displayName(name: string | null): string {
+export function displayName(name: string | null): string {
   const trimmed = name?.trim() ?? "";
   if (!trimmed) return "";
   const parts = trimmed.split(/\s+/);

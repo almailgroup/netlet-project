@@ -1241,6 +1241,70 @@ export const reviews = pgTable(
 );
 
 /**
+ * A conversation between one shopper and one seller (3.8).
+ *
+ * **One thread per pair, not per product.** A shopper asking about the sofa and
+ * then the cushions is having one conversation with one shop, and a seller's
+ * inbox of forty threads from the same person is how messages go unread. What
+ * a message is about rides on the message (`product_id`, `order_id`) rather
+ * than splitting the thread.
+ *
+ * **Read state is a timestamp per side**, not a flag per message: "unread" is
+ * every message from the other side after the time this side last looked,
+ * which needs no write per message and cannot disagree with itself.
+ *
+ * Cascade from both ends: a conversation with a deleted account or a removed
+ * store has nobody left to read it.
+ */
+export const conversations = pgTable(
+  "conversations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    vendorId: integer("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "cascade" }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    shopperReadAt: timestamp("shopper_read_at", { withTimezone: true }),
+    vendorReadAt: timestamp("vendor_read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("conversations_pair_unique").on(table.userId, table.vendorId),
+    index("conversations_vendor_idx").on(table.vendorId, table.lastMessageAt),
+    index("conversations_user_idx").on(table.userId, table.lastMessageAt),
+  ]
+);
+
+/**
+ * One message. Only messages that passed the contact filter are ever stored —
+ * a refused message is refused before the insert, so there is no row holding a
+ * phone number somebody was told they could not send.
+ */
+export const conversationMessages = pgTable(
+  "conversation_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    /** `shopper` or `seller`. Which side, not which person: a store answers as the store. */
+    side: varchar("side", { length: 10 }).notNull(),
+    /** Who on that side wrote it, for the store's own record. Never shown to the shopper. */
+    authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    /** What it is about, when it is about something. */
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    productTitle: varchar("product_title", { length: 255 }),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("conversation_messages_thread_idx").on(table.conversationId, table.createdAt)]
+);
+
+/**
  * How the delivery went, rated apart from what was delivered (3.4.4).
  *
  * A product review is about the thing; this is about the van. Folding the two
@@ -2267,4 +2331,6 @@ export type VendorApplication = typeof vendorApplications.$inferSelect;
 export type BundleRow = typeof bundles.$inferSelect;
 
 export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
+export type ConversationRow = typeof conversations.$inferSelect;
+export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

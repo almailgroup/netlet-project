@@ -24,7 +24,6 @@ const DOC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../docs/
 export const PROSE_SECTIONS = {
   "3.5": 3,
   "3.7": 2,
-  "3.8": 2,
 };
 
 

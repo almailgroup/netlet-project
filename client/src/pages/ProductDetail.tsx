@@ -3,6 +3,7 @@ import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
+import { AskSeller } from "@/components/product/AskSeller";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
@@ -1068,6 +1069,11 @@ export default function ProductDetail() {
             {selectedVariant
               ? <PriceOfferPanel variantId={selectedVariant.id} listPrice={selectedVariant.price.amount} />
               : null}
+
+            {/* A question for the shop (3.8). After the price request, because
+                both are ways of talking to the seller and the price is the more
+                specific of the two. */}
+            {product.vendor ? <AskSeller productId={product.id} vendor={product.vendor} /> : null}
 
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
