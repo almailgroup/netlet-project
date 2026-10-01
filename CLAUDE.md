@@ -707,6 +707,36 @@ The return *request* is an email address, not a form. There is no returns table
 and no signed-off policy, and a form that silently drops a request is worse
 than an address.
 
+### Cancelling a line
+
+A seller who is out of something cancels that line, and until the debug pass
+that one press got four things wrong at once — found by doing it to a real cash
+order and reading every page afterwards, not by any test:
+
+- **The stock stayed taken.** Cancelling now hands the units back to the pool
+  they came from (`returnUnits`, shelf or pre-order allowance), and restoring a
+  cancelled line takes them again under the checkout's own `WHERE stock >= n`,
+  refusing with `orders.noStockToRestore` if they have since sold.
+- **The driver was told to collect the sofa.** `grand_total` is frozen and right
+  to be, but it is the obligation *as placed*. `shared/commerce/collection.ts`
+  subtracts what is no longer coming — the line's frozen total, and a seller's
+  delivery fee only once nothing of theirs is left for that door — and
+  `server/owed.ts` is the one reader, so the dispatch board, the shopper's
+  orders and the seller's desk quote one figure. Order-level reductions
+  (discount, points, gift card) stay whole and the figure floors at zero.
+  **`lineTotal` already carries the add-ons** (`freezeLine` folds them in); the
+  first draft subtracted them a second time.
+- **Finance and payouts counted it as sold.** `lineOutcome` in `finance.ts` is
+  the one rule both reports use now: a cancelled line is *void* — not a sale,
+  not a refund, nothing — and a returned line is a refund.
+- **`nextStates` was only asked by the page.** The API moved a returned line
+  back to delivered and a cancelled one straight to shipped. `setLineFulfilment`
+  refuses any move the rule does not offer (`orders.badMove`), refuses
+  cancelling or restoring once the cash is in (`orders.alreadySettled` — a
+  cancellation after payment is a refund wearing the wrong name), and writes
+  with the old state in the predicate so two people pressing at once cannot
+  both move it (`orders.lineMoved`, a 409).
+
 ## The finance panel
 
 `/admin/finance` reports what the orders already froze. Almost none of this was
@@ -1521,6 +1551,23 @@ The publish button says what will actually happen. A vendor without
 so — a button labelled "Publish" that quietly produces "In review" is the kind
 of small dishonesty that makes people distrust a tool.
 
+**A store's details have one normaliser, and both doors use it.**
+`storeDetailColumns` in `server/inventory.ts` maps every detail field — blank to
+null, email lowercased, IBAN compacted — for opening a store and for editing
+one. Opening a store wrote only the fields its own insert happened to list, so
+an administrator who filled in the whole form on `/admin/vendors/new` found
+nine of nineteen never saved — the delivery fee and free-over threshold, the
+discount permit, the cash-on-delivery switch and ceiling among them. The test is driven from the
+router's schema rather than a hand-written list, so a field added to the form
+and forgotten here fails it.
+
+**Two products with the same title at the same moment both get made.** The
+handle is checked and then inserted, and two requests racing between those
+steps both chose `brass-lamp`; the second got a unique-violation 500.
+`withFreeHandle` retries on that one constraint, and after two collisions adds a
+short random tail — a bulk import of twenty identically-named variants otherwise
+walks `-2`, `-3`… in lockstep with whoever else is importing.
+
 Stock moves by a delta with a reason, never by typing a new total. "We received
 12" is what happened; setting the box to 47 loses why and races with whoever
 else is editing. `/admin/stock` is what reads those rows back, which is the
@@ -1709,6 +1756,21 @@ beside it already had a pattern of its own; both use one now, capped at 100.
 A zod schema looser than its column moves the refusal from the router to the
 driver, and a driver refusal is always the wrong answer. That is what makes the
 shape of the column part of the contract rather than an implementation detail.
+
+**A NUL byte is refused before any router sees it.** Postgres `text` cannot hold
+`\u0000`, so every free-text field in the API — a review's reason, a wishlist's
+title, a store's name — answered one with "invalid byte sequence for encoding
+UTF8" and a 500. Adding `.refine` to some hundred string schemas is the
+arrangement where one gets missed, so `refuseNul` in `_core/trpc.ts` sits on the
+base procedure every other builds on and walks the whole input, keys included,
+answering `error.invalidText`. Found by fuzzing every procedure as every kind of
+caller; `.scratch/` is where that harness lives and it is never committed.
+
+**Ids that arrive as text are checked by shape, not by `parseInt`.**
+`parseInt("99999999999")` is a perfectly good number and no `integer` column
+holds it. Where a non-id is a legitimate answer — `reviews.forProduct` takes the
+storefront's string id, which a demo build may make a handle — `rowIdText` is
+asked with `safeParse` and a miss is "no reviews", not a refusal.
 
 ## Browser storage
 

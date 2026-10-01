@@ -64,7 +64,36 @@ export type FinanceLine = {
   lineTotal: string;
   commissionAmount: string;
   vendorNet: string;
+  /** Where the line itself got to. Absent reads as an ordinary sale. */
+  fulfilment?: string | null;
 };
+
+/**
+ * What one line is, for the money.
+ *
+ * - `uncounted` — its order has not been paid, so it is an intention, not money.
+ * - `void` — it never sold: the seller cancelled it before it left. In no total
+ *   at all, not even gross, because nobody was charged for it.
+ * - `refunded` — charged and given back: the order was refunded, or the goods
+ *   came back.
+ * - `sold` — a sale that stuck, which is the only kind that books commission or
+ *   owes the seller anything.
+ *
+ * The order's status alone used to decide this, and an order carries one status
+ * for every line in it. So a seller who cancelled the sofa out of a paid basket
+ * was still shown as owed KWD 204 for it, NetLet booked commission on it, and the
+ * finance report counted it as revenue — a sale of something that never left the
+ * warehouse. Both reports and the payout list ask this one function, so they
+ * cannot disagree about which lines are money.
+ */
+export type LineOutcome = "sold" | "refunded" | "void" | "uncounted";
+
+export function lineOutcome(orderStatus: string, fulfilment?: string | null): LineOutcome {
+  if (!(COUNTED_STATUSES as readonly string[]).includes(orderStatus)) return "uncounted";
+  if (fulfilment === "cancelled") return "void";
+  if (orderStatus === "refunded" || fulfilment === "returned") return "refunded";
+  return "sold";
+}
 
 export type Totals = {
   /** What shoppers were charged on every sale that completed, refunds included. */
@@ -105,13 +134,14 @@ export function summarise(lines: FinanceLine[]): Totals {
   let paidLines = 0, refundedLines = 0;
 
   for (const line of lines) {
-    if (!isCounted(line.orderStatus)) continue;
+    const outcome = lineOutcome(line.orderStatus, line.fulfilment);
+    if (outcome === "uncounted" || outcome === "void") continue;
     const total = toFils(line.lineTotal);
     // Charged is charged: a sale that was later reversed still happened, and
     // leaving it out of gross would subtract it from a figure it was never in.
     gross += total;
 
-    if (line.orderStatus === "refunded") {
+    if (outcome === "refunded") {
       refunded += total;
       refundedLines += 1;
       // Commission goes back with the sale. Booking it on a refunded order

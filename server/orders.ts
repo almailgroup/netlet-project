@@ -34,6 +34,7 @@ import {
   type PriceableLine,
 } from "../shared/commerce/order.js";
 import type { Pool } from "../shared/commerce/preorder.js";
+import { nextStates } from "../shared/commerce/fulfilment.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
@@ -51,6 +52,8 @@ import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
+import { stillOwedFor } from "./owed.js";
+import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -702,7 +705,10 @@ const emptyPage = <T>(pageSize?: number): Page<T> => ({
   pageSize: clampPageSize(pageSize),
 });
 
-export type OrderRow = typeof orders.$inferSelect;
+export type OrderRow = typeof orders.$inferSelect & {
+  /** What it owes now, once cancelled lines are taken off. Null without a database read. */
+  owed?: StillOwed | null;
+};
 
 /**
  * A shopper's own orders.
@@ -736,7 +742,10 @@ export async function listOrdersForUser(
     .limit(pageSize)
     .offset(offsetFor(page, pageSize));
 
-  return { rows, total, page, pageSize };
+  /* What each one owes now — the figure the driver will ask for — rather than
+     only what it was placed for. See `shared/commerce/collection.ts`. */
+  const owed = await stillOwedFor(db, rows);
+  return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null })), total, page, pageSize };
 }
 
 /** One order with its lines, for the shopper who placed it. */
@@ -752,7 +761,8 @@ export async function getOrderForUser(userId: number, reference: string) {
   if (!order) return null;
 
   const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
-  return { order, lines };
+  const owed = (await stillOwedFor(db, [order])).get(order.id) ?? null;
+  return { order, lines, owed };
 }
 
 /**
@@ -811,6 +821,7 @@ export async function listOrdersFor(
       paymentMethod: orders.paymentMethod,
       placedAt: orders.placedAt,
       grandTotal: orders.grandTotal,
+      deliveryBreakdown: orders.deliveryBreakdown,
     })
     .from(orders)
     .where(mine)
@@ -821,9 +832,13 @@ export async function listOrdersFor(
   if (rows.length === 0) return { rows: [], total, page, pageSize };
 
   const lines = await db
-    .select({ orderId: orderItems.orderId, vendorId: orderItems.vendorId, lineTotal: orderItems.lineTotal })
+    .select({ orderId: orderItems.orderId, vendorId: orderItems.vendorId, lineTotal: orderItems.lineTotal, fulfilment: orderItems.fulfilment })
     .from(orderItems)
     .where(inArray(orderItems.orderId, rows.map(row => row.id)));
+  /* What is still coming, not what was first ordered — the same figure the
+     shopper and the driver are shown, so the desk does not quote a cancelled
+     sofa back at whoever is reading it. */
+  const owed = actor.kind === "vendor" ? null : await stillOwedFor(db, rows);
 
   return {
     rows: rows.map(row => {
@@ -837,8 +852,8 @@ export async function listOrdersFor(
         vendorCount: new Set(own.map(line => line.vendorId)).size,
         orderTotal:
           actor.kind === "vendor"
-            ? addMoney(...own.filter(line => line.vendorId === actor.vendorId).map(line => line.lineTotal))
-            : row.grandTotal,
+            ? addMoney(...own.filter(line => line.vendorId === actor.vendorId && isKept(line.fulfilment)).map(line => line.lineTotal))
+            : owed?.get(row.id)?.owed ?? row.grandTotal,
       };
     }),
     total,
@@ -942,6 +957,14 @@ export async function getOrderFor(actor: Actor, orderId: number) {
   return { order, lines: withAddons, slices: null, scope: "admin" as const };
 }
 
+/** Why a line could not be moved, as a message key the page translates. */
+export class FulfilmentRefused extends Error {
+  constructor(public readonly reason: "orders.badMove" | "orders.alreadySettled" | "orders.lineMoved" | "orders.noStockToRestore") {
+    super(reason);
+    this.name = "FulfilmentRefused";
+  }
+}
+
 /**
  * Move one line through the warehouse.
  *
@@ -949,6 +972,27 @@ export async function getOrderFor(actor: Actor, orderId: number) {
  * scoped so a vendor can only move their own: the check is against the line's
  * own vendor, so naming somebody else's line id is a refusal rather than a
  * write.
+ *
+ * ## Three things it did not do, all found by cancelling one line of a real order
+ *
+ * **It did not enforce `nextStates`.** The rule existed and only the page that
+ * draws the buttons asked it, so the API moved a returned line back to
+ * "delivered", or a cancelled one straight to "shipped" past re-taking its
+ * stock. A hidden button is a courtesy, never a control.
+ *
+ * **Cancelling did not put the stock back.** The unit was taken at checkout and
+ * kept, so every cancelled line was a unit the shelf lost for good. It goes back
+ * to the pool it came from now — the pre-order allowance for a pre-ordered line —
+ * and restoring a cancelled line takes it again under the same `>=` predicate the
+ * checkout uses, so a line cannot be restored on stock that has since sold.
+ *
+ * **It could cancel a line whose money had already been collected**, which is a
+ * refund wearing the wrong name. With the cash in, a cancelled line now owes the
+ * shopper money that nothing records, so both cancelling and restoring are
+ * refused once payment is collected; refunding the order is the act for that.
+ *
+ * And the write carries its predicate, the way the stock take does: two people
+ * moving one line cannot both be told they were the one who moved it.
  */
 export async function setLineFulfilment(
   actor: Actor,
@@ -963,6 +1007,28 @@ export async function setLineFulfilment(
 
   assertCan(actor, "stock.adjust", line.vendorId ?? undefined);
 
+  if (line.fulfilment === fulfilment) return line;
+  if (!nextStates(line.fulfilment).includes(fulfilment)) throw new FulfilmentRefused("orders.badMove");
+
+  const cancelling = fulfilment === "cancelled";
+  const restoring = line.fulfilment === "cancelled";
+  const pool: Pool = line.preordered ? "preorder" : "stock";
+
+  if (cancelling || restoring) {
+    const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, line.orderId)).limit(1);
+    if (order && order.status !== "pending_payment") throw new FulfilmentRefused("orders.alreadySettled");
+  }
+
+  /* Restoring takes the units back first, under the checkout's own predicate,
+     and from the pool the line was sold from — a pre-ordered line restored onto
+     ordinary stock would invent a promise nobody made. */
+  if (restoring && line.variantId !== null) {
+    const taken = pool === "stock"
+      ? await takeStock(db, line.variantId, line.quantity)
+      : await takePreorder(db, line.variantId, line.quantity);
+    if (!taken) throw new FulfilmentRefused("orders.noStockToRestore");
+  }
+
   /*
    * `delivered_at` is stamped here and nowhere else, because it is what the
    * return window and review eligibility are both measured from — a line that
@@ -974,7 +1040,18 @@ export async function setLineFulfilment(
    */
   const deliveredAt = fulfilment === "delivered" ? (line.deliveredAt ?? new Date()) : null;
 
-  await db.update(orderItems).set({ fulfilment, deliveredAt }).where(eq(orderItems.id, lineId));
+  const moved = await db
+    .update(orderItems)
+    .set({ fulfilment, deliveredAt })
+    .where(and(eq(orderItems.id, lineId), eq(orderItems.fulfilment, line.fulfilment)))
+    .returning({ id: orderItems.id });
+  if (moved.length === 0) {
+    /* Somebody moved it first. Hand back what restoring took. */
+    if (restoring && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool);
+    throw new FulfilmentRefused("orders.lineMoved");
+  }
+
+  if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool);
   return { ...line, fulfilment, deliveredAt };
 }
 

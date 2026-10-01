@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { rowId } from "../_core/schemas.js";
+import { getCustomerProfile, upsertCustomerProfile } from "../profile.js";
 import {
   countFollowers,
-  getCustomerProfile,
   listFollowedProducts,
   setFollowedProduct,
   listNotificationPreferences,
@@ -10,7 +10,6 @@ import {
   listSavedProductIds,
   setNotificationPreference,
   setSavedProduct,
-  upsertCustomerProfile,
 } from "../db.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { kuwaitDeliveryZones, notificationKinds } from "../../shared/customer.js";
@@ -64,7 +63,9 @@ export const customerRouter = router({
     update: protectedProcedure.input(z.object({
       locale: z.enum(["en", "ar"]).optional(),
       deliveryZoneId: zoneIdSchema.nullable().optional(),
-      cartId: z.string().min(1).nullable().optional(),
+      /* A cart id is 32 characters; `carts.id` holds 64. Uncapped, a long one
+         reached `customer_preferences.cart_id` and failed there as a 500. */
+      cartId: z.string().min(1).max(64).nullable().optional(),
     })).mutation(({ ctx, input }) => upsertCustomerProfile(ctx.user.id, input)),
   }),
   /**
@@ -89,7 +90,7 @@ export const customerRouter = router({
   }),
   saved: router({
     list: protectedProcedure.query(({ ctx }) => listSavedProductIds(ctx.user.id)),
-    set: protectedProcedure.input(z.object({ productId: z.string().min(1), saved: z.boolean() }))
+    set: protectedProcedure.input(z.object({ productId: z.string().min(1).max(191), saved: z.boolean() }))
       .mutation(({ ctx, input }) => setSavedProduct(ctx.user.id, input.productId, input.saved)),
   }),
   notifications: router({

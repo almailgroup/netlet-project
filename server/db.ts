@@ -3,7 +3,6 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import {
   customerNotificationPreferences,
-  customerPreferences,
   followedProducts,
   orderTrackingEvents,
   savedProducts,
@@ -80,26 +79,6 @@ export async function touchLastSignedIn(id: number): Promise<void> {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, id));
-}
-
-export async function getCustomerProfile(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const rows = await db.select().from(customerPreferences).where(eq(customerPreferences.userId, userId)).limit(1);
-  return rows[0];
-}
-
-export async function upsertCustomerProfile(
-  userId: number,
-  patch: { locale?: "en" | "ar"; deliveryZoneId?: string | null; cartId?: string | null }
-) {
-  const db = await getDb();
-  if (!db) return undefined;
-  await db
-    .insert(customerPreferences)
-    .values({ userId, ...patch })
-    .onConflictDoUpdate({ target: customerPreferences.userId, set: patch });
-  return getCustomerProfile(userId);
 }
 
 export async function listSavedProductIds(userId: number) {

@@ -113,3 +113,12 @@ describe("across sellers", () => {
     expect(payouts[0].owed).toBe("60.000");
   });
 });
+
+/* The seller is owed nothing for goods that never left, or came back to them. */
+describe("a cancelled or returned line in the week's payout", () => {
+  it("owes the seller nothing for either", () => {
+    const [week] = weeksFor([line(), line({ fulfilment: "cancelled" }), line({ fulfilment: "returned" })]);
+    expect(week.owed).toBe(line().vendorNet);
+    expect(week.lines).toBe(2);
+  });
+});

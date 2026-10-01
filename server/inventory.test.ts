@@ -1142,6 +1142,38 @@ describe("sending a member a password reset", () => {
   });
 });
 
+describe("two products with the same title at the same moment", () => {
+  /*
+   * `uniqueHandle` reads what is free and the insert follows, so creates racing
+   * on one title all read the same handle as free and all but one hit the
+   * unique index — a 500 for something nobody did wrong. A fuzz found it by
+   * creating products in parallel; two sellers listing "iPhone 15 case" in the
+   * same second is the version a shop meets.
+   */
+  it("gives each its own handle instead of refusing all but one", async () => {
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, () => inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Racing Title" })),
+    );
+    const refused = results.filter(r => r.status === "rejected").map(r => String((r as PromiseRejectedResult).reason));
+    expect(refused).toEqual([]);
+
+    const handles = results.map(r => (r as PromiseFulfilledResult<{ handle: string }>).value.handle);
+    expect(new Set(handles).size).toBe(6);
+    expect(handles.every(handle => handle.startsWith("racing-title"))).toBe(true);
+  });
+
+  it("lets a spreadsheet import and a single create race for one handle", async () => {
+    const [bulk, single] = await Promise.allSettled([
+      inv.bulkCreateProducts(adminActor(), {
+        vendorId: ids.acme,
+        rows: [{ title: "Raced Import", sku: null, price: "1.000", compareAtPrice: null, stock: 1, category: null, description: "", imageUrl: null }],
+      }),
+      inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Raced Import" }),
+    ]);
+    expect([bulk.status, single.status]).toEqual(["fulfilled", "fulfilled"]);
+  });
+});
+
 describe("editing a store's details", () => {
   it("saves what changed and leaves the rest alone", async () => {
     const { vendor } = await inv.createVendorWithOwner(adminActor(), {
@@ -1163,6 +1195,100 @@ describe("editing a store's details", () => {
     await expect(
       inv.updateVendorProfile(ownerActor(), ids.acme, { payoutIban: "KW81CBKU0000000000001234560101" }),
     ).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  /*
+   * Every detail the router accepts has to reach its column, through both
+   * writers. Seven did not — the delivery fee and its threshold, the shipping
+   * band, the carrier, the platform licence, cash on delivery and its ceiling —
+   * and creating a store dropped the discount permit as well. Each was in the
+   * schema, on the form and in the table; the save said yes and wrote nothing,
+   * so every seller delivered free. The test beside this one only ever set
+   * `addressLine`, which was wired, so it could not have noticed.
+   *
+   * So this one is driven by the router's own schema rather than by a list
+   * written here: a detail added to `storeDetails` and not to
+   * `storeDetailColumns` has no sample, and fails by name. The samples are
+   * parsed through that same schema first, so what reaches the data layer is
+   * exactly what the API would have sent.
+   */
+  const SAMPLES: Record<string, { input: unknown; stored: unknown }> = {
+    nameAr: { input: "  متجر  ", stored: "متجر" },
+    contactEmail: { input: "Shop@Example.COM", stored: "shop@example.com" },
+    contactPhone: { input: "55001122", stored: "55001122" },
+    description: { input: " A store. ", stored: "A store." },
+    descriptionAr: { input: "متجر", stored: "متجر" },
+    logoUrl: { input: "https://example.com/logo.png", stored: "https://example.com/logo.png" },
+    governorate: { input: "hawalli", stored: "hawalli" },
+    addressLine: { input: "Block 4", stored: "Block 4" },
+    licenceNumber: { input: "CR-1234", stored: "CR-1234" },
+    payoutIban: { input: "kw81 cbku 0000 0000 0000 1234 5601 01", stored: "KW81CBKU0000000000001234560101" },
+    discountLicenceNumber: { input: "MOC-2026-1", stored: "MOC-2026-1" },
+    discountLicenceExpiresAt: { input: "2026-12-31T00:00:00.000Z", stored: "2026-12-31T00:00:00.000Z" },
+    deliveryFlat: { input: "2.000", stored: "2.000" },
+    deliveryFreeOver: { input: "50.000", stored: "50.000" },
+    deliverySpeed: { input: "next_day", stored: "next_day" },
+    deliveryProvider: { input: " Aramex ", stored: "Aramex" },
+    underPlatformLicence: { input: true, stored: true },
+    acceptsCod: { input: false, stored: false },
+    codCeiling: { input: "100.000", stored: "100.000" },
+  };
+
+  async function everyDetail() {
+    const { z } = await import("zod");
+    const { storeDetails } = await import("./routers/inventory");
+    const keys = Object.keys(storeDetails);
+    const missing = keys.filter(key => !(key in SAMPLES));
+    expect(missing, "accepted by the router with no sample here — wire it into storeDetailColumns, then add it").toEqual([]);
+    const patch = z.object(storeDetails).parse(Object.fromEntries(keys.map(key => [key, SAMPLES[key].input])));
+    return { keys, patch };
+  }
+  const columnValue = (value: unknown) => (value instanceof Date ? value.toISOString() : value);
+
+  it("writes every detail the router accepts when a store is edited", async () => {
+    const { keys, patch } = await everyDetail();
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), { name: "Every Field", slug: "every-field-edit" });
+
+    const updated = await inv.updateVendorProfile(adminActor(), vendor.id, patch) as Record<string, unknown>;
+    const [stored] = await db.select().from(vendors).where(eq(vendors.id, vendor.id));
+    for (const key of keys) {
+      expect([key, columnValue((stored as Record<string, unknown>)[key])]).toEqual([key, SAMPLES[key].stored]);
+      expect([key, columnValue(updated[key])]).toEqual([key, SAMPLES[key].stored]);
+    }
+  });
+
+  it("writes every detail the router accepts when a store is opened", async () => {
+    const { keys, patch } = await everyDetail();
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), { name: "Every Field", slug: "every-field-open", ...patch });
+
+    const [stored] = await db.select().from(vendors).where(eq(vendors.id, vendor.id));
+    for (const key of keys) {
+      expect([key, columnValue((stored as Record<string, unknown>)[key])]).toEqual([key, SAMPLES[key].stored]);
+    }
+  });
+
+  /* A blank clears a money field rather than reaching a numeric column as "",
+     which Postgres refuses — the 500 a cleared delivery fee would otherwise be. */
+  it("clears a delivery fee with a blank, and leaves alone what was not mentioned", async () => {
+    const { z } = await import("zod");
+    const { storeDetails } = await import("./routers/inventory");
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), {
+      name: "Clearable", slug: "clearable", deliveryFlat: "3.000", deliveryProvider: "Aramex",
+    });
+
+    const blank = z.object(storeDetails).parse({ deliveryFlat: "" });
+    const updated = await inv.updateVendorProfile(adminActor(), vendor.id, blank);
+    expect(updated.deliveryFlat).toBeNull();
+    expect(updated.deliveryProvider).toBe("Aramex");
+  });
+
+  /* Cash stays on for a store opened without a word about it: the column's own
+     default, which an explicit `null` written by the old insert would have
+     overridden had the field ever been wired that way. */
+  it("leaves cash on delivery on for a store opened without saying", async () => {
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), { name: "Defaults", slug: "defaults" });
+    const [stored] = await db.select().from(vendors).where(eq(vendors.id, vendor.id));
+    expect(stored.acceptsCod).toBe(true);
   });
 });
 

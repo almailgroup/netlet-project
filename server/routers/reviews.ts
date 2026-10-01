@@ -15,7 +15,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { rowId } from "../_core/schemas.js";
+import { rowId, rowIdText } from "../_core/schemas.js";
 import {
   deleteReview,
   editReview,
@@ -53,16 +53,19 @@ export const reviewsRouter = router({
   /** Every published review of one product, plus the summary over all of them. */
   forProduct: publicProcedure
     .input(z.object({
-      productId: z.string().min(1).max(191),
+      productId: z.string().max(191),
       limit: z.number().int().min(1).max(100).optional(),
       offset: z.number().int().min(0).optional(),
     }))
     .query(({ input }) => {
-      const id = Number.parseInt(input.productId, 10);
       // A handle rather than an id is not an error, it is simply no reviews —
       // the storefront's product id is a string and nothing guarantees it is
-      // numeric on a demo build.
-      if (!Number.isInteger(id)) return { items: [], summary: null, total: 0 };
+      // numeric on a demo build. Neither is an id no integer column can hold:
+      // `parseInt` reads "99999999999" happily and Postgres then refuses it
+      // with a 500, so the row-id shape decides rather than `parseInt` alone.
+      const parsed = rowIdText.safeParse(input.productId);
+      if (!parsed.success) return { items: [], summary: null, total: 0 };
+      const id = Number(parsed.data);
       return reviewsForProduct(id, { limit: input.limit, offset: input.offset });
     }),
 

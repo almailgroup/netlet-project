@@ -159,7 +159,7 @@ const vendorScope = z.object({ vendorId: rowId.optional() });
 const blankOr = <T extends z.ZodTypeAny>(schema: T) =>
   z.union([schema, z.literal("")]).nullish();
 
-const storeDetails = {
+export const storeDetails = {
   nameAr: z.string().trim().max(255).nullish(),
   contactEmail: blankOr(z.string().trim().email().max(320)),
   contactPhone: blankOr(z.string().trim().refine(isValidKuwaitPhone, "admin.invalidPhone")),
@@ -232,7 +232,7 @@ export const inventoryRouter = router({
   /** The storefront's reads. No actor: only ever published, approved products. */
   storefront: router({
     list: publicProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(200).optional(), categoryId: z.number().int().optional() }).optional())
+      .input(z.object({ limit: z.number().int().min(1).max(200).optional(), categoryId: rowId.optional() }).optional())
       .query(({ input }) => publishedCatalog(input ?? {})),
     byHandle: publicProcedure
       .input(z.object({ handle: z.string().min(1).max(191) }))

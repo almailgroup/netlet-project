@@ -19,7 +19,7 @@
  * a fourth thing to keep in step with those lines. The one fact the grouping
  * cannot derive — which company was asked to carry it — lives on the line.
  */
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray } from "drizzle-orm";
 import {
   courierMembers,
   couriers,
@@ -36,6 +36,7 @@ import {
 import type { FulfilmentState } from "../shared/commerce/fulfilment.js";
 import { assertCan, readableCouriers, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
+import { stillOwedFor } from "./owed.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -187,6 +188,11 @@ export type BoardParcel = Parcel & {
    * The *order's* figure and not this parcel's, deliberately: cash on delivery
    * is one payment however many boxes it arrives in, and a driver handed a
    * per-parcel share would ask for a number the shopper has never seen.
+   *
+   * **And what it owes now, not what it was placed for.** This read the frozen
+   * grand total, so a seller cancelling the sofa out of a basket left the driver
+   * told to collect KWD 267.400 for cushions and olive oil. It is
+   * `stillOwedFor` now — the same figure the shopper's own order page shows.
    */
   orderTotal: string;
   /** Who is carrying it, by name, so a board reads without a second lookup. */
@@ -241,6 +247,7 @@ export async function loadBoard(
       paymentMethod: orders.paymentMethod,
       paymentCollectedAt: orders.paymentCollectedAt,
       orderTotal: orders.grandTotal,
+      deliveryBreakdown: orders.deliveryBreakdown,
       contactName: orders.contactName,
       contactPhone: orders.contactPhone,
       governorate: orders.deliveryZoneId,
@@ -280,6 +287,10 @@ export async function loadBoard(
     (await db.select({ id: couriers.id, name: couriers.name }).from(couriers)).map(row => [row.id, row.name]),
   );
 
+  const owed = await stillOwedFor(db, window.map(order => ({
+    id: order.id, grandTotal: order.orderTotal, deliveryBreakdown: order.deliveryBreakdown,
+  })));
+
   const byOrder = new Map<number, ParcelLine[]>();
   for (const line of lines) {
     const held = byOrder.get(line.orderId) ?? [];
@@ -304,7 +315,7 @@ export async function loadBoard(
         placedAt: order.placedAt,
         paymentMethod: order.paymentMethod,
         paymentCollectedAt: order.paymentCollectedAt,
-        orderTotal: order.orderTotal,
+        orderTotal: owed.get(order.id)?.owed ?? order.orderTotal,
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
         orderAddress: {
           contactName: order.contactName,
@@ -424,10 +435,20 @@ export async function moveParcel(
   if (!allowed.includes(to)) throw new DispatchError("dispatch.badMove");
 
   const deliveredAt = to === "delivered" ? new Date() : null;
+  /*
+   * Never over a line that left the parcel in the meantime. The parcel was read
+   * above and the write follows, so a seller cancelling the sofa between the two
+   * would have had it marked delivered — a cancelled line, unpaid for and
+   * restocked, reading as handed over. The predicate is in the write for the
+   * reason the stock take's is.
+   */
   await db
     .update(orderItems)
     .set({ fulfilment: to, deliveredAt })
-    .where(inArray(orderItems.id, lines.map(line => line.lineId)));
+    .where(and(
+      inArray(orderItems.id, lines.map(line => line.lineId)),
+      notInArray(orderItems.fulfilment, ["cancelled", "returned"]),
+    ));
 }
 
 /**

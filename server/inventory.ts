@@ -9,6 +9,7 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
+import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   categories,
@@ -366,6 +367,50 @@ async function uniqueHandle(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, 
   }
 }
 
+/** How many times a write is retried after somebody else took its handle. */
+const HANDLE_ATTEMPTS = 8;
+
+/**
+ * The seed a handle is made from on a given attempt.
+ *
+ * The title itself for the first two, so an ordinary collision still gives the
+ * readable `brass-lamp-2`. After that a short random tail is added, because the
+ * losers of a race all re-read the *same* next free handle and race for it again:
+ * six identical titles at once had only one winner per round and the sixth ran
+ * out of retries, which a test measured rather than a reading of the code. The
+ * tail breaks the symmetry, so every racer makes progress.
+ */
+function handleSeed(title: string, attempt: number): string {
+  if (attempt <= 2) return title;
+  const tail = Array.from(randomBytes(3), byte => (byte % 36).toString(36)).join("");
+  return `${title} ${tail}`;
+}
+
+/**
+ * Runs a write that takes a product handle, and runs it again if another write
+ * took that handle first.
+ *
+ * `uniqueHandle` reads what is free and the insert follows, so two sellers
+ * listing "iPhone 15 case" in the same moment both read `iphone-15-case-3` as
+ * free and both insert it. The unique index is right to refuse the second; what
+ * was wrong is that the refusal arrived as a 500 — "duplicate key value violates
+ * unique constraint" — for something nobody did wrong. A fuzz found it by
+ * creating products in parallel. The write is given a fresh read each time, so
+ * the retry sees the row it lost to and takes the next handle along.
+ *
+ * Only the handle's own violation is retried. Any other unique index refusing
+ * is a real conflict and goes out as itself.
+ */
+async function withFreeHandle<T>(write: (attempt: number) => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await write(attempt);
+    } catch (error) {
+      if (attempt >= HANDLE_ATTEMPTS || !violatesUnique(error, "products_handle_unique")) throw error;
+    }
+  }
+}
+
 export async function createProduct(actor: Actor, input: {
   vendorId: number;
   title: string;
@@ -378,17 +423,16 @@ export async function createProduct(actor: Actor, input: {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
-  const handle = await uniqueHandle(db, input.title);
-  const [row] = await db.insert(products).values({
+  const [row] = await withFreeHandle(async attempt => db.insert(products).values({
     vendorId: input.vendorId,
     categoryId: input.categoryId ?? null,
-    handle,
+    handle: await uniqueHandle(db, handleSeed(input.title, attempt)),
     title: input.title,
     titleAr: input.titleAr ?? null,
     description: input.description ?? null,
     tags: input.tags ?? [],
     status: "draft",
-  }).returning();
+  }).returning());
 
   // A product with no variant cannot be priced or bought, so it starts with
   // one rather than being a shape the rest of the system has to tolerate.
@@ -442,91 +486,99 @@ export async function bulkCreateProducts(actor: Actor, input: {
     known.find(row => row.name.toLowerCase() === (name ?? "").toLowerCase())?.id ?? null;
 
   /*
-   * Handles are taken one at a time and remembered, because `uniqueHandle`
-   * reads what is committed — and inside a transaction the rows above are not
-   * yet visible to it, so a file with two "Brass Lamp"s would ask for the same
-   * handle twice and fail the unique index at the very end.
+   * The whole plan is retried, not just the insert that lost: a handle taken
+   * by a concurrent create aborts the transaction, and every handle after it
+   * was planned against a shelf that has since changed. `withFreeHandle` reads
+   * it again and replans.
    */
-  const taken = new Set<string>();
-  /*
-   * A handle is ASCII, so a title with none of it — which is half the catalog
-   * on a Kuwaiti shop — reduces to the fallback `product`, and importing ten
-   * Arabic-titled rows gives `product`, `product-2`, `product-3`. The seller's
-   * own code is the better seed: it is Latin by convention, it is unique in
-   * the file already, and `imp-buds` is a URL somebody can read.
-   *
-   * Arabic in the URL itself is the other answer and a larger one — every
-   * link, the router and the sitemap would have to agree about percent
-   * encoding — so it is deliberately not attempted here.
-   */
-  const seedFor = (row: { title: string; sku: string | null }) =>
-    /[a-z0-9]/i.test(row.title) || !row.sku ? row.title : row.sku;
+  return withFreeHandle(async attempt => {
+    /*
+     * Handles are taken one at a time and remembered, because `uniqueHandle`
+     * reads what is committed — and inside a transaction the rows above are not
+     * yet visible to it, so a file with two "Brass Lamp"s would ask for the same
+     * handle twice and fail the unique index at the very end.
+     */
+    const taken = new Set<string>();
+    /*
+     * A handle is ASCII, so a title with none of it — which is half the catalog
+     * on a Kuwaiti shop — reduces to the fallback `product`, and importing ten
+     * Arabic-titled rows gives `product`, `product-2`, `product-3`. The seller's
+     * own code is the better seed: it is Latin by convention, it is unique in
+     * the file already, and `imp-buds` is a URL somebody can read.
+     *
+     * Arabic in the URL itself is the other answer and a larger one — every
+     * link, the router and the sitemap would have to agree about percent
+     * encoding — so it is deliberately not attempted here.
+     */
+    const seedFor = (row: { title: string; sku: string | null }) =>
+      /[a-z0-9]/i.test(row.title) || !row.sku ? row.title : row.sku;
 
-  const handleFor = async (title: string) => {
-    const base = await uniqueHandle(db, title);
-    let handle = base;
-    for (let suffix = 2; taken.has(handle); suffix += 1) handle = `${base}-${suffix}`;
-    taken.add(handle);
-    return handle;
-  };
+    const handleFor = async (title: string) => {
+      const base = await uniqueHandle(db, handleSeed(title, attempt));
+      let handle = base;
+      for (let suffix = 2; taken.has(handle); suffix += 1) handle = `${base}-${suffix}`;
+      taken.add(handle);
+      return handle;
+    };
 
-  const planned = [] as { handle: string; row: (typeof input.rows)[number] }[];
-  for (const row of input.rows) planned.push({ handle: await handleFor(seedFor(row)), row });
+    const planned = [] as { handle: string; row: (typeof input.rows)[number] }[];
+    for (const row of input.rows) planned.push({ handle: await handleFor(seedFor(row)), row });
 
-  /*
-   * The same SKU rule the editor applies, at the other door onto the shelf.
-   *
-   * Both the file and the shelf are checked, because a spreadsheet naming one
-   * code twice is as much a mistake as one naming a code already in use — and
-   * the per-product index cannot catch either, since every row here becomes a
-   * new product. Left out, the two doors would disagree: typing a duplicate
-   * into the editor is refused while pasting it in a file is not.
-   *
-   * The whole file is refused rather than the offending rows skipped, which is
-   * what the transaction below already promises: a seller who fixes one cell
-   * and imports again knows what they have, where a partial import leaves them
-   * guessing which rows landed.
-   */
-  const codes = new Set<string>();
-  for (const { row } of planned) {
-    const sku = row.sku?.trim() || null;
-    if (!sku) continue;
-    if (codes.has(sku)) throw new Error("SKU_TAKEN");
-    codes.add(sku);
-    await assertSkuFree(db, input.vendorId, sku);
-  }
-
-  await db.transaction(async tx => {
-    for (const { handle, row } of planned) {
-      const [product] = await tx.insert(products).values({
-        vendorId: input.vendorId,
-        categoryId: idFor(row.category),
-        handle,
-        title: row.title,
-        description: row.description || null,
-        tags: [],
-        status: "draft",
-      }).returning({ id: products.id });
-
-      await tx.insert(productVariants).values({
-        productId: product.id,
-        title: "Default",
-        sku: row.sku,
-        price: row.price,
-        compareAtPrice: row.compareAtPrice,
-        stock: row.stock,
-      });
-
-      /* A picture is optional and a bad URL is ordinary — `Thumb` swaps a
-         failing image for a fallback, which is why one typed into a
-         spreadsheet is worth storing rather than validating away. */
-      if (row.imageUrl) {
-        await tx.insert(productImages).values({ productId: product.id, url: row.imageUrl, position: 0 });
-      }
+    /*
+     * The same SKU rule the editor applies, at the other door onto the shelf.
+     *
+     * Both the file and the shelf are checked, because a spreadsheet naming one
+     * code twice is as much a mistake as one naming a code already in use — and
+     * the per-product index cannot catch either, since every row here becomes a
+     * new product. Left out, the two doors would disagree: typing a duplicate
+     * into the editor is refused while pasting it in a file is not.
+     *
+     * The whole file is refused rather than the offending rows skipped, which is
+     * what the transaction below already promises: a seller who fixes one cell
+     * and imports again knows what they have, where a partial import leaves them
+     * guessing which rows landed.
+     */
+    const codes = new Set<string>();
+    for (const { row } of planned) {
+      const sku = row.sku?.trim() || null;
+      if (!sku) continue;
+      if (codes.has(sku)) throw new Error("SKU_TAKEN");
+      codes.add(sku);
+      await assertSkuFree(db, input.vendorId, sku);
     }
-  });
 
-  return { created: planned.length };
+    await db.transaction(async tx => {
+      for (const { handle, row } of planned) {
+        const [product] = await tx.insert(products).values({
+          vendorId: input.vendorId,
+          categoryId: idFor(row.category),
+          handle,
+          title: row.title,
+          description: row.description || null,
+          tags: [],
+          status: "draft",
+        }).returning({ id: products.id });
+
+        await tx.insert(productVariants).values({
+          productId: product.id,
+          title: "Default",
+          sku: row.sku,
+          price: row.price,
+          compareAtPrice: row.compareAtPrice,
+          stock: row.stock,
+        });
+
+        /* A picture is optional and a bad URL is ordinary — `Thumb` swaps a
+           failing image for a fallback, which is why one typed into a
+           spreadsheet is worth storing rather than validating away. */
+        if (row.imageUrl) {
+          await tx.insert(productImages).values({ productId: product.id, url: row.imageUrl, position: 0 });
+        }
+      }
+    });
+
+    return { created: planned.length };
+  });
 }
 
 export async function updateProduct(actor: Actor, productId: number, patch: {
@@ -1540,23 +1592,13 @@ export async function listCategories() {
 
 /* ----------------------------------------------------- opening a store --- */
 
-export type NewVendorInput = {
+export type NewVendorInput = StoreDetailsPatch & {
   name: string;
-  nameAr?: string | null;
   slug: string;
   status?: "pending" | "approved" | "suspended";
   commissionPercent?: string;
   commissionFixed?: string | null;
   autoPublish?: boolean;
-  contactEmail?: string | null;
-  contactPhone?: string | null;
-  description?: string | null;
-  descriptionAr?: string | null;
-  logoUrl?: string | null;
-  governorate?: string | null;
-  addressLine?: string | null;
-  licenceNumber?: string | null;
-  payoutIban?: string | null;
   /**
    * The login to open with the store.
    *
@@ -1612,20 +1654,14 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
     .values({
       slug,
       name: input.name.trim(),
-      nameAr: input.nameAr?.trim() || null,
       status: input.status ?? "pending",
       commissionPercent: input.commissionPercent ?? "10.00",
       commissionFixed: input.commissionFixed ?? null,
       autoPublish: input.autoPublish ?? false,
-      contactEmail: input.contactEmail?.trim().toLowerCase() || null,
-      contactPhone: input.contactPhone?.trim() || null,
-      description: input.description?.trim() || null,
-      descriptionAr: input.descriptionAr?.trim() || null,
-      logoUrl: input.logoUrl?.trim() || null,
-      governorate: input.governorate?.trim() || null,
-      addressLine: input.addressLine?.trim() || null,
-      licenceNumber: input.licenceNumber?.trim() || null,
-      payoutIban: input.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null,
+      /* Everything else the form can hold — see `storeDetailColumns`. What is
+         absent takes the column's own default, so a store opened without a
+         word about cash still accepts it. */
+      ...storeDetailColumns(input),
     })
     .returning();
 
@@ -1682,12 +1718,12 @@ export async function getVendor(actor: Actor, vendorId: number) {
 }
 
 /**
- * Edits a store's details. Deliberately not commission or status: those are
- * their own audited actions, and folding them into a general "save" would
- * make the audit trail say "updated" where it now says what changed.
+ * Every detail of a store an administrator can set, as the router accepts it.
+ *
+ * One type for both writers — creating a store and editing one — because two
+ * lists of the same fields is how they came to disagree with the schema.
  */
-export async function updateVendorProfile(actor: Actor, vendorId: number, patch: {
-  name?: string;
+export type StoreDetailsPatch = {
   nameAr?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
@@ -1707,6 +1743,64 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   underPlatformLicence?: boolean;
   acceptsCod?: boolean;
   codCeiling?: string | null;
+};
+
+/** Trimmed, with a blank meaning "no value" rather than an empty string. */
+const textOrNull = (value: string | null | undefined) => value?.trim() || null;
+
+/**
+ * The columns a store-details patch writes, and nothing else.
+ *
+ * **This is the only place a store detail becomes a column**, and that is the
+ * fix rather than a tidy-up. Seven fields — the delivery fee and its free-over
+ * threshold, the shipping band, the carrier, selling under NetLet's licence,
+ * whether the store takes cash and its ceiling — were validated by the router,
+ * drawn on the store's page and accepted by the save, and then dropped here,
+ * because each was added to the schema, the form and the table and never to
+ * either writer. The save reported success. Every seller delivered free, cash on
+ * delivery could not be switched off for a store being defrauded, and nothing
+ * looked wrong. Creating a store dropped those seven and the discount permit too.
+ *
+ * An absent key writes nothing, so an edit leaves untouched what it did not
+ * mention; a blank writes null, so a field can be cleared. A blank never reaches
+ * a numeric column as `""`, which Postgres would refuse with a 500.
+ * `inventory.test.ts` drives this from the router's own schema, so a detail
+ * added there and not here fails the build rather than a shop.
+ */
+export function storeDetailColumns(patch: StoreDetailsPatch) {
+  const has = (key: keyof StoreDetailsPatch) => patch[key] !== undefined;
+  return {
+    ...(has("nameAr") ? { nameAr: textOrNull(patch.nameAr) } : {}),
+    ...(has("contactEmail") ? { contactEmail: textOrNull(patch.contactEmail)?.toLowerCase() ?? null } : {}),
+    ...(has("contactPhone") ? { contactPhone: textOrNull(patch.contactPhone) } : {}),
+    ...(has("description") ? { description: textOrNull(patch.description) } : {}),
+    ...(has("descriptionAr") ? { descriptionAr: textOrNull(patch.descriptionAr) } : {}),
+    ...(has("logoUrl") ? { logoUrl: textOrNull(patch.logoUrl) } : {}),
+    ...(has("governorate") ? { governorate: textOrNull(patch.governorate) } : {}),
+    ...(has("addressLine") ? { addressLine: textOrNull(patch.addressLine) } : {}),
+    ...(has("licenceNumber") ? { licenceNumber: textOrNull(patch.licenceNumber) } : {}),
+    ...(has("payoutIban")
+      ? { payoutIban: patch.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null }
+      : {}),
+    ...(has("discountLicenceNumber") ? { discountLicenceNumber: textOrNull(patch.discountLicenceNumber) } : {}),
+    ...(has("discountLicenceExpiresAt") ? { discountLicenceExpiresAt: patch.discountLicenceExpiresAt ?? null } : {}),
+    ...(has("deliveryFlat") ? { deliveryFlat: textOrNull(patch.deliveryFlat) } : {}),
+    ...(has("deliveryFreeOver") ? { deliveryFreeOver: textOrNull(patch.deliveryFreeOver) } : {}),
+    ...(has("deliverySpeed") ? { deliverySpeed: textOrNull(patch.deliverySpeed) } : {}),
+    ...(has("deliveryProvider") ? { deliveryProvider: textOrNull(patch.deliveryProvider) } : {}),
+    ...(has("underPlatformLicence") ? { underPlatformLicence: patch.underPlatformLicence } : {}),
+    ...(has("acceptsCod") ? { acceptsCod: patch.acceptsCod } : {}),
+    ...(has("codCeiling") ? { codCeiling: textOrNull(patch.codCeiling) } : {}),
+  };
+}
+
+/**
+ * Edits a store's details. Deliberately not commission or status: those are
+ * their own audited actions, and folding them into a general "save" would
+ * make the audit trail say "updated" where it now says what changed.
+ */
+export async function updateVendorProfile(actor: Actor, vendorId: number, patch: StoreDetailsPatch & {
+  name?: string;
 }) {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();
@@ -1717,24 +1811,7 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
 
   const next = {
     ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-    ...(patch.nameAr !== undefined ? { nameAr: patch.nameAr?.trim() || null } : {}),
-    ...(patch.contactEmail !== undefined ? { contactEmail: patch.contactEmail?.trim().toLowerCase() || null } : {}),
-    ...(patch.contactPhone !== undefined ? { contactPhone: patch.contactPhone?.trim() || null } : {}),
-    ...(patch.description !== undefined ? { description: patch.description?.trim() || null } : {}),
-    ...(patch.descriptionAr !== undefined ? { descriptionAr: patch.descriptionAr?.trim() || null } : {}),
-    ...(patch.logoUrl !== undefined ? { logoUrl: patch.logoUrl?.trim() || null } : {}),
-    ...(patch.governorate !== undefined ? { governorate: patch.governorate?.trim() || null } : {}),
-    ...(patch.addressLine !== undefined ? { addressLine: patch.addressLine?.trim() || null } : {}),
-    ...(patch.licenceNumber !== undefined ? { licenceNumber: patch.licenceNumber?.trim() || null } : {}),
-    ...(patch.payoutIban !== undefined
-      ? { payoutIban: patch.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null }
-      : {}),
-    ...(patch.discountLicenceNumber !== undefined
-      ? { discountLicenceNumber: patch.discountLicenceNumber?.trim() || null }
-      : {}),
-    ...(patch.discountLicenceExpiresAt !== undefined
-      ? { discountLicenceExpiresAt: patch.discountLicenceExpiresAt ?? null }
-      : {}),
+    ...storeDetailColumns(patch),
   };
   if (Object.keys(next).length === 0) return was;
 

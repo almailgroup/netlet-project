@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { rowId } from "../_core/schemas.js";
 import {
+  FulfilmentRefused,
   getOrderFor,
   getOrderForUser,
   listOrdersFor,
@@ -279,6 +280,11 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
       throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
     }
     if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "orders.lineGone" });
+    /* A move the line's own rules refuse is the caller's to fix, and says why —
+       it used to have nowhere to go but a 500. */
+    if (error instanceof FulfilmentRefused) {
+      throw new TRPCError({ code: error.reason === "orders.lineMoved" ? "CONFLICT" : "BAD_REQUEST", message: error.reason });
+    }
     throw error;
   }
 }

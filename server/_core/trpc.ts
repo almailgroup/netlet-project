@@ -50,7 +50,46 @@ const t = initTRPC.context<TrpcContext>().create({
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
+
+/**
+ * Whether any string anywhere in an input carries a NUL character.
+ *
+ * Keys as well as values, and bounded in depth so a hostile nesting cannot make
+ * the walk itself the problem.
+ */
+export function carriesNul(value: unknown, depth = 0): boolean {
+  if (typeof value === "string") return value.includes("\u0000");
+  if (depth > 32 || value === null || typeof value !== "object") return false;
+  if (Array.isArray(value)) return value.some(item => carriesNul(item, depth + 1));
+  return Object.entries(value).some(([key, item]) => key.includes("\u0000") || carriesNul(item, depth + 1));
+}
+
+/**
+ * Refuses a NUL character before any procedure sees it.
+ *
+ * Postgres `text` cannot hold one, so a NUL in any string — a search box, a
+ * product title, a cart id, a review — went through every zod check this API
+ * has and then failed inside the driver with "invalid byte sequence for
+ * encoding UTF8: 0x00": a 500, and a raw database sentence where a message key
+ * belongs, for something anybody can send by hand. A fuzz of every procedure
+ * found it in twenty-nine of them at once.
+ *
+ * One refusal here rather than a `.refine` on every string field, because the
+ * rule is about the database, not about any one field, and a field added next
+ * month would not have it. Refused rather than stripped: no human types a NUL,
+ * so whatever sent one is not a person whose text should be quietly edited.
+ */
+const refuseNul = t.middleware(async ({ getRawInput, next }) => {
+  if (carriesNul(await getRawInput())) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "error.invalidText" });
+  }
+  return next();
+});
+
+/** Every procedure starts here, so every procedure refuses a NUL. */
+const base = t.procedure.use(refuseNul);
+
+export const publicProcedure = base;
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -67,9 +106,9 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = base.use(requireUser);
 
-export const adminProcedure = t.procedure.use(
+export const adminProcedure = base.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 

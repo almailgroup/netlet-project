@@ -41,10 +41,10 @@ beforeAll(async () => {
     }
   }
 
+  /* The preferences writes used to be stubbed here because they lived in
+     `db.ts`; they are in `profile.ts` now and run against this database. */
   vi.doMock("./db", () => ({
     getDb: async () => db,
-    getCustomerProfile: async () => undefined,
-    upsertCustomerProfile: async () => undefined,
   }));
 
   ({ appRouter } = await import("./routers.js"));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addMoney } from "../money.js";
-import { byMonth, byVendor, summarise, takeRate, type FinanceLine } from "./finance.js";
+import { byMonth, byVendor, lineOutcome, summarise, takeRate, type FinanceLine } from "./finance.js";
 
 const line = (over: Partial<FinanceLine> = {}): FinanceLine => ({
   orderStatus: "paid",
@@ -151,5 +151,46 @@ describe("the take rate", () => {
   it("is null when nothing sold", () => {
     expect(takeRate(summarise([]))).toBeNull();
     expect(takeRate(summarise([line({ orderStatus: "refunded" })]))).toBeNull();
+  });
+});
+
+/*
+ * A line's own fate, not only its order's status.
+ *
+ * An order carries one status for every line in it, so a seller cancelling the
+ * sofa out of a paid basket left it counted as a sale: NetLet booked commission
+ * on it and the report called it revenue. Found by cancelling one line of a real
+ * order and reading the panel.
+ */
+describe("a line that never sold, or came back", () => {
+  it("leaves a cancelled line out of every figure, gross included", () => {
+    const totals = summarise([line(), line({ fulfilment: "cancelled", lineTotal: "240.000", commissionAmount: "36.000", vendorNet: "204.000" })]);
+    expect(totals.gross).toBe("100.000");
+    expect(totals.commission).toBe("10.000");
+    expect(totals.vendorNet).toBe("90.000");
+    expect(totals.paidLines).toBe(1);
+  });
+
+  it("counts a returned line as charged and given back, with no cut and nothing owed", () => {
+    const totals = summarise([line(), line({ fulfilment: "returned" })]);
+    expect(totals.gross).toBe("200.000");
+    expect(totals.refunded).toBe("100.000");
+    expect(totals.commission).toBe("10.000");
+    expect(totals.vendorNet).toBe("90.000");
+  });
+
+  /* The identity the report is tested on still holds with both in the mix. */
+  it("keeps commission + vendorNet === net", () => {
+    const totals = summarise([line(), line({ fulfilment: "cancelled" }), line({ fulfilment: "returned" }), line({ orderStatus: "refunded" })]);
+    expect(addMoney(totals.commission, totals.vendorNet)).toBe(totals.net);
+  });
+
+  it("classifies by the order first and the line second", () => {
+    expect(lineOutcome("pending_payment", "delivered")).toBe("uncounted");
+    expect(lineOutcome("paid", "cancelled")).toBe("void");
+    expect(lineOutcome("refunded", "cancelled")).toBe("void");
+    expect(lineOutcome("paid", "returned")).toBe("refunded");
+    expect(lineOutcome("paid", "delivered")).toBe("sold");
+    expect(lineOutcome("paid")).toBe("sold");
   });
 });

@@ -9,7 +9,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -1136,5 +1136,156 @@ describe("a discount code's ceiling", () => {
     const redemptions = await db.select().from(discountRedemptions);
     expect(redemptions).toHaveLength(1);
     expect(redemptions[0].userId).toBe(ids.shopper);
+  });
+});
+
+/*
+ * A seller cancels a line they cannot fulfil.
+ *
+ * Found by doing exactly that on a real order: the unit was never put back,
+ * nothing stopped the line being walked anywhere afterwards, and the cash that
+ * had already been collected for it was left owing nobody knew what.
+ */
+describe("cancelling and restoring a line", () => {
+  async function oneLampLine(quantity = 2) {
+    const placed = await ordersModule.placeOrder(await basket([{ variantId: ids.lampVariant, quantity }]), DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    return { placed, line };
+  }
+
+  it("puts the cancelled units back on the shelf", async () => {
+    const { line } = await oneLampLine(2);
+    expect(await stockOf(ids.lampVariant)).toBe(8);
+
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+    expect(await stockOf(ids.lampVariant)).toBe(10);
+  });
+
+  /* Back to the pool it came from: a pre-ordered unit returned as shelf stock
+     would invent inventory out of a promise. */
+  it("returns a pre-ordered line to the pre-order allowance, not the shelf", async () => {
+    const placed = await ordersModule.placeOrder(await basket([{ variantId: ids.pressVariant, quantity: 1 }]), DETAILS);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(await preorderStockOf(ids.pressVariant)).toBe(2);
+
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+    expect(await stockOf(ids.pressVariant)).toBe(0);
+  });
+
+  it("takes the units again when a cancelled line is restored", async () => {
+    const { line } = await oneLampLine(2);
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "pending");
+    expect(await stockOf(ids.lampVariant)).toBe(8);
+  });
+
+  /* The checkout's own predicate: there is no restoring a line onto stock that
+     has since been sold to somebody else. */
+  it("refuses to restore a line when its stock has since sold", async () => {
+    const { line } = await oneLampLine(2);
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+    await db.update(productVariants).set({ stock: 1 }).where(eq(productVariants.id, ids.lampVariant));
+
+    await expect(ordersModule.setLineFulfilment(acmeActor(), line.id, "pending"))
+      .rejects.toMatchObject({ reason: "orders.noStockToRestore" });
+    expect(await stockOf(ids.lampVariant)).toBe(1);
+    const [after] = await db.select().from(orderItems).where(eq(orderItems.id, line.id));
+    expect(after.fulfilment).toBe("cancelled");
+  });
+
+  /* With the cash in, a cancelled line is a refund wearing the wrong name. */
+  it("refuses to cancel a line once the order's cash has been collected", async () => {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper, paymentMethod: "cod" },
+    );
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(await ordersModule.recordCashCollected(acmeActor(), placed.order.id)).toBe(true);
+
+    await expect(ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled"))
+      .rejects.toMatchObject({ reason: "orders.alreadySettled" });
+    expect(await stockOf(ids.lampVariant)).toBe(9);
+  });
+
+  /* `nextStates` was only ever asked by the page drawing the buttons. A seller
+     marking a line returned is the plainest case: a return is the shopper's act,
+     and the API took it from the seller anyway. */
+  it("refuses a move its own rules forbid, through the data layer and not only the page", async () => {
+    const { line } = await oneLampLine(1);
+    await ordersModule.setLineFulfilment(acmeActor(), line.id, "delivered");
+
+    await expect(ordersModule.setLineFulfilment(acmeActor(), line.id, "returned"))
+      .rejects.toMatchObject({ reason: "orders.badMove" });
+
+    const { line: cancelled } = await oneLampLine(1);
+    await ordersModule.setLineFulfilment(acmeActor(), cancelled.id, "cancelled");
+    await expect(ordersModule.setLineFulfilment(acmeActor(), cancelled.id, "shipped"))
+      .rejects.toMatchObject({ reason: "orders.badMove" });
+  });
+
+  /* The shopper's own order says what the driver will ask for. */
+  it("tells the shopper what the order owes once a line is cancelled", async () => {
+    const cartId = await basket(
+      [{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }],
+      ids.shopper,
+    );
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const kettle = lines.find(row => row.vendorId === ids.other)!;
+    await ordersModule.setLineFulfilment(otherActor(), kettle.id, "cancelled");
+
+    const mine = await ordersModule.getOrderForUser(ids.shopper, placed.order.reference);
+    expect(mine?.owed?.reduced).toBe(true);
+    expect(mine?.owed?.droppedGoods).toBe(kettle.lineTotal);
+    const listed = await ordersModule.listOrdersForUser(ids.shopper);
+    expect(listed.rows.find(row => row.id === placed.order.id)?.owed?.owed).toBe(mine?.owed?.owed);
+  });
+
+  /* A line's total already carries its fittings. The first draft took them off
+     again, so cancelling a lamp with three fittings under-charged by 15.000. */
+  it("takes a cancelled line's add-ons off once, not twice", async () => {
+    const [addon] = await db.insert(productAddons).values({
+      productId: ids.lamp, kind: "installation", label: "Fitting at your address", price: "5.000",
+    }).returning();
+    const cartId = await basket(
+      [{ variantId: ids.lampVariant, quantity: 3 }, { variantId: ids.kettleVariant, quantity: 1 }],
+      ids.shopper,
+    );
+    const [lampInBag] = await db.select().from(cartItems)
+      .where(and(eq(cartItems.cartId, cartId), eq(cartItems.variantId, ids.lampVariant)));
+    await db.insert(cartItemAddons).values({ cartItemId: lampInBag.id, addonId: addon.id });
+
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const lamp = lines.find(row => row.vendorId === ids.acme)!;
+    expect(lamp.lineTotal).toBe("88.125");
+    await ordersModule.setLineFulfilment(acmeActor(), lamp.id, "cancelled");
+
+    const mine = await ordersModule.getOrderForUser(ids.shopper, placed.order.reference);
+    expect(mine?.owed?.droppedGoods).toBe("88.125");
+    const acmeFee = (placed.order.deliveryBreakdown as { vendorId: number; fee: string }[] | null)
+      ?.filter(charge => charge.vendorId === ids.acme)
+      .reduce((sum, charge) => addMoney(sum, charge.fee), "0.000") ?? "0.000";
+    expect(mine?.owed?.droppedDelivery).toBe(acmeFee);
+    expect(addMoney(mine!.owed!.owed, "88.125", acmeFee)).toBe(placed.order.grandTotal);
+  });
+
+  /* The order desk is the third place the figure is read. */
+  it("shows the seller's desk what is still coming, not what was first ordered", async () => {
+    const cartId = await basket(
+      [{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }],
+      ids.shopper,
+    );
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const kettle = lines.find(row => row.vendorId === ids.other)!;
+    await ordersModule.setLineFulfilment(otherActor(), kettle.id, "cancelled");
+
+    const mine = await ordersModule.getOrderForUser(ids.shopper, placed.order.reference);
+    const asAdmin = (await ordersModule.listOrdersFor(adminActor())).rows.find(row => row.id === placed.order.id);
+    expect(asAdmin?.orderTotal).toBe(mine?.owed?.owed);
+    const asOther = (await ordersModule.listOrdersFor(otherActor())).rows.find(row => row.id === placed.order.id);
+    expect(asOther?.orderTotal).toBe("0.000");
   });
 });

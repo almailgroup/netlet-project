@@ -53,6 +53,7 @@
  * zero is how a payout run quietly overpays.
  */
 import { fromFils, toFils } from "../money.js";
+import { lineOutcome } from "./finance.js";
 
 /** One frozen line, as the payout report reads it. */
 export type PayoutLine = {
@@ -63,6 +64,8 @@ export type PayoutLine = {
   lineTotal: string;
   commissionAmount: string;
   vendorNet: string;
+  /** Where the line itself got to — a cancelled one never sold. */
+  fulfilment?: string | null;
 };
 
 export type PayoutWeek = {
@@ -115,7 +118,10 @@ export function weeksFor(lines: PayoutLine[]): PayoutWeek[] {
   const byWeek = new Map<string, { gross: bigint; refunded: bigint; commission: bigint; owed: bigint; lines: number }>();
 
   for (const line of lines) {
-    if (!COUNTED.includes(line.orderStatus)) continue;
+    /* `lineOutcome` is the finance report's own rule, so the two cannot count
+       different lines as money. */
+    const outcome = lineOutcome(line.orderStatus, line.fulfilment);
+    if (outcome === "uncounted" || outcome === "void") continue;
     const at = asDate(line.placedAt);
     if (!at) continue;
 
@@ -125,7 +131,7 @@ export function weeksFor(lines: PayoutLine[]): PayoutWeek[] {
 
     week.gross += total;
     week.lines += 1;
-    if (line.orderStatus === "refunded") {
+    if (outcome === "refunded") {
       /* Counted in the week it was *sold* in, and counted as nothing owed.
          The money went back, so the seller earned nothing on it — and
          subtracting `vendorNet` here took off a sale that was never added,

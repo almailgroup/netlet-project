@@ -138,3 +138,25 @@ describe("changing your password", () => {
     expect(signedIn.id).toBe(user.id);
   });
 });
+
+describe("your stored preferences", () => {
+  /*
+   * An update with nothing in it is nothing, not a 500. `onConflictDoUpdate`
+   * with an empty `set` is refused when the statement is built, so `{}` failed
+   * inside Drizzle — found by a fuzz, and only testable here once the write
+   * moved out of `db.ts`.
+   */
+  it("treats an empty update as no change", async () => {
+    const user = await freshUser("prefs-empty@example.com");
+    const me = appRouter.createCaller(contextFor(user));
+
+    await expect(me.customer.profile.update({})).resolves.toBeUndefined();
+
+    await me.customer.profile.update({ locale: "ar" });
+    // Every key present and undefined is the same nothing, and leaves the
+    // stored choice alone.
+    const after = await me.customer.profile.update({ locale: undefined, cartId: undefined });
+    expect(after?.locale).toBe("ar");
+    expect((await me.customer.profile.get()).locale).toBe("ar");
+  });
+});

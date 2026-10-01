@@ -9,7 +9,7 @@
  * an in-process Postgres and exercise the real SQL.
  */
 import { eq } from "drizzle-orm";
-import { users, type User } from "../drizzle/schema.js";
+import { customerPreferences, users, type User } from "../drizzle/schema.js";
 import { getDb, isDuplicateKeyError } from "./db.js";
 
 export async function loadUser(id: number): Promise<User | undefined> {
@@ -64,4 +64,37 @@ export async function updateUserPasswordHash(id: number, passwordHash: string): 
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   await db.update(users).set({ passwordHash }).where(eq(users.id, id));
+}
+
+/** The shopper's stored preferences, or undefined when they have never set one. */
+export async function getCustomerProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(customerPreferences).where(eq(customerPreferences.userId, userId)).limit(1);
+  return rows[0];
+}
+
+/**
+ * Remember a shopper's language, delivery area or bag.
+ *
+ * **An update with nothing in it writes nothing.** `onConflictDoUpdate` with an
+ * empty `set` is refused when the statement is *built*, not when a conflict
+ * happens — the trap the wishlist's "add to list" fell into first — so `{}`, or
+ * a patch whose every key is `undefined`, was a 500 from Drizzle rather than a
+ * no-op. It moved here from `db.ts` when a fuzz found it, so a test could reach
+ * it: nothing inside `db.ts` can be pointed at a test database.
+ */
+export async function upsertCustomerProfile(
+  userId: number,
+  patch: { locale?: "en" | "ar"; deliveryZoneId?: string | null; cartId?: string | null },
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  if (Object.keys(set).length === 0) return getCustomerProfile(userId);
+  await db
+    .insert(customerPreferences)
+    .values({ userId, ...set })
+    .onConflictDoUpdate({ target: customerPreferences.userId, set });
+  return getCustomerProfile(userId);
 }

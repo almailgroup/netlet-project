@@ -62,6 +62,8 @@ export async function financeLines(
       lineTotal: orderItems.lineTotal,
       commissionAmount: orderItems.commissionAmount,
       vendorNet: orderItems.vendorNet,
+      /* A line the seller cancelled never sold — see `lineOutcome`. */
+      fulfilment: orderItems.fulfilment,
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))

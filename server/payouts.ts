@@ -13,6 +13,7 @@ import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { orderItems, orders, vendors } from "../drizzle/schema.js";
 import { payoutsByVendor, totalOwed, type PayoutLine } from "../shared/commerce/payouts.js";
 import { payoutDue } from "../shared/commerce/payoutSchedule.js";
+import { lineOutcome } from "../shared/commerce/finance.js";
 import { fromFils, toFils } from "../shared/money.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
@@ -48,6 +49,7 @@ export async function payoutReport(
       lineTotal: orderItems.lineTotal,
       commissionAmount: orderItems.commissionAmount,
       vendorNet: orderItems.vendorNet,
+      fulfilment: orderItems.fulfilment,
       /* What decides when this money is actually due (3.3.21). */
       paymentMethod: orders.paymentMethod,
       paymentCollectedAt: orders.paymentCollectedAt,
@@ -118,6 +120,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
       vendorId: orderItems.vendorId,
       vendorName: orderItems.vendorName,
       vendorNet: orderItems.vendorNet,
+      fulfilment: orderItems.fulfilment,
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
@@ -149,7 +152,11 @@ export async function payoutDueList(actor: Actor, limit = 200) {
    * whose money had gone straight back to the shopper. `finance.ts` states the
    * rule this now follows: a refunded line adds no commission and no vendor net.
    */
-  const owedOn = (status: string, net: bigint) => (status === "paid" ? net : 0n);
+  /* And nothing on a line that never sold or came back — `lineOutcome`, the
+     rule the finance report and the weekly table use, so a seller is never told
+     a cancelled sofa is coming to them. */
+  const owedOn = (status: string, fulfilment: string, net: bigint) =>
+    (lineOutcome(status, fulfilment) === "sold" ? net : 0n);
 
   const now = new Date();
   /* One row per order per seller: an order spanning three sellers is three
@@ -160,7 +167,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
     const held = byKey.get(key);
     const net = toFils(row.vendorNet);
     if (held) {
-      held.owed += owedOn(row.status, net);
+      held.owed += owedOn(row.status, row.fulfilment, net);
       continue;
     }
     byKey.set(key, {
@@ -168,7 +175,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
       reference: row.reference,
       vendorId: row.vendorId,
       vendorName: row.vendorName,
-      owed: owedOn(row.status, net),
+      owed: owedOn(row.status, row.fulfilment, net),
       due: payoutDue(row, now),
     });
   }

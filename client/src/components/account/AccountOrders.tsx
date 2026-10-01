@@ -110,9 +110,16 @@ export function AccountOrders() {
                       <span className="flex shrink-0 items-center gap-3">
                         <span className="flex flex-col items-end gap-2">
                           <Pill label={t(payment.label)} className={payment.className} />
+                          {/* What it owes now — the figure the driver asks for — and
+                              a plain sentence when that differs from what was placed.
+                              Not a strikethrough: that is how this shop advertises a
+                              permitted saving, and a cancelled sofa is not one. */}
                           <span className="text-sm font-extrabold text-[#0a285a]">
-                            {formatMoney(order.grandTotal, { currencyCode: order.currency, locale })}
+                            {formatMoney(order.owed?.owed ?? order.grandTotal, { currencyCode: order.currency, locale })}
                           </span>
+                          {order.owed?.reduced ? (
+                            <span className="text-[11px] font-semibold ink-muted">{t("orders.cancelledNotCharged")}</span>
+                          ) : null}
                         </span>
                         <ChevronDown className={`size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
                       </span>

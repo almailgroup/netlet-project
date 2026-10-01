@@ -182,6 +182,14 @@ describe("what the shelf shows", () => {
     await expect(anon().reviews.forProduct({ productId: "brass-reading-lamp" }))
       .resolves.toEqual({ items: [], summary: null, total: 0 });
   });
+
+  /* `parseInt` reads it and Postgres refuses it: that used to be a 500. */
+  it("treats an id no integer column can hold as no reviews too", async () => {
+    await expect(anon().reviews.forProduct({ productId: "99999999999" }))
+      .resolves.toEqual({ items: [], summary: null, total: 0 });
+    await expect(anon().reviews.forProduct({ productId: "0" }))
+      .resolves.toEqual({ items: [], summary: null, total: 0 });
+  });
 });
 
 describe("moderation", () => {

@@ -95,7 +95,7 @@ export const commerceRouter = router({
    * page cannot show a set the shop may not advertise.
    */
   bundlesForVariant: publicProcedure
-    .input(z.object({ variantId: z.string().min(1) }))
+    .input(z.object({ variantId: rowIdText }))
     .query(({ input }) => bundlesForVariant(Number(input.variantId))),
 
   cart: router({
