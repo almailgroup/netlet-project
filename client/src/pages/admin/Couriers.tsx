@@ -68,11 +68,13 @@ function Couriers({ actor }: { actor: Actor }) {
             {(list.data ?? []).map(company => (
               <li key={company.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <p className="flex items-center gap-1.5 font-bold text-[#0a285a]">
+                  {/* A heading, so each company's "Members" below sits under
+                      something: it went straight from the page's h1 to an h3. */}
+                  <h2 className="flex items-center gap-1.5 text-base font-bold text-[#0a285a]">
                     <Building2 className="size-4 ink-accent" aria-hidden />
                     <span dir="auto">{company.name}</span>
                     {company.nameAr ? <span className="ink-muted" dir="auto"> · {company.nameAr}</span> : null}
-                  </p>
+                  </h2>
                   <span
                     className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${
                       company.status === "active" ? "bg-[#e7f3e8] text-[#2f5d33]" : "bg-[#fdeceb] text-[#8c2f22]"

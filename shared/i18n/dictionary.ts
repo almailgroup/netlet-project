@@ -969,6 +969,7 @@ export const en = {
   "admin.claimsReject": "Decline",
   "admin.claimsAcceptShort": "Accept claim",
   "admin.claimsDecided": "Decision recorded.",
+  "admin.teamAdminNote": "Administrators belong to no single store, so there is no team to show here. Each store's people are on its own page under Vendors.",
   "admin.claimsConfirmAccept": "Charge {company} {amount} for this damage?",
   "admin.claimsConfirmReject": "Decline this claim?",
   "admin.claimsConfirmBody": "A decision is final. A parcel can be claimed again with new evidence, but this claim cannot be reopened.",
@@ -1489,6 +1490,7 @@ export const en = {
   "review.invalidRating": "Choose between one and five stars.",
   "review.notFound": "That review is not available.",
   "review.notYours": "That is not yours to change.",
+  "review.offPlatform": "A reply can't include phone numbers, emails, links or social handles.",
 
   /* Wishlists. A list is private until its owner publishes it, and every
      string here has to make that state obvious rather than merely accurate —
@@ -2640,6 +2642,7 @@ export const ar: Record<MessageKey, string> = {
   "admin.claimsReject": "رفض",
   "admin.claimsAcceptShort": "قبول المطالبة",
   "admin.claimsDecided": "تم تسجيل القرار.",
+  "admin.teamAdminNote": "لا ينتمي المسؤولون إلى متجر بعينه، لذا لا يوجد فريق لعرضه هنا. فريق كل متجر في صفحته ضمن البائعين.",
   "admin.claimsConfirmAccept": "تحميل {company} مبلغ {amount} عن هذا التلف؟",
   "admin.claimsConfirmReject": "رفض هذه المطالبة؟",
   "admin.claimsConfirmBody": "القرار نهائي. يمكن رفع مطالبة جديدة للطرد بأدلة جديدة، لكن لا يمكن إعادة فتح هذه المطالبة.",
@@ -3153,6 +3156,7 @@ export const ar: Record<MessageKey, string> = {
   "review.invalidRating": "اختر من نجمة إلى خمس نجوم.",
   "review.notFound": "هذا التقييم غير متاح.",
   "review.notYours": "هذا ليس ملكك لتغييره.",
+  "review.offPlatform": "لا يمكن أن يتضمن الرد أرقام هواتف أو بريداً إلكترونياً أو روابط أو حسابات تواصل.",
 
   "wish.intro": "اجمع ما تريده في مكان واحد. انشر قائمة ليستطيع أي شخص لديه رقم هاتفك رؤيتها وشراء شيء منها لك.",
   "wish.newListName": "اسم القائمة",

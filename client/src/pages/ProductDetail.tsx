@@ -970,7 +970,11 @@ export default function ProductDetail() {
         <section id="main" className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
-          <div className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
+          {/* `min-w-0`, because a grid item's minimum is its content's: the
+              tab strip below scrolls sideways inside itself, but its full
+              width still propped this column open, and every product page
+              scrolled sideways on a phone — 120px in Arabic, 176px in English. */}
+          <div className="min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? (
               <div className="flex flex-wrap items-center gap-2">
                 <p dir="auto" className="text-xs font-bold tracking-[.5px] ink-muted uppercase">{product.vendor}</p>

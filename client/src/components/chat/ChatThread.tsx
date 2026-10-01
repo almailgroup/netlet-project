@@ -43,16 +43,19 @@ export function ChatThread({
     new Date(value).toLocaleString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     });
-  const end = useRef<HTMLLIElement>(null);
+  const box = useRef<HTMLOListElement>(null);
 
-  /* The newest message is the one being read; land on it. `block: nearest`
-     scrolls the thread's own box rather than the whole page. */
+  /* The newest message is the one being read; land on it by scrolling the
+     thread's own box. `scrollIntoView` was the first version, and it scrolls
+     every scrollable ancestor too — so opening a conversation jumped the whole
+     account page to wherever the box happened to end. */
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "nearest" });
+    const list = box.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [messages.length]);
 
   return (
-    <ol className="max-h-[420px] space-y-3 overflow-y-auto rounded-2xl bg-[#f7f8fb] p-3" aria-label={t("chat.threadWith", { name: theirName })}>
+    <ol ref={box} tabIndex={0} className="max-h-[420px] space-y-3 overflow-y-auto rounded-2xl bg-[#f7f8fb] p-3" aria-label={t("chat.threadWith", { name: theirName })}>
       {messages.map(message => {
         const mine = message.side === mySide;
         const href = productHref?.(message) ?? null;
@@ -76,7 +79,6 @@ export function ChatThread({
           </li>
         );
       })}
-      <li ref={end} aria-hidden className="h-0" />
     </ol>
   );
 }

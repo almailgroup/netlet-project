@@ -32,6 +32,8 @@
  * absent rather than a panel saying "not configured".
  */
 
+import { contactFindings } from "../commerce/contactFilter.js";
+
 /** What is wrong, as a key the client translates. */
 export const REVIEW_FINDINGS = [
   "noImages",
@@ -111,12 +113,23 @@ export function reviewProduct(product: ReviewableProduct): Flag[] {
    * well as out of its books. Serious, and pointed at the match so nobody has
    * to hunt for it.
    */
-  for (const { shape, name } of CONTACT_SHAPES) {
-    const found = shape.exec(text);
-    if (found) {
-      flags.push({ finding: "contactInText", severity: "serious", detail: `${name}: ${found[0]}` });
-      break;
-    }
+  const shown = CONTACT_SHAPES.map(({ shape, name }) => ({ name, found: shape.exec(text) })).find(hit => hit.found);
+  if (shown?.found) {
+    flags.push({ finding: "contactInText", severity: "serious", detail: `${shown.name}: ${shown.found[0]}` });
+  } else {
+    /* The chat's filter, for everything the plain shapes above cannot see:
+       Arabic-Indic digits, a number spelled out or broken up with invisible
+       characters, "noura at gmail dot com". A listing is the same way off the
+       platform as a message, and the seller typing one knows the tricks just
+       as well. Named by kind, because there is no single match to quote. */
+    /* Except a barcode or a model number: an unbroken run of nine or more
+       plain digits is a product code in a listing, where the chat would rightly
+       call it a number — a review queue that flags every EAN is one reviewers
+       learn to skip. A Kuwaiti number is eight digits, and the plain shapes
+       above already catch it with or without the 965. */
+    const productCode = /(?<!\d)\d{9,}(?!\d)/.test(text);
+    const kinds = contactFindings(text).filter(kind => !(kind === "phone" && productCode));
+    if (kinds.length) flags.push({ finding: "contactInText", severity: "serious", detail: kinds.join(", ") });
   }
 
   const lower = text.toLowerCase();

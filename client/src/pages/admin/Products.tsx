@@ -138,7 +138,10 @@ function ProductTable({ actor }: { actor: Actor }) {
           {!search ? <p className="mx-auto mt-2 max-w-xs text-[13px] leading-6 text-[#536b8c]">{t("admin.noProductsNote")}</p> : null}
         </div>
       ) : (
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-[#e6e9ef] bg-white">
+        /* A region a keyboard can reach, like the finance tables: below 620px
+           the table scrolls sideways, and a box only a mouse can drag hides
+           the status and price columns from anybody without one. */
+        <div tabIndex={0} role="region" aria-label={t("admin.products")} className="mt-5 overflow-x-auto rounded-2xl border border-[#e6e9ef] bg-white">
           <table className="w-full min-w-[620px] text-start text-[13px]">
             <thead className="border-b border-[#e6e9ef] text-[11px] uppercase tracking-[.08em] ink-muted">
               <tr>

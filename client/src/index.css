@@ -232,10 +232,17 @@
   .tap-target {
     position: relative;
   }
+  /* `left`/`top`, never `inset: 50%`. With both `left` and `right` set and a
+     width, the box is over-constrained and the browser drops one side by the
+     writing direction — so in Arabic it honoured `right`, and the 44px area
+     sat 22px beside the control instead of around it, missing its own
+     trailing half. Physical centring is direction-free, which is the one case
+     the RTL rule allows a physical property. */
   .tap-target::after {
     content: "";
     position: absolute;
-    inset: 50%;
+    left: 50%;
+    top: 50%;
     width: 44px;
     height: 44px;
     transform: translate(-50%, -50%);

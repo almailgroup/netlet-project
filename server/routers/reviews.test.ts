@@ -224,6 +224,17 @@ describe("moderation", () => {
     await expect(as("boss").reviews.reply({ reviewId: row.id, reply: "thanks!" }))
       .rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  /* A public reply is the chat's leak with a bigger audience. */
+  it("refuses a reply carrying a way to reach the seller off the platform", async () => {
+    const { replyToReview } = await import("../reviews.js");
+    const [row] = await db.select().from(reviews).where(eq(reviews.orderItemId, lines.delivered));
+    await expect(replyToReview(row.vendorId!, row.id, "Thanks! Cheaper on whatsapp ٩٩٨٨ ٧٧٦٦"))
+      .rejects.toMatchObject({ reason: "offPlatform" });
+    await replyToReview(row.vendorId!, row.id, "Thank you — glad it arrived safely.");
+    const [after] = await db.select().from(reviews).where(eq(reviews.id, row.id));
+    expect(after.vendorReply).toBe("Thank you — glad it arrived safely.");
+  });
 });
 
 describe("editing your own review", () => {

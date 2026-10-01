@@ -20,6 +20,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { orderItems, orders, reviews } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
+import { contactFindings } from "../shared/commerce/contactFilter.js";
 import {
   eligibilityFor,
   isValidRating,
@@ -28,7 +29,7 @@ import {
   type ReviewSummary,
 } from "../shared/commerce/reviews.js";
 
-export type ReviewError = ReviewRefusal | "notFound" | "invalidRating" | "notYours";
+export type ReviewError = ReviewRefusal | "notFound" | "invalidRating" | "notYours" | "offPlatform";
 
 export class ReviewRefused extends Error {
   constructor(readonly reason: ReviewError) {
@@ -314,6 +315,10 @@ export async function summariesFor(productIds: number[]): Promise<Map<string, Re
 /** A vendor's public answer to a review of their own product. */
 export async function replyToReview(vendorId: number, reviewId: number, reply: string): Promise<void> {
   const text = reply.trim();
+  /* A reply is public and the seller writes it, so it is the chat's leak with
+     a bigger audience: "call us on 9988 7766 for a better price" under every
+     review of the product. The same filter, for the same reason. */
+  if (contactFindings(text).length > 0) throw new ReviewRefused("offPlatform");
   const changed = await (await db())
     .update(reviews)
     .set({ vendorReply: text || null, vendorRepliedAt: text ? new Date() : null })

@@ -90,6 +90,41 @@ describe("handles on other platforms", () => {
   });
 });
 
+/*
+ * Found by a second, more hostile pass — and the first ones anybody would try:
+ * an invisible character between digits, a keycap emoji, a letter standing in
+ * for a digit. Every one read as clean.
+ */
+describe("the obfuscations the first pass missed", () => {
+  it.each([
+    ["keycap emoji digits", "9️⃣9️⃣8️⃣8️⃣7️⃣7️⃣6️⃣6️⃣", "phone"],
+    ["zero-width spaces", "99\u200b88\u200b77\u200b66", "phone"],
+    ["zero-width joiners", "9\u200d9\u200d8\u200d8\u200d7\u200d7\u200d6\u200d6", "phone"],
+    ["word joiners", "99\u206088\u206077\u206066", "phone"],
+    ["right-to-left marks in Arabic digits", "٩٩\u200f٨٨\u200f٧٧\u200f٦٦", "phone"],
+    ["a soft hyphen", "9988\u00ad7766", "phone"],
+    ["a zero-width space inside a platform name", "whats\u200bapp me", "handle"],
+    ["a letter O for a zero", "99O8 7766", "phone"],
+    ["a letter l for a one", "9988 77l6", "phone"],
+    ["spelled digits glued to numerals", "nine9eight8seven7six6", "phone"],
+    ["a spaced .shop domain", "noura . shop", "link"],
+    ["IG with a colon", "IG: noura.home", "handle"],
+    ["IG with a handle", "ig noura_home", "handle"],
+  ])("catches %s", (_name, text, kind) => {
+    expect(contactFindings(text)).toContain(kind);
+  });
+
+  it.each([
+    "Is the IG model in stock?",
+    "I got 2 of them, size 10 and 12",
+    "Model ABC-1234, is it the 2026 one?",
+    "Does someone answer on weekends?",
+    "Grade A, size L, in olive",
+  ])("still lets through %s", text => {
+    expect(contactFindings(text)).toEqual([]);
+  });
+});
+
 describe("ordinary messages", () => {
   it.each([
     "Hello, is the sofa still available?",

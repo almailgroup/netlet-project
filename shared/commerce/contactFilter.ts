@@ -50,9 +50,12 @@ const foldDigits = (text: string) =>
  * becomes "2" and a lone digit is not a phone number. Only a *run* of them
  * becomes one, and a run is broken by any real word in between.
  */
+/* Bounded by "not a letter" rather than `\b`, because a digit is a word
+   character to `\b`: "nine9eight8" has no boundary inside it at all. */
+const word = (spelled: string) => new RegExp(`(?<![a-z])${spelled}(?![a-z])`, "g");
 const SPELLED: [RegExp, string][] = [
-  [/\bzero\b/g, "0"], [/\bone\b/g, "1"], [/\btwo\b/g, "2"], [/\bthree\b/g, "3"], [/\bfour\b/g, "4"],
-  [/\bfive\b/g, "5"], [/\bsix\b/g, "6"], [/\bseven\b/g, "7"], [/\beight\b/g, "8"], [/\bnine\b/g, "9"],
+  [word("zero"), "0"], [word("one"), "1"], [word("two"), "2"], [word("three"), "3"], [word("four"), "4"],
+  [word("five"), "5"], [word("six"), "6"], [word("seven"), "7"], [word("eight"), "8"], [word("nine"), "9"],
 ];
 /* Arabic words carry prefixes (و "and"), so they are matched as whole tokens
    with an optional و rather than with \b, which does not see Arabic letters. */
@@ -74,8 +77,24 @@ function spellOut(text: string): string {
 }
 
 /** The text as the rules read it: one script of digits, lower case, compatibility forms folded. */
+/*
+ * Characters that draw nothing or only dress up the one before them: zero-width
+ * spaces and joiners, the word joiner, bidi marks, the soft hyphen (all format
+ * characters, `\p{Cf}`), variation selectors, and the combining keycap that
+ * turns 9 into 9️⃣. Each one sat between two digits broke the run, so
+ * "99\u200b88\u200b77\u200b66" and a row of keycap emoji both read as clean —
+ * and those are the obvious ways round a filter, not the clever ones.
+ */
+const INVISIBLE = /[\p{Cf}\u034f\u115f\u1160\u3164\uffa0\ufe00-\ufe0f\u20e3]/gu;
+
+/* A letter standing in for a digit inside a number: "99O8 77l6". Only between
+   digits, so "Grade A" and "size L" are untouched. */
+const LOOKALIKE = /(?<=\d[\s\-.]{0,2})[oil|](?=[\s\-.]{0,2}\d)/g;
+const LOOKALIKE_DIGIT: Record<string, string> = { o: "0", i: "1", l: "1", "|": "1" };
+
 export function normaliseForContact(text: string): string {
-  return spellOut(foldDigits(text.normalize("NFKC").toLowerCase()));
+  const plain = foldDigits(text.normalize("NFKC").replace(INVISIBLE, "").toLowerCase());
+  return spellOut(plain).replace(LOOKALIKE, letter => LOOKALIKE_DIGIT[letter] ?? letter);
 }
 
 /* Separators somebody puts between digits to break up a number. */
@@ -123,6 +142,10 @@ function hasPhone(view: string): boolean {
  * never produces an email shape out of that, and an address typed letter by
  * letter always does.
  */
+/* One list for both the spaced-dot join and the link shape: they were two, and
+   "noura . shop" fell between them — joined for .com, never for .shop. */
+const TLDS = "com|net|org|io|me|co|kw|ly|gl|app|link|info|biz|store|shop|xyz|online|site";
+
 const joinSpelledLetters = (text: string) => text.replace(/(?<=(?:^|\s)\S) (?=\S(?:\s|$))/g, "");
 
 function addressView(view: string): string {
@@ -135,15 +158,19 @@ function addressView(view: string): string {
       .replace(/\s+(?:آت|أت)\s+/g, "@")
       .replace(/\s+(?:نقطة|دوت)\s+/g, ".")
       .replace(/\s*@\s*/g, "@")
-      .replace(/(?<=[a-z0-9])\s*\.\s*(?=(?:com|net|org|io|me|co|kw|ly|gl|app)\b)/g, ".")
+      .replace(new RegExp(`(?<=[a-z0-9])\\s*\\.\\s*(?=(?:${TLDS})\\b)`, "g"), ".")
   );
 }
 
 const EMAIL = /[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/;
 const MAIL_PROVIDER = /(^|[^a-z])(gmail|hotmail|yahoo|outlook|icloud|protonmail)([^a-z]|$)/;
-const LINK = /(?:https?:\/\/|www\.)\S+|(?:^|[^a-z0-9@._-])[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|me|co|kw|ly|gl|app|link|info|biz|store|shop|xyz|online|site)(?![a-z0-9])/;
+const LINK = new RegExp(`(?:https?:\\/\\/|www\\.)\\S+|(?:^|[^a-z0-9@._-])[a-z0-9-]+(?:\\.[a-z0-9-]+)*\\.(?:${TLDS})(?![a-z0-9])`);
 const AT_HANDLE = /(?:^|[^a-z0-9._%+-])@[a-z0-9_.]{3,}/;
 const PLATFORMS_LATIN = /(^|[^a-z])(whats\s?app|watsapp|wtsp|insta|instagram|snapchat|telegram|tiktok|tik\s?tok|facebook|messenger|twitter|threads|signal|viber|imo)([^a-z]|$)/;
+/* "IG" is also a product code, so it counts only when it introduces a handle:
+   followed by a colon, or by a name carrying the dot, underscore or digit a
+   handle has and a word does not. "The IG model" stays a sentence. */
+const IG_HANDLE = /(^|[^a-z])ig\s*(?::|\s+(?=[a-z0-9._]*[._\d])[a-z0-9._]{3,})/;
 const PLATFORMS_ARABIC = /(واتس|وتساب|انستا|إنستا|انستقرام|انستغرام|سناب|تيليجرام|تلغرام|تليجرام|تيك\s?توك|فيسبوك|فيس\s?بوك|ماسنجر|تويتر|سيجنال)/;
 
 /**
@@ -159,7 +186,7 @@ export function contactFindings(text: string): ContactKind[] {
   if (EMAIL.test(addresses) || MAIL_PROVIDER.test(view)) found.add("email");
   /* An address is not also a link because it has a dot in it. */
   if (LINK.test(addresses.replace(new RegExp(EMAIL.source, "g"), " "))) found.add("link");
-  if (AT_HANDLE.test(view.replace(new RegExp(EMAIL.source, "g"), " ")) || PLATFORMS_LATIN.test(view) || PLATFORMS_ARABIC.test(view)) {
+  if (AT_HANDLE.test(view.replace(new RegExp(EMAIL.source, "g"), " ")) || PLATFORMS_LATIN.test(view) || PLATFORMS_ARABIC.test(view) || IG_HANDLE.test(view)) {
     found.add("handle");
   }
 

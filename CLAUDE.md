@@ -549,6 +549,25 @@ Use it for anything modal rather than re-deriving two of the three.
 without changing how it looks. Gallery dots are 6px on purpose; a 6px *target*
 was a coin toss on a phone.
 
+**It is centred with `left`/`top: 50%`, never `inset: 50%`.** With both inline
+sides set and a fixed width the box is over-constrained, and the browser keeps
+the side the writing direction starts from — so in English it centred and in
+Arabic it honoured `right`, putting every enlarged hit area on the site 22px
+beside its control rather than around it. Found because one of them poked 8px
+past the edge of a phone and made the product editor scroll sideways;
+`client/src/lib/tapTarget.test.ts` keeps it out. Physical centring is the one
+place the no-physical-properties rule allows, because centring takes no side.
+
+**A grid item needs `min-w-0` when anything inside it scrolls sideways.** A grid
+item's minimum width is its content's, so a tab strip that scrolls inside
+itself still props the whole column open: every product page scrolled 120px
+sideways on an Arabic phone and 176px on an English one, and checkout did at
+320px because of the payment marks. Neither was visible in a screenshot that
+only shows the viewport. Measure `scrollWidth - clientWidth` on every route at
+320 and 390 in both languages; finding the culprit is easier by clipping each
+subtree in turn (`overflow: clip`) than by hiding it, which shifts the layout
+and points at the wrong element.
+
 ## Inventory
 
 NetLet owns its catalog. `drizzle/schema.ts` holds vendors, vendor members,
@@ -1179,6 +1198,25 @@ only if it is a real date, so `9988-77-66` is not one; a price only beside a
 currency, because letting every decimal through would be the hole. Arabic
 spelled digits are matched as whole tokens with an optional و, since `\b` does
 not see Arabic letters.
+
+**What draws nothing is removed before anything is read.** The first version
+missed every obfuscation a second, more hostile pass tried first: a zero-width
+space or a word joiner between digits, a right-to-left mark in Arabic digits, a
+row of keycap emoji (9️⃣ is a digit plus a variation selector plus a combining
+keycap), a letter O or l standing in for a digit, "nine9eight8" where `\b`
+sees no boundary, and "noura . shop" because the spaced-dot join and the link
+shape kept two lists of endings. `\p{Cf}`, the variation selectors and the
+keycap are stripped; look-alike letters count only *between* digits, so "size L"
+is still a size; and "IG" is a handle only before a colon or a handle-shaped
+name, because it is also a model code. Hostile 2,000-character inputs run in
+about 20ms, and the server refuses anything longer before the filter sees it.
+
+**The same filter guards the other two places a seller writes to shoppers.** A
+public reply to a review is the chat's leak with a bigger audience, so
+`replyToReview` refuses one too. The product review queue asks the filter as
+well, for what its plain shapes cannot see — except that an unbroken run of nine
+or more digits in a listing is a barcode or a model number, not a Kuwaiti phone,
+and a queue that flags every EAN is one reviewers learn to skip.
 
 It is mitigation, not proof, which is why an administrator can read every
 thread. **Reading is all they do**: a moderator looking is not the shop having

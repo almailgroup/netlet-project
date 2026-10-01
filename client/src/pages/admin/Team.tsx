@@ -10,6 +10,7 @@
  * vendor is reasonable, changing it is not.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { Link } from "wouter";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -52,7 +53,19 @@ function Team({ actor }: { actor: Actor }) {
 
   const mayManage = can(actor, "vendor.manageMembers", vendorId);
 
-  if (vendorId === 0) return <p className="text-sm text-[#536b8c]">{t("admin.noAccessNote")}</p>;
+  /* An administrator belongs to no store, so this page has nobody to list for
+     them. It used to say so with the sentence meant for a shopper who has not
+     been added anywhere — and with no heading at all. Each store's people are
+     on its own page, so that is where this points. */
+  if (vendorId === 0) {
+    return (
+      <>
+        <h1 className="text-xl font-extrabold">{t("admin.team")}</h1>
+        <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("admin.teamAdminNote")}</p>
+        <Link href="/admin/vendors" className="glass pressable mt-4 inline-flex rounded-full px-4 py-2 text-xs font-extrabold">{t("admin.vendors")}</Link>
+      </>
+    );
+  }
   if (members.isLoading || members.isError) return <QueryGate queries={[members]}>{() => null}</QueryGate>;
 
   const rows = members.data ?? [];

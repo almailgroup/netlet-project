@@ -20,6 +20,11 @@ const KIND_LABEL: Record<ContactKind, MessageKey> = {
   handle: "chat.foundHandle",
 };
 
+/* A fine pointer that can hover is a desk with a keyboard; a coarse one is a
+   phone. Asked at the keystroke, so a tablet that gains a keyboard is right. */
+const hasKeyboard = () =>
+  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
 export function ChatComposer({
   onSend,
   pending,
@@ -54,9 +59,11 @@ export function ChatComposer({
           value={body}
           onChange={event => setBody(event.target.value)}
           onKeyDown={event => {
-            /* Enter sends and Shift+Enter breaks a line — what every chat does,
-               and what somebody typing a quick question expects. */
-            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+            /* Enter sends and Shift+Enter breaks a line — on a keyboard. A
+               phone has no Shift, so there Enter must stay a line break and the
+               button sends; otherwise a shopper on a phone can never write a
+               second line, and a stray Enter posts half a sentence. */
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing && hasKeyboard()) {
               event.preventDefault();
               void submit();
             }

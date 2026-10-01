@@ -32,6 +32,21 @@ describe("taking the shopper off the platform", () => {
     expect(findings(listing({ description: "Order at www.example.com" }))).toContain("contactInText");
     expect(findings(listing({ description: "Message us on WhatsApp" }))).toContain("contactInText");
   });
+
+  /* The chat's filter reaches what the plain shapes cannot: a seller who knows
+     the tricks uses them in a listing as readily as in a message. */
+  it("finds a number written in Arabic digits or hidden from the plain shapes", () => {
+    for (const description of ["للطلب: ٩٩٨٨ ٧٧٦٦", "Call 9\u200b9\u200b8\u200b8\u200b7\u200b7\u200b6\u200b6", "nine nine eight eight seven seven six six", "email noura at gmail dot com"]) {
+      const flag = reviewProduct(listing({ description })).find(one => one.finding === "contactInText");
+      expect(flag, description).toMatchObject({ severity: "serious" });
+    }
+  });
+
+  it("leaves a barcode or a model number alone", () => {
+    for (const description of ["Barcode 6291041500213, warranty card inside.", "Model 7840112355 replaces 7840112300", "EAN: 0012345678905"]) {
+      expect(findings(listing({ description })), description).not.toContain("contactInText");
+    }
+  });
 });
 
 describe("claims a marketplace cannot carry", () => {
