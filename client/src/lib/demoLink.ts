@@ -426,6 +426,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("orders.lineGone");
     case "orders.markCollected":
       return { recorded: false };
+    /* A demo shopper has no orders, so there is no parcel to rate or claim
+       on — the server's own answer to a reference it cannot find. */
+    case "orders.rateDelivery":
+    case "orders.claimDamage":
+      throw new Error("parcel.notFound");
 
     case "offers.openOn":
       return [];
@@ -552,6 +557,20 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "dispatch.couriers.list":
     case "dispatch.couriers.members":
       return [];
+    /* Ratings and claims (3.4.2, 3.4.4): the demo's vendor manager files
+       claims and reads its own, which in a demo with no orders is none. */
+    case "dispatch.scores":
+      return { scores: [], recent: [] };
+    case "dispatch.claims.list":
+    case "dispatch.claims.ledger":
+      return [];
+    case "dispatch.claims.openCount":
+      return 0;
+    case "dispatch.claims.file":
+      throw new Error("parcel.notFound");
+    case "dispatch.claims.respond":
+    case "dispatch.claims.decide":
+      return { success: true } as const;
     case "dispatch.assign":
     case "dispatch.move":
     case "dispatch.couriers.create":

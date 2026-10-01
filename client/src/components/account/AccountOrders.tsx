@@ -20,6 +20,7 @@
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
 import { Thumb } from "@/components/product/Thumb";
+import { ParcelCare } from "@/components/account/ParcelCare";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -160,6 +161,7 @@ function OrderLines({ reference }: { reference: string }) {
         if (!data) return <p className="text-sm ink-muted">{t("orders.detailMissing")}</p>;
 
         return (
+          <>
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
@@ -217,6 +219,8 @@ function OrderLines({ reference }: { reference: string }) {
               <p className="text-xs leading-5 ink-muted">{t("returns.howTo", { days: String(data.windowDays) })}</p>
             </li>
           </ul>
+          <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
+          </>
         );
       }}
     </QueryGate>

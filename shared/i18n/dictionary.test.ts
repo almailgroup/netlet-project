@@ -36,10 +36,10 @@ describe("dictionary completeness", () => {
     const allowed = new Set<MessageKey>([
       "header.language", "account.english", "account.arabic",
       "admin.importNote", "admin.importChoose",
-      // These two name the `https` scheme, which is what a seller has to type
+      // These name the `https` scheme, which is what a seller has to type
       // into the box — a literal, like the CSV above, rather than English
       // prose somebody forgot to translate.
-      "sell.papersNote", "application.insecureDocument",
+      "sell.papersNote", "application.insecureDocument", "claims.badEvidence",
       // This one names the route `/admin/people`, which is a URL an
       // administrator types into the address bar. A translated path would point
       // at a page that does not exist — the same reason `https` is left alone.

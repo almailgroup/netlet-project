@@ -1147,6 +1147,50 @@ sofa gets dispatched on a motorcycle.
 **The carrier is free text.** A fixed list would be this codebase asserting
 which companies exist in Kuwait, and the name claims nothing about tracking.
 
+## After the door: ratings and damage
+
+`server/parcelCare.ts` is both, because both start from the same thing — a
+parcel re-derived from the order's lines, never one the caller describes — and
+both are about the company that carried it rather than the goods.
+
+**A delivery rating is about a parcel, not a product or an order.** One seller's
+goods to one door is what one driver carried; folding the van into the product's
+stars is how a lamp loses a star for being late. Arrival is a date, not a
+status, so a line returned afterwards still arrived, and the rating is **not
+gated on payment** the way a product review is: a cash order is marked paid when
+a seller gets round to it, and the driver's conduct was over before then. One
+rating per parcel, upserted, with the carrier frozen at the first write so a
+reassignment afterwards is a correction to the board rather than a different
+delivery. A company reads its own score and comments without the shopper's
+name; nothing about a rival's.
+
+**A damage claim is a liability, not a complaint.** It is against the company
+frozen as carrying the parcel at filing — a parcel the seller delivered has
+nobody to bear it and is refused with that reason. It is capped by the frozen
+`line_total`s of the lines named, never by a typed figure. The company answers
+before NetLet decides, because a liability assigned without the liable party
+being asked is how a carrier stops carrying for a marketplace. Deciding is
+`delivery.decideClaims`, admin-only, final, raced safely by the predicate in
+the `UPDATE`, asked first in a `ConfirmDialog`, and audited with the chain.
+
+Two rules there came from looking at the page rather than from the design:
+
+- **A line paid for once is never claimable again.** "Claim the parcel again
+  with new evidence" is the answer to a *rejection*; after an award, the page
+  still offered "Report damage" over the same cushion, which is compensating it
+  twice. `paidLineIds` takes them out of the offer and the server refuses them.
+- **A parcel key must survive the trip through the API.** `hashLabel` joined a
+  destination's label and street with a NUL, which was harmless while the key
+  only lived in memory — and became unmovable the moment the NUL guard landed,
+  because the key goes to the board and comes back in `dispatch.move`. It is the
+  unit separator now. No seeded order had a second destination, so neither the
+  fuzzer nor any test met it; a guard on every input changes what every value
+  that *becomes* an input may contain.
+
+`/admin/claims` is one page for three parties, which needed `AdminShell`'s
+`need` to accept a list meaning "any of": no single capability is shared by the
+seller who files, the company that answers and NetLet that decides.
+
 ## Payouts and placement
 
 `shared/commerce/payouts.ts` reads what each seller is owed, week by week, off

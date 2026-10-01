@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 392 columns across 38 tables.
+-- Expected: 423 columns across 40 tables.
 
 WITH expected AS (
   SELECT
@@ -29,6 +29,8 @@ WITH expected AS (
     ('customer_addresses', 'address_line,address_notes,contact_name,contact_phone,created_at,governorate,id,label,updated_at,user_id'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
     ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
+    ('damage_claims', 'awarded_amount,claimed_amount,courier_id,courier_responded_at,courier_response,created_at,decided_at,decided_by,decision_note,description,evidence_url,filed_as,filed_by,id,line_ids,order_id,parcel_key,status,updated_at,vendor_id,vendor_name'),
+    ('delivery_ratings', 'comment,courier_id,created_at,id,order_id,parcel_key,rating,updated_at,user_id,vendor_id,vendor_name'),
     ('discount_codes', 'code,created_at,ends_at,id,kind,max_redemptions,min_spend,per_shopper,starts_at,value'),
     ('discount_redemptions', 'amount,code_id,created_at,id,order_id,user_id'),
     ('followed_products', 'back_in_stock,created_at,id,last_notified_price,price_drop,product_id,updated_at,user_id'),

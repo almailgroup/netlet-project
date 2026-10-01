@@ -76,6 +76,14 @@ export type Capability =
   | "delivery.move"
   /* Admin-only. Listed here so an attempt is answered rather than unhandled. */
   | "delivery.assign"
+  /*
+   * Damage in transit (3.4.2). Filing is the seller's — whoever packs the
+   * parcels is who hears about a broken one first, so `staff` reaches it.
+   * Deciding is NetLet's alone: a claim is money one company owes another,
+   * and neither of them gets to rule on it.
+   */
+  | "delivery.fileClaim"
+  | "delivery.decideClaims"
   | "vendor.setCommission"
   | "vendor.approve"
   | "product.review"
@@ -87,6 +95,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "product.view": "staff",
   "stock.adjust": "staff",
   "vendor.viewMembers": "staff",
+  "delivery.fileClaim": "staff",
   "product.create": "manager",
   "product.edit": "manager",
   "product.publish": "manager",
@@ -108,6 +117,7 @@ const ADMIN_ONLY: Capability[] = [
   /* Who carries a parcel is NetLet's arrangement with a company, not a
      decision either the seller or the driver gets to make. */
   "delivery.assign",
+  "delivery.decideClaims",
   "vendor.setCommission",
   "vendor.approve",
   "product.review",

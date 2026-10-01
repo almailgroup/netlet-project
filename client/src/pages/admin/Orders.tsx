@@ -31,9 +31,10 @@ import type { Flag as FraudFlag, RiskLevel } from "@shared/commerce/fraudSignals
 import { can, type Actor } from "@shared/inventory/permissions";
 import { FULFILMENT_STATES, nextStates, type FulfilmentState } from "@shared/commerce/fulfilment";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
-import type { MessageKey } from "@shared/i18n/dictionary";
+import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Banknote, PackageCheck } from "lucide-react";
+import { Banknote, PackageCheck, ShieldAlert } from "lucide-react";
+import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -222,6 +223,8 @@ function OrderDetail({ orderId }: { orderId: number }) {
   const money = useMoney();
   const formatDate = useDateFormat();
   const detail = trpc.orders.forSellerDetail.useQuery({ orderId });
+  /* Already in the cache: the shell asked it before drawing the page. */
+  const me = trpc.inventory.me.useQuery();
   const utils = trpc.useUtils();
 
   const refresh = () => {
@@ -344,11 +347,112 @@ function OrderDetail({ orderId }: { orderId: number }) {
                   </li>
                 ))}
               </ul>
+
+              {/* Damage in transit (3.4.2). Here rather than on the claims page
+                  because the lines are here, and a seller who hears a box broke
+                  is looking at the order, not at a list of claims. */}
+              {me.data && can(me.data, "delivery.fileClaim") ? (
+                <TransitDamage
+                  orderId={orderId}
+                  lines={lines.filter(line => line.fulfilment === "shipped" || line.fulfilment === "delivered" || (line.fulfilment === "returned" && line.deliveredAt))}
+                />
+              ) : null}
             </>
           );
         }}
       </QueryGate>
     </div>
+  );
+}
+
+/**
+ * Report a parcel damaged in transit, as the seller or as NetLet.
+ *
+ * Only lines that left the shelf are offered — a box still on the seller's
+ * own shelf is not a delivery company's to pay for. Everything else (which
+ * parcel, which company, how much is the most it can be, whether the window is
+ * still open) is the server's, and a refusal names what to fix.
+ */
+function TransitDamage({ orderId, lines }: { orderId: number; lines: { id: number; productTitle: string; lineTotal: string }[] }) {
+  const { t, tError } = useTranslation();
+  const money = useMoney();
+  const utils = trpc.useUtils();
+  const [open, setOpen] = useState(false);
+  const [chosen, setChosen] = useState<number[]>([]);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const ceiling = claimCeiling(lines.filter(line => chosen.includes(line.id)));
+
+  const file = trpc.dispatch.claims.file.useMutation({
+    onSuccess: () => {
+      toast.success(t("claims.filed"));
+      setOpen(false); setChosen([]); setAmount(""); setDescription(""); setEvidenceUrl("");
+      void utils.dispatch.claims.list.invalidate();
+    },
+    onError: error => toast.error(isMessageKey(error.message) ? t(error.message, { days: String(CLAIM_WINDOW_DAYS) }) : tError(error.message)),
+  });
+
+  if (lines.length === 0) return null;
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="pressable mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold text-[#8c2f22] hover:bg-[#fdeceb]"
+      >
+        <ShieldAlert className="size-3.5" aria-hidden />{t("claims.reportHeading")}
+      </button>
+    );
+  }
+
+  return (
+    <form
+      className="mt-4 rounded-xl border border-[#f3d2cc] bg-white p-4"
+      onSubmit={event => {
+        event.preventDefault();
+        file.mutate({ orderId, lineIds: chosen, amount: amount.trim() || ceiling, description, evidenceUrl: evidenceUrl.trim() || null });
+      }}
+    >
+      <h3 className="text-sm font-extrabold text-[#0a285a]">{t("claims.reportHeading")}</h3>
+      <p className="mt-1 text-[12px] leading-5 text-[#536b8c]">{t("claims.reportNote")}</p>
+      <fieldset className="mt-3">
+        <legend className="text-[11px] font-extrabold text-[#536b8c]">{t("claims.whichItems")}</legend>
+        {lines.map(line => (
+          <label key={line.id} className="mt-1 flex items-center gap-2 text-[13px] text-[#0a285a]">
+            <input
+              type="checkbox"
+              checked={chosen.includes(line.id)}
+              onChange={event => setChosen(event.target.checked ? [...chosen, line.id] : chosen.filter(id => id !== line.id))}
+              className="size-4 accent-[#0a285a]"
+            />
+            <span dir="auto" className="min-w-0 flex-1 truncate">{line.productTitle}</span>
+            <bdi dir="ltr" className="text-[12px] text-[#536b8c]">{money({ amount: line.lineTotal, currencyCode: "KWD" })}</bdi>
+          </label>
+        ))}
+      </fieldset>
+      <label className="mt-3 block">
+        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.amountLabel")}</span>
+        <input value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" dir="ltr" placeholder={ceiling} className="glass-field mt-1 w-40 rounded-full px-4 py-2 text-sm" />
+        <span className="mt-1 block text-[11px] text-[#536b8c]">{t("claims.amountHint", { amount: money({ amount: ceiling, currencyCode: "KWD" }) })}</span>
+      </label>
+      <label className="mt-3 block">
+        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.descriptionLabel")}</span>
+        <textarea value={description} onChange={event => setDescription(event.target.value)} maxLength={MAX_CLAIM_DESCRIPTION} rows={3} dir="auto" required className="glass-field mt-1 w-full rounded-2xl px-4 py-2.5 text-sm" />
+      </label>
+      <label className="mt-3 block">
+        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.evidenceLabel")}</span>
+        <input value={evidenceUrl} onChange={event => setEvidenceUrl(event.target.value)} type="url" dir="ltr" placeholder="https://" className="glass-field mt-1 w-full rounded-full px-4 py-2 text-sm" />
+      </label>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button type="submit" disabled={file.isPending || chosen.length === 0} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
+          {t("claims.submit")}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="glass type-control pressable rounded-full px-4 py-2">
+          {t("claims.cancel")}
+        </button>
+      </div>
+    </form>
   );
 }
 

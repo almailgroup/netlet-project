@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, PackageSearch, Receipt, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -43,14 +43,22 @@ export function roleLabelKey(actor: Actor): MessageKey {
   return ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
 }
 
+function canAny(actor: Actor, need: Capability | Capability[], vendorId?: number): boolean {
+  return (Array.isArray(need) ? need : [need]).some(one => can(actor, one, vendorId));
+}
+
 export function AdminShell({ need, children }: {
   /**
    * What this page requires. Hiding a nav link is a courtesy; a route typed
    * into the address bar arrives anyway, and rendering an empty page there
    * implies the page exists and has nothing in it — when the truth is that it
    * is not yours to see. The server refuses the data either way.
+   *
+   * A list means any of them: the damage-claims page is one page for the
+   * seller who files, the company that answers and NetLet that decides, and
+   * no single capability is shared by all three.
    */
-  need?: Capability;
+  need?: Capability | Capability[];
   children: (actor: Actor) => ReactNode;
 }) {
   const { t } = useTranslation();
@@ -98,7 +106,7 @@ export function AdminShell({ need, children }: {
     );
   }
 
-  if (need && !can(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
+  if (need && !canAny(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
     return (
       <Frame>
         <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.forbidden")}</h1>
@@ -119,6 +127,7 @@ export function AdminShell({ need, children }: {
     /* The delivery company's own board (2.2, 3.4.2). A courier clears
        `delivery.view` and nothing else, so this is the only link they see. */
     { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
+    { href: "/admin/claims", label: "admin.claims", icon: <ShieldAlert className="size-4" />, need: ["delivery.view", "delivery.fileClaim"] },
     { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
     { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
     { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
@@ -131,8 +140,8 @@ export function AdminShell({ need, children }: {
     { href: "/admin/promotions", label: "admin.promotions", icon: <Ticket className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
     { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
-  ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability }[])
-    .filter(link => can(actor, link.need));
+  ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability | Capability[] }[])
+    .filter(link => canAny(actor, link.need));
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">

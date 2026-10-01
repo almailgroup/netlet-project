@@ -27,6 +27,9 @@ import {
   setLineFulfilment,
 } from "../orders.js";
 import { resolveActor } from "../inventory.js";
+import { fileClaim, parcelsForShopper, ParcelCareRefused, rateDelivery } from "../parcelCare.js";
+import { MAX_DELIVERY_COMMENT } from "../../shared/commerce/deliveryRatings.js";
+import { MAX_CLAIM_DESCRIPTION } from "../../shared/commerce/damageClaims.js";
 import { riskForOrders } from "../fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../vouchers.js";
 import { VOUCHER_KINDS } from "../../shared/commerce/vouchers.js";
@@ -67,6 +70,10 @@ export const ordersRouter = router({
       return {
         order: found.order,
         windowDays: RETURN_WINDOW_DAYS,
+        /* What can be done about each parcel once it is at the door — rate the
+           delivery (3.4.4), report damage (3.4.2) — resolved with the server's
+           clock for the reason the return window is. */
+        parcels: await parcelsForShopper(ctx.user.id, input.reference, now),
         lines: found.lines.map(line => ({
           ...line,
           /*
@@ -88,6 +95,44 @@ export const ordersRouter = router({
         })),
       };
     }),
+
+  /**
+   * Rate how one parcel was delivered (3.4.4), or change the rating.
+   *
+   * Apart from the product review on purpose: a lamp does not earn one star
+   * because the van was late. The order is resolved by reference *and* the
+   * shopper's id inside the data layer, so another shopper's reference is not
+   * found rather than refused.
+   */
+  rateDelivery: protectedProcedure
+    .input(z.object({
+      reference: z.string().min(1).max(64),
+      parcelKey: z.string().min(1).max(600),
+      rating: z.number().int().min(1).max(5),
+      comment: z.string().max(MAX_DELIVERY_COMMENT).nullish(),
+    }))
+    .mutation(async ({ ctx, input }) => careGuard(async () => {
+      await rateDelivery(ctx.user.id, input);
+      return { success: true } as const;
+    })),
+
+  /**
+   * Report that a parcel arrived damaged (3.4.2).
+   *
+   * The amount is checked against what the named lines were sold for, read
+   * from the order rather than from this input; the claim is against whichever
+   * company carried the parcel, which the shopper does not need to know.
+   */
+  claimDamage: protectedProcedure
+    .input(z.object({
+      reference: z.string().min(1).max(64),
+      lineIds: z.array(rowId).min(1).max(100),
+      amount: z.string().max(16),
+      description: z.string().max(MAX_CLAIM_DESCRIPTION),
+      evidenceUrl: z.string().trim().max(2000).nullish(),
+    }))
+    .mutation(async ({ ctx, input }) => careGuard(async () =>
+      fileClaim({ kind: "shopper", userId: ctx.user.id, reference: input.reference }, input))),
 
   /**
    * Place the basket as a cash-on-delivery order (3.2.2).
@@ -269,6 +314,18 @@ export const ordersRouter = router({
     .mutation(async ({ ctx, input }) => guard(async () =>
       ({ recorded: await recordCashCollected(await resolveActor(ctx.user), input.orderId) }))),
 });
+
+/** A rating or a claim refused for a reason the shopper can act on. */
+async function careGuard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ParcelCareRefused) {
+      throw new TRPCError({ code: error.reason === "parcel.notFound" ? "NOT_FOUND" : "BAD_REQUEST", message: error.reason });
+    }
+    throw error;
+  }
+}
 
 /** The same translation every other router does: `assertCan` throws, this is the 403. */
 async function guard<T>(work: () => Promise<T>): Promise<T> {

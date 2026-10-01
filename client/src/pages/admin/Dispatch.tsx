@@ -33,6 +33,8 @@ import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
 import { PackageCheck, Truck } from "lucide-react";
+import { StarRow } from "@/components/product/ProductReviews";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -236,6 +238,67 @@ function Dispatch({ actor }: { actor: Actor }) {
           );
         }}
       </QueryGate>
+
+      <DeliveryScores />
     </>
+  );
+}
+
+/**
+ * What shoppers said about the deliveries themselves (3.4.4).
+ *
+ * A company sees its own score and an administrator every company's — scoped by
+ * the server. Comments carry no shopper's name: the company needs to know the
+ * sofa was left in the rain, not who said so.
+ */
+function DeliveryScores() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
+  const scores = trpc.dispatch.scores.useQuery();
+  return (
+    <section aria-labelledby="delivery-scores" className="mt-10">
+      <h2 id="delivery-scores" className="text-sm font-extrabold">{t("delivery.scoresHeading")}</h2>
+      <p className="mt-1 max-w-2xl text-[12px] leading-5 text-[#536b8c]">{t("delivery.scoresNote")}</p>
+      <QueryGate queries={[scores]}>
+        {() => {
+          const data = scores.data;
+          if (!data || data.scores.length === 0) {
+            return <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-4 text-sm text-[#536b8c]">{t("delivery.noScores")}</p>;
+          }
+          return (
+            <>
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {data.scores.map(score => (
+                  <li key={score.courierId ?? "seller"} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+                    <p className="text-[13px] font-extrabold" dir="auto">{score.courierName ?? t("delivery.sellerCarried")}</p>
+                    <p className="mt-1 flex items-center gap-2 text-[12px] text-[#536b8c]">
+                      <StarRow value={score.average} />
+                      <span>{t(score.count === 1 ? "delivery.scoreLineOne" : "delivery.scoreLine", { average: score.average.toFixed(1), count: score.count })}</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              {data.recent.some(row => row.comment) ? (
+                <>
+                  <h3 className="mt-5 text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase">{t("delivery.recentHeading")}</h3>
+                  <ul className="mt-2 space-y-2">
+                    {data.recent.filter(row => row.comment).map((row, index) => (
+                      <li key={index} className="rounded-xl border border-[#eef1f6] bg-white px-4 py-3">
+                        <p className="flex flex-wrap items-center gap-2 text-[11px] text-[#536b8c]">
+                          <StarRow value={row.rating} />
+                          <span>{formatDate(row.createdAt)}</span>
+                          {row.vendorName ? <span dir="auto">· {row.vendorName}</span> : null}
+                        </p>
+                        <p dir="auto" className="mt-1 text-[13px] leading-6">{row.comment}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </>
+          );
+        }}
+      </QueryGate>
+    </section>
   );
 }

@@ -180,7 +180,7 @@ export async function myStore(actor: Actor): Promise<{ id: number; name: string 
  * row survives the account being deleted, which is exactly when an audit trail
  * is most likely to be the only remaining record.
  */
-async function auditActor(actor: Actor) {
+export async function auditActor(actor: Actor) {
   const db = await getDb();
   /* The rank comes off the resolved actor rather than from the database,
      because that is what the guard just checked them against — reading the

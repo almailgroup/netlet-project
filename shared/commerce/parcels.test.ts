@@ -57,6 +57,14 @@ describe("what a parcel is", () => {
     ]);
     expect(parcels).toHaveLength(2);
   });
+
+  /* The key goes to the board and back through `dispatch.move`, and every input
+     carrying a NUL is refused before a router sees it. It used to carry one, so
+     every parcel bound for a second door could not be moved at all. */
+  it("names a parcel with a key that survives the trip through the API", () => {
+    const [parcel] = parcelsOf([line({ lineId: 1, destination: office })]);
+    expect(parcel.key).not.toContain("\u0000");
+  });
 });
 
 describe("a parcel's state is its least advanced line", () => {

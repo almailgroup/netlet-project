@@ -1240,6 +1240,112 @@ export const reviews = pgTable(
   ]
 );
 
+/**
+ * How the delivery went, rated apart from what was delivered (3.4.4).
+ *
+ * A product review is about the thing; this is about the van. Folding the two
+ * into one star row is how a lamp gets one star because the driver was late,
+ * and a seller is punished for a company they do not employ.
+ *
+ * **Anchored to a parcel, not to a line or an order.** A parcel — one seller's
+ * goods to one door — is what one driver carried, so it is what one rating can
+ * honestly be about. `parcel_key` is the same derived key the dispatch board
+ * names a parcel by; there is still no `parcels` table.
+ *
+ * **The carrier is frozen at the moment of rating**, beside the seller, so a
+ * company's score is about the parcels it actually carried and survives a
+ * parcel being reassigned or a company being retired. `set null` everywhere but
+ * the order: an order erased takes its ratings with it, the way a review goes
+ * with its line.
+ */
+export const deliveryRatings = pgTable(
+  "delivery_ratings",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parcelKey: varchar("parcel_key", { length: 600 }).notNull(),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    vendorName: varchar("vendor_name", { length: 255 }),
+    /** Who carried it. Null is the seller delivering it themselves. */
+    courierId: integer("courier_id").references(() => couriers.id, { onDelete: "set null" }),
+    /** One to five whole stars — the same scale as a product review. */
+    rating: integer("rating").notNull(),
+    comment: varchar("comment", { length: 500 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("delivery_ratings_parcel_unique").on(table.orderId, table.parcelKey),
+    index("delivery_ratings_courier_idx").on(table.courierId, table.createdAt),
+    index("delivery_ratings_vendor_idx").on(table.vendorId, table.createdAt),
+  ]
+);
+
+/**
+ * A parcel that arrived damaged, charged to whoever was carrying it (3.4.2).
+ *
+ * The requirement is that damage in transit is borne by the delivery company,
+ * which makes this a ledger of what a company owes as much as a complaints box:
+ * an accepted claim's `awarded_amount` is money the company is liable for, and
+ * the dispatch page sums it per company.
+ *
+ * **The claim is capped by what was frozen**, not by what anybody types: the
+ * lines named in `line_ids` are read back and their `line_total`s are the
+ * ceiling, so a claim for a KWD 4.900 bottle of oil cannot be written for 400.
+ *
+ * **One open claim per parcel**, by partial unique index rather than a
+ * read-then-insert two tabs can beat. A rejected or decided claim falls out of
+ * it, so a parcel can be claimed again with better evidence.
+ *
+ * **The company has a say before NetLet decides.** `courier_response` is their
+ * account of it, written from their own board — a liability assigned without
+ * the liable party ever being asked is how a delivery company stops agreeing
+ * to carry for a marketplace.
+ */
+export const damageClaims = pgTable(
+  "damage_claims",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    parcelKey: varchar("parcel_key", { length: 600 }).notNull(),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    vendorName: varchar("vendor_name", { length: 255 }),
+    /** Who was carrying it, frozen at filing: the party the claim is against. */
+    courierId: integer("courier_id").references(() => couriers.id, { onDelete: "set null" }),
+    filedBy: integer("filed_by").references(() => users.id, { onDelete: "set null" }),
+    /** `shopper`, `seller` or `admin` — who saw the damage, which weighs on a decision. */
+    filedAs: varchar("filed_as", { length: 20 }).notNull(),
+    /** The damaged lines of the parcel, by `order_items.id`. */
+    lineIds: jsonb("line_ids").$type<number[]>().notNull(),
+    claimedAmount: numeric("claimed_amount", { precision: 12, scale: 3 }).notNull(),
+    description: text("description").notNull(),
+    /** A link to a photograph. NetLet has no upload pipeline, so it is a link. */
+    evidenceUrl: varchar("evidence_url", { length: 2000 }),
+    courierResponse: text("courier_response"),
+    courierRespondedAt: timestamp("courier_responded_at", { withTimezone: true }),
+    /** `open`, `accepted` or `rejected`. */
+    status: varchar("status", { length: 20 }).notNull().default("open"),
+    awardedAmount: numeric("awarded_amount", { precision: 12, scale: 3 }),
+    decisionNote: varchar("decision_note", { length: 500 }),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("damage_claims_open_unique").on(table.orderId, table.parcelKey).where(sql`${table.status} = 'open'`),
+    index("damage_claims_courier_idx").on(table.courierId, table.status),
+    index("damage_claims_order_idx").on(table.orderId),
+  ]
+);
+
 /* --------------------------------------------------------- price offers --- */
 
 /**
@@ -2159,3 +2265,6 @@ export type GiftCardRow = typeof giftCards.$inferSelect;
 export type VendorApplication = typeof vendorApplications.$inferSelect;
 
 export type BundleRow = typeof bundles.$inferSelect;
+
+export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
+export type DamageClaimRow = typeof damageClaims.$inferSelect;

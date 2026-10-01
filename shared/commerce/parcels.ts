@@ -210,5 +210,9 @@ export function describeParcel(parcel: Parcel): { vendorName: string | null; des
  * ever compared, never parsed.
  */
 function hashLabel(destination: FrozenDestination): string {
-  return `${destination.label}\u0000${destination.addressLine ?? ""}`;
+  /* The unit separator, not NUL. The key travels to the board and comes back
+     in `dispatch.assign` and `dispatch.move`, and every input carrying a NUL
+     is refused before it reaches a router — Postgres `text` cannot hold one —
+     so a NUL here made every parcel bound for a second door unmovable. */
+  return `${destination.label}\u001f${destination.addressLine ?? ""}`;
 }

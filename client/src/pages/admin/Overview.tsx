@@ -67,15 +67,25 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingParcels = trpc.dispatch.waiting.useQuery(undefined, {
     enabled: can(actor, "delivery.view"),
   });
+  /* Damage claims (3.4.2): for NetLet the ones to decide, for a company the
+     ones against it still waiting on its answer. */
+  const openClaims = trpc.dispatch.claims.openCount.useQuery(undefined, {
+    enabled: can(actor, "delivery.view"),
+  });
 
   if (isCourier) {
     return (
       <>
         <h1 className="text-xl font-extrabold">{t("admin.overview")}</h1>
         <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
-        {(waitingParcels.data ?? 0) > 0 ? (
+        {(waitingParcels.data ?? 0) + (openClaims.data ?? 0) > 0 ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile tile={{ label: "dispatch.waiting", value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" }} />
+            {(waitingParcels.data ?? 0) > 0 ? (
+              <Tile tile={{ label: "dispatch.waiting", value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" }} />
+            ) : null}
+            {(openClaims.data ?? 0) > 0 ? (
+              <Tile tile={{ label: "admin.claimsOpenTile", value: openClaims.data ?? 0, href: "/admin/claims", tone: "urgent" }} />
+            ) : null}
           </div>
         ) : (
           <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
@@ -113,6 +123,7 @@ function Overview({ actor }: { actor: Actor }) {
        every other one here. */
     { label: "admin.sellerChanges" as const, value: sellerChanges.data?.unseen ?? 0, href: "/admin/audit", tone: "urgent" as const },
     { label: "dispatch.waiting" as const, value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" as const },
+    { label: "admin.claimsOpenTile" as const, value: openClaims.data ?? 0, href: "/admin/claims", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

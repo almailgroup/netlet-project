@@ -45,6 +45,7 @@ const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
 const AdminBundles = lazy(() => import("@/pages/admin/Bundles"));
 const AdminDispatch = lazy(() => import("@/pages/admin/Dispatch"));
 const AdminCouriers = lazy(() => import("@/pages/admin/Couriers"));
+const AdminClaims = lazy(() => import("@/pages/admin/Claims"));
 const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
@@ -127,6 +128,7 @@ function Router() {
             links. A courier sees only these. */}
         <Route path="/admin/dispatch" component={AdminDispatch} />
         <Route path="/admin/couriers" component={AdminCouriers} />
+        <Route path="/admin/claims" component={AdminClaims} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />
         <Route path="/admin/vendors" component={AdminVendors} />

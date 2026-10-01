@@ -35,7 +35,9 @@ export type AuditAction =
   | "product.delete"
   | "user.setAdmin"
   | "user.sendPasswordReset"
-  | "admin.signIn";
+  | "admin.signIn"
+  /* Money assigned between two companies (3.4.2): who pays for a broken box. */
+  | "delivery.decideClaim";
 
 export type AuditActor = {
   id?: number | null;
@@ -46,7 +48,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -67,6 +69,8 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   "vendor.setCommission",
   "user.setAdmin",
   "vendor.setStatus",
+  /* Admin-only and money, like commission: who authorised the decider matters. */
+  "delivery.decideClaim",
 ]);
 
 /**

@@ -27,6 +27,17 @@ import {
   setCourierStatus,
 } from "../dispatch.js";
 import { resolveActor } from "../inventory.js";
+import {
+  countOpenClaims,
+  damageLedger,
+  decideClaim,
+  deliveryScores,
+  fileClaim,
+  listClaims,
+  ParcelCareRefused,
+  respondToClaim,
+} from "../parcelCare.js";
+import { MAX_CLAIM_DESCRIPTION, MAX_CLAIM_RESPONSE } from "../../shared/commerce/damageClaims.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
 
 /** A parcel has no id of its own: it is named by its order and its key. */
@@ -38,6 +49,9 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof DispatchError) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    }
+    if (error instanceof ParcelCareRefused) {
+      throw new TRPCError({ code: error.reason === "parcel.notFound" ? "NOT_FOUND" : "BAD_REQUEST", message: error.reason });
     }
     const message = error instanceof Error ? error.message : "";
     if (message.startsWith("FORBIDDEN:")) {
@@ -101,6 +115,68 @@ export const dispatchRouter = router({
       await guard(() => moveParcel(actor, input.orderId, input.key, input.to));
       return { success: true } as const;
     }),
+
+  /**
+   * Each delivery company's score from shoppers' delivery ratings (3.4.4).
+   * A company sees its own; an administrator sees every company's.
+   */
+  scores: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return guard(() => deliveryScores(actor));
+  }),
+
+  /**
+   * Damage in transit (3.4.2). One set of procedures for the three parties,
+   * scoped inside the data layer: a seller files and reads claims on their own
+   * goods, a company reads and answers claims against it, NetLet decides.
+   */
+  claims: router({
+    list: protectedProcedure
+      .input(z.object({ status: z.enum(["open", "accepted", "rejected"]).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => listClaims(actor, input ?? {}));
+      }),
+    file: protectedProcedure
+      .input(z.object({
+        orderId: rowId,
+        lineIds: z.array(rowId).min(1).max(100),
+        amount: z.string().max(16),
+        description: z.string().max(MAX_CLAIM_DESCRIPTION),
+        evidenceUrl: z.string().trim().max(2000).nullish(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => fileClaim({ kind: "actor", actor, orderId: input.orderId }, input));
+      }),
+    respond: protectedProcedure
+      .input(z.object({ claimId: rowId, response: z.string().max(MAX_CLAIM_RESPONSE) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        await guard(() => respondToClaim(actor, input.claimId, input.response));
+        return { success: true } as const;
+      }),
+    decide: protectedProcedure
+      .input(z.object({
+        claimId: rowId,
+        outcome: z.enum(["accepted", "rejected"]),
+        awardedAmount: z.string().max(16).nullish(),
+        note: z.string().max(500).nullish(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        await guard(() => decideClaim(actor, input.claimId, input));
+        return { success: true } as const;
+      }),
+    ledger: protectedProcedure.query(async ({ ctx }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => damageLedger(actor));
+    }),
+    openCount: protectedProcedure.query(async ({ ctx }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => countOpenClaims(actor));
+    }),
+  }),
 
   couriers: router({
     list: protectedProcedure.query(async ({ ctx }) => {
