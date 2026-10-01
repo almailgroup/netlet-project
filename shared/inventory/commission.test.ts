@@ -84,3 +84,12 @@ describe("totalling", () => {
     expect(Number(total.commission) + Number(total.net)).toBeCloseTo(86.375, 3);
   });
 });
+
+describe("the standard rate", () => {
+  /* One policy in one place: a new store's default and what /sell quotes. */
+  it("is what a new store is charged by default", async () => {
+    const { vendors } = await import("../../drizzle/schema.js");
+    const { DEFAULT_COMMISSION_PERCENT } = await import("./commission.js");
+    expect(vendors.commissionPercent.default).toBe(DEFAULT_COMMISSION_PERCENT);
+  });
+});

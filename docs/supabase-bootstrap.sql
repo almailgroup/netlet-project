@@ -1089,6 +1089,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS "conversations_pair_unique" ON "conversations"
 CREATE INDEX IF NOT EXISTS "conversations_vendor_idx" ON "conversations" USING btree ("vendor_id","last_message_at");
 CREATE INDEX IF NOT EXISTS "conversations_user_idx" ON "conversations" USING btree ("user_id","last_message_at");
 
+-- ===== 0038_cheerful_steel_serpent.sql =====
+ALTER TABLE "vendor_applications" ADD COLUMN IF NOT EXISTS "proposed_commission_percent" numeric(5, 2);
+ALTER TABLE "vendor_applications" ADD COLUMN IF NOT EXISTS "commission_note" varchar(500);
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1132,6 +1136,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  38 AS migrations_in_this_file,
+  39 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

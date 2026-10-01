@@ -20,6 +20,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import {
   AGREEMENT_VERSION,
   missingFromApplication,
@@ -58,6 +59,9 @@ function Applications() {
   const formatDate = useDateFormat();
   const [page, setPage] = useState(1);
   const [reasons, setReasons] = useState<Record<number, string>>({});
+  /* The rate each store will be charged, per row: the standard one until the
+     administrator changes it (3.3.2). */
+  const [rates, setRates] = useState<Record<number, string>>({});
 
   /* The queue asks the server for what is waiting rather than filtering a page
      of everything: with paging the second reports an empty queue the moment it
@@ -154,6 +158,40 @@ function Applications() {
                       </p>
                     ) : null}
 
+                    {/* The rate is NetLet's decision, taken here, with the
+                        applicant's proposal and reason beside it — and the
+                        standard rate unless somebody changes it, so approving
+                        never quietly applies what was asked for. */}
+                    <div className="mt-3 rounded-xl bg-[#f3f2ed] px-3 py-3">
+                      <p className="text-[12px] text-[#0a285a]">
+                        {row.proposedCommissionPercent
+                          ? t("admin.applicationProposed", { rate: String(Number(row.proposedCommissionPercent)), standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })
+                          : t("admin.applicationNoProposal", { standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
+                      </p>
+                      {row.commissionNote ? <p dir="auto" className="mt-1 text-[12px] leading-5 ink-muted">“{row.commissionNote}”</p> : null}
+                      <div className="mt-2 flex flex-wrap items-end gap-2">
+                        <label className="block">
+                          <span className="block text-[11px] font-extrabold ink-muted">{t("admin.applicationRate")}</span>
+                          <input
+                            dir="ltr"
+                            inputMode="decimal"
+                            value={rates[row.id] ?? String(Number(DEFAULT_COMMISSION_PERCENT))}
+                            onChange={event => setRates({ ...rates, [row.id]: event.target.value })}
+                            className="type-body mt-1 h-9 w-24 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#f2683a]"
+                          />
+                        </label>
+                        {row.proposedCommissionPercent ? (
+                          <button
+                            type="button"
+                            onClick={() => setRates({ ...rates, [row.id]: String(Number(row.proposedCommissionPercent)) })}
+                            className="glass pressable rounded-full px-3 py-2 text-[11px] font-extrabold"
+                          >
+                            {t("admin.applicationUseProposed")}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+
                     {/* Approving is guarded by the same function the server
                         runs, so the button cannot offer what the API refuses. */}
                     {missing.length > 0 ? (
@@ -164,7 +202,7 @@ function Applications() {
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <button
-                        onClick={() => approve.mutate({ id: row.id })}
+                        onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null })}
                         disabled={missing.length > 0 || approve.isPending}
                         className="glass glass-navy pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
                       >

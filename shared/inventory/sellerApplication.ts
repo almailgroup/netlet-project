@@ -44,6 +44,7 @@
  * next year does not retroactively become something last year's seller agreed
  * to — the same reason an order freezes its commission rate.
  */
+import { DEFAULT_COMMISSION_PERCENT } from "./commission.js";
 import { isValidIban, isValidKuwaitPhone, isGovernorate } from "./storeProfile.js";
 
 /**
@@ -82,14 +83,41 @@ export type SellerApplication = {
    */
   underPlatformLicence?: boolean;
   agreementVersion?: string | null;
+  /**
+   * A rate the applicant would like instead of the standard one (3.3.2), and
+   * why. A *proposal*: commission is outside a vendor's control entirely, so
+   * this is something an administrator reads at approval, never something the
+   * store is charged because it was typed.
+   */
+  proposedCommissionPercent?: string | null;
+  commissionNote?: string | null;
 };
+
+/** How long the reason for a proposed rate may be. */
+export const MAX_COMMISSION_NOTE = 500;
+
+/**
+ * Whether a proposed rate is one worth reading: a percentage, and below the
+ * standard rate. Proposing the standard rate or above it is proposing nothing,
+ * and saying so beats storing a "proposal" an administrator then has to puzzle
+ * over.
+ */
+export function proposalProblem(proposed: string | null | undefined): "application.badCommission" | "application.commissionNotLower" | null {
+  const value = (proposed ?? "").trim();
+  if (!value) return null;
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(value) || Number.parseFloat(value) > 100) return "application.badCommission";
+  if (Number.parseFloat(value) >= Number.parseFloat(DEFAULT_COMMISSION_PERCENT)) return "application.commissionNotLower";
+  return null;
+}
 
 export type ApplicationProblem =
   | "application.noName"
   | "application.badIban"
   | "application.badPhone"
   | "application.badGovernorate"
-  | "application.insecureDocument";
+  | "application.insecureDocument"
+  | "application.badCommission"
+  | "application.commissionNotLower";
 
 /**
  * What is wrong with an application *as typed*, which is a short list.
@@ -118,6 +146,9 @@ export function applicationProblems(application: SellerApplication): Application
       break;
     }
   }
+
+  const proposal = proposalProblem(application.proposedCommissionPercent);
+  if (proposal) problems.push(proposal);
 
   return problems;
 }

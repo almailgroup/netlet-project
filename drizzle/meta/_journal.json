@@ -267,6 +267,13 @@
       "when": 1790883568684,
       "tag": "0037_slimy_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790884386201,
+      "tag": "0038_cheerful_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

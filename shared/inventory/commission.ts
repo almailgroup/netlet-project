@@ -22,6 +22,17 @@
  */
 import { fromFils, toFils } from "../money.js";
 
+/**
+ * NetLet's standard rate, as a percentage of each sale (3.3.2).
+ *
+ * One constant, because three places state it: a new store's default, the
+ * `/sell` page telling an applicant what they will pay before they apply, and
+ * the approval form an administrator sets the rate on. Two of those used to be
+ * a literal each, which is one policy in two places and a page that could
+ * quote a rate the database no longer charges.
+ */
+export const DEFAULT_COMMISSION_PERCENT = "10.00";
+
 export type CommissionRule = {
   /** Percent of the line, 0–100, as a decimal string. Null means none. */
   percent?: string | null;

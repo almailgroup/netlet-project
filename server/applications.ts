@@ -20,11 +20,15 @@ import {
   readyToApprove,
   type ApplicationState,
   type SellerApplication,
+  MAX_COMMISSION_NOTE,
 } from "../shared/inventory/sellerApplication.js";
 import { storeSlug } from "../shared/inventory/storeProfile.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { getDb } from "./db.js";
+import { recordAudit } from "./audit.js";
+import { auditActor } from "./inventory.js";
+import { DEFAULT_COMMISSION_PERCENT } from "../shared/inventory/commission.js";
 
 /** Every refusal is a key the router turns into a message, never a sentence. */
 export class ApplicationError extends Error {
@@ -95,6 +99,11 @@ export async function saveApplication(userId: number, input: SellerApplication):
     underPlatformLicence: input.underPlatformLicence ?? false,
     agreementVersion: input.agreementVersion === AGREEMENT_VERSION ? AGREEMENT_VERSION : null,
     agreedAt: input.agreementVersion === AGREEMENT_VERSION ? new Date() : null,
+    proposedCommissionPercent: input.proposedCommissionPercent?.trim() || null,
+    /* A reason with no proposal is a reason for nothing, so it is not kept. */
+    commissionNote: input.proposedCommissionPercent?.trim()
+      ? input.commissionNote?.replace(/\s+/g, " ").trim().slice(0, MAX_COMMISSION_NOTE) || null
+      : null,
   };
 
   if (existing && editableByApplicant(existing.status as ApplicationState)) {
@@ -201,8 +210,23 @@ export async function listApplications(
  * Lighting" may be the second one of that name and a collision at this point
  * would refuse an approval for a reason the administrator cannot act on.
  */
-export async function approveApplication(actor: Actor, applicationId: number): Promise<{ vendorId: number }> {
+export async function approveApplication(
+  actor: Actor,
+  applicationId: number,
+  /**
+   * The store's rate (3.3.2), set here by the administrator — the standard
+   * one when omitted. The applicant's proposal is shown beside it and never
+   * applied by itself: commission is outside a vendor's control entirely.
+   */
+  commissionPercent?: string | null,
+): Promise<{ vendorId: number }> {
   assertCan(actor, "platform.manageUsers");
+  const rate = commissionPercent?.trim() || DEFAULT_COMMISSION_PERCENT;
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number.parseFloat(rate) > 100) throw new ApplicationError("application.badCommission");
+  const custom = Number.parseFloat(rate) !== Number.parseFloat(DEFAULT_COMMISSION_PERCENT);
+  /* Already true of anybody who clears `platform.manageUsers`; asked anyway,
+     because this is the act the commission rule is about. */
+  if (custom) assertCan(actor, "vendor.setCommission");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -230,6 +254,7 @@ export async function approveApplication(actor: Actor, applicationId: number): P
       licenceExpiresAt: row.licenceExpiresAt,
       payoutIban: row.payoutIban,
       underPlatformLicence: row.underPlatformLicence,
+      commissionPercent: rate,
     })
     .returning({ id: vendors.id });
 
@@ -249,6 +274,21 @@ export async function approveApplication(actor: Actor, applicationId: number): P
     .update(vendorApplications)
     .set({ status: "approved", vendorId: vendor.id, reviewedBy: actor.userId, reviewedAt: new Date(), rejectionReason: null })
     .where(eq(vendorApplications.id, applicationId));
+
+  /* A rate other than the standard one is a commission decision like any
+     other, and is recorded as one — with the authorisation chain, and with
+     what the applicant had asked for beside what they were given. */
+  if (custom) {
+    await recordAudit(await auditActor(actor), {
+      action: "vendor.setCommission",
+      subjectType: "vendor",
+      subjectId: vendor.id,
+      subjectLabel: row.storeName,
+      vendorId: vendor.id,
+      before: { commissionPercent: DEFAULT_COMMISSION_PERCENT },
+      after: { commissionPercent: rate, proposedCommissionPercent: row.proposedCommissionPercent, atApproval: true },
+    });
+  }
 
   return { vendorId: vendor.id };
 }
@@ -308,6 +348,8 @@ function toShared(row: Row): SellerApplication {
     payoutIban: row.payoutIban,
     underPlatformLicence: row.underPlatformLicence,
     agreementVersion: row.agreementVersion,
+    proposedCommissionPercent: row.proposedCommissionPercent,
+    commissionNote: row.commissionNote,
   };
 }
 

@@ -25,6 +25,7 @@ import {
   vendors,
 } from "../drizzle/schema.js";
 import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
+import { DEFAULT_COMMISSION_PERCENT } from "../shared/inventory/commission.js";
 import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
 import { violatesUnique } from "./_core/describeError.js";
@@ -1655,7 +1656,7 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
       slug,
       name: input.name.trim(),
       status: input.status ?? "pending",
-      commissionPercent: input.commissionPercent ?? "10.00",
+      commissionPercent: input.commissionPercent ?? DEFAULT_COMMISSION_PERCENT,
       commissionFixed: input.commissionFixed ?? null,
       autoPublish: input.autoPublish ?? false,
       /* Everything else the form can hold — see `storeDetailColumns`. What is

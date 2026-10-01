@@ -29,7 +29,10 @@ import {
   AGREEMENT_VERSION,
   missingFromApplication,
   type MissingField,
+  MAX_COMMISSION_NOTE,
+  proposalProblem,
 } from "@shared/inventory/sellerApplication";
+import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { GOVERNORATES } from "@shared/inventory/storeProfile";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
@@ -62,12 +65,16 @@ type Form = {
   payoutIban: string;
   underPlatformLicence: boolean;
   agreed: boolean;
+  proposing: boolean;
+  proposedCommissionPercent: string;
+  commissionNote: string;
 };
 
 const EMPTY: Form = {
   storeName: "", storeNameAr: "", contactEmail: "", contactPhone: "", governorate: "",
   addressLine: "", licenceNumber: "", licenceDocUrl: "", identityDocUrl: "", payoutIban: "",
   underPlatformLicence: false, agreed: false,
+  proposing: false, proposedCommissionPercent: "", commissionNote: "",
 };
 
 export default function Sell() {
@@ -119,6 +126,9 @@ export default function Sell() {
       payoutIban: row.payoutIban ?? "",
       underPlatformLicence: row.underPlatformLicence,
       agreed: row.agreementVersion === AGREEMENT_VERSION,
+      proposing: row.proposedCommissionPercent !== null,
+      proposedCommissionPercent: row.proposedCommissionPercent ? String(Number(row.proposedCommissionPercent)) : "",
+      commissionNote: row.commissionNote ?? "",
     });
   }, [mine.data?.id, mine.data?.updatedAt]);
 
@@ -143,7 +153,12 @@ export default function Sell() {
     payoutIban: form.payoutIban.trim() || null,
     underPlatformLicence: form.underPlatformLicence,
     agreementVersion: form.agreed ? AGREEMENT_VERSION : null,
+    /* Unticking the proposal withdraws it, rather than leaving a number the
+       applicant can no longer see on the row an administrator reads. */
+    proposedCommissionPercent: form.proposing ? form.proposedCommissionPercent.trim() || null : null,
+    commissionNote: form.proposing ? form.commissionNote.trim() || null : null,
   };
+  const proposalIssue = form.proposing ? proposalProblem(form.proposedCommissionPercent) : null;
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(current => ({ ...current, [key]: value }));
 
@@ -263,6 +278,56 @@ export default function Sell() {
                     <input dir="ltr" value={form.identityDocUrl} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
                   </Labelled>
                 </div>
+              </section>
+
+              {/* What selling here costs, before anybody applies (3.3.2). The
+                  rate is stated from the same constant a new store is charged,
+                  so the page cannot quote a figure the database does not. A
+                  different rate can be *proposed*; commission is outside a
+                  seller's control, so it is NetLet that decides, at approval. */}
+              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+                <h2 className="text-sm font-extrabold">{t("sell.commission")}</h2>
+                <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">
+                  {t("sell.commissionStandard", { rate: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
+                </p>
+                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
+                  <input
+                    type="checkbox"
+                    checked={form.proposing}
+                    onChange={e => set("proposing", e.target.checked)}
+                    className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
+                  />
+                  <span className="text-[13px] leading-5 text-[#0a285a]">{t("sell.commissionPropose")}</span>
+                </label>
+                {form.proposing ? (
+                  <div className="mt-4 grid gap-4 sm:grid-cols-[160px_1fr]">
+                    <Labelled label={t("sell.commissionRate")}>
+                      <input
+                        dir="ltr"
+                        inputMode="decimal"
+                        value={form.proposedCommissionPercent}
+                        onChange={e => set("proposedCommissionPercent", e.target.value)}
+                        aria-invalid={proposalIssue !== null}
+                        aria-describedby="proposal-issue"
+                        className={field}
+                      />
+                    </Labelled>
+                    <Labelled label={t("sell.commissionWhy")}>
+                      <input dir="auto" maxLength={MAX_COMMISSION_NOTE} value={form.commissionNote} onChange={e => set("commissionNote", e.target.value)} className={field} />
+                    </Labelled>
+                  </div>
+                ) : null}
+                {/* Outside the grid, so an empty live region does not cost a
+                    row of gap; present whenever the fields are, so a screen
+                    reader is listening before there is anything to say. */}
+                {form.proposing ? (
+                  <>
+                    <p id="proposal-issue" aria-live="polite" className={`text-[12px] leading-5 text-[#8c2f22] ${proposalIssue ? "mt-2" : ""}`}>
+                      {proposalIssue ? t(proposalIssue, { rate: String(Number(DEFAULT_COMMISSION_PERCENT)) }) : null}
+                    </p>
+                    <p className="mt-3 text-[12px] leading-5 ink-muted">{t("sell.commissionDecided")}</p>
+                  </>
+                ) : null}
               </section>
 
               <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">

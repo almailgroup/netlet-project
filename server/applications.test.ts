@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { users, vendorApplications, vendorMembers, vendors } from "../drizzle/schema.js";
+import { auditLog, users, vendorApplications, vendorMembers, vendors } from "../drizzle/schema.js";
 import { AGREEMENT_VERSION } from "../shared/inventory/sellerApplication.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 
@@ -194,5 +194,44 @@ describe("reviewing", () => {
     expect(await apps.countWaitingApplications(adminActor())).toBe(0);
     await waiting();
     expect(await apps.countWaitingApplications(adminActor())).toBe(1);
+  });
+
+  /* 3.3.2: the standard rate is what a store gets unless NetLet decides
+     otherwise, and a proposal is read, never applied by itself. */
+  it("charges the standard rate when the administrator sets none, whatever was proposed", async () => {
+    await apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "7", commissionNote: "We sell high volumes of small items." });
+    await apps.submitApplication(ids.applicant);
+    const [row] = await db.select().from(vendorApplications).where(eq(vendorApplications.userId, ids.applicant));
+    expect(row).toMatchObject({ proposedCommissionPercent: "7.00", commissionNote: "We sell high volumes of small items." });
+
+    const { vendorId } = await apps.approveApplication(adminActor(), row.id);
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
+    expect(vendor.commissionPercent).toBe("10.00");
+    expect(await db.select().from(auditLog).where(eq(auditLog.subjectId, vendorId))).toHaveLength(0);
+  });
+
+  it("sets the rate the administrator chose at approval, and records it as a commission decision", async () => {
+    await apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "7" });
+    await apps.submitApplication(ids.applicant);
+    const [row] = await db.select().from(vendorApplications).where(eq(vendorApplications.userId, ids.applicant));
+
+    const { vendorId } = await apps.approveApplication(adminActor(), row.id, "8.5");
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
+    expect(vendor.commissionPercent).toBe("8.50");
+    const [entry] = await db.select().from(auditLog).where(eq(auditLog.subjectId, vendorId));
+    expect(entry).toMatchObject({ action: "vendor.setCommission", actorId: ids.admin });
+    expect(entry.after).toMatchObject({ commissionPercent: "8.5", proposedCommissionPercent: "7.00" });
+  });
+
+  it("refuses a proposal that is not a rate, or is not below the standard one", async () => {
+    await expect(apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "abc" })).rejects.toThrow("application.badCommission");
+    await expect(apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "10" })).rejects.toThrow("application.commissionNotLower");
+    await expect(apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "150" })).rejects.toThrow("application.badCommission");
+  });
+
+  /* A reason with nothing to be a reason for is not kept. */
+  it("drops a reason when there is no proposal", async () => {
+    const row = await apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "", commissionNote: "please" });
+    expect(row).toMatchObject({ proposedCommissionPercent: null, commissionNote: null });
   });
 });

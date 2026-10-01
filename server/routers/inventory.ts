@@ -74,7 +74,7 @@ import {
   saveApplication,
   submitApplication,
 } from "../applications.js";
-import { APPLICATION_STATES } from "../../shared/inventory/sellerApplication.js";
+import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 
@@ -306,6 +306,10 @@ export const inventoryRouter = router({
         /* The version they accepted, not a boolean: "they agreed" means
            nothing without "to what". */
         agreementVersion: z.string().trim().max(20).nullable().optional(),
+        /* A proposal, shaped like a rate; whether it is a sensible one is
+           `proposalProblem`, so the page can say it in the shopper's words. */
+        proposedCommissionPercent: z.string().trim().max(8).nullable().optional(),
+        commissionNote: z.string().max(MAX_COMMISSION_NOTE + 100).nullable().optional(),
       }))
       .mutation(({ ctx, input }) => applicationGuard(() => saveApplication(ctx.user.id, input))),
 
@@ -326,10 +330,12 @@ export const inventoryRouter = router({
       guard(async () => countWaitingApplications(await resolveActor(ctx.user)))),
 
     approve: protectedProcedure
-      .input(z.object({ id: rowId }))
+      /* The store's rate, chosen by the administrator approving it; the
+         standard one when omitted (3.3.2). */
+      .input(z.object({ id: rowId, commissionPercent: percentSchema.nullable().optional() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
-        return guard(() => applicationGuard(() => approveApplication(actor, input.id)));
+        return guard(() => applicationGuard(() => approveApplication(actor, input.id, input.commissionPercent)));
       }),
 
     reject: protectedProcedure

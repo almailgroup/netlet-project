@@ -613,6 +613,15 @@ doors check it, the editor and the spreadsheet import, for the reason
 "duplicate key value violates unique constraint", which is a 500 for something
 the seller fixes by typing a different code.
 
+**The standard rate is one constant, and an applicant may only propose.**
+`DEFAULT_COMMISSION_PERCENT` is what a new store is charged and what `/sell`
+quotes before anybody applies; it was a literal in two places, which is a page
+that could quote a rate the database no longer charges. A proposal is a lower
+rate and a reason on the application, and nothing more: the administrator sets
+the rate on the approval form, the standard one unless they change it, and a
+non-standard rate is audited as `vendor.setCommission` with the chain — the
+same decision as any other commission edit, taken at a different moment.
+
 A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.

@@ -1860,6 +1860,14 @@ export const vendorApplications = pgTable(
     payoutIban: varchar("payout_iban", { length: 42 }),
     /** Recorded, never inferred from a blank licence number. */
     underPlatformLicence: boolean("under_platform_licence").notNull().default(false),
+    /*
+     * A rate the applicant asked for instead of the standard one (3.3.2), and
+     * why. A proposal only: the store's actual rate is set by an administrator
+     * at approval and written to `vendors.commission_percent`, because
+     * commission is outside a vendor's control entirely.
+     */
+    proposedCommissionPercent: numeric("proposed_commission_percent", { precision: 5, scale: 2 }),
+    commissionNote: varchar("commission_note", { length: 500 }),
     /**
      * Which version of the seller agreement they accepted, and when.
      *
