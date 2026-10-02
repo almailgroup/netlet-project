@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 55 |
+| Built | 57 |
 | Partial | 5 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 15 |
+| Not started | 13 |
 
-*Last updated after the size guide (3.1.20), e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
+*Last updated after affiliate marketing (3.7), the size guide (3.1.20), e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -138,10 +138,17 @@ window and review eligibility are both correct for free.
 | 5 | AI fraud detection | **Built** | `shared/commerce/fraudSignals.ts` is the judgement and is pure. **It flags and never blocks**: nothing cancels an order, refuses a checkout or holds a parcel — a heuristic that could refuse a sale refuses real customers at the till and the shop never learns which ones it turned away. **Cash is where the exposure actually is**, which is the whole reason this is worth having today: NetLet takes cash on delivery and nothing else, so the goods leave the warehouse before any money exists, and an uncollected cash order is a van, a driver and a parcel nobody paid for. The value thresholds therefore apply to cash and the card branches wait with 3.2.1. Six signals — a new account paying real money in cash, a large cash order, several accounts at one address, a burst of orders in a day, a refund history with enough orders behind it to mean anything, and ten of one thing on a first order — each carrying **the counts that produced it**, because "risk: high" is not something an administrator can disagree with and "five accounts have used this address" is. Three bands rather than a score, since a number asks somebody to decide what 62 means; `high` is one serious signal or three of anything, because several small oddities about one order is itself the pattern. **Admin-only, guarded beside the query**: the signals name other accounts' behaviour, so a vendor reading their own order desk does not get them. Verified in a browser in both languages against a real suspicious order, axe clean — and the browser is what caught the one real defect: a JS `Date` interpolated into a raw `count(*) filter` fragment, which PGlite accepts and postgres.js refuses, so every test passed and every request 500ed. Exactly the wishlist's `lt(column, date)` lesson, found the same way. |
 | 6 | E-invoice compliance | **Partial** | The mechanics are built; whether they satisfy the law has not been checked by anybody qualified to say, and that is the gap. `shared/commerce/invoice.ts` is the rules and is pure; `invoices` and `invoice_counters` are the ledger. **One invoice per order, issued by NetLet** as the marketplace the shopper paid, with every seller named under their own heading and their own commercial registration — or "sells under NetLet's licence" in words — because the order-level reductions belong to the basket and splitting them per seller would need an allocation rule nobody has decided. **Issued when the cash is collected**, from the frozen order, so a line cancelled before then is no more on the invoice than on the driver's sheet. **Gap-free numbering** (`INV-2026-000042`), from a counter row incremented inside the transaction that writes the invoice — a Postgres sequence would leave a hole every time an insert failed. **Never edited**: the whole document is frozen as issued, and a refund adds a credit note (`CRN-…`) against it. Both languages on one document whatever the site is in, the date in the Gregorian and Hijri (Umm al-Qura) calendars, amounts in KWD to three decimals, and an invoiced order cannot be deleted out from under its invoice. The shopper finds it on their order; an administrator at `/admin/invoices`. The field list followed secondary summaries of Kuwait's Decree 10/2026 rather than the decree itself, NetLet's own registration has to be configured (`INVOICE_ISSUER_*`; `pnpm preflight` warns), and there is no submission to any government system because no such interface was specified. |
 
-## 3.7 Affiliate marketing — 0 of 2
+## 3.7 Affiliate marketing — 2 built
 
-Absent. One note worth keeping: **3.7 shares a ledger with 3.1's referral
-points.** Build one points ledger, not two.
+The document's own wording for these two did not survive into this
+repository, so the rows name the two halves every affiliate programme has: the
+link that earns, and the account that is paid. The note this section used to
+carry — **one points ledger, not two** — is what was built.
+
+| # | Requirement | Status | Where it stands |
+|---|---|---|---|
+| 1 | Affiliates share tracked links and earn on the sales they bring | **Built** | `shared/commerce/affiliate.ts` is the rules and is pure. Anybody may apply from their account; **agreeing in words to disclose that the links are paid is a condition of applying**, and an administrator approves at `/admin/affiliates`. A link is `?aff=AFXXXX` on any page; the browser keeps the last one for **thirty days**, the server attributes the order only to an approved affiliate who is not the buyer, and the order freezes who and at what rate, so a later rate change does not reach back. **The shopper is told at checkout** whose link it was and that it earns them a commission at no cost to the shopper. **The share is paid out of NetLet's commission on each line, never the seller's, and never more than that commission** — a rate set too high costs margin, not money NetLet never had. Earned when the cash is collected, like a referral; a refunded line takes back exactly its share, from the same frozen figures. Both are exactly-once by partial unique indexes. |
+| 2 | Affiliate dashboard and payouts | **Built** | On the account page: the link and code, paid and waiting orders, earned, reversed and available, each entry with its order, and a payout request. **The same ledger as referral points, in its own pot** — counted in fils and paid at face value, where points pay a tenth, because a commission is payment for work and paying it at a tenth would keep nine-tenths of what was promised. Payouts are marked paid on the finance page beside the referral cash-outs, labelled by pot. Approval, suspension and rate are admin-only (`affiliate.manage`) and on the audit trail with the chain. A suspended affiliate stops earning and can still be paid what they earned. The whole programme is one switch on `/admin/features`, which closes applications and new attribution without stranding an order already attributed. |
 
 ## 3.8 Vendor–customer chat — 2 built
 

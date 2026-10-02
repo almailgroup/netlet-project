@@ -104,7 +104,10 @@ export type Capability =
   | "platform.manageUsers"
   /* The feature switchboard (2.3). Turning a feature off for every store and
      every shopper at once is NetLet's decision about NetLet. */
-  | "platform.configure";
+  | "platform.configure"
+  /* Approving affiliates and setting their rate (3.7): money NetLet pays out
+     of its own cut, so it sits with commission, outside any vendor rank. */
+  | "affiliate.manage";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -145,6 +148,7 @@ const ADMIN_ONLY: Capability[] = [
   // a different question from who is an administrator of NetLet.
   "platform.manageUsers",
   "platform.configure",
+  "affiliate.manage",
 ];
 
 /**

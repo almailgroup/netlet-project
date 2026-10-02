@@ -49,6 +49,7 @@ export const FEATURE_KEYS = [
   "damageClaims",
   "wishlists",
   "giftCards",
+  "affiliates",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -86,6 +87,10 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* Issuing new cards. A card already sold is money somebody holds, and it
      goes on being spendable. */
   giftCards: { entries: ["orders.createGiftCard"], audience: "seller" },
+  /* New applications close, and checkout stops attributing new orders. An
+     order already attributed is still credited when it is paid, and a balance
+     already earned can still be paid out. */
+  affiliates: { entries: ["affiliates.join"], audience: "everyone" },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

@@ -21,9 +21,7 @@ import { fileURLToPath } from "node:url";
 const DOC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../docs/REQUIREMENTS.md");
 
 /** Requirements that are written as prose rather than as a table row. */
-export const PROSE_SECTIONS = {
-  "3.7": 2,
-};
+export const PROSE_SECTIONS = {};
 
 
 

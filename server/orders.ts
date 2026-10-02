@@ -54,6 +54,8 @@ import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referra
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
 import { issueInvoice, issueQuietly } from "./invoices.js";
+import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
+import { featureOn } from "./features.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -84,6 +86,15 @@ export type PlaceOrderDetails = {
    * the finance panel that nobody has collected.
    */
   paymentMethod?: string | null;
+  /**
+   * The affiliate link the shopper arrived through, if they did (3.7).
+   *
+   * Only a claim: the server attributes the order only to an approved
+   * affiliate who is not the buyer, while the switch is on, and freezes their
+   * rate beside it. The thirty-day window is the browser's to enforce, because
+   * only the browser saw the click.
+   */
+  affiliateCode?: string | null;
   /**
    * Whether to spend the shopper's loyalty points on this order (3.1.15).
    *
@@ -440,6 +451,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
 
   const draft = draftOrder(lines, delivery.total);
 
+  /* Who brought this order, if anybody (3.7): resolved before anything is
+     taken, so a lookup that fails cannot strand stock. */
+  const affiliate = details.affiliateCode && (await featureOn("affiliates"))
+    ? await earningAffiliate(db, details.affiliateCode, details.userId)
+    : null;
+
   // Take every line's units first. Anything already taken goes back to the pool
   // it came from if a later line cannot be served, so a part-served basket
   // never half-happens.
@@ -573,6 +590,8 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
            charged what — the reason the commission rate is copied too. */
         deliveryBreakdown: freezeDelivery(delivery),
         paymentMethod: details.paymentMethod ?? null,
+        affiliateId: affiliate?.id ?? null,
+        affiliateRate: affiliate?.ratePercent ?? null,
         contactName: details.contactName ?? null,
         contactPhone: details.contactPhone ?? null,
         deliveryZoneId: details.deliveryZoneId ?? null,
@@ -1103,6 +1122,9 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
    * `qualifyReferral` claims its row with a predicate of its own regardless.
    */
   if (order.userId) await qualifyReferral(db, order.userId, orderId);
+  /* An affiliate's share is earned at the same moment and for the same
+     reason (3.7) — and exactly once, by the ledger's own index. */
+  await affiliateQuietly(() => creditAffiliate(db, orderId), `credit the affiliate for order ${orderId}`);
 
   /* The sale is complete, so it is invoiced (3.6.6) — after the payment has
      landed and without undoing it if issuing fails; the next read repairs. */

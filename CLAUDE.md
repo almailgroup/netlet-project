@@ -1414,6 +1414,42 @@ every recommendation is drawn from, so *which* hundred products the shop
 displayed could change between two page loads. A cap needs the tiebreak as much
 as a page does: paging repeats rows, but a cap decides membership.
 
+## Affiliates
+
+`shared/commerce/affiliate.ts` is the rules and is pure; `server/affiliates.ts`
+writes them. `docs/REQUIREMENTS.md` said from the start that 3.7 shares a ledger
+with the referral points, and it does — `point_entries`, in its own **pot**.
+
+**One ledger, two pots.** Referral points spend at face value and cash out at a
+tenth; an affiliate's commission is money, counted in fils and paid at face
+value. `balanceFor` takes the pot and every points query names it, or a
+commission would be spendable at checkout and points cashable at an
+affiliate's rate. The pot is a column rather than a reason prefix because a
+balance is a `sum` over a `where`, and the `where` is the whole rule.
+
+**Paid out of NetLet's cut, capped at it.** Each line earns the frozen rate on
+its frozen total, never more than the commission NetLet took on that line; the
+seller's net is never touched. Delivery earns nothing.
+
+**Attribution is a claim the server checks.** The browser keeps the last
+`?aff=` and when it was seen, and sends it inside thirty days — only the browser
+saw the click. The server attributes only to an approved affiliate who is not
+the buyer, while the switch is on, and freezes the rate on the order.
+
+**Earned at collection, reversed on refund, each exactly once.** Credited beside
+the referral, when the cash is recorded; a refunded line takes back its share
+from the same frozen figures, so the reversal is exact to the fil. Partial
+unique indexes make pressing either twice harmless. Both run after the act they
+follow and log rather than undo it.
+
+**Disclosed at both ends.** Applying requires agreeing to say the links are
+paid, and the shopper is told at checkout whose link it was. A suspended
+affiliate stops earning and can still be paid what they earned — suspension
+closes the door; it does not keep their money.
+
+`apply` is a reserved word in a tRPC router (it is `Function.prototype.apply`),
+which is why the procedure is `affiliates.join`.
+
 ## Size guides
 
 A seller's chart is a range in centimetres per measurement per size;

@@ -1188,6 +1188,45 @@ CREATE INDEX IF NOT EXISTS "invoices_issued_idx" ON "invoices" USING btree ("iss
 -- ===== 0042_aberrant_namorita.sql =====
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "size_chart" jsonb;
 
+-- ===== 0043_acoustic_blackheart.sql =====
+CREATE TABLE IF NOT EXISTS "affiliates" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"display_name" varchar(80) NOT NULL,
+	"channel" varchar(300),
+	"status" varchar(16) DEFAULT 'pending' NOT NULL,
+	"rate_percent" numeric(5, 2) DEFAULT '3.00' NOT NULL,
+	"disclosure_accepted_at" timestamp with time zone NOT NULL,
+	"decided_by" integer,
+	"decided_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "affiliate_id" integer;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "affiliate_rate" numeric(5, 2);
+ALTER TABLE "point_entries" ADD COLUMN IF NOT EXISTS "pot" varchar(16) DEFAULT 'points' NOT NULL;
+ALTER TABLE "point_entries" ADD COLUMN IF NOT EXISTS "order_item_id" integer;
+DO $$ BEGIN
+  ALTER TABLE "affiliates" ADD CONSTRAINT "affiliates_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "affiliates" ADD CONSTRAINT "affiliates_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "affiliates_user_unique" ON "affiliates" USING btree ("user_id");
+CREATE INDEX IF NOT EXISTS "affiliates_status_idx" ON "affiliates" USING btree ("status","created_at");
+DO $$ BEGIN
+  ALTER TABLE "orders" ADD CONSTRAINT "orders_affiliate_id_affiliates_id_fk" FOREIGN KEY ("affiliate_id") REFERENCES "public"."affiliates"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "point_entries" ADD CONSTRAINT "point_entries_order_item_id_order_items_id_fk" FOREIGN KEY ("order_item_id") REFERENCES "public"."order_items"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_affiliate_order_unique" ON "point_entries" USING btree ("order_id") WHERE "point_entries"."reason" = 'affiliate_commission';
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_affiliate_line_unique" ON "point_entries" USING btree ("order_item_id") WHERE "point_entries"."reason" = 'affiliate_reversal';
+CREATE INDEX IF NOT EXISTS "point_entries_pot_idx" ON "point_entries" USING btree ("user_id","pot");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1231,6 +1270,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  43 AS migrations_in_this_file,
+  44 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

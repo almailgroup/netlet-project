@@ -33,6 +33,7 @@ import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 import { returnUnits, takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
+import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -429,6 +430,8 @@ export async function receiveReturn(
   /* A refund corrects the invoice with a credit note (3.6.6), never by
      editing it — issued after the refund has landed, repaired on read. */
   await issueQuietly(() => issueCreditNote(requestId, now), `the credit note for return ${requestId}`);
+  /* A refunded line takes back the affiliate's share of it (3.7). */
+  await affiliateQuietly(() => reverseAffiliateLine(db, line.id), `reverse the affiliate share on line ${line.id}`);
   return { outcome: "refunded", refundAmount, replacementReference: null };
 }
 

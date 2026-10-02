@@ -39,7 +39,9 @@ export type AuditAction =
   /* Money assigned between two companies (3.4.2): who pays for a broken box. */
   | "delivery.decideClaim"
   /* A feature switched on or off for the whole shop (2.3). */
-  | "platform.setFeature";
+  | "platform.setFeature"
+  /* An affiliate approved, suspended, or given a new rate (3.7). */
+  | "affiliate.update";
 
 export type AuditActor = {
   id?: number | null;
@@ -50,7 +52,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -75,6 +77,8 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   "delivery.decideClaim",
   /* Admin-only, and it changes what every store and shopper can do. */
   "platform.setFeature",
+  /* Who NetLet pays, and how much: the commission question again. */
+  "affiliate.update",
 ]);
 
 /**

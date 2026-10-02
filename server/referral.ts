@@ -36,6 +36,8 @@ import {
   type PointReason,
 } from "../shared/commerce/referral.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import type { Pot } from "../shared/commerce/affiliate.js";
+import { fromFils } from "../shared/money.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -75,11 +77,14 @@ export type RewardsView = {
  * a string — and `Number(null)` is 0 while `Number(undefined)` is NaN, so the
  * coalesce is doing real work rather than tidying.
  */
-export async function balanceFor(db: Db, userId: number): Promise<number> {
+export async function balanceFor(db: Db, userId: number, pot: Pot = "points"): Promise<number> {
+  /* One ledger, two pots (3.7): referral points and affiliate money never
+     count towards each other, or a commission would be spendable as points
+     and points cashable at an affiliate's face value. */
   const [row] = await db
     .select({ total: sql<string>`coalesce(sum(${pointEntries.points}), 0)` })
     .from(pointEntries)
-    .where(eq(pointEntries.userId, userId));
+    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, pot)));
   return Number(row?.total ?? 0);
 }
 
@@ -112,6 +117,7 @@ export async function takePoints(
   points: number,
   reason: Extract<PointReason, "spent_on_order" | "cashed_out">,
   orderId?: number,
+  pot: Pot = "points",
 ): Promise<number | null> {
   const wanted = Math.trunc(points);
   if (wanted <= 0) return null;
@@ -125,11 +131,11 @@ export async function takePoints(
       .for("update");
     if (!locked) return null;
 
-    if (await balanceFor(tx as unknown as Db, userId) < wanted) return null;
+    if (await balanceFor(tx as unknown as Db, userId, pot) < wanted) return null;
 
     const [entry] = await tx
       .insert(pointEntries)
-      .values({ userId, points: -wanted, reason, orderId: orderId ?? null })
+      .values({ userId, points: -wanted, reason, orderId: orderId ?? null, pot })
       .returning({ id: pointEntries.id });
     return entry?.id ?? null;
   });
@@ -259,7 +265,7 @@ export async function rewardsFor(userId: number, limit = 50): Promise<RewardsVie
     })
     .from(pointEntries)
     .leftJoin(orders, eq(orders.id, pointEntries.orderId))
-    .where(eq(pointEntries.userId, userId))
+    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "points")))
     /* Ties on `created_at` are ordinary here — both tracks of one referral are
        written in the same statement — so the id breaks them, the way every
        other paged query in this codebase ends on something unique. */
@@ -326,6 +332,8 @@ export type CashOutRow = {
   userId: number;
   name: string | null;
   email: string;
+  /** Referral points, or an affiliate's commission (3.7) — paid at different rates. */
+  pot: Pot;
   points: number;
   value: string;
   requestedAt: Date;
@@ -350,6 +358,7 @@ export async function pendingCashOuts(actor: Actor, limit = 200): Promise<CashOu
       name: users.name,
       email: users.email,
       points: pointEntries.points,
+      pot: pointEntries.pot,
       createdAt: pointEntries.createdAt,
     })
     .from(pointEntries)
@@ -363,8 +372,10 @@ export async function pendingCashOuts(actor: Actor, limit = 200): Promise<CashOu
     userId: row.userId,
     name: row.name,
     email: row.email,
+    pot: row.pot as Pot,
     points: -row.points,
-    value: cashOutValue(-row.points),
+    /* An affiliate's pot is fils at face value; points pay a tenth. */
+    value: row.pot === "affiliate" ? fromFils(BigInt(-row.points)) : cashOutValue(-row.points),
     requestedAt: row.createdAt,
   }));
 }

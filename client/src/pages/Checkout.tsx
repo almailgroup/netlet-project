@@ -20,6 +20,7 @@ import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
 import { ItemDestinations } from "@/components/cart/ItemDestinations";
 import { useState } from "react";
+import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Check, LoaderCircle, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
@@ -132,6 +133,11 @@ export default function Checkout() {
   );
 
   const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated });
+  /* The affiliate link this browser came through (3.7), read once, and whose
+     it is — said to the shopper before they pay, because paid promotion that
+     hides itself is what advertising rules exist to stop. */
+  const [affiliateCode] = useState(() => currentAffiliate());
+  const via = trpc.affiliates.lookup.useQuery({ code: affiliateCode ?? "" }, { enabled: Boolean(affiliateCode), retry: false });
   const [usePoints, setUsePoints] = useState(false);
   const balance = rewards.data?.balance ?? 0;
   const orderTotal = cart?.total.amount ?? subtotal.amount;
@@ -206,6 +212,7 @@ export default function Checkout() {
                     somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already
                 follow. */}
+            {via.data ? <p className="type-label mt-4 text-[#d9e7f7]">{t("affiliate.viaDisclosure", { name: via.data.displayName })}</p> : null}
             <button
               onClick={() => place.mutate({
                 cartId: cart!.id,
@@ -217,6 +224,7 @@ export default function Checkout() {
                 addressNotes: form.addressNotes.trim() || null,
                 usePoints,
                 voucherCode: applied || undefined,
+                affiliateCode: via.data ? affiliateCode : null,
               })}
               disabled={!canPlace || place.isPending}
               className="glass glass-navy type-control pressable mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-60"

@@ -442,6 +442,19 @@ function resolve(path: string, rawInput: unknown): unknown {
       return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
     case "features.set":
       throw new Error("platform.configure");
+    /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
+       join with and no link anybody arrived through. */
+    case "affiliates.lookup":
+    case "affiliates.mine":
+      return null;
+    case "affiliates.waiting":
+      return 0;
+    case "affiliates.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "affiliates.join":
+    case "affiliates.payout":
+    case "affiliates.update":
+      throw new Error("affiliate.notFound");
     /* Invoices (3.6.6): nothing is ever paid in the demo, so nothing is
        invoiced — the server's own answer to a number it cannot find. */
     case "invoices.get":

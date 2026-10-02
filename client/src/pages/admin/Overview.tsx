@@ -80,6 +80,8 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingReturns = trpc.returns.waiting.useQuery(undefined, {
     enabled: can(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined),
   });
+  /* Affiliate applications waiting on NetLet (3.7). */
+  const waitingAffiliates = trpc.affiliates.waiting.useQuery(undefined, { enabled: can(actor, "affiliate.manage") });
   const unreadMessages = trpc.chat.seller.unread.useQuery(undefined, {
     enabled: actor.kind === "vendor" && can(actor, "chat.answer", actor.vendorId),
   });
@@ -137,6 +139,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.claimsOpenTile" as const, value: openClaims.data ?? 0, href: "/admin/claims", tone: "urgent" as const },
     { label: "admin.messagesWaiting" as const, value: unreadMessages.data ?? 0, href: "/admin/messages", tone: "urgent" as const },
     { label: "admin.returnsWaiting" as const, value: waitingReturns.data ?? 0, href: "/admin/returns", tone: "urgent" as const },
+    { label: "admin.affiliatesWaiting" as const, value: waitingAffiliates.data ?? 0, href: "/admin/affiliates", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

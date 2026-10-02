@@ -195,6 +195,9 @@ export const ordersRouter = router({
       /* A discount code or a gift card, in one field (3.2.3): a shopper
          holding a code does not necessarily know which it is. */
       voucherCode: z.string().trim().max(40).optional(),
+      /* The affiliate link this browser arrived through in the last thirty
+         days (3.7). A claim the server checks, never an instruction. */
+      affiliateCode: z.string().trim().max(16).nullish(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -209,6 +212,7 @@ export const ordersRouter = router({
           addressNotes: input.addressNotes ?? null,
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
+          affiliateCode: input.affiliateCode ?? null,
         });
         return {
           reference: placed.order.reference,

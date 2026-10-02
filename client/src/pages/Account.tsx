@@ -10,6 +10,7 @@
  * account's own facts in a bare card at the foot, which put the reason for
  * visiting below the things you visit the shop for.
  */
+import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileManager } from "@/components/account/ProfileManager";
@@ -46,6 +47,7 @@ const SECTIONS = [
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "offers", label: "offers.mine" },
   { id: "rewards", label: "account.sectionRewards" },
+  { id: "affiliate", label: "affiliate.section" },
   { id: "selling", label: "account.sectionSelling" },
   { id: "details", label: "account.sectionProfile" },
   { id: "addresses", label: "address.book" },
@@ -182,6 +184,12 @@ export default function Account() {
                   balance beside it is the reason to. */}
               <Section id="rewards" title={t("account.sectionRewards")}>
                 <AccountRewards />
+              </Section>
+
+              {/* Beside the rewards: the same ledger, a different promise —
+                  promotion paid in money rather than a favour paid in points. */}
+              <Section id="affiliate" title={t("affiliate.section")}>
+                <AccountAffiliate />
               </Section>
 
               {/* Only for somebody who has the second identity — the server

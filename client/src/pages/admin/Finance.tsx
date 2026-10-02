@@ -468,7 +468,7 @@ function PayoutsDue() {
  * paid by a human, marked off here.
  */
 function CashOuts() {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
   const owed = trpc.rewards.pendingCashOuts.useQuery({});
@@ -478,7 +478,7 @@ function CashOuts() {
       toast.success(t("admin.markPaidDone"));
       void utils.rewards.pendingCashOuts.invalidate();
     },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(tError(error.message)),
   });
 
   return (
@@ -513,7 +513,11 @@ function CashOuts() {
                           <bdi dir="ltr" className="font-normal ink-muted">{row.email}</bdi>
                         </th>
                         <td className={`${cell} text-end text-[#536b8c]`}>
-                          <bdi dir="ltr">{t("rewards.balance", { points: row.points })}</bdi>
+                          {/* Two pots, two rates (3.7): an affiliate's commission is
+                              money already and is paid at face value. */}
+                          {row.pot === "affiliate"
+                            ? t("admin.cashOutAffiliate")
+                            : <bdi dir="ltr">{t("rewards.balance", { points: row.points })}</bdi>}
                         </td>
                         <td className={`${cell} text-end font-extrabold text-[#0a285a]`}>
                           <bdi dir="ltr">{money({ amount: row.value, currencyCode: "KWD" })}</bdi>

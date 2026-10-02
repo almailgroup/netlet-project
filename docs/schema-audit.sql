@@ -9,13 +9,14 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 477 columns across 46 tables.
+-- Expected: 491 columns across 47 tables.
 
 WITH expected AS (
   SELECT
     packed.table_name,
     unnest(string_to_array(packed.columns, ',')) AS column_name
   FROM (VALUES
+    ('affiliates', 'channel,created_at,decided_at,decided_by,disclosure_accepted_at,display_name,id,rate_percent,status,user_id'),
     ('audit_log', 'action,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
     ('auth_attempts', 'bucket,created_at,id,kind'),
     ('bundle_items', 'bundle_id,id,position,quantity,variant_id'),
@@ -44,8 +45,8 @@ WITH expected AS (
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
-    ('point_entries', 'created_at,id,note,order_id,points,reason,referral_id,settled_at,user_id'),
+    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
+    ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),
     ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),

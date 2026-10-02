@@ -71,6 +71,10 @@ export const POINT_REASONS = [
   "spent_on_order",
   "cashed_out",
   "admin_adjustment",
+  /* An affiliate's commission and its reversal on a refund (3.7), in the
+     affiliate pot rather than the points one. */
+  "affiliate_commission",
+  "affiliate_reversal",
 ] as const;
 export type PointReason = (typeof POINT_REASONS)[number];
 

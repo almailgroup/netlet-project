@@ -1706,6 +1706,14 @@ export const orders = pgTable(
     giftCardCode: varchar("gift_card_code", { length: 40 }),
     giftCardValue: numeric("gift_card_value", { precision: 12, scale: 3 }).notNull().default("0.000"),
     /**
+     * The affiliate whose link brought this order (3.7), and their rate at the
+     * moment of sale — frozen beside it for the reason the commission rate is:
+     * raising an affiliate's rate in October must not change what they earned
+     * in September.
+     */
+    affiliateId: integer("affiliate_id").references((): AnyPgColumn => affiliates.id, { onDelete: "set null" }),
+    affiliateRate: numeric("affiliate_rate", { precision: 5, scale: 2 }),
+    /**
      * Who charged what to deliver, frozen beside the total.
      *
      * An order is an obligation, so the breakdown is copied the way the
@@ -2293,8 +2301,16 @@ export const pointEntries = pgTable(
     points: integer("points").notNull(),
     /** One of `POINT_REASONS`. Kept as text rather than an enum so a new reason is not a migration. */
     reason: varchar("reason", { length: 32 }).notNull(),
+    /**
+     * Which pot (3.7): `points` for referral points, spent at face value and
+     * cashed out at a tenth; `affiliate` for an affiliate's commission, in
+     * fils, cashed out at face value. One ledger, two balances.
+     */
+    pot: varchar("pot", { length: 16 }).notNull().default("points"),
     /** What it was about, when there is something: an order, a referral. */
     orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    /** The line an affiliate reversal takes back (3.7). */
+    orderItemId: integer("order_item_id").references(() => orderItems.id, { onDelete: "set null" }),
     referralId: integer("referral_id").references(() => referrals.id, { onDelete: "set null" }),
     /** An admin's own words on an adjustment, so the ledger explains itself. */
     note: varchar("note", { length: 200 }),
@@ -2320,7 +2336,47 @@ export const pointEntries = pgTable(
     uniqueIndex("point_entries_referral_reason_unique")
       .on(table.referralId, table.reason)
       .where(sql`${table.referralId} is not null`),
+    /* An order earns its affiliate once, and a line is taken back once,
+       however many times the collection or the refund is pressed. */
+    uniqueIndex("point_entries_affiliate_order_unique")
+      .on(table.orderId)
+      .where(sql`${table.reason} = 'affiliate_commission'`),
+    uniqueIndex("point_entries_affiliate_line_unique")
+      .on(table.orderItemId)
+      .where(sql`${table.reason} = 'affiliate_reversal'`),
+    index("point_entries_pot_idx").on(table.userId, table.pot),
   ]
+);
+
+/**
+ * Affiliates (3.7): accounts approved to earn on the sales their links bring.
+ *
+ * One per account. The code is derived from the account id, never stored, so
+ * there is nothing here to collide. `displayName` is what a shopper who
+ * arrives through the link is told — chosen by the affiliate, because their
+ * account name may be private and their audience knows them by another.
+ */
+export const affiliates = pgTable(
+  "affiliates",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 80 }).notNull(),
+    /** Where they publish, so an administrator approving them can look. */
+    channel: varchar("channel", { length: 300 }),
+    /** `pending`, `active` or `suspended`. Only `active` earns. */
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    ratePercent: numeric("rate_percent", { precision: 5, scale: 2 }).notNull().default("3.00"),
+    /** When they agreed to say their links are paid. Required to apply. */
+    disclosureAcceptedAt: timestamp("disclosure_accepted_at", { withTimezone: true }).notNull(),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("affiliates_user_unique").on(table.userId),
+    index("affiliates_status_idx").on(table.status, table.createdAt),
+  ],
 );
 
 /* ------------------------------------------------------------- relations --- */
@@ -2478,6 +2534,7 @@ export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
 export type ConversationRow = typeof conversations.$inferSelect;
 export type ReturnRequestRow = typeof returnRequests.$inferSelect;
 export type FeatureSwitchRow = typeof featureSwitches.$inferSelect;
+export type AffiliateRow = typeof affiliates.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
 export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

@@ -10,6 +10,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
+import { captureAffiliate } from "@/lib/affiliate";
 import { lazy, Suspense, useEffect } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
 import LiquidGlassFilters from "./components/ui/LiquidGlassFilters";
@@ -51,6 +52,7 @@ const AdminClaims = lazy(() => import("@/pages/admin/Claims"));
 const AdminMessages = lazy(() => import("@/pages/admin/Messages"));
 const AdminReturns = lazy(() => import("@/pages/admin/Returns"));
 const AdminFeatures = lazy(() => import("@/pages/admin/Features"));
+const AdminAffiliates = lazy(() => import("@/pages/admin/Affiliates"));
 const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
@@ -97,6 +99,8 @@ function ReferralCapture() {
   const [location] = useLocation();
   useEffect(() => {
     captureReferral(window.location.search);
+    /* And an affiliate's link (3.7), which may point at any page too. */
+    captureAffiliate(window.location.search);
   }, [location]);
   return null;
 }
@@ -138,6 +142,7 @@ function Router() {
         <Route path="/admin/messages" component={AdminMessages} />
         <Route path="/admin/returns" component={AdminReturns} />
         <Route path="/admin/features" component={AdminFeatures} />
+        <Route path="/admin/affiliates" component={AdminAffiliates} />
         <Route path="/admin/invoices" component={AdminInvoices} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />

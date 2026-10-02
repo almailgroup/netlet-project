@@ -302,6 +302,13 @@
       "when": 1790942245590,
       "tag": "0042_aberrant_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790943062881,
+      "tag": "0043_acoustic_blackheart",
+      "breakpoints": true
     }
   ]
 }
