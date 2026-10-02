@@ -13,6 +13,7 @@ import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   categories,
+  followedProducts,
   productAddons,
   productImages,
   products,
@@ -1150,6 +1151,12 @@ export type LowStockRow = {
   productTitle: string;
   productStatus: string;
   vendorName: string;
+  /**
+   * Shoppers waiting to hear it is back (3.1.1) — the half of "vendor sees
+   * demand" that was missing: the count was only ever drawn for shoppers.
+   * Per product, because a follow is on a product; a number, never who.
+   */
+  waiting: number;
 };
 
 /**
@@ -1166,9 +1173,13 @@ export async function lowStock(actor: Actor, request: PageRequest = {}) {
   if (!db) return emptyPage<LowStockRow>(request);
   const vendorId = scopeOf(actor);
   const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
+  /* Parenthesised, and that is the whole safety property: drizzle's `and`
+     does not wrap the conditions it joins, so without the brackets this read
+     "this store's AND at zero, OR under threshold anywhere" and listed every
+     other store's low variants to a vendor. */
   const isLow = and(
     mine,
-    sql`${productVariants.stock} <= 0 or (${productVariants.lowStockAt} is not null and ${productVariants.stock} <= ${productVariants.lowStockAt})`,
+    sql`(${productVariants.stock} <= 0 or (${productVariants.lowStockAt} is not null and ${productVariants.stock} <= ${productVariants.lowStockAt}))`,
   );
 
   const [counted] = await db
@@ -1190,6 +1201,7 @@ export async function lowStock(actor: Actor, request: PageRequest = {}) {
       productTitle: products.title,
       productStatus: products.status,
       vendorName: vendors.name,
+      waiting: sql<number>`(select count(*)::int from ${followedProducts} where ${followedProducts.productId} = ${products.id}::text and ${followedProducts.backInStock})`,
     })
     .from(productVariants)
     .innerJoin(products, eq(productVariants.productId, products.id))

@@ -11,7 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { categories, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import { categories, followedProducts, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -554,6 +554,31 @@ describe("the admin portal's reports", () => {
 
     const listed = (await inv.lowStock(ownerActor())).rows.map(row => row.variantId);
     expect(listed.indexOf(worse.id)).toBeLessThan(listed.indexOf(milder.id));
+  });
+
+  /* The scope and the "low" rule were joined by a bare `and`, and drizzle does
+     not parenthesise the conditions it joins — so "this store's AND at zero
+     OR under its threshold" let every other store's low variants through. */
+  it("never shows a store another store's low stock", async () => {
+    const [theirs] = await db.insert(productVariants).values({
+      productId: ids.otherProduct, title: "Theirs, running low", price: "1.000", stock: 2, lowStockAt: 10,
+    }).returning();
+    const listed = (await inv.lowStock(ownerActor())).rows.map(row => row.variantId);
+    expect(listed).not.toContain(theirs.id);
+    expect((await inv.lowStock(adminActor())).rows.map(row => row.variantId)).toContain(theirs.id);
+  });
+
+  it("tells the store how many shoppers are waiting for it, and never who", async () => {
+    const [empty] = await db.insert(productVariants).values({
+      productId: ids.acmeProduct, title: "Wanted", price: "1.000", stock: 0, lowStockAt: null,
+    }).returning();
+    await db.insert(followedProducts).values([
+      { userId: ids.admin, productId: String(ids.acmeProduct), backInStock: true },
+      { userId: ids.staff, productId: String(ids.acmeProduct), backInStock: false },
+    ]);
+    const row = (await inv.lowStock(ownerActor())).rows.find(entry => entry.variantId === empty.id);
+    expect(row?.waiting).toBe(1);
+    expect(Object.keys(row ?? {})).not.toContain("userId");
   });
 
   it("lists a variant at zero even when it declares no threshold", async () => {

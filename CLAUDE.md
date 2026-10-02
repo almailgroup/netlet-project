@@ -1839,6 +1839,13 @@ freely between two queries, so offset paging over an unstable sort repeats rows
 on the next page and skips others. That one was found in the browser, not in a
 test — the fixtures were too small to tie.
 
+**A raw `sql` fragment carrying `or` brackets itself.** Drizzle's `and(a, b)`
+wraps the whole but not each condition, so `and(scope, sql\`x or y\`)` reads
+"scope and x, or y". `/admin/stock` did exactly that and showed a vendor every
+other store's low variants; it was found while adding the waiting-shopper
+count to the same query, not by any test. `server/sqlFragments.test.ts` now
+fails on an unbracketed one anywhere in `server/`.
+
 **Every admin page has three states, not two.** `QueryGate` renders loading,
 failed, or ready; a failed query shows what the server actually said and
 offers to retry. Before it, every page branched on `isLoading` and then read

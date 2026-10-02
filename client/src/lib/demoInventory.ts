@@ -103,6 +103,8 @@ export const demoLowStock = demoInventoryProducts
     productTitle: product.title,
     productStatus: product.status,
     vendorName: "NetLet",
+    /* Sold out with shoppers waiting, so the demand line (3.1.1) is visible. */
+    waiting: 3,
   }));
 
 /** A short, plausible movement log so the panel is not an empty box. */

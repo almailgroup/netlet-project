@@ -60,6 +60,9 @@ function Stock() {
                     {row.lowStockAt === null ? t("admin.noThreshold") : t("admin.reorderAt", { count: row.lowStockAt })}
                     {row.vendorName ? <span dir="auto"> · {row.vendorName}</span> : null}
                   </p>
+                  {/* Demand the seller could not see before (3.1.1): how many
+                      shoppers asked to hear when it is back. A count, never who. */}
+                  {row.waiting > 0 ? <p className="mt-0.5 text-[11px] font-extrabold text-[#0a285a]">{t("admin.waitingForRestock", { count: row.waiting })}</p> : null}
                 </div>
                 <span
                   dir="ltr"
