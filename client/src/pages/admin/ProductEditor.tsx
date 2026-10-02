@@ -11,6 +11,7 @@
  * is what happened; setting the box to 47 loses why it changed and races with
  * anyone else editing.
  */
+import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Thumb } from "@/components/product/Thumb";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -363,6 +364,14 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           </select>
         </Labelled>
       </section>
+
+      {/* The size chart (3.1.20): the sizes start from this product's own. */}
+      <SizeChartEditor
+        productId={row.id}
+        chart={row.sizeChart ?? null}
+        variantOptions={row.variants.map(variant => variant.options ?? {})}
+        mayEdit={mayEdit}
+      />
 
       {/* Images are saved as a whole list, in order, so removing the third
           and adding a fourth are the same operation. Position is the array

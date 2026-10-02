@@ -24,6 +24,7 @@ import type { Measure } from "./units.js";
 import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
 import { discountAllowed, type DiscountLicence } from "../inventory/discountLicence.js";
 import { resolveSpeed } from "./deliverySpeed.js";
+import { chartProblem, type SizeChart } from "./sizeGuide.js";
 
 /**
  * The dinar, everywhere.
@@ -91,6 +92,8 @@ export type InventoryProductRow = {
   attributes: ProductAttribute[] | null;
   variants: InventoryVariantRow[];
   images: InventoryImageRow[];
+  /** The seller's size chart (3.1.20). Absent for nearly everything. */
+  sizeChart?: SizeChart | null;
   /** Optional extras the seller offers (3.1.2). Absent for nearly everything. */
   addons?: { id: number; kind: string; label: string; labelAr: string | null; price: string }[];
 };
@@ -306,6 +309,9 @@ export function toStorefrontProduct(
       label: pick(locale, addon.label, addon.labelAr) || addon.label,
       price: money(addon.price),
     })),
+    /* Only a chart that still passes the rules reaches a page: one written
+       before a rule tightened is absent rather than recommending wrongly. */
+    sizeChart: row.sizeChart && chartProblem(row.sizeChart) === null ? row.sizeChart : null,
   };
 }
 

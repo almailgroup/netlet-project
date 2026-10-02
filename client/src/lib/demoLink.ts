@@ -337,6 +337,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.setDeliverySpeed":
     case "inventory.products.setAttributes":
     case "inventory.products.setSizeClass":
+    case "inventory.products.setSizeChart":
       return { ok: true };
 
     case "inventory.myStore":

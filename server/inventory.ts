@@ -36,6 +36,7 @@ import { getDb } from "./db.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
 import { canSendReset, deleteLogin, sendReset } from "./_core/passwordStore.js";
+import { chartProblem, cleanChart, type SizeChart } from "../shared/commerce/sizeGuide.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -131,6 +132,24 @@ export async function setProductAttributes(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
   await db.update(products).set({ attributes }).where(eq(products.id, productId));
+}
+
+/**
+ * The product's size chart (3.1.20), or null to remove it. Checked by the
+ * same rule the editor uses, beside the query, so a chart posted past the form
+ * is refused for the same reason — and stored cleaned, so a range for a
+ * column the seller unticked does not linger.
+ */
+export async function setProductSizeChart(actor: Actor, productId: number, chart: SizeChart | null): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+  const cleaned = chart ? cleanChart(chart) : null;
+  const problem = cleaned ? chartProblem(cleaned) : null;
+  if (problem) throw new Error(problem);
+  await db.update(products).set({ sizeChart: cleaned }).where(eq(products.id, productId));
 }
 
 /**

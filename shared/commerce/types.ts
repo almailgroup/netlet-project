@@ -1,3 +1,4 @@
+import type { SizeChart } from "./sizeGuide.js";
 import type { Measure } from "./units.js";
 import type { DeliverySpeed } from "./deliverySpeed.js";
 /**
@@ -178,6 +179,12 @@ export type Product = {
    * list rather than two nullable fields.
    */
   addons: ProductAddon[];
+  /**
+   * The seller's size chart (3.1.20), or null. The shopper's fit is worked out
+   * against it in their own browser — no measurement of anybody is sent
+   * anywhere — so the chart is all the page needs.
+   */
+  sizeChart: SizeChart | null;
 };
 
 export type Collection = {

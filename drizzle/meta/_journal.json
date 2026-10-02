@@ -295,6 +295,13 @@
       "when": 1790941061490,
       "tag": "0041_outgoing_lilith",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1790942245590,
+      "tag": "0042_aberrant_namorita",
+      "breakpoints": true
     }
   ]
 }

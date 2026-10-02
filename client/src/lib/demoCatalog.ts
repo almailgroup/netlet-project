@@ -10,6 +10,7 @@
  * Images are inline SVG data URIs on purpose: the demo then has no external
  * image host to go down, rate-limit, or need licensing for.
  */
+import type { SizeChart } from "@shared/commerce/sizeGuide";
 import { DEFAULT_VARIANT_TITLE } from "@shared/commerce/fromInventory";
 import type { Product } from "@shared/commerce/types";
 
@@ -104,6 +105,8 @@ type Seed = {
    */
   preorderInDays?: number;
   options?: { name: string; values: string[] };
+  /** A size chart (3.1.20), on the one seed that has sizes, so the guide is reachable in the demo. */
+  sizeChart?: SizeChart;
   /** Review score out of 5, and how many reviews produced it. */
   rating?: [score: number, count: number];
   /** How many gallery views to generate. Defaults to 2. */
@@ -307,6 +310,16 @@ const SEEDS: Seed[] = [
     tags: ["Apparel", "Summer", "Express"],
     price: 29,
     options: { name: "Size", values: ["S", "M", "L", "XL"] },
+    sizeChart: {
+      axis: "Size",
+      measures: ["chest", "waist"],
+      rows: [
+        { size: "S", ranges: { chest: [86, 91], waist: [71, 76] } },
+        { size: "M", ranges: { chest: [92, 97], waist: [77, 82] } },
+        { size: "L", ranges: { chest: [98, 103], waist: [83, 88] } },
+        { size: "XL", ranges: { chest: [104, 109], waist: [89, 94] } },
+      ],
+    },
     rating: [4.3, 12],
     palette: ["#e4dfd0", "#d2ccb9"],
   },
@@ -499,6 +512,7 @@ function toProduct(seed: Seed, index: number): Product {
       ? [{ name: seed.options.name, values: seed.options.values }]
       : [],
     variants,
+    sizeChart: seed.sizeChart ?? null,
   };
 }
 

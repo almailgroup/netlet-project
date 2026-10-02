@@ -1,4 +1,5 @@
 import { useCart } from "@/contexts/CartContext";
+import { SizeGuide } from "@/components/product/SizeGuide";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
@@ -849,6 +850,24 @@ function ShippingPolicyPanel({ express, t }: { express: boolean; t: Translate })
   return <PolicyRows rows={rows} t={t} />;
 }
 
+/** The values a product's variants carry on one option axis. */
+function sizesOn(product: Product, axis: string): string[] {
+  return [...new Set(product.variants.flatMap(variant => variant.selectedOptions.filter(option => option.name === axis).map(option => option.value)))];
+}
+
+/**
+ * The variant to pick for a size: the one matching the current choice on
+ * every other axis — the same colour in the new size — and in stock if one is.
+ */
+function variantForSize(product: Product, axis: string, size: string, current: Product["variants"][number] | undefined) {
+  const others = (current?.selectedOptions ?? []).filter(option => option.name !== axis);
+  const matches = product.variants.filter(variant =>
+    variant.selectedOptions.some(option => option.name === axis && option.value.toLowerCase() === size.toLowerCase()));
+  const sameOthers = matches.filter(variant => others.every(other => variant.selectedOptions.some(option => option.name === other.name && option.value === other.value)));
+  const pool = sameOthers.length ? sameOthers : matches;
+  return pool.find(variant => variant.availableForSale) ?? pool[0];
+}
+
 export default function ProductDetail() {
   const [, params] = useRoute("/products/:handle");
   const [, navigate] = useLocation();
@@ -1043,6 +1062,18 @@ export default function ProductDetail() {
             <ProductAssistant handle={product.handle} />
 
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
+            {/* Beside the picker it answers (3.1.20): which size is a question
+                asked while choosing one. */}
+            {product.sizeChart ? (
+              <SizeGuide
+                chart={product.sizeChart}
+                availableSizes={sizesOn(product, product.sizeChart.axis)}
+                onChooseSize={size => {
+                  const variant = variantForSize(product, product.sizeChart!.axis, size, selectedVariant);
+                  if (variant) chooseVariant(variant);
+                }}
+              />
+            ) : null}
 
             {/* With the quantity and the buy button, because they are one
                 decision about one purchase — by the time somebody has scrolled

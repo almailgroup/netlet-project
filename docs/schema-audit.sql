@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 476 columns across 46 tables.
+-- Expected: 477 columns across 46 tables.
 
 WITH expected AS (
   SELECT
@@ -50,7 +50,7 @@ WITH expected AS (
     ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),
     ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),
     ('product_variants', 'compare_at_price,created_at,id,low_stock_at,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
-    ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
+    ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_chart,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
     ('referrals', 'created_at,id,qualified_at,qualified_order_id,referred_id,referrer_id'),
     ('return_requests', 'collected_at,created_at,decided_at,decided_by,decline_reason,id,kind,note,order_id,order_item_id,reason,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked,status,updated_at,user_id,vendor_id'),
     ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),

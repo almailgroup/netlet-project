@@ -36,6 +36,7 @@ import {
 import { notificationKinds } from "../shared/customer.js";
 import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
+import type { SizeChart } from "../shared/commerce/sizeGuide.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -712,6 +713,12 @@ export const products = pgTable(
       .$type<{ namespace: string; key: string; label: string; value: string }[]>()
       .notNull()
       .default([]),
+    /**
+     * The seller's size chart (3.1.20), or null for none — which is nearly
+     * every product. JSON because a chart's columns are the measurements the
+     * seller chose; `shared/commerce/sizeGuide.ts` is what may be stored here.
+     */
+    sizeChart: jsonb("size_chart").$type<SizeChart | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },

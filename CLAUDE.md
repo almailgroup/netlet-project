@@ -1414,6 +1414,34 @@ every recommendation is drawn from, so *which* hundred products the shop
 displayed could change between two page loads. A cap needs the tiebreak as much
 as a page does: paging repeats rows, but a cap decides membership.
 
+## Size guides
+
+A seller's chart is a range in centimetres per measurement per size;
+`shared/commerce/sizeGuide.ts` is the rule, pure and shared, so the editor's
+Save is disabled on exactly what `setSizeChart` would refuse. Measurements are
+a closed list with translated labels, for `vendorHealth`'s reason.
+
+**The fit is a rule that shows its working.** Every measurement given inside a
+size's ranges is a fit; otherwise most held, then nearest, then the larger size —
+a little loose is worn, a little tight goes back. Off the chart is said in
+words, never rounded to the nearest size the shop knows does not fit. Each
+answer carries the comparison behind it, so the shopper can check it against
+the chart above.
+
+**Nothing about anybody's body leaves the browser.** `recommendSize` runs on
+the page; remembering the numbers is opt-in and goes to `browserStore` only.
+The panel says so, because a form asking for a waist measurement is one people
+hesitate over.
+
+**An `sr-only` element inside a sideways scroller widens the whole page.** The
+editor's table carried an `sr-only` caption; `sr-only` is `position: absolute`,
+and with no positioned ancestor its containing block is the viewport — so the
+scroll region could not clip it and the Arabic editor scrolled 43px sideways on
+a phone. The region is `relative` now. `min-w-0` was the first guess and did
+nothing; clipping subtrees found nothing either, because the culprit was not
+in any subtree's box. What found it was walking up from the region printing
+each ancestor's `scrollWidth`: every one fitted, and only `<html>` did not.
+
 ## Invoices
 
 `shared/commerce/invoice.ts` is the rules and is pure; `server/invoices.ts`

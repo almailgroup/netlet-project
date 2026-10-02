@@ -53,6 +53,7 @@ import {
   myStore,
   setProductAttributes,
   setProductDeliverySpeed,
+  setProductSizeChart,
   setProductSizeClass,
   updateProduct,
   vendorHealthFor,
@@ -77,6 +78,10 @@ import {
 import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
+import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../shared/commerce/sizeGuide.js";
+
+/** One size's range for one measure, in centimetres. */
+const sizeRange = z.tuple([z.number().finite(), z.number().finite()]);
 
 /**
  * Turns the data layer's refusals into the right HTTP shape.
@@ -138,6 +143,11 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
+    }
+    /* A size chart that would recommend wrongly (3.1.20), named by the rule
+       it broke so the editor can say which. */
+    if (message.startsWith("sizeGuide.")) {
+      throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
   }
@@ -468,6 +478,29 @@ export const inventoryRouter = router({
         const actor = await resolveActor(ctx.user);
         return guard(async () => {
           await setProductAttributes(actor, input.id, input.attributes);
+          return { ok: true } as const;
+        });
+      }),
+
+    /** The seller's size chart, or null to remove it (3.1.20). */
+    setSizeChart: protectedProcedure
+      .input(z.object({
+        productId: rowId,
+        chart: z.object({
+          axis: z.string().trim().min(1).max(60),
+          measures: z.array(z.enum(MEASURES)).min(1).max(MEASURES.length),
+          rows: z.array(z.object({
+            size: z.string().max(MAX_SIZE_LABEL),
+            /* Each measure optional and nothing else allowed: a record keyed by
+               the enum would demand all six on every row. */
+            ranges: z.object(Object.fromEntries(MEASURES.map(measure => [measure, sizeRange.optional()])) as Record<BodyMeasure, z.ZodOptional<typeof sizeRange>>).strict(),
+          })).min(1).max(MAX_SIZES),
+        }).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(async () => {
+          await setProductSizeChart(actor, input.productId, input.chart as SizeChart | null);
           return { ok: true } as const;
         });
       }),

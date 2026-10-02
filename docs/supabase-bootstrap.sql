@@ -1185,6 +1185,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_per_order" ON "invoices" USING b
 CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_per_return" ON "invoices" USING btree ("return_request_id") WHERE "invoices"."return_request_id" is not null;
 CREATE INDEX IF NOT EXISTS "invoices_issued_idx" ON "invoices" USING btree ("issued_at");
 
+-- ===== 0042_aberrant_namorita.sql =====
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "size_chart" jsonb;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1228,6 +1231,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  42 AS migrations_in_this_file,
+  43 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -10,12 +10,12 @@ rounding up. Nothing is marked done because the schema could support it.
 | | count |
 |---|---|
 | Built | 55 |
-| Partial | 4 |
+| Partial | 5 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 16 |
+| Not started | 15 |
 
-*Last updated after e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
+*Last updated after the size guide (3.1.20), e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -37,7 +37,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 2.3 | Every advanced feature optional | **Built** | `/admin/features` is the switchboard — eleven switches, admin-only (`platform.configure`), every change on the audit trail with the authorisation chain. `shared/features.ts` is the list and is pure, imported by both sides, so the page hides exactly what the API refuses. **A switch closes the door; it never locks anybody in the room**: off refuses *starting* something — a message, a return, a price request, a claim, a gift card — and leaves everything already in motion to finish, so an open return is still refunded and an agreed price still honoured. The refusal is one middleware on the base procedure, by path, the shape `refuseNul` already has, so no router can forget it; a test fails if a switch names a procedure the API does not have. Rails answer empty rather than refuse. **`ai` is the one switch over every model call** — assistant, search refinement, recommendation ordering, the review queue's model pass — each landing on the deterministic fallback it already had for "no key". Absent is on: a database nobody has touched behaves exactly as before. What is still per-vendor rather than per-shop is unchanged and already existed: `autoPublish`, cash on delivery, accepting price requests. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
-## 3.1 Customer experience — 16 built, 0 partial, 1 drawn, 4 absent
+## 3.1 Customer experience — 16 built, 1 partial, 1 drawn, 3 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -60,7 +60,7 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 | 17 | Cart recovery reminder | **Built** | `shared/commerce/cartRecovery.ts` is the rule and is pure, and the interesting decision is not the arithmetic — it is being honest about what NetLet can do. **There is no mail provider and no scheduler**: Supabase Auth sends the account emails and nothing else, and nothing here runs on a timer. A recovery *email* needs both, and a reminder that depends on a cron nobody runs is a dead feature that looks finished. So it is **resolved on the read**, the way the discount permit and the pre-order date are: the moment a shopper with a stale basket opens their bag, the shop says so. Nothing has to run, it cannot go stale, and it reaches exactly the person it is about — and when a mail provider exists, this same function decides who gets the email. Quiet, and bounded at both ends: under `ABANDON_AFTER_HOURS` they are still shopping and a banner is nagging; past `STALE_AFTER_DAYS` the basket has been re-priced enough that "you left these" is a worse message than silence. It carries a count and an age and **never a total**, because a cart stores no prices and quoting a figure that has since moved is the shop arguing with its own page. |
 | 18 | Price-drop alerts | **Built** | Same follow mechanism. |
 | 19 | Subscribe & Save | Not started | |
-| 20 | AI size guide | Not started | |
+| 20 | AI size guide | **Partial** | The size guide is built; the "AI" is deliberately not, and that is the gap. A seller gives each size a body-measurement range in centimetres on the product editor, starting from the product's own sizes so the chart and the picker cannot name different ones; `shared/commerce/sizeGuide.ts` is the rule, pure and shared, so the editor refuses exactly what the API would. The shopper enters their measurements and is told which size fits **with the working shown** — each measurement against the range it was compared to — and one press picks that size in the variant picker. Between sizes it takes the one holding the most measurements, then the nearest, then the larger, because a little loose is worn and a little tight goes back; off the chart is said in words rather than rounded. **Nothing about anybody's body leaves the browser**: the fit is computed on the page, and remembering the numbers is opt-in and local. A model was not used because the honest inputs are a chart and a number, and a model guessing a size from a description would be a confident answer with nothing behind it; what would make this genuinely smarter is fit feedback from returns ("too small" on a returned size), which needs a reason the returns form does not yet ask. |
 | 21 | Frequently bought together, cross-vendor | **Built** | `shared/commerce/together.ts`, scored on **lift** rather than raw co-occurrence — a bestseller shares baskets with everything, so counting pairs surfaces bestsellers and not complements. Reads orders *and* carts (3:1), so the rail works today rather than waiting on payments. Cross-vendor complements are kept and labelled "Another seller", which is where the value is. Draws nothing below `MIN_SUPPORT` baskets or `MIN_LIFT`, because the heading is a claim. |
 
 ## 3.2 Checkout & payments — 6 built, 1 partial, 2 absent
