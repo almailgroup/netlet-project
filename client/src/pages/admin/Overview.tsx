@@ -75,6 +75,11 @@ function Overview({ actor }: { actor: Actor }) {
   /* Conversations a shopper is waiting on (3.8): a question nobody answers is
      a sale that goes somewhere else. A store's own count; zero for NetLet,
      which reads conversations but does not answer them. */
+  /* Returns waiting on this store (3.2.8): collecting, receiving, or cash still
+     to hand back. */
+  const waitingReturns = trpc.returns.waiting.useQuery(undefined, {
+    enabled: can(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined),
+  });
   const unreadMessages = trpc.chat.seller.unread.useQuery(undefined, {
     enabled: actor.kind === "vendor" && can(actor, "chat.answer", actor.vendorId),
   });
@@ -131,6 +136,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "dispatch.waiting" as const, value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" as const },
     { label: "admin.claimsOpenTile" as const, value: openClaims.data ?? 0, href: "/admin/claims", tone: "urgent" as const },
     { label: "admin.messagesWaiting" as const, value: unreadMessages.data ?? 0, href: "/admin/messages", tone: "urgent" as const },
+    { label: "admin.returnsWaiting" as const, value: waitingReturns.data ?? 0, href: "/admin/returns", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

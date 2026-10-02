@@ -22,7 +22,6 @@ const DOC = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../docs/
 
 /** Requirements that are written as prose rather than as a table row. */
 export const PROSE_SECTIONS = {
-  "3.5": 3,
   "3.7": 2,
 };
 

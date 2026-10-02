@@ -1241,6 +1241,60 @@ export const reviews = pgTable(
 );
 
 /**
+ * A return or an exchange, asked for one order line (3.2.8, 3.5.2).
+ *
+ * The rules are `shared/commerce/returnRequests.ts`. The row is the operation:
+ * who asked, why, what was decided and by whom (`auto`, `seller` or `admin`),
+ * when the item left the shopper, and — once it is back — what was refunded or
+ * which replacement order went out. **The refund is frozen here** from the
+ * line's own total at the moment of receipt, the rule every figure on an order
+ * follows, and `refund_paid_at` is when the seller who took the cash handed it
+ * back: NetLet has no payment rail, so "owed" and "paid" are both recorded
+ * rather than one being assumed.
+ *
+ * **One open request per line**, by partial unique index: two taps on a phone
+ * must not open two returns of the same sofa. A declined, withdrawn or finished
+ * request falls out of it, so a line can be asked about again while the window
+ * is open.
+ */
+export const returnRequests = pgTable(
+  "return_requests",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    orderItemId: integer("order_item_id").notNull().references(() => orderItems.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    /** `refund` or `exchange`. */
+    kind: varchar("kind", { length: 10 }).notNull(),
+    reason: varchar("reason", { length: 20 }).notNull(),
+    note: text("note"),
+    status: varchar("status", { length: 12 }).notNull().default("requested"),
+    /** `auto`, `seller` or `admin` — who answered the request. */
+    decidedBy: varchar("decided_by", { length: 10 }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    declineReason: varchar("decline_reason", { length: 400 }),
+    collectedAt: timestamp("collected_at", { withTimezone: true }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    /** Whether the item went back on the shelf when it arrived. */
+    restocked: boolean("restocked").notNull().default(false),
+    refundAmount: numeric("refund_amount", { precision: 12, scale: 3 }),
+    refundPaidAt: timestamp("refund_paid_at", { withTimezone: true }),
+    /** The zero-priced order that carried the replacement, for an exchange. */
+    replacementOrderId: integer("replacement_order_id").references(() => orders.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("return_requests_open_unique")
+      .on(table.orderItemId)
+      .where(sql`${table.status} in ('requested', 'approved', 'collected')`),
+    index("return_requests_vendor_idx").on(table.vendorId, table.status),
+    index("return_requests_user_idx").on(table.userId),
+  ]
+);
+
+/**
  * A conversation between one shopper and one seller (3.8).
  *
  * **One thread per pair, not per product.** A shopper asking about the sofa and
@@ -2340,5 +2394,6 @@ export type BundleRow = typeof bundles.$inferSelect;
 
 export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
 export type ConversationRow = typeof conversations.$inferSelect;
+export type ReturnRequestRow = typeof returnRequests.$inferSelect;
 export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

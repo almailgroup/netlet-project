@@ -70,6 +70,12 @@ export type Capability =
    * rank that watches questions go stale.
    */
   | "chat.answer"
+  /*
+   * Returns (3.2.8). `manager`: answering a request a rule could not decide,
+   * and saying what came back and whether it goes on the shelf, are decisions
+   * about money and stock together, which is a manager's.
+   */
+  | "returns.handle"
   | "vendor.viewMembers"
   | "vendor.manageMembers"
   | "vendor.editProfile"
@@ -104,6 +110,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "vendor.viewMembers": "staff",
   "delivery.fileClaim": "staff",
   "chat.answer": "staff",
+  "returns.handle": "manager",
   "product.create": "manager",
   "product.edit": "manager",
   "product.publish": "manager",

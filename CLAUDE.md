@@ -731,9 +731,47 @@ still make sense afterwards.
 And an **unknown delivery date counts as open**, because refusing a return over a
 gap in our own schema puts our problem on the shopper.
 
-The return *request* is an email address, not a form. There is no returns table
-and no signed-off policy, and a form that silently drops a request is worse
-than an address.
+### Returns and exchanges
+
+The request was an email address for a long time, on the grounds that a form
+silently dropping a request is worse than an address. It is a row now —
+`return_requests` — and `shared/commerce/returnRequests.ts` is the rule, pure.
+
+**Most requests decide themselves.** Damaged, faulty, wrong or not as described
+is the seller's fault, which a shop cannot refuse inside the window, so it is
+approved the moment it is asked; a change of mind is approved too, except on a
+perishable department, where it is **declined at once with that reason** rather
+than left for a seller to say the same thing two days later. Only "other" waits
+for a person, because no rule reads free text. No model decides anything here:
+what this decides is money.
+
+**Receiving *is* the refund or the exchange**, not a state before it. A refund
+moves the line to `returned` — which `lineOutcome` already counts as a refund in
+finance and payouts — and freezes `refund_amount` from the line's own frozen
+total, never a recomputed price. The order reads `refunded` only when every line
+is returned or cancelled. An exchange takes the stock under the checkout's own
+predicate and writes a new paid, zero-priced order, so the replacement goes out
+through the ordinary dispatch board; with nothing on the shelf it **falls back
+to a refund** and says why, rather than leaving the shopper with neither.
+
+Three rules that were each found by doing it rather than reading it:
+
+- **One open request per line is a partial unique index**, for the reason the
+  price-ask one is: two tabs beat a read-then-insert check.
+- **A line already refunded or swapped cannot be asked about again.** The window
+  is still open after an exchange, and without `returns.alreadyHandled` the
+  original line could be returned a second time, so one line would carry two
+  outcomes and the replacement order would still read delivered for an item
+  that had come back. A replacement is returned on its own order, if at all.
+- **"To do" is one filter, shared by the list and the overview count** —
+  `WAITING` in `server/returns.ts`. A refund received but not yet handed back
+  is still work, and the first version of the tab dropped it the moment the
+  item arrived, so the cash owed to a shopper fell off the only page that asks
+  somebody to pay it.
+
+Restocking is a question for whoever is holding the item, asked beside the
+button rather than inside the confirmation, and it hands the units back to the
+pool they came from with `returnUnits`.
 
 ### Cancelling a line
 

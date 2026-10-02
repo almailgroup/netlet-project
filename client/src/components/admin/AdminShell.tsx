@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, MessagesSquare, PackageSearch, Receipt, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, Gauge, Handshake, LayoutGrid, MessagesSquare, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, Truck, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -127,6 +127,7 @@ export function AdminShell({ need, children }: {
     /* The delivery company's own board (2.2, 3.4.2). A courier clears
        `delivery.view` and nothing else, so this is the only link they see. */
     { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
+    { href: "/admin/returns", label: "admin.returns", icon: <RotateCcw className="size-4" />, need: "returns.handle" },
     { href: "/admin/claims", label: "admin.claims", icon: <ShieldAlert className="size-4" />, need: ["delivery.view", "delivery.fileClaim"] },
     { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
     { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },

@@ -431,6 +431,18 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Messages (3.8). The demo shopper is a guest with nobody to talk to, and
        the demo manager's store has no shoppers, so every inbox is empty and a
        send is refused the way a real server refuses a product it cannot find. */
+    /* Returns (3.2.8): no orders in the demo, so nothing to send back. */
+    case "returns.list":
+      return [];
+    case "returns.waiting":
+      return 0;
+    case "orders.requestReturn":
+    case "orders.cancelReturn":
+    case "returns.decide":
+    case "returns.collect":
+    case "returns.receive":
+    case "returns.refundPaid":
+      throw new Error("returns.notFound");
     case "chat.mine":
     case "chat.seller.list":
       return [];

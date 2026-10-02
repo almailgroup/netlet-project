@@ -274,6 +274,13 @@
       "when": 1790884386201,
       "tag": "0038_cheerful_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790938906618,
+      "tag": "0039_condemned_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

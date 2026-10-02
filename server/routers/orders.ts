@@ -30,6 +30,8 @@ import { resolveActor } from "../inventory.js";
 import { fileClaim, parcelsForShopper, ParcelCareRefused, rateDelivery } from "../parcelCare.js";
 import { MAX_DELIVERY_COMMENT } from "../../shared/commerce/deliveryRatings.js";
 import { MAX_CLAIM_DESCRIPTION } from "../../shared/commerce/damageClaims.js";
+import { cancelReturn, requestReturn, returnsForShopperOrder, ReturnRefused } from "../returns.js";
+import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../shared/commerce/returnRequests.js";
 import { riskForOrders } from "../fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../vouchers.js";
 import { VOUCHER_KINDS } from "../../shared/commerce/vouchers.js";
@@ -74,6 +76,9 @@ export const ordersRouter = router({
            delivery (3.4.4), report damage (3.4.2) — resolved with the server's
            clock for the reason the return window is. */
         parcels: await parcelsForShopper(ctx.user.id, input.reference, now),
+        /* Each line's return requests (3.2.8), newest first, so a line can say
+           where its return stands rather than only whether one is allowed. */
+        returns: await returnsForShopperOrder(ctx.user.id, found.order.id),
         lines: found.lines.map(line => ({
           ...line,
           /*
@@ -113,6 +118,28 @@ export const ordersRouter = router({
     }))
     .mutation(async ({ ctx, input }) => careGuard(async () => {
       await rateDelivery(ctx.user.id, input);
+      return { success: true } as const;
+    })),
+
+  /**
+   * Ask to send a line back for a refund or an exchange (3.2.8). Decided
+   * automatically where a rule can decide it (3.5.2); the reply says what.
+   */
+  requestReturn: protectedProcedure
+    .input(z.object({
+      reference: z.string().min(1).max(64),
+      orderItemId: rowId,
+      kind: z.enum(RETURN_KINDS),
+      reason: z.enum(RETURN_REASONS),
+      note: z.string().max(MAX_RETURN_NOTE + 100).nullish(),
+    }))
+    .mutation(async ({ ctx, input }) => returnGuard(() => requestReturn(ctx.user.id, input))),
+
+  /** Withdraw a return before the item has been collected. */
+  cancelReturn: protectedProcedure
+    .input(z.object({ requestId: rowId }))
+    .mutation(async ({ ctx, input }) => returnGuard(async () => {
+      await cancelReturn(ctx.user.id, input.requestId);
       return { success: true } as const;
     })),
 
@@ -314,6 +341,18 @@ export const ordersRouter = router({
     .mutation(async ({ ctx, input }) => guard(async () =>
       ({ recorded: await recordCashCollected(await resolveActor(ctx.user), input.orderId) }))),
 });
+
+/** A return refused for a reason the shopper can act on. */
+async function returnGuard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof ReturnRefused) {
+      throw new TRPCError({ code: error.reason === "returns.notFound" ? "NOT_FOUND" : error.reason === "returns.moved" ? "CONFLICT" : "BAD_REQUEST", message: error.reason });
+    }
+    throw error;
+  }
+}
 
 /** A rating or a claim refused for a reason the shopper can act on. */
 async function careGuard<T>(work: () => Promise<T>): Promise<T> {

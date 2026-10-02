@@ -387,14 +387,14 @@ async function takePreorder(db: Db, variantId: number, quantity: number): Promis
  * stock then has to fall through to the allowance — otherwise the order would
  * record a promise the warehouse cannot keep.
  */
-async function takeUnits(db: Db, variantId: number, quantity: number): Promise<Pool | null> {
+export async function takeUnits(db: Db, variantId: number, quantity: number): Promise<Pool | null> {
   if (await takeStock(db, variantId, quantity)) return "stock";
   if (await takePreorder(db, variantId, quantity)) return "preorder";
   return null;
 }
 
 /** Put units back in the pool they came from, for a line that could not be completed. */
-async function returnUnits(db: Db, variantId: number, quantity: number, pool: Pool): Promise<void> {
+export async function returnUnits(db: Db, variantId: number, quantity: number, pool: Pool): Promise<void> {
   const column = pool === "stock" ? productVariants.stock : productVariants.preorderStock;
   await db
     .update(productVariants)

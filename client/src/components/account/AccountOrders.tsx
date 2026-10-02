@@ -21,6 +21,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
 import { Thumb } from "@/components/product/Thumb";
 import { ParcelCare } from "@/components/account/ParcelCare";
+import { LineReturn } from "@/components/account/LineReturn";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -203,18 +204,14 @@ function OrderLines({ reference }: { reference: string }) {
                         <span className="text-[11px] font-semibold ink-muted">{t(line.returnState.reason)}</span>
                       )}
                     </div>
+                    <LineReturn reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
                 </li>
               );
             })}
 
-            {/*
-              What a shopper can actually do about a return today, said once at
-              the foot rather than as a button per line that goes nowhere. The
-              window is real and computed; the request is email, because there
-              is no returns table and no policy signed off — and a form that
-              silently drops a return request is worse than an address.
-            */}
+            {/* How a return works, said once at the foot. Each line carries its
+                own button where a return is open; this is the policy behind it. */}
             <li className="rounded-xl bg-[#e7edf5] p-4">
               <p className="text-xs leading-5 ink-muted">{t("returns.howTo", { days: String(data.windowDays) })}</p>
             </li>
