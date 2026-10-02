@@ -53,6 +53,7 @@ import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
+import { issueInvoice, issueQuietly } from "./invoices.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -1102,6 +1103,10 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
    * `qualifyReferral` claims its row with a predicate of its own regardless.
    */
   if (order.userId) await qualifyReferral(db, order.userId, orderId);
+
+  /* The sale is complete, so it is invoiced (3.6.6) — after the payment has
+     landed and without undoing it if issuing fails; the next read repairs. */
+  await issueQuietly(() => issueInvoice(orderId), `the invoice for order ${orderId}`);
 
   return true;
 }

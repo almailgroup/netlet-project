@@ -412,6 +412,14 @@
   .ink-muted { color: var(--ink-muted); }
 
   /*
+   * A line in the other language, aligned the way its parent is rather than
+   * the way its own letters run — so Arabic beneath an English label sits
+   * under it, not at the far edge of the column. Two spellings: Chromium and
+   * Safari implement only the prefixed one, Firefox only the standard one.
+   */
+  .align-parent { text-align: -webkit-match-parent; text-align: match-parent; }
+
+  /*
    * Sonner's own success and error inks fail AA on its own backgrounds.
    * #008a2e on #ecfdf3 measures 4.37:1 and the text is 13px, nowhere near
    * large-text size — so every "added to your cart" and every "Saved" in the

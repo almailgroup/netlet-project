@@ -31,6 +31,7 @@ import {
   users,
   vendorMembers,
   vendors,
+  invoices,
 } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 import { addMoney } from "../shared/money.js";
@@ -114,6 +115,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(orderItems);
+  /* An invoiced order cannot be deleted under its invoice (3.6.6). */
+  await db.delete(invoices);
   await db.delete(orders);
   await db.delete(cartItems);
   await db.delete(carts);

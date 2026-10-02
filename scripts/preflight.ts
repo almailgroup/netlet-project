@@ -128,6 +128,21 @@ if (supabaseAuthMissing.length === 0) {
     "Set all three, or clear them all — see docs/SUPABASE-AUTH.md");
 }
 
+/* -------------------------------------------------------------- invoices --- */
+
+/*
+ * Invoices are issued whatever this says (3.6.6) — refusing to issue one is
+ * worse than issuing one with a blank — but a Kuwaiti invoice names its
+ * issuer's commercial registration, and a missing one is the kind of gap
+ * nobody notices until somebody official asks.
+ */
+if ((process.env.INVOICE_ISSUER_LICENCE ?? "").trim()) {
+  add("ok", "Invoices", `issued by ${(process.env.INVOICE_ISSUER_NAME ?? "").trim() || "NetLet"}, registration ${process.env.INVOICE_ISSUER_LICENCE!.trim()}`);
+} else {
+  add("warn", "Invoices", "INVOICE_ISSUER_LICENCE not set — invoices say the commercial registration is not recorded",
+    "Set INVOICE_ISSUER_NAME, INVOICE_ISSUER_NAME_AR, INVOICE_ISSUER_LICENCE and INVOICE_ISSUER_ADDRESS");
+}
+
 /* ---------------------------------------------------------------- build --- */
 
 const serverBundle = path.join(ROOT, "dist", "index.js");

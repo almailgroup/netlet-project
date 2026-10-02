@@ -10,12 +10,12 @@ rounding up. Nothing is marked done because the schema could support it.
 | | count |
 |---|---|
 | Built | 55 |
-| Partial | 3 |
+| Partial | 4 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
-| Not started | 17 |
+| Not started | 16 |
 
-*Last updated after the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
+*Last updated after e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -127,7 +127,7 @@ window and review eligibility are both correct for free.
 | 2 | Automatic return/exchange handling | **Built** | `shared/commerce/returnRequests.ts` is the rule and is pure. **Most requests decide themselves**: damaged, faulty, wrong or not as described is the seller's fault, and Kuwaiti consumer protection does not let a shop refuse that inside the window, so a human reading it adds a delay and nothing else — approved the moment it is asked. A change of mind is approved too, inside the window the shop already advertises, except on perishable groceries, which are **declined at once with that reason** rather than left for a seller to say the same thing two days later. "Other" goes to the seller, because no rule can read a free-text reason — automatic where the answer is already known, and honest about where it is not. The window is `RETURN_WINDOW_DAYS` on the server's clock; one open request per line is a partial unique index, so two tabs cannot both ask; and a line already refunded or swapped cannot be asked about again. Sellers work the operations at `/admin/returns` (`returns.handle`, manager and up), the overview counts what is waiting, and an administrator can overrule an approval. No model is involved, deliberately: what this decides is money, and a rule decides it the same way every time. |
 | 3 | AI-generated tutorial videos | Not started | No video generation provider. Product video (3.1) is merchant-uploaded. |
 
-## 3.6 Admin panels — 4 built, 1 n/a, 1 absent
+## 3.6 Admin panels — 4 built, 1 partial, 1 n/a
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
@@ -136,7 +136,7 @@ window and review eligibility are both correct for free.
 | 3 | Automatic audit trail | **Built** | 14 actions, covering commission edits, approvals, permission changes and admin sign-ins. |
 | 4 | No HR panel | n/a | Correctly absent. |
 | 5 | AI fraud detection | **Built** | `shared/commerce/fraudSignals.ts` is the judgement and is pure. **It flags and never blocks**: nothing cancels an order, refuses a checkout or holds a parcel — a heuristic that could refuse a sale refuses real customers at the till and the shop never learns which ones it turned away. **Cash is where the exposure actually is**, which is the whole reason this is worth having today: NetLet takes cash on delivery and nothing else, so the goods leave the warehouse before any money exists, and an uncollected cash order is a van, a driver and a parcel nobody paid for. The value thresholds therefore apply to cash and the card branches wait with 3.2.1. Six signals — a new account paying real money in cash, a large cash order, several accounts at one address, a burst of orders in a day, a refund history with enough orders behind it to mean anything, and ten of one thing on a first order — each carrying **the counts that produced it**, because "risk: high" is not something an administrator can disagree with and "five accounts have used this address" is. Three bands rather than a score, since a number asks somebody to decide what 62 means; `high` is one serious signal or three of anything, because several small oddities about one order is itself the pattern. **Admin-only, guarded beside the query**: the signals name other accounts' behaviour, so a vendor reading their own order desk does not get them. Verified in a browser in both languages against a real suspicious order, axe clean — and the browser is what caught the one real defect: a JS `Date` interpolated into a raw `count(*) filter` fragment, which PGlite accepts and postgres.js refuses, so every test passed and every request 500ed. Exactly the wishlist's `lt(column, date)` lesson, found the same way. |
-| 6 | E-invoice compliance | Not started | |
+| 6 | E-invoice compliance | **Partial** | The mechanics are built; whether they satisfy the law has not been checked by anybody qualified to say, and that is the gap. `shared/commerce/invoice.ts` is the rules and is pure; `invoices` and `invoice_counters` are the ledger. **One invoice per order, issued by NetLet** as the marketplace the shopper paid, with every seller named under their own heading and their own commercial registration — or "sells under NetLet's licence" in words — because the order-level reductions belong to the basket and splitting them per seller would need an allocation rule nobody has decided. **Issued when the cash is collected**, from the frozen order, so a line cancelled before then is no more on the invoice than on the driver's sheet. **Gap-free numbering** (`INV-2026-000042`), from a counter row incremented inside the transaction that writes the invoice — a Postgres sequence would leave a hole every time an insert failed. **Never edited**: the whole document is frozen as issued, and a refund adds a credit note (`CRN-…`) against it. Both languages on one document whatever the site is in, the date in the Gregorian and Hijri (Umm al-Qura) calendars, amounts in KWD to three decimals, and an invoiced order cannot be deleted out from under its invoice. The shopper finds it on their order; an administrator at `/admin/invoices`. The field list followed secondary summaries of Kuwait's Decree 10/2026 rather than the decree itself, NetLet's own registration has to be configured (`INVOICE_ISSUER_*`; `pnpm preflight` warns), and there is no submission to any government system because no such interface was specified. |
 
 ## 3.7 Affiliate marketing — 0 of 2
 

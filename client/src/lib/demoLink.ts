@@ -441,6 +441,12 @@ function resolve(path: string, rawInput: unknown): unknown {
       return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
     case "features.set":
       throw new Error("platform.configure");
+    /* Invoices (3.6.6): nothing is ever paid in the demo, so nothing is
+       invoiced — the server's own answer to a number it cannot find. */
+    case "invoices.get":
+      throw new Error("invoice.notFound");
+    case "invoices.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     /* Returns (3.2.8): no orders in the demo, so nothing to send back. */
     case "returns.list":
       return [];

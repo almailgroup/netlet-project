@@ -29,7 +29,8 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, PackageSearch, RotateCcw } from "lucide-react";
+import { ChevronDown, FileText, PackageSearch, RotateCcw } from "lucide-react";
+import { Link } from "wouter";
 import { useState } from "react";
 
 /**
@@ -218,6 +219,23 @@ function OrderLines({ reference }: { reference: string }) {
               <p className="text-xs leading-5 ink-muted">{t(returnsOn ? "returns.howTo" : "returns.howToPaused", { days: String(data.windowDays) })}</p>
             </li>
           </ul>
+          {/* The invoice and any credit notes (3.6.6), once the money has
+              been collected — the moment the sale completes. */}
+          {data.documents.length > 0 ? (
+            <section aria-labelledby={`docs-${reference}`} className="mt-5 border-t border-[#e7edf5] pt-4">
+              <h4 id={`docs-${reference}`} className="type-label ink-muted">{t("invoice.documents")}</h4>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {data.documents.map(document => (
+                  <li key={document.number}>
+                    <Link href={`/invoices/${document.number}`} className="glass type-control pressable inline-flex items-center gap-1.5 rounded-full px-3 py-1.5">
+                      <FileText className="size-3.5" aria-hidden />
+                      {t(document.kind === "credit_note" ? "invoice.creditNoteNumber" : "invoice.invoiceNumber", { number: document.number })}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
           </>
         );

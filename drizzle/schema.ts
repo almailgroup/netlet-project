@@ -19,6 +19,7 @@
  */
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -1312,6 +1313,63 @@ export const featureSwitches = pgTable("feature_switches", {
 });
 
 /**
+ * Invoices and credit notes (3.6.6), one ledger.
+ *
+ * **Issued, never edited.** `document` is the whole invoice as it was issued —
+ * issuer, sellers, buyer, lines, totals — frozen as JSON, because an invoice
+ * is a statement made on a date and a re-render against today's store details
+ * would be a different statement with the old number on it. A refund is a
+ * credit note pointing at the invoice, never a change to it.
+ *
+ * **Kept.** The order reference is `restrict`, so an order that has been
+ * invoiced cannot be deleted out from under its invoice; the snapshot means
+ * nothing else needs keeping alongside it.
+ *
+ * One invoice per order (a partial unique index), one credit note per return
+ * — the second press of either finds the first rather than minting another
+ * number.
+ */
+export const invoices = pgTable(
+  "invoices",
+  {
+    id: serial("id").primaryKey(),
+    /** `INV-2026-000042` / `CRN-2026-000007`, gap-free within its series. */
+    number: varchar("number", { length: 32 }).notNull(),
+    /** `invoice` or `credit_note`. */
+    kind: varchar("kind", { length: 16 }).notNull(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+    /** The invoice a credit note reverses part of. Null on an invoice. */
+    creditsInvoiceId: integer("credits_invoice_id").references((): AnyPgColumn => invoices.id, { onDelete: "restrict" }),
+    /** The return a credit note settles, when it came from one. */
+    returnRequestId: integer("return_request_id").references(() => returnRequests.id, { onDelete: "set null" }),
+    /** The document's total, for listing without opening the JSON. */
+    total: numeric("total", { precision: 12, scale: 3 }).notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    document: jsonb("document").notNull(),
+  },
+  table => [
+    uniqueIndex("invoices_number_unique").on(table.number),
+    uniqueIndex("invoices_one_per_order").on(table.orderId).where(sql`${table.kind} = 'invoice'`),
+    uniqueIndex("invoices_one_per_return").on(table.returnRequestId).where(sql`${table.returnRequestId} is not null`),
+    index("invoices_issued_idx").on(table.issuedAt),
+  ],
+);
+
+/**
+ * The last number issued in each series.
+ *
+ * A counter rather than a Postgres sequence, because a sequence is not
+ * transactional: a rolled-back insert burns its number and leaves a gap, and a
+ * gap in an invoice series is exactly what an auditor asks about. Incremented
+ * inside the transaction that writes the invoice, so the row lock is the
+ * ordering and a rollback gives the number back.
+ */
+export const invoiceCounters = pgTable("invoice_counters", {
+  series: varchar("series", { length: 16 }).primaryKey(),
+  last: integer("last").notNull(),
+});
+
+/**
  * A conversation between one shopper and one seller (3.8).
  *
  * **One thread per pair, not per product.** A shopper asking about the sofa and
@@ -2413,5 +2471,6 @@ export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
 export type ConversationRow = typeof conversations.$inferSelect;
 export type ReturnRequestRow = typeof returnRequests.$inferSelect;
 export type FeatureSwitchRow = typeof featureSwitches.$inferSelect;
+export type InvoiceRow = typeof invoices.$inferSelect;
 export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

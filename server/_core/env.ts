@@ -30,4 +30,12 @@ export const ENV = {
   supabaseUrl: process.env.SUPABASE_URL ?? "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+  /* Who issues NetLet's invoices (3.6.6). Unset, invoices are still issued and
+     say plainly that the registration is not recorded — an invoice with a
+     blank is better than none. Read when an invoice is issued and frozen into
+     it, so changing these later does not rewrite what was already issued. */
+  invoiceIssuerName: process.env.INVOICE_ISSUER_NAME ?? "",
+  invoiceIssuerNameAr: process.env.INVOICE_ISSUER_NAME_AR ?? "",
+  invoiceIssuerLicence: process.env.INVOICE_ISSUER_LICENCE ?? "",
+  invoiceIssuerAddress: process.env.INVOICE_ISSUER_ADDRESS ?? "",
 };

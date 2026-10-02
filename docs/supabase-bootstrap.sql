@@ -1152,6 +1152,39 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0041_outgoing_lilith.sql =====
+CREATE TABLE IF NOT EXISTS "invoice_counters" (
+	"series" varchar(16) PRIMARY KEY NOT NULL,
+	"last" integer NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "invoices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"number" varchar(32) NOT NULL,
+	"kind" varchar(16) NOT NULL,
+	"order_id" integer NOT NULL,
+	"credits_invoice_id" integer,
+	"return_request_id" integer,
+	"total" numeric(12, 3) NOT NULL,
+	"issued_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"document" jsonb NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "invoices" ADD CONSTRAINT "invoices_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "invoices" ADD CONSTRAINT "invoices_credits_invoice_id_invoices_id_fk" FOREIGN KEY ("credits_invoice_id") REFERENCES "public"."invoices"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "invoices" ADD CONSTRAINT "invoices_return_request_id_return_requests_id_fk" FOREIGN KEY ("return_request_id") REFERENCES "public"."return_requests"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "invoices_number_unique" ON "invoices" USING btree ("number");
+CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_per_order" ON "invoices" USING btree ("order_id") WHERE "invoices"."kind" = 'invoice';
+CREATE UNIQUE INDEX IF NOT EXISTS "invoices_one_per_return" ON "invoices" USING btree ("return_request_id") WHERE "invoices"."return_request_id" is not null;
+CREATE INDEX IF NOT EXISTS "invoices_issued_idx" ON "invoices" USING btree ("issued_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1195,6 +1228,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  41 AS migrations_in_this_file,
+  42 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

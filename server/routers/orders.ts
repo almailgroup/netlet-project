@@ -31,6 +31,7 @@ import { fileClaim, parcelsForShopper, ParcelCareRefused, rateDelivery } from ".
 import { MAX_DELIVERY_COMMENT } from "../../shared/commerce/deliveryRatings.js";
 import { MAX_CLAIM_DESCRIPTION } from "../../shared/commerce/damageClaims.js";
 import { cancelReturn, requestReturn, returnsForShopperOrder, ReturnRefused } from "../returns.js";
+import { documentsForShopperOrder } from "../invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../shared/commerce/returnRequests.js";
 import { riskForOrders } from "../fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../vouchers.js";
@@ -79,6 +80,9 @@ export const ordersRouter = router({
         /* Each line's return requests (3.2.8), newest first, so a line can say
            where its return stands rather than only whether one is allowed. */
         returns: await returnsForShopperOrder(ctx.user.id, found.order.id),
+        /* The invoice and any credit notes (3.6.6), issued here if a write
+           at collection or refund missed them. */
+        documents: await documentsForShopperOrder(ctx.user.id, input.reference),
         lines: found.lines.map(line => ({
           ...line,
           /*

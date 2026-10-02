@@ -32,6 +32,7 @@ import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 import { returnUnits, takeUnits } from "./orders.js";
+import { issueCreditNote, issueQuietly } from "./invoices.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -425,6 +426,9 @@ export async function receiveReturn(
   if (remaining.every(one => one.fulfilment === "returned" || one.fulfilment === "cancelled")) {
     await db.update(orders).set({ status: "refunded" }).where(and(eq(orders.id, order.id), eq(orders.status, "paid")));
   }
+  /* A refund corrects the invoice with a credit note (3.6.6), never by
+     editing it — issued after the refund has landed, repaired on read. */
+  await issueQuietly(() => issueCreditNote(requestId, now), `the credit note for return ${requestId}`);
   return { outcome: "refunded", refundAmount, replacementReference: null };
 }
 

@@ -1414,6 +1414,62 @@ every recommendation is drawn from, so *which* hundred products the shop
 displayed could change between two page loads. A cap needs the tiebreak as much
 as a page does: paging repeats rows, but a cap decides membership.
 
+## Invoices
+
+`shared/commerce/invoice.ts` is the rules and is pure; `server/invoices.ts`
+writes them. An invoice is a statement made on a date, so everything about it
+is shaped by one word: **issued**.
+
+**One per order, issued by NetLet.** The discount code, the points and the gift
+card belong to the basket, not to any seller, and three invoices would need an
+allocation rule nobody has decided — an invented one is three documents that do
+not add up to what the shopper paid. Each seller is named under their own
+heading with their own registration, or "sells under NetLet's licence" in words.
+
+**Issued when the cash is collected, from the frozen order.** Never at
+checkout, where a cash order is still a promise. A line cancelled before
+collection is left off by `collection.ts`'s own rule, so the invoice and the
+driver's sheet cannot disagree.
+
+**Gap-free numbering, by transaction.** A counter row is incremented inside the
+transaction that writes the invoice; the row lock orders two issues and a
+rollback gives the number back. A Postgres sequence is not transactional and
+leaves a hole every time an insert fails — the one thing an invoice series must
+not have. `server/invoices.test.ts` races three issues for one order and checks
+the counter.
+
+**Never edited.** The whole document is frozen as JSON — issuer, sellers, buyer,
+lines, totals — and the page renders only that, never today's store details. A
+refund is a credit note in its own series pointing at the invoice. The order
+reference is `restrict`, so an invoiced order cannot be deleted under it; test
+files that delete orders between cases delete invoices first.
+
+**Issued after the act, repaired on read.** Recording the cash and receiving a
+return must not be undone because a document failed, so both issue through
+`issueQuietly`, which logs. `ensureDocuments` runs on every read of an order's
+documents and issues whatever is missing, idempotently — which also invoices any
+order paid before invoices existed. An exchange's replacement order is never
+invoiced: nobody paid for it.
+
+**Both languages on one document, whatever the site is in**, with the date in
+the Gregorian and the Hijri (Umm al-Qura) calendars. An invoice is handed to an
+accountant as often as it is read by the shopper. The second-language line uses
+`.align-parent` — `text-align: match-parent`, which Chromium and Safari only
+implement as `-webkit-match-parent`, so the utility carries both; the bare
+standard value silently did nothing in Chromium and the Arabic drifted to the
+far edge of every column. Merchant-typed names on it are `<bdi>`, so a Latin
+store name sits on the Arabic page's side.
+
+The shopper and an administrator read one; a seller does not, because the
+document names every seller on the basket and the buyer's address. NetLet's
+own registration comes from `INVOICE_ISSUER_*`, frozen into each invoice when it
+is issued; unset, the invoice says "not recorded" rather than refusing to
+issue, and `pnpm preflight` warns.
+
+The field list followed secondary summaries of Kuwait's Decree 10/2026, not the
+decree — which is why `docs/REQUIREMENTS.md` calls 3.6.6 partial. Somebody
+qualified should read the two side by side.
+
 ## The feature switchboard
 
 `/admin/features` turns any advanced feature off for the whole shop (2.3).

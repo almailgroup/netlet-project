@@ -17,6 +17,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cartItems, carts, orderItems, orders as ordersTable, pointEntries, products, productVariants,
   referrals as referralsTable, users, vendors,
+  invoices,
 } from "../drizzle/schema.js";
 import { REFERRED_POINTS, REFERRER_POINTS, referralCodeFor } from "../shared/commerce/referral.js";
 import type { Actor } from "../shared/inventory/permissions.js";
@@ -68,6 +69,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   await db.delete(pointEntries);
   await db.delete(referralsTable);
+  /* An invoiced order cannot be deleted under its invoice (3.6.6). */
+  await db.delete(invoices);
   await db.delete(orderItems);
   await db.delete(ordersTable);
   await db.delete(cartItems);
