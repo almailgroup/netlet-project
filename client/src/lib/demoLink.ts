@@ -19,6 +19,7 @@ import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, 
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
 import { MIN_CASH_OUT_POINTS, referralCodeFor } from "@shared/commerce/referral";
+import { allOn, FEATURE_KEYS } from "@shared/features";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
 const CURRENCY = "KWD";
@@ -431,6 +432,15 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Messages (3.8). The demo shopper is a guest with nobody to talk to, and
        the demo manager's store has no shoppers, so every inbox is empty and a
        send is refused the way a real server refuses a product it cannot find. */
+    /* The switchboard (2.3): everything on, which is what a database nobody
+       has touched means. The demo manager cannot reach the page, so the list
+       and the setter are unreachable — answered anyway, as the others are. */
+    case "features.states":
+      return allOn();
+    case "features.list":
+      return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
+    case "features.set":
+      throw new Error("platform.configure");
     /* Returns (3.2.8): no orders in the demo, so nothing to send back. */
     case "returns.list":
       return [];

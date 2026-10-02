@@ -28,6 +28,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { cartItems, orderItems, orders, productVariants } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
+import { featureOn } from "./features.js";
 import { listProducts } from "./catalog.js";
 import {
   collapseObservations,
@@ -116,6 +117,8 @@ export async function boughtTogether(
   productId: string,
   options: { limit?: number; locale?: LocalePick } = {},
 ): Promise<Complement[]> {
+  /* Switched off (2.3): nothing to suggest, which the page draws as no rail. */
+  if (!(await featureOn("boughtTogether"))) return [];
   const { baskets, observations } = await recentBaskets();
   if (baskets.length === 0) return [];
 

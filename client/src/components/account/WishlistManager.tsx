@@ -30,6 +30,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { Thumb } from "@/components/product/Thumb";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useFeature } from "@/hooks/useFeature";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { Check, Gift, Link2, Lock, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import type { Product } from "@shared/commerce/types";
@@ -38,6 +39,9 @@ import { toast } from "sonner";
 
 export function WishlistManager() {
   const { t } = useTranslation();
+  /* Switched off (2.3): an owner keeps their lists and can read them; making
+     new ones and adding to them is what closes. */
+  const on = useFeature("wishlists");
   const [openList, setOpenList] = useState<number | null>(null);
 
   const lists = trpc.wishlists.mine.useQuery();
@@ -49,7 +53,7 @@ export function WishlistManager() {
 
   return (
     <div className="space-y-5">
-      <p className="max-w-prose text-sm leading-6 ink-muted">{t("wish.intro")}</p>
+      <p className="max-w-prose text-sm leading-6 ink-muted">{t(on ? "wish.intro" : "wish.switchedOff")}</p>
 
       <PhoneCard current={phone.data ?? null} onSaved={() => void phone.refetch()} />
 
@@ -77,7 +81,7 @@ export function WishlistManager() {
                 ))}
               </ul>
             )}
-            <NewList onCreated={() => void lists.refetch()} />
+            {on ? <NewList onCreated={() => void lists.refetch()} /> : null}
           </>
         )}
       </QueryGate>
@@ -321,6 +325,7 @@ function NewList({ onCreated }: { onCreated: () => void }) {
 /** One list: what is on it, and what can be added from Saved. */
 function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) {
   const { t, locale } = useTranslation();
+  const on = useFeature("wishlists");
   const detail = trpc.wishlists.get.useQuery({ listId });
   const add = trpc.wishlists.addItem.useMutation();
   const drop = trpc.wishlists.removeItem.useMutation();
@@ -361,12 +366,14 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                         <p className="truncate text-sm font-extrabold text-[#0a285a]">
                           {byId.get(item.productId)?.title ?? item.productId}
                         </p>
-                        <NoteField
-                          listId={listId}
-                          productId={item.productId}
-                          current={item.note}
-                          onSaved={() => void detail.refetch()}
-                        />
+                        {on ? (
+                          <NoteField
+                            listId={listId}
+                            productId={item.productId}
+                            current={item.note}
+                            onSaved={() => void detail.refetch()}
+                          />
+                        ) : item.note ? <p dir="auto" className="mt-1 text-xs ink-muted">{item.note}</p> : null}
                       </div>
                       <button
                         onClick={() => drop.mutate({ listId, itemId: item.id }, {
@@ -383,7 +390,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
               )}
             </div>
 
-            <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
+            {on ? <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
               <h3 className="text-sm font-extrabold text-[#0a285a]">{t("wish.addFromSaved")}</h3>
               <p className="mt-1 max-w-prose text-xs leading-5 ink-muted">{t("wish.addFromSavedNote")}</p>
 
@@ -417,7 +424,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                   ))}
                 </ul>
               )}
-            </div>
+            </div> : null}
           </>
         )}
       </QueryGate>

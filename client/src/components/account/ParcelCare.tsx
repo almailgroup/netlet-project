@@ -18,6 +18,7 @@ import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFeature } from "@/hooks/useFeature";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT, RATING_MAX } from "@shared/commerce/deliveryRatings";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -66,6 +67,10 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
   const refusal = useRefusal();
   const [reporting, setReporting] = useState(false);
   const vendor = parcel.vendorName ?? "—";
+  /* Both switchable (2.3). A claim already filed still shows its status: the
+     switch stops new claims, not the answer to an open one. */
+  const ratingsOn = useFeature("deliveryRatings");
+  const claimsOn = useFeature("damageClaims");
 
   return (
     <li className="rounded-xl border border-[#e7edf5] bg-[#fbfcfe] p-4">
@@ -83,12 +88,12 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
         ) : null}
       </div>
 
-      <RateDelivery reference={reference} parcel={parcel} />
+      {ratingsOn || parcel.rating ? <RateDelivery reference={reference} parcel={parcel} readOnly={!ratingsOn} /> : null}
 
       {/* The claim, once there is one: what the shopper is waiting to hear. */}
       {parcel.claim ? <ClaimStatus claim={parcel.claim} currency={currency} /> : null}
 
-      {reporting ? (
+      {!claimsOn ? null : reporting ? (
         <ReportDamage reference={reference} currency={currency} parcel={parcel} onDone={() => setReporting(false)} />
       ) : parcel.claimRefusal === null ? (
         <button
@@ -108,7 +113,7 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
   );
 }
 
-function RateDelivery({ reference, parcel }: { reference: string; parcel: Parcel }) {
+function RateDelivery({ reference, parcel, readOnly = false }: { reference: string; parcel: Parcel; readOnly?: boolean }) {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
   const refusal = useRefusal();
@@ -125,9 +130,9 @@ function RateDelivery({ reference, parcel }: { reference: string; parcel: Parcel
   });
 
   const state = parcel.ratingState;
-  if (!state.allowed) {
+  if (!state.allowed || readOnly) {
     /* Closed: what they said stays visible; not arrived: nothing to say yet. */
-    if (!parcel.rating) return state.reason === "delivery.ratingClosed" ? <p className="mt-3 text-[11px] ink-muted">{refusal(state.reason)}</p> : null;
+    if (!parcel.rating) return !state.allowed && state.reason === "delivery.ratingClosed" ? <p className="mt-3 text-[11px] ink-muted">{refusal(state.reason)}</p> : null;
     return (
       <p className="mt-3 inline-flex items-center gap-2 text-[12px] font-bold text-[#0a285a]">
         {t("delivery.yourRating")} <Stars value={parcel.rating.rating} />

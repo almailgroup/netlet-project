@@ -37,7 +37,9 @@ export type AuditAction =
   | "user.sendPasswordReset"
   | "admin.signIn"
   /* Money assigned between two companies (3.4.2): who pays for a broken box. */
-  | "delivery.decideClaim";
+  | "delivery.decideClaim"
+  /* A feature switched on or off for the whole shop (2.3). */
+  | "platform.setFeature";
 
 export type AuditActor = {
   id?: number | null;
@@ -48,7 +50,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -71,6 +73,8 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   "vendor.setStatus",
   /* Admin-only and money, like commission: who authorised the decider matters. */
   "delivery.decideClaim",
+  /* Admin-only, and it changes what every store and shopper can do. */
+  "platform.setFeature",
 ]);
 
 /**

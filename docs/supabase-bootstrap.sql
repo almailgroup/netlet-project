@@ -1140,6 +1140,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS "return_requests_open_unique" ON "return_reque
 CREATE INDEX IF NOT EXISTS "return_requests_vendor_idx" ON "return_requests" USING btree ("vendor_id","status");
 CREATE INDEX IF NOT EXISTS "return_requests_user_idx" ON "return_requests" USING btree ("user_id");
 
+-- ===== 0040_opposite_inhumans.sql =====
+CREATE TABLE IF NOT EXISTS "feature_switches" (
+	"key" varchar(64) PRIMARY KEY NOT NULL,
+	"enabled" boolean NOT NULL,
+	"updated_by" integer,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "feature_switches" ADD CONSTRAINT "feature_switches_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1183,6 +1195,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  40 AS migrations_in_this_file,
+  41 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

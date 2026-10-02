@@ -13,12 +13,17 @@
  * real database.
  */
 import { ENV } from "./_core/env.js";
+import { featureOn } from "./features.js";
 import { briefFor, briefToPrompt, clipAnswer, type ProductBrief } from "../shared/commerce/assistant.js";
 import type { Product } from "../shared/commerce/types.js";
 
-/** Whether a question can be answered at all. False with no key configured. */
-export function assistantAvailable(): boolean {
-  return Boolean(ENV.mistralApiKey);
+/**
+ * Whether a question can be answered at all. False with no key configured, and
+ * false with the assistant or every model call switched off (2.3) — the same
+ * branch, so the panel is absent rather than broken either way.
+ */
+export async function assistantAvailable(): Promise<boolean> {
+  return Boolean(ENV.mistralApiKey) && (await featureOn("ai")) && (await featureOn("assistant"));
 }
 
 /**
@@ -70,7 +75,7 @@ export async function askAboutProduct(
   product: Pick<Product, "title" | "productType" | "vendor" | "description" | "attributes">,
   question: string,
 ): Promise<AssistantReply> {
-  if (!assistantAvailable()) return { kind: "unavailable" };
+  if (!(await assistantAvailable())) return { kind: "unavailable" };
 
   const brief: ProductBrief = briefFor(product);
 

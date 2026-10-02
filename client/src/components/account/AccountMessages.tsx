@@ -13,6 +13,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 
@@ -86,6 +87,9 @@ function ShopperThread({ conversationId }: { conversationId: number }) {
   const utils = trpc.useUtils();
   const thread = trpc.chat.thread.useQuery({ conversationId });
   const send = trpc.chat.send.useMutation();
+  /* Switched off (2.3): the thread stays readable and the seller can still
+     answer it; writing a new message is what closes. */
+  const on = useFeature("chat");
   /* Opening it marked it read on the server; the badge above was fetched
      before that. */
   const loadedAt = thread.dataUpdatedAt;
@@ -110,7 +114,7 @@ function ShopperThread({ conversationId }: { conversationId: number }) {
         return (
           <>
             <ChatThread messages={data.messages} mySide="shopper" theirName={data.vendorName} />
-            <ChatComposer
+            {!on ? <p className="mt-3 text-[12px] leading-5 ink-muted">{t("chat.switchedOff")}</p> : <ChatComposer
               label={t("chat.replyTo", { name: data.vendorName })}
               pending={send.isPending}
               onSend={async body => {
@@ -123,7 +127,7 @@ function ShopperThread({ conversationId }: { conversationId: number }) {
                   return false;
                 }
               }}
-            />
+            />}
           </>
         );
       }}

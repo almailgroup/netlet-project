@@ -22,6 +22,7 @@ import { Pager } from "@/components/admin/Pager";
 import { Thumb } from "@/components/product/Thumb";
 import { ParcelCare } from "@/components/account/ParcelCare";
 import { LineReturn } from "@/components/account/LineReturn";
+import { useFeature } from "@/hooks/useFeature";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -152,6 +153,7 @@ export function AccountOrders() {
  */
 function OrderLines({ reference }: { reference: string }) {
   const { t, locale } = useTranslation();
+  const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
   const formatDate = useDateFormat();
 
@@ -213,7 +215,7 @@ function OrderLines({ reference }: { reference: string }) {
             {/* How a return works, said once at the foot. Each line carries its
                 own button where a return is open; this is the policy behind it. */}
             <li className="rounded-xl bg-[#e7edf5] p-4">
-              <p className="text-xs leading-5 ink-muted">{t("returns.howTo", { days: String(data.windowDays) })}</p>
+              <p className="text-xs leading-5 ink-muted">{t(returnsOn ? "returns.howTo" : "returns.howToPaused", { days: String(data.windowDays) })}</p>
             </li>
           </ul>
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />

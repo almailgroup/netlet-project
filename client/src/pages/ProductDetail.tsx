@@ -44,6 +44,7 @@ import { VariantPicker, imageIndexForVariant } from "@/components/product/Varian
 import { FollowProduct } from "@/components/product/FollowProduct";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { useFeature } from "@/hooks/useFeature";
 
 /**
  * NetLet's delivery terms, not per-product data — the same six rows the
@@ -857,6 +858,9 @@ export default function ProductDetail() {
   const { addItem, openCart, loading: cartLoading } = useCart();
   const { savedIds, toggleSaved } = useCustomer();
   const { direction, t } = useTranslation();
+  /* Both are switchable (2.3); the server refuses either way, this only stops offering it. */
+  const offersOn = useFeature("priceOffers");
+  const chatOn = useFeature("chat");
   const money = useMoney();
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -1070,14 +1074,14 @@ export default function ProductDetail() {
             {/* Below the buy buttons, not above them: the ordinary way to buy
                 this is at the price on the page, and a shop that leads with
                 "or haggle" has made its own price look provisional. */}
-            {selectedVariant
+            {selectedVariant && offersOn
               ? <PriceOfferPanel variantId={selectedVariant.id} listPrice={selectedVariant.price.amount} />
               : null}
 
             {/* A question for the shop (3.8). After the price request, because
                 both are ways of talking to the seller and the price is the more
                 specific of the two. */}
-            {product.vendor ? <AskSeller productId={product.id} vendor={product.vendor} /> : null}
+            {product.vendor && chatOn ? <AskSeller productId={product.id} vendor={product.vendor} /> : null}
 
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}

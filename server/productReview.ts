@@ -26,6 +26,7 @@ import { productImages, productVariants, products } from "../drizzle/schema.js";
 import { needsAttention, reviewProduct, type Flag } from "../shared/inventory/productReview.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { ENV } from "./_core/env.js";
+import { featureOn } from "./features.js";
 import { getDb } from "./db.js";
 
 export type ReviewedProduct = {
@@ -72,9 +73,9 @@ export async function reviewProducts(actor: Actor, productIds: number[]): Promis
   });
 }
 
-/** Whether the model pass can run at all. False with no key, which is ordinary. */
-export function modelReviewAvailable(): boolean {
-  return Boolean(ENV.mistralApiKey);
+/** Whether the model pass can run at all. False with no key, which is ordinary, or with models switched off (2.3). */
+export async function modelReviewAvailable(): Promise<boolean> {
+  return Boolean(ENV.mistralApiKey) && (await featureOn("ai"));
 }
 
 /**
@@ -108,7 +109,7 @@ const SYSTEM_PROMPT = [
 export async function modelConcernFor(
   product: { title: string; description: string | null; category?: string | null },
 ): Promise<Flag | null> {
-  if (!modelReviewAvailable()) return null;
+  if (!(await modelReviewAvailable())) return null;
 
   /* Fenced and labelled, and the whitespace is flattened so a description
      cannot forge its own closing marker — the same handling the shopper

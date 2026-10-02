@@ -23,6 +23,7 @@
  */
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { StoreHeader } from "@/components/layout/StoreHeader";
+import { useFeature } from "@/hooks/useFeature";
 import { Thumb } from "@/components/product/Thumb";
 import { useCart } from "@/contexts/CartContext";
 import { appPath } from "@/lib/basePath";
@@ -42,6 +43,9 @@ export default function GiftList() {
   const { t, locale } = useTranslation();
   const [, params] = useRoute("/gifts/:token");
   const token = params?.token ?? null;
+  /* Switched off (2.3): the public half of gift lists closes — the phone
+     lookup first among it — and the page says so rather than erroring. */
+  const on = useFeature("wishlists");
 
   usePageMeta(privatePageMeta(t("gift.title")));
 
@@ -56,7 +60,9 @@ export default function GiftList() {
           <h1 className="type-display mt-4 text-3xl text-[#0a285a] sm:text-4xl">{t("gift.heading")}</h1>
           <p className="mt-2 max-w-prose text-sm leading-6 ink-muted">{t("gift.intro")}</p>
 
-          {token ? <ByToken token={token} locale={locale} /> : <Lookup locale={locale} />}
+          {!on
+            ? <p className="mt-6 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm ink-muted">{t("gift.switchedOff")}</p>
+            : token ? <ByToken token={token} locale={locale} /> : <Lookup locale={locale} />}
         </div>
       </main>
       <MobileTabBar />

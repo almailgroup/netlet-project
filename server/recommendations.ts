@@ -38,6 +38,7 @@ import {
 import { getDb } from "./db.js";
 import { listProducts } from "./catalog.js";
 import { ENV } from "./_core/env.js";
+import { featureOn } from "./features.js";
 import {
   applyModelOrder,
   buildTaste,
@@ -139,6 +140,7 @@ async function signalsFor(userId: number | null, cartId: string | null): Promise
  */
 async function refineWithModel(ranked: Recommendation[], terms: string[]): Promise<Recommendation[] | null> {
   if (!ENV.mistralApiKey || ranked.length < 3 || terms.length === 0) return null;
+  if (!(await featureOn("ai"))) return null;
 
   const menu = ranked.map(entry => `${entry.product.id}: ${entry.product.title}`).join("\n");
 
@@ -207,6 +209,8 @@ export async function recommendFor(
     locale?: LocalePick;
   },
 ): Promise<RecommendationResult> {
+  /* Switched off (2.3): an empty rail, which the page already draws as no rail. */
+  if (!(await featureOn("recommendations"))) return empty;
   const catalog = await listProducts({ first: CANDIDATE_LIMIT, locale });
   if (catalog.length === 0) return empty;
 

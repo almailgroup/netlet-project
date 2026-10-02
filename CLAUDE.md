@@ -1414,6 +1414,43 @@ every recommendation is drawn from, so *which* hundred products the shop
 displayed could change between two page loads. A cap needs the tiebreak as much
 as a page does: paging repeats rows, but a cap decides membership.
 
+## The feature switchboard
+
+`/admin/features` turns any advanced feature off for the whole shop (2.3).
+`shared/features.ts` is the list, pure and imported by both sides, so the page
+hides exactly what the API refuses.
+
+**A switch closes the door; it never locks anybody in the room.** Each feature
+names its *entries* — the procedures that start something — and only those are
+refused. An open return is still collected and refunded, an agreed price is
+still honoured at checkout, a thread can still be read and a seller can still
+answer it. A switch that stranded obligations would be one nobody dared touch,
+which is the same as not having one.
+
+**The refusal is one middleware on the base procedure, by path** — the shape
+`refuseNul` has, for its reason: a check added to each router by hand is the
+arrangement where one gets missed. `server/features.test.ts` fails on an entry
+naming a procedure the router does not have, so a rename cannot leave a switch
+guarding nothing. It answers `PRECONDITION_FAILED` / `features.off`: nobody
+lacks permission, the shop has the thing turned off. A rail answers empty
+instead, because a shelf that errors is worse than a shelf that is absent.
+
+**`ai` is the one switch over every model call** — assistant, search
+refinement, recommendation ordering, the review queue's model pass. Each
+already had a deterministic answer for "no key", and off is that branch. Every
+call spends money at a third party and sends it catalogue text, so "stop all
+of it now" has to be one control rather than four.
+
+**Absent is on, and switches are read per call rather than cached.** A fresh
+database behaves exactly as before; a row is written only when somebody
+decides, and the trail records who. No in-process cache, for the reason
+`rateLimit.ts` counts in Postgres: one cache per short-lived instance would
+leave chat off on one and on everywhere else. The read happens only on an entry
+path or a model call, never while browsing. The client's `useFeature` answers
+*on* while loading, because hiding every optional control from everybody for
+the length of a request, to spare the rare shop that turned one off, is the
+wrong way round — and the server refuses regardless.
+
 ## Selling and shopping are one account
 
 A vendor member is a shopper with a `vendor_members` row, and for a long time

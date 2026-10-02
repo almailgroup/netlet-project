@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { ENV } from "../_core/env.js";
+import { featureOn } from "../features.js";
 import { publicProcedure, router } from "../_core/trpc.js";
 
 const refinementSchema = z.object({
@@ -26,7 +27,9 @@ export function parseRefinedSearch(content: unknown, fallback: string) {
 
 export const searchRouter = router({
   refine: publicProcedure.input(refinementSchema).mutation(async ({ input }) => {
-    if (!ENV.mistralApiKey) {
+    /* No key and models switched off (2.3) are one answer: the client already
+       falls back to the plain search on this refusal. */
+    if (!ENV.mistralApiKey || !(await featureOn("ai"))) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "AI search is not configured." });
     }
 

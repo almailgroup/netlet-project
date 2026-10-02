@@ -101,7 +101,10 @@ export type Capability =
   | "vendor.approve"
   | "product.review"
   | "platform.viewAll"
-  | "platform.manageUsers";
+  | "platform.manageUsers"
+  /* The feature switchboard (2.3). Turning a feature off for every store and
+     every shopper at once is NetLet's decision about NetLet. */
+  | "platform.configure";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -141,6 +144,7 @@ const ADMIN_ONLY: Capability[] = [
   // A vendor owner runs their own team — `vendor.manageMembers` — and that is
   // a different question from who is an administrator of NetLet.
   "platform.manageUsers",
+  "platform.configure",
 ];
 
 /**

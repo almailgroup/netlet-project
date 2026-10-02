@@ -22,7 +22,7 @@ import { publicProcedure, router } from "../_core/trpc.js";
 
 export const assistantRouter = router({
   /** Whether the panel should be drawn at all. Cheap, and asked once per page. */
-  available: publicProcedure.query(() => ({ available: assistantAvailable() })),
+  available: publicProcedure.query(async () => ({ available: await assistantAvailable() })),
 
   ask: publicProcedure
     .input(z.object({

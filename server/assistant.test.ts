@@ -80,7 +80,7 @@ describe("availability", () => {
     vi.resetModules();
     vi.doMock("./_core/env.js", () => ({ ENV: { mistralApiKey: "" } }));
     const assistant = await import("./assistant.js");
-    expect(assistant.assistantAvailable()).toBe(false);
+    expect(await assistant.assistantAvailable()).toBe(false);
     /* The one answer every failure lands on — checked here for the no-key
        case, which is the one a deployment actually meets. */
     const reply = await assistant.askAboutProduct(

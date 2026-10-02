@@ -9,13 +9,13 @@ rounding up. Nothing is marked done because the schema could support it.
 
 | | count |
 |---|---|
-| Built | 54 |
-| Partial | 4 |
+| Built | 55 |
+| Partial | 3 |
 | Designed, not wired | 1 |
 | Not applicable | 1 |
 | Not started | 17 |
 
-*Last updated after returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
+*Last updated after the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -28,13 +28,13 @@ worse than no table, for the reason `QueryGate` exists: it reads as working.
 
 ---
 
-## 2. Architectural principles — 1 built, 2 partial, 1 absent
+## 2. Architectural principles — 2 built, 1 partial, 1 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 2.1 | Fully microservices-based | **Not started** | One Express + tRPC app, one Postgres, one Vercel function. The seams are clean — each `server/` module has 1–4 relative imports and **no cross-module transactions** — so splitting later is packaging, not a rewrite. See the note at the foot of this file. |
 | 2.2 | Easy for all five parties | **Built** | All five now have a real interface, and the fifth was the whole of this gap. The buyer has the storefront; the vendor and the admin share `/admin`, scoped by the server; the person who processes orders has `/admin/orders`, where a line is moved from pending to delivered and a driver's cash is recorded; and the delivery company has `/admin/dispatch` — see 3.4.1. What is still thin is named under 3.4 and is not a missing audience: there is no map and no live ETA. A courier can see every parcel assigned to them, what it takes to carry, where it goes and how much cash to collect, and can mark it collected and handed over. |
-| 2.3 | Every advanced feature optional | **Partial** | The habit exists: `autoPublish` per vendor, the password store chosen by config, `SEARCH_MODES_WIRED`, and nothing throws at boot so a missing value is a dead feature rather than an outage. There is no feature-flag system as such, and no per-vendor or per-tenant switchboard. |
+| 2.3 | Every advanced feature optional | **Built** | `/admin/features` is the switchboard — eleven switches, admin-only (`platform.configure`), every change on the audit trail with the authorisation chain. `shared/features.ts` is the list and is pure, imported by both sides, so the page hides exactly what the API refuses. **A switch closes the door; it never locks anybody in the room**: off refuses *starting* something — a message, a return, a price request, a claim, a gift card — and leaves everything already in motion to finish, so an open return is still refunded and an agreed price still honoured. The refusal is one middleware on the base procedure, by path, the shape `refuseNul` already has, so no router can forget it; a test fails if a switch names a procedure the API does not have. Rails answer empty rather than refuse. **`ai` is the one switch over every model call** — assistant, search refinement, recommendation ordering, the review queue's model pass — each landing on the deterministic fallback it already had for "no key". Absent is on: a database nobody has touched behaves exactly as before. What is still per-vendor rather than per-shop is unchanged and already existed: `autoPublish`, cash on delivery, accepting price requests. |
 | 2.4 | AI core, not an afterthought | **Partial** | Two real uses: the recommendation rail (`server/recommendations.ts`) and `search.refine`. Both carry the guardrails worth keeping — a model reorders but never chooses, only interest terms leave NetLet, every failure falls back to a deterministic answer. Customer service, product management, imaging and fraud are all absent. |
 
 ## 3.1 Customer experience — 16 built, 0 partial, 1 drawn, 4 absent

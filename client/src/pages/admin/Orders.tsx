@@ -19,6 +19,7 @@
  * Scope is the server's. A vendor sees the orders holding their lines and only
  * those lines; an admin sees every order whole.
  */
+import { useFeature } from "@/hooks/useFeature";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -383,6 +384,7 @@ function TransitDamage({ orderId, lines }: { orderId: number; lines: { id: numbe
   const [description, setDescription] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const ceiling = claimCeiling(lines.filter(line => chosen.includes(line.id)));
+  const claimsOn = useFeature("damageClaims");
 
   const file = trpc.dispatch.claims.file.useMutation({
     onSuccess: () => {
@@ -393,7 +395,8 @@ function TransitDamage({ orderId, lines }: { orderId: number; lines: { id: numbe
     onError: error => toast.error(isMessageKey(error.message) ? t(error.message, { days: String(CLAIM_WINDOW_DAYS) }) : tError(error.message)),
   });
 
-  if (lines.length === 0) return null;
+  /* Switched off (2.3): no new claims; open ones are answered on /admin/claims. */
+  if (lines.length === 0 || !claimsOn) return null;
   if (!open) {
     return (
       <button

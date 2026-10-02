@@ -540,7 +540,7 @@ export const inventoryRouter = router({
      * about a question nobody asked. The same choice the shopper's assistant
      * makes with its whole panel.
      */
-    modelReviewAvailable: protectedProcedure.query(() => ({ available: modelReviewAvailable() })),
+    modelReviewAvailable: protectedProcedure.query(async () => ({ available: await modelReviewAvailable() })),
 
     /**
      * A model's opinion on one listing, when a key is configured.
@@ -554,9 +554,9 @@ export const inventoryRouter = router({
         const actor = await resolveActor(ctx.user);
         assertCan(actor, "product.review");
         const product = await getProduct(actor, input.id);
-        if (!product) return { flag: null, available: modelReviewAvailable() };
+        if (!product) return { flag: null, available: await modelReviewAvailable() };
         return {
-          available: modelReviewAvailable(),
+          available: await modelReviewAvailable(),
           flag: await modelConcernFor({ title: product.title, description: product.description }),
         };
       })),

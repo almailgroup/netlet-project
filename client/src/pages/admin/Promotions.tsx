@@ -15,6 +15,7 @@
  * owed after every discount, because spending it first would use a customer's
  * own money on a reduction the shop was giving away anyway.
  */
+import { useFeature } from "@/hooks/useFeature";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -40,7 +41,10 @@ export default function AdminPromotions() {
 }
 
 function Promotions() {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
+  /* Switched off (2.3): no new cards. One already sold is money somebody
+     holds, so it stays listed and spendable. */
+  const cardsOn = useFeature("giftCards");
   const money = useMoney();
   const list = trpc.orders.vouchers.useQuery({});
   const utils = trpc.useUtils();
@@ -51,11 +55,11 @@ function Promotions() {
   const refresh = () => void utils.orders.vouchers.invalidate();
   const saveCode = trpc.orders.saveDiscountCode.useMutation({
     onSuccess: () => { toast.success(t("admin.codeSaved")); refresh(); },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(tError(error.message)),
   });
   const makeCard = trpc.orders.createGiftCard.useMutation({
     onSuccess: reply => { toast.success(t("admin.cardCreated", { code: reply.code })); refresh(); setCard({ amount: "", note: "", expiresAt: "" }); },
-    onError: error => toast.error(error.message),
+    onError: error => toast.error(tError(error.message)),
   });
 
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
@@ -133,7 +137,7 @@ function Promotions() {
           </button>
         </section>
 
-        <section className="rounded-2xl border border-[#e6e9ef] bg-white p-5">
+        {cardsOn ? <section className="rounded-2xl border border-[#e6e9ef] bg-white p-5">
           <h2 className="flex items-center gap-2 text-sm font-extrabold">
             <Gift className="size-4 ink-accent" aria-hidden /> {t("admin.cardNew")}
           </h2>
@@ -164,7 +168,7 @@ function Promotions() {
             {makeCard.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
             {t("admin.cardCreate")}
           </button>
-        </section>
+        </section> : null}
       </div>
 
       <QueryGate queries={[list]}>

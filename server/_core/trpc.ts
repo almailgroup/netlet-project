@@ -3,6 +3,8 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context.js";
 import { rootCauseOf } from "./describeError.js";
+import { featureForEntry } from "../../shared/features.js";
+import { featureOn } from "../features.js";
 
 /**
  * What a failure says, and to whom.
@@ -86,8 +88,27 @@ const refuseNul = t.middleware(async ({ getRawInput, next }) => {
   return next();
 });
 
-/** Every procedure starts here, so every procedure refuses a NUL. */
-const base = t.procedure.use(refuseNul);
+/**
+ * Refuses starting something under a feature that is switched off (2.3).
+ *
+ * By path, from the one list in `shared/features.ts`, on the base procedure —
+ * so a router cannot forget it and a procedure renamed out from under its
+ * switch fails `server/features.test.ts` rather than going quietly unguarded.
+ * Only an entry path costs a read; browsing never does.
+ *
+ * `PRECONDITION_FAILED`, not `FORBIDDEN`: nobody lacks permission, the shop
+ * has the thing turned off, and the page says so in those words.
+ */
+const refuseSwitchedOff = t.middleware(async ({ path, next }) => {
+  const feature = featureForEntry(path);
+  if (feature && !(await featureOn(feature))) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "features.off" });
+  }
+  return next();
+});
+
+/** Every procedure starts here, so every procedure refuses a NUL and a switched-off entry. */
+const base = t.procedure.use(refuseNul).use(refuseSwitchedOff);
 
 export const publicProcedure = base;
 

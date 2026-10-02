@@ -19,6 +19,7 @@ import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFeature } from "@/hooks/useFeature";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { isOpenReturn, MAX_RETURN_NOTE, RETURN_REASONS, type ReturnKind, type ReturnReason } from "@shared/commerce/returnRequests";
 import type { AppRouter } from "../../../../server/routers";
@@ -55,6 +56,9 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
   const [kind, setKind] = useState<ReturnKind>("refund");
   const [reason, setReason] = useState<ReturnReason>("damaged");
   const [note, setNote] = useState("");
+  /* Switched off (2.3): no new requests. One already made carries on — the
+     status, the withdraw button and the seller's side all keep working. */
+  const on = useFeature("returns");
 
   const latest = requests.find(request => request.orderItemId === line.id) ?? null;
   const refresh = () => void utils.orders.get.invalidate({ reference });
@@ -107,7 +111,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
   /* Another request only when the window is open, nothing is in motion, and
      the line has not already been refunded or swapped — the rule the server
      holds too. */
-  const mayAsk = line.returnState.returnable && !requests.some(request =>
+  const mayAsk = on && line.returnState.returnable && !requests.some(request =>
     request.orderItemId === line.id && (isOpenReturn(request.status) || request.status === "refunded" || request.status === "exchanged"));
   if (!mayAsk) return status;
 

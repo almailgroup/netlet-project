@@ -1295,6 +1295,23 @@ export const returnRequests = pgTable(
 );
 
 /**
+ * The feature switchboard (2.3): one row per feature an administrator has
+ * changed. A feature with no row is on — a fresh database behaves exactly as
+ * it did before switches existed — so the table records decisions, not a
+ * default copied into every installation.
+ *
+ * The key is text rather than an enum: the list of features lives in
+ * `shared/features.ts`, and a build that drops one should read past its row
+ * rather than fail on a value its enum no longer has.
+ */
+export const featureSwitches = pgTable("feature_switches", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  enabled: boolean("enabled").notNull(),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * A conversation between one shopper and one seller (3.8).
  *
  * **One thread per pair, not per product.** A shopper asking about the sofa and
@@ -2395,5 +2412,6 @@ export type BundleRow = typeof bundles.$inferSelect;
 export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
 export type ConversationRow = typeof conversations.$inferSelect;
 export type ReturnRequestRow = typeof returnRequests.$inferSelect;
+export type FeatureSwitchRow = typeof featureSwitches.$inferSelect;
 export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;
