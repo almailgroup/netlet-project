@@ -3,7 +3,7 @@ import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { PhotoSearchPanel, showSearchModes, VoiceSearchPanel } from "@/components/search/SearchModes";
 import { Camera, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 
 /**
@@ -41,6 +41,18 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   const [activeIndex, setActiveIndex] = useState(-1);
   const [refineMessage, setRefineMessage] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const field = useRef<HTMLInputElement>(null);
+  /*
+   * A spoken or photographed search lands in the field and the field takes
+   * focus. The control that opened the sheet is gone by then — the field has
+   * text, so clear has replaced the pair — and the sheet's own "return focus
+   * to the opener" has nothing to return to, which dropped the keyboard on
+   * `<body>`. The field is where the shopper's next act is anyway.
+   */
+  const searchFor = (query: string) => {
+    applySearch(query);
+    window.requestAnimationFrame(() => field.current?.focus());
+  };
   const [photoOpen, setPhotoOpen] = useState(false);
   const refine = trpc.search.refine.useMutation();
   const searchTerm = value.trim().toLowerCase();
@@ -106,7 +118,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   return (
     <div className="relative ms-auto w-full min-w-0 flex-1 lg:ms-0">
       <label className="glass-field group flex h-11 items-center rounded-full py-1 ps-5 pe-1">
-        <input value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 140)} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} role="combobox" aria-autocomplete="list" aria-expanded={showPanel} aria-controls="netlet-search-suggestions" className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
+        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 140)} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} role="combobox" aria-autocomplete="list" aria-expanded={showPanel} aria-controls="netlet-search-suggestions" className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
         {/*
           Voice and camera stand where the clear button stands, because the two
           are never wanted at once: you speak or point *instead* of typing, and
@@ -144,17 +156,14 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
       <VoiceSearchPanel
         open={voiceOpen}
         onClose={() => setVoiceOpen(false)}
-        onUse={(query) => { applySearch(query); setVoiceOpen(false); }}
+        onUse={(query) => { setVoiceOpen(false); searchFor(query); }}
       />
-      {/* The first photo on the shelf stands in for the captured frame while
-          this is a design — a real product from this shop is what somebody
-          would actually be pointing at, and inventing a stock photo for it
-          would be the same fiction as a hard-coded placeholder. */}
+      {/* What the photo was read as goes into the field like anything typed,
+          so the shopper sees the words and can change them. */}
       <PhotoSearchPanel
         open={photoOpen}
         onClose={() => setPhotoOpen(false)}
-        onUse={() => undefined}
-        sample={catalog[0]?.images[0]?.url}
+        onUse={(query) => { setPhotoOpen(false); searchFor(query); }}
       />
     </div>
   );

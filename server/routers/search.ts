@@ -3,6 +3,9 @@ import { z } from "zod";
 import { ENV } from "../_core/env.js";
 import { featureOn } from "../features.js";
 import { publicProcedure, router } from "../_core/trpc.js";
+import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../shared/commerce/photoSearch.js";
+import { describePhoto, photoSearchAvailable } from "../photoSearch.js";
+import { checkPhotoSearchAllowed, recordPhotoSearch } from "../rateLimit.js";
 
 const refinementSchema = z.object({
   query: z.string().trim().min(2).max(120),
@@ -26,6 +29,31 @@ export function parseRefinedSearch(content: unknown, fallback: string) {
 }
 
 export const searchRouter = router({
+  /**
+   * Whether a photo can be read (3.1.6). The photo panel is drawn either way —
+   * it is a designed surface — and this decides whether it searches or says
+   * plainly that nothing is looking yet.
+   */
+  photoAvailable: publicProcedure.query(async () => ({ available: await photoSearchAvailable() })),
+
+  /**
+   * Turn a photo into words to search for. Public, because the shopper deciding
+   * what to buy is usually signed out; throttled in Postgres by address, and
+   * counted before the call, for the assistant's reasons.
+   */
+  photo: publicProcedure
+    .input(z.object({ image: z.string().max(MAX_PHOTO_CHARS), locale: z.enum(["en", "ar"]).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!acceptablePhoto(input.image)) throw new TRPCError({ code: "BAD_REQUEST", message: "search.photoUnreadable" });
+      const address = ctx.req.ip ?? null;
+      const verdict = await checkPhotoSearchAllowed(address);
+      if (!verdict.allowed) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "search.photoTooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
+      }
+      await recordPhotoSearch(address);
+      return describePhoto(input.image, input.locale ?? "en");
+    }),
+
   refine: publicProcedure.input(refinementSchema).mutation(async ({ input }) => {
     /* No key and models switched off (2.3) are one answer: the client already
        falls back to the plain search on this refusal. */

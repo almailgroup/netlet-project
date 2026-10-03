@@ -453,6 +453,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("payouts.record");
     /* Subscribe & Save (3.1.19): the demo shopper is a guest with no address
        book, and no demo seller offers standing orders. */
+    /* No model in the demo: the photo panel says nothing is looking yet. */
+    case "search.photoAvailable":
+      return { available: false };
+    case "search.photo":
+      return { kind: "unavailable" };
     case "subscriptions.mine":
       return [];
     case "subscriptions.overview":

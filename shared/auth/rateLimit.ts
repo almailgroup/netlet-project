@@ -74,6 +74,14 @@ export const MAX_ASSISTANT_PER_ADDRESS = 30;
 export const ASSISTANT_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * Searching with a photo (3.1.6): a vision call costs more than a question, so
+ * the ceiling is lower, and it counts every request for the assistant's
+ * reason — a photo the model could not read cost the same as one it could.
+ */
+export const MAX_PHOTO_SEARCH_PER_ADDRESS = 20;
+export const PHOTO_SEARCH_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * How many special-price requests one account may send in a day.
  *
  * Keyed on the **account** rather than the address, which is the opposite of

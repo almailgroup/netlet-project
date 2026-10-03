@@ -21,6 +21,8 @@ import {
   MAX_FAILURES_PER_ADDRESS,
   MAX_ASSISTANT_PER_ADDRESS,
   ASSISTANT_WINDOW_MS,
+  MAX_PHOTO_SEARCH_PER_ADDRESS,
+  PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
   MAX_MESSAGES_PER_ACCOUNT,
@@ -211,6 +213,31 @@ export async function recordAssistantCall(address: string | null | undefined): P
   await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "assistant" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "assistant"), lt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS))),
+  );
+}
+
+/** Whether this address may search with another photo (3.1.6). Address only, for the assistant's reason. */
+export async function checkPhotoSearchAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, addressBucket(address)),
+      eq(authAttempts.kind, "photoSearch"),
+      gt(authAttempts.createdAt, new Date(Date.now() - PHOTO_SEARCH_WINDOW_MS)),
+    ));
+  return limitVerdict(rows.map(row => row.at), MAX_PHOTO_SEARCH_PER_ADDRESS, new Date(), PHOTO_SEARCH_WINDOW_MS);
+}
+
+/** Count one photo search, read or not — the call cost the same either way. */
+export async function recordPhotoSearch(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "photoSearch" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "photoSearch"), lt(authAttempts.createdAt, new Date(Date.now() - PHOTO_SEARCH_WINDOW_MS))),
   );
 }
 

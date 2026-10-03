@@ -336,21 +336,34 @@ maker", "wireless headphones" — naming things the shop may not sell, and movin
 in the corner of the eye while somebody is trying to read the page. With no
 product type to draw on it asks plainly rather than inventing one.
 
-**Voice and photo search are designed and not wired, and the panel says so.**
+**Voice and photo search are wired, and each says where the input goes.**
 `SearchModes.tsx` holds both, with every state drawn — listening, heard,
-refused, unsupported, choosing, previewing, scanning, no match.
+didn't catch it, refused, unsupported, choosing, previewing, scanning, no
+match. Voice is the browser's own recogniser, asked in the page's language,
+and the listening panel says that in Chrome and Edge the sound goes to Google
+or Microsoft; NetLet gets the words. Photo goes through
+`shared/commerce/photoSearch.ts`: the browser's own pickers (so the page never
+holds a camera permission), shrunk to 768px in the browser and under the API's
+256 KB body limit rather than raising that limit for every route, shown back
+with a line saying where it goes, and sent only on the press. The model may
+return a few words and nothing else; they go into the field like typing.
 
-**Drawn and wired are two constants, not one.** They were briefly the same, and
-the result was that every build anybody actually looks at — the deployed site
-included — showed a bare field, so the design could not be reviewed where it
-mattered. `showSearchModes` is now unconditional; `SEARCH_MODES_WIRED` governs
-one thing, the line in each panel saying nothing is listening yet.
+**What was heard, and the photo, are shown back before anything is searched.**
+Recognition mishears and a half-framed shot matches nothing; both are obvious
+in a preview and invisible in "no results".
 
-That line is what keeps this on the right side of the rule the notifications
-bell broke. The bell answered a press with a toast saying "coming soon" and had
-nothing behind it; these open a designed panel that states what they are and
-points back at the field that works, so a press is answered rather than
-ignored. Nothing else changes when the switch flips.
+**A panel with nothing behind it says so**, per panel: `SearchModeSheet` takes
+`wired`, and the photo panel is unwired with no model key or with model calls
+switched off — it stays drawn, lets the shopper pick a photo, offers no search
+button and says nothing is looking yet. That line is what keeps it on the right
+side of the rule the notifications bell broke: a press is answered rather than
+ignored.
+
+**After a spoken or photographed search, focus goes to the field.** The control
+that opened the sheet is gone by then — the field has text, so clear has
+replaced the pair — and returning focus to the opener dropped the keyboard on
+`<body>`. Headless Chromium's built-in recogniser cannot be overwritten by
+assignment; a test stand-in needs `Object.defineProperty`.
 
 Every state opens at `?searchTest=voice-denied`, `?searchTest=photo-noMatch`
 and the rest, on any build — deliberately unlike `LiveSearch`'s own

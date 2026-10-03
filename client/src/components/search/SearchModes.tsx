@@ -1,48 +1,38 @@
 /**
  * The two ways into search that are not typing: speaking, and pointing a
- * camera at the thing.
+ * camera at the thing (3.1.6).
  *
- * **This is the design. Neither is connected to a recogniser yet**, and
- * `SEARCH_MODES_WIRED` below is the single switch that says so. That is a
- * deliberate arrangement rather than a half-finished one, and it is the same
- * one `orders` is in: the shape has to exist before the thing that fills it
- * can reference it. What is drawn here is every state the real feature will
- * be in — listening, heard, refused, unsupported, choosing, previewing,
- * scanning, no match — so wiring it later is a swap of where the text and the
- * photo come from, not a redesign.
+ * **Voice is the browser's own recogniser.** NetLet receives the text and
+ * nothing else; the panel says whose service did the listening — in Chrome
+ * and Edge the audio goes to Google or Microsoft — because a microphone that
+ * does not say where the sound goes is one people are right to distrust. A
+ * browser with no recogniser (Firefox, today) gets the drawn "cannot listen"
+ * state rather than a dead button.
  *
- * The two facts are tracked separately on purpose: **drawn** and **wired**.
- * They were briefly the same switch, which hid the controls from every build a
- * person actually looks at — including the deployed site — so the design could
- * not be reviewed where it matters. Drawn is now unconditional.
+ * **Photo is a vision model, through NetLet.** The picture is shrunk in the
+ * browser, sent once to turn it into a few search words, and kept by nobody;
+ * `shared/commerce/photoSearch.ts` is what may be sent and what a reply may
+ * become. With no model configured, or every model call switched off (2.3),
+ * the panel stays drawn and says plainly that nothing is looking yet — the
+ * line that used to sit on both panels while neither was wired.
  *
- * That leaves the rule this codebase keeps returning to: a control that
- * changes nothing is worse than no control, which is why a notifications bell
- * saying "coming soon", a QR that decoded to nothing and store buttons that
- * toasted "soon" were all taken out. These two are not that. Each opens a
- * panel that states plainly what it is and points at the field that does work,
- * so pressing one is answered rather than ignored. `SEARCH_MODES_WIRED` is
- * what removes that line, and nothing else changes when it flips.
+ * What was heard, and the photo that will be sent, are both shown back before
+ * anything is searched: recognition mishears and a half-framed shot matches
+ * nothing, and both are obvious in a preview and invisible in "no results".
  *
- * Every state is reachable for review without pretending to hold a microphone:
- * `?searchTest=voice-heard`, `?searchTest=photo-scanning` and the rest, in a
- * dev build only. That query parameter is the same one `LiveSearch` already
- * uses to force its mobile panel open.
+ * Every state is reachable for review without a microphone or a camera:
+ * `?searchTest=voice-heard`, `?searchTest=photo-scanning` and the rest, on any
+ * build, because several of them are unreachable by clicking.
  */
 import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Thumb } from "@/components/product/Thumb";
+import { shrinkPhoto } from "@/lib/shrinkPhoto";
+import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Camera, CameraOff, Image as ImageIcon, Keyboard, Mic, MicOff, RotateCcw, ScanLine, Search, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-
-/**
- * Whether a recogniser is actually behind these. It governs one thing: the
- * line in each panel saying so. Flip it when speech recognition and photo
- * matching are real, and the line goes.
- */
-export const SEARCH_MODES_WIRED = false;
 
 /**
  * Whether the controls are drawn at all — everywhere, deliberately. Gating
@@ -51,7 +41,7 @@ export const SEARCH_MODES_WIRED = false;
  */
 export const showSearchModes = true;
 
-export type VoiceState = "listening" | "heard" | "denied" | "unsupported";
+export type VoiceState = "listening" | "heard" | "nothing" | "denied" | "unsupported";
 export type PhotoState = "choose" | "preview" | "scanning" | "noMatch" | "denied";
 
 /**
@@ -88,8 +78,11 @@ function forcedState(prefix: string): string | null {
  * guessed. `DeliveryZoneDialog` never hit this only because it is rendered
  * from the page body rather than from inside the bar.
  */
-function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, footer }: {
+function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, footer, wired, offNote }: {
   open: boolean;
+  /** Whether something real is behind this panel; when not, it says so. */
+  wired: boolean;
+  offNote?: MessageKey;
   onClose: () => void;
   id: string;
   eyebrow: MessageKey;
@@ -136,15 +129,14 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
         {footer ? <div className="mt-5">{footer}</div> : null}
 
         {/*
-          The one line that keeps this honest while it is only a design. It is
-          not a "coming soon" badge on a dead control: it names the state and
-          points at the thing that does work, which is the field the shopper
-          just came from.
+          The line that keeps an unwired panel honest. It is not a "coming
+          soon" badge on a dead control: it names the state and points at the
+          thing that does work, which is the field the shopper just came from.
         */}
-        {!SEARCH_MODES_WIRED ? (
+        {!wired && offNote ? (
           <p className="mt-5 flex items-start gap-2 rounded-xl bg-[#fff0ab] p-3 text-xs leading-5 text-[#705523]">
             <ScanLine className="mt-0.5 size-4 shrink-0" />
-            {t("search.designOnly")}
+            {t(offNote)}
           </p>
         ) : null}
       </section>
@@ -206,6 +198,25 @@ function SheetNotice({ icon, title, note }: { icon: ReactNode; title: MessageKey
 
 /* ------------------------------------------------------------------ voice */
 
+/** The browser's recogniser, under either of the names it ships with. */
+type Recognition = {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  continuous: boolean;
+  start: () => void;
+  abort: () => void;
+  onresult: ((event: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+function recogniser(): (new () => Recognition) | null {
+  if (typeof window === "undefined") return null;
+  const scope = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
+  return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
+}
+
 /**
  * Speaking a search.
  *
@@ -213,36 +224,87 @@ function SheetNotice({ icon, title, note }: { icon: ReactNode; title: MessageKey
  * the only moment where the page is taking something from the room. It gets
  * the whole panel: a navy disc, one expanding ring, and a meter that moves —
  * a static microphone icon cannot tell you whether it is hearing you, and
- * somebody who cannot tell says the words again louder.
+ * somebody who cannot tell says the words again louder. What is being heard
+ * appears under it as it arrives.
  *
- * What was heard is shown back as text before it searches. Recognition
- * mishears, and a search that runs on the mishearing sends the shopper to a
- * results page for a product they never named; reading it back costs one tap
- * and makes the error obvious rather than mysterious.
+ * It listens in the page's language: Kuwaiti Arabic on an Arabic page, English
+ * otherwise. Somebody switching language to speak the other is one press away,
+ * and a recogniser guessing between the two mishears both.
  */
-export function VoiceSearchPanel({ open, onClose, onUse, heard = "" }: {
+export function VoiceSearchPanel({ open, onClose, onUse }: {
   open: boolean;
   onClose: () => void;
   onUse: (query: string) => void;
-  /** What recognition returned. Empty until it is wired. */
-  heard?: string;
 }) {
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
   const [state, setState] = useState<VoiceState>("listening");
+  const [heard, setHeard] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const forced = useRef(false);
 
-  // Opening always starts at the top of the flow, or at the state a dev build
-  // asked for — a sheet that reopens on the refusal you saw last time reads as
-  // broken rather than as remembered.
+  // Opening always starts at the top of the flow, or at the state a review
+  // link asked for — a sheet that reopens on the refusal you saw last time
+  // reads as broken rather than as remembered.
   useEffect(() => {
-    if (open) setState((forcedState("voice") as VoiceState | null) ?? "listening");
+    if (!open) return;
+    const asked = forcedState("voice") as VoiceState | null;
+    forced.current = Boolean(asked);
+    setHeard("");
+    setState(asked ?? (recogniser() ? "listening" : "unsupported"));
   }, [open]);
 
-  const transcript = heard || t("search.voiceExample");
+  useEffect(() => {
+    if (!open || state !== "listening" || forced.current) return;
+    const Recogniser = recogniser();
+    if (!Recogniser) { setState("unsupported"); return; }
+    const recognition = new Recogniser();
+    recognition.lang = isArabic ? "ar-KW" : "en-US";
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+    let final = "";
+    let settled = false;
+    recognition.onresult = event => {
+      let partial = "";
+      for (let index = event.resultIndex; index < event.results.length; index++) {
+        const result = event.results[index];
+        if (result.isFinal) final += result[0].transcript;
+        else partial += result[0].transcript;
+      }
+      setHeard((final || partial).trim());
+    };
+    recognition.onerror = event => {
+      settled = true;
+      setState(event.error === "not-allowed" || event.error === "service-not-allowed" ? "denied"
+        : event.error === "audio-capture" ? "unsupported"
+        : "nothing");
+    };
+    recognition.onend = () => {
+      if (settled) return;
+      setState(final.trim() ? "heard" : "nothing");
+      if (final.trim()) setHeard(final.trim());
+    };
+    try {
+      recognition.start();
+    } catch {
+      setState("unsupported");
+    }
+    return () => {
+      settled = true;
+      recognition.onresult = recognition.onerror = recognition.onend = null;
+      recognition.abort();
+    };
+  }, [open, state, attempt, isArabic]);
+
+  /* A review link to the heard state has nothing real to show, so it shows an example. */
+  const transcript = heard || (forced.current ? t("search.voiceExample") : "");
+  const retry = () => { forced.current = false; setHeard(""); setAttempt(count => count + 1); setState("listening"); };
 
   return (
     <SearchModeSheet
       open={open}
       onClose={onClose}
+      wired
       id="voice-search"
       eyebrow="search.voiceEyebrow"
       title={state === "heard" ? "search.voiceHeardTitle" : "search.voiceTitle"}
@@ -255,12 +317,12 @@ export function VoiceSearchPanel({ open, onClose, onUse, heard = "" }: {
         ) : state === "heard" ? (
           <SheetActions
             primary={<PrimaryAction icon={<Search className="size-4" />} label={t("search.voiceUse")} onClick={() => onUse(transcript)} />}
-            secondary={<QuietAction icon={<RotateCcw className="size-4 rtl:-scale-x-100" />} label={t("search.voiceRetry")} onClick={() => setState("listening")} />}
+            secondary={<QuietAction icon={<RotateCcw className="size-4 rtl:-scale-x-100" />} label={t("search.voiceRetry")} onClick={retry} />}
           />
         ) : (
           <SheetActions
             primary={<PrimaryAction icon={<Keyboard className="size-4" />} label={t("search.typeInstead")} onClick={onClose} />}
-            secondary={state === "denied" ? <QuietAction icon={<Mic className="size-4" />} label={t("search.voiceRetry")} onClick={() => setState("listening")} /> : undefined}
+            secondary={state === "denied" || state === "nothing" ? <QuietAction icon={<Mic className="size-4" />} label={t("search.voiceRetry")} onClick={retry} /> : undefined}
           />
         )
       }
@@ -287,6 +349,8 @@ export function VoiceSearchPanel({ open, onClose, onUse, heard = "" }: {
               />
             ))}
           </div>
+          {heard ? <p dir="auto" className="mt-3 text-sm text-[#0a285a]">{heard}</p> : null}
+          <p className="mt-4 max-w-[40ch] text-center text-[11px] leading-5 ink-muted">{t("search.voicePrivacy")}</p>
         </div>
       ) : state === "heard" ? (
         <div className="rounded-2xl border border-[#d5dfeb] bg-white px-5 py-6">
@@ -297,6 +361,8 @@ export function VoiceSearchPanel({ open, onClose, onUse, heard = "" }: {
           <p dir="auto" className="display-face mt-2 text-2xl leading-snug text-[#0a285a]">“{transcript}”</p>
           <p className="mt-3 text-xs leading-5 ink-muted">{t("search.voiceConfirmNote")}</p>
         </div>
+      ) : state === "nothing" ? (
+        <SheetNotice icon={<Mic className="size-7" />} title="search.voiceNothing" note="search.voiceNothingNote" />
       ) : state === "denied" ? (
         <SheetNotice icon={<MicOff className="size-7" />} title="search.voiceDenied" note="search.voiceDeniedNote" />
       ) : (
@@ -314,29 +380,56 @@ export function VoiceSearchPanel({ open, onClose, onUse, heard = "" }: {
  * Two sources rather than one, and both are offered first. "Take a photo" is
  * the case on a phone in a shop; "choose from your photos" is the case
  * everywhere else, including every desktop, and a panel that only offers the
- * camera is a panel a laptop cannot use at all.
+ * camera is a panel a laptop cannot use at all. Both are the browser's own
+ * file picker — the camera one asks for the rear camera — so no camera
+ * permission is held by the page and none can be left on.
  *
- * The captured frame is shown before it searches, for the reason the voice
- * transcript is: a blurred or half-framed shot is obvious in a preview and
- * invisible in a results page reading "no matches".
+ * The photo is shown before it is sent, with a line saying where it goes, and
+ * pressing "Search with this photo" is the consent: nothing leaves on choosing.
  */
-export function PhotoSearchPanel({ open, onClose, onUse, sample }: {
+export function PhotoSearchPanel({ open, onClose, onUse }: {
   open: boolean;
   onClose: () => void;
-  onUse: () => void;
-  /** Stands in for the captured frame while this is a design. */
-  sample?: string | null;
+  /** Search for what the photo was read as. */
+  onUse: (query: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError, locale } = useTranslation();
   const [state, setState] = useState<PhotoState>("choose");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const camera = useRef<HTMLInputElement>(null);
+  const library = useRef<HTMLInputElement>(null);
+  const available = trpc.search.photoAvailable.useQuery(undefined, { enabled: open, staleTime: 300_000 });
+  const wired = available.data?.available === true;
+  const read = trpc.search.photo.useMutation({
+    onSuccess: reply => {
+      if (reply.kind === "query") onUse(reply.query);
+      else setState("noMatch");
+    },
+    onError: error => { setProblem(tError(error.message)); setState("preview"); },
+  });
 
   useEffect(() => {
-    if (open) setState((forcedState("photo") as PhotoState | null) ?? "choose");
+    if (!open) return;
+    setPhoto(null);
+    setProblem(null);
+    setState((forcedState("photo") as PhotoState | null) ?? "choose");
   }, [open]);
+
+  const chosen = async (file: File | undefined) => {
+    if (!file) return;
+    const shrunk = await shrinkPhoto(file);
+    if (!shrunk) { setProblem(t("search.photoUnreadable")); setState("choose"); return; }
+    setProblem(null);
+    setPhoto(shrunk);
+    setState("preview");
+  };
+
+  const pick = (which: "camera" | "library") => (which === "camera" ? camera : library).current?.click();
 
   const frame = (
     <div className="relative isolate aspect-[4/3] overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#e7edf5]">
-      <Thumb src={sample} alt="" className="size-full object-cover" icon={<Camera className="size-8" />} />
+      <Thumb src={photo} alt={photo ? t("search.photoYours") : ""} className="size-full object-cover" icon={<Camera className="size-8" />} />
       {state === "scanning" ? (
         <>
           <span aria-hidden className="absolute inset-0 bg-[#061b3b]/35" />
@@ -358,10 +451,18 @@ export function PhotoSearchPanel({ open, onClose, onUse, sample }: {
     </div>
   );
 
+  const search = () => {
+    if (!photo || !wired) return;
+    setState("scanning");
+    read.mutate({ image: photo, locale });
+  };
+
   return (
     <SearchModeSheet
       open={open}
       onClose={onClose}
+      wired={wired}
+      offNote="search.photoOff"
       id="photo-search"
       eyebrow="search.photoEyebrow"
       title={state === "noMatch" ? "search.photoNoMatch" : "search.photoTitle"}
@@ -369,12 +470,12 @@ export function PhotoSearchPanel({ open, onClose, onUse, sample }: {
       footer={
         state === "choose" ? (
           <SheetActions
-            primary={<PrimaryAction icon={<Camera className="size-4" />} label={t("search.photoTake")} onClick={() => setState("preview")} />}
-            secondary={<QuietAction icon={<ImageIcon className="size-4" />} label={t("search.photoChoose")} onClick={() => setState("preview")} />}
+            primary={<PrimaryAction icon={<Camera className="size-4" />} label={t("search.photoTake")} onClick={() => pick("camera")} />}
+            secondary={<QuietAction icon={<ImageIcon className="size-4" />} label={t("search.photoChoose")} onClick={() => pick("library")} />}
           />
         ) : state === "preview" ? (
           <SheetActions
-            primary={<PrimaryAction icon={<Search className="size-4" />} label={t("search.photoUse")} onClick={() => { setState("scanning"); onUse(); }} />}
+            primary={wired ? <PrimaryAction icon={<Search className="size-4" />} label={t("search.photoUse")} onClick={search} /> : undefined}
             secondary={<QuietAction icon={<RotateCcw className="size-4 rtl:-scale-x-100" />} label={t("search.photoRetake")} onClick={() => setState("choose")} />}
           />
         ) : state === "scanning" ? null : state === "noMatch" ? (
@@ -384,17 +485,23 @@ export function PhotoSearchPanel({ open, onClose, onUse, sample }: {
           />
         ) : (
           <SheetActions
-            primary={<PrimaryAction icon={<ImageIcon className="size-4" />} label={t("search.photoChoose")} onClick={() => setState("preview")} />}
+            primary={<PrimaryAction icon={<ImageIcon className="size-4" />} label={t("search.photoChoose")} onClick={() => pick("library")} />}
             secondary={<QuietAction icon={<Keyboard className="size-4" />} label={t("search.typeInstead")} onClick={onClose} />}
           />
         )
       }
     >
+      {/* The browser's own pickers. Hidden, and reached only through the
+          buttons above, which carry the words. */}
+      <input ref={camera} type="file" accept="image/*" capture="environment" className="hidden" tabIndex={-1} aria-hidden onChange={event => { void chosen(event.target.files?.[0]); event.target.value = ""; }} />
+      <input ref={library} type="file" accept="image/*" className="hidden" tabIndex={-1} aria-hidden onChange={event => { void chosen(event.target.files?.[0]); event.target.value = ""; }} />
+
       {state === "choose" ? (
         <div className="grid place-items-center rounded-2xl border border-dashed border-[#aac0da] bg-white px-5 py-9 text-center">
           <span className="glass glass-navy grid size-16 place-items-center rounded-full"><Camera className="size-7" /></span>
           <p className="type-heading mt-4 text-base text-[#0a285a]">{t("search.photoHow")}</p>
           <p className="mt-2 max-w-[34ch] text-sm leading-6 ink-muted">{t("search.photoHowNote")}</p>
+          {problem ? <p role="alert" className="mt-3 text-sm font-bold text-[#8c2f22]">{problem}</p> : null}
         </div>
       ) : state === "denied" ? (
         <SheetNotice icon={<CameraOff className="size-7" />} title="search.photoDenied" note="search.photoDeniedNote" />
@@ -404,7 +511,11 @@ export function PhotoSearchPanel({ open, onClose, onUse, sample }: {
           {state === "scanning" ? (
             <p aria-live="polite" className="type-heading mt-4 text-center text-base text-[#0a285a]">{t("search.photoScanning")}</p>
           ) : state === "preview" ? (
-            <p className="mt-4 text-center text-xs leading-5 ink-muted">{t("search.photoPreviewNote")}</p>
+            <>
+              <p className="mt-4 text-center text-xs leading-5 ink-muted">{t("search.photoPreviewNote")}</p>
+              {wired ? <p className="mt-2 text-center text-[11px] leading-5 ink-muted">{t("search.photoConsent")}</p> : null}
+              {problem ? <p role="alert" className="mt-2 text-center text-sm font-bold text-[#8c2f22]">{problem}</p> : null}
+            </>
           ) : null}
         </div>
       )}
