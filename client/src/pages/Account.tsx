@@ -17,6 +17,7 @@ import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
+import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
@@ -42,6 +43,7 @@ import type { ReactNode } from "react";
 /** The sections, in page order. The nav and the page read from one list. */
 const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
+  { id: "subscriptions", label: "subscriptions.section" },
   { id: "messages", label: "chat.sectionMessages" },
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
@@ -150,6 +152,11 @@ export default function Account() {
                   order here is the order there. */}
               <Section id="orders" title={t("account.sectionOrders")}>
                 <AccountOrders />
+              </Section>
+
+              {/* Standing orders (3.1.19), beside the orders they place. */}
+              <Section id="subscriptions" title={t("subscriptions.section")}>
+                <AccountSubscriptions />
               </Section>
 
               {/* Directly after orders: a conversation with a shop is most often

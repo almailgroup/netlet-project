@@ -51,6 +51,7 @@ export const FEATURE_KEYS = [
   "giftCards",
   "affiliates",
   "ads",
+  "subscriptions",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -95,6 +96,9 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* Paid placements (3.3.15): off stops new bookings. One already sold runs
      out its days and is charged for them, so it keeps its place on the shelf. */
   ads: { entries: ["ads.book"], audience: "seller" },
+  /* Subscribe & Save (3.1.19): off stops new standing orders. Those already
+     standing keep running and can be paused or cancelled. */
+  subscriptions: { entries: ["subscriptions.create"], audience: "shopper" },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

@@ -37,6 +37,7 @@ import { logoImage } from "@/lib/brandAssets";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { clearReferral, storedReferral } from "@/lib/referral";
+import { DiscButton } from "@/components/ui/DiscButton";
 
 type Mode = "signin" | "register" | "reset";
 
@@ -158,13 +159,14 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
         <ShowcasePanel />
 
         <div className="relative p-6 sm:p-8">
-          <button
+          <DiscButton
             onClick={onClose}
             aria-label={t("auth.close")}
-            className="glass pressable tap-target absolute top-5 grid size-9 place-items-center rounded-full end-5"
+            className="absolute top-4 end-4"
+            discClassName="size-9"
           >
             <X className="size-4" />
-          </button>
+          </DiscButton>
 
           <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-8 w-auto lg:hidden" />
 

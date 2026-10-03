@@ -136,6 +136,13 @@ if (supabaseAuthMissing.length === 0) {
  * issuer's commercial registration, and a missing one is the kind of gap
  * nobody notices until somebody official asks.
  */
+if ((process.env.CRON_SECRET ?? "").trim().length >= 16) {
+  add("ok", "Standing orders", "CRON_SECRET set — the scheduler can run Subscribe & Save");
+} else {
+  add("warn", "Standing orders", "CRON_SECRET not set (or shorter than 16 characters) — no subscription runs on its own",
+    "Set CRON_SECRET to a long random string, and the same value in Vercel; /admin/subscriptions can still run them by hand");
+}
+
 if ((process.env.INVOICE_ISSUER_LICENCE ?? "").trim()) {
   add("ok", "Invoices", `issued by ${(process.env.INVOICE_ISSUER_NAME ?? "").trim() || "NetLet"}, registration ${process.env.INVOICE_ISSUER_LICENCE!.trim()}`);
 } else {

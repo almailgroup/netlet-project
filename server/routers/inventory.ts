@@ -13,6 +13,7 @@ import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
 import { percentSchema, rowId } from "../_core/schemas.js";
+import { MAX_SUBSCRIPTION_PERCENT } from "../../shared/commerce/subscriptions.js";
 import { SELL_UNITS } from "../../shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
@@ -203,6 +204,11 @@ export const storeDetails = {
   /* Cash on delivery (3.2.2). On unless the seller says otherwise. */
   acceptsCod: z.boolean().optional(),
   codCeiling: blankOr(moneySchema),
+  /* Subscribe & Save (3.1.19): blank is "not offered", 0 is "offered at the
+     shelf price". Capped at `MAX_SUBSCRIPTION_PERCENT` here so the column can
+     never hold a saving the rule would then quietly clamp. */
+  subscriptionPercent: blankOr(z.string().trim().regex(/^\d{1,2}(\.\d{1,2})?$/, "admin.invalidPercent")
+    .refine(value => Number(value) <= MAX_SUBSCRIPTION_PERCENT, "admin.invalidPercent")),
 };
 
 /**

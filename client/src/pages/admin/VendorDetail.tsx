@@ -66,7 +66,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     governorate: "", addressLine: "", licenceNumber: "", payoutIban: "",
     discountLicenceNumber: "", discountLicenceExpiresAt: "",
     deliveryFlat: "", deliveryFreeOver: "", deliverySpeed: "", deliveryProvider: "",
-    underPlatformLicence: false, acceptsCod: true, codCeiling: "",
+    underPlatformLicence: false, acceptsCod: true, codCeiling: "", subscriptionPercent: "",
     description: "", descriptionAr: "", logoUrl: "",
   });
   const [terms, setTerms] = useState({ commissionPercent: "", commissionFixed: "" });
@@ -86,6 +86,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       underPlatformLicence: row.underPlatformLicence ?? false,
       acceptsCod: row.acceptsCod ?? true,
       codCeiling: row.codCeiling ?? "",
+      subscriptionPercent: row.subscriptionPercent ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
       discountLicenceExpiresAt: row.discountLicenceExpiresAt
         ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10)
@@ -233,6 +234,11 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <Labelled label={t("admin.codCeiling")}>
             <input dir="ltr" inputMode="decimal" value={draft.codCeiling} onChange={e => set("codCeiling", e.target.value)} className={field} />
           </Labelled>
+          {/* Subscribe & Save (3.1.19). Blank is "not offered"; the saving is
+              shown and charged only while the discount permit above is valid. */}
+          <Labelled label={t("admin.subscriptionPercent")} hint={t("admin.subscriptionPercentHint")}>
+            <input dir="ltr" inputMode="decimal" value={draft.subscriptionPercent} onChange={e => set("subscriptionPercent", e.target.value)} className={field} />
+          </Labelled>
           <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
             <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
           </Labelled>
@@ -268,6 +274,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             underPlatformLicence: draft.underPlatformLicence,
             acceptsCod: draft.acceptsCod,
             codCeiling: blank(draft.codCeiling),
+            subscriptionPercent: blank(draft.subscriptionPercent),
             payoutIban: blank(draft.payoutIban),
             description: blank(draft.description),
             descriptionAr: blank(draft.descriptionAr),

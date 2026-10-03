@@ -513,6 +513,9 @@ function toProduct(seed: Seed, index: number): Product {
       : [],
     variants,
     sizeChart: seed.sizeChart ?? null,
+    /* No demo seller holds a discount permit, and the demo cannot place a
+       standing order: subscriptions are absent rather than half drawn. */
+    subscription: null,
   };
 }
 

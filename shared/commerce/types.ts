@@ -185,6 +185,13 @@ export type Product = {
    * anywhere — so the chart is all the page needs.
    */
   sizeChart: SizeChart | null;
+  /**
+   * Subscribe & Save (3.1.19): null when the store does not offer standing
+   * orders, otherwise what a subscriber saves now, in percent. Already zero
+   * when the store's discount permit is not valid — a saving is an advertised
+   * discount — so no page has to know that rule.
+   */
+  subscription: { savingPercent: number } | null;
 };
 
 export type Collection = {

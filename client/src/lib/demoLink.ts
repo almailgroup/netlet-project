@@ -451,6 +451,16 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { rows: [], total: 0, page: 1, pageSize: 20 };
     case "finance.recordPayout":
       throw new Error("payouts.record");
+    /* Subscribe & Save (3.1.19): the demo shopper is a guest with no address
+       book, and no demo seller offers standing orders. */
+    case "subscriptions.mine":
+      return [];
+    case "subscriptions.overview":
+      return { active: 0, paused: 0, due: 0, scheduled: false };
+    case "subscriptions.create":
+    case "subscriptions.change":
+    case "subscriptions.runDue":
+      throw new Error("subscriptions.notOffered");
     /* Placements (3.3.15): nobody has paid for one in the demo, so the
        shelves are absent; booking is an owner's and the demo is a manager. */
     case "ads.sponsored":

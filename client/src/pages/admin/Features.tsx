@@ -39,6 +39,7 @@ const NAME: Record<FeatureKey, MessageKey> = {
   giftCards: "features.giftCards",
   affiliates: "features.affiliates",
   ads: "features.ads",
+  subscriptions: "features.subscriptions",
 };
 
 const WHEN_OFF: Record<FeatureKey, MessageKey> = {
@@ -55,6 +56,7 @@ const WHEN_OFF: Record<FeatureKey, MessageKey> = {
   giftCards: "features.giftCardsOff",
   affiliates: "features.affiliatesOff",
   ads: "features.adsOff",
+  subscriptions: "features.subscriptionsOff",
 };
 
 export default function AdminFeatures() {

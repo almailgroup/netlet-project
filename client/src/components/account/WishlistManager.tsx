@@ -36,6 +36,7 @@ import { Check, Gift, Link2, Lock, Plus, ShoppingBag, Trash2, X } from "lucide-r
 import type { Product } from "@shared/commerce/types";
 import { useState } from "react";
 import { toast } from "sonner";
+import { DiscButton } from "@/components/ui/DiscButton";
 
 export function WishlistManager() {
   const { t } = useTranslation();
@@ -375,15 +376,15 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                           />
                         ) : item.note ? <p dir="auto" className="mt-1 text-xs ink-muted">{item.note}</p> : null}
                       </div>
-                      <button
+                      <DiscButton
                         onClick={() => drop.mutate({ listId, itemId: item.id }, {
                           onSuccess: () => { void detail.refetch(); toast.success(t("wish.removed")); },
                         })}
                         aria-label={t("wish.removeItem", { name: byId.get(item.productId)?.title ?? item.productId })}
-                        className="glass pressable tap-target grid size-8 shrink-0 place-items-center rounded-full"
+                        className="-m-1.5"
                       >
                         <Trash2 className="size-3.5" aria-hidden />
-                      </button>
+                      </DiscButton>
                     </li>
                   ))}
                 </ul>

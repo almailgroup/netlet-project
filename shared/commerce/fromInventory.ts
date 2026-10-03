@@ -23,6 +23,7 @@ import { visibleBadges } from "../inventory/vendorHealth.js";
 import type { Measure } from "./units.js";
 import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
 import { discountAllowed, type DiscountLicence } from "../inventory/discountLicence.js";
+import { savingPercent } from "./subscriptions.js";
 import { resolveSpeed } from "./deliverySpeed.js";
 import { chartProblem, type SizeChart } from "./sizeGuide.js";
 
@@ -117,6 +118,8 @@ export type ProductContext = {
    * time would leave the shop advertising a saving it may no longer advertise.
    */
   vendorDiscountLicence?: DiscountLicence | null;
+  /** The store's Subscribe & Save percentage (3.1.19); null when it offers none. */
+  vendorSubscriptionPercent?: string | null;
   /** Display name of its category — what the storefront calls productType. */
   categoryName?: string | null;
   categoryNameAr?: string | null;
@@ -312,6 +315,11 @@ export function toStorefrontProduct(
     /* Only a chart that still passes the rules reaches a page: one written
        before a rule tightened is absent rather than recommending wrongly. */
     sizeChart: row.sizeChart && chartProblem(row.sizeChart) === null ? row.sizeChart : null,
+    /* The saving obeys the permit for the reason the strikethrough does. */
+    subscription: (() => {
+      const percent = savingPercent(context.vendorSubscriptionPercent, allowDiscount);
+      return percent === null ? null : { savingPercent: percent };
+    })(),
   };
 }
 

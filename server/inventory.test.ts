@@ -1257,6 +1257,7 @@ describe("editing a store's details", () => {
     underPlatformLicence: { input: true, stored: true },
     acceptsCod: { input: false, stored: false },
     codCeiling: { input: "100.000", stored: "100.000" },
+    subscriptionPercent: { input: "7.5", stored: "7.50" },
   };
 
   async function everyDetail() {

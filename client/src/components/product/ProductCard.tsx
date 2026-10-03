@@ -17,6 +17,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
+import { DiscButton } from "@/components/ui/DiscButton";
 
 export async function shareProduct(product: Product, t: Translate) {
   const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
@@ -415,10 +416,12 @@ export function ProductCard({ product, saved, onSave, onShare, onDetails, onQuic
           ) : null}
         </div>
 
-        <button onClick={onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className={`glass pressable tap-target absolute end-1.5 top-1.5 grid size-8 place-items-center rounded-full ${saved ? "!text-[#e61c38]" : ""}`}><Heart className={`size-4 ${saved ? "fill-current" : ""}`} /></button>
+        {/* 44px targets around 32px discs, offset by the difference so the
+            discs sit where they always did. */}
+        <DiscButton onClick={onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className="absolute end-0 top-0" discClassName={`size-8 ${saved ? "!text-[#e61c38]" : ""}`}><Heart className={`size-4 ${saved ? "fill-current" : ""}`} /></DiscButton>
         {/* Share is secondary: it appears on hover on a pointer device and is
             always present on touch, where there is no hover to reveal it. */}
-        <button onClick={share} aria-label={t("product.share", { name: product.title })} className="glass pressable tap-target absolute end-1.5 top-11 grid size-8 place-items-center rounded-full transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></button>
+        <DiscButton onClick={share} aria-label={t("product.share", { name: product.title })} className="absolute end-0 top-[2.375rem] transition-opacity duration-200 @[15rem]:opacity-0 @[15rem]:group-hover:opacity-100 @[15rem]:group-focus-within:opacity-100"><Share2 className="size-3.5" /></DiscButton>
         {/*
           Preview: a disc in the trailing bottom corner of the photo.
 

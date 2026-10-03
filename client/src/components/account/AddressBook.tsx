@@ -31,6 +31,7 @@ import { PinLink } from "@/components/map/PinLink";
 import { PinPicker } from "@/components/map/PinPicker";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { DiscButton } from "@/components/ui/DiscButton";
 
 const field =
   "glass-field w-full rounded-xl px-4 py-3 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30";
@@ -132,23 +133,15 @@ export function AddressBook() {
                     <MapPin className="size-3.5 ink-accent" aria-hidden />
                     <span dir="auto">{row.label}</span>
                   </p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => open(row)}
-                      aria-label={`${t("address.editTitle")} — ${row.label}`}
-                      className="glass tap-target grid size-8 place-items-center rounded-full"
-                    >
+                  <div className="flex items-center gap-3">
+                    {/* Twelve pixels apart, so the two 44px targets meet rather
+                        than overlap and a press on the gap goes to neither. */}
+                    <DiscButton onClick={() => open(row)} aria-label={`${t("address.editTitle")} — ${row.label}`} className="-m-1.5">
                       <Pencil className="size-3.5" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRemoving(row.id)}
-                      aria-label={`${t("address.remove")} — ${row.label}`}
-                      className="glass tap-target grid size-8 place-items-center rounded-full"
-                    >
+                    </DiscButton>
+                    <DiscButton onClick={() => setRemoving(row.id)} aria-label={`${t("address.remove")} — ${row.label}`} className="-m-1.5">
                       <Trash2 className="size-3.5" aria-hidden />
-                    </button>
+                    </DiscButton>
                   </div>
                 </div>
                 <p className="mt-2 text-[12px] leading-5 text-[#536b8c]" dir="auto">

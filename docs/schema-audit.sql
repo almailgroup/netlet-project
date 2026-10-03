@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 523 columns across 50 tables.
+-- Expected: 544 columns across 51 tables.
 
 WITH expected AS (
   SELECT
@@ -46,7 +46,7 @@ WITH expected AS (
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
     ('payout_run_items', 'amount,booking_id,id,order_id,order_reference,run_id,vendor_id'),
     ('payout_runs', 'bank_reference,iban_used,id,paid_at,paid_by,total,vendor_id,vendor_name'),
     ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
@@ -60,10 +60,11 @@ WITH expected AS (
     ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),
     ('saved_products', 'created_at,id,product_id,user_id'),
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
+    ('subscriptions', 'address_id,created_at,id,interval_weeks,last_order_id,last_outcome,last_run_on,next_run_on,paused_reason,price_ceiling,product_id,product_title,quantity,status,updated_at,user_id,variant_id,variant_title,vendor_id'),
     ('users', 'audit_seen_at,created_at,email,id,last_signed_in,name,password_hash,role,supabase_uid,updated_at'),
     ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at,governorate,id,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status,store_name,store_name_ar,under_platform_licence,updated_at,user_id,vendor_id'),
     ('vendor_members', 'created_at,id,role,user_id,vendor_id'),
-    ('vendors', 'accepts_cod,accepts_offers,address_line,auto_publish,badges,cod_ceiling,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_expires_at,licence_number,logo_url,name,name_ar,payout_iban,slug,status,under_platform_licence,updated_at'),
+    ('vendors', 'accepts_cod,accepts_offers,address_line,auto_publish,badges,cod_ceiling,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_expires_at,licence_number,logo_url,name,name_ar,payout_iban,slug,status,subscription_percent,under_platform_licence,updated_at'),
     ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at,id,note,product_id,quantity,updated_at,wishlist_id'),
     ('wishlists', 'created_at,id,owner_name,share_token,title,updated_at,user_id,visibility')
   ) AS packed (table_name, columns)

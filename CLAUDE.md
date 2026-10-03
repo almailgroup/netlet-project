@@ -546,7 +546,14 @@ Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three.
 
 `.tap-target` grows a small control's hit area to 44px through a pseudo-element,
-without changing how it looks. Gallery dots are 6px on purpose; a 6px *target*
+without changing how it looks. **Never on a `.glass` element**: the glass rim
+is an `::after` too, later in the file at the same specificity, so it won —
+its `inset: 0` and `pointer-events: none` replaced the hit area, and the heart
+and share on every product card had 32px targets while looking fixed. It was
+found as a 1px sideways scroll on the Arabic account page. `DiscButton` is the
+glass icon button now: the button is the transparent 44px target and the disc
+is a span inside it, and `tapTarget.test.ts` refuses the two classes on one
+element. Gallery dots are 6px on purpose; a 6px *target*
 was a coin toss on a phone.
 
 **It is centred with `left`/`top: 50%`, never `inset: 50%`.** With both inline
@@ -1354,6 +1361,26 @@ because the CSP has to list it once `MEDIA_HOST` narrows images.
 
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
+
+## Subscribe & Save
+
+`shared/commerce/subscriptions.ts` is the rule, pure; `server/subscriptions.ts`
+the database half. **A standing order is a promise about price**: the
+per-unit price at subscribing is frozen as `price_ceiling`, a run never
+charges above it and pauses instead, and the shopper accepts the new price on
+`/account` — checked against the price the page showed, so a price that moved
+again is not accepted for them. The saving is the seller's (it comes off the
+line, like an agreed price, and the lower of the two wins rather than both)
+and it is an advertised discount, so it applies only while the store's permit
+is valid, decided on the read and at every run.
+
+**A run is claimed before it is placed** — an `UPDATE` whose predicate is the
+due date moves the date on first — so a doubled scheduler places one order
+and a failed run is not retried in a loop. Each run is an ordinary order on a
+throwaway cart through `placeOrder`, which takes the subscription as a detail
+no request can set. Vercel Cron calls `/api/cron/subscriptions` daily with
+`CRON_SECRET`; unset, the endpoint is a 404 and `/admin/subscriptions` runs
+them by hand. The `subscriptions` switch stops new ones only.
 
 ## Paid placements
 

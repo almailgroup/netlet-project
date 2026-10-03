@@ -261,6 +261,9 @@ function OrderDetail({ orderId }: { orderId: number }) {
             <>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
+                  {order.subscriptionId ? (
+                    <p className="mb-2 inline-flex rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">{t("subscriptions.repeatOrder")}</p>
+                  ) : null}
                   <p className="text-[11px] font-extrabold tracking-[.06em] ink-muted uppercase">{t("admin.orderDeliverTo")}</p>
                   <p className="mt-1 text-[13px] leading-6 text-[#0a285a]">
                     <span dir="auto">{order.contactName ?? t("admin.orderNoName")}</span>

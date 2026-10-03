@@ -48,7 +48,7 @@ import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
 import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
-import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
+import { addMoney, compareMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
@@ -58,6 +58,7 @@ import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliate
 import { featureOn } from "./features.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
+import { subscriberPrice } from "../shared/commerce/subscriptions.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -71,6 +72,12 @@ export type PlaceOrderDetails = {
   addressNotes?: string | null;
   /** Exactly where, if a pin was dropped (3.2.7). */
   pin?: Pin | null;
+  /**
+   * The standing order placing this (3.1.19): which one, and the saving on its
+   * variant. Set only by the subscription run, never from a request — the
+   * checkout router has no field that reaches it.
+   */
+  subscription?: { id: number; variantId: number; percent: number } | null;
   /**
    * Delivery is **computed here, never passed in**.
    *
@@ -138,6 +145,9 @@ async function priceableLines(
   db: Db,
   cartId: string,
   userId: number | null | undefined,
+  /* A standing order's saving on its one variant (3.1.19), decided by the run
+     against the store's permit a moment ago. */
+  subscription?: { variantId: number; percent: number },
 ): Promise<{
   lines: PriceableLine[];
   offerIds: number[];
@@ -240,10 +250,17 @@ async function priceableLines(
   const lines = rows.map(row => {
     const inBundle = bundled.get(row.variantId);
     const offer = inBundle ? null : agreed.get(row.variantId) ?? null;
-    const charged = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, offer);
-    // Only an agreement that actually moved the price is spent. One the shelf
-    // has undercut leaves the shopper free to use it another day.
-    if (offer && charged !== row.unitPrice) offerIds.push(offer.id);
+    const personal = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, offer);
+    /* A subscriber's saving and an agreed price are both reductions on one
+       line, so the shopper gets the lower of the two rather than both. */
+    const subscribed = subscription && !inBundle && subscription.variantId === row.variantId
+      ? subscriberPrice(row.unitPrice, subscription.percent)
+      : null;
+    const charged = subscribed !== null && compareMoney(subscribed, personal) < 0 ? subscribed : personal;
+    // Only an agreement that actually set the price is spent. One the shelf —
+    // or a subscriber's saving — has undercut leaves the shopper free to use
+    // it another day.
+    if (offer && personal !== row.unitPrice && charged === personal) offerIds.push(offer.id);
     return {
     variantId: row.variantId,
     productId: row.productId,
@@ -438,7 +455,10 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds, delivery, cod } = await priceableLines(db, cartId, details.userId);
+  const { lines, offerIds, delivery, cod } = await priceableLines(
+    db, cartId, details.userId,
+    details.subscription ? { variantId: details.subscription.variantId, percent: details.subscription.percent } : undefined,
+  );
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
   /* A pin somewhere else is a parcel sent somewhere else: refused, never
@@ -605,6 +625,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         addressLine: details.addressLine ?? null,
         addressNotes: details.addressNotes ?? null,
         deliveryPin: storedPin(details.pin),
+        subscriptionId: details.subscription?.id ?? null,
       })
       .returning();
 
@@ -976,6 +997,8 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         addressLine: order.addressLine,
         addressNotes: order.addressNotes,
         deliveryPin: order.deliveryPin,
+        /* A repeat order (3.1.19): the seller can tell a regular from a first order. */
+        subscriptionId: order.subscriptionId,
       },
       lines: mine,
       slice,

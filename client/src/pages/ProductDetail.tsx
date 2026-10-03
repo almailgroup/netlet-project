@@ -1,5 +1,6 @@
 import { useCart } from "@/contexts/CartContext";
 import { SizeGuide } from "@/components/product/SizeGuide";
+import { SubscribePanel } from "@/components/product/SubscribePanel";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
@@ -1119,6 +1120,10 @@ export default function ProductDetail() {
             {selectedVariant?.preorder
               ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>
               : null}
+
+            {/* Standing orders (3.1.19), under the one-off buy: buying once is
+                the ordinary act, and a schedule is the considered one. */}
+            <SubscribePanel product={product} variant={selectedVariant} quantity={quantity} />
 
             <div className="mt-3"><FollowProduct product={product} compact /></div>
 

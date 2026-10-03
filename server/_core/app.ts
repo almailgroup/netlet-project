@@ -22,6 +22,9 @@ import { describeError } from "./describeError.js";
 import { getDb } from "../db.js";
 import { sitemapEntries } from "../sitemap.js";
 import { robotsTxt, sitemapXml } from "../../shared/sitemap.js";
+import { timingSafeEqual } from "node:crypto";
+import { ENV } from "./env.js";
+import { runDueSubscriptions } from "../subscriptions.js";
 
 /**
  * The origin to write into `robots.txt` and `sitemap.xml`.
@@ -123,6 +126,30 @@ export function createApp(): Express {
     } catch (error) {
       console.error(`[sitemap] could not be built: ${describeError(error)}`);
       res.status(503).type("text/plain").send("sitemap unavailable");
+    }
+  });
+
+  /**
+   * The scheduler's door (3.1.19): place every standing order that has come
+   * due. Vercel Cron calls it daily with `Authorization: Bearer $CRON_SECRET`;
+   * anything else gets the same 404 an unknown path does, so the endpoint does
+   * not confirm it exists. Unset secret, unset feature — the rule every value
+   * in `.env.example` follows.
+   */
+  app.get("/api/cron/subscriptions", async (req, res) => {
+    const expected = ENV.cronSecret;
+    const offered = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    const same = expected.length > 0 && offered.length === expected.length
+      && timingSafeEqual(Buffer.from(offered), Buffer.from(expected));
+    if (!same) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    try {
+      res.json(await runDueSubscriptions());
+    } catch (error) {
+      console.error(`[cron] subscriptions failed: ${describeError(error)}`);
+      res.status(500).json({ error: "run failed" });
     }
   });
 

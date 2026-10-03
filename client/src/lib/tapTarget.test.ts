@@ -9,7 +9,7 @@
  * control rather than around it — found because one of them poked 8px past the
  * edge of a phone screen and made the product editor scroll sideways.
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -32,5 +32,36 @@ describe(".tap-target", () => {
     expect(rule).not.toMatch(/\binset\s*:/);
     expect(rule).not.toMatch(/\bright\s*:/);
     expect(rule).not.toMatch(/inset-inline/);
+  });
+});
+
+/*
+ * `.glass` draws its rim with `::after` too, later in the file at the same
+ * specificity, so on one element the rim won: its `inset: 0` and
+ * `pointer-events: none` replaced the hit area entirely, and the heart and the
+ * share on every product card had 32px targets while looking fixed. The two
+ * cannot share a box; `DiscButton` puts them on two elements instead.
+ */
+describe("a glass control", () => {
+  it("never carries .tap-target on the same element", () => {
+    const root = path.resolve(import.meta.dirname, "..");
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith(".tsx")) {
+          const source = readFileSync(full, "utf-8");
+          for (const match of source.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
+            const classes = (match[1] ?? match[2]).split(/\s+/);
+            if (classes.includes("tap-target") && classes.some(name => name === "glass" || name.startsWith("glass-"))) {
+              offenders.push(path.relative(root, full));
+            }
+          }
+        }
+      }
+    };
+    walk(root);
+    expect(offenders).toEqual([]);
   });
 });

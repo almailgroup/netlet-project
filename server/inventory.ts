@@ -1779,6 +1779,7 @@ export type StoreDetailsPatch = {
   underPlatformLicence?: boolean;
   acceptsCod?: boolean;
   codCeiling?: string | null;
+  subscriptionPercent?: string | null;
 };
 
 /** Trimmed, with a blank meaning "no value" rather than an empty string. */
@@ -1827,6 +1828,7 @@ export function storeDetailColumns(patch: StoreDetailsPatch) {
     ...(has("underPlatformLicence") ? { underPlatformLicence: patch.underPlatformLicence } : {}),
     ...(has("acceptsCod") ? { acceptsCod: patch.acceptsCod } : {}),
     ...(has("codCeiling") ? { codCeiling: textOrNull(patch.codCeiling) } : {}),
+    ...(has("subscriptionPercent") ? { subscriptionPercent: textOrNull(patch.subscriptionPercent) } : {}),
   };
 }
 

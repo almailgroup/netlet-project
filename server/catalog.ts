@@ -60,6 +60,7 @@ type VendorNamed = Named & {
   /* The store's usual shipping band, which a product may override (3.2.5). */
   deliverySpeed: string | null;
   deliveryProvider: string | null;
+  subscriptionPercent: string | null;
 };
 
 /**
@@ -75,7 +76,7 @@ async function contextFor(
 
   const [vendorRows, categoryRows] = await Promise.all([
     vendorIds.length
-      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider }).from(vendors).where(inArray(vendors.id, vendorIds))
+      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent }).from(vendors).where(inArray(vendors.id, vendorIds))
       : Promise.resolve([] as VendorNamed[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
@@ -105,6 +106,7 @@ function shape(
       vendorBadges: vendor?.badges,
       vendorDeliverySpeed: vendor?.deliverySpeed,
       vendorDeliveryProvider: vendor?.deliveryProvider,
+      vendorSubscriptionPercent: vendor?.subscriptionPercent ?? null,
       /* Checked on every read, because a permit expires on a date with nobody
          saving anything. See `shared/inventory/discountLicence.ts`. */
       vendorDiscountLicence: vendor

@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, Megaphone, MessagesSquare, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -147,6 +147,7 @@ export function AdminShell({ need, children }: {
     { href: "/admin/ads", label: "admin.ads", icon: <Sparkles className="size-4" />, need: "ads.book" },
     { href: "/admin/affiliates", label: "admin.affiliates", icon: <Megaphone className="size-4" />, need: "affiliate.manage" },
     { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
+    { href: "/admin/subscriptions", label: "subscriptions.adminTitle", icon: <Repeat className="size-4" />, need: "platform.configure" },
     { href: "/admin/features", label: "admin.features", icon: <ToggleRight className="size-4" />, need: "platform.configure" },
     { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
   ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability | Capability[] }[])

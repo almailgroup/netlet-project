@@ -20,6 +20,11 @@ export const ENV = {
    */
   mediaHost: process.env.MEDIA_HOST ?? "",
   mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
+  /* What the scheduler presents to run standing orders (3.1.19). Vercel Cron
+     sends it as a bearer token. Unset, the endpoint answers 404 and no
+     standing order runs on its own — an administrator can still run them
+     from /admin/subscriptions. */
+  cronSecret: process.env.CRON_SECRET ?? "",
   /* Supabase Auth, where registered accounts live.
      All three must be set before it is used at all. The anon key is a public
      identifier and is only here rather than under a VITE_ name because the

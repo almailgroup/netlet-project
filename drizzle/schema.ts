@@ -48,6 +48,7 @@ export const wishlistVisibility = pgEnum("wishlist_visibility", ["private", "pub
 /* What a variant's price is quoted against. `each` is every product today. */
 export const sellUnit = pgEnum("sell_unit", sellUnits);
 export const adSlot = pgEnum("ad_slot", AD_SLOTS);
+export const subscriptionStatus = pgEnum("subscription_status", ["active", "paused", "cancelled"]);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
 /**
@@ -539,6 +540,13 @@ export const vendors = pgTable(
      */
     acceptsCod: boolean("accepts_cod").notNull().default(true),
     codCeiling: numeric("cod_ceiling", { precision: 12, scale: 3 }),
+    /**
+     * Subscribe & Save (3.1.19): null when this store does not offer standing
+     * orders, otherwise what a subscriber saves, in percent — zero is "offered
+     * at the shelf price". The saving applies only while the discount permit
+     * above is valid, because it is an advertised saving like any other.
+     */
+    subscriptionPercent: numeric("subscription_percent", { precision: 5, scale: 2 }),
     /**
      * Trust badges shown beside the vendor's name on a product page.
      *
@@ -1730,6 +1738,8 @@ export const orders = pgTable(
      */
     affiliateId: integer("affiliate_id").references((): AnyPgColumn => affiliates.id, { onDelete: "set null" }),
     affiliateRate: numeric("affiliate_rate", { precision: 5, scale: 2 }),
+    /** The standing order this was placed by (3.1.19), so the seller can tell a repeat from a new customer. */
+    subscriptionId: integer("subscription_id").references((): AnyPgColumn => subscriptions.id, { onDelete: "set null" }),
     /**
      * Who charged what to deliver, frozen beside the total.
      *
@@ -2367,6 +2377,50 @@ export const pointEntries = pgTable(
       .where(sql`${table.reason} = 'affiliate_reversal'`),
     index("point_entries_pot_idx").on(table.userId, table.pot),
   ]
+);
+
+/**
+ * A standing order (3.1.19): this variant, this many, to this address, every
+ * so many weeks. The rules are `shared/commerce/subscriptions.ts`.
+ *
+ * `price_ceiling` is the per-unit price the shopper agreed to; a run never
+ * charges above it and pauses instead. The address is a reference rather than
+ * a copy, unlike an order's: a standing order goes wherever the shopper's
+ * "Home" is *now*, and the order each run places freezes it like any other.
+ * Cancelling keeps the row, so last month's orders still say what placed them.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    variantId: integer("variant_id").references(() => productVariants.id, { onDelete: "set null" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    variantTitle: varchar("variant_title", { length: 255 }),
+    quantity: integer("quantity").notNull(),
+    intervalWeeks: integer("interval_weeks").notNull(),
+    addressId: integer("address_id").references(() => customerAddresses.id, { onDelete: "set null" }),
+    priceCeiling: numeric("price_ceiling", { precision: 12, scale: 3 }).notNull(),
+    nextRunOn: date("next_run_on", { mode: "string" }).notNull(),
+    status: subscriptionStatus("status").notNull().default("active"),
+    /** Why it is paused, from `PAUSE_REASONS`; null while active. */
+    pausedReason: varchar("paused_reason", { length: 24 }),
+    lastRunOn: date("last_run_on", { mode: "string" }),
+    /** What the last run did, from `RUN_OUTCOMES`. */
+    lastOutcome: varchar("last_outcome", { length: 24 }),
+    lastOrderId: integer("last_order_id").references((): AnyPgColumn => orders.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    index("subscriptions_due_idx").on(table.status, table.nextRunOn),
+    index("subscriptions_user_idx").on(table.userId, table.id),
+    /* One standing order per shopper per variant, for the reason the price-ask
+       index exists: two tabs beat a read-then-insert check. */
+    uniqueIndex("subscriptions_one_open").on(table.userId, table.variantId).where(sql`${table.status} <> 'cancelled'`),
+  ],
 );
 
 /**
