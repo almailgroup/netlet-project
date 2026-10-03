@@ -1332,6 +1332,29 @@ succeeds, never instead of it, so a refusal from the book's own rules costs the
 shopper nothing they asked for. Signing in happens on the page and keeps the
 basket, because `CartContext` already adopts the guest bag on sign-in.
 
+## The map pin
+
+`shared/commerce/geo.ts` is the rule, pure and shared. **A pin is optional and
+the typed address is not** — location refused, tiles that never load, or a
+shopper who would rather not say where they live must still be able to buy.
+A pin is refused only when it is not a place or is outside Kuwait, and is kept
+to five decimals, about a metre. It is one `{ lat, lng }` jsonb value on
+`customer_addresses.pin`, `orders.delivery_pin` and inside a line's frozen
+`destination`, never two columns: half a coordinate is not a place.
+
+**The map moves under a still pin**, rather than a marker being dragged: a
+focused Leaflet map pans with the arrow keys, so one instruction serves a
+thumb, a mouse and a keyboard. The picker focuses the map when it opens and
+hands focus back to its summary when it closes, because every press there
+replaces the control pressed. Leaflet and its stylesheet load only when the
+picker opens. The map's own box is `direction: ltr` in CSS — it is a picture of
+the ground, and an inherited `rtl` mirrors its controls — while the panel
+around it follows the page. The tile host is named in `MAP_TILE_ORIGIN`
+because the CSP has to list it once `MEDIA_HOST` narrows images.
+
+The sandbox this was built in cannot reach the tile server, so every
+screenshot of it is grey. That is the environment, not the code.
+
 ## Payout runs
 
 `shared/commerce/payoutRuns.ts` is the batch and is pure; `server/payoutRuns.ts`

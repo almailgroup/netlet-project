@@ -39,6 +39,7 @@
 import { normalisePhone } from "./wishlist.js";
 import { kuwaitDeliveryZones } from "../customer.js";
 import type { MessageKey } from "../i18n/dictionary.js";
+import { pinProblem, storedPin, type Pin } from "./geo.js";
 
 /**
  * A ceiling, so the book stays a book.
@@ -63,6 +64,8 @@ export type ShippingAddress = {
   governorate?: string | null;
   addressLine?: string | null;
   addressNotes?: string | null;
+  /** Exactly where, if the shopper dropped a pin (3.2.7). Optional, always. */
+  pin?: Pin | null;
 };
 
 /**
@@ -94,6 +97,10 @@ export function addressProblems(address: ShippingAddress): MessageKey[] {
 
   const phone = address.contactPhone?.trim();
   if (phone && !normalisePhone(phone)) problems.push("address.badPhone");
+
+  /* Absent is ordinary; present and wrong is a parcel sent somewhere else. */
+  const pinIssue = address.pin ? pinProblem(address.pin) : null;
+  if (pinIssue) problems.push(pinIssue);
 
   return problems;
 }
@@ -205,6 +212,11 @@ export type FrozenDestination = {
   governorate: string | null;
   addressLine: string | null;
   addressNotes: string | null;
+  /**
+   * Optional rather than nullable-and-required, because every line frozen
+   * before pins existed has none, and reads as "no pin" rather than missing.
+   */
+  pin?: Pin | null;
 };
 
 /** An address, reduced to what an order needs to remember about it. */
@@ -216,5 +228,6 @@ export function freezeDestination(address: ShippingAddress): FrozenDestination {
     governorate: address.governorate?.trim() || null,
     addressLine: address.addressLine?.trim() || null,
     addressNotes: address.addressNotes?.trim() || null,
+    pin: storedPin(address.pin),
   };
 }

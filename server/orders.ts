@@ -57,6 +57,7 @@ import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
 import { featureOn } from "./features.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
+import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -68,6 +69,8 @@ export type PlaceOrderDetails = {
   deliveryZoneId?: string | null;
   addressLine?: string | null;
   addressNotes?: string | null;
+  /** Exactly where, if a pin was dropped (3.2.7). */
+  pin?: Pin | null;
   /**
    * Delivery is **computed here, never passed in**.
    *
@@ -438,6 +441,10 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const { lines, offerIds, delivery, cod } = await priceableLines(db, cartId, details.userId);
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
+  /* A pin somewhere else is a parcel sent somewhere else: refused, never
+     quietly dropped, so the shopper learns the map missed. */
+  const pinIssue = details.pin ? pinProblem(details.pin) : null;
+  if (pinIssue) throw new OrderRefused(pinIssue);
 
   /*
    * Checked here rather than trusted from the basket that was priced a moment
@@ -597,6 +604,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         deliveryZoneId: details.deliveryZoneId ?? null,
         addressLine: details.addressLine ?? null,
         addressNotes: details.addressNotes ?? null,
+        deliveryPin: storedPin(details.pin),
       })
       .returning();
 
@@ -967,6 +975,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         deliveryZoneId: order.deliveryZoneId,
         addressLine: order.addressLine,
         addressNotes: order.addressNotes,
+        deliveryPin: order.deliveryPin,
       },
       lines: mine,
       slice,

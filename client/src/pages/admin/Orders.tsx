@@ -38,6 +38,7 @@ import { Banknote, PackageCheck, ShieldAlert } from "lucide-react";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PinLink } from "@/components/map/PinLink";
 
 const FULFILMENT_LABEL: Record<FulfilmentState, MessageKey> = {
   pending: "admin.fulfilPending",
@@ -267,6 +268,7 @@ function OrderDetail({ orderId }: { orderId: number }) {
                     <span dir="auto">{order.addressLine ?? t("admin.orderNoAddress")}</span>
                     {order.addressNotes ? <><br /><span dir="auto" className="ink-muted">{order.addressNotes}</span></> : null}
                   </p>
+                  <p className="mt-1"><PinLink pin={order.deliveryPin} /></p>
                 </div>
 
                 {/* Cash is collected once, for the basket — the one thing on
@@ -319,6 +321,7 @@ function OrderDetail({ orderId }: { orderId: number }) {
                         ) : null}
                       </p>
                     ) : null}
+                    {line.destination?.pin ? <p className="mt-1"><PinLink pin={line.destination.pin} /></p> : null}
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">

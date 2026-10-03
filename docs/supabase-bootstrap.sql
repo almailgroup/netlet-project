@@ -1273,6 +1273,10 @@ CREATE INDEX IF NOT EXISTS "payout_runs_vendor_idx" ON "payout_runs" USING btree
 -- ===== 0045_past_speedball.sql =====
 ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "verify_code" varchar(16);
 
+-- ===== 0046_silent_leper_queen.sql =====
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "pin" jsonb;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_pin" jsonb;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1316,6 +1320,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  46 AS migrations_in_this_file,
+  47 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

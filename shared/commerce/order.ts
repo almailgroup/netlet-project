@@ -305,6 +305,9 @@ export type OrderRefusal =
   /* The code or the gift card stopped working between pressing and placing
      (3.2.3). Refused rather than charged in full, the same as the points. */
   | "order.voucherGone"
+  /* The pin dropped at checkout is outside Kuwait, or not a place (3.2.7). */
+  | "address.pinOutsideKuwait"
+  | "address.badPin"
   | "order.zeroPriced";
 
 export function refusalFor(

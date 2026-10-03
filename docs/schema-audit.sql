@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 506 columns across 49 tables.
+-- Expected: 508 columns across 49 tables.
 
 WITH expected AS (
   SELECT
@@ -29,7 +29,7 @@ WITH expected AS (
     ('conversations', 'created_at,id,last_message_at,shopper_read_at,user_id,vendor_id,vendor_read_at'),
     ('courier_members', 'courier_id,created_at,id,user_id'),
     ('couriers', 'contact_email,contact_phone,created_at,id,name,name_ar,status,updated_at'),
-    ('customer_addresses', 'address_line,address_notes,contact_name,contact_phone,created_at,governorate,id,label,updated_at,user_id'),
+    ('customer_addresses', 'address_line,address_notes,contact_name,contact_phone,created_at,governorate,id,label,pin,updated_at,user_id'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
     ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
     ('damage_claims', 'awarded_amount,claimed_amount,courier_id,courier_responded_at,courier_response,created_at,decided_at,decided_by,decision_note,description,evidence_url,filed_as,filed_by,id,line_ids,order_id,parcel_key,status,updated_at,vendor_id,vendor_name'),
@@ -45,7 +45,7 @@ WITH expected AS (
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,updated_at,user_id'),
     ('payout_run_items', 'amount,id,order_id,order_reference,run_id,vendor_id'),
     ('payout_runs', 'bank_reference,iban_used,id,paid_at,paid_by,total,vendor_id,vendor_name'),
     ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),

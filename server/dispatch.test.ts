@@ -313,3 +313,65 @@ describe("who a driver is", () => {
     expect(actor.kind).toBe("customer");
   });
 });
+
+/*
+ * The map pin (3.2.7): dropped by the shopper, copied onto the order, and read
+ * back by whoever has to find the door. Optional at every step, and refused
+ * only when it is somewhere NetLet does not deliver.
+ */
+describe("a pin travels to the driver", () => {
+  const HOME_PIN = { lat: 29.332812345, lng: 48.028612345 };
+
+  it("is frozen onto the order to a metre and shown on the board", async () => {
+    const [cart] = await db.insert(carts).values({ id: `cart-pin-${Date.now()}`, userId: ids.shopper }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.riceVariant, quantity: 1 });
+    const placed = await ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper, pin: HOME_PIN });
+    expect(placed.order.deliveryPin).toEqual({ lat: 29.33281, lng: 48.02861 });
+
+    const board = await dispatch.loadBoard(adminActor());
+    expect(board.parcels[0].orderAddress.pin).toEqual({ lat: 29.33281, lng: 48.02861 });
+  });
+
+  it("is optional: an order with no pin is an ordinary order", async () => {
+    const placed = await placeBasket([{ variantId: ids.riceVariant, quantity: 1 }]);
+    expect(placed.order.deliveryPin).toBeNull();
+  });
+
+  it("refuses a pin outside Kuwait and takes no stock", async () => {
+    const [before] = await db.select({ stock: productVariants.stock }).from(productVariants).where(eq(productVariants.id, ids.riceVariant));
+    const [cart] = await db.insert(carts).values({ id: `cart-basra-${Date.now()}`, userId: ids.shopper }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.riceVariant, quantity: 1 });
+
+    await expect(ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper, pin: { lat: 30.5085, lng: 47.7804 } }))
+      .rejects.toMatchObject({ reason: "address.pinOutsideKuwait" });
+
+    const [after] = await db.select({ stock: productVariants.stock }).from(productVariants).where(eq(productVariants.id, ids.riceVariant));
+    expect(after.stock).toBe(before.stock);
+    expect(await db.select().from(orders)).toHaveLength(0);
+  });
+
+  it("goes with a line sent to a second door, frozen from the saved address", async () => {
+    const addresses = await import("./addresses.js");
+    const office = await addresses.addAddress(ids.shopper, {
+      label: "Office", governorate: "capital", addressLine: "Tower 3, Floor 9", pin: { lat: 29.3697, lng: 47.9783 },
+    });
+    expect(office.pin).toEqual({ lat: 29.3697, lng: 47.9783 });
+
+    const [cart] = await db.insert(carts).values({ id: `cart-two-${Date.now()}`, userId: ids.shopper }).returning();
+    const [line] = await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.riceVariant, quantity: 1 }).returning();
+    await addresses.setLineDestination(cart.id, ids.shopper, line.id, office.id);
+    await ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper });
+
+    /* Moving the saved pin afterwards must not move where the parcel went. */
+    await addresses.updateAddress(ids.shopper, office.id, { label: "Office", addressLine: "Tower 3, Floor 9", pin: { lat: 29.1, lng: 48.1 } });
+
+    const board = await dispatch.loadBoard(adminActor());
+    expect(board.parcels[0].destination?.pin).toEqual({ lat: 29.3697, lng: 47.9783 });
+  });
+
+  it("refuses to save an address pinned outside Kuwait", async () => {
+    const addresses = await import("./addresses.js");
+    await expect(addresses.addAddress(ids.shopper, { label: "Basra", addressLine: "Somewhere", pin: { lat: 30.5085, lng: 47.7804 } }))
+      .rejects.toThrow("address.pinOutsideKuwait");
+  });
+});

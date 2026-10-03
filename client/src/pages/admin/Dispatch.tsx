@@ -37,6 +37,7 @@ import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PinLink } from "@/components/map/PinLink";
 
 const VEHICLE_LABEL = {
   bike: "vehicle.bike",
@@ -149,6 +150,11 @@ function Dispatch({ actor }: { actor: Actor }) {
                         : [parcel.orderAddress.addressLine, parcel.orderAddress.contactName, parcel.orderAddress.contactPhone]
                             .filter(Boolean)
                             .join(" · ")}
+                    </p>
+                    {/* The pin goes with the same door the line above names:
+                        the parcel's own when it has one, the order's otherwise. */}
+                    <p className="mt-1">
+                      <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
                     </p>
 
                     <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">

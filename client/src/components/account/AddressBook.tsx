@@ -27,6 +27,8 @@ import {
   type ShippingAddress,
 } from "@shared/commerce/addresses";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PinLink } from "@/components/map/PinLink";
+import { PinPicker } from "@/components/map/PinPicker";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +42,7 @@ const BLANK: ShippingAddress = {
   governorate: "",
   addressLine: "",
   addressNotes: "",
+  pin: null,
 };
 
 export function AddressBook() {
@@ -103,6 +106,7 @@ export function AddressBook() {
       governorate: draft.governorate?.trim() || null,
       addressLine: (draft.addressLine ?? "").trim(),
       addressNotes: draft.addressNotes?.trim() || null,
+      pin: draft.pin ?? null,
     };
     if (editing && editing > 0) update.mutate({ id: editing, ...payload });
     else add.mutate(payload);
@@ -166,6 +170,12 @@ export function AddressBook() {
                       </span>
                     ))}
                 </p>
+                {row.pin ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-[#0a285a]">
+                    {t("address.pinned")}
+                    <PinLink pin={row.pin} />
+                  </p>
+                ) : null}
                 {gaps.length > 0 ? (
                   <p className="mt-2 text-[11px] ink-muted">{gaps.map(key => t(key)).join(" · ")}</p>
                 ) : null}
@@ -273,6 +283,13 @@ export function AddressBook() {
                 className={`${field} mt-1 min-h-20 font-normal`}
               />
             </label>
+            <div className="sm:col-span-2">
+              <PinPicker
+                value={draft.pin ?? null}
+                onChange={pin => setDraft(d => ({ ...d, pin }))}
+                governorate={draft.governorate}
+              />
+            </div>
           </div>
 
           {/* What is wrong, named. A form that only greys the button leaves

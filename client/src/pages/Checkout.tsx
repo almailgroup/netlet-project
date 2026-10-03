@@ -26,6 +26,8 @@ import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Check, LoaderCircle, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { PinPicker } from "@/components/map/PinPicker";
+import type { Pin } from "@shared/commerce/geo";
 
 /** The saved address used last on this device, so the next checkout starts there. */
 const LAST_ADDRESS_KEY = "netlet.checkoutAddress";
@@ -85,7 +87,7 @@ export default function Checkout() {
   const { isAuthenticated, user } = useAuth();
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const [, navigate] = useLocation();
-  const [form, setForm] = useState({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "" });
+  const [form, setForm] = useState<{ contactName: string; contactPhone: string; addressLine: string; addressNotes: string; pin: Pin | null }>({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "", pin: null });
   const [authOpen, setAuthOpen] = useState(false);
   const zoneLabel = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : null;
 
@@ -109,6 +111,7 @@ export default function Checkout() {
       contactPhone: address.contactPhone ?? "",
       addressLine: address.addressLine ?? "",
       addressNotes: address.addressNotes ?? "",
+      pin: address.pin ?? null,
     });
     if (address.governorate) setDeliveryZoneId(address.governorate);
     writeStored(LAST_ADDRESS_KEY, String(address.id));
@@ -146,6 +149,7 @@ export default function Checkout() {
             governorate: deliveryZoneId ?? null,
             addressLine: form.addressLine.trim(),
             addressNotes: form.addressNotes.trim() || null,
+            pin: form.pin,
           });
           void utils.customer.addresses.list.invalidate();
         } catch {
@@ -253,7 +257,7 @@ export default function Checkout() {
 	                  <button
 	                    type="button"
 	                    aria-pressed={picked === "new"}
-	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "" }); }}
+	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "", pin: null }); }}
 	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a]"}`}
 	                  >
 	                    {t("checkout.newAddress")}
@@ -264,6 +268,11 @@ export default function Checkout() {
 	            ) : null}
 	            <CheckoutDeliveryZone />
 	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
+	            {/* The pin (3.2.7): optional, and the typed address above is
+	                what the order needs. A saved address brings its pin with it. */}
+	            <div className="mt-4">
+	              <PinPicker value={form.pin} onChange={pin => setForm(f => ({ ...f, pin }))} governorate={deliveryZoneId} />
+	            </div>
 	            {isAuthenticated && picked === "new" ? (
 	              <label className="type-body mt-4 flex items-center gap-2 text-[13px] text-[#0a285a]">
 	                <input type="checkbox" checked={saveForNext} onChange={event => setSaveForNext(event.target.checked)} className="size-4 accent-[#0a285a]" />
@@ -318,6 +327,7 @@ export default function Checkout() {
                 deliveryZoneId: deliveryZoneId ?? null,
                 addressLine: form.addressLine.trim(),
                 addressNotes: form.addressNotes.trim() || null,
+                pin: form.pin,
                 usePoints,
                 voucherCode: applied || undefined,
                 affiliateCode: via.data ? affiliateCode : null,

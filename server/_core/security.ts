@@ -11,6 +11,7 @@ import helmet from "helmet";
 import type { Express, RequestHandler } from "express";
 import { ENV } from "./env.js";
 import { COOKIE_NAME } from "../../shared/const.js";
+import { MAP_TILE_ORIGIN } from "../../shared/commerce/geo.js";
 
 /**
  * Sources the storefront legitimately loads from.
@@ -29,7 +30,9 @@ const CONTENT_SECURITY_POLICY = {
   // Product imagery: whatever MEDIA_HOST names, or any https origin while
   // that is unset — see ENV.mediaHost. The demo catalog draws its own
   // artwork as inline SVG data URIs.
-  imgSrc: ["'self'", "data:", "blob:", ENV.mediaHost || "https:"],
+  // The map picker's tiles (3.2.7) come from one named host, which has to be
+  // listed once MEDIA_HOST narrows the rest.
+  imgSrc: ["'self'", "data:", "blob:", ...(ENV.mediaHost ? [ENV.mediaHost, MAP_TILE_ORIGIN] : ["https:"])],
   // Nothing off-origin to talk to: the catalog, the cart and checkout are
   // all NetLet's own API now.
   connectSrc: ["'self'"],

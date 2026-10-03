@@ -18,6 +18,7 @@ import {
   addressProblems,
   type ShippingAddress,
 } from "../shared/commerce/addresses.js";
+import { storedPin } from "../shared/commerce/geo.js";
 import { cartItems, carts, customerAddresses } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
 
@@ -42,6 +43,7 @@ const COLUMNS = {
   governorate: customerAddresses.governorate,
   addressLine: customerAddresses.addressLine,
   addressNotes: customerAddresses.addressNotes,
+  pin: customerAddresses.pin,
 };
 
 /** Oldest first, so the list does not reorder itself under somebody editing it. */
@@ -88,6 +90,7 @@ export async function addAddress(userId: number, address: ShippingAddress): Prom
       governorate: address.governorate?.trim() || null,
       addressLine: (address.addressLine ?? "").trim(),
       addressNotes: address.addressNotes?.trim() || null,
+      pin: storedPin(address.pin),
     })
     .returning(COLUMNS);
   return row;
@@ -111,6 +114,7 @@ export async function updateAddress(
       governorate: address.governorate?.trim() || null,
       addressLine: (address.addressLine ?? "").trim(),
       addressNotes: address.addressNotes?.trim() || null,
+      pin: storedPin(address.pin),
     })
     .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
     .returning(COLUMNS);

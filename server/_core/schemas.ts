@@ -62,3 +62,16 @@ export const rowIdText = z
     const id = Number(value);
     return id >= 1 && id <= MAX_INT4;
   }, "Outside the range of a row id");
+
+/**
+ * A pin on a map (3.2.7), or nothing.
+ *
+ * Only the shape here: a finite pair and no other keys. Whether it is in
+ * Kuwait is `pinProblem` in `shared/commerce/geo.ts`, which the picker asks
+ * too, so the refusal arrives as a message key the page already knows how to
+ * say rather than as a zod sentence.
+ */
+export const pinInput = z
+  .object({ lat: z.number().finite(), lng: z.number().finite() })
+  .strict()
+  .nullish();

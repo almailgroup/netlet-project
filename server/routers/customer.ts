@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rowId } from "../_core/schemas.js";
+import { pinInput, rowId } from "../_core/schemas.js";
 import { getCustomerProfile, upsertCustomerProfile } from "../profile.js";
 import {
   countFollowers,
@@ -41,6 +41,9 @@ const addressInput = z.object({
   governorate: zoneIdSchema.nullable().optional(),
   addressLine: z.string().min(1).max(MAX_LINE),
   addressNotes: z.string().max(MAX_NOTES).nullable().optional(),
+  /* Whether it is in Kuwait is `addressProblems`'s answer, so the form and the
+     API refuse the same pin. */
+  pin: pinInput,
 });
 
 export const customerRouter = router({

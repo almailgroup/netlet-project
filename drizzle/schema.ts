@@ -1065,6 +1065,12 @@ export const customerAddresses = pgTable(
     governorate: varchar("governorate", { length: 32 }),
     addressLine: varchar("address_line", { length: 300 }).notNull(),
     addressNotes: varchar("address_notes", { length: 300 }),
+    /**
+     * Exactly where, if the shopper dropped a pin (3.2.7) — `{ lat, lng }` as
+     * one value, because half a coordinate is not a place. Null is ordinary:
+     * the typed line is what an address cannot exist without.
+     */
+    pin: jsonb("pin").$type<{ lat: number; lng: number } | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -1760,6 +1766,8 @@ export const orders = pgTable(
     deliveryZoneId: varchar("delivery_zone_id", { length: 32 }),
     addressLine: text("address_line"),
     addressNotes: text("address_notes"),
+    /** The pin the shopper dropped at checkout (3.2.7), copied like the rest. */
+    deliveryPin: jsonb("delivery_pin").$type<{ lat: number; lng: number } | null>(),
 
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -1860,6 +1868,8 @@ export const orderItems = pgTable(
       governorate: string | null;
       addressLine: string | null;
       addressNotes: string | null;
+      /* Absent on every line frozen before pins existed (3.2.7). */
+      pin?: { lat: number; lng: number } | null;
     } | null>(),
     /**
      * Which delivery company was asked to carry this (2.2, 3.4.2).

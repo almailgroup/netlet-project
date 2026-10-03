@@ -204,6 +204,8 @@ export type BoardParcel = Parcel & {
     governorate: string | null;
     addressLine: string | null;
     addressNotes: string | null;
+    /** The pin dropped at checkout, so a driver can open it in Maps (3.2.7). */
+    pin: { lat: number; lng: number } | null;
   };
 };
 
@@ -253,6 +255,7 @@ export async function loadBoard(
       governorate: orders.deliveryZoneId,
       addressLine: orders.addressLine,
       addressNotes: orders.addressNotes,
+      pin: orders.deliveryPin,
     })
     .from(orders)
     .orderBy(desc(orders.id))
@@ -323,6 +326,7 @@ export async function loadBoard(
           governorate: order.governorate,
           addressLine: order.addressLine,
           addressNotes: order.addressNotes,
+          pin: order.pin,
         },
       });
     }

@@ -65,7 +65,21 @@ describe("freezing a destination", () => {
       governorate: "hawalli",
       addressLine: "Block 4, Street 12, House 7",
       addressNotes: null,
+      pin: null,
     });
+  });
+
+  it("freezes a pin to a metre and drops one outside Kuwait", () => {
+    expect(freezeDestination({ ...home, pin: { lat: 29.332812345, lng: 48.028612345 } }).pin).toEqual({ lat: 29.33281, lng: 48.02861 });
+    expect(freezeDestination({ ...home, pin: { lat: 51.5, lng: -0.12 } }).pin).toBeNull();
+  });
+});
+
+describe("a pin on an address", () => {
+  it("is optional, and refused only when it is somewhere else", () => {
+    expect(addressProblems({ ...home, pin: null })).toEqual([]);
+    expect(addressProblems({ ...home, pin: { lat: 29.33, lng: 48.02 } })).toEqual([]);
+    expect(addressProblems({ ...home, pin: { lat: 30.5, lng: 47.78 } })).toEqual(["address.pinOutsideKuwait"]);
   });
 });
 

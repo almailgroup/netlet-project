@@ -13,7 +13,7 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { rowId } from "../_core/schemas.js";
+import { pinInput, rowId } from "../_core/schemas.js";
 import {
   FulfilmentRefused,
   getOrderFor,
@@ -188,6 +188,8 @@ export const ordersRouter = router({
       deliveryZoneId: z.string().trim().max(64).nullish(),
       addressLine: z.string().trim().min(1).max(500),
       addressNotes: z.string().trim().max(500).nullish(),
+      /* Where exactly, if a pin was dropped (3.2.7). Optional, always. */
+      pin: pinInput,
       /* Whether to spend the balance (3.1.15). How much it covers is the
          server's arithmetic — a figure sent from a browser is a figure to
          check against the one read here anyway. */
@@ -210,6 +212,7 @@ export const ordersRouter = router({
           deliveryZoneId: input.deliveryZoneId ?? null,
           addressLine: input.addressLine,
           addressNotes: input.addressNotes ?? null,
+          pin: input.pin ?? null,
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
           affiliateCode: input.affiliateCode ?? null,
