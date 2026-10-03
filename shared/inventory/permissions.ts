@@ -115,7 +115,15 @@ export type Capability =
    * the ledger they had been paid.
    */
   | "payouts.view"
-  | "payouts.record";
+  | "payouts.record"
+  /*
+   * Booking a paid placement (3.3.15). `owner`, like the payout IBAN: the fee
+   * comes off what NetLet pays the store, so this spends the store's money,
+   * and a manager running the catalogue is not who decides that. Cancelling
+   * is the same capability — whoever may commit the money may stop spending
+   * it. An administrator reaches every store's, to take one down.
+   */
+  | "ads.book";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -133,6 +141,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "payouts.view": "manager",
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",
+  "ads.book": "owner",
 };
 
 /**

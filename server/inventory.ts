@@ -242,7 +242,7 @@ async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows:
  * from the storefront without anyone editing the product, which is what makes
  * suspension a real lever.
  */
-export async function publishedCatalog(options: { limit?: number; categoryId?: number } = {}) {
+export async function publishedCatalog(options: { limit?: number; categoryId?: number; ids?: number[] } = {}) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db
@@ -254,6 +254,10 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
         eq(products.status, "published"),
         eq(vendors.status, "approved"),
         options.categoryId ? eq(products.categoryId, options.categoryId) : undefined,
+        /* Narrowing to named products still passes every rule above — which is
+           the point: a sponsored placement is drawn through this read so a
+           paid slot cannot show what the shelf would not (3.3.15). */
+        options.ids ? inArray(products.id, options.ids.length ? options.ids : [-1]) : undefined,
       ),
     )
     /* Ends on the id, for the reason `listAudit` does. `updatedAt` is not

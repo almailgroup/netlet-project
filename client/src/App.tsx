@@ -55,6 +55,7 @@ const AdminReturns = lazy(() => import("@/pages/admin/Returns"));
 const AdminFeatures = lazy(() => import("@/pages/admin/Features"));
 const AdminAffiliates = lazy(() => import("@/pages/admin/Affiliates"));
 const AdminPayouts = lazy(() => import("@/pages/admin/Payouts"));
+const AdminAds = lazy(() => import("@/pages/admin/Ads"));
 const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
@@ -147,6 +148,7 @@ function Router() {
         <Route path="/admin/features" component={AdminFeatures} />
         <Route path="/admin/affiliates" component={AdminAffiliates} />
         <Route path="/admin/payouts" component={AdminPayouts} />
+        <Route path="/admin/ads" component={AdminAds} />
         <Route path="/admin/invoices" component={AdminInvoices} />
         <Route path="/admin/finance" component={AdminFinance} />
         <Route path="/admin/offers" component={AdminOffers} />

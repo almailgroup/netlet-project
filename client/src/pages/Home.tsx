@@ -47,6 +47,7 @@ import { useOverlay } from "@/hooks/useOverlay";
 import { ProductCard } from "@/components/product/ProductCard";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { QuickView } from "@/components/product/QuickView";
+import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
@@ -471,6 +472,19 @@ export default function Home() {
     <RecommendedRail
       saved={saved}
       onSave={toggleSaved}
+      onDetails={openProduct}
+      onQuickView={setQuickProduct}
+      onAdd={(product, quantity) => void addProduct(product, quantity)}
+      onBuyNow={(product, quantity) => void buyProduct(product, quantity)}
+      isAdding={cartLoading}
+    />
+
+    {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
+    <SponsoredShelf
+      slot="home"
+      layout="rail"
+      saved={saved}
+      onSave={product => toggleSaved(product.id, product.title)}
       onDetails={openProduct}
       onQuickView={setQuickProduct}
       onAdd={(product, quantity) => void addProduct(product, quantity)}

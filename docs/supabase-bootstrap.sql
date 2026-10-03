@@ -1277,6 +1277,56 @@ ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "verify_code" varchar(16);
 ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "pin" jsonb;
 ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_pin" jsonb;
 
+-- ===== 0047_common_dreadnoughts.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."ad_slot" AS ENUM('home', 'department');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "ad_bookings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"product_id" integer,
+	"product_title" varchar(255) NOT NULL,
+	"slot" "ad_slot" NOT NULL,
+	"category_id" integer,
+	"starts_on" date NOT NULL,
+	"ends_on" date NOT NULL,
+	"daily_rate" numeric(12, 3) NOT NULL,
+	"total" numeric(12, 3) NOT NULL,
+	"cancelled_on" date,
+	"cancelled_by" integer,
+	"booked_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "payout_run_items" ADD COLUMN IF NOT EXISTS "booking_id" integer;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_cancelled_by_users_id_fk" FOREIGN KEY ("cancelled_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_booked_by_users_id_fk" FOREIGN KEY ("booked_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "ad_bookings_slot_idx" ON "ad_bookings" USING btree ("slot","starts_on","ends_on");
+CREATE INDEX IF NOT EXISTS "ad_bookings_vendor_idx" ON "ad_bookings" USING btree ("vendor_id","id");
+DO $$ BEGIN
+  ALTER TABLE "payout_run_items" ADD CONSTRAINT "payout_run_items_booking_id_ad_bookings_id_fk" FOREIGN KEY ("booking_id") REFERENCES "public"."ad_bookings"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "payout_run_items_run_booking_unique" ON "payout_run_items" USING btree ("run_id","booking_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1320,6 +1370,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  47 AS migrations_in_this_file,
+  48 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

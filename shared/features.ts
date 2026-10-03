@@ -50,6 +50,7 @@ export const FEATURE_KEYS = [
   "wishlists",
   "giftCards",
   "affiliates",
+  "ads",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -91,6 +92,9 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
      order already attributed is still credited when it is paid, and a balance
      already earned can still be paid out. */
   affiliates: { entries: ["affiliates.join"], audience: "everyone" },
+  /* Paid placements (3.3.15): off stops new bookings. One already sold runs
+     out its days and is charged for them, so it keeps its place on the shelf. */
+  ads: { entries: ["ads.book"], audience: "seller" },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

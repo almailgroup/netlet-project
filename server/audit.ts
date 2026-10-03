@@ -43,7 +43,10 @@ export type AuditAction =
   /* An affiliate approved, suspended, or given a new rate (3.7). */
   | "affiliate.update"
   /* Money sent to a seller (3.3.21). */
-  | "payout.record";
+  | "payout.record"
+  /* A placement booked, or stopped (3.3.15): money the store commits to spend. */
+  | "ads.book"
+  | "ads.cancel";
 
 export type AuditActor = {
   id?: number | null;
@@ -54,7 +57,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "placement";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;

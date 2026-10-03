@@ -13,9 +13,10 @@
  * first's run, finds nothing outstanding, and is refused.
  */
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
+import { adBookings, orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
+import { bookingRoom, feeAccrued, feeCeiling, kuwaitToday } from "../shared/commerce/adBookings.js";
 import { lineOutcome } from "../shared/commerce/finance.js";
-import { batchFor, maskIban, MAX_BANK_REFERENCE, type Batch, type Obligation } from "../shared/commerce/payoutRuns.js";
+import { batchFor, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../shared/commerce/payoutRuns.js";
 import { payoutDue } from "../shared/commerce/payoutSchedule.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { fromFils, toFils } from "../shared/money.js";
@@ -93,6 +94,63 @@ async function ledgerFor(db: Db | Tx, vendorId: number | undefined, now: Date) {
   return { obligations, paid };
 }
 
+/**
+ * Every placement's fee as the ledger sees it (3.3.15): what it has accrued by
+ * today, the most it can still cost, and what runs have already taken.
+ */
+async function feesFor(db: Db | Tx, vendorId: number | undefined, now: Date) {
+  const today = kuwaitToday(now);
+  const bookings = await db
+    .select({
+      id: adBookings.id,
+      vendorId: adBookings.vendorId,
+      startsOn: adBookings.startsOn,
+      endsOn: adBookings.endsOn,
+      dailyRate: adBookings.dailyRate,
+      cancelledOn: adBookings.cancelledOn,
+    })
+    .from(adBookings)
+    .where(vendorId === undefined ? undefined : eq(adBookings.vendorId, vendorId));
+  const taken = await db
+    .select({ bookingId: payoutRunItems.bookingId, amount: sql<string>`sum(${payoutRunItems.amount})` })
+    .from(payoutRunItems)
+    .where(sql`${payoutRunItems.bookingId} is not null`)
+    .groupBy(payoutRunItems.bookingId);
+  const deducted = new Map(taken.map(row => [row.bookingId!, toFils(row.amount)]));
+
+  const bySeller = new Map<number, (FeeCharge & { ceilingFils: bigint })[]>();
+  for (const booking of bookings) {
+    const held = bySeller.get(booking.vendorId) ?? [];
+    held.push({
+      bookingId: booking.id,
+      reference: feeReference(booking.id),
+      accruedFils: feeAccrued(booking, today),
+      deductedFils: deducted.get(booking.id) ?? 0n,
+      ceilingFils: feeCeiling(booking),
+    });
+    bySeller.set(booking.vendorId, held);
+  }
+  return bySeller;
+}
+
+/**
+ * What a seller can still commit to placements, in fils (3.3.15): every
+ * order's money not yet paid to them, due or not, less what their bookings can
+ * still cost beyond what runs have already taken. Read inside the booking's
+ * transaction, under the seller's row lock, so two bookings cannot both spend
+ * the same earnings.
+ */
+export async function placementRoom(tx: Db | Tx, vendorId: number, now: Date): Promise<bigint> {
+  const { obligations, paid } = await ledgerFor(tx, vendorId, now);
+  const paidHere = paid.get(vendorId) ?? new Map<number, bigint>();
+  let outstanding = 0n;
+  for (const obligation of obligations.get(vendorId)?.values() ?? []) {
+    outstanding += obligation.earnedFils - (paidHere.get(obligation.orderId) ?? 0n);
+  }
+  const fees = (await feesFor(tx, vendorId, now)).get(vendorId) ?? [];
+  return bookingRoom(outstanding, fees.map(fee => ({ ceilingFils: fee.ceilingFils, deductedFils: fee.deductedFils })));
+}
+
 export type ReadyBatch = {
   vendorId: number;
   vendorName: string;
@@ -100,7 +158,7 @@ export type ReadyBatch = {
   iban: string | null;
   total: string;
   payable: boolean;
-  lines: { orderId: number; reference: string; amount: string; kind: "payout" | "clawback" }[];
+  lines: { orderId: number | null; reference: string; amount: string; kind: "payout" | "clawback" | "fee" }[];
 };
 
 function shape(batch: Batch) {
@@ -117,7 +175,9 @@ export async function readyBatches(actor: Actor, now = new Date()): Promise<Read
   const db = await getDb();
   if (!db) return [];
   const { obligations, paid } = await ledgerFor(db, scope, now);
-  const sellerIds = [...obligations.keys()];
+  const fees = await feesFor(db, scope, now);
+  /* A seller with a placement and no sales still has a batch: the fee it owes. */
+  const sellerIds = [...new Set([...obligations.keys(), ...fees.keys()])];
   if (sellerIds.length === 0) return [];
   const sellers = await db
     .select({ id: vendors.id, name: vendors.name, iban: vendors.payoutIban })
@@ -127,7 +187,7 @@ export async function readyBatches(actor: Actor, now = new Date()): Promise<Read
 
   return sellerIds
     .map(sellerId => {
-      const batch = batchFor([...obligations.get(sellerId)!.values()], paid.get(sellerId) ?? new Map());
+      const batch = batchFor([...(obligations.get(sellerId)?.values() ?? [])], paid.get(sellerId) ?? new Map(), fees.get(sellerId) ?? []);
       const seller = byId.get(sellerId);
       return {
         vendorId: sellerId,
@@ -165,7 +225,8 @@ export async function recordPayout(actor: Actor, vendorId: number, bankReference
     if (!seller) throw new PayoutRefused("payouts.notFound");
 
     const { obligations, paid } = await ledgerFor(tx, vendorId, now);
-    const batch = batchFor([...(obligations.get(vendorId)?.values() ?? [])], paid.get(vendorId) ?? new Map());
+    const fees = (await feesFor(tx, vendorId, now)).get(vendorId) ?? [];
+    const batch = batchFor([...(obligations.get(vendorId)?.values() ?? [])], paid.get(vendorId) ?? new Map(), fees);
     if (!batch.payable) throw new PayoutRefused("payouts.nothingDue");
 
     const [written] = await tx
@@ -175,6 +236,7 @@ export async function recordPayout(actor: Actor, vendorId: number, bankReference
     await tx.insert(payoutRunItems).values(batch.lines.map(line => ({
       runId: written.id,
       orderId: line.orderId,
+      bookingId: line.bookingId,
       orderReference: line.reference,
       vendorId,
       amount: fromFils(line.amountFils),

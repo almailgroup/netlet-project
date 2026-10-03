@@ -146,6 +146,22 @@ export async function listProducts(
   return rows.map(row => shape(row, vendorById, categoryById, options.locale ?? "en"));
 }
 
+/**
+ * Named products, in the order named, dropping any the shelf would not show —
+ * a draft, a suspended store's. What a sponsored placement draws (3.3.15).
+ */
+export async function listProductsByIds(ids: number[], locale: LocalePick = "en"): Promise<Product[]> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return [];
+  const rows = await publishedCatalog({ ids, limit: ids.length });
+  const { vendorById, categoryById } = await contextFor(db, rows);
+  const byId = new Map(rows.map(row => [row.id, row]));
+  return ids.flatMap(id => {
+    const row = byId.get(id);
+    return row ? [shape(row, vendorById, categoryById, locale)] : [];
+  });
+}
+
 /** One product by its slug, or null when nothing published answers to it. */
 export async function getProductByHandle(
   handle: string,

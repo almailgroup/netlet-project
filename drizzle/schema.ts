@@ -21,6 +21,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -37,6 +38,7 @@ import { notificationKinds } from "../shared/customer.js";
 import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
 import type { SizeChart } from "../shared/commerce/sizeGuide.js";
+import { AD_SLOTS } from "../shared/commerce/adBookings.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -45,6 +47,7 @@ export const localeCode = pgEnum("locale_code", ["en", "ar"]);
 export const wishlistVisibility = pgEnum("wishlist_visibility", ["private", "public"]);
 /* What a variant's price is quoted against. `each` is every product today. */
 export const sellUnit = pgEnum("sell_unit", sellUnits);
+export const adSlot = pgEnum("ad_slot", AD_SLOTS);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
 /**
@@ -2367,6 +2370,42 @@ export const pointEntries = pgTable(
 );
 
 /**
+ * A seller's booked placement (3.3.15): one product, one place, a run of
+ * Kuwaiti days. The rules are `shared/commerce/adBookings.ts`.
+ *
+ * The rate is frozen here for the reason an order's commission rate is, and
+ * the product's title beside it so the booking still reads after the product
+ * is renamed or deleted. Cancelling records the day rather than deleting the
+ * row: a booking that ran three days and was then stopped still owes those
+ * three days, and the payout run reads them from here.
+ */
+export const adBookings = pgTable(
+  "ad_bookings",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    slot: adSlot("slot").notNull(),
+    /** The department a `department` booking tops, frozen from the product at booking. */
+    categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    endsOn: date("ends_on", { mode: "string" }).notNull(),
+    dailyRate: numeric("daily_rate", { precision: 12, scale: 3 }).notNull(),
+    /** The full price when booked, for the record; what is charged is what ran. */
+    total: numeric("total", { precision: 12, scale: 3 }).notNull(),
+    cancelledOn: date("cancelled_on", { mode: "string" }),
+    cancelledBy: integer("cancelled_by").references(() => users.id, { onDelete: "set null" }),
+    bookedBy: integer("booked_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("ad_bookings_slot_idx").on(table.slot, table.startsOn, table.endsOn),
+    index("ad_bookings_vendor_idx").on(table.vendorId, table.id),
+  ],
+);
+
+/**
  * Payout runs (3.3.21): money NetLet sent a seller, one row per transfer.
  *
  * What a seller is owed is always recomputed from the frozen order lines;
@@ -2399,13 +2438,21 @@ export const payoutRunItems = pgTable(
     id: serial("id").primaryKey(),
     runId: integer("run_id").notNull().references(() => payoutRuns.id, { onDelete: "cascade" }),
     orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    /** What the line was: an order's reference, or `AD-<id>` for a placement fee. */
     orderReference: varchar("order_reference", { length: 24 }).notNull(),
     vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    /**
+     * A placement fee taken off this run (3.3.15), as a negative amount, in
+     * place of an order. Exactly one of this and `orderId` is set on a row
+     * written after placements existed.
+     */
+    bookingId: integer("booking_id").references(() => adBookings.id, { onDelete: "set null" }),
     amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
   },
   table => [
     index("payout_run_items_order_idx").on(table.orderId, table.vendorId),
     uniqueIndex("payout_run_items_run_order_unique").on(table.runId, table.orderId),
+    uniqueIndex("payout_run_items_run_booking_unique").on(table.runId, table.bookingId),
   ],
 );
 

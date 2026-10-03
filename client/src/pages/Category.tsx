@@ -11,6 +11,7 @@
  * rather than an assumed one.
  */
 import { useBuyNow } from "@/hooks/useBuyNow";
+import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
@@ -261,6 +262,27 @@ export default function Category() {
                   {t("browse.clearAll")}
                 </button>
               </div>
+            ) : null}
+
+            {/* Paid placements for this department (3.3.15): a strip of their
+                own above the grid, so the grid stays the order the shopper chose. */}
+            {slug !== "all" ? (
+              <SponsoredShelf
+                slot="department"
+                departmentSlug={slug}
+                layout="strip"
+                saved={savedIds}
+                onSave={product => {
+                  const wasSaved = savedIds.includes(product.id);
+                  toggleSaved(product.id);
+                  toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
+                }}
+                onDetails={openProduct}
+                onQuickView={setQuickProduct}
+                onAdd={(product, quantity) => void addToCart(product, quantity)}
+                onBuyNow={(product, quantity) => void buyNow(product, quantity)}
+                isAdding={cartLoading}
+              />
             ) : null}
 
             {isLoading ? (

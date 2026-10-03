@@ -25,6 +25,10 @@
  * the day payout runs were recorded, and the reason the weekly report could
  * never show a week below zero until there was something to reverse against.
  *
+ * A placement fee (3.3.15) comes off the same way: whatever a booking has
+ * accrued and no run has yet taken is a negative line, `kind: "fee"`, and
+ * like a clawback it never waits for a due date — it is already owed.
+ *
  * A batch whose clawbacks outweigh what is due is not paid. Nothing is sent,
  * the debt carries to the next batch, and the page says how much NetLet is
  * owed rather than inventing a negative transfer.
@@ -41,11 +45,25 @@ export type Obligation = {
 };
 
 export type BatchLine = {
-  orderId: number;
+  /** The order the line settles, or null on a placement fee. */
+  orderId: number | null;
+  /** The placement a fee line charges for, or null on an order's line. */
+  bookingId: number | null;
   reference: string;
-  /** Positive pays the seller; negative takes back a refund already paid out. */
+  /** Positive pays the seller; negative takes back a refund already paid out, or a fee. */
   amountFils: bigint;
-  kind: "payout" | "clawback";
+  kind: "payout" | "clawback" | "fee";
+};
+
+/** One placement's fee as the ledger sees it. */
+export type FeeCharge = {
+  bookingId: number;
+  /** `AD-<id>`, which is what the run records in place of an order reference. */
+  reference: string;
+  /** What it has cost so far, in fils, per `feeAccrued`. */
+  accruedFils: bigint;
+  /** What runs have already taken for it, stored negative. */
+  deductedFils: bigint;
 };
 
 export type Batch = {
@@ -64,18 +82,28 @@ export type Batch = {
  * waits: a refund is already a fact, and carrying it would pay out money the
  * seller no longer earned.
  */
-export function batchFor(obligations: Obligation[], paidFils: ReadonlyMap<number, bigint>): Batch {
+export function batchFor(obligations: Obligation[], paidFils: ReadonlyMap<number, bigint>, fees: FeeCharge[] = []): Batch {
   const lines: BatchLine[] = [];
   for (const obligation of [...obligations].sort((a, b) => a.orderId - b.orderId)) {
     const outstanding = obligation.earnedFils - (paidFils.get(obligation.orderId) ?? 0n);
     if (outstanding > 0n && obligation.due.state === "due") {
-      lines.push({ orderId: obligation.orderId, reference: obligation.reference, amountFils: outstanding, kind: "payout" });
+      lines.push({ orderId: obligation.orderId, bookingId: null, reference: obligation.reference, amountFils: outstanding, kind: "payout" });
     } else if (outstanding < 0n) {
-      lines.push({ orderId: obligation.orderId, reference: obligation.reference, amountFils: outstanding, kind: "clawback" });
+      lines.push({ orderId: obligation.orderId, bookingId: null, reference: obligation.reference, amountFils: outstanding, kind: "clawback" });
     }
+  }
+  for (const fee of [...fees].sort((a, b) => a.bookingId - b.bookingId)) {
+    /* `deducted` is negative, so this is accrued less what was already taken. */
+    const owed = fee.accruedFils + fee.deductedFils;
+    if (owed > 0n) lines.push({ orderId: null, bookingId: fee.bookingId, reference: fee.reference, amountFils: -owed, kind: "fee" });
   }
   const totalFils = lines.reduce((sum, line) => sum + line.amountFils, 0n);
   return { lines, totalFils, payable: totalFils > 0n };
+}
+
+/** What a placement fee is called on a payout: `AD-12`. */
+export function feeReference(bookingId: number): string {
+  return `AD-${bookingId}`;
 }
 
 /** An IBAN as a seller sees their own on a shared screen: the country and the last four. */

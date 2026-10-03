@@ -107,8 +107,14 @@ function BatchCard({ batch, canRecord }: { batch: Batch; canRecord: boolean }) {
       {!batch.payable ? <p className="mt-1 text-[12px] font-bold text-[#8c2f22]">{t("admin.payoutOwedBack", { amount: amount(batch.total.replace(/^-/, "")) })}</p> : null}
       <ul className="mt-3 divide-y divide-[#f0f2f6] text-[12px]">
         {batch.lines.map(line => (
-          <li key={line.orderId} className="flex justify-between gap-3 py-1.5">
-            <span><bdi dir="ltr">{line.reference}</bdi>{line.kind === "clawback" ? <span className="ms-2 font-bold text-[#8c2f22]">{t("admin.payoutClawback")}</span> : null}</span>
+          /* By reference, which is unique within a batch: a placement fee has no
+             order id to key on. */
+          <li key={line.reference} className="flex justify-between gap-3 py-1.5">
+            <span>
+              <bdi dir="ltr">{line.reference}</bdi>
+              {line.kind === "clawback" ? <span className="ms-2 font-bold text-[#8c2f22]">{t("admin.payoutClawback")}</span> : null}
+              {line.kind === "fee" ? <span className="ms-2 font-bold text-[#536b8c]">{t("admin.payoutPlacementFee")}</span> : null}
+            </span>
             <bdi dir="ltr" className="font-bold">{amount(line.amount)}</bdi>
           </li>
         ))}

@@ -1355,6 +1355,27 @@ because the CSP has to list it once `MEDIA_HOST` narrows images.
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
 
+## Paid placements
+
+`shared/commerce/adBookings.ts` is the rule, pure; `server/adBookings.ts` the
+database half. A store's owner books one product into a place by the Kuwaiti
+day — the home shelf or the top of its department — each holding a fixed
+number a day. **The fee accrues a day at a time and comes off the payout run**
+as a `fee` line (`payout_run_items.booking_id`), only for days the placement
+ran: cancelling before it starts is free, cancelling while it runs ends it
+today and charges today. **A store books against what it has earned**, less
+what its other bookings can still cost — otherwise NetLet extends credit to a
+store with no sales. Bookings serialise on one advisory lock (capacity) and
+take the store's row `for update` (earnings), the lock a payout run takes.
+
+Disclosed on the shelf and on every card, and never folded into a sort: a
+department's paid products are a strip above a grid that stays in the
+shopper's order. The shelf draws through `publishedCatalog`, so it cannot show
+what the shop would not. **The `ads` switch stops new bookings and nothing
+else** — unlike every other rail, the sponsored shelf is not gated on it,
+because hiding a placement that is still being charged for would strand an
+obligation.
+
 ## Payout runs
 
 `shared/commerce/payoutRuns.ts` is the batch and is pure; `server/payoutRuns.ts`

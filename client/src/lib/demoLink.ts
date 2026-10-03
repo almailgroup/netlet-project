@@ -451,6 +451,16 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { rows: [], total: 0, page: 1, pageSize: 20 };
     case "finance.recordPayout":
       throw new Error("payouts.record");
+    /* Placements (3.3.15): nobody has paid for one in the demo, so the
+       shelves are absent; booking is an owner's and the demo is a manager. */
+    case "ads.sponsored":
+      return [];
+    case "ads.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "ads.quote":
+    case "ads.book":
+    case "ads.cancel":
+      throw new Error("ads.notYours");
     /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
        join with and no link anybody arrived through. */
     case "affiliates.lookup":
