@@ -2,6 +2,7 @@
  * NetLet storefront: Kuwait-focused discovery with a live product catalog,
  * persistent bag, native checkout mockup, and responsive marketplace rails.
  */
+import { useBuyNow } from "@/hooks/useBuyNow";
 import { useAuth } from "@/hooks/useAuth";
 import { Thumb } from "@/components/product/Thumb";
 import { LiveSearch } from "@/components/search/LiveSearch";
@@ -326,19 +327,9 @@ export default function Home() {
   const selectCategory = (category: string) => navigate(`/category/${categorySlug(category)}`);
   const showAll = () => navigate("/category/all");
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
-  const addProduct = async (product: Product, quantity = 1) => { const variant = product.variants[0]; if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable")); try { await addItem(variant.id, quantity); toast.success(quantity > 1 ? t("cart.addedQuantity", { count: String(quantity), name: product.title }) : t("cart.added", { name: product.title })); } catch { toast.error(t("cart.addFailed")); } };
-  // Buy now is add-to-cart plus the checkout step, not a separate path: the
-  // cart is where quantity, delivery and payment are resolved.
-  const buyProduct = async (product: Product, quantity = 1) => {
-    const variant = product.variants[0];
-    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
-    try {
-      await addItem(variant.id, quantity);
-      window.location.assign(appPath("/checkout"));
-    } catch {
-      toast.error(t("cart.buyFailed"));
-    }
-  };
+  const addProduct = async (product: Product, quantity = 1) => { const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0]; if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable")); try { await addItem(variant.id, quantity); toast.success(quantity > 1 ? t("cart.addedQuantity", { count: String(quantity), name: product.title }) : t("cart.added", { name: product.title })); } catch { toast.error(t("cart.addFailed")); } };
+  // Buy now is add-to-cart plus the checkout step, not a separate path (3.2.9).
+  const buyProduct = useBuyNow();
   /*
    * Signed in, this opens the profile; signed out, it opens the dialog.
    *

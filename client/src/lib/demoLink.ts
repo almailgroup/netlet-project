@@ -442,6 +442,15 @@ function resolve(path: string, rawInput: unknown): unknown {
       return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
     case "features.set":
       throw new Error("platform.configure");
+    /* Payout runs (3.3.21): nothing is ever paid in the demo, so nothing is
+       due and nothing has been sent. Recording is NetLet's and the demo
+       manager is refused, as a real one would be. */
+    case "finance.payoutBatches":
+      return [];
+    case "finance.payoutHistory":
+      return { rows: [], total: 0, page: 1, pageSize: 20 };
+    case "finance.recordPayout":
+      throw new Error("payouts.record");
     /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
        join with and no link anybody arrived through. */
     case "affiliates.lookup":

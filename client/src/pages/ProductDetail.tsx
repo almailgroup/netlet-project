@@ -874,7 +874,7 @@ export default function ProductDetail() {
   const handle = params?.handle ?? "";
   const { data: product, isLoading, error } = trpc.commerce.products.byHandle.useQuery({ handle }, { enabled: Boolean(handle) });
   const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 24 });
-  const { addItem, openCart, loading: cartLoading } = useCart();
+  const { addItem, loading: cartLoading } = useCart();
   const { savedIds, toggleSaved } = useCustomer();
   const { direction, t } = useTranslation();
   /* Both are switchable (2.3); the server refuses either way, this only stops offering it. */
@@ -952,6 +952,21 @@ export default function ProductDetail() {
       toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
     } catch {
       toast.error(t("cart.addFailed"));
+    }
+  };
+  /*
+   * Buy now (3.2.9): the same choice as Add to cart sent to the other
+   * destination — the bag is skipped, not the basket. The bag drawer is not
+   * revealed on the way past, and the move is in-app rather than a reload, so
+   * the press lands on checkout with the item already in it.
+   */
+  const buyNow = async () => {
+    if (!product || !selectedVariant?.availableForSale) return;
+    try {
+      await addItem(selectedVariant.id, quantity, false, chosenAddons);
+      navigate("/checkout");
+    } catch {
+      toast.error(t("cart.buyFailed"));
     }
   };
   // The cart drawer lives on the home route, and `isOpen` is held in the cart
@@ -1095,6 +1110,10 @@ export default function ProductDetail() {
               <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
+            {/* Under the bag button rather than beside it: the bag stays the
+                ordinary act, and a second filled button the same size would
+                leave the shopper guessing which one buys. */}
+            <button onClick={() => void buyNow()} disabled={!inStock || cartLoading} className="glass pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border border-[#0a285a]/20 px-5 py-3.5 text-[14px] font-bold text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-50"><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
 
             {selectedVariant?.preorder
               ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>
@@ -1132,7 +1151,7 @@ export default function ProductDetail() {
           onDetails={item => navigate(`/products/${encodeURIComponent(item.handle)}`)}
           onQuickView={setQuickProduct}
           onAdd={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity); }}
-          onBuyNow={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity).then(openCart); }}
+          onBuyNow={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity, false).then(() => navigate("/checkout")); }}
           isAdding={cartLoading}
         />
 

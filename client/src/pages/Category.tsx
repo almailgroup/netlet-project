@@ -10,6 +10,7 @@
  * are derived from the products on the page, so they describe this catalog
  * rather than an assumed one.
  */
+import { useBuyNow } from "@/hooks/useBuyNow";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
@@ -140,7 +141,9 @@ export default function Category() {
     window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   const addToCart = async (product: Product, quantity = 1) => {
-    const variant = product.variants[0];
+    /* The first one that can be bought, not merely the first: a sold-out
+       small should not refuse a shopper the medium beside it. */
+    const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
       await addItem(variant.id, quantity);
@@ -154,16 +157,7 @@ export default function Category() {
     }
   };
 
-  const buyNow = async (product: Product, quantity = 1) => {
-    const variant = product.variants[0];
-    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
-    try {
-      await addItem(variant.id, quantity);
-      window.location.assign(appPath("/checkout"));
-    } catch {
-      toast.error(t("cart.buyFailed"));
-    }
-  };
+  const buyNow = useBuyNow();
 
   /** The removable chips above the grid, one per selected value. */
   const chips: { key: string; label: string; clear: () => void }[] = [

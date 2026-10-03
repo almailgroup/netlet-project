@@ -10,6 +10,7 @@
  * no specification tabs and no reviews: anything that needs that much room is
  * what the full page is for, and the link to it is right there.
  */
+import { useBuyNow } from "@/hooks/useBuyNow";
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
@@ -54,11 +55,13 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const image = product.images[imageIndex] ?? product.images[0];
   const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
+  const buyNow = useBuyNow();
   const add = async (thenCheckout: boolean) => {
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
+    /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
+    if (thenCheckout) return buyNow(product, quantity, variant.id);
     try {
       await addItem(variant.id, quantity);
-      if (thenCheckout) return window.location.assign(appPath("/checkout"));
       toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
       onClose();
     } catch {

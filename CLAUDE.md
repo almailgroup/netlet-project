@@ -1314,6 +1314,41 @@ Two rules there came from looking at the page rather than from the design:
 `need` to accept a list meaning "any of": no single capability is shared by the
 seller who files, the company that answers and NetLet that decides.
 
+## Fast checkout
+
+**Buy now is one hook, `useBuyNow`.** Four pages had a copy and the copies
+shared three faults: each opened the bag drawer on the way past, each then
+reloaded the whole app with `window.location.assign` — on the press that exists
+to be fast — and each took `variants[0]` even when that one was sold out and the
+next was not. The product page had no Buy now at all, which was the one page
+where a shopper has actually decided. The bag is skipped, not the basket: the
+item goes in like any other, so leaving checkout finds it waiting.
+
+**The address book fills checkout.** Saved addresses are one-tap choices, the
+one used last on this device is chosen already (`browserStore`), and picking
+one sets the governorate as well, which is what prices delivery. Edits after
+picking are for this order only. A first address is saved *after* the order
+succeeds, never instead of it, so a refusal from the book's own rules costs the
+shopper nothing they asked for. Signing in happens on the page and keeps the
+basket, because `CartContext` already adopts the guest bag on sign-in.
+
+## Payout runs
+
+`shared/commerce/payoutRuns.ts` is the batch and is pure; `server/payoutRuns.ts`
+writes the ledger. **Nobody assembles a batch**: it is every order the
+schedule says has come due and that has not been paid. **Outstanding is earned
+minus paid**, always recomputed against `payout_run_items`, and that one
+subtraction is the clawback — a refund after a payout drops earned below paid
+and the difference comes off the next batch. A batch that nets negative sends
+nothing and says what the store owes; there is no negative transfer.
+
+Recording recomputes the batch inside the transaction under a `for update` lock
+on the seller's row, so two administrators pressing at once cannot pay twice
+and a refund landed after the page drew is in what gets recorded. The IBAN and
+the seller's name are frozen on the run. The schedule on `/admin/payouts` and
+the finance panel reads the ledger too, so an order already paid says "Sent"
+rather than "Overdue".
+
 ## Payouts and placement
 
 `shared/commerce/payouts.ts` reads what each seller is owed, week by week, off
@@ -2248,6 +2283,14 @@ for setting a database up from the Supabase dashboard with nothing installed;
 `node scripts/build-bootstrap.mjs` regenerates it from `drizzle/*.sql` and
 `shared/commerce/departments.ts` — run that after a schema change rather than
 hand-editing, which is how it ended up two migrations behind.
+
+**An index a later migration drops is never created.** Created-then-dropped
+is the same as never created on any database, and only the first can fail:
+0003 made SKUs unique across the marketplace and 0033 dropped that, so a
+re-run on a database where two sellers shared a SKU rebuilt the old index on
+the way past, failed on the duplicate, and — one transaction — applied nothing,
+new migrations included. A clean database never showed it. `bootstrap.test.ts`
+now runs the file again on exactly that database.
 
 **Its output is idempotent, and that is the point.** As plain migrations it
 only worked on an empty database, so a database that was behind needed

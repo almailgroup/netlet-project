@@ -9,8 +9,8 @@
  * inside it reach its module-local `getDb`, which nothing outside can
  * redirect, so anything living there cannot be tested against a real database.
  */
-import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
-import { orderItems, orders, vendors } from "../drizzle/schema.js";
+import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import { orderItems, orders, payoutRunItems, vendors } from "../drizzle/schema.js";
 import { payoutsByVendor, totalOwed, type PayoutLine } from "../shared/commerce/payouts.js";
 import { payoutDue } from "../shared/commerce/payoutSchedule.js";
 import { lineOutcome } from "../shared/commerce/finance.js";
@@ -180,12 +180,26 @@ export async function payoutDueList(actor: Actor, limit = 200) {
     });
   }
 
+  /* What has already been sent against each (3.3.21), so an order paid out is
+     not still listed as coming — the schedule and the ledger answer one
+     question and must not disagree on one page. */
+  const orderIds = [...new Set([...byKey.values()].map(entry => entry.orderId))];
+  const paidRows = orderIds.length
+    ? await db
+        .select({ orderId: payoutRunItems.orderId, vendorId: payoutRunItems.vendorId, paid: sql<string>`sum(${payoutRunItems.amount})` })
+        .from(payoutRunItems)
+        .where(inArray(payoutRunItems.orderId, orderIds))
+        .groupBy(payoutRunItems.orderId, payoutRunItems.vendorId)
+    : [];
+  const paid = new Map(paidRows.map(row => [`${row.orderId}:${row.vendorId}`, toFils(row.paid)]));
+
   return [...byKey.values()].map(entry => ({
     orderId: entry.orderId,
     reference: entry.reference,
     vendorId: entry.vendorId,
     vendorName: entry.vendorName?.trim() || `#${entry.vendorId ?? "—"}`,
     owed: fromFils(entry.owed),
+    paid: fromFils(paid.get(`${entry.orderId}:${entry.vendorId}`) ?? 0n),
     due: entry.due,
   }));
 }

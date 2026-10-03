@@ -9,6 +9,8 @@
 import { z } from "zod";
 import { financeReport } from "../finance.js";
 import { payoutDueList, payoutReport, sellersUnderPlatformLicence } from "../payouts.js";
+import { payoutHistory, PayoutRefused, readyBatches, recordPayout } from "../payoutRuns.js";
+import { rowId } from "../_core/schemas.js";
 import { TRPCError } from "@trpc/server";
 import { resolveActor } from "../inventory.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
@@ -22,6 +24,9 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
+    if (error instanceof PayoutRefused) {
+      throw new TRPCError({ code: error.reason === "payouts.notFound" ? "NOT_FOUND" : error.reason === "payouts.nothingDue" ? "CONFLICT" : "BAD_REQUEST", message: error.reason });
+    }
     const message = error instanceof Error ? error.message : "";
     if (message.startsWith("FORBIDDEN:")) {
       throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
@@ -68,6 +73,19 @@ export const financeRouter = router({
     .input(z.object({ limit: z.number().int().min(1).max(500).optional() }).optional())
     .query(async ({ ctx, input }) => guard(async () =>
       payoutDueList(await resolveActor(ctx.user), input?.limit ?? 200))),
+
+  /**
+   * Payout runs (3.3.21): each seller's next batch, assembled by the schedule;
+   * recording one as sent; and the payouts already made. A store's manager
+   * reads their own; recording is NetLet's alone.
+   */
+  payoutBatches: protectedProcedure.query(async ({ ctx }) => guard(async () => readyBatches(await resolveActor(ctx.user)))),
+  recordPayout: protectedProcedure
+    .input(z.object({ vendorId: rowId, bankReference: z.string().trim().min(1).max(80) }))
+    .mutation(async ({ ctx, input }) => guard(async () => recordPayout(await resolveActor(ctx.user), input.vendorId, input.bankReference))),
+  payoutHistory: protectedProcedure
+    .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () => payoutHistory(await resolveActor(ctx.user), input ?? {}))),
 
   /** Which sellers trade under NetLet's own licence. Admin-only. */
   platformLicensed: protectedProcedure

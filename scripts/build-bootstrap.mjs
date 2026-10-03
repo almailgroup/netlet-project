@@ -115,12 +115,44 @@ function idempotent(statement) {
   return sql;
 }
 
+const statementsOf = name => readFileSync(path.join(migrationsDir, name), "utf-8")
+  .split("--> statement-breakpoint")
+  .map(statement => statement.trim())
+  .filter(Boolean);
+
+/*
+ * An index a later migration drops is never created.
+ *
+ * Created-then-dropped is, on any database, the same as never created — and
+ * only the first can fail. `product_variants_sku_unique` is why: 0003 made SKUs
+ * unique across the whole marketplace and 0033 dropped that for a per-product
+ * index, because two sellers may both type "BATT-1". Re-run on a database where
+ * two sellers had done exactly that, the file tried to rebuild the old index
+ * first, failed on the duplicate, and — being one transaction — applied
+ * nothing at all, new migrations included. A clean database never showed it;
+ * a database being used for what the schema now allows did.
+ *
+ * Only a drop that comes *after* the create counts, so an index dropped and
+ * then made again under the same name is still made.
+ */
+const ordered = migrations.flatMap(name => statementsOf(name).map(sql => ({ name, sql })));
+const indexName = sql => sql.match(/^CREATE (?:UNIQUE )?INDEX "([^"]+)"/)?.[1] ?? null;
+const droppedLater = new Set();
+ordered.forEach(({ sql }, position) => {
+  const created = indexName(sql);
+  if (!created) return;
+  if (ordered.slice(position + 1).some(later => later.sql.startsWith(`DROP INDEX "${created}"`))) droppedLater.add(position);
+});
+
+let position = 0;
 const sections = migrations.map(name => {
-  const body = readFileSync(path.join(migrationsDir, name), "utf-8")
-    .split("--> statement-breakpoint")
-    .map(statement => statement.trim())
-    .filter(Boolean)
-    .map(idempotent)
+  const body = statementsOf(name)
+    .map(sql => {
+      const skip = droppedLater.has(position++);
+      return skip
+        ? `-- ${indexName(sql)}: created here and dropped by a later migration, so never created.`
+        : idempotent(sql);
+    })
     .join("\n");
   return `\n-- ===== ${name} =====\n${body}\n`;
 });

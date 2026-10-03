@@ -2349,6 +2349,49 @@ export const pointEntries = pgTable(
 );
 
 /**
+ * Payout runs (3.3.21): money NetLet sent a seller, one row per transfer.
+ *
+ * What a seller is owed is always recomputed from the frozen order lines;
+ * this records what was *paid*, so outstanding is earned minus paid and a
+ * refund after a payout comes off the next one. The seller's name and the IBAN
+ * the money went to are frozen, because a payout is a statement about one
+ * transfer to one account, and the store editing its IBAN next month does not
+ * change where last month's money went.
+ */
+export const payoutRuns = pgTable(
+  "payout_runs",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    vendorName: varchar("vendor_name", { length: 255 }).notNull(),
+    total: numeric("total", { precision: 12, scale: 3 }).notNull(),
+    /** The bank's own reference for the transfer, as the person who sent it typed it. */
+    bankReference: varchar("bank_reference", { length: 80 }).notNull(),
+    ibanUsed: varchar("iban_used", { length: 34 }),
+    paidBy: integer("paid_by").references(() => users.id, { onDelete: "set null" }),
+    paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("payout_runs_vendor_idx").on(table.vendorId, table.paidAt)],
+);
+
+/** What one payout run paid, or took back, against each order. Signed. */
+export const payoutRunItems = pgTable(
+  "payout_run_items",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id").notNull().references(() => payoutRuns.id, { onDelete: "cascade" }),
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    orderReference: varchar("order_reference", { length: 24 }).notNull(),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+  },
+  table => [
+    index("payout_run_items_order_idx").on(table.orderId, table.vendorId),
+    uniqueIndex("payout_run_items_run_order_unique").on(table.runId, table.orderId),
+  ],
+);
+
+/**
  * Affiliates (3.7): accounts approved to earn on the sales their links bring.
  *
  * One per account. The code is derived from the account id, never stored, so
@@ -2535,6 +2578,7 @@ export type ConversationRow = typeof conversations.$inferSelect;
 export type ReturnRequestRow = typeof returnRequests.$inferSelect;
 export type FeatureSwitchRow = typeof featureSwitches.$inferSelect;
 export type AffiliateRow = typeof affiliates.$inferSelect;
+export type PayoutRunRow = typeof payoutRuns.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
 export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

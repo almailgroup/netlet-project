@@ -19,11 +19,16 @@ import { giftCardPayment, settle } from "@shared/commerce/vouchers";
 import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
 import { ItemDestinations } from "@/components/cart/ItemDestinations";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import AuthDialog from "@/components/auth/AuthDialog";
+import { readStored, writeStored } from "@/lib/browserStore";
 import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ArrowLeft, Check, LoaderCircle, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+
+/** The saved address used last on this device, so the next checkout starts there. */
+const LAST_ADDRESS_KEY = "netlet.checkoutAddress";
 
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
 
@@ -66,21 +71,60 @@ function CheckoutDeliveryZone() {
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const { isArabic, t } = useTranslation();
   const zoneName = (zone: { label: string; labelAr: string }) => (isArabic ? zone.labelAr : zone.label);
-  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")} {t("delivery.awaitingSetup")}</p></div></div></div>;
+  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")}</p></div></div></div>;
 }
 
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
   const { cart } = useCart();
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
   const money = useMoney();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
-  const { isAuthenticated } = useAuth();
-  const { deliveryZoneId } = useCustomer();
+  const { isAuthenticated, user } = useAuth();
+  const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const [, navigate] = useLocation();
   const [form, setForm] = useState({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "" });
+  const [authOpen, setAuthOpen] = useState(false);
+  const zoneLabel = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : null;
+
+  /*
+   * Fast checkout (3.2.9): somebody who has ordered before should not type
+   * their address again. The address book is offered as one-tap choices, the
+   * one used last on this device is chosen already, and picking one fills
+   * every field — including the governorate, which is what prices delivery.
+   * The fields stay editable: a change is for this order and leaves the saved
+   * address alone. A first-time address is saved for next time unless the
+   * shopper unticks it.
+   */
+  const book = trpc.customer.addresses.list.useQuery(undefined, { enabled: isAuthenticated });
+  const [picked, setPicked] = useState<number | "new" | null>(null);
+  const [saveForNext, setSaveForNext] = useState(true);
+  const addAddress = trpc.customer.addresses.add.useMutation();
+  const pickAddress = (address: NonNullable<typeof book.data>[number]) => {
+    setPicked(address.id);
+    setForm({
+      contactName: address.contactName ?? "",
+      contactPhone: address.contactPhone ?? "",
+      addressLine: address.addressLine ?? "",
+      addressNotes: address.addressNotes ?? "",
+    });
+    if (address.governorate) setDeliveryZoneId(address.governorate);
+    writeStored(LAST_ADDRESS_KEY, String(address.id));
+  };
+  useEffect(() => {
+    if (picked !== null || !book.data) return;
+    const remembered = Number(readStored(LAST_ADDRESS_KEY));
+    const choice = book.data.find(address => address.id === remembered) ?? book.data[0];
+    if (choice) pickAddress(choice);
+    else {
+      setPicked("new");
+      /* Nothing saved yet: at least the name the account already carries. */
+      if (user?.name) setForm(current => (current.contactName ? current : { ...current, contactName: user.name ?? "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book.data, picked]);
 
   /*
    * The first thing in NetLet that creates a real order. It is possible only
@@ -89,8 +133,25 @@ export default function Checkout() {
    * that the driver collected.
    */
   const place = trpc.orders.place.useMutation({
-    onSuccess: reply => {
+    onSuccess: async reply => {
       toast.success(t("checkout.placed", { reference: reply.reference }));
+      /* Saved after the order, never instead of it: a refusal here (an address
+         the book's own rules reject) costs the shopper nothing they asked for. */
+      if (isAuthenticated && picked === "new" && saveForNext && form.addressLine.trim()) {
+        try {
+          await addAddress.mutateAsync({
+            label: zoneLabel ?? t("checkout.savedAddressLabel"),
+            contactName: form.contactName.trim() || null,
+            contactPhone: form.contactPhone.trim() || null,
+            governorate: deliveryZoneId ?? null,
+            addressLine: form.addressLine.trim(),
+            addressNotes: form.addressNotes.trim() || null,
+          });
+          void utils.customer.addresses.list.invalidate();
+        } catch {
+          /* The order stands; the next checkout simply asks again. */
+        }
+      }
       /* The basket has become the order, so the drawer's copy of it is stale. */
       void utils.commerce.cart.get.invalidate();
       navigate("/account");
@@ -162,6 +223,7 @@ export default function Checkout() {
 
   return (
     <main className="type-body min-h-screen bg-background text-[#0a285a]">
+      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
       <header className="border-b border-[#d5dfeb] bg-background/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label={t("checkout.return")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><LockKeyhole className="size-4 ink-accent" /> {t("checkout.mockBadge")}</div><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2.5"><ArrowLeft className="size-3.5 rtl:-scale-x-100" /> {t("header.continueShopping")}</a></div></header>
 
       <div className="container py-8 sm:py-12"><div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="type-label tracking-[.16em] text-[#a44a2b] uppercase">{t("checkout.eyebrow")}</p><h1 className="type-display mt-2 text-4xl sm:text-5xl">{t("checkout.title")}</h1><p className="type-body mt-3 max-w-xl text-[#536b8c]">{t("checkout.note")}</p></div><div className="type-label inline-flex w-fit items-center gap-2 rounded-full bg-[#fff0ab] px-3 py-2 tracking-[.08em] text-[#0a285a] uppercase"><PackageCheck className="size-3.5" /> {t("checkout.mockOnly")}</div></div>
@@ -172,8 +234,42 @@ export default function Checkout() {
               wider than a 320px screen, so checkout scrolled sideways. */}
           <section className="min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 shadow-[0_18px_50px_rgba(10,40,90,.05)] sm:p-8">
 	            <div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">1</div><div><h2 className="type-heading text-base">{t("checkout.deliveryDetails")}</h2><p className="type-body text-[#536b8c]">{t("checkout.deliveryQuestion")}</p></div></div>
+	            {/* One tap fills the whole address (3.2.9). */}
+	            {isAuthenticated && (book.data?.length ?? 0) > 0 ? (
+	              <fieldset className="mt-5">
+	                <legend className="type-label text-[#0a285a]">{t("checkout.savedAddresses")}</legend>
+	                <div className="mt-2 flex flex-wrap gap-2">
+	                  {book.data!.map(address => (
+	                    <button
+	                      key={address.id}
+	                      type="button"
+	                      aria-pressed={picked === address.id}
+	                      onClick={() => pickAddress(address)}
+	                      className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === address.id ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a]"}`}
+	                    >
+	                      <bdi>{address.label}</bdi>
+	                    </button>
+	                  ))}
+	                  <button
+	                    type="button"
+	                    aria-pressed={picked === "new"}
+	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "" }); }}
+	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a]"}`}
+	                  >
+	                    {t("checkout.newAddress")}
+	                  </button>
+	                </div>
+	                {typeof picked === "number" ? <p className="type-body mt-2 text-xs text-[#536b8c]">{t("checkout.editForThisOrder")}</p> : null}
+	              </fieldset>
+	            ) : null}
 	            <CheckoutDeliveryZone />
 	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
+	            {isAuthenticated && picked === "new" ? (
+	              <label className="type-body mt-4 flex items-center gap-2 text-[13px] text-[#0a285a]">
+	                <input type="checkbox" checked={saveForNext} onChange={event => setSaveForNext(event.target.checked)} className="size-4 accent-[#0a285a]" />
+	                {t("checkout.saveAddress")}
+	              </label>
+	            ) : null}
             <ItemDestinations />
             <div className="mt-8 border-t border-[#d5dfeb] pt-7"><div className="flex items-center gap-3"><div className="type-label grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">2</div><div><h2 className="type-heading text-base">{t("checkout.paymentMethod")}</h2><p className="type-body text-[#536b8c]">{t("checkout.paymentNote")}</p></div></div>{/* Cash on delivery is the one method NetLet can take today (3.2.2),
                   and it is the only one drawn. The card marks below are what the
@@ -232,8 +328,15 @@ export default function Checkout() {
               {place.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />}
               {t(place.isPending ? "checkout.placing" : "checkout.placeOrder")}
             </button>
+            {/* Signing in here keeps the basket: the bag filled as a guest is
+                the one the account adopts. */}
             {!isAuthenticated ? (
-              <p className="type-label mt-3 text-[#d9e7f7]">{t("checkout.signInToOrder")}</p>
+              <>
+                <p className="type-label mt-3 text-[#d9e7f7]">{t("checkout.signInToOrder")}</p>
+                <button type="button" onClick={() => setAuthOpen(true)} className="glass glass-on-dark type-control pressable mt-3 w-full rounded-full px-5 py-3">
+                  {t("checkout.signInHere")}
+                </button>
+              </>
             ) : null}</aside>
         </div>
 

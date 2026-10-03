@@ -106,7 +106,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "users_email_unique" ON "users" USING btree ("
 -- ===== 0001_late_morph.sql =====
 ALTER TABLE "users" ALTER COLUMN "password_hash" DROP NOT NULL;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "firebase_uid" varchar(128);
-CREATE UNIQUE INDEX IF NOT EXISTS "users_firebase_uid_unique" ON "users" USING btree ("firebase_uid") WHERE "users"."firebase_uid" is not null;
+-- users_firebase_uid_unique: created here and dropped by a later migration, so never created.
 
 -- ===== 0002_gorgeous_iron_monger.sql =====
 CREATE TABLE IF NOT EXISTS "followed_products" (
@@ -250,7 +250,7 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "categories_slug_unique" ON "categories" USING btree ("slug");
 CREATE INDEX IF NOT EXISTS "product_images_product_id_idx" ON "product_images" USING btree ("product_id");
 CREATE INDEX IF NOT EXISTS "product_variants_product_id_idx" ON "product_variants" USING btree ("product_id");
-CREATE UNIQUE INDEX IF NOT EXISTS "product_variants_sku_unique" ON "product_variants" USING btree ("sku");
+-- product_variants_sku_unique: created here and dropped by a later migration, so never created.
 CREATE UNIQUE INDEX IF NOT EXISTS "products_handle_unique" ON "products" USING btree ("handle");
 CREATE INDEX IF NOT EXISTS "products_vendor_id_idx" ON "products" USING btree ("vendor_id");
 CREATE INDEX IF NOT EXISTS "products_category_id_idx" ON "products" USING btree ("category_id");
@@ -1227,6 +1227,49 @@ CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_affiliate_order_unique" ON "poi
 CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_affiliate_line_unique" ON "point_entries" USING btree ("order_item_id") WHERE "point_entries"."reason" = 'affiliate_reversal';
 CREATE INDEX IF NOT EXISTS "point_entries_pot_idx" ON "point_entries" USING btree ("user_id","pot");
 
+-- ===== 0044_massive_ultron.sql =====
+CREATE TABLE IF NOT EXISTS "payout_run_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"run_id" integer NOT NULL,
+	"order_id" integer,
+	"order_reference" varchar(24) NOT NULL,
+	"vendor_id" integer,
+	"amount" numeric(12, 3) NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "payout_runs" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer,
+	"vendor_name" varchar(255) NOT NULL,
+	"total" numeric(12, 3) NOT NULL,
+	"bank_reference" varchar(80) NOT NULL,
+	"iban_used" varchar(34),
+	"paid_by" integer,
+	"paid_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "payout_run_items" ADD CONSTRAINT "payout_run_items_run_id_payout_runs_id_fk" FOREIGN KEY ("run_id") REFERENCES "public"."payout_runs"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_run_items" ADD CONSTRAINT "payout_run_items_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_run_items" ADD CONSTRAINT "payout_run_items_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_runs" ADD CONSTRAINT "payout_runs_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_runs" ADD CONSTRAINT "payout_runs_paid_by_users_id_fk" FOREIGN KEY ("paid_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "payout_run_items_order_idx" ON "payout_run_items" USING btree ("order_id","vendor_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "payout_run_items_run_order_unique" ON "payout_run_items" USING btree ("run_id","order_id");
+CREATE INDEX IF NOT EXISTS "payout_runs_vendor_idx" ON "payout_runs" USING btree ("vendor_id","paid_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1270,6 +1313,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  44 AS migrations_in_this_file,
+  45 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

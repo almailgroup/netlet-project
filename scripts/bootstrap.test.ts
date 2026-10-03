@@ -217,4 +217,26 @@ describe("the bootstrap file, actually executed", () => {
     expect(olderColumns).not.toContain("firebase_uid");
     await older.close();
   }, 120_000);
+
+  /*
+   * A database used for what the current schema allows must still take the
+   * file. 0003 made SKUs unique across the marketplace and 0033 dropped that,
+   * because two sellers may both type "BATT-1" — and a re-run that rebuilt the
+   * old index on the way past failed on exactly that, and, being one
+   * transaction, applied nothing at all. Found by re-running the file against a
+   * database a fuzzer had been at, not by any test before this one.
+   */
+  it("runs again on a database where two sellers share a SKU", async () => {
+    const db = new PGlite();
+    await db.exec(file);
+    await db.exec(`
+      INSERT INTO vendors (slug, name) VALUES ('one', 'One'), ('two', 'Two');
+      INSERT INTO products (vendor_id, handle, title) SELECT id, slug || '-battery', 'Battery' FROM vendors WHERE slug IN ('one', 'two');
+      INSERT INTO product_variants (product_id, title, sku, price) SELECT id, 'Default', 'BATT-1', '1.000' FROM products WHERE handle LIKE '%-battery';
+    `);
+    await db.exec(file);
+    const [row] = (await db.query<{ n: number }>("select count(*)::int as n from product_variants where sku = 'BATT-1'")).rows;
+    expect(row.n).toBe(2);
+    await db.close();
+  }, 120_000);
 });

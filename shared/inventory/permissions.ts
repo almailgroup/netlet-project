@@ -107,7 +107,15 @@ export type Capability =
   | "platform.configure"
   /* Approving affiliates and setting their rate (3.7): money NetLet pays out
      of its own cut, so it sits with commission, outside any vendor rank. */
-  | "affiliate.manage";
+  | "affiliate.manage"
+  /*
+   * Payouts (3.3.21). Reading a store's own is a manager's — it is the money
+   * the store runs on — while recording that money was sent is NetLet's
+   * alone: a seller who could mark their own payout paid would be telling
+   * the ledger they had been paid.
+   */
+  | "payouts.view"
+  | "payouts.record";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -122,6 +130,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "product.publish": "manager",
   "product.delete": "manager",
   "offer.answer": "manager",
+  "payouts.view": "manager",
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",
 };
@@ -149,6 +158,7 @@ const ADMIN_ONLY: Capability[] = [
   "platform.manageUsers",
   "platform.configure",
   "affiliate.manage",
+  "payouts.record",
 ];
 
 /**

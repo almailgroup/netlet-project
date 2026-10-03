@@ -9,6 +9,7 @@
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
  */
+import { useBuyNow } from "@/hooks/useBuyNow";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { StoreHeader } from "@/components/layout/StoreHeader";
@@ -53,7 +54,9 @@ export default function Saved() {
     window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   const addToCart = async (product: Product, quantity = 1) => {
-    const variant = product.variants[0];
+    /* The first one that can be bought, not merely the first: a sold-out
+       small should not refuse a shopper the medium beside it. */
+    const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     try {
       await addItem(variant.id, quantity);
@@ -67,16 +70,7 @@ export default function Saved() {
     }
   };
 
-  const buyNow = async (product: Product, quantity = 1) => {
-    const variant = product.variants[0];
-    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
-    try {
-      await addItem(variant.id, quantity);
-      window.location.assign(appPath("/checkout"));
-    } catch {
-      toast.error(t("cart.buyFailed"));
-    }
-  };
+  const buyNow = useBuyNow();
 
   return (
     <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-16">
