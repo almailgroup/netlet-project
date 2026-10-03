@@ -1353,6 +1353,14 @@ export const invoices = pgTable(
     total: numeric("total", { precision: 12, scale: 3 }).notNull(),
     issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
     document: jsonb("document").notNull(),
+    /**
+     * The random code printed on the document beside its QR, which lets anybody
+     * holding the paper confirm it is genuine (3.6.6). Random rather than
+     * derived from a secret, so rotating `JWT_SECRET` cannot invalidate every
+     * invoice ever printed. Null only on a document issued before codes existed,
+     * which gets one the first time it is read.
+     */
+    verifyCode: varchar("verify_code", { length: 16 }),
   },
   table => [
     uniqueIndex("invoices_number_unique").on(table.number),

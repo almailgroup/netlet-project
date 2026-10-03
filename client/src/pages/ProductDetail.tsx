@@ -1081,6 +1081,7 @@ export default function ProductDetail() {
                 asked while choosing one. */}
             {product.sizeChart ? (
               <SizeGuide
+                productId={product.id}
                 chart={product.sizeChart}
                 availableSizes={sizesOn(product, product.sizeChart.axis)}
                 onChooseSize={size => {

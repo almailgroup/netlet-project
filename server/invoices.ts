@@ -28,7 +28,8 @@
  * seller already sees their own lines and the address they deliver to on
  * their own desk. Scope is in the `WHERE`, and anything else is "not found".
  */
-import { and, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { randomInt, timingSafeEqual } from "node:crypto";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { invoiceCounters, invoices, orderItems, orders, products, returnRequests, vendors } from "../drizzle/schema.js";
 import {
   buildCreditNote,
@@ -50,6 +51,18 @@ import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/**
+ * A verification code: ten characters from the order reference's alphabet,
+ * which drops the letters people misread off paper. Fifty bits of chance, so a
+ * code cannot be guessed for a number somebody can.
+ */
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRTUVWXYZ2346789";
+export function newVerifyCode(): string {
+  let code = "";
+  for (let i = 0; i < 10; i++) code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  return code;
+}
 
 export type InvoiceSummary = { number: string; kind: InvoiceKind; total: string; issuedAt: Date };
 
@@ -152,7 +165,7 @@ export async function issueInvoice(orderId: number, now = new Date()): Promise<I
       });
       const [row] = await tx
         .insert(invoices)
-        .values({ number, kind: "invoice", orderId, total: document.total, issuedAt: now, document })
+        .values({ number, kind: "invoice", orderId, total: document.total, issuedAt: now, document, verifyCode: newVerifyCode() })
         .returning({ number: invoices.number, total: invoices.total, issuedAt: invoices.issuedAt });
       return { number: row.number, kind: "invoice" as const, total: row.total, issuedAt: row.issuedAt };
     });
@@ -210,7 +223,7 @@ export async function issueCreditNote(returnRequestId: number, now = new Date())
       });
       const [row] = await tx
         .insert(invoices)
-        .values({ number, kind: "credit_note", orderId: request.orderId, creditsInvoiceId: original.id, returnRequestId, total: document.total, issuedAt: now, document })
+        .values({ number, kind: "credit_note", orderId: request.orderId, creditsInvoiceId: original.id, returnRequestId, total: document.total, issuedAt: now, document, verifyCode: newVerifyCode() })
         .returning({ number: invoices.number, total: invoices.total, issuedAt: invoices.issuedAt });
       return { ...row, kind: "credit_note" as const };
     });
@@ -269,11 +282,11 @@ export async function documentsForShopperOrder(userId: number, reference: string
 export async function documentFor(
   who: { userId: number; isAdmin: boolean },
   number: string,
-): Promise<{ document: InvoiceDocument; credits: InvoiceSummary[] } | null> {
+): Promise<{ document: InvoiceDocument; credits: InvoiceSummary[]; verifyCode: string } | null> {
   const db = await getDb();
   if (!db) return null;
   const [row] = await db
-    .select({ id: invoices.id, document: invoices.document })
+    .select({ id: invoices.id, document: invoices.document, verifyCode: invoices.verifyCode })
     .from(invoices)
     .innerJoin(orders, eq(orders.id, invoices.orderId))
     .where(and(eq(invoices.number, number), who.isAdmin ? sql`true` : eq(orders.userId, who.userId)))
@@ -286,7 +299,67 @@ export async function documentFor(
     .from(invoices)
     .where(eq(invoices.creditsInvoiceId, row.id))
     .orderBy(invoices.issuedAt, invoices.id);
-  return { document: row.document as InvoiceDocument, credits: credits.map(credit => ({ ...credit, kind: "credit_note" as const })) };
+  return {
+    document: row.document as InvoiceDocument,
+    credits: credits.map(credit => ({ ...credit, kind: "credit_note" as const })),
+    verifyCode: row.verifyCode ?? (await giveCode(db, row.id)),
+  };
+}
+
+/** A code for a document issued before codes existed — once, whoever asks first. */
+async function giveCode(db: Db, id: number): Promise<string> {
+  await db.update(invoices).set({ verifyCode: newVerifyCode() }).where(and(eq(invoices.id, id), isNull(invoices.verifyCode)));
+  const [row] = await db.select({ verifyCode: invoices.verifyCode }).from(invoices).where(eq(invoices.id, id)).limit(1);
+  return row!.verifyCode!;
+}
+
+export type VerifiedDocument = {
+  number: string;
+  kind: "invoice" | "credit_note";
+  issuedAt: string;
+  total: string;
+  currency: string;
+  issuerName: string;
+  issuerLicence: string | null;
+  sellers: string[];
+  /** Whether a later credit note corrects this invoice. */
+  corrected: boolean;
+};
+
+/**
+ * Confirm a printed document is genuine (3.6.6): the number and the code on
+ * the paper, checked against what NetLet issued.
+ *
+ * Public, because whoever holds the paper — an accountant, a ministry, a
+ * relative it was a gift for — is rarely the shopper. So it answers only what
+ * is already printed beside the code and nothing the paper does not show: no
+ * buyer, no address, no lines. A wrong code and an unknown number get the
+ * same null, so the endpoint says nothing about which numbers exist.
+ */
+export async function verifyDocument(number: string, code: string): Promise<VerifiedDocument | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({ id: invoices.id, kind: invoices.kind, document: invoices.document, verifyCode: invoices.verifyCode })
+    .from(invoices)
+    .where(eq(invoices.number, number))
+    .limit(1);
+  const given = Buffer.from(code.toUpperCase());
+  const held = Buffer.from(row?.verifyCode ?? "");
+  if (!row || held.length === 0 || held.length !== given.length || !timingSafeEqual(held, given)) return null;
+  const document = row.document as InvoiceDocument;
+  const [credit] = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.creditsInvoiceId, row.id)).limit(1);
+  return {
+    number,
+    kind: row.kind as "invoice" | "credit_note",
+    issuedAt: document.issuedAt,
+    total: document.total,
+    currency: document.currency,
+    issuerName: document.issuer.name,
+    issuerLicence: document.issuer.licence,
+    sellers: document.sellers.map(seller => seller.name),
+    corrected: Boolean(credit),
+  };
 }
 
 export type InvoiceListRow = InvoiceSummary & { orderReference: string };

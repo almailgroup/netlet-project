@@ -16,7 +16,10 @@
  * document is laid out to fit A4 without a stylesheet of its own.
  */
 import { Link, useRoute } from "wouter";
-import { ArrowLeft, Printer } from "lucide-react";
+import { useEffect, useState } from "react";
+import QRCode from "qrcode";
+import { ArrowLeft, Download, Printer } from "lucide-react";
+import { appPath } from "@/lib/basePath";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -91,12 +94,12 @@ function Loaded({ number }: { number: string }) {
   }
   return (
     <QueryGate queries={[query]}>
-      {() => (query.data ? <Document document={query.data.document} credits={query.data.credits} /> : null)}
+      {() => (query.data ? <Document document={query.data.document} credits={query.data.credits} verifyCode={query.data.verifyCode} /> : null)}
     </QueryGate>
   );
 }
 
-function Document({ document: doc, credits }: { document: InvoiceDocument; credits: { number: string; total: string; issuedAt: Date | string }[] }) {
+function Document({ document: doc, credits, verifyCode }: { document: InvoiceDocument; credits: { number: string; total: string; issuedAt: Date | string }[]; verifyCode: string }) {
   const { t, locale } = useTranslation();
   const money = (amount: string) => formatMoney(amount, { currencyCode: doc.currency, locale });
   const isCredit = doc.kind === "credit_note";
@@ -180,6 +183,8 @@ function Document({ document: doc, credits }: { document: InvoiceDocument; credi
         </section>
       ) : null}
 
+      <Verification number={doc.number} code={verifyCode} document={doc} />
+
       <footer className="mt-6 border-t border-[#e6e9ef] pt-4 text-[11px] text-[#536b8c]">
         <Both k="invoice.footer" />
       </footer>
@@ -247,6 +252,46 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
             ) : null}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * How anybody holding the paper confirms it (3.6.6): a QR to the public check,
+ * and the same link and code in words for somebody without a phone camera.
+ * And the document as data, for an accountant's software rather than a person.
+ */
+function Verification({ number, code, document: doc }: { number: string; code: string; document: InvoiceDocument }) {
+  const { t } = useTranslation();
+  const url = `${window.location.origin}${appPath(`/invoices/verify/${number}`)}?code=${code}`;
+  const [qr, setQr] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    QRCode.toDataURL(url, { margin: 1, width: 160, errorCorrectionLevel: "M" }).then(data => { if (live) setQr(data); }).catch(() => setQr(null));
+    return () => { live = false; };
+  }, [url]);
+
+  const download = () => {
+    const blob = new Blob([JSON.stringify({ ...doc, verification: { code, url } }, null, 2)], { type: "application/json" });
+    const link = window.document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${number}.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  return (
+    <section className="mt-6 flex flex-wrap items-center gap-4 rounded-xl border border-[#e6e9ef] p-4" aria-label={t("invoice.verifyHeading")}>
+      {qr ? <img src={qr} alt={t("invoice.verifyQrAlt")} loading="eager" decoding="async" className="size-28 shrink-0" /> : null}
+      <div className="min-w-0 flex-1 text-[12px] leading-5">
+        <p className="font-extrabold"><Both k="invoice.verifyHeading" /></p>
+        <p className="mt-1 text-[#536b8c]">{t("invoice.verifyHow")}</p>
+        <p className="mt-1 break-all"><bdi dir="ltr" className="font-mono">{url}</bdi></p>
+        <p className="mt-1">{t("invoice.verifyCode")} <bdi dir="ltr" className="font-mono font-bold tracking-wider">{code}</bdi></p>
+        <button type="button" onClick={download} className="glass type-control pressable mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 print:hidden">
+          <Download className="size-3.5" aria-hidden />{t("invoice.downloadData")}
+        </button>
       </div>
     </section>
   );

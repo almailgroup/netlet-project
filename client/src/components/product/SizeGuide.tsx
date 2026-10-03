@@ -24,7 +24,8 @@ import { MEASURE_LABEL } from "@/lib/sizeGuideLabels";
 import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { readStored, writeStored } from "@/lib/browserStore";
-import { recommendSize, type BodyMeasure, type SizeAnswer, type SizeChart } from "@shared/commerce/sizeGuide";
+import { adviseForFit, fitTendency, recommendSize, type BodyMeasure, type FitTendency, type SizeAnswer, type SizeChart } from "@shared/commerce/sizeGuide";
+import { trpc } from "@/lib/trpc";
 
 const STORE_KEY = "netlet:measurements";
 
@@ -43,7 +44,9 @@ function remembered(): Partial<Record<BodyMeasure, string>> {
   }
 }
 
-export function SizeGuide({ chart, availableSizes, onChooseSize }: {
+export function SizeGuide({ productId, chart, availableSizes, onChooseSize }: {
+  /** Whose size returns to learn from. */
+  productId: string;
   chart: SizeChart;
   /** Sizes the variant picker can actually select. */
   availableSizes: string[];
@@ -60,12 +63,13 @@ export function SizeGuide({ chart, availableSizes, onChooseSize }: {
       >
         <Ruler className="size-3.5" aria-hidden />{t("sizeGuide.open")}
       </button>
-      {open ? <Dialog chart={chart} availableSizes={availableSizes} onChooseSize={onChooseSize} onClose={() => setOpen(false)} /> : null}
+      {open ? <Dialog productId={productId} chart={chart} availableSizes={availableSizes} onChooseSize={onChooseSize} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
 
-function Dialog({ chart, availableSizes, onChooseSize, onClose }: {
+function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
+  productId: string;
   chart: SizeChart;
   availableSizes: string[];
   onChooseSize: (size: string) => void;
@@ -80,6 +84,9 @@ function Dialog({ chart, availableSizes, onChooseSize, onClose }: {
   const [values, setValues] = useState<Partial<Record<BodyMeasure, string>>>(remembered);
   const [remember, setRemember] = useState(() => Object.keys(remembered()).length > 0);
   const [answer, setAnswer] = useState<SizeAnswer | null>(null);
+  /* What this product's size returns have said (3.1.20): counts, not people. */
+  const fit = trpc.returns.fit.useQuery({ productId }, { staleTime: 300_000 });
+  const tendency = fit.data ? fitTendency(fit.data) : null;
 
   const find = () => {
     const numbers = Object.fromEntries(chart.measures.map(measure => [measure, Number(values[measure] ?? "")]).filter(([, value]) => Number.isFinite(value) && (value as number) > 0));
@@ -132,6 +139,15 @@ function Dialog({ chart, availableSizes, onChooseSize, onClose }: {
           </table>
         </div>
 
+        {tendency && fit.data ? (
+          <p className="mt-3 rounded-xl bg-[#fbf3ef] px-3 py-2 text-[12px] leading-5 text-[#0a285a]">
+            {t(tendency === "runsSmall" ? "sizeGuide.runsSmall" : "sizeGuide.runsLarge", {
+              count: String(tendency === "runsSmall" ? fit.data.tooSmall : fit.data.tooLarge),
+              total: String(fit.data.tooSmall + fit.data.tooLarge),
+            })}
+          </p>
+        ) : null}
+
         <form
           className="mt-5 rounded-2xl border border-[#d5dfeb] bg-white p-4"
           onSubmit={event => { event.preventDefault(); find(); }}
@@ -160,13 +176,21 @@ function Dialog({ chart, availableSizes, onChooseSize, onClose }: {
           <button type="submit" className="glass-navy type-control pressable mt-3 rounded-full px-5 py-2">{t("sizeGuide.find")}</button>
         </form>
 
-        {answer ? <Answer answer={answer} canChoose={Boolean(canChoose)} onChoose={size => { onChooseSize(size); onClose(); }} /> : null}
+        {answer ? <Answer answer={answer} advice={adviseForFit(chart, answer, tendency)} tendency={tendency} availableSizes={availableSizes} canChoose={Boolean(canChoose)} onChoose={size => { onChooseSize(size); onClose(); }} /> : null}
       </div>
     </div>
   );
 }
 
-function Answer({ answer, canChoose, onChoose }: { answer: SizeAnswer; canChoose: boolean; onChoose: (size: string) => void }) {
+function Answer({ answer, advice, tendency, availableSizes, canChoose, onChoose }: {
+  answer: SizeAnswer;
+  /** The size the returns lean toward instead, if they lean. */
+  advice: string | null;
+  tendency: FitTendency | null;
+  availableSizes: string[];
+  canChoose: boolean;
+  onChoose: (size: string) => void;
+}) {
   const { t } = useTranslation();
   if (answer.kind === "nothingToCompare") return <p role="status" className="mt-4 text-[13px] ink-muted">{t("sizeGuide.nothing")}</p>;
   if (answer.kind === "belowChart" || answer.kind === "aboveChart") {
@@ -189,11 +213,25 @@ function Answer({ answer, canChoose, onChoose }: { answer: SizeAnswer; canChoose
           </li>
         ))}
       </ul>
-      {canChoose ? (
-        <button type="button" onClick={() => onChoose(answer.size)} className="glass-navy type-control pressable mt-3 rounded-full px-4 py-2">
-          {t("sizeGuide.choose", { size: answer.size })}
-        </button>
+      {/* Beside the chart's answer, never instead of it: the shopper sees both
+          and which one the returns favour. */}
+      {advice ? (
+        <p className="mt-3 text-[12px] font-bold leading-5">
+          {t(tendency === "runsSmall" ? "sizeGuide.adviseUp" : "sizeGuide.adviseDown", { size: advice })}
+        </p>
       ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {canChoose ? (
+          <button type="button" onClick={() => onChoose(answer.size)} className="glass-navy type-control pressable rounded-full px-4 py-2">
+            {t("sizeGuide.choose", { size: answer.size })}
+          </button>
+        ) : null}
+        {advice && availableSizes.some(size => size.toLowerCase() === advice.toLowerCase()) ? (
+          <button type="button" onClick={() => onChoose(advice)} className="glass type-control pressable rounded-full px-4 py-2">
+            {t("sizeGuide.choose", { size: advice })}
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -239,3 +239,38 @@ describe("reading", () => {
     await expect(as("manager").invoices.list({})).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });
+
+describe("verifying a printed document", () => {
+  it("confirms a genuine one to anybody, showing only what the paper shows", async () => {
+    const order = await placed();
+    await collect(order.id);
+    const number = `INV-${year}-000001`;
+    const { verifyCode } = await as("shopper").invoices.get({ number });
+    expect(verifyCode).toMatch(/^[A-Z0-9]{10}$/);
+
+    const anybody = appRouter.createCaller(contextFor(null));
+    const verified = await anybody.invoices.verify({ number, code: verifyCode.toLowerCase() });
+    expect(verified).toMatchObject({ number, kind: "invoice", total: "250.000", issuerName: "NetLet", sellers: ["Acme"], corrected: false });
+    expect(JSON.stringify(verified)).not.toContain("Noura");
+    expect(JSON.stringify(verified)).not.toContain("Block 4");
+  });
+
+  it("gives one answer for a wrong code and for a number that does not exist", async () => {
+    const order = await placed();
+    await collect(order.id);
+    const anybody = appRouter.createCaller(contextFor(null));
+    expect(await anybody.invoices.verify({ number: `INV-${year}-000001`, code: "WRONGCODE2" })).toBeNull();
+    expect(await anybody.invoices.verify({ number: `INV-${year}-999999`, code: "WRONGCODE2" })).toBeNull();
+  });
+
+  it("gives a code to a document issued before codes existed, once", async () => {
+    const order = await placed();
+    await collect(order.id);
+    await db.update(invoices).set({ verifyCode: null });
+    const first = await as("shopper").invoices.get({ number: `INV-${year}-000001` });
+    const second = await as("admin").invoices.get({ number: `INV-${year}-000001` });
+    expect(first.verifyCode).toMatch(/^[A-Z0-9]{10}$/);
+    expect(second.verifyCode).toBe(first.verifyCode);
+  });
+});
+

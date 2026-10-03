@@ -6,12 +6,13 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { rowId } from "../_core/schemas.js";
-import { protectedProcedure, router } from "../_core/trpc.js";
+import { rowId, rowIdText } from "../_core/schemas.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { resolveActor } from "../inventory.js";
 import {
   countWaitingReturns,
   decideReturn,
+  fitFeedbackFor,
   listReturns,
   markCollected,
   markRefundPaid,
@@ -35,6 +36,18 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 const request = z.object({ requestId: rowId });
 
 export const returnsRouter = router({
+  /**
+   * How a product's size returns have gone (3.1.20), for the size guide. Public
+   * and counts only. Takes the storefront's string id; one that is not a row id
+   * (a demo handle) has no returns rather than being refused — the rule
+   * `reviews.forProduct` follows.
+   */
+  fit: publicProcedure
+    .input(z.object({ productId: z.string().min(1).max(191) }))
+    .query(({ input }) => {
+      const parsed = rowIdText.safeParse(input.productId);
+      return parsed.success ? fitFeedbackFor(Number(parsed.data)) : { tooSmall: 0, tooLarge: 0 };
+    }),
   list: protectedProcedure
     .input(z.object({ open: z.boolean().optional() }).optional())
     .query(async ({ ctx, input }) => {

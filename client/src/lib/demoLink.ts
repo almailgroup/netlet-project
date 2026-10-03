@@ -466,11 +466,15 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("affiliate.notFound");
     /* Invoices (3.6.6): nothing is ever paid in the demo, so nothing is
        invoiced — the server's own answer to a number it cannot find. */
+    case "invoices.verify":
+      return null;
     case "invoices.get":
       throw new Error("invoice.notFound");
     case "invoices.list":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     /* Returns (3.2.8): no orders in the demo, so nothing to send back. */
+    case "returns.fit":
+      return { tooSmall: 0, tooLarge: 0 };
     case "returns.list":
       return [];
     case "returns.waiting":

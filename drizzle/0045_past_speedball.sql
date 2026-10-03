@@ -1,0 +1,1 @@
+ALTER TABLE "invoices" ADD COLUMN "verify_code" varchar(16);

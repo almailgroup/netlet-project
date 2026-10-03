@@ -448,4 +448,27 @@ export async function markRefundPaid(actor: Actor, requestId: number, now = new 
   if (!moved) throw new ReturnRefused("returns.moved");
 }
 
+/**
+ * How a product's size returns have gone (3.1.20): how many said too small and
+ * how many too large. Counts only, never who — this is read by anybody on the
+ * product page. A withdrawn request is not counted; a declined one is, because
+ * the shopper still found it the wrong size.
+ */
+export async function fitFeedbackFor(productId: number): Promise<{ tooSmall: number; tooLarge: number }> {
+  const db = await getDb();
+  if (!db) return { tooSmall: 0, tooLarge: 0 };
+  const rows = await db
+    .select({ reason: returnRequests.reason, n: sql<number>`count(*)::int` })
+    .from(returnRequests)
+    .innerJoin(orderItems, eq(orderItems.id, returnRequests.orderItemId))
+    .where(and(
+      eq(orderItems.productId, productId),
+      inArray(returnRequests.reason, ["tooSmall", "tooLarge"]),
+      sql`${returnRequests.status} <> 'cancelled'`,
+    ))
+    .groupBy(returnRequests.reason);
+  const count = (reason: string) => rows.find(row => row.reason === reason)?.n ?? 0;
+  return { tooSmall: count("tooSmall"), tooLarge: count("tooLarge") };
+}
+
 export { isOpenReturn };

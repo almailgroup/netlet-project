@@ -1270,6 +1270,9 @@ CREATE INDEX IF NOT EXISTS "payout_run_items_order_idx" ON "payout_run_items" US
 CREATE UNIQUE INDEX IF NOT EXISTS "payout_run_items_run_order_unique" ON "payout_run_items" USING btree ("run_id","order_id");
 CREATE INDEX IF NOT EXISTS "payout_runs_vendor_idx" ON "payout_runs" USING btree ("vendor_id","paid_at");
 
+-- ===== 0045_past_speedball.sql =====
+ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "verify_code" varchar(16);
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1313,6 +1316,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  45 AS migrations_in_this_file,
+  46 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

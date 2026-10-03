@@ -7,14 +7,18 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { documentFor, listInvoices } from "../invoices.js";
+import { documentFor, listInvoices, verifyDocument } from "../invoices.js";
 import { resolveActor } from "../inventory.js";
-import { protectedProcedure, router } from "../_core/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 
 /** The shape `invoiceNumber` writes, and nothing longer. */
 const number = z.string().regex(/^(INV|CRN)-\d{4}-\d{6,9}$/);
 
 export const invoicesRouter = router({
+  /** Is this printed document genuine? Public; answers only what the paper shows. */
+  verify: publicProcedure
+    .input(z.object({ number, code: z.string().trim().min(1).max(16) }))
+    .query(({ input }) => verifyDocument(input.number, input.code)),
   get: protectedProcedure.input(z.object({ number })).query(async ({ ctx, input }) => {
     const found = await documentFor({ userId: ctx.user.id, isAdmin: ctx.user.role === "admin" }, input.number);
     if (!found) throw new TRPCError({ code: "NOT_FOUND", message: "invoice.notFound" });

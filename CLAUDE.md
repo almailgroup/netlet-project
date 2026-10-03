@@ -1504,6 +1504,15 @@ the page; remembering the numbers is opt-in and goes to `browserStore` only.
 The panel says so, because a form asking for a waist measurement is one people
 hesitate over.
 
+**It learns from what came back.** A return can say `tooSmall` or `tooLarge` —
+a change of mind with a reason, so it decides like one — and `fitTendency`
+reports a product as running small or large once `FIT_MIN_RETURNS` size returns
+agree by `FIT_SHARE`. Two returns are an anecdote and a split vote is no
+tendency. `adviseForFit` then suggests the next size for somebody near the edge
+of theirs, *beside* the chart's answer and never instead of it, with both offered
+as buttons. `returns.fit` is public and counts only; a withdrawn request is not
+counted, a declined one is, because the shopper still found it the wrong size.
+
 **An `sr-only` element inside a sideways scroller widens the whole page.** The
 editor's table carried an `sr-only` caption; `sr-only` is `position: absolute`,
 and with no positioned ancestor its containing block is the viewport — so the
@@ -1558,6 +1567,16 @@ implement as `-webkit-match-parent`, so the utility carries both; the bare
 standard value silently did nothing in Chromium and the Arabic drifted to the
 far edge of every column. Merchant-typed names on it are `<bdi>`, so a Latin
 store name sits on the Arabic page's side.
+
+**Anybody holding the paper can check it.** Each document carries a random
+`verify_code` issued with it — random rather than derived from a secret, so
+rotating `JWT_SECRET` cannot invalidate everything ever printed — shown beside a
+QR to `/invoices/verify/:number?code=`. That page is public, because whoever
+holds the paper is rarely the shopper, and so it shows only what the paper
+already shows beside the code: number, date, total, issuer, sellers, and
+whether a credit note corrects it. Never the buyer. A wrong code and an unknown
+number return the same null, compared with `timingSafeEqual`. A document from
+before codes existed gets one the first time it is read, once.
 
 The shopper and an administrator read one; a seller does not, because the
 document names every seller on the basket and the buyer's address. NetLet's

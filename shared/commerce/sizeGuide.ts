@@ -174,3 +174,54 @@ export function recommendSize(chart: SizeChart, measurements: Partial<Record<Bod
   const best = [...scored].sort((a, b) => b.within - a.within || a.distance - b.distance || b.index - a.index)[0];
   return { kind: "closest", size: best.row.size, comparisons: best.comparisons };
 }
+
+/*
+ * ## Learning from what came back
+ *
+ * A chart says what the seller measured; returns say what happened on bodies.
+ * When enough of a product's size returns say the same thing — "too small",
+ * or "too large" — the guide says so and leans the answer that way. Counts
+ * only: never who, never their measurements, which never left their browser
+ * in the first place.
+ *
+ * It needs `FIT_MIN_RETURNS` before it says anything, and a clear majority
+ * (`FIT_SHARE`), because two returns are an anecdote and a split vote is no
+ * tendency at all. It never overrides the chart: it adds advice beside the
+ * answer, with the counts that produced it, so the shopper can weigh it.
+ */
+
+/** How many size returns a product needs before its tendency is reported. */
+export const FIT_MIN_RETURNS = 3;
+/** The share of them that must agree. */
+export const FIT_SHARE = 0.6;
+
+export type FitFeedback = { tooSmall: number; tooLarge: number };
+export type FitTendency = "runsSmall" | "runsLarge";
+
+export function fitTendency(feedback: FitFeedback): FitTendency | null {
+  const total = feedback.tooSmall + feedback.tooLarge;
+  if (total < FIT_MIN_RETURNS) return null;
+  if (feedback.tooSmall / total >= FIT_SHARE) return "runsSmall";
+  if (feedback.tooLarge / total >= FIT_SHARE) return "runsLarge";
+  return null;
+}
+
+/**
+ * The size the returns suggest instead, or null to leave the answer alone.
+ *
+ * A product that runs small moves a shopper up a size when they are already
+ * near the top of their size's range on any measurement — or between sizes at
+ * all; one that runs large moves them down the same way. Somebody sitting in
+ * the middle of a range is left where the chart put them.
+ */
+export function adviseForFit(chart: SizeChart, answer: SizeAnswer, tendency: FitTendency | null): string | null {
+  if (!tendency || (answer.kind !== "fits" && answer.kind !== "closest")) return null;
+  const index = chart.rows.findIndex(row => row.size === answer.size);
+  const next = chart.rows[index + (tendency === "runsSmall" ? 1 : -1)];
+  if (index < 0 || !next) return null;
+  const leaning = answer.kind === "closest" || answer.comparisons.some(entry => {
+    const middle = (entry.range[0] + entry.range[1]) / 2;
+    return tendency === "runsSmall" ? entry.value >= middle : entry.value <= middle;
+  });
+  return leaning ? next.size : null;
+}

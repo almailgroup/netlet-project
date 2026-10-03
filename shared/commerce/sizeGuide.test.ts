@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chartProblem, cleanChart, recommendSize, type SizeChart } from "./sizeGuide.js";
+import { adviseForFit, chartProblem, cleanChart, fitTendency, recommendSize, type SizeChart } from "./sizeGuide.js";
 
 const shirts: SizeChart = {
   axis: "Size",
@@ -67,5 +67,27 @@ describe("which size fits", () => {
     expect(recommendSize(shirts, {})).toEqual({ kind: "nothingToCompare" });
     expect(recommendSize(shirts, { footLength: 27 })).toEqual({ kind: "nothingToCompare" });
     expect(recommendSize(shirts, { chest: Number.NaN })).toEqual({ kind: "nothingToCompare" });
+  });
+});
+
+describe("learning from returns", () => {
+  it("says nothing on too few returns, or on a split vote", () => {
+    expect(fitTendency({ tooSmall: 2, tooLarge: 0 })).toBeNull();
+    expect(fitTendency({ tooSmall: 3, tooLarge: 3 })).toBeNull();
+    expect(fitTendency({ tooSmall: 4, tooLarge: 1 })).toBe("runsSmall");
+    expect(fitTendency({ tooSmall: 0, tooLarge: 3 })).toBe("runsLarge");
+  });
+
+  it("moves a shopper near the top of their size up when it runs small, and leaves the middle alone", () => {
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 96 }), "runsSmall")).toBe("L");
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 93 }), "runsSmall")).toBeNull();
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 93 }), "runsLarge")).toBe("S");
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 100, waist: 80 }), "runsSmall")).toBe("XL");
+  });
+
+  it("has nowhere to move past either end of the chart", () => {
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 108 }), "runsSmall")).toBeNull();
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 87 }), "runsLarge")).toBeNull();
+    expect(adviseForFit(shirts, recommendSize(shirts, { chest: 96 }), null)).toBeNull();
   });
 });

@@ -306,3 +306,23 @@ describe("receiving", () => {
     expect(row.declineReason).toBe("returns.exchangeOutOfStock");
   });
 });
+
+describe("what size returns teach the size guide", () => {
+  it("counts too small and too large for the product, and nothing about who", async () => {
+    const first = await delivered();
+    const second = await delivered();
+    await ask("shopper", { reference: first.reference, orderItemId: first.sofa.id, kind: "exchange", reason: "tooSmall" });
+    await ask("shopper", { reference: second.reference, orderItemId: second.sofa.id, kind: "refund", reason: "tooLarge" });
+    const withdrawn = await delivered();
+    const asked = await ask("shopper", { reference: withdrawn.reference, orderItemId: withdrawn.sofa.id, kind: "refund", reason: "tooSmall" });
+    await as("shopper").orders.cancelReturn({ requestId: asked.id });
+
+    const anybody = appRouter.createCaller(contextFor(null));
+    const productId = String(first.sofa.productId);
+    expect(await anybody.returns.fit({ productId })).toEqual({ tooSmall: 1, tooLarge: 1 });
+    /* A size return is a change of mind with a reason: approved at once. */
+    expect(asked.status).toBe("approved");
+    expect(await anybody.returns.fit({ productId: "demo-product-1" })).toEqual({ tooSmall: 0, tooLarge: 0 });
+  });
+});
+

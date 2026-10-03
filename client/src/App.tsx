@@ -32,6 +32,7 @@ const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
 const GiftList = lazy(() => import("@/pages/GiftList"));
 const Invoice = lazy(() => import("@/pages/Invoice"));
+const InvoiceVerify = lazy(() => import("@/pages/InvoiceVerify"));
 const AdminInvoices = lazy(() => import("@/pages/admin/Invoices"));
 const Category = lazy(() => import("@/pages/Category"));
 /* The admin portal is a separate application in everything but deployment: no
@@ -119,6 +120,7 @@ function Router() {
         <Route path="/saved" component={Saved} />
         <Route path="/gifts/:token" component={GiftList} />
         <Route path="/gifts" component={GiftList} />
+        <Route path="/invoices/verify/:number" component={InvoiceVerify} />
         <Route path="/invoices/:number" component={Invoice} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/sell" component={Sell} />

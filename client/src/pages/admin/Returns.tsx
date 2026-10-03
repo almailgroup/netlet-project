@@ -34,6 +34,8 @@ const REASON_LABEL: Record<string, MessageKey> = {
   defective: "returns.reasonDefective",
   wrongItem: "returns.reasonWrongItem",
   notAsDescribed: "returns.reasonNotAsDescribed",
+  tooSmall: "returns.reasonTooSmall",
+  tooLarge: "returns.reasonTooLarge",
   changedMind: "returns.reasonChangedMind",
   other: "returns.reasonOther",
 };

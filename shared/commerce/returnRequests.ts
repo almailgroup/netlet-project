@@ -40,7 +40,14 @@ import { fromFils, toFils } from "../money.js";
 export const RETURN_KINDS = ["refund", "exchange"] as const;
 export type ReturnKind = (typeof RETURN_KINDS)[number];
 
-export const RETURN_REASONS = ["damaged", "defective", "wrongItem", "notAsDescribed", "changedMind", "other"] as const;
+/*
+ * `tooSmall` and `tooLarge` are a change of mind with a reason attached — the
+ * item is what was ordered, the size was the shopper's choice — so they decide
+ * the way a change of mind does. They exist because the reason is worth
+ * keeping: it is what teaches the size guide whether a product runs small
+ * (3.1.20), which "changed my mind" never could.
+ */
+export const RETURN_REASONS = ["damaged", "defective", "wrongItem", "notAsDescribed", "tooSmall", "tooLarge", "changedMind", "other"] as const;
 export type ReturnReason = (typeof RETURN_REASONS)[number];
 
 /** Reasons that are the seller's fault: approved at once, inside the window. */
@@ -73,7 +80,7 @@ export type AutomaticDecision =
  */
 export function automaticDecision(reason: ReturnReason, department: string | null): AutomaticDecision {
   if (SELLER_FAULT.has(reason)) return { status: "approved", decidedBy: "auto" };
-  if (reason === "changedMind") {
+  if (reason === "changedMind" || reason === "tooSmall" || reason === "tooLarge") {
     if (department && PERISHABLE_DEPARTMENTS.has(department)) {
       return { status: "declined", decidedBy: "auto", declineReason: "returns.perishableNoChangeOfMind" };
     }
