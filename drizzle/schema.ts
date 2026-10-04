@@ -41,6 +41,7 @@ import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
 import type { SizeChart } from "../shared/commerce/sizeGuide.js";
 import { AD_SLOTS } from "../shared/commerce/adBookings.js";
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../shared/commerce/support.js";
+import { INBOUND_STATUSES } from "../shared/commerce/netletFulfilment.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -52,6 +53,7 @@ export const sellUnit = pgEnum("sell_unit", sellUnits);
 export const adSlot = pgEnum("ad_slot", AD_SLOTS);
 export const supportTopic = pgEnum("support_topic", SUPPORT_TOPICS);
 export const supportStatus = pgEnum("support_status", SUPPORT_STATUSES);
+export const inboundStatus = pgEnum("inbound_status", INBOUND_STATUSES);
 export const subscriptionStatus = pgEnum("subscription_status", ["active", "paused", "cancelled"]);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
@@ -787,6 +789,14 @@ export const productVariants = pgTable(
     preorderStock: integer("preorder_stock").notNull().default(0),
     /** When it is expected. Null means the vendor has not committed to a date. */
     preorderReleaseAt: timestamp("preorder_release_at", { withTimezone: true }),
+    /**
+     * The NetLet fulfilment centre whose shelf `stock` counts (4.2), or null
+     * for the seller's own. The column is the fact — there is no separate
+     * "fulfilled by" flag to disagree with it. While set, only NetLet's counts
+     * change the stock, and a sale off it is NetLet's to pick and pack.
+     * `shared/commerce/netletFulfilment.ts`.
+     */
+    centreId: integer("centre_id").references((): AnyPgColumn => fulfilmentCentres.id, { onDelete: "restrict" }),
     /*
      * Selling things that are not counted — the grocery shelf.
      *
@@ -1087,6 +1097,63 @@ export const supportMessages = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("support_messages_conversation_idx").on(table.conversationId, table.id)],
+);
+
+/**
+ * A NetLet fulfilment centre (4.2): where sellers send stock for NetLet to hold.
+ * Recording the first one is what activates the programme — with none, there
+ * is nowhere to send anything, and the page says so.
+ */
+export const fulfilmentCentres = pgTable("fulfilment_centres", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  governorate: varchar("governorate", { length: 40 }).notNull(),
+  addressLine: varchar("address_line", { length: 300 }).notNull(),
+  /** Closed to new shipments; stock already there stays and still ships. */
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Stock a seller is sending to a centre. Announced by the seller, counted by
+ * NetLet: the count is what is recorded, and the announcement stays beside it
+ * so both sides see the gap.
+ */
+export const inboundShipments = pgTable(
+  "inbound_shipments",
+  {
+    id: serial("id").primaryKey(),
+    reference: varchar("reference", { length: 24 }).notNull().unique(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    centreId: integer("centre_id").notNull().references(() => fulfilmentCentres.id, { onDelete: "restrict" }),
+    status: inboundStatus("status").notNull().default("announced"),
+    note: text("note"),
+    announcedBy: integer("announced_by").references(() => users.id, { onDelete: "set null" }),
+    receivedBy: integer("received_by").references(() => users.id, { onDelete: "set null" }),
+    receivedAt: timestamp("received_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("inbound_shipments_vendor_idx").on(table.vendorId, table.id),
+    index("inbound_shipments_status_idx").on(table.status, table.id),
+  ],
+);
+
+/** One variant on a shipment. The titles are frozen so a renamed product still reads on an old receipt. */
+export const inboundLines = pgTable(
+  "inbound_lines",
+  {
+    id: serial("id").primaryKey(),
+    shipmentId: integer("shipment_id").notNull().references(() => inboundShipments.id, { onDelete: "cascade" }),
+    variantId: integer("variant_id").references(() => productVariants.id, { onDelete: "set null" }),
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    variantTitle: varchar("variant_title", { length: 255 }).notNull(),
+    sku: varchar("sku", { length: 120 }),
+    expected: integer("expected").notNull(),
+    /** What NetLet counted. Null until received. */
+    received: integer("received"),
+  },
+  table => [index("inbound_lines_shipment_idx").on(table.shipmentId)],
 );
 
 /** Raw bytes. PGlite hands back a Uint8Array and postgres.js a Buffer; both are one. */
@@ -1948,6 +2015,12 @@ export const orderItems = pgTable(
      */
     preordered: boolean("preordered").notNull().default(false),
     preorderReleaseAt: timestamp("preorder_release_at", { withTimezone: true }),
+    /**
+     * The NetLet centre this line came off, frozen at the sale (4.2), or null
+     * when the seller ships it: handing a variant back to its seller must not
+     * move a parcel already sold from NetLet's warehouse.
+     */
+    centreId: integer("centre_id").references((): AnyPgColumn => fulfilmentCentres.id, { onDelete: "restrict" }),
     /**
      * The bundle this line was sold as part of (3.3.11).
      *

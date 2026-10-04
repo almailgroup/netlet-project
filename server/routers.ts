@@ -1,6 +1,7 @@
 import { adsRouter } from "./routers/ads.js";
 import { subscriptionsRouter } from "./routers/subscriptions.js";
 import { supportRouter } from "./routers/support.js";
+import { fulfilmentRouter } from "./routers/fulfilment.js";
 import { affiliatesRouter } from "./routers/affiliates.js";
 import { authRouter } from "./routers/auth.js";
 import { router } from "./_core/trpc.js";
@@ -27,6 +28,7 @@ export const appRouter = router({
   ads: adsRouter,
   subscriptions: subscriptionsRouter,
   support: supportRouter,
+  fulfilment: fulfilmentRouter,
   affiliates: affiliatesRouter,
   auth: authRouter,
   commerce: commerceRouter,

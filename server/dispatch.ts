@@ -23,6 +23,7 @@ import { and, desc, eq, inArray, notInArray } from "drizzle-orm";
 import {
   courierMembers,
   couriers,
+  fulfilmentCentres,
   orderItems,
   orders,
 } from "../drizzle/schema.js";
@@ -197,6 +198,12 @@ export type BoardParcel = Parcel & {
   orderTotal: string;
   /** Who is carrying it, by name, so a board reads without a second lookup. */
   courierName: string | null;
+  /**
+   * Where to collect it when it is not the seller's door: the NetLet centre
+   * it was sold off (4.2), named and addressed, so a driver goes to the
+   * warehouse that is holding the box rather than to a seller who is not.
+   */
+  collectFrom: { name: string; addressLine: string; governorate: string } | null;
   /** The order's own address, which is where a parcel with no door of its own goes. */
   orderAddress: {
     contactName: string | null;
@@ -279,6 +286,7 @@ export async function loadBoard(
       weightGrams: orderItems.weightGrams,
       destination: orderItems.destination,
       courierId: orderItems.courierId,
+      centreId: orderItems.centreId,
     })
     .from(orderItems)
     .where(inArray(orderItems.orderId, window.map(row => row.id)))
@@ -288,6 +296,10 @@ export async function loadBoard(
      line — and it is a short table by nature. */
   const names = new Map(
     (await db.select({ id: couriers.id, name: couriers.name }).from(couriers)).map(row => [row.id, row.name]),
+  );
+  const centres = new Map(
+    (await db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres))
+      .map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]),
   );
 
   const owed = await stillOwedFor(db, window.map(order => ({
@@ -320,6 +332,7 @@ export async function loadBoard(
         paymentCollectedAt: order.paymentCollectedAt,
         orderTotal: owed.get(order.id)?.owed ?? order.orderTotal,
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
+        collectFrom: parcel.centreId === null ? null : centres.get(parcel.centreId) ?? null,
         orderAddress: {
           contactName: order.contactName,
           contactPhone: order.contactPhone,
@@ -357,6 +370,7 @@ async function parcelIn(db: Db, orderId: number, key: string): Promise<ParcelLin
       weightGrams: orderItems.weightGrams,
       destination: orderItems.destination,
       courierId: orderItems.courierId,
+      centreId: orderItems.centreId,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId))

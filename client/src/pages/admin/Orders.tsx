@@ -31,10 +31,11 @@ import { canRecordCollection } from "@shared/commerce/payment";
 import type { Flag as FraudFlag, RiskLevel } from "@shared/commerce/fraudSignals";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { FULFILMENT_STATES, nextStates, type FulfilmentState } from "@shared/commerce/fulfilment";
+import { mayMoveLine } from "@shared/commerce/netletFulfilment";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Banknote, PackageCheck, ShieldAlert } from "lucide-react";
+import { Banknote, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -333,7 +334,14 @@ function OrderDetail({ orderId }: { orderId: number }) {
                       {/* The states it may move to, each its own button: a
                           select needs a second press to commit and a seller
                           marking twenty parcels shipped presses forty times. */}
-                      {nextStates(line.fulfilment as FulfilmentState).map(state => (
+                      {/* Off NetLet's shelf (4.2): NetLet picks and packs it,
+                          so the seller is told rather than offered buttons the
+                          server would refuse. */}
+                      {me.data && me.data.kind !== "customer" && !mayMoveLine(line.centreId ?? null, me.data.kind) ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold ink-muted">
+                          <Warehouse className="size-3.5" aria-hidden />{t("fulfilment.netletPacks")}
+                        </span>
+                      ) : nextStates(line.fulfilment as FulfilmentState).map(state => (
                         <button
                           key={state}
                           type="button"

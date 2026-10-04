@@ -475,6 +475,29 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "support.staffReply":
     case "support.staffResolve":
       throw new Error("support.notFound");
+    /* Fulfilled by NetLet (4.2): built now, activated later — the demo has no
+       centre open, so the seller's desk says the programme has not started. */
+    case "fulfilment.open":
+      return false;
+    case "fulfilment.centres":
+    case "fulfilment.sendable":
+      return [];
+    case "fulfilment.shipments":
+    case "fulfilment.held":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "fulfilment.pickList":
+      return { orders: [], truncated: false };
+    case "fulfilment.waiting":
+      return { toReceive: 0, toPick: 0 };
+    case "fulfilment.announce":
+      throw new Error("fulfilment.noCentre");
+    case "fulfilment.createCentre":
+    case "fulfilment.setCentreActive":
+    case "fulfilment.receive":
+    case "fulfilment.returnToSeller":
+    case "fulfilment.markPacked":
+    case "fulfilment.cancel":
+      throw new Error("fulfilment.notFound");
     /* No model in the demo, through the branch a deployment with no key takes. */
     case "support.draftAvailable":
       return false;

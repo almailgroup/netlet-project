@@ -151,6 +151,11 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message.startsWith("sizeGuide.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
+    /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
+       something failed. */
+    if (message.startsWith("fulfilment.")) {
+      throw new TRPCError({ code: "BAD_REQUEST", message });
+    }
     throw error;
   }
 }

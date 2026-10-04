@@ -1381,6 +1381,18 @@ describe("paging a list longer than a page", () => {
     expect(result.rows.map(row => row.handle)).toEqual(["paged-23"]);
   });
 
+  /*
+   * The search fragment carried an unbracketed `or`, so `and(scope, match)`
+   * read "this store's title match, or anybody's handle match": a seller
+   * searching their own catalogue was shown every other store's products,
+   * drafts included. Acme searching "paged" must find nothing of Paged's.
+   */
+  it("searches only the caller's own store", async () => {
+    const result = await inv.listProductsFor(ownerActor(), ids.acme, { query: "paged" });
+    expect(result.rows.filter(row => row.vendorId === pagedVendor)).toEqual([]);
+    expect(result.total).toBe(0);
+  });
+
   it("counts what matches the filter, not the whole table", async () => {
     const all = await inv.listProductsFor(pagedActor(), pagedVendor, { pageSize: 10 });
     const drafts = await inv.listProductsFor(pagedActor(), pagedVendor, { status: "published", pageSize: 10 });
@@ -1487,5 +1499,26 @@ describe("a variant's SKU", () => {
     const first = await inv.saveVariant(adminActor(), { productId: ids.acmeProduct, title: "Plain A", price: "1.000" });
     const second = await inv.saveVariant(adminActor(), { productId: ids.acmeProduct, title: "Plain B", sku: "", price: "1.000" });
     expect(first).not.toBe(second);
+  });
+});
+
+/*
+ * Stock moves by a delta with a reason, a sale or a receipt — never by saving
+ * a variant. `saveVariant` wrote `input.stock ?? 0`, and the editor sends no
+ * stock when it saves a price, so every variant edit emptied the shelf.
+ */
+describe("a variant's stock", () => {
+  it("survives editing the variant's price and title", async () => {
+    const id = await inv.saveVariant(ownerActor(), { productId: ids.acmeProduct, title: "Kept", price: "4.000", stock: 12 });
+    await inv.saveVariant(ownerActor(), { id, productId: ids.acmeProduct, title: "Kept, renamed", price: "4.500" });
+    const [row] = await db.select({ stock: productVariants.stock, title: productVariants.title }).from(productVariants).where(eq(productVariants.id, id));
+    expect(row).toEqual({ stock: 12, title: "Kept, renamed" });
+  });
+
+  it("moves by an adjustment and records what actually happened, clamped at zero", async () => {
+    const id = await inv.saveVariant(ownerActor(), { productId: ids.acmeProduct, title: "Counted", price: "4.000", stock: 3 });
+    expect(await inv.adjustStock(ownerActor(), id, -5, "damaged")).toBe(0);
+    const [movement] = await db.select().from(stockMovements).where(eq(stockMovements.variantId, id));
+    expect(movement).toMatchObject({ delta: -3, resulting: 0, reason: "damaged" });
   });
 });

@@ -315,7 +315,10 @@ export async function listProductsFor(
   const scope = and(
     owned,
     request.status ? eq(products.status, request.status) : undefined,
-    term ? sql`lower(${products.title}) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`}` : undefined,
+    /* Bracketed: `and` does not wrap a raw fragment, so without them this read
+       "this store's and a title match, or any store's handle match" — and a
+       seller's search returned every other store's products, drafts included. */
+    term ? sql`(lower(${products.title}) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`})` : undefined,
   );
 
   const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(products).where(scope);
@@ -927,14 +930,33 @@ export async function adjustStock(actor: Actor, variantId: number, delta: number
   const product = (await db.select().from(products).where(eq(products.id, variant.productId)).limit(1))[0];
   if (!product) throw new Error("NOT_FOUND");
   assertCan(actor, "stock.adjust", product.vendorId);
-
-  const resulting = Math.max(0, variant.stock + delta);
-  await db.update(productVariants).set({ stock: resulting }).where(eq(productVariants.id, variantId));
+  /*
+   * Under a row lock, so a checkout taking units between the read and the
+   * write cannot be undone by it: this used to read the level, add the delta
+   * in JavaScript and write the total back outside any lock, which put sold
+   * units back on the shelf whenever the two raced. The take is an `UPDATE`
+   * on the same row, so it waits for this.
+   */
+  const { before, resulting } = await db.transaction(async tx => {
+    const [row] = await tx
+      .select({ stock: productVariants.stock, centreId: productVariants.centreId })
+      .from(productVariants)
+      .where(eq(productVariants.id, variantId))
+      .for("update");
+    if (!row) throw new Error("NOT_FOUND");
+    /* NetLet's shelf is counted by NetLet (4.2): a seller cannot type a number
+       into a warehouse they are not standing in. Asked under the lock, so a
+       receipt handing the variant over cannot slip in between. */
+    if (row.centreId !== null && actor.kind !== "admin") throw new Error("fulfilment.netletHolds");
+    const level = Math.max(0, row.stock + delta);
+    await tx.update(productVariants).set({ stock: level }).where(eq(productVariants.id, variantId));
+    return { before: row.stock, resulting: level };
+  });
   await db.insert(stockMovements).values({
     variantId,
     // The recorded delta is what actually happened, not what was asked for, so
     // a clamped adjustment does not leave the history disagreeing with the level.
-    delta: resulting - variant.stock,
+    delta: resulting - before,
     resulting,
     reason,
     note: note ?? null,
@@ -994,7 +1016,6 @@ export async function saveVariant(actor: Actor, input: {
     sku,
     price: input.price,
     compareAtPrice: input.compareAtPrice ?? null,
-    stock: input.stock ?? 0,
     options: input.options ?? {},
     unit: measure.unit,
     stepAmount: String(measure.stepAmount),
@@ -1008,6 +1029,16 @@ export async function saveVariant(actor: Actor, input: {
     // A price change is singled out because the requirements want every one
     // visible to the admin. The row says what it moved from and to.
     const [was] = await db.select().from(productVariants).where(eq(productVariants.id, variantId)).limit(1);
+    /* A pre-order is a promise about units nobody holds yet, and NetLet's
+       shelf holds only what NetLet counted in (4.2). */
+    if (was && was.centreId !== null && preorderStock > 0) throw new Error("fulfilment.noPreorder");
+    /*
+     * Stock is not written here, ever, on an existing variant. It moves by a
+     * delta with a reason (`adjustStock`), a sale or a receipt. This wrote
+     * `input.stock ?? 0`, and the editor sends no stock when it saves a price
+     * or a title — so every variant edit emptied the shelf, silently, and the
+     * product read "sold out" until somebody noticed and typed the count back.
+     */
     await skuAware(() => db.update(productVariants).set(values).where(eq(productVariants.id, variantId)));
     if (was && was.price !== values.price) {
       await recordAudit(await auditActor(actor), {
@@ -1022,7 +1053,7 @@ export async function saveVariant(actor: Actor, input: {
     }
     return input.id;
   }
-  const [row] = await skuAware(() => db.insert(productVariants).values(values).returning());
+  const [row] = await skuAware(() => db.insert(productVariants).values({ ...values, stock: input.stock ?? 0 }).returning());
   return row.id;
 }
 
@@ -1296,7 +1327,7 @@ export async function listPeople(actor: Actor, options: { query?: string } & Pag
 
   const term = options.query?.trim().toLowerCase();
   const matching = term
-    ? sql`lower(${users.email}) like ${`%${term}%`} or lower(coalesce(${users.name}, '')) like ${`%${term}%`}`
+    ? sql`(lower(${users.email}) like ${`%${term}%`} or lower(coalesce(${users.name}, '')) like ${`%${term}%`})`
     : undefined;
 
   // This list is everyone with an account, shoppers included, so it is the one

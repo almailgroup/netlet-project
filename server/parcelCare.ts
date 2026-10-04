@@ -80,6 +80,7 @@ export async function parcelsOfOrder(db: Db, orderId: number): Promise<CareParce
       weightGrams: orderItems.weightGrams,
       destination: orderItems.destination,
       courierId: orderItems.courierId,
+      centreId: orderItems.centreId,
       lineTotal: orderItems.lineTotal,
       deliveredAt: orderItems.deliveredAt,
     })

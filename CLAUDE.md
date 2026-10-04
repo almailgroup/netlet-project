@@ -1233,6 +1233,41 @@ sofa gets dispatched on a motorcycle.
 **The carrier is free text.** A fixed list would be this codebase asserting
 which companies exist in Kuwait, and the name claims nothing about tracking.
 
+## Fulfilled by NetLet
+
+`shared/commerce/netletFulfilment.ts` is the rule, pure; `server/netletFulfilment.ts`
+the database half; `/admin/fulfilment` is one page with two desks, drawn by
+`can()`. It is 4.2, "built now, activated later", and **activation is a fact
+rather than a flag**: sellers can announce stock only once an administrator has
+recorded a centre.
+
+**One shelf per variant, and the column is the fact.** `product_variants.centre_id`
+is null for the seller's own shelf and a centre's id for NetLet's — not a
+"fulfilled by" flag beside an id that would have to agree. The first receipt
+hands the variant over (the shop sells what NetLet counted; the history records
+`netletHandedOver` then `netletReceived`), one item is held in one centre, and a
+pre-order allowance cannot be held. **Only NetLet counts NetLet's shelf**:
+`adjustStock` refuses a seller there, under the same row lock a receipt takes.
+
+**Who packs is frozen on the line.** `order_items.centre_id` is copied from the
+row the stock take changed — `takeUnits` returns it from the `UPDATE`, not from
+the read that priced the basket — so sending a variant back to its seller does
+not move a parcel already sold. `mayMoveLine` refuses the seller such a line;
+NetLet's "Picked and packed" moves it to `preparing` with the old state in the
+predicate. A parcel's key carries the centre (`|c<id>`), so a seller's own box
+and a NetLet one for the same door are two parcels, and the board names where
+to collect; seller-shipped keys are unchanged, so ratings and claims filed
+before still find theirs. No fee is charged: that is a contract nobody has
+written, and when it is, it is a payout fee line like a placement's.
+
+**Units go back only to the shelf they belong on.** Every path that puts stock
+back asks whose shelf it is, in the write: a return restocks only where the
+person pressing counts (a seller their own, NetLet either — the request says
+nothing went back when the predicate refuses), and a cancelled line's units go
+back only if the variant is still on the shelf the line was sold off
+(`returnUnits`' `shelf`). Found by reviewing the finished diff for every caller
+that adds to `stock`, not by the walk.
+
 ## Talking to a seller
 
 **The filter is the feature.** A chat between a shopper and a seller is, on day
@@ -2066,6 +2101,13 @@ other store's low variants; it was found while adding the waiting-shopper
 count to the same query, not by any test. `server/sqlFragments.test.ts` now
 fails on an unbracketed one anywhere in `server/`.
 
+**And the guard itself had the hole.** It matched fragments with a regex that
+stopped at the next backtick, and a search fragment interpolates a template of
+its own (`${`%${term}%`}`) — so it read `lower(title) like ${` and never saw the
+`or` behind it. A seller's product search returned every store's products,
+drafts included, while the test passed. It scans templates properly now, and
+its first test is that it reads a nested one whole.
+
 **Every admin page has three states, not two.** `QueryGate` renders loading,
 failed, or ready; a failed query shows what the server actually said and
 offers to retry. Before it, every page branched on `isLoading` and then read
@@ -2123,6 +2165,15 @@ Stock moves by a delta with a reason, never by typing a new total. "We received
 12" is what happened; setting the box to 47 loses why and races with whoever
 else is editing. `/admin/stock` is what reads those rows back, which is the
 whole reason for recording them.
+
+**Saving a variant never writes its stock.** `saveVariant` wrote `input.stock ?? 0`
+on every save, and the editor sends no stock when it saves a price or a title —
+so every variant edit emptied the shelf, silently, and the product read sold out
+until somebody typed the count back. Found while adding NetLet's shelf, by
+saving a variant on the scratch stack and reading the row. A new variant still
+takes an opening count. And `adjustStock` takes a row lock: it read the level,
+added in JavaScript and wrote the total back, so a checkout landing between the
+two had its units put back on the shelf.
 
 In a demo build the portal opens against fixtures as a vendor `manager` —
 the one place the storefront's signed-out-guest rule is bent, because a sign-in

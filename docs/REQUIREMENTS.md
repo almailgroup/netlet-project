@@ -10,12 +10,12 @@ rounding up. Nothing is marked done because the schema could support it.
 | | count |
 |---|---|
 | Built | 64 |
-| Partial | 5 |
+| Partial | 6 |
 | Designed, not wired | 0 |
 | Not applicable | 1 |
-| Not started | 7 |
+| Not started | 6 |
 
-*Last updated after AI-drafted support replies (3.5.1), the support chat leg of the contact centre (3.5.1), photo upload with automatic fixes (3.3.4), live tracking (3.4.3), voice and photo search (3.1.6), Subscribe & Save (3.1.19), self-service placements (3.3.15), the map address picker (3.2.7), the size guide learning from returns (3.1.20), invoice verification (3.6.6), fast checkout (3.2.9), payout runs (3.3.21), an audit of every row against the code (2.3, 2.4, 3.1.1, 3.6.2, 3.6.3, 4.2 corrected), affiliate marketing (3.7), the size guide (3.1.20), e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
+*Last updated after NetLet-run fulfilment (4.2) — with two defects found on the way, variant edits emptying a shelf and a seller's product search reaching every other store — AI-drafted support replies (3.5.1), the support chat leg of the contact centre (3.5.1), photo upload with automatic fixes (3.3.4), live tracking (3.4.3), voice and photo search (3.1.6), Subscribe & Save (3.1.19), self-service placements (3.3.15), the map address picker (3.2.7), the size guide learning from returns (3.1.20), invoice verification (3.6.6), fast checkout (3.2.9), payout runs (3.3.21), an audit of every row against the code (2.3, 2.4, 3.1.1, 3.6.2, 3.6.3, 4.2 corrected), affiliate marketing (3.7), the size guide (3.1.20), e-invoices (3.6.6), the feature switchboard (2.3), returns and exchanges as operations (3.2.8) with automatic decisions (3.5.2), and an audit that corrected two stale rows (3.6.2, 4.2). Card payments and
 everything gated on them are deliberately untouched — see the note under 3.2.*
 
 **These numbers are counted, not typed.** `scripts/check-requirements.mjs`
@@ -163,12 +163,12 @@ carry — **one points ledger, not two** — is what was built.
 |---|---|---|---|
 | 1 | Grocery section built now, used later — some products sold by count, others by kilo, weight or volume | **Built** | `shared/commerce/units.ts` is the arithmetic and is pure; `product_variants.unit` and `.step_amount` are the schema. A `grocery` department already existed and routes like any other, so what was missing was the half the requirement names as its reason: the two ways of selling. Verified end to end against real Postgres — loose tomatoes at 250 g a step, KWD 0.600, showing `2.400 / kg` on the product page and `1.5 kg` for six steps in the bag. Substitutions for an out-of-stock grocery line are a separate requirement and are absent. |
 
-## 4. Built now, activated later — 1 built, 2 absent
+## 4. Built now, activated later — 1 built, 1 partial, 1 absent
 
 | # | Requirement | Status | Where it stands |
 |---|---|---|---|
 | 1 | Kuwait loyalty subscription — free fast delivery, exclusive deals | Not started | Gated on payments, which are deliberately untouched. |
-| 2 | Fully-managed fulfilment, toward Shiplee | Not started | The delivery company has an interface now (`/admin/dispatch`, 3.4.1), so the gap this row used to name is closed. What is still absent is the thing itself: NetLet holding a seller's stock, picking and packing it. That is warehouses and contracts before it is code. |
+| 2 | Fully-managed fulfilment, toward Shiplee | **Partial** | The software is built and **activates when NetLet records its first fulfilment centre** — until then a seller's page says the programme has not started rather than offering a form that sends stock nowhere. `shared/commerce/netletFulfilment.ts` is the rule. A store's manager **announces** what they are sending (`fulfilment.send`); NetLet **counts it in** (`fulfilment.operate`, admin-only), and the count is what is recorded, short or over, beside what was announced. **One shelf per variant**: the first receipt hands the variant over, so the shop sells what NetLet counted, and the stock history records both moves; a variant is held in one centre, and a pre-order allowance cannot be held. **Only NetLet counts NetLet's shelf** — a seller's adjustment there is refused, and the editor does not offer it. A sale **freezes which centre it came off** onto the line, so the seller's desk says "NetLet packs this" and the API refuses the seller's moves; NetLet's pick list shows what to pick, oldest first, and "Picked and packed" puts the parcel on the dispatch board, which names the centre to collect from — a seller's own box and a NetLet one for the same door are two parcels. NetLet can send stock back to the seller; lines already sold stay NetLet's to pack. A switch (2.3) stops new shipments only. Verified against real Postgres (scope, the hand-over and its history, a count recorded once, one centre per item, the seller refused NetLet's shelf, the frozen line, pick and pack, the board's pickup, sending back), fuzzed as every caller, and end to end in a browser in both languages from announcement to the board. **Not done, and why this is partial**: NetLet charges nothing for holding or packing — that is a contract nobody has written, and a rate invented here would be money taken on a guess; when there is one it is a payout fee line, the shape paid placements already use. The warehouse itself is buildings and staff, not code. |
 | 3 | Grocery/supermarket section, built into the architecture now (see 3.9) | **Built** | The architecture is the unit on the variant, and it is in. A counted product is `{ unit: "each", stepAmount: 1 }`, which is every product in the shop today and behaves exactly as it always has — which is what let this land before the section is stocked. |
 
 ---

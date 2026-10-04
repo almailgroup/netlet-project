@@ -128,7 +128,19 @@ export type Capability =
    * Answering shoppers on NetLet's own behalf (3.5.1). Admin-only: this is the
    * shop speaking, and a seller is a party to many of these conversations.
    */
-  | "support.answer";
+  | "support.answer"
+  /*
+   * Sending stock to NetLet to hold (4.2). `manager`, like running the
+   * catalogue: it decides where the store's goods are sold from.
+   */
+  | "fulfilment.send"
+  /*
+   * Running a NetLet fulfilment centre — counting stock in, picking, packing,
+   * sending it back. Admin-only: it is NetLet's warehouse, and a seller whose
+   * "received 50" moved stock would be counting their own shelf in a building
+   * they are not standing in.
+   */
+  | "fulfilment.operate";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -147,6 +159,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",
   "ads.book": "owner",
+  "fulfilment.send": "manager",
 };
 
 /**
@@ -174,6 +187,7 @@ const ADMIN_ONLY: Capability[] = [
   "affiliate.manage",
   "payouts.record",
   "support.answer",
+  "fulfilment.operate",
 ];
 
 /**

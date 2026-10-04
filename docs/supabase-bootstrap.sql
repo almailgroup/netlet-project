@@ -1481,6 +1481,80 @@ CREATE INDEX IF NOT EXISTS "support_conversations_user_idx" ON "support_conversa
 CREATE INDEX IF NOT EXISTS "support_conversations_status_idx" ON "support_conversations" USING btree ("status","last_message_at");
 CREATE INDEX IF NOT EXISTS "support_messages_conversation_idx" ON "support_messages" USING btree ("conversation_id","id");
 
+-- ===== 0052_lame_madame_web.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."inbound_status" AS ENUM('announced', 'received', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "fulfilment_centres" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" varchar(120) NOT NULL,
+	"governorate" varchar(40) NOT NULL,
+	"address_line" varchar(300) NOT NULL,
+	"active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "inbound_lines" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"shipment_id" integer NOT NULL,
+	"variant_id" integer,
+	"product_title" varchar(255) NOT NULL,
+	"variant_title" varchar(255) NOT NULL,
+	"sku" varchar(120),
+	"expected" integer NOT NULL,
+	"received" integer
+);
+CREATE TABLE IF NOT EXISTS "inbound_shipments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"reference" varchar(24) NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"centre_id" integer NOT NULL,
+	"status" "inbound_status" DEFAULT 'announced' NOT NULL,
+	"note" text,
+	"announced_by" integer,
+	"received_by" integer,
+	"received_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "inbound_shipments_reference_unique" UNIQUE("reference")
+);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "centre_id" integer;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "centre_id" integer;
+DO $$ BEGIN
+  ALTER TABLE "inbound_lines" ADD CONSTRAINT "inbound_lines_shipment_id_inbound_shipments_id_fk" FOREIGN KEY ("shipment_id") REFERENCES "public"."inbound_shipments"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "inbound_lines" ADD CONSTRAINT "inbound_lines_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "inbound_shipments" ADD CONSTRAINT "inbound_shipments_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "inbound_shipments" ADD CONSTRAINT "inbound_shipments_centre_id_fulfilment_centres_id_fk" FOREIGN KEY ("centre_id") REFERENCES "public"."fulfilment_centres"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "inbound_shipments" ADD CONSTRAINT "inbound_shipments_announced_by_users_id_fk" FOREIGN KEY ("announced_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "inbound_shipments" ADD CONSTRAINT "inbound_shipments_received_by_users_id_fk" FOREIGN KEY ("received_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "inbound_lines_shipment_idx" ON "inbound_lines" USING btree ("shipment_id");
+CREATE INDEX IF NOT EXISTS "inbound_shipments_vendor_idx" ON "inbound_shipments" USING btree ("vendor_id","id");
+CREATE INDEX IF NOT EXISTS "inbound_shipments_status_idx" ON "inbound_shipments" USING btree ("status","id");
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_centre_id_fulfilment_centres_id_fk" FOREIGN KEY ("centre_id") REFERENCES "public"."fulfilment_centres"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "product_variants" ADD CONSTRAINT "product_variants_centre_id_fulfilment_centres_id_fk" FOREIGN KEY ("centre_id") REFERENCES "public"."fulfilment_centres"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1524,6 +1598,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  52 AS migrations_in_this_file,
+  53 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

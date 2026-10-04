@@ -14,8 +14,8 @@
  * shopper withdrawing at the moment the driver collects loses cleanly to the
  * collection rather than half-cancelling a parcel already in a van.
  */
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { categories, orderItems, orders, products, returnRequests, vendors } from "../drizzle/schema.js";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { categories, orderItems, orders, productVariants, products, returnRequests, vendors } from "../drizzle/schema.js";
 import {
   automaticDecision,
   isOpenReturn,
@@ -31,7 +31,7 @@ import { orderReference } from "../shared/commerce/order.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
-import { returnUnits, takeUnits } from "./orders.js";
+import { takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
 
@@ -349,11 +349,26 @@ export async function receiveReturn(
   if (!line || !order) throw new ReturnRefused("returns.notFound");
 
   /* What came back goes on the shelf only if the seller says it can be sold. */
-  if (options.restock && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, "stock");
+  if (options.restock && line.variantId !== null) {
+    /*
+     * Back onto a shelf only by whoever counts that shelf (4.2): a seller
+     * restocks their own, and NetLet's is NetLet's — a seller pressing
+     * "restock" on an item NetLet holds would be adding to a count in a
+     * warehouse they are not standing in. The predicate is in the write, and
+     * when it touches nothing the request says nothing went back.
+     */
+    const back = await db
+      .update(productVariants)
+      .set({ stock: sql`${productVariants.stock} + ${line.quantity}` })
+      .where(and(eq(productVariants.id, line.variantId), actor.kind === "admin" ? undefined : isNull(productVariants.centreId)))
+      .returning({ id: productVariants.id });
+    if (back.length === 0) await db.update(returnRequests).set({ restocked: false }).where(eq(returnRequests.id, requestId));
+  }
 
   if (row.kind === "exchange" && line.variantId !== null) {
-    const pool = await takeUnits(db, line.variantId, line.quantity);
-    if (pool) {
+    const took = await takeUnits(db, line.variantId, line.quantity);
+    if (took) {
+      const pool = took.pool;
       const [replacement] = await db
         .insert(orders)
         .values({
@@ -396,6 +411,7 @@ export async function receiveReturn(
         sizeClass: line.sizeClass,
         weightGrams: line.weightGrams,
         preordered: pool === "preorder",
+        centreId: took.centreId,
       });
       await db
         .update(returnRequests)

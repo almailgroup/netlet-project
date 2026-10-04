@@ -32,7 +32,7 @@ import { privatePageMeta } from "@shared/seo";
 import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
-import { PackageCheck, Truck } from "lucide-react";
+import { PackageCheck, Truck, Warehouse } from "lucide-react";
 import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
@@ -161,6 +161,13 @@ function Dispatch({ actor }: { actor: Actor }) {
                       <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
                     </p>
 
+                    {/* Collected from a NetLet centre rather than the seller (4.2). */}
+                    {parcel.collectFrom ? (
+                      <p className="mt-1 flex items-start gap-1.5 text-[12px] font-bold text-[#0a285a]">
+                        <Warehouse className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                        <span>{t("fulfilment.collectFrom")} <bdi>{parcel.collectFrom.name}</bdi> <span className="font-normal ink-muted">· <bdi>{parcel.collectFrom.addressLine}</bdi></span></span>
+                      </p>
+                    ) : null}
                     <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-1 font-extrabold text-[#0a285a]">
                         <Truck className="size-3.5" aria-hidden />

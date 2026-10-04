@@ -11,7 +11,7 @@
  * inside `db.ts` call its module-local `getDb`, which nothing outside can
  * redirect, so they cannot be tested against a real database.
  */
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   cartItemAddons,
   cartItems,
@@ -35,6 +35,7 @@ import {
 } from "../shared/commerce/order.js";
 import type { Pool } from "../shared/commerce/preorder.js";
 import { nextStates } from "../shared/commerce/fulfilment.js";
+import { mayMoveLine } from "../shared/commerce/netletFulfilment.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { priceFor } from "../shared/commerce/priceOffers.js";
@@ -379,13 +380,13 @@ async function priceableLines(
  * conversation with a customer, and there is no amount of stock arithmetic
  * that makes an item appear in a warehouse.
  */
-async function takeStock(db: Db, variantId: number, quantity: number): Promise<boolean> {
-  const taken = await db
+async function takeStock(db: Db, variantId: number, quantity: number): Promise<Shelf | null> {
+  const [taken] = await db
     .update(productVariants)
     .set({ stock: sql`${productVariants.stock} - ${quantity}` })
     .where(and(eq(productVariants.id, variantId), sql`${productVariants.stock} >= ${quantity}`))
-    .returning({ id: productVariants.id });
-  return taken.length > 0;
+    .returning({ centreId: productVariants.centreId });
+  return taken ? { centreId: taken.centreId } : null;
 }
 
 /**
@@ -397,13 +398,13 @@ async function takeStock(db: Db, variantId: number, quantity: number): Promise<b
  * reaching for the last item on the shelf. A pre-order is a second pool, never
  * an exemption from the rule.
  */
-async function takePreorder(db: Db, variantId: number, quantity: number): Promise<boolean> {
-  const taken = await db
+async function takePreorder(db: Db, variantId: number, quantity: number): Promise<Shelf | null> {
+  const [taken] = await db
     .update(productVariants)
     .set({ preorderStock: sql`${productVariants.preorderStock} - ${quantity}` })
     .where(and(eq(productVariants.id, variantId), sql`${productVariants.preorderStock} >= ${quantity}`))
-    .returning({ id: productVariants.id });
-  return taken.length > 0;
+    .returning({ centreId: productVariants.centreId });
+  return taken ? { centreId: taken.centreId } : null;
 }
 
 /**
@@ -419,21 +420,43 @@ async function takePreorder(db: Db, variantId: number, quantity: number): Promis
  * stock then has to fall through to the allowance — otherwise the order would
  * record a promise the warehouse cannot keep.
  */
-export async function takeUnits(db: Db, variantId: number, quantity: number): Promise<Pool | null> {
-  if (await takeStock(db, variantId, quantity)) return "stock";
-  if (await takePreorder(db, variantId, quantity)) return "preorder";
+export async function takeUnits(db: Db, variantId: number, quantity: number): Promise<Taken | null> {
+  /* Whose shelf it came off is read from the row this write changed, not the
+     read that priced the basket — between the two, NetLet may have taken the
+     variant in (4.2), and the line must say where the box actually is. */
+  const fromStock = await takeStock(db, variantId, quantity);
+  if (fromStock) return { pool: "stock", centreId: fromStock.centreId };
+  const fromPreorder = await takePreorder(db, variantId, quantity);
+  if (fromPreorder) return { pool: "preorder", centreId: fromPreorder.centreId };
   return null;
 }
 
-/** Put units back in the pool they came from, for a line that could not be completed. */
-export async function returnUnits(db: Db, variantId: number, quantity: number, pool: Pool): Promise<void> {
+/** Whose shelf: a NetLet centre's id, or null for the seller's own. */
+type Shelf = { centreId: number | null };
+/** Which pool a line's units came from, and whose shelf. */
+export type Taken = { pool: Pool; centreId: number | null };
+
+/**
+ * Put units back in the pool they came from, for a line that could not be
+ * completed.
+ *
+ * `shelf`, when given, is the centre the units are physically on (null for the
+ * seller's own), and they go back only if the variant is still counted there
+ * (4.2): a line sold off NetLet's shelf and cancelled after the variant went
+ * back to its seller is two boxes in NetLet's building, not two on the
+ * seller's count.
+ */
+export async function returnUnits(db: Db, variantId: number, quantity: number, pool: Pool, shelf?: number | null): Promise<void> {
   const column = pool === "stock" ? productVariants.stock : productVariants.preorderStock;
   await db
     .update(productVariants)
     .set(pool === "stock"
       ? { stock: sql`${column} + ${quantity}` }
       : { preorderStock: sql`${column} + ${quantity}` })
-    .where(eq(productVariants.id, variantId));
+    .where(and(
+      eq(productVariants.id, variantId),
+      shelf === undefined ? undefined : shelf === null ? isNull(productVariants.centreId) : eq(productVariants.centreId, shelf),
+    ));
 }
 
 /**
@@ -489,11 +512,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   // never half-happens.
   const taken: { variantId: number; quantity: number; pool: Pool }[] = [];
   const pools = new Map<number, Pool>();
+  const shelves = new Map<number, number | null>();
   for (const line of draft.lines) {
-    const pool = await takeUnits(db, line.variantId, line.quantity);
-    if (pool) {
-      taken.push({ variantId: line.variantId, quantity: line.quantity, pool });
-      pools.set(line.variantId, pool);
+    const took = await takeUnits(db, line.variantId, line.quantity);
+    if (took) {
+      taken.push({ variantId: line.variantId, quantity: line.quantity, pool: took.pool });
+      pools.set(line.variantId, took.pool);
+      shelves.set(line.variantId, took.centreId);
       continue;
     }
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
@@ -654,6 +679,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         weightGrams: line.weightGrams,
         preordered: pools.get(line.variantId) === "preorder",
         preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
+        centreId: shelves.get(line.variantId) ?? null,
       })),
     ).returning({ id: orderItems.id, variantId: orderItems.variantId });
 
@@ -1011,7 +1037,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
 
 /** Why a line could not be moved, as a message key the page translates. */
 export class FulfilmentRefused extends Error {
-  constructor(public readonly reason: "orders.badMove" | "orders.alreadySettled" | "orders.lineMoved" | "orders.noStockToRestore") {
+  constructor(public readonly reason: "orders.badMove" | "orders.alreadySettled" | "orders.lineMoved" | "orders.noStockToRestore" | "fulfilment.netletShips") {
     super(reason);
     this.name = "FulfilmentRefused";
   }
@@ -1058,6 +1084,9 @@ export async function setLineFulfilment(
   if (!line) throw new Error("NOT_FOUND");
 
   assertCan(actor, "stock.adjust", line.vendorId ?? undefined);
+  /* A line off NetLet's shelf is NetLet's to pack (4.2): the seller is not
+     holding the box, so their "packed" would be a claim about NetLet's floor. */
+  if (actor.kind !== "customer" && !mayMoveLine(line.centreId, actor.kind)) throw new FulfilmentRefused("fulfilment.netletShips");
 
   if (line.fulfilment === fulfilment) return line;
   if (!nextStates(line.fulfilment).includes(fulfilment)) throw new FulfilmentRefused("orders.badMove");
@@ -1078,6 +1107,12 @@ export async function setLineFulfilment(
     const taken = pool === "stock"
       ? await takeStock(db, line.variantId, line.quantity)
       : await takePreorder(db, line.variantId, line.quantity);
+    /* A shelf that has since changed hands is not this line's: it was sold
+       from one place and is restored from that same place, or not at all. */
+    if (taken && taken.centreId !== line.centreId) {
+      await returnUnits(db, line.variantId, line.quantity, pool);
+      throw new FulfilmentRefused("orders.noStockToRestore");
+    }
     if (!taken) throw new FulfilmentRefused("orders.noStockToRestore");
   }
 
@@ -1103,7 +1138,7 @@ export async function setLineFulfilment(
     throw new FulfilmentRefused("orders.lineMoved");
   }
 
-  if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool);
+  if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool, line.centreId);
   return { ...line, fulfilment, deliveredAt };
 }
 

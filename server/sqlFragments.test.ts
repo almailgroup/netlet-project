@@ -21,13 +21,70 @@ function sources(dir: string): string[] {
   });
 }
 
+/*
+ * The template's own text with every `${…}` replaced by X. A regex stopping at
+ * the next backtick cannot do this: a search fragment interpolates a template
+ * literal of its own (`${`%${term}%`}`), the regex stopped at that inner
+ * backtick, and the `or` after it was never seen — which is how a seller's
+ * product search came to return every other store's products while this test
+ * passed.
+ */
+function readTemplate(text: string, start: number): { body: string; end: number } {
+  let body = "";
+  let i = start;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch === "\\") { body += text.slice(i, i + 2); i += 2; continue; }
+    if (ch === "`") return { body, end: i + 1 };
+    if (ch === "$" && text[i + 1] === "{") { body += "X"; i = skipExpression(text, i + 2); continue; }
+    body += ch;
+    i += 1;
+  }
+  return { body, end: i };
+}
+
+/** Past the `}` that closes an interpolation, stepping over strings and nested templates. */
+function skipExpression(text: string, start: number): number {
+  let depth = 1;
+  let i = start;
+  while (i < text.length && depth > 0) {
+    const ch = text[i];
+    if (ch === "`") { i = readTemplate(text, i + 1).end; continue; }
+    if (ch === "'" || ch === '"') {
+      i += 1;
+      while (i < text.length && text[i] !== ch) i += text[i] === "\\" ? 2 : 1;
+      i += 1;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    if (ch === "}") depth -= 1;
+    i += 1;
+  }
+  return i;
+}
+
+function sqlFragments(text: string): string[] {
+  const bodies: string[] = [];
+  let at = text.indexOf("sql`");
+  while (at !== -1) {
+    const { body, end } = readTemplate(text, at + 4);
+    bodies.push(body.trim());
+    at = text.indexOf("sql`", end);
+  }
+  return bodies;
+}
+
 describe("raw SQL fragments", () => {
+  it("are read whole, nested templates and all", () => {
+    expect(sqlFragments("x = sql`lower(${a}) like ${`%${term}%`} or ${b} like ${`%${term}%`}`;")).toEqual(["lower(X) like X or X like X"]);
+    expect(sqlFragments("sql`(${a} or ${b})` + sql`count(*)`")).toEqual(["(X or X)", "count(*)"]);
+  });
+
   it("bracket any `or` they carry", () => {
     const offenders: string[] = [];
     for (const file of sources(ROOT)) {
       const text = readFileSync(file, "utf-8");
-      for (const match of text.matchAll(/sql`([^`]*)`/g)) {
-        const body = match[1].replace(/\$\{[^}]*\}/g, "X").trim();
+      for (const body of sqlFragments(text)) {
         if (/\sor\s/i.test(body) && !body.startsWith("(")) offenders.push(`${path.relative(ROOT, file)}: ${body.slice(0, 80)}`);
       }
     }

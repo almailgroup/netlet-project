@@ -591,7 +591,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               key={variant.id}
               variant={variant}
               mayEdit={mayEdit}
-              mayStock={mayStock}
+              /* NetLet's shelf is counted by NetLet (4.2); the server refuses a
+                 seller's adjustment there, so the control is not offered. */
+              mayStock={mayStock && (variant.centreId == null || actor.kind === "admin")}
               onSave={values => saveVariant.mutate({ id: variant.id, productId: row.id, ...values })}
               onAdjust={(delta, reason) => adjust.mutate({ variantId: variant.id, delta, reason })}
               pending={saveVariant.isPending || adjust.isPending}
@@ -694,7 +696,7 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
 }
 
 function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
-  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null };
+  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null; centreId?: number | null };
   mayEdit: boolean;
   mayStock: boolean;
   onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null }) => void;
@@ -729,7 +731,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
    * allowance is not a number of parcels.
    */
   const preorderAllowance = Number(values.preorderStock);
-  const preorderOk = Number.isInteger(preorderAllowance) && preorderAllowance >= 0;
+  /* A pre-order is a promise about units nobody holds; NetLet's shelf holds only what it counted (4.2). */
+  const held = variant.centreId != null;
+  const preorderOk = Number.isInteger(preorderAllowance) && preorderAllowance >= 0 && !(held && preorderAllowance > 0);
   const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
@@ -822,6 +826,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
         <p className="text-[12px] font-semibold text-[#536b8c]">
           {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#e61c38]" : "text-[#0a285a]"}>{variant.stock}</strong>
+          {held ? <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-0.5 text-[11px] font-extrabold text-[#0a285a]">{t("fulfilment.heldBadge")}</span> : null}
         </p>
         {mayEdit ? (
           <button

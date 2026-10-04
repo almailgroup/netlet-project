@@ -52,6 +52,7 @@ export const FEATURE_KEYS = [
   "affiliates",
   "ads",
   "subscriptions",
+  "fulfilment",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -99,6 +100,10 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* Subscribe & Save (3.1.19): off stops new standing orders. Those already
      standing keep running and can be paused or cancelled. */
   subscriptions: { entries: ["subscriptions.create"], audience: "shopper" },
+  /* Fulfilled by NetLet (4.2): off stops sellers announcing new shipments.
+     What is already on its way is still counted in, what NetLet holds still
+     sells, and sold lines are still picked and packed. */
+  fulfilment: { entries: ["fulfilment.announce"], audience: "seller" },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

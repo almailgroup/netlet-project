@@ -84,6 +84,7 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingAffiliates = trpc.affiliates.waiting.useQuery(undefined, { enabled: can(actor, "affiliate.manage") });
   /* Shoppers waiting on NetLet itself (3.5.1). */
   const waitingSupport = trpc.support.waiting.useQuery(undefined, { enabled: can(actor, "support.answer") });
+  const atCentres = trpc.fulfilment.waiting.useQuery(undefined, { enabled: can(actor, "fulfilment.operate") });
   const unreadMessages = trpc.chat.seller.unread.useQuery(undefined, {
     enabled: actor.kind === "vendor" && can(actor, "chat.answer", actor.vendorId),
   });
@@ -143,6 +144,8 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.returnsWaiting" as const, value: waitingReturns.data ?? 0, href: "/admin/returns", tone: "urgent" as const },
     { label: "admin.affiliatesWaiting" as const, value: waitingAffiliates.data ?? 0, href: "/admin/affiliates", tone: "urgent" as const },
     { label: "support.waitingTile" as const, value: waitingSupport.data ?? 0, href: "/admin/support", tone: "urgent" as const },
+    { label: "fulfilment.toReceiveTile" as const, value: atCentres.data?.toReceive ?? 0, href: "/admin/fulfilment" },
+    { label: "fulfilment.toPickTile" as const, value: atCentres.data?.toPick ?? 0, href: "/admin/fulfilment", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
   const standing: Tile[] = [

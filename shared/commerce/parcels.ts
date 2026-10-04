@@ -53,6 +53,8 @@ export type ParcelLine = {
   destination?: FrozenDestination | null;
   /** Which company was asked to carry it. Null until somebody assigns one. */
   courierId?: number | null;
+  /** The NetLet centre it came off, frozen at the sale (4.2); null or absent is the seller's own. */
+  centreId?: number | null;
 };
 
 export type Parcel = {
@@ -76,6 +78,8 @@ export type Parcel = {
   courierId: number | null;
   /** How many things are in it, which is what a driver counts at the door. */
   items: number;
+  /** The NetLet centre it is collected from, or null when the seller hands it over (4.2). */
+  centreId: number | null;
 };
 
 /**
@@ -109,7 +113,12 @@ export function parcelsOf(lines: ParcelLine[]): Parcel[] {
 
     /* The destination's *label* keys it, because two lines sent to the same
        address carry two equal copies of it rather than one shared row. */
-    const key = parcelKey(line.vendorId, line.destination ? hashLabel(line.destination) : null);
+    /* And where it is collected from: a seller's own box and one off NetLet's
+       shelf for the same door leave two buildings, so they are two parcels.
+       Seller-shipped keys are unchanged, so ratings and claims filed against
+       them before this still find their parcel. */
+    const centreId = line.centreId ?? null;
+    const key = parcelKey(line.vendorId, line.destination ? hashLabel(line.destination) : null) + (centreId === null ? "" : `|c${centreId}`);
     const held = byKey.get(key);
     if (held) {
       held.lines.push(line);
@@ -125,6 +134,7 @@ export function parcelsOf(lines: ParcelLine[]): Parcel[] {
       vehicle: null,
       courierId: line.courierId ?? null,
       items: 0,
+      centreId,
     });
   }
 
