@@ -1319,6 +1319,20 @@ into an answered conversation reopens it — somebody still typing has not been
 answered, whatever a button said. Throttled by account in Postgres, for the
 price-ask reason: there is a real identity, and what runs out is people.
 
+**A model drafts; a person replies.** `shared/commerce/supportDraft.ts` is what
+it is given and `server/supportDraft.ts` the call. "Draft a reply" fills the
+staff reply box and nothing more — a draft is sent only by somebody pressing
+Send, so every reply is a person's. The model sees the turns and the order's
+facts recomputed *now* (the automatic answer was true when it was given), never
+the name, email, address or reference; a turn carrying contact details, by the
+chat filter's own `contactFindings`, is **withheld whole** — a redactor that
+misses one shape leaks it. The reply language is read from the shopper's words
+*before* withholding, or an Arabic shopper whose only message held a phone
+number got an English draft; walking it in a browser is what showed that. The
+button shows only on an empty box, so a draft never overwrites what somebody
+typed, and `StaffThread` is keyed by conversation — it was not, so text typed
+for one shopper stayed in the box when the next was opened.
+
 ## After the door: ratings and damage
 
 `server/parcelCare.ts` is both, because both start from the same thing — a

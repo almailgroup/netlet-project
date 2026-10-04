@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { toast } from "sonner";
-import { Sparkles } from "lucide-react";
+import { LoaderCircle, Sparkles } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -88,7 +88,7 @@ function Inbox() {
             );
           }}
         </QueryGate>
-        <div className="min-w-0">{selected ? <StaffThread id={selected} /> : <p className="text-[13px] ink-muted">{t("support.pickOne")}</p>}</div>
+        <div className="min-w-0">{selected ? <StaffThread key={selected} id={selected} /> : <p className="text-[13px] ink-muted">{t("support.pickOne")}</p>}</div>
       </div>
     </>
   );
@@ -101,8 +101,18 @@ function StaffThread({ id }: { id: number }) {
   const thread = trpc.support.staffThread.useQuery({ id });
   const [body, setBody] = useState("");
   const refresh = () => { void utils.support.staffThread.invalidate({ id }); void utils.support.inbox.invalidate(); void utils.support.waiting.invalidate(); };
-  const reply = trpc.support.staffReply.useMutation({ onSuccess: () => { setBody(""); toast.success(t("support.sent")); refresh(); }, onError: error => toast.error(tError(error.message)) });
+  const reply = trpc.support.staffReply.useMutation({ onSuccess: () => { setBody(""); setDrafted(false); toast.success(t("support.sent")); refresh(); }, onError: error => toast.error(tError(error.message)) });
   const resolve = trpc.support.staffResolve.useMutation({ onSuccess: () => { toast.success(t("support.resolvedToast")); refresh(); }, onError: error => toast.error(tError(error.message)) });
+  const canDraft = trpc.support.draftAvailable.useQuery(undefined, { staleTime: 60_000 });
+  /* Whether what is in the box came from a model, so the note stays beside it until a person has sent it. */
+  const [drafted, setDrafted] = useState(false);
+  const draft = trpc.support.draft.useMutation({
+    onSuccess: reply => {
+      if (reply.kind === "draft") { setBody(reply.text); setDrafted(true); }
+      else toast.message(t(reply.kind === "nothingToAnswer" ? "support.nothingToAnswer" : "support.draftUnavailable"));
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
 
   return (
     <QueryGate queries={[thread]}>
@@ -134,10 +144,28 @@ function StaffThread({ id }: { id: number }) {
             <form className="mt-3" onSubmit={event => { event.preventDefault(); if (!messageProblem(body)) reply.mutate({ id, body }); }}>
               <label className="block text-[11px] font-extrabold ink-muted">
                 {t("support.replyAsNetlet")}
-                <textarea value={body} maxLength={MAX_SUPPORT_MESSAGE} onChange={event => setBody(event.target.value)} className="glass-field mt-1 min-h-24 w-full rounded-xl px-4 py-3 text-[14px] outline-none" />
+                <textarea
+                  value={body}
+                  maxLength={MAX_SUPPORT_MESSAGE}
+                  dir="auto"
+                  aria-describedby={drafted ? "support-draft-note" : undefined}
+                  onChange={event => { setBody(event.target.value); if (!event.target.value) setDrafted(false); }}
+                  className="glass-field mt-1 min-h-24 w-full rounded-xl px-4 py-3 text-[14px] font-normal outline-none"
+                />
               </label>
+              {drafted ? (
+                <p id="support-draft-note" className="mt-1 flex items-start gap-1.5 text-[11px] leading-5 ink-muted">
+                  <Sparkles className="mt-1 size-3 shrink-0" aria-hidden />{t("support.draftNote")}
+                </p>
+              ) : null}
               <div className="mt-2 flex flex-wrap gap-2">
                 <button type="submit" disabled={Boolean(messageProblem(body)) || reply.isPending} className="glass-navy pressable type-control rounded-full px-4 py-2 disabled:opacity-50">{t("support.send")}</button>
+                {canDraft.data && !body ? (
+                  <button type="button" onClick={() => draft.mutate({ id })} disabled={draft.isPending} className="glass pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2">
+                    {draft.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
+                    {t(draft.isPending ? "support.drafting" : "support.draft")}
+                  </button>
+                ) : null}
                 {data.status !== "resolved" ? (
                   <button type="button" onClick={() => resolve.mutate({ id })} disabled={resolve.isPending} className="glass pressable type-control rounded-full px-4 py-2">{t("support.resolve")}</button>
                 ) : null}

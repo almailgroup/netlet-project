@@ -475,6 +475,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "support.staffReply":
     case "support.staffResolve":
       throw new Error("support.notFound");
+    /* No model in the demo, through the branch a deployment with no key takes. */
+    case "support.draftAvailable":
+      return false;
+    case "support.draft":
+      return { kind: "unavailable" };
     /* Live tracking (3.4.3): nothing is ever on the road in the demo. */
     case "orders.tracking":
       return [];

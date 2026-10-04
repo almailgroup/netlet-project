@@ -20,6 +20,7 @@ import {
   firstAnswer,
   messageProblem,
   nextStatus,
+  type AnswerFacts,
   type AnswerPart,
   type SupportStatus,
   type SupportTopic,
@@ -28,6 +29,8 @@ import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { getOrderForUser } from "./orders.js";
 import { getDb } from "./db.js";
+import { translate } from "../shared/i18n/dictionary.js";
+import type { DraftTurn } from "../shared/commerce/supportDraft.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -61,6 +64,30 @@ function checked(body: string): string {
   return body.trim();
 }
 
+type OrderFacts = NonNullable<AnswerFacts["order"]>;
+
+/**
+ * One of the shopper's own orders as the automatic answer reads it, or null
+ * when the reference is not theirs. Read the same way the account page reads
+ * it, so the answer cannot contradict the page beside it.
+ */
+async function orderFacts(userId: number, reference: string, now: Date): Promise<{ orderId: number; facts: OrderFacts } | null> {
+  const found = await getOrderForUser(userId, reference);
+  if (!found) return null;
+  return {
+    orderId: found.order.id,
+    facts: {
+      reference: found.order.reference,
+      paymentMethod: found.order.paymentMethod ?? null,
+      paid: found.order.status === "paid",
+      lines: found.lines.map(line => ({
+        fulfilment: line.fulfilment,
+        returnable: returnStateFor(found.order, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now).returnable,
+      })),
+    },
+  };
+}
+
 /** Open a conversation, and answer it at once from the facts. */
 export async function openConversation(userId: number, input: { topic: SupportTopic; orderReference?: string | null; body: string }, now = new Date()) {
   const body = checked(input.body);
@@ -73,21 +100,12 @@ export async function openConversation(userId: number, input: { topic: SupportTo
     .where(and(eq(supportConversations.userId, userId), ne(supportConversations.status, "resolved")));
   if (open >= MAX_OPEN_CONVERSATIONS) throw new SupportRefused("support.tooManyOpen");
 
-  let facts: Parameters<typeof firstAnswer>[1]["order"] = null;
+  let facts: OrderFacts | null = null;
   let orderId: number | null = null;
   if (input.orderReference) {
-    const found = await getOrderForUser(userId, input.orderReference);
+    const found = await orderFacts(userId, input.orderReference, now);
     if (!found) throw new SupportRefused("support.unknownOrder");
-    orderId = found.order.id;
-    facts = {
-      reference: found.order.reference,
-      paymentMethod: found.order.paymentMethod ?? null,
-      paid: found.order.status === "paid",
-      lines: found.lines.map(line => ({
-        fulfilment: line.fulfilment,
-        returnable: returnStateFor(found.order, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now).returnable,
-      })),
-    };
+    ({ orderId, facts } = found);
   }
   const answer = firstAnswer(input.topic, { order: facts, returnWindowDays: RETURN_WINDOW_DAYS });
 
@@ -288,4 +306,38 @@ export async function waitingOnStaff(actor: Actor): Promise<number> {
     .from(supportConversations)
     .where(and(eq(supportConversations.status, "open"), or(isNull(supportConversations.staffReadAt), gt(supportConversations.lastMessageAt, supportConversations.staffReadAt))));
   return count;
+}
+
+/**
+ * What a model may be shown to draft a reply (3.5.1): the topic, the order's
+ * facts as they stand *now* — recomputed, because the automatic answer was
+ * true when it was given and a parcel has moved since — and the turns, each
+ * rendered to text. Never the shopper's name, email or the reference: the
+ * facts are rendered without it. `supportDraft.ts` decides what of this
+ * leaves, and withholds any turn carrying contact details.
+ */
+export async function draftMaterial(actor: Actor, id: number, now = new Date()): Promise<{ topic: SupportTopic; facts: string[]; turns: DraftTurn[] }> {
+  assertCan(actor, "support.answer");
+  const db = await handle();
+  const [conversation] = await db.select().from(supportConversations).where(eq(supportConversations.id, id)).limit(1);
+  if (!conversation) throw new SupportRefused("support.notFound");
+  const { messages } = await thread(db, conversation, null);
+
+  const english = (part: AnswerPart) => translate("en", part.key, { ...part.params, reference: "the order" });
+  const current = conversation.orderReference ? await orderFacts(conversation.userId, conversation.orderReference, now) : null;
+  const facts = current
+    ? firstAnswer(conversation.topic, { order: current.facts, returnWindowDays: RETURN_WINDOW_DAYS })
+        /* The facts, not the boilerplate around them. */
+        .filter(part => part.key !== "support.answerPerson" && part.key !== "support.answerChooseOrder")
+        .map(english)
+    : [];
+
+  return {
+    topic: conversation.topic,
+    facts,
+    turns: messages.map(message => ({
+      author: message.author,
+      text: message.answer ? message.answer.filter(part => part.key !== "support.answerPerson").map(english).join(" ") : message.body ?? "",
+    })),
+  };
 }

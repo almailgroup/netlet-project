@@ -11,7 +11,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cartItems, carts, orderItems, orders, productVariants, products, supportConversations, supportMessages, users, vendors } from "../drizzle/schema.js";
 import { MAX_OPEN_CONVERSATIONS } from "../shared/commerce/support.js";
 import type { Actor } from "../shared/inventory/permissions.js";
@@ -19,6 +19,7 @@ import type { Actor } from "../shared/inventory/permissions.js";
 let db: ReturnType<typeof drizzle>;
 let support: typeof import("./support.js");
 let ordersModule: typeof import("./orders.js");
+let drafts: typeof import("./supportDraft.js");
 const ids = { noura: 0, fahad: 0, admin: 0, acme: 0, variant: 0 };
 let reference = "";
 
@@ -35,7 +36,10 @@ beforeAll(async () => {
     }
   }
   vi.doMock("./db", async importOriginal => ({ ...(await importOriginal<typeof import("./db.js")>()), getDb: async () => db }));
+  vi.stubEnv("MISTRAL_API_KEY", "test-key-not-real");
+  vi.doMock("./features", () => ({ featureOn: async () => true }));
   support = await import("./support.js");
+  drafts = await import("./supportDraft.js");
   ordersModule = await import("./orders.js");
   for (const [key, email, role] of [["noura", "noura@shop.test", "user"], ["fahad", "fahad@shop.test", "user"], ["admin", "owner@netlet.test", "admin"]] as const) {
     const [row] = await db.insert(users).values({ email, role }).returning();
@@ -113,5 +117,54 @@ describe("answering", () => {
     /* Writing again reopens it: somebody still typing is not answered. */
     await support.replyAsShopper(ids.noura, id, "One more thing");
     expect((await support.myConversations(ids.noura))[0].status).toBe("open");
+  });
+});
+
+describe("drafting a reply", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function replying(status: number, content: unknown) {
+    const sent: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: { body: string }) => {
+      sent.push(init.body);
+      return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
+    }));
+    return sent;
+  }
+
+  it("sends the conversation and today's facts, and nothing that says who the shopper is", async () => {
+    const { id } = await support.openConversation(ids.noura, { topic: "delivery", orderReference: reference, body: "Where is my lamp?" });
+    await support.replyAsShopper(ids.noura, id, "Or ring me on 99887766", new Date(Date.now() + 1000));
+    /* The parcel arrives after the automatic answer was given. */
+    await db.update(orderItems).set({ fulfilment: "delivered", deliveredAt: new Date() }).where(eq(orderItems.fulfilment, "shipped"));
+    try {
+      const sent = replying(200, "  It was delivered today.  ");
+      expect(await drafts.draftReply(admin(), id)).toEqual({ kind: "draft", text: "It was delivered today." });
+      const prompt = sent[0];
+      expect(prompt).toContain("delivered: 1");
+      expect(prompt).toContain("Where is my lamp?");
+      expect(prompt).toContain("message withheld");
+      for (const identifying of ["noura", "Noura", "99887766", "+96550000000", "Block 4", reference]) expect(prompt).not.toContain(identifying);
+    } finally {
+      await db.update(orderItems).set({ fulfilment: "shipped", deliveredAt: null }).where(eq(orderItems.fulfilment, "delivered"));
+    }
+  });
+
+  it("has nothing to draft once NetLet has answered, and asks nothing of the model", async () => {
+    const { id } = await support.openConversation(ids.noura, { topic: "other", body: "Hi" });
+    await support.replyAsStaff(admin(), id, "Hello!", new Date(Date.now() + 1000));
+    const sent = replying(200, "unused");
+    expect(await drafts.draftReply(admin(), id)).toEqual({ kind: "nothingToAnswer" });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("lands every failure on one answer, and is NetLet's alone", async () => {
+    const { id } = await support.openConversation(ids.noura, { topic: "other", body: "Hi" });
+    replying(500, "boom");
+    expect(await drafts.draftReply(admin(), id)).toEqual({ kind: "unavailable" });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("timeout"); }));
+    expect(await drafts.draftReply(admin(), id)).toEqual({ kind: "unavailable" });
+    await expect(drafts.draftReply(seller(), id)).rejects.toThrow("FORBIDDEN:support.answer");
+    await expect(drafts.draftAvailable(seller())).rejects.toThrow("FORBIDDEN:support.answer");
   });
 });

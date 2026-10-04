@@ -22,6 +22,7 @@ import {
   unreadForShopper,
   waitingOnStaff,
 } from "../support.js";
+import { draftAvailable, draftReply } from "../supportDraft.js";
 import { resolveActor } from "../inventory.js";
 import { rowId } from "../_core/schemas.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
@@ -81,6 +82,13 @@ export const supportRouter = router({
   staffResolve: protectedProcedure
     .input(z.object({ id: rowId }))
     .mutation(async ({ ctx, input }) => guard(async () => resolveAsStaff(await resolveActor(ctx.user), input.id))),
+
+  /* A model's draft for staff to edit and send — never sent by itself. */
+  draftAvailable: protectedProcedure.query(async ({ ctx }) => guard(async () => draftAvailable(await resolveActor(ctx.user)))),
+
+  draft: protectedProcedure
+    .input(z.object({ id: rowId }))
+    .mutation(async ({ ctx, input }) => guard(async () => draftReply(await resolveActor(ctx.user), input.id))),
 
   waiting: protectedProcedure.query(async ({ ctx }) => guard(async () => waitingOnStaff(await resolveActor(ctx.user)))),
 });
