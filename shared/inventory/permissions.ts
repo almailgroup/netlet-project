@@ -123,7 +123,12 @@ export type Capability =
    * is the same capability — whoever may commit the money may stop spending
    * it. An administrator reaches every store's, to take one down.
    */
-  | "ads.book";
+  | "ads.book"
+  /*
+   * Answering shoppers on NetLet's own behalf (3.5.1). Admin-only: this is the
+   * shop speaking, and a seller is a party to many of these conversations.
+   */
+  | "support.answer";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -168,6 +173,7 @@ const ADMIN_ONLY: Capability[] = [
   "platform.configure",
   "affiliate.manage",
   "payouts.record",
+  "support.answer",
 ];
 
 /**

@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 559 columns across 53 tables.
+-- Expected: 576 columns across 55 tables.
 
 WITH expected AS (
   SELECT
@@ -63,6 +63,8 @@ WITH expected AS (
     ('saved_products', 'created_at,id,product_id,user_id'),
     ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
     ('subscriptions', 'address_id,created_at,id,interval_weeks,last_order_id,last_outcome,last_run_on,next_run_on,paused_reason,price_ceiling,product_id,product_title,quantity,status,updated_at,user_id,variant_id,variant_title,vendor_id'),
+    ('support_conversations', 'created_at,id,last_message_at,order_id,order_reference,shopper_read_at,staff_read_at,status,topic,user_id'),
+    ('support_messages', 'answer,author,author_id,body,conversation_id,created_at,id'),
     ('users', 'audit_seen_at,created_at,email,id,last_signed_in,name,password_hash,role,supabase_uid,updated_at'),
     ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at,governorate,id,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status,store_name,store_name_ar,under_platform_licence,updated_at,user_id,vendor_id'),
     ('vendor_members', 'created_at,id,role,user_id,vendor_id'),

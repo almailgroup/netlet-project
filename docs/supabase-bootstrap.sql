@@ -1431,6 +1431,56 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "media_files_uploader_idx" ON "media_files" USING btree ("uploaded_by","created_at");
 
+-- ===== 0051_silky_revanche.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."support_status" AS ENUM('open', 'waiting', 'resolved');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."support_topic" AS ENUM('order', 'delivery', 'return', 'payment', 'account', 'other');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "support_conversations" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"topic" "support_topic" NOT NULL,
+	"order_id" integer,
+	"order_reference" varchar(24),
+	"status" "support_status" DEFAULT 'open' NOT NULL,
+	"last_message_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"shopper_read_at" timestamp with time zone,
+	"staff_read_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "support_messages" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"conversation_id" integer NOT NULL,
+	"author" varchar(12) NOT NULL,
+	"author_id" integer,
+	"body" text,
+	"answer" jsonb,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "support_conversations" ADD CONSTRAINT "support_conversations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "support_conversations" ADD CONSTRAINT "support_conversations_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "support_messages" ADD CONSTRAINT "support_messages_conversation_id_support_conversations_id_fk" FOREIGN KEY ("conversation_id") REFERENCES "public"."support_conversations"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "support_messages" ADD CONSTRAINT "support_messages_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "support_conversations_user_idx" ON "support_conversations" USING btree ("user_id","id");
+CREATE INDEX IF NOT EXISTS "support_conversations_status_idx" ON "support_conversations" USING btree ("status","last_message_at");
+CREATE INDEX IF NOT EXISTS "support_messages_conversation_idx" ON "support_messages" USING btree ("conversation_id","id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1474,6 +1524,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  51 AS migrations_in_this_file,
+  52 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

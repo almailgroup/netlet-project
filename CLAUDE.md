@@ -1290,6 +1290,35 @@ suspension. The shopper is named to the store by first name and initial, by
 side, so unread is derived — and the open thread refreshes the list's badge,
 because the list was fetched before opening marked it read.
 
+## Talking to NetLet
+
+The chat leg of the contact centre (3.5.1) — `shared/commerce/support.ts` the
+rule, pure; `server/support.ts` the database half. WhatsApp and voice are the
+other two legs and wait on providers.
+
+**The first answer is computed, not generated.** Most of what a shop's support
+is asked is answered by its own records: where the order is, whether a return
+is open, how paying works, how to get back in. So opening a conversation writes
+an automatic answer from the chosen order's facts in the same transaction as the
+question, labelled automatic, ending on a line saying a person reads every
+message. No model writes it — a wrong automatic answer about money or a parcel
+is worse than a slow human one — and every fact it states is one the account
+page already shows. Whether a return is open is asked of `returnStateFor`, the
+rule the return button uses, so the answer and the button cannot disagree.
+
+**It is stored as message keys, never English**, so an answer given in English
+reads in Arabic when the shopper switches next week. A key whose copy drops a
+parameter still renders; one that *adds* a parameter breaks every answer stored
+before it, so add a new key instead.
+
+The order is looked up through `getOrderForUser`, so another shopper's reference
+is "not found" — the rule every order read follows. `support.answer` is
+administrators only: a seller answers their own customers in chat (3.8), and a
+conversation with NetLet is about NetLet. Three states, and a shopper writing
+into an answered conversation reopens it — somebody still typing has not been
+answered, whatever a button said. Throttled by account in Postgres, for the
+price-ask reason: there is a real identity, and what runs out is people.
+
 ## After the door: ratings and damage
 
 `server/parcelCare.ts` is both, because both start from the same thing — a

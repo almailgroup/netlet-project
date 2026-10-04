@@ -40,6 +40,7 @@ import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
 import type { SizeChart } from "../shared/commerce/sizeGuide.js";
 import { AD_SLOTS } from "../shared/commerce/adBookings.js";
+import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../shared/commerce/support.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -49,6 +50,8 @@ export const wishlistVisibility = pgEnum("wishlist_visibility", ["private", "pub
 /* What a variant's price is quoted against. `each` is every product today. */
 export const sellUnit = pgEnum("sell_unit", sellUnits);
 export const adSlot = pgEnum("ad_slot", AD_SLOTS);
+export const supportTopic = pgEnum("support_topic", SUPPORT_TOPICS);
+export const supportStatus = pgEnum("support_status", SUPPORT_STATUSES);
 export const subscriptionStatus = pgEnum("subscription_status", ["active", "paused", "cancelled"]);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
 
@@ -1038,6 +1041,52 @@ export const courierMembers = pgTable(
     uniqueIndex("courier_members_unique").on(table.courierId, table.userId),
     index("courier_members_user_idx").on(table.userId),
   ]
+);
+
+/**
+ * A conversation between a shopper and NetLet itself (3.5.1) — not a seller,
+ * whose conversations are `conversations`. The rules are
+ * `shared/commerce/support.ts`. Read state is a timestamp per side, so unread
+ * is derived, the way the seller chat's is.
+ */
+export const supportConversations = pgTable(
+  "support_conversations",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    topic: supportTopic("topic").notNull(),
+    /** The shopper's own order it is about, checked when opened; null for none. */
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    orderReference: varchar("order_reference", { length: 24 }),
+    status: supportStatus("status").notNull().default("open"),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    shopperReadAt: timestamp("shopper_read_at", { withTimezone: true }),
+    staffReadAt: timestamp("staff_read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    index("support_conversations_user_idx").on(table.userId, table.id),
+    index("support_conversations_status_idx").on(table.status, table.lastMessageAt),
+  ],
+);
+
+/**
+ * One message. `body` is what a person typed; `answer` is the automatic first
+ * answer, stored as message keys so it reads in whichever language the shopper
+ * is using when they look. Exactly one of the two is set.
+ */
+export const supportMessages = pgTable(
+  "support_messages",
+  {
+    id: serial("id").primaryKey(),
+    conversationId: integer("conversation_id").notNull().references(() => supportConversations.id, { onDelete: "cascade" }),
+    author: varchar("author", { length: 12 }).notNull(),
+    authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body"),
+    answer: jsonb("answer").$type<AnswerPart[] | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("support_messages_conversation_idx").on(table.conversationId, table.id)],
 );
 
 /** Raw bytes. PGlite hands back a Uint8Array and postgres.js a Buffer; both are one. */

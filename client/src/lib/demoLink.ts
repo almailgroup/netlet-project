@@ -458,6 +458,23 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { available: false };
     case "search.photo":
       return { kind: "unavailable" };
+    /* Talking to NetLet (3.5.1): the demo shopper is a guest and the demo
+       portal is a seller, so neither has conversations with NetLet. */
+    case "support.mine":
+      return [];
+    case "support.unread":
+    case "support.waiting":
+      return 0;
+    case "support.inbox":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "support.open":
+    case "support.thread":
+    case "support.reply":
+    case "support.resolve":
+    case "support.staffThread":
+    case "support.staffReply":
+    case "support.staffResolve":
+      throw new Error("support.notFound");
     /* Live tracking (3.4.3): nothing is ever on the road in the demo. */
     case "orders.tracking":
       return [];

@@ -18,6 +18,7 @@ import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
+import { AccountSupport } from "@/components/account/AccountSupport";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
@@ -45,6 +46,7 @@ const SECTIONS = [
   { id: "orders", label: "account.sectionOrders" },
   { id: "subscriptions", label: "subscriptions.section" },
   { id: "messages", label: "chat.sectionMessages" },
+  { id: "help", label: "support.section" },
   { id: "reviews", label: "account.sectionReviews" },
   { id: "wishlists", label: "account.sectionWishlists" },
   { id: "offers", label: "offers.mine" },
@@ -163,6 +165,11 @@ export default function Account() {
                   about something bought from it. */}
               <Section id="messages" title={t("chat.sectionMessages")}>
                 <AccountMessages />
+              </Section>
+
+              {/* Talking to NetLet itself (3.5.1), beside talking to a seller. */}
+              <Section id="help" title={t("support.section")}>
+                <AccountSupport />
               </Section>
 
               {/* Second, ahead of the settings: a wishlist is something other
