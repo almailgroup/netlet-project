@@ -31,6 +31,7 @@ import { ArrowLeft, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
+import { PhotoUpload } from "@/components/admin/PhotoUpload";
 
 const REASONS = ["received", "sold", "damaged", "correction", "returned"] as const;
 
@@ -469,6 +470,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             >
               <Plus className="size-4" />{t("admin.addImage")}
             </button>
+            {/* A photo from the seller's own device, fixed on the way in (3.3.4).
+                It joins the list like a pasted URL and is saved with the rest. */}
+            <PhotoUpload onUploaded={url => setImages(current => [...current, { url, altText: "", kind: "image" as const, posterUrl: "" }])} />
             <button
               onClick={() => saveImages.mutate({
                 id: row.id,

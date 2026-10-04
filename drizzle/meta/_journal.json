@@ -351,6 +351,13 @@
       "when": 1791098112959,
       "tag": "0049_awesome_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791098696926,
+      "tag": "0050_productive_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

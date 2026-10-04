@@ -14,6 +14,7 @@ import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inv
 import { z } from "zod";
 import { percentSchema, rowId } from "../_core/schemas.js";
 import { MAX_SUBSCRIPTION_PERCENT } from "../../shared/commerce/subscriptions.js";
+import { acceptableImageUrl } from "../../shared/commerce/media.js";
 import { SELL_UNITS } from "../../shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
@@ -533,18 +534,14 @@ export const inventoryRouter = router({
       .input(z.object({
         id: rowId,
         images: z.array(z.object({
-          url: z.string().url().max(2000).refine(
-            value => /^https?:\/\//i.test(value),
-            "Image URLs must start with http:// or https://",
-          ),
+          /* An absolute http(s) URL, or a photo uploaded through NetLet, which
+             is stored as its own path (3.3.4). Nothing else reaches an <img>. */
+          url: z.string().trim().max(2000).refine(acceptableImageUrl, "Image URLs must start with http:// or https://"),
           altText: z.string().trim().max(255).nullable().optional(),
           kind: z.enum(["image", "video"]).optional(),
           /* Held to the same http(s) rule as the media URL beside it: a
              poster is fetched by the browser exactly as an image is. */
-          posterUrl: z.string().url().max(2000).refine(
-            value => /^https?:\/\//i.test(value),
-            "Poster URLs must start with http:// or https://",
-          ).nullable().optional(),
+          posterUrl: z.string().trim().max(2000).refine(acceptableImageUrl, "Poster URLs must start with http:// or https://").nullable().optional(),
         })).max(12),
       }))
       .mutation(async ({ ctx, input }) => {

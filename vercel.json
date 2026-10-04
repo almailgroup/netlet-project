@@ -9,6 +9,10 @@
       "destination": "/api"
     },
     {
+      "source": "/media/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/healthz",
       "destination": "/api"
     },

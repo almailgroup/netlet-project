@@ -21,6 +21,7 @@ import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -1037,6 +1038,39 @@ export const courierMembers = pgTable(
     uniqueIndex("courier_members_unique").on(table.courierId, table.userId),
     index("courier_members_user_idx").on(table.userId),
   ]
+);
+
+/** Raw bytes. PGlite hands back a Uint8Array and postgres.js a Buffer; both are one. */
+const bytea = customType<{ data: Uint8Array; driverData: Uint8Array }>({
+  dataType() {
+    return "bytea";
+  },
+});
+
+/**
+ * A product photo uploaded through NetLet (3.3.4), already fixed and shrunk in
+ * the seller's browser and checked again here. Served from `/media/<id>` with
+ * a year's cache, because a stored photo never changes — a new one is a new id.
+ *
+ * In Postgres rather than an object store so uploads work on the one service
+ * NetLet already has; at 1200px a photo is a couple of hundred kilobytes. When
+ * a CDN arrives, `MEDIA_HOST` is the switch and this table is what is copied.
+ * The id is random rather than a serial, so the set of photos cannot be walked.
+ */
+export const mediaFiles = pgTable(
+  "media_files",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    uploadedBy: integer("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    contentType: varchar("content_type", { length: 32 }).notNull(),
+    bytes: bytea("bytes").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("media_files_uploader_idx").on(table.uploadedBy, table.createdAt)],
 );
 
 /**

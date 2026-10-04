@@ -25,6 +25,9 @@ import { robotsTxt, sitemapXml } from "../../shared/sitemap.js";
 import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../subscriptions.js";
+import { MediaError, readMedia, saveUpload } from "../media.js";
+import { authenticateRequest } from "./auth.js";
+import { resolveActor } from "../inventory.js";
 
 /**
  * The origin to write into `robots.txt` and `sitemap.xml`.
@@ -126,6 +129,49 @@ export function createApp(): Express {
     } catch (error) {
       console.error(`[sitemap] could not be built: ${describeError(error)}`);
       res.status(503).type("text/plain").send("sitemap unavailable");
+    }
+  });
+
+  /**
+   * Uploaded product photos (3.3.4).
+   *
+   * A route of its own rather than a tRPC procedure, because a photo is bytes
+   * and the API's JSON limit is 256 KB on purpose. Only the two image types it
+   * stores are parsed at all; anything else never reaches the handler. The
+   * session cookie is SameSite=Lax and the body's type is not one an HTML form
+   * can send, so a page on another site cannot post here as somebody signed in.
+   */
+  app.post("/api/media", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1600kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      const saved = await saveUpload(await resolveActor(user), new Uint8Array(req.body), req.headers["content-type"] ?? "");
+      res.status(201).json(saved);
+    } catch (error) {
+      if (error instanceof MediaError) {
+        res.status(error.reason === "media.notAllowed" ? 403 : error.reason === "media.tooMany" ? 429 : 400).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] upload failed: ${describeError(error)}`);
+      res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /** A stored photo, cached for a year: an id is never reused for different bytes. */
+  app.get("/media/:file", async (req, res) => {
+    try {
+      const found = await readMedia(req.params.file);
+      if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
+      res.set({
+        "Content-Type": found.contentType,
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Length": String(found.bytes.length),
+      });
+      res.end(Buffer.from(found.bytes));
+    } catch (error) {
+      console.error(`[media] read failed: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("Unavailable");
     }
   });
 

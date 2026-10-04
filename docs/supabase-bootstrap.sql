@@ -1409,6 +1409,28 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0050_productive_rumiko_fujikawa.sql =====
+CREATE TABLE IF NOT EXISTS "media_files" (
+	"id" varchar(64) PRIMARY KEY NOT NULL,
+	"vendor_id" integer,
+	"uploaded_by" integer,
+	"content_type" varchar(32) NOT NULL,
+	"bytes" "bytea" NOT NULL,
+	"width" integer NOT NULL,
+	"height" integer NOT NULL,
+	"byte_size" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "media_files" ADD CONSTRAINT "media_files_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "media_files" ADD CONSTRAINT "media_files_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "media_files_uploader_idx" ON "media_files" USING btree ("uploaded_by","created_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1452,6 +1474,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  50 AS migrations_in_this_file,
+  51 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

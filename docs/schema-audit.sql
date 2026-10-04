@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 550 columns across 52 tables.
+-- Expected: 559 columns across 53 tables.
 
 WITH expected AS (
   SELECT
@@ -44,6 +44,7 @@ WITH expected AS (
     ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
     ('invoice_counters', 'last,series'),
     ('invoices', 'credits_invoice_id,document,id,issued_at,kind,number,order_id,return_request_id,total,verify_code'),
+    ('media_files', 'byte_size,bytes,content_type,created_at,height,id,uploaded_by,vendor_id,width'),
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,carried_by,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),

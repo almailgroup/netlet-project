@@ -1375,6 +1375,27 @@ because the CSP has to list it once `MEDIA_HOST` narrows images.
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
 
+## Uploaded photos
+
+`shared/commerce/media.ts` is the rule, pure; `server/media.ts` the database
+half; `client/src/lib/preparePhoto.ts` applies the fixes on a canvas. The
+server bundle cannot carry a native image library, so **the fixes happen in
+the seller's browser and the server trusts none of it**: the type is read from
+the file's own header and must match the declared one, sizes are checked
+again, and only JPEG and WebP are ever stored, so nothing under `/media` can be
+a page or a script. Upload is its own route, `POST /api/media`, because the
+JSON limit is 256 KB on purpose; the body type is not one a form can send and
+the cookie is Lax, so another site cannot post as somebody signed in.
+
+The fixes run only when they apply — trim and square only on a uniform
+border, levelling only on a flat photo — and the seller sees before and after.
+**Levelling measures every channel together and is capped** (black point at
+most 40, white at least 215): measured on brightness and uncapped, a dim brown
+product came out maroon, which only looking at the picture showed. Photos are
+`media_files` rows served with a year's cache under a random id; a product's
+gallery accepts their `/media/...` path beside an https URL
+(`acceptableImageUrl`), and `vercel.json` routes `/media` to the function.
+
 ## Live tracking
 
 `shared/commerce/tracking.ts` is the rule, pure; `server/tracking.ts` the
