@@ -1040,6 +1040,19 @@ export const courierMembers = pgTable(
 );
 
 /**
+ * Where a driver is now (3.4.3) — one row per driver, overwritten, never a
+ * trail. Written only while the driver has chosen to share from the dispatch
+ * board, and deleted when they stop. The rules are `shared/commerce/tracking.ts`.
+ */
+export const driverPositions = pgTable("driver_positions", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  courierId: integer("courier_id").notNull().references(() => couriers.id, { onDelete: "cascade" }),
+  position: jsonb("position").$type<{ lat: number; lng: number }>().notNull(),
+  accuracyM: integer("accuracy_m"),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * A shopper's address book.
  *
  * Requirement 3.2.6 asks for a different address per product, and that is only
@@ -1896,6 +1909,13 @@ export const orderItems = pgTable(
      * parcels unassigned rather than taking the order's history with it.
      */
     courierId: integer("courier_id").references(() => couriers.id, { onDelete: "set null" }),
+    /**
+     * Which of the company's people collected it (3.4.3), so the shopper can be
+     * shown where *that* driver is while it is in transit. Set when a courier
+     * marks the parcel collected; null when an administrator moved it, or
+     * before anybody has.
+     */
+    carriedBy: integer("carried_by").references(() => users.id, { onDelete: "set null" }),
     /**
      * How big and how heavy, frozen at the sale.
      *

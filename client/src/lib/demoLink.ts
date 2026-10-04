@@ -458,6 +458,14 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { available: false };
     case "search.photo":
       return { kind: "unavailable" };
+    /* Live tracking (3.4.3): nothing is ever on the road in the demo. */
+    case "orders.tracking":
+      return [];
+    case "dispatch.mySharing":
+      return { sharing: false, recordedAt: null };
+    case "dispatch.sharePosition":
+    case "dispatch.stopSharing":
+      throw new Error("tracking.notDriver");
     case "subscriptions.mine":
       return [];
     case "subscriptions.overview":

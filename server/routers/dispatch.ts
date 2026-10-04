@@ -11,6 +11,7 @@
  * read without signing in would be a list of every shopper's address.
  */
 import { z } from "zod";
+import { mySharing, sharePosition, stopSharing, TrackingError } from "../tracking.js";
 import { rowId } from "../_core/schemas.js";
 import { TRPCError } from "@trpc/server";
 import {
@@ -57,6 +58,18 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message.startsWith("FORBIDDEN:")) {
       throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
     }
+    throw error;
+  }
+}
+
+/** A tracking refusal is a message key; a missing capability is a 403. */
+async function trackingGuard<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof TrackingError) throw new TRPCError({ code: error.reason === "tracking.notDriver" ? "FORBIDDEN" : "BAD_REQUEST", message: error.reason });
+    const message = error instanceof Error ? error.message : "";
+    if (message.startsWith("FORBIDDEN:")) throw new TRPCError({ code: "FORBIDDEN", message: message.slice("FORBIDDEN:".length) });
     throw error;
   }
 }
@@ -108,6 +121,29 @@ export const dispatchRouter = router({
    * parcel is, so the call says what the driver witnessed — and `courierMoves`
    * refuses anything else, which is the same function the buttons come from.
    */
+  /**
+   * Live location (3.4.3), shared by a driver who chose to, from this page.
+   * A driver's own and nobody else's: `sharePosition` refuses anybody who is
+   * not a courier, and there is no way to name another driver.
+   */
+  sharePosition: protectedProcedure
+    .input(z.object({ lat: z.number().finite(), lng: z.number().finite(), accuracy: z.number().finite().nonnegative().nullish() }))
+    .mutation(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return trackingGuard(() => sharePosition(actor, input));
+    }),
+
+  stopSharing: protectedProcedure.mutation(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    await trackingGuard(() => stopSharing(actor));
+    return { success: true } as const;
+  }),
+
+  mySharing: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return trackingGuard(() => mySharing(actor));
+  }),
+
   move: protectedProcedure
     .input(parcelRef.extend({ to: z.enum(["shipped", "delivered"]) }))
     .mutation(async ({ ctx, input }) => {

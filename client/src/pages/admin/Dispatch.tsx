@@ -38,6 +38,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PinLink } from "@/components/map/PinLink";
+import { ShareLocation } from "@/components/admin/ShareLocation";
 
 const VEHICLE_LABEL = {
   bike: "vehicle.bike",
@@ -88,6 +89,9 @@ function Dispatch({ actor }: { actor: Actor }) {
     <>
       <h1 className="text-xl font-extrabold">{t("admin.dispatch")}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.dispatchNote")}</p>
+
+      {/* Live tracking (3.4.3) is a driver's own choice, so only a driver sees it. */}
+      {actor.kind === "courier" ? <ShareLocation /> : null}
 
       {/* A real tablist, so the three views are one control rather than three
           links that happen to sit together. */}

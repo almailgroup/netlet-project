@@ -18,6 +18,7 @@ import {
   carts,
   courierMembers,
   couriers,
+  driverPositions,
   orderItems,
   orders,
   productVariants,
@@ -373,5 +374,88 @@ describe("a pin travels to the driver", () => {
     const addresses = await import("./addresses.js");
     await expect(addresses.addAddress(ids.shopper, { label: "Basra", addressLine: "Somewhere", pin: { lat: 30.5085, lng: 47.7804 } }))
       .rejects.toThrow("address.pinOutsideKuwait");
+  });
+});
+
+/*
+ * Live tracking (3.4.3). The driver shares; the shopper whose parcel that
+ * driver is carrying sees where they are and a band to the pin, and nobody
+ * else sees anything.
+ */
+describe("live tracking", () => {
+  const DOOR = { lat: 29.3339, lng: 48.0763 };
+  const ROAD = { lat: 29.3759, lng: 47.9774 };
+
+  async function onTheRoad() {
+    const [cart] = await db.insert(carts).values({ id: `cart-track-${Math.random().toString(36).slice(2)}`, userId: ids.shopper }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.riceVariant, quantity: 1 });
+    const placed = await ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper, pin: DOOR });
+    await db.update(orderItems).set({ fulfilment: "preparing" });
+    const [parcel] = (await dispatch.loadBoard(adminActor())).parcels;
+    await dispatch.assignParcel(adminActor(), placed.order.id, parcel.key, ids.swift);
+    await dispatch.moveParcel(driverActor(), placed.order.id, parcel.key, "shipped");
+    return { reference: placed.order.reference, orderId: placed.order.id, key: parcel.key };
+  }
+
+  it("names the driver who collected it", async () => {
+    const { orderId } = await onTheRoad();
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    expect(lines.every(line => line.carriedBy === ids.driver)).toBe(true);
+  });
+
+  it("shows the shopper the driver and a band to the pin while it is in transit", async () => {
+    const tracking = await import("./tracking.js");
+    const { reference } = await onTheRoad();
+    const now = new Date();
+    await tracking.sharePosition(driverActor(), { ...ROAD, accuracy: 12 }, now);
+    const [parcel] = await tracking.trackOrder(ids.shopper, reference, new Date(now.getTime() + 60_000));
+    expect(parcel).toMatchObject({ courierName: "Swift Delivery", driver: ROAD, door: DOOR, eta: { kind: "band", low: 30, high: 35 } });
+  });
+
+  it("says nothing about where the driver is once the position is stale, or once they stop", async () => {
+    const tracking = await import("./tracking.js");
+    const { reference } = await onTheRoad();
+    const now = new Date();
+    await tracking.sharePosition(driverActor(), ROAD, now);
+    const [stale] = await tracking.trackOrder(ids.shopper, reference, new Date(now.getTime() + 11 * 60_000));
+    expect(stale).toMatchObject({ driver: null, eta: null });
+    await tracking.stopSharing(driverActor());
+    const [stopped] = await tracking.trackOrder(ids.shopper, reference, new Date(now.getTime() + 1000));
+    expect(stopped.driver).toBeNull();
+  });
+
+  it("stops at the door: a delivered parcel is not tracked", async () => {
+    const tracking = await import("./tracking.js");
+    const { reference, orderId, key } = await onTheRoad();
+    await tracking.sharePosition(driverActor(), ROAD);
+    await dispatch.moveParcel(driverActor(), orderId, key, "delivered");
+    expect(await tracking.trackOrder(ids.shopper, reference)).toEqual([]);
+  });
+
+  it("shows nothing for a driver who has left the company", async () => {
+    const tracking = await import("./tracking.js");
+    const { reference } = await onTheRoad();
+    await tracking.sharePosition(driverActor(), ROAD);
+    await db.delete(courierMembers).where(eq(courierMembers.userId, ids.driver));
+    const [parcel] = await tracking.trackOrder(ids.shopper, reference);
+    expect(parcel.driver).toBeNull();
+  });
+
+  it("is the shopper's own order, and the driver's own position", async () => {
+    const tracking = await import("./tracking.js");
+    const { reference } = await onTheRoad();
+    await expect(tracking.trackOrder(ids.admin, reference)).rejects.toMatchObject({ reason: "tracking.notFound" });
+    await expect(tracking.sharePosition(sellerActor(), ROAD)).rejects.toMatchObject({ reason: "tracking.notDriver" });
+    await expect(tracking.sharePosition(adminActor(), ROAD)).rejects.toMatchObject({ reason: "tracking.notDriver" });
+    await expect(tracking.sharePosition(driverActor(), { lat: 30.5, lng: 47.78 })).rejects.toMatchObject({ reason: "tracking.outsideKuwait" });
+  });
+
+  it("keeps one point in ten seconds, however often the phone reports", async () => {
+    const tracking = await import("./tracking.js");
+    const now = new Date();
+    expect(await tracking.sharePosition(driverActor(), ROAD, now)).toEqual({ kept: true });
+    expect(await tracking.sharePosition(driverActor(), DOOR, new Date(now.getTime() + 2000))).toEqual({ kept: false });
+    expect(await tracking.sharePosition(driverActor(), DOOR, new Date(now.getTime() + 11_000))).toEqual({ kept: true });
+    expect(await db.select().from(driverPositions)).toHaveLength(1);
   });
 });

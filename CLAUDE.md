@@ -1375,6 +1375,24 @@ because the CSP has to list it once `MEDIA_HOST` narrows images.
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
 
+## Live tracking
+
+`shared/commerce/tracking.ts` is the rule, pure; `server/tracking.ts` the
+database half. **A driver chooses, every time**: sharing is off whenever the
+dispatch board opens and on only when pressed. `driver_positions` is one row
+per driver, overwritten and deleted on stop — never a trail — and a position
+older than ten minutes is not shown, so a closed page stops being a location
+on its own. **A shopper sees one driver, narrowly**: only on their own order,
+only while the parcel is collected and not delivered, only the driver in
+`order_items.carried_by` (set when a courier marks it collected), and only
+while that driver still belongs to the company carrying it. Where, and which
+company — never who.
+
+**The estimate is a five-minute band from distance**, labelled as such:
+NetLet has no routing or traffic data, and a clock time would be a promise.
+No pin, no door to measure to, so no time. The server keeps one point in ten
+seconds by a predicate in the upsert, however often the phone reports.
+
 ## Subscribe & Save
 
 `shared/commerce/subscriptions.ts` is the rule, pure; `server/subscriptions.ts`

@@ -32,6 +32,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, FileText, PackageSearch, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
+import { TrackParcels } from "@/components/account/TrackParcels";
 
 /**
  * The words for each state, and its colour.
@@ -236,6 +237,8 @@ function OrderLines({ reference }: { reference: string }) {
               </ul>
             </section>
           ) : null}
+          {/* Live tracking (3.4.3), while anything is on the road. */}
+          {data.lines.some(line => line.fulfilment === "shipped") ? <TrackParcels reference={reference} /> : null}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
           </>
         );

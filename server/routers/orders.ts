@@ -40,6 +40,7 @@ import { PAYMENT_METHODS } from "../../shared/commerce/payment.js";
 import { FULFILMENT_STATES } from "../../shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
+import { trackOrder, TrackingError } from "../tracking.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../shared/commerce/returns.js";
 
 export const ordersRouter = router({
@@ -63,6 +64,22 @@ export const ordersRouter = router({
    * decision rather than the ingredients also means the clock is the server's,
    * and a shopper cannot reopen a closed window by changing their system date.
    */
+  /**
+   * Where the parcels on the road are (3.4.3). Scoped by account in the query;
+   * another shopper's reference is "not found". The client asks again every
+   * so often while the panel is open, which is what makes the estimate move.
+   */
+  tracking: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await trackOrder(ctx.user.id, input.reference);
+      } catch (error) {
+        if (error instanceof TrackingError) throw new TRPCError({ code: "NOT_FOUND", message: error.reason });
+        throw error;
+      }
+    }),
+
   get: protectedProcedure
     .input(z.object({ reference: z.string().min(1).max(64) }))
     .query(async ({ ctx, input }) => {

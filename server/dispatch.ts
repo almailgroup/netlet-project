@@ -448,7 +448,14 @@ export async function moveParcel(
    */
   await db
     .update(orderItems)
-    .set({ fulfilment: to, deliveredAt })
+    .set({
+      fulfilment: to,
+      deliveredAt,
+      /* Who has it now (3.4.3): the driver who pressed "collected", so the
+         shopper can be shown where that driver is. An administrator moving it
+         on somebody's behalf names nobody. */
+      ...(to === "shipped" && actor.kind === "courier" ? { carriedBy: actor.userId } : {}),
+    })
     .where(and(
       inArray(orderItems.id, lines.map(line => line.lineId)),
       notInArray(orderItems.fulfilment, ["cancelled", "returned"]),

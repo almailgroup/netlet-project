@@ -1387,6 +1387,28 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0049_awesome_mesmero.sql =====
+CREATE TABLE IF NOT EXISTS "driver_positions" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"courier_id" integer NOT NULL,
+	"position" jsonb NOT NULL,
+	"accuracy_m" integer,
+	"recorded_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "carried_by" integer;
+DO $$ BEGIN
+  ALTER TABLE "driver_positions" ADD CONSTRAINT "driver_positions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "driver_positions" ADD CONSTRAINT "driver_positions_courier_id_couriers_id_fk" FOREIGN KEY ("courier_id") REFERENCES "public"."couriers"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_carried_by_users_id_fk" FOREIGN KEY ("carried_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1430,6 +1452,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  49 AS migrations_in_this_file,
+  50 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;
