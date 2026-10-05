@@ -44,6 +44,9 @@ describe("dictionary completeness", () => {
       // administrator types into the address bar. A translated path would point
       // at a page that does not exist — the same reason `https` is left alone.
       "dispatch.addMemberNote",
+      // A bank's bulk-payment portal asks for these by their format names, so
+      // the buttons and the note name them as the portal does — the CSV reason.
+      "admin.payoutFilesNote", "admin.payoutDownloadCsv", "admin.payoutDownloadXml",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

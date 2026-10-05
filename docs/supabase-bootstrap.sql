@@ -1624,6 +1624,37 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "payout_run_items_run_charge_unique" ON "payout_run_items" USING btree ("run_id","charge_id");
 
+-- ===== 0055_tough_captain_marvel.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."payout_run_status" AS ENUM('prepared', 'sent', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "payout_files" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"created_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "payout_runs" ALTER COLUMN "bank_reference" DROP NOT NULL;
+ALTER TABLE "payout_runs" ALTER COLUMN "paid_at" DROP DEFAULT;
+ALTER TABLE "payout_runs" ALTER COLUMN "paid_at" DROP NOT NULL;
+ALTER TABLE "payout_runs" ADD COLUMN IF NOT EXISTS "status" "payout_run_status" DEFAULT 'sent' NOT NULL;
+ALTER TABLE "payout_runs" ADD COLUMN IF NOT EXISTS "file_id" integer;
+ALTER TABLE "payout_runs" ADD COLUMN IF NOT EXISTS "prepared_by" integer;
+ALTER TABLE "payout_runs" ADD COLUMN IF NOT EXISTS "prepared_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "payout_files" ADD CONSTRAINT "payout_files_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_runs" ADD CONSTRAINT "payout_runs_file_id_payout_files_id_fk" FOREIGN KEY ("file_id") REFERENCES "public"."payout_files"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "payout_runs" ADD CONSTRAINT "payout_runs_prepared_by_users_id_fk" FOREIGN KEY ("prepared_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "payout_runs_status_idx" ON "payout_runs" USING btree ("status","file_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1667,6 +1698,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  55 AS migrations_in_this_file,
+  56 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

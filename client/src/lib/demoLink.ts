@@ -449,7 +449,15 @@ function resolve(path: string, rawInput: unknown): unknown {
       return [];
     case "finance.payoutHistory":
       return { rows: [], total: 0, page: 1, pageSize: 20 };
-    case "finance.recordPayout":
+    /* Every step of sending money is NetLet's, and the demo is a store's manager. */
+    case "finance.preparePayout":
+    case "finance.prepareAllPayouts":
+    case "finance.preparedPayouts":
+    case "finance.makePayoutFile":
+    case "finance.payoutFiles":
+    case "finance.downloadPayoutFile":
+    case "finance.markPayoutSent":
+    case "finance.cancelPayout":
       throw new Error("payouts.record");
     /* Subscribe & Save (3.1.19): the demo shopper is a guest with no address
        book, and no demo seller offers standing orders. */

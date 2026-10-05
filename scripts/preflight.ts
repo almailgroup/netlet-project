@@ -13,6 +13,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { debtorProblem } from "../shared/commerce/payoutFile.js";
 import { supportNumber } from "../shared/commerce/support.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
@@ -156,6 +157,21 @@ if ((process.env.INVOICE_ISSUER_LICENCE ?? "").trim()) {
 } else {
   add("warn", "Invoices", "INVOICE_ISSUER_LICENCE not set — invoices say the commercial registration is not recorded",
     "Set INVOICE_ISSUER_NAME, INVOICE_ISSUER_NAME_AR, INVOICE_ISSUER_LICENCE and INVOICE_ISSUER_ADDRESS");
+}
+
+{
+  /* NetLet's own account for the ISO 20022 payout file (3.3.21). Unset is a
+     warning, not a block: the CSV still works and the page says why the other
+     format is greyed out. Set and wrong is a block — a bank file naming an
+     account that does not exist is refused at the bank, after somebody has
+     already decided the payouts are going today. */
+  const name = (process.env.PAYOUT_FROM_NAME || process.env.INVOICE_ISSUER_NAME || "").trim();
+  const iban = (process.env.PAYOUT_FROM_IBAN ?? "").trim();
+  const bic = (process.env.PAYOUT_FROM_BIC ?? "").trim().toUpperCase();
+  const problem = debtorProblem({ name, iban, bic });
+  if (!problem) add("ok", "Payout bank file", `ISO 20022 from ${name}${bic ? `, ${bic}` : ""}`);
+  else if (!iban) add("warn", "Payout bank file", "PAYOUT_FROM_IBAN not set — payouts download as CSV only", "Set PAYOUT_FROM_IBAN (and PAYOUT_FROM_NAME, or INVOICE_ISSUER_NAME) to NetLet's own account");
+  else add("blocked", "Payout bank file", `${problem.replace("payouts.", "")}: NetLet's own account is set but cannot be written into a bank file`, "Check PAYOUT_FROM_NAME, PAYOUT_FROM_IBAN and PAYOUT_FROM_BIC");
 }
 
 /* ---------------------------------------------------------------- build --- */

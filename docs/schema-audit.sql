@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 629 columns across 61 tables.
+-- Expected: 636 columns across 62 tables.
 
 WITH expected AS (
   SELECT
@@ -55,8 +55,9 @@ WITH expected AS (
     ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
     ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
+    ('payout_files', 'created_at,created_by,id'),
     ('payout_run_items', 'amount,booking_id,charge_id,id,order_id,order_reference,run_id,vendor_id'),
-    ('payout_runs', 'bank_reference,iban_used,id,paid_at,paid_by,total,vendor_id,vendor_name'),
+    ('payout_runs', 'bank_reference,file_id,iban_used,id,paid_at,paid_by,prepared_at,prepared_by,status,total,vendor_id,vendor_name'),
     ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),

@@ -8,6 +8,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { SETTLEMENT_DAYS, type PayoutDue } from "@shared/commerce/payoutSchedule";
+import { toFils } from "@shared/money";
 
 /**
  * When each order's money is actually due (3.3.21).
@@ -28,10 +29,19 @@ export function PayoutsDue() {
   const due = trpc.finance.payoutsDue.useQuery({});
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
-  const state = (row: { due: PayoutDue; owed: string; paid: string }) => {
+  const state = (row: { due: PayoutDue; owed: string; paid: string; sending: string }) => {
     /* Sent already, in full: the ledger's answer wins over the schedule's. */
-    if (Number(row.paid) > 0 && Number(row.paid) >= Number(row.owed)) return { text: t("admin.payoutSent"), tone: "ink-muted" };
+    const paid = toFils(row.paid);
+    const sending = toFils(row.sending);
+    const owed = toFils(row.owed);
+    if (paid > 0n && paid >= owed) return { text: t("admin.payoutSent"), tone: "ink-muted" };
+    /* Prepared and not yet out of the bank: committed, and not "Sent" until it is. */
+    if (sending > 0n && paid + sending >= owed) return { text: t("admin.payoutBeingSent"), tone: "text-[#0a285a]" };
     if (row.due.state === "refunded") return { text: t("admin.payoutRefunded"), tone: "ink-muted" };
+    /* Every line returned or cancelled on an order that was paid: the schedule
+       says "due", but nothing is, and "Overdue" over a zero told a seller they
+       were owed money that had gone back to the shopper. */
+    if (row.due.state === "due" && owed <= 0n && paid === 0n && sending === 0n) return { text: t("admin.payoutNothingOwed"), tone: "ink-muted" };
     if (row.due.state === "unpaid") return { text: t("admin.payoutUnpaid"), tone: "ink-muted" };
     if (row.due.state === "held") {
       return { text: t("admin.payoutHeld", { from: formatDate(row.due.window.from) }), tone: "text-[#404553]" };

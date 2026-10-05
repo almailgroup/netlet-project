@@ -1593,12 +1593,36 @@ subtraction is the clawback — a refund after a payout drops earned below paid
 and the difference comes off the next batch. A batch that nets negative sends
 nothing and says what the store owes; there is no negative transfer.
 
-Recording recomputes the batch inside the transaction under a `for update` lock
-on the seller's row, so two administrators pressing at once cannot pay twice
-and a refund landed after the page drew is in what gets recorded. The IBAN and
-the seller's name are frozen on the run. The schedule on `/admin/payouts` and
-the finance panel reads the ledger too, so an order already paid says "Sent"
-rather than "Overdue".
+**A run is frozen before the money moves, never recomputed after.** Preparing
+recomputes the batch under a `for update` lock on the seller's row and writes
+the run with its lines, which count as paid from that moment — so two
+administrators pressing at once prepare one run, and nothing can be prepared
+twice. The transfer is made from that figure; marking it sent adds the bank's
+reference and changes no amount. Recording used to recompute at the press of
+"sent", *after* the money had gone at the page's figure: an order coming due in
+between was recorded as paid though nobody sent it, and a refund in between
+left the seller holding money the ledger said they never got. A placement's fee
+accruing at midnight was enough. `payoutRuns.test.ts` does both between the
+two presses now. The IBAN and the seller's name are frozen on the run, and a
+store with no valid IBAN cannot be prepared.
+
+**Prepared runs go out in a bank file**, `shared/commerce/payoutFile.ts`, pure:
+ISO 20022 `pain.001.001.03` and a CSV with the same five facts. The message id
+is derived from the `payout_files` row, so downloading again gives the same id
+and the bank refuses a second upload — the one protection against paying a
+file twice that does not rely on memory. A transfer the bank refused is
+*voided* (`cancelled` in the enum): its items are deleted, so the money is owed
+again, and it drops out of the file. "Void", not "cancel", on the page, because
+the confirmation's own dismiss button already says Cancel. NetLet's account is
+`PAYOUT_FROM_IBAN`; unset, only the CSV works and the page says so. The XML was
+checked against the published XSD with `xmllint` (the schema ships in the
+`sepaxml` Python package) — the repository does not carry it.
+
+The schedule on `/admin/payouts` and the finance panel reads the ledger too,
+split by run status: an order already paid says "Sent", one in a prepared run
+"Being sent", and a due order whose every line came back "Nothing owed" — it
+read "Overdue" against KWD 0, which tells a seller they are owed money that
+went back to the shopper.
 
 ## Payouts and placement
 

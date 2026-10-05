@@ -2725,6 +2725,26 @@ export const adBookings = pgTable(
  * transfer to one account, and the store editing its IBAN next month does not
  * change where last month's money went.
  */
+/**
+ * Where a payout run is (3.3.21). `prepared` is frozen and committed — its
+ * lines count as paid, so nothing can be prepared twice — but no money has
+ * left yet; `sent` carries the bank's reference; `cancelled` is a run the bank
+ * refused or nobody sent, whose lines were removed so the money is owed again.
+ * Every run recorded before preparing existed was sent, hence the default.
+ */
+export const payoutRunStatus = pgEnum("payout_run_status", ["prepared", "sent", "cancelled"]);
+
+/**
+ * A bank transfer file (3.3.21): a set of prepared runs uploaded together.
+ * Its message id is derived from this row, so downloading it again produces
+ * the same id and a bank refuses a second upload.
+ */
+export const payoutFiles = pgTable("payout_files", {
+  id: serial("id").primaryKey(),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const payoutRuns = pgTable(
   "payout_runs",
   {
@@ -2732,13 +2752,23 @@ export const payoutRuns = pgTable(
     vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
     vendorName: varchar("vendor_name", { length: 255 }).notNull(),
     total: numeric("total", { precision: 12, scale: 3 }).notNull(),
-    /** The bank's own reference for the transfer, as the person who sent it typed it. */
-    bankReference: varchar("bank_reference", { length: 80 }).notNull(),
+    status: payoutRunStatus("status").notNull().default("sent"),
+    /** The bank's own reference for the transfer, as the person who sent it typed it. Null while prepared. */
+    bankReference: varchar("bank_reference", { length: 80 }),
     ibanUsed: varchar("iban_used", { length: 34 }),
+    /** The bank file this run went out in, if it went out in one. */
+    fileId: integer("file_id").references(() => payoutFiles.id, { onDelete: "set null" }),
+    /** Null on a run recorded before preparing existed. */
+    preparedBy: integer("prepared_by").references(() => users.id, { onDelete: "set null" }),
+    preparedAt: timestamp("prepared_at", { withTimezone: true }),
     paidBy: integer("paid_by").references(() => users.id, { onDelete: "set null" }),
-    paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
+    /** When it was marked sent. Null while prepared or once cancelled. */
+    paidAt: timestamp("paid_at", { withTimezone: true }),
   },
-  table => [index("payout_runs_vendor_idx").on(table.vendorId, table.paidAt)],
+  table => [
+    index("payout_runs_vendor_idx").on(table.vendorId, table.paidAt),
+    index("payout_runs_status_idx").on(table.status, table.fileId),
+  ],
 );
 
 /** What one payout run paid, or took back, against each order. Signed. */

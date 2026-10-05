@@ -82,7 +82,7 @@ beforeAll(async () => {
     const [row] = await db.insert(users).values({ email: `${who}@netlet.test`, name: who, ...(who === "admin" ? { role: "admin" } : {}) }).returning();
     people[who] = row;
   }
-  const [acme] = await db.insert(vendors).values({ slug: "acme", name: "Acme", status: "approved" }).returning();
+  const [acme] = await db.insert(vendors).values({ slug: "acme", name: "Acme", status: "approved", payoutIban: "KW81CBKU0000000000001234560101" }).returning();
   const [beta] = await db.insert(vendors).values({ slug: "beta", name: "Beta", status: "approved" }).returning();
   ids.acme = acme.id; ids.beta = beta.id;
   await db.insert(vendorMembers).values([
@@ -246,7 +246,8 @@ describe("the fee comes off the payout, once", () => {
     expect(batch.lines).toContainEqual({ orderId: null, reference: `AD-${id}`, amount: "-20.000", kind: "fee" });
     expect(Number(batch.total)).toBeCloseTo(net - 20, 3);
 
-    await runs.recordPayout(admin(), ids.acme, "BANK-1", on(2));
+    const run = await runs.preparePayout(admin(), ids.acme, on(2));
+    await runs.markPayoutSent(admin(), { runId: run.id }, "BANK-1", on(2));
     const items = await db.select().from(payoutRunItems).where(eq(payoutRunItems.bookingId, id));
     expect(items.map(item => item.amount)).toEqual(["-20.000"]);
 

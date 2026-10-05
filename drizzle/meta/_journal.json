@@ -386,6 +386,13 @@
       "when": 1791196609256,
       "tag": "0054_fixed_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791203874010,
+      "tag": "0055_tough_captain_marvel",
+      "breakpoints": true
     }
   ]
 }

@@ -42,8 +42,13 @@ export type AuditAction =
   | "platform.setFeature"
   /* An affiliate approved, suspended, or given a new rate (3.7). */
   | "affiliate.update"
-  /* Money sent to a seller (3.3.21). */
+  /* Money sent to a seller (3.3.21): frozen, filed, downloaded, sent or cancelled. */
+  | "payout.prepare"
+  | "payout.file"
+  /* The file carries every seller's account number, so reading it is recorded too. */
+  | "payout.download"
   | "payout.record"
+  | "payout.cancel"
   /* A placement booked, or stopped (3.3.15): money the store commits to spend. */
   | "ads.book"
   | "ads.cancel";
@@ -57,7 +62,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "placement";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -84,7 +89,9 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   "platform.setFeature",
   /* Who NetLet pays, and how much: the commission question again. */
   "affiliate.update",
+  "payout.prepare",
   "payout.record",
+  "payout.cancel",
 ]);
 
 /**

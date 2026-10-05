@@ -10,7 +10,7 @@
  * redirect, so anything living there cannot be tested against a real database.
  */
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { orderItems, orders, payoutRunItems, vendors } from "../drizzle/schema.js";
+import { orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
 import { payoutsByVendor, totalOwed, type PayoutLine } from "../shared/commerce/payouts.js";
 import { payoutDue } from "../shared/commerce/payoutSchedule.js";
 import { lineOutcome } from "../shared/commerce/finance.js";
@@ -184,14 +184,24 @@ export async function payoutDueList(actor: Actor, limit = 200) {
      not still listed as coming — the schedule and the ledger answer one
      question and must not disagree on one page. */
   const orderIds = [...new Set([...byKey.values()].map(entry => entry.orderId))];
+  /* Split by where the run is: a prepared run is committed but has not left
+     the bank, and "Sent" over money still waiting on somebody's upload is a
+     seller told to check an account that has nothing in it yet. */
   const paidRows = orderIds.length
     ? await db
-        .select({ orderId: payoutRunItems.orderId, vendorId: payoutRunItems.vendorId, paid: sql<string>`sum(${payoutRunItems.amount})` })
+        .select({
+          orderId: payoutRunItems.orderId,
+          vendorId: payoutRunItems.vendorId,
+          paid: sql<string>`coalesce(sum(${payoutRunItems.amount}) filter (where ${payoutRuns.status} = 'sent'), 0)`,
+          sending: sql<string>`coalesce(sum(${payoutRunItems.amount}) filter (where ${payoutRuns.status} = 'prepared'), 0)`,
+        })
         .from(payoutRunItems)
+        .innerJoin(payoutRuns, eq(payoutRunItems.runId, payoutRuns.id))
         .where(inArray(payoutRunItems.orderId, orderIds))
         .groupBy(payoutRunItems.orderId, payoutRunItems.vendorId)
     : [];
   const paid = new Map(paidRows.map(row => [`${row.orderId}:${row.vendorId}`, toFils(row.paid)]));
+  const sending = new Map(paidRows.map(row => [`${row.orderId}:${row.vendorId}`, toFils(row.sending)]));
 
   return [...byKey.values()].map(entry => ({
     orderId: entry.orderId,
@@ -200,6 +210,7 @@ export async function payoutDueList(actor: Actor, limit = 200) {
     vendorName: entry.vendorName?.trim() || `#${entry.vendorId ?? "—"}`,
     owed: fromFils(entry.owed),
     paid: fromFils(paid.get(`${entry.orderId}:${entry.vendorId}`) ?? 0n),
+    sending: fromFils(sending.get(`${entry.orderId}:${entry.vendorId}`) ?? 0n),
     due: entry.due,
   }));
 }

@@ -9,7 +9,21 @@
 import { z } from "zod";
 import { financeReport } from "../finance.js";
 import { payoutDueList, payoutReport, sellersUnderPlatformLicence } from "../payouts.js";
-import { payoutHistory, PayoutRefused, readyBatches, recordPayout } from "../payoutRuns.js";
+import {
+  cancelPayout,
+  makePayoutFile,
+  markPayoutSent,
+  payoutFileContent,
+  payoutFileList,
+  payoutHistory,
+  PayoutRefused,
+  prepareAllPayouts,
+  preparePayout,
+  preparedPayouts,
+  readyBatches,
+} from "../payoutRuns.js";
+import { PAYOUT_FORMATS } from "../../shared/commerce/payoutFile.js";
+import { MAX_BANK_REFERENCE } from "../../shared/commerce/payoutRuns.js";
 import { rowId } from "../_core/schemas.js";
 import { TRPCError } from "@trpc/server";
 import { resolveActor } from "../inventory.js";
@@ -25,7 +39,14 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     return await work();
   } catch (error) {
     if (error instanceof PayoutRefused) {
-      throw new TRPCError({ code: error.reason === "payouts.notFound" ? "NOT_FOUND" : error.reason === "payouts.nothingDue" ? "CONFLICT" : "BAD_REQUEST", message: error.reason });
+      const code = error.reason === "payouts.notFound"
+        ? "NOT_FOUND"
+        /* Somebody else got there first, or the state moved under the page. */
+        : error.reason === "payouts.nothingDue" || error.reason === "payouts.nothingPrepared" ? "CONFLICT"
+        /* NetLet's own account is not set up: nobody did anything wrong by asking. */
+        : error.reason.startsWith("payouts.noDebtor") || error.reason.startsWith("payouts.badDebtor") ? "PRECONDITION_FAILED"
+        : "BAD_REQUEST";
+      throw new TRPCError({ code, message: error.reason });
     }
     const message = error instanceof Error ? error.message : "";
     if (message.startsWith("FORBIDDEN:")) {
@@ -76,13 +97,39 @@ export const financeRouter = router({
 
   /**
    * Payout runs (3.3.21): each seller's next batch, assembled by the schedule;
-   * recording one as sent; and the payouts already made. A store's manager
-   * reads their own; recording is NetLet's alone.
+   * freezing it before the money moves, gathering frozen runs into a bank
+   * file, marking them sent or cancelling them; and the payouts already made.
+   * A store's manager reads their own; everything else is NetLet's alone.
    */
   payoutBatches: protectedProcedure.query(async ({ ctx }) => guard(async () => readyBatches(await resolveActor(ctx.user)))),
-  recordPayout: protectedProcedure
-    .input(z.object({ vendorId: rowId, bankReference: z.string().trim().min(1).max(80) }))
-    .mutation(async ({ ctx, input }) => guard(async () => recordPayout(await resolveActor(ctx.user), input.vendorId, input.bankReference))),
+  preparePayout: protectedProcedure
+    .input(z.object({ vendorId: rowId }))
+    .mutation(async ({ ctx, input }) => guard(async () => preparePayout(await resolveActor(ctx.user), input.vendorId))),
+  prepareAllPayouts: protectedProcedure
+    .mutation(async ({ ctx }) => guard(async () => prepareAllPayouts(await resolveActor(ctx.user)))),
+  preparedPayouts: protectedProcedure
+    .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () => preparedPayouts(await resolveActor(ctx.user), input ?? {}))),
+  makePayoutFile: protectedProcedure
+    .mutation(async ({ ctx }) => guard(async () => makePayoutFile(await resolveActor(ctx.user)))),
+  payoutFiles: protectedProcedure
+    .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
+    .query(async ({ ctx, input }) => guard(async () => payoutFileList(await resolveActor(ctx.user), input ?? {}))),
+  /* A mutation rather than a query: every download is written to the trail. */
+  downloadPayoutFile: protectedProcedure
+    .input(z.object({ fileId: rowId, format: z.enum(PAYOUT_FORMATS) }))
+    .mutation(async ({ ctx, input }) => guard(async () => payoutFileContent(await resolveActor(ctx.user), input.fileId, input.format))),
+  markPayoutSent: protectedProcedure
+    .input(z.union([
+      /* Strict, so a request naming both a run and a file is refused rather than read as one of them. */
+      z.object({ runId: rowId, bankReference: z.string().trim().min(1).max(MAX_BANK_REFERENCE) }).strict(),
+      z.object({ fileId: rowId, bankReference: z.string().trim().min(1).max(MAX_BANK_REFERENCE) }).strict(),
+    ]))
+    .mutation(async ({ ctx, input }) => guard(async () =>
+      markPayoutSent(await resolveActor(ctx.user), "runId" in input ? { runId: input.runId } : { fileId: input.fileId }, input.bankReference))),
+  cancelPayout: protectedProcedure
+    .input(z.object({ runId: rowId }))
+    .mutation(async ({ ctx, input }) => guard(async () => cancelPayout(await resolveActor(ctx.user), input.runId))),
   payoutHistory: protectedProcedure
     .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
     .query(async ({ ctx, input }) => guard(async () => payoutHistory(await resolveActor(ctx.user), input ?? {}))),

@@ -47,4 +47,11 @@ export const ENV = {
      unset is no channel: the Help section draws only what is configured. */
   supportWhatsapp: process.env.SUPPORT_WHATSAPP ?? "",
   supportPhone: process.env.SUPPORT_PHONE ?? "",
+  /* NetLet's own account, the one payouts leave (3.3.21). Only the ISO 20022
+     bank file needs it — the CSV names only the people being paid — so unset
+     is that one format unavailable, said on the page. The name falls back to
+     the invoice issuer's, which is the same company. */
+  payoutFromName: process.env.PAYOUT_FROM_NAME || process.env.INVOICE_ISSUER_NAME || "",
+  payoutFromIban: process.env.PAYOUT_FROM_IBAN ?? "",
+  payoutFromBic: process.env.PAYOUT_FROM_BIC ?? "",
 };
