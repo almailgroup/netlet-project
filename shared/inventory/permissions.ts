@@ -140,7 +140,13 @@ export type Capability =
    * "received 50" moved stock would be counting their own shelf in a building
    * they are not standing in.
    */
-  | "fulfilment.operate";
+  | "fulfilment.operate"
+  /*
+   * Granting and ending NetLet memberships (4.1), and setting the programme's
+   * terms. Admin-only: a membership is NetLet spending its own money on
+   * somebody's delivery.
+   */
+  | "membership.manage";
 
 /** The lowest vendor rank that clears each capability. */
 const NEEDS: Partial<Record<Capability, VendorRole>> = {
@@ -188,6 +194,7 @@ const ADMIN_ONLY: Capability[] = [
   "payouts.record",
   "support.answer",
   "fulfilment.operate",
+  "membership.manage",
 ];
 
 /**

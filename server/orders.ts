@@ -38,7 +38,9 @@ import { nextStates } from "../shared/commerce/fulfilment.js";
 import { mayMoveLine } from "../shared/commerce/netletFulfilment.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { priceFor } from "../shared/commerce/priceOffers.js";
+import { shopperPrice } from "../shared/commerce/shopperPrice.js";
+import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
+import { discountAllowed } from "../shared/inventory/discountLicence.js";
 import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../shared/commerce/delivery.js";
 import { freezeDestination, type DestinedLine } from "../shared/commerce/addresses.js";
 import { massGramsFor, type SellUnit } from "../shared/commerce/units.js";
@@ -49,8 +51,9 @@ import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
 import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
-import { addMoney, compareMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
+import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
+import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
@@ -59,7 +62,6 @@ import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliate
 import { featureOn } from "./features.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
-import { subscriberPrice } from "../shared/commerce/subscriptions.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -154,6 +156,9 @@ async function priceableLines(
   offerIds: number[];
   delivery: DeliveryQuote;
   cod: ReturnType<typeof codAvailability>;
+  /** Placed by a member (4.1), and what of their delivery NetLet carries. */
+  member: boolean;
+  deliveryWaived: string;
 }> {
   const rows = await db
     .select({
@@ -186,6 +191,10 @@ async function priceableLines(
       vendorFixed: vendors.commissionFixed,
       productPercent: products.commissionPercent,
       productFixed: products.commissionFixed,
+      /* A member's price (4.1) and the permit it needs, read at the last moment like the price. */
+      memberPrice: productVariants.memberPrice,
+      licenceNumber: vendors.discountLicenceNumber,
+      licenceExpiresAt: vendors.discountLicenceExpiresAt,
     })
     .from(cartItems)
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -248,20 +257,39 @@ async function priceableLines(
     .where(eq(cartItems.cartId, cartId))
     .orderBy(productAddons.position);
 
-  const lines = rows.map(row => {
+  /* Membership is asked once, of the account placing the order, at the last moment (4.1). */
+  const member = await isMemberNow(db, userId ?? null);
+
+  /*
+   * What each line costs this shopper — `shopperPrice`, the one rule the bag
+   * uses too, so the threshold below, the line and the bag cannot disagree.
+   * Before it, this threshold ignored a subscriber's saving the line took.
+   */
+  const pricing = new Map(rows.map(row => {
     const inBundle = bundled.get(row.variantId);
     const offer = inBundle ? null : agreed.get(row.variantId) ?? null;
-    const personal = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, offer);
-    /* A subscriber's saving and an agreed price are both reductions on one
-       line, so the shopper gets the lower of the two rather than both. */
-    const subscribed = subscription && !inBundle && subscription.variantId === row.variantId
-      ? subscriberPrice(row.unitPrice, subscription.percent)
-      : null;
-    const charged = subscribed !== null && compareMoney(subscribed, personal) < 0 ? subscribed : personal;
+    const price = shopperPrice({
+      listPrice: row.unitPrice,
+      bundlePrice: inBundle?.unitPrice ?? null,
+      agreed: offer,
+      subscriberPercent: subscription && subscription.variantId === row.variantId ? subscription.percent : null,
+      memberPrice: memberPriceFor({
+        member,
+        listPrice: row.unitPrice,
+        memberPrice: row.memberPrice,
+        permitValid: discountAllowed({ number: row.licenceNumber, expiresAt: row.licenceExpiresAt }).allowed,
+      }),
+    });
     // Only an agreement that actually set the price is spent. One the shelf —
-    // or a subscriber's saving — has undercut leaves the shopper free to use
-    // it another day.
-    if (offer && personal !== row.unitPrice && charged === personal) offerIds.push(offer.id);
+    // or another reduction — has undercut leaves the shopper free to use it
+    // another day.
+    if (offer && price.reason === "agreed") offerIds.push(offer.id);
+    return [row.variantId, price.charged] as const;
+  }));
+
+  const lines = rows.map(row => {
+    const inBundle = bundled.get(row.variantId);
+    const charged = pricing.get(row.variantId)!;
     return {
     variantId: row.variantId,
     productId: row.productId,
@@ -314,8 +342,7 @@ async function priceableLines(
   );
 
   const destined: DestinedLine[] = rows.map(row => {
-    const inBundle = bundled.get(row.variantId);
-    const charged = inBundle ? inBundle.unitPrice : priceFor(row.unitPrice, agreed.get(row.variantId) ?? null);
+    const charged = pricing.get(row.variantId)!;
     /* The extras are money spent with that seller, so they count toward their
        free-delivery threshold exactly as the goods do. */
     const value = addMoney(
@@ -341,11 +368,19 @@ async function priceableLines(
      out of one warehouse, and each is measured against the threshold on its
      own. The fold is pure, so the case worth checking needs no database. */
   const groups = groupForDelivery(destined, rules);
+  /* A member's delivery is waived over NetLet's minimum, and what each seller
+     would have charged is kept beside the breakdown (4.1). */
+  const quoted = quoteDelivery(groups);
+  const delivery = member
+    ? waiveDelivery(quoted, addMoney("0.000", ...destined.map(line => line.value)), await freeDeliveryOver(db))
+    : { ...quoted, waived: "0.000" };
 
   return {
     lines,
     offerIds,
-    delivery: quoteDelivery(groups),
+    member,
+    deliveryWaived: delivery.waived,
+    delivery,
     /*
      * Cash is still decided per *seller*, not per parcel: a driver's ceiling is
      * about how much cash one company will carry, and a shopper who split a
@@ -478,7 +513,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds, delivery, cod } = await priceableLines(
+  const { lines, offerIds, delivery, cod, member, deliveryWaived } = await priceableLines(
     db, cartId, details.userId,
     details.subscription ? { variantId: details.subscription.variantId, percent: details.subscription.percent } : undefined,
   );
@@ -641,6 +676,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         /* Frozen beside the total, so an order from last year still says who
            charged what — the reason the commission rate is copied too. */
         deliveryBreakdown: freezeDelivery(delivery),
+        /* A member's order (4.1): first on the board, and the delivery NetLet carried. */
+        member,
+        deliveryWaived,
         paymentMethod: details.paymentMethod ?? null,
         affiliateId: affiliate?.id ?? null,
         affiliateRate: affiliate?.ratePercent ?? null,

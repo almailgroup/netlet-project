@@ -204,6 +204,8 @@ export type BoardParcel = Parcel & {
    * warehouse that is holding the box rather than to a seller who is not.
    */
   collectFrom: { name: string; addressLine: string; governorate: string } | null;
+  /** Placed by a member (4.1), frozen on the order: first in the queue for the next driver. */
+  member: boolean;
   /** The order's own address, which is where a parcel with no door of its own goes. */
   orderAddress: {
     contactName: string | null;
@@ -263,6 +265,7 @@ export async function loadBoard(
       addressLine: orders.addressLine,
       addressNotes: orders.addressNotes,
       pin: orders.deliveryPin,
+      member: orders.member,
     })
     .from(orders)
     .orderBy(desc(orders.id))
@@ -333,6 +336,7 @@ export async function loadBoard(
         orderTotal: owed.get(order.id)?.owed ?? order.orderTotal,
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
         collectFrom: parcel.centreId === null ? null : centres.get(parcel.centreId) ?? null,
+        member: order.member,
         orderAddress: {
           contactName: order.contactName,
           contactPhone: order.contactPhone,
@@ -345,6 +349,11 @@ export async function loadBoard(
     }
   }
 
+  /* A member's parcels still on their way go first (4.1) — "fast" is the next
+     free driver taking theirs. A stable sort, so everything else keeps the
+     board's own order and nothing reshuffles under somebody reading it. */
+  const priority = (parcel: BoardParcel) => (parcel.member && parcel.state !== "delivered" ? 1 : 0);
+  board.sort((a, b) => priority(b) - priority(a));
   return { parcels: board, truncated };
 }
 

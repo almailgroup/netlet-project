@@ -498,6 +498,19 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "fulfilment.markPacked":
     case "fulfilment.cancel":
       throw new Error("fulfilment.notFound");
+    /* Membership (4.1): the demo shopper is a guest and the demo portal a seller. */
+    case "membership.mine":
+      return { member: false, until: null, freeDeliveryOver: null };
+    case "membership.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "membership.terms":
+      return { freeDeliveryOver: null };
+    case "membership.report":
+      return { members: 0, orders: 0, waived: "0.000" };
+    case "membership.grant":
+    case "membership.end":
+    case "membership.setTerms":
+      throw new Error("membership.notFound");
     /* No model in the demo, through the branch a deployment with no key takes. */
     case "support.draftAvailable":
       return false;

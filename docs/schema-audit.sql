@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 602 columns across 58 tables.
+-- Expected: 618 columns across 60 tables.
 
 WITH expected AS (
   SELECT
@@ -48,17 +48,19 @@ WITH expected AS (
     ('invoice_counters', 'last,series'),
     ('invoices', 'credits_invoice_id,document,id,issued_at,kind,number,order_id,return_request_id,total,verify_code'),
     ('media_files', 'byte_size,bytes,content_type,created_at,height,id,uploaded_by,vendor_id,width'),
+    ('membership_terms', 'free_delivery_over,id,updated_at,updated_by'),
+    ('memberships', 'cancelled_at,created_at,ends_at,granted_by,id,note,source,starts_at,user_id'),
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
     ('payout_run_items', 'amount,booking_id,id,order_id,order_reference,run_id,vendor_id'),
     ('payout_runs', 'bank_reference,iban_used,id,paid_at,paid_by,total,vendor_id,vendor_name'),
     ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
     ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),
     ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),
-    ('product_variants', 'centre_id,compare_at_price,created_at,id,low_stock_at,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
+    ('product_variants', 'centre_id,compare_at_price,created_at,id,low_stock_at,member_price,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
     ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_chart,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
     ('referrals', 'created_at,id,qualified_at,qualified_order_id,referred_id,referrer_id'),
     ('return_requests', 'collected_at,created_at,decided_at,decided_by,decline_reason,id,kind,note,order_id,order_item_id,reason,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked,status,updated_at,user_id,vendor_id'),

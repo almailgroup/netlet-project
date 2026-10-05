@@ -63,6 +63,12 @@ export type ProductVariant = {
   price: Money;
   compareAtPrice: Money | null;
   /**
+   * What a member pays (4.1), when the seller set one below the shelf and the
+   * store may advertise a saving. Shown only to a member: a price somebody is
+   * told about and cannot have is not one to show them.
+   */
+  memberPrice?: Money | null;
+  /**
    * Whether this can be bought at all, from either pool.
    *
    * True for a variant with nothing on the shelf but a pre-order allowance
@@ -222,6 +228,12 @@ export type CartItem = {
    * asked, and it is shown as what it is.
    */
   agreedFrom?: Money | null;
+  /**
+   * Which reduction set `unitPrice` when `agreedFrom` is shown: an agreed
+   * price, a subscriber's saving or a member's price (4.1). Words for the line
+   * beside the struck figure, so a member is told why it is lower.
+   */
+  priceReason?: "agreed" | "subscriber" | "member" | null;
   quantity: number;
   /**
    * The optional extras this line carries (3.1.2) — a fitting, an extended
@@ -292,7 +304,12 @@ export type Cart = {
    * Per seller because a basket from three shops is three parcels, and one
    * averaged figure hides which seller is expensive. The shopper sees each.
    */
-  delivery: { perVendor: CartDeliveryLine[]; total: Money };
+  delivery: {
+    perVendor: CartDeliveryLine[];
+    total: Money;
+    /** What a member's free delivery took off this basket (4.1). Null for everybody else. */
+    memberWaived?: Money | null;
+  };
   /**
    * The addresses this shopper could send a line to (3.2.6).
    *

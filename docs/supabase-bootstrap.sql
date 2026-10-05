@@ -1555,6 +1555,41 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0053_glossy_paibok.sql =====
+CREATE TABLE IF NOT EXISTS "membership_terms" (
+	"id" integer PRIMARY KEY NOT NULL,
+	"free_delivery_over" numeric(12, 3),
+	"updated_by" integer,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "memberships" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"starts_at" timestamp with time zone NOT NULL,
+	"ends_at" timestamp with time zone NOT NULL,
+	"source" varchar(12) DEFAULT 'granted' NOT NULL,
+	"granted_by" integer,
+	"note" text,
+	"cancelled_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "member" boolean DEFAULT false NOT NULL;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_waived" numeric(12, 3) DEFAULT '0.000' NOT NULL;
+ALTER TABLE "product_variants" ADD COLUMN IF NOT EXISTS "member_price" numeric(12, 3);
+DO $$ BEGIN
+  ALTER TABLE "membership_terms" ADD CONSTRAINT "membership_terms_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "memberships" ADD CONSTRAINT "memberships_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "memberships" ADD CONSTRAINT "memberships_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "memberships_user_idx" ON "memberships" USING btree ("user_id","ends_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1598,6 +1633,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  53 AS migrations_in_this_file,
+  54 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

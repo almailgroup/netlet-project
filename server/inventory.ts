@@ -31,6 +31,7 @@ import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../shared/commerce
 import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { recordAudit, violationCount } from "./audit.js";
+import { memberPriceProblem } from "../shared/commerce/membership.js";
 import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
 import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
@@ -978,6 +979,8 @@ export async function saveVariant(actor: Actor, input: {
   stepAmount?: number;
   preorderStock?: number;
   preorderReleaseAt?: Date | null;
+  /** A member's price (4.1). Undefined leaves it as it is; null clears it. */
+  memberPrice?: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -1007,6 +1010,12 @@ export async function saveVariant(actor: Actor, input: {
   const preorderStock = input.preorderStock ?? 0;
   if (!Number.isInteger(preorderStock) || preorderStock < 0) throw new Error("INVALID_PREORDER");
 
+  /* Below the shelf, or not at all (4.1): the same rule the editor's field asks. */
+  if (input.memberPrice !== undefined) {
+    const problem = memberPriceProblem(input.price, input.memberPrice);
+    if (problem) throw new Error(problem);
+  }
+
   const sku = input.sku?.trim() || null;
   await assertSkuFree(db, product.vendorId, sku, input.id);
 
@@ -1021,6 +1030,7 @@ export async function saveVariant(actor: Actor, input: {
     stepAmount: String(measure.stepAmount),
     preorderStock,
     preorderReleaseAt: input.preorderReleaseAt ?? null,
+    ...(input.memberPrice !== undefined ? { memberPrice: input.memberPrice } : {}),
   };
   if (input.id) {
     // Bound to a const because the write below runs inside a closure, where

@@ -1268,6 +1268,40 @@ back only if the variant is still on the shelf the line was sold off
 (`returnUnits`' `shelf`). Found by reviewing the finished diff for every caller
 that adds to `stock`, not by the walk.
 
+## Membership
+
+`shared/commerce/membership.ts` is the rule, pure; `server/membership.ts` the
+database half; `/admin/membership` NetLet's desk. It is 4.1, "built now,
+activated later": every benefit exists, and **buying** waits on payments — so
+nothing offers a membership to anybody, and NetLet grants them, by email, in
+whole months queued end to end.
+
+**Free delivery is NetLet's cost, recorded.** Each seller charges their own
+delivery, so a member's is not the seller's to give: the seller's fee stands in
+the frozen breakdown with a `waived` beside it, the shopper pays nothing, and
+`orders.delivery_waived` is the sum NetLet carried. Who keeps delivery fees at
+all is an open business question — payouts carry only `vendorNet` — and this
+records the figure whichever way it goes.
+
+**A member price is an advertised saving**, so it passes the permit gate on the
+read like the strikethrough, and it is shown only to a member: a price somebody
+is told about and cannot have is not one to show them. **Fast is first in
+line**: `orders.member` is frozen at the sale and the board sorts those parcels
+first, stably.
+
+**What a shopper pays is one function, `shopperPrice`.** A bundle decides
+first; otherwise the lowest of an agreed price, a subscriber's saving and a
+member's price, never the sum, and a tie goes to whichever costs nothing to use
+so an agreed price is not spent on a figure the shopper had anyway. The bag,
+checkout's lines and checkout's free-delivery threshold each had their own
+copy, and the threshold had already drifted — it ignored a subscriber's saving
+the line took. `server/membership.test.ts` checks the bag and the order agree
+to the fil for a member.
+
+**A bare amount is dinars.** `formatMoney` fell back to `USD` when a string came
+without a currency, and the membership desk printed "$US 0" — the shop sells in
+one currency, so the fallback is `KWD` now. Seen in a screenshot, not a test.
+
 ## Talking to a seller
 
 **The filter is the feature.** A chat between a shopper and a seller is, on day

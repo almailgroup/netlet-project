@@ -39,7 +39,6 @@ import type { Measure } from "../shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../shared/money.js";
-import { priceFor } from "../shared/commerce/priceOffers.js";
 import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
 import { groupForDelivery, quoteDelivery, type DeliveryRule } from "../shared/commerce/delivery.js";
@@ -48,6 +47,10 @@ import { listAddresses } from "./addresses.js";
 import { codAvailability } from "../shared/commerce/payment.js";
 import { recoveryFor } from "../shared/commerce/cartRecovery.js";
 import { liveOffersFor } from "./offers.js";
+import { freeDeliveryOver, isMemberNow } from "./membership.js";
+import { shopperPrice } from "../shared/commerce/shopperPrice.js";
+import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
+import { discountAllowed } from "../shared/inventory/discountLicence.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 
@@ -275,6 +278,10 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       /* Cash on delivery is decided per seller (3.2.2). */
       acceptsCod: vendors.acceptsCod,
       codCeiling: vendors.codCeiling,
+      /* A member's price (4.1) and the permit an advertised saving needs. */
+      memberPrice: productVariants.memberPrice,
+      licenceNumber: vendors.discountLicenceNumber,
+      licenceExpiresAt: vendors.discountLicenceExpiresAt,
     })
     .from(cartItems)
     .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -294,9 +301,11 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const imageFor = new Map<number, { url: string; altText: string | null }>();
   for (const image of images) if (!imageFor.has(image.productId)) imageFor.set(image.productId, image);
 
-  /* `priceFor` decides what each line actually costs: the agreed price while
+  /* An agreed price is one of the reductions `shopperPrice` weighs: it holds while
      it is live, and the shelf price the moment the shelf is cheaper. */
   const agreed = await liveOffersFor(db, cart.userId, rows.map(row => row.variantId));
+  /* An anonymous bag has no owner and so no membership, like no agreed price. */
+  const member = await isMemberNow(db, cart.userId);
 
   /*
    * What the bundles in this basket make each line cost (3.3.11), by the same
@@ -342,13 +351,24 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const priced = rows.map(row => {
     const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
     const inBundle = bundled.get(row.variantId);
+    /* `shopperPrice` is the one rule checkout uses too, so the bag cannot
+       quote a figure the order then charges differently. */
+    const price = shopperPrice({
+      listPrice: row.price,
+      bundlePrice: inBundle?.unitPrice ?? null,
+      agreed: agreed.get(row.variantId) ?? null,
+      memberPrice: memberPriceFor({
+        member,
+        listPrice: row.price,
+        memberPrice: row.memberPrice,
+        permitValid: discountAllowed({ number: row.licenceNumber, expiresAt: row.licenceExpiresAt }).allowed,
+      }),
+    });
     return {
       ...row,
       inBundle,
-      /* A bundle is a set at a set price, so it decides before a personally
-         agreed price does: two reductions stacked on one line is two
-         discounts neither of which knew about the other. */
-      charged: inBundle ? inBundle.unitPrice : priceFor(row.price, agreed.get(row.variantId) ?? null),
+      charged: price.charged,
+      reason: price.reason,
       extras,
       extrasTotal: addonsTotal(
         extras.map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
@@ -371,6 +391,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
        strikethrough and the `−27%` badge, which are the machinery of an
        advertised claim and need a Ministry permit this does not. */
     agreedFrom: row.charged === row.price || row.inBundle ? null : money(row.price),
+    priceReason: row.reason === "agreed" || row.reason === "member" || row.reason === "subscriber" ? row.reason : null,
     /* Named on the line, because a shopper who sees a lower figure should be
        able to see which set put it there. */
     bundleName: row.inBundle?.bundleName ?? null,
@@ -397,7 +418,9 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity }))),
     ...priced.map(row => row.extrasTotal),
   );
-  const quote = deliveryFor(priced, doors);
+  const quoted = deliveryFor(priced, doors);
+  /* Waived the way checkout waives it (4.1), so the bag shows what the order will charge. */
+  const quote = member ? waiveDelivery(quoted, subtotal, await freeDeliveryOver(db)) : { ...quoted, waived: "0.000" };
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -440,6 +463,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         toFree: row.toFree === null ? null : money(row.toFree),
       })),
       total: money(quote.total),
+      memberWaived: quote.waived !== "0.000" ? money(quote.waived) : null,
     },
     total: money(addMoney(subtotal, quote.total)),
   };

@@ -53,6 +53,7 @@ export const FEATURE_KEYS = [
   "ads",
   "subscriptions",
   "fulfilment",
+  "membership",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -104,6 +105,10 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
      What is already on its way is still counted in, what NetLet holds still
      sells, and sold lines are still picked and packed. */
   fulfilment: { entries: ["fulfilment.announce"], audience: "seller" },
+  /* NetLet membership (4.1): off stops new grants. A member's membership
+     runs out its time with every benefit — it was given, and taking it back
+     with a switch would be keeping a promise only while it was convenient. */
+  membership: { entries: ["membership.grant"], audience: "shopper" },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

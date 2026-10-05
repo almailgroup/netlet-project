@@ -32,7 +32,7 @@ import { privatePageMeta } from "@shared/seo";
 import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
-import { PackageCheck, Truck, Warehouse } from "lucide-react";
+import { BadgeCheck, PackageCheck, Truck, Warehouse } from "lucide-react";
 import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
@@ -161,6 +161,12 @@ function Dispatch({ actor }: { actor: Actor }) {
                       <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
                     </p>
 
+                    {/* A member's parcel (4.1): first on the board, and said so. */}
+                    {parcel.member && parcel.state !== "delivered" ? (
+                      <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#0a285a] px-2.5 py-0.5 text-[11px] font-extrabold text-white">
+                        <BadgeCheck className="size-3.5" aria-hidden />{t("membership.priority")}
+                      </p>
+                    ) : null}
                     {/* Collected from a NetLet centre rather than the seller (4.2). */}
                     {parcel.collectFrom ? (
                       <p className="mt-1 flex items-start gap-1.5 text-[12px] font-bold text-[#0a285a]">

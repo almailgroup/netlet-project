@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
@@ -137,6 +137,7 @@ export function AdminShell({ need, children }: {
     { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
     { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
     /* NetLet's own inbox (3.5.1); a seller's conversations are the line below. */
+    { href: "/admin/membership", label: "membership.title", icon: <BadgeCheck className="size-4" />, need: "membership.manage" },
     { href: "/admin/support", label: "support.inboxTitle", icon: <LifeBuoy className="size-4" />, need: "support.answer" },
     { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
     { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },

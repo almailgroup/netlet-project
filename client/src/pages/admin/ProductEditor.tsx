@@ -19,6 +19,7 @@ import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { ADDON_KINDS, type AddonKind } from "@shared/commerce/addons";
 import { useTranslation } from "@/hooks/useTranslation";
+import { memberPriceProblem } from "@shared/commerce/membership";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { SIZE_CLASSES, vehicleFor, type SizeClass } from "@shared/commerce/vehicle";
@@ -696,10 +697,10 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
 }
 
 function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
-  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null; centreId?: number | null };
+  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null; centreId?: number | null; memberPrice?: string | null };
   mayEdit: boolean;
   mayStock: boolean;
-  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null }) => void;
+  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null; memberPrice: string | null }) => void;
   onAdjust: (delta: number, reason: (typeof REASONS)[number]) => void;
   pending: boolean;
 }) {
@@ -712,6 +713,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
     unit: (variant.unit ?? "each") as SellUnit,
     stepAmount: String(variant.stepAmount ?? 1),
     preorderStock: String(variant.preorderStock ?? 0),
+    memberPrice: variant.memberPrice ?? "",
     // <input type="date"> speaks yyyy-mm-dd and nothing else.
     preorderReleaseAt: variant.preorderReleaseAt
       ? new Date(variant.preorderReleaseAt).toISOString().slice(0, 10)
@@ -734,13 +736,15 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
   /* A pre-order is a promise about units nobody holds; NetLet's shelf holds only what it counted (4.2). */
   const held = variant.centreId != null;
   const preorderOk = Number.isInteger(preorderAllowance) && preorderAllowance >= 0 && !(held && preorderAllowance > 0);
+  const memberTyped = values.memberPrice.trim();
+  const memberProblem = memberTyped === "" ? null : /^\d{1,9}(\.\d{1,3})?$/.test(memberTyped) && /^\d{1,9}(\.\d{1,3})?$/.test(values.price) ? memberPriceProblem(values.price, memberTyped) : "membership.priceInvalid";
   const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
 
   return (
     <div className="rounded-xl border border-[#e6e9ef] bg-[#fbfcfe] p-4">
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <Labelled label={t("admin.variantTitle")}>
           <input dir="auto" value={values.title} disabled={!mayEdit} onChange={e => setValues({ ...values, title: e.target.value })} className={inputClass} />
         </Labelled>
@@ -752,6 +756,10 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
         </Labelled>
         <Labelled label={t("admin.variantCompareAt")}>
           <input dir="ltr" inputMode="decimal" value={values.compareAtPrice} disabled={!mayEdit} onChange={e => setValues({ ...values, compareAtPrice: e.target.value })} className={inputClass} />
+        </Labelled>
+        {/* What a NetLet member pays (4.1); blank is none. Checked by the rule the server applies. */}
+        <Labelled label={t("membership.memberPriceLabel")} hint={memberProblem ? t(memberProblem) : t("membership.memberPriceHint")}>
+          <input dir="ltr" inputMode="decimal" value={values.memberPrice} disabled={!mayEdit} aria-invalid={Boolean(memberProblem)} onChange={e => setValues({ ...values, memberPrice: e.target.value })} className={inputClass} />
         </Labelled>
       </div>
 
@@ -836,8 +844,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
               unit: measure.unit, stepAmount: measure.stepAmount,
               preorderStock: preorderAllowance,
               preorderReleaseAt: values.preorderReleaseAt ? new Date(values.preorderReleaseAt) : null,
+              memberPrice: memberTyped || null,
             })}
-            disabled={pending || !measureOk || !preorderOk}
+            disabled={pending || !measureOk || !preorderOk || Boolean(memberProblem)}
             className="glass pressable rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
           >
             {t("admin.save")}

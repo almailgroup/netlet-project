@@ -153,7 +153,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
-    if (message.startsWith("fulfilment.")) {
+    if (message.startsWith("fulfilment.") || message.startsWith("membership.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
@@ -679,6 +679,8 @@ export const inventoryRouter = router({
         /* Pre-order: how many the vendor will promise ahead of stock, and when. */
         preorderStock: z.number().int().min(0).max(1_000_000).optional(),
         preorderReleaseAt: z.coerce.date().nullable().optional(),
+        /* What a member pays (4.1); null clears it. */
+        memberPrice: moneySchema.nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);

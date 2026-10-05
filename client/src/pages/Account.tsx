@@ -19,6 +19,7 @@ import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
 import { AccountSupport } from "@/components/account/AccountSupport";
+import { MembershipCard } from "@/components/account/MembershipCard";
 import { AccountActivity } from "@/components/account/AccountActivity";
 import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
@@ -146,6 +147,9 @@ export default function Account() {
 
             <div className="space-y-10">
               <AccountIdentity user={user} />
+              {/* Only for a member (4.1): nobody can buy one yet, so a card
+                  offering it to everybody else would be a button with nothing behind it. */}
+              <MembershipCard />
 
               {/* First of the sections, ahead of the settings. Somebody opening
                   their account on a shop is usually asking where a parcel is or

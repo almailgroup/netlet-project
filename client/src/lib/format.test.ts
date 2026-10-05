@@ -31,3 +31,7 @@ describe("formatMoney", () => {
     expect(formatMoney({ amount: "not a number", currencyCode: "KWD" })).toBe("—");
   });
 });
+
+it("reads a bare amount as dinars, the shop's one currency", () => {
+  expect(formatMoney("2.000", { locale: "en" })).toContain("KWD");
+});

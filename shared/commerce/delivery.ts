@@ -81,6 +81,11 @@ export type VendorDelivery = {
    * shortfall of zero is not a nudge, it is noise.
    */
   toFree: string | null;
+  /**
+   * What this seller charges and a member did not pay (4.1): the fee stands,
+   * NetLet carries it. Absent when nothing was waived.
+   */
+  waived?: string;
 };
 
 export type DeliveryQuote = {
@@ -157,6 +162,8 @@ export type FrozenDelivery = {
   vendorName: string;
   destinationLabel?: string | null;
   fee: string;
+  /** A member's waived fee (4.1), what the seller charges and NetLet carries. Absent before memberships, and when nothing was waived. */
+  waived?: string;
 }[];
 
 /**
@@ -173,6 +180,7 @@ export function freezeDelivery(quote: DeliveryQuote): FrozenDelivery {
     vendorName: row.vendorName,
     destinationLabel: row.destinationLabel ?? null,
     fee: row.fee,
+    ...(row.waived ? { waived: row.waived } : {}),
   }));
 }
 

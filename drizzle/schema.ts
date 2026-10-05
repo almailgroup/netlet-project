@@ -797,6 +797,12 @@ export const productVariants = pgTable(
      * `shared/commerce/netletFulfilment.ts`.
      */
     centreId: integer("centre_id").references((): AnyPgColumn => fulfilmentCentres.id, { onDelete: "restrict" }),
+    /**
+     * What a member pays (4.1), set by the seller below the shelf. Null is no
+     * member price. An advertised saving, so it reaches a member only while
+     * the store's discount permit is valid. `shared/commerce/membership.ts`.
+     */
+    memberPrice: numeric("member_price", { precision: 12, scale: 3 }),
     /*
      * Selling things that are not counted — the grocery shelf.
      *
@@ -1104,6 +1110,38 @@ export const supportMessages = pgTable(
  * Recording the first one is what activates the programme — with none, there
  * is nowhere to send anything, and the page says so.
  */
+/**
+ * A NetLet membership (4.1): one row per grant, queued end to end. `source`
+ * is how it was got — `granted` by NetLet today; `paid` when payments exist.
+ * The rules are `shared/commerce/membership.ts`.
+ */
+export const memberships = pgTable(
+  "memberships",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    source: varchar("source", { length: 12 }).notNull().default("granted"),
+    grantedBy: integer("granted_by").references(() => users.id, { onDelete: "set null" }),
+    note: text("note"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("memberships_user_idx").on(table.userId, table.endsAt)],
+);
+
+/**
+ * The programme's one setting (4.1): the basket a member's free delivery
+ * starts at. One row, id 1; absent or null is every order.
+ */
+export const membershipTerms = pgTable("membership_terms", {
+  id: integer("id").primaryKey(),
+  freeDeliveryOver: numeric("free_delivery_over", { precision: 12, scale: 3 }),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const fulfilmentCentres = pgTable("fulfilment_centres", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 120 }).notNull(),
@@ -1903,6 +1941,18 @@ export const orders = pgTable(
     affiliateRate: numeric("affiliate_rate", { precision: 5, scale: 2 }),
     /** The standing order this was placed by (3.1.19), so the seller can tell a repeat from a new customer. */
     subscriptionId: integer("subscription_id").references((): AnyPgColumn => subscriptions.id, { onDelete: "set null" }),
+    /**
+     * Placed by a member (4.1), frozen like every other fact about the sale:
+     * the dispatch board puts these parcels first, and a membership ending
+     * next month must not move a parcel already promised priority.
+     */
+    member: boolean("member").notNull().default(false),
+    /**
+     * The delivery a member did not pay (4.1). The sellers' fees stand in the
+     * breakdown beside it, each with its own `waived`; this is the sum NetLet
+     * carries, so the cost of the programme is one column to add up.
+     */
+    deliveryWaived: numeric("delivery_waived", { precision: 12, scale: 3 }).notNull().default("0.000"),
     /**
      * Who charged what to deliver, frozen beside the total.
      *

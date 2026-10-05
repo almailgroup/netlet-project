@@ -22,6 +22,7 @@ import type {
 import { visibleBadges } from "../inventory/vendorHealth.js";
 import type { Measure } from "./units.js";
 import { buyable, maxQuantityFor, offerFor } from "./preorder.js";
+import { compareMoney, toFils } from "../money.js";
 import { discountAllowed, type DiscountLicence } from "../inventory/discountLicence.js";
 import { savingPercent } from "./subscriptions.js";
 import { resolveSpeed } from "./deliverySpeed.js";
@@ -64,6 +65,8 @@ export type InventoryVariantRow = {
   title: string;
   price: string;
   compareAtPrice: string | null;
+  /** A member's price (4.1). Absent on a caller that predates memberships. */
+  memberPrice?: string | null;
   stock: number;
   /** Absent on a caller that predates pre-order, which means no allowance. */
   preorderStock?: number | null;
@@ -220,6 +223,8 @@ function toVariant(row: InventoryVariantRow, allowDiscount = true): ProductVaria
     sku: row.sku,
     price: money(row.price),
     compareAtPrice: allowDiscount && row.compareAtPrice ? money(row.compareAtPrice) : null,
+    /* The same permit rule as the strikethrough, and only below the shelf as it stands. */
+    memberPrice: allowDiscount && row.memberPrice && compareMoney(row.memberPrice, row.price) < 0 && toFils(row.memberPrice) > 0n ? money(row.memberPrice) : null,
     // There is still no "continue selling when out of stock" flag, because
     // overselling a marketplace's vendors is a support ticket rather than a
     // sale. A pre-order is not that flag: it is a second, bounded pool the

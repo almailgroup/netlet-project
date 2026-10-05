@@ -47,6 +47,7 @@ import { FollowProduct } from "@/components/product/FollowProduct";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useFeature } from "@/hooks/useFeature";
+import { useMembership } from "@/hooks/useMembership";
 
 /**
  * NetLet's delivery terms, not per-product data — the same six rows the
@@ -932,6 +933,8 @@ export default function ProductDetail() {
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
   const isSaved = product ? savedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+  /* Before any early return, like every hook. */
+  const { member } = useMembership();
   const galleryImageCount = product ? galleryOf(product).length : 0;
 
   const changeImage = (direction: "previous" | "next") => setSelectedImageIndex(current => galleryIndex(current, galleryImageCount, direction));
@@ -1034,6 +1037,16 @@ export default function ProductDetail() {
               {compareAtPrice ? <span className="text-lg ink-muted line-through">{money(compareAtPrice)}</span> : null}
               {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
+
+            {/* A member's price (4.1), shown only to a member: a price somebody
+                is told about and cannot have is not one to show them. The bag
+                and checkout charge it through the same rule. */}
+            {member && selectedVariant?.memberPrice ? (
+              <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#e7edf5] px-3 py-1 text-[13px] font-extrabold text-[#0a285a]">
+                <BadgeCheck className="size-4" aria-hidden />
+                {t("membership.yourPrice", { price: money(selectedVariant.memberPrice) })}
+              </p>
+            ) : null}
 
             {/* The per-kilo figure, when there is one. Nothing for a counted
                 product — "per each" is the price printed twice. */}

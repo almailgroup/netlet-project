@@ -30,7 +30,10 @@ export function formatMoney(
     code = value.currencyCode;
   } else {
     amountNum = typeof value === "string" ? Number.parseFloat(value) : value;
-    code = options?.currencyCode ?? "USD";
+    /* NetLet sells in one currency. A bare amount with no code is dinars —
+       the fallback was "USD", so a page that forgot the code printed a
+       member's saved delivery as "$US 0" on the membership desk. */
+    code = options?.currencyCode ?? "KWD";
   }
 
   if (Number.isNaN(amountNum)) return "—";
