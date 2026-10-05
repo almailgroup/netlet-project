@@ -19,10 +19,10 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { MAX_INBOUND_UNITS, inboundProblem, type InboundStatus } from "@shared/commerce/netletFulfilment";
+import { MAX_INBOUND_UNITS, inboundProblem, validPackRate, type InboundStatus } from "@shared/commerce/netletFulfilment";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { Governorate } from "@shared/inventory/storeProfile";
@@ -71,6 +71,7 @@ function Send({ actor }: { actor: Actor }) {
       </QueryGate>
       <Held operator={false} />
       <Shipments operator={false} />
+      <Charges operator={false} />
     </>
   );
 }
@@ -211,6 +212,7 @@ function Operate() {
       <PickList />
       <Shipments operator />
       <Held operator />
+      <Charges operator />
       <Centres />
     </>
   );
@@ -242,9 +244,12 @@ function Centres() {
                   <span dir="auto" className="font-bold">{centre.name}</span>
                   <span className="ink-muted"> · {zoneName(centre.governorate)} · <bdi>{centre.addressLine}</bdi></span>
                 </span>
-                <button type="button" onClick={() => toggle.mutate({ id: centre.id, active: !centre.active })} className="glass pressable type-control rounded-full px-3 py-1.5">
-                  {t(centre.active ? "fulfilment.closeCentre" : "fulfilment.reopenCentre")}
-                </button>
+                <span className="flex flex-wrap items-center gap-2">
+                  <PackRate centreId={centre.id} rate={centre.packFeePerUnit} name={centre.name} />
+                  <button type="button" onClick={() => toggle.mutate({ id: centre.id, active: !centre.active })} className="glass pressable type-control rounded-full px-3 py-1.5">
+                    {t(centre.active ? "fulfilment.closeCentre" : "fulfilment.reopenCentre")}
+                  </button>
+                </span>
               </li>
             ))}
             {centres.data?.length ? null : <li className="text-[12px] ink-muted">{t("fulfilment.noCentres")}</li>}
@@ -520,6 +525,68 @@ function Held({ operator }: { operator: boolean }) {
         onConfirm={() => sending && back.mutate({ variantId: sending.variantId })}
         onClose={() => setSending(null)}
       />
+    </section>
+  );
+}
+
+/** A centre's packing rate per unit (4.2). Blank charges nothing — the rate is a contract, not a default. */
+function PackRate({ centreId, rate, name }: { centreId: number; rate: string | null; name: string }) {
+  const { t, tError } = useTranslation();
+  const utils = trpc.useUtils();
+  const [value, setValue] = useState(rate ?? "");
+  const ok = value.trim() === "" || validPackRate(value.trim());
+  const save = trpc.fulfilment.setPackRate.useMutation({
+    onSuccess: () => { toast.success(t("admin.saved")); void utils.fulfilment.centres.invalidate(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+  return (
+    <form className="flex items-center gap-1.5" onSubmit={event => { event.preventDefault(); if (ok) save.mutate({ id: centreId, rate: value.trim() || null }); }}>
+      <label className="text-[11px] font-bold ink-muted">
+        <span className="sr-only">{t("fulfilment.packRateFor", { centre: name })}</span>
+        <input dir="ltr" inputMode="decimal" value={value} placeholder={t("fulfilment.packRatePlaceholder")} aria-invalid={!ok} onChange={event => setValue(event.target.value)} className="glass-field w-28 rounded-xl px-3 py-1.5 text-[12px] font-normal text-[#0a285a] outline-none" />
+      </label>
+      <button type="submit" disabled={!ok || save.isPending} className="glass pressable type-control rounded-full px-3 py-1.5 disabled:opacity-50">{t("fulfilment.setRate")}</button>
+    </form>
+  );
+}
+
+/** Packing charges (4.2): what NetLet charged for packing, and whether a payout run has taken it yet. */
+function Charges({ operator }: { operator: boolean }) {
+  const { t } = useTranslation();
+  const money = useMoney();
+  const formatDate = useDateFormat();
+  const [page, setPage] = useState(1);
+  const charges = trpc.fulfilment.charges.useQuery({ page }, { placeholderData: previous => previous });
+  return (
+    <section className={`${card} mt-5`} aria-labelledby="charges-title">
+      <h2 id="charges-title" className="text-[14px] font-extrabold">{t("fulfilment.chargesTitle")}</h2>
+      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("fulfilment.chargesNote")}</p>
+      <QueryGate queries={[charges]}>
+        {() => {
+          const result = charges.data!;
+          if (result.rows.length === 0) return <p className="mt-3 text-[12px] ink-muted">{t("fulfilment.noCharges")}</p>;
+          return (
+            <>
+              <ul className="mt-3 space-y-1">
+                {result.rows.map(row => (
+                  <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[#f6f8fb] px-3 py-2 text-[12px]">
+                    <span>
+                      <bdi dir="ltr" className="font-bold">{row.reference}</bdi>
+                      <span className="ink-muted"> · <bdi dir="ltr">{row.orderReference}</bdi>{operator ? <> · <bdi>{row.vendorName}</bdi></> : null} · <bdi>{row.centreName}</bdi> · {formatDate(row.createdAt)}</span>
+                      <span className="block ink-muted">{t("fulfilment.chargeUnits", { units: row.units, rate: money(row.ratePerUnit) })}</span>
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <strong><bdi>{money(row.amount)}</bdi></strong>
+                      <span className="rounded-full bg-[#e7edf5] px-2.5 py-0.5 text-[11px] font-extrabold">{t(row.deducted ? "fulfilment.chargeTaken" : "fulfilment.chargeNext")}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3"><Pager page={result} onPage={setPage} /></div>
+            </>
+          );
+        }}
+      </QueryGate>
     </section>
   );
 }

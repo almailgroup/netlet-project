@@ -21,6 +21,7 @@ let fulfilment: typeof import("./netletFulfilment.js");
 let inventory: typeof import("./inventory.js");
 let ordersModule: typeof import("./orders.js");
 let dispatch: typeof import("./dispatch.js");
+let payoutRuns: typeof import("./payoutRuns.js");
 const ids = { admin: 0, manager: 0, staff: 0, shopper: 0, acme: 0, other: 0, lamp: 0, rug: 0, theirs: 0, centre: 0, second: 0, courier: 0 };
 
 const admin = (): Actor => ({ kind: "admin", userId: ids.admin });
@@ -41,6 +42,7 @@ beforeAll(async () => {
   inventory = await import("./inventory.js");
   ordersModule = await import("./orders.js");
   dispatch = await import("./dispatch.js");
+  payoutRuns = await import("./payoutRuns.js");
 
   for (const [key, email, role] of [["admin", "owner@netlet.test", "admin"], ["manager", "manager@acme.test", "user"], ["staff", "staff@acme.test", "user"], ["shopper", "noura@shop.test", "user"]] as const) {
     const [row] = await db.insert(users).values({ email, role }).returning();
@@ -196,5 +198,44 @@ describe("selling off NetLet's shelf", () => {
     const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
     await ordersModule.setLineFulfilment(admin(), line.id, "cancelled");
     expect((await db.select().from(productVariants).where(eq(productVariants.id, ids.lamp)))[0]).toMatchObject({ stock: 4, centreId: null });
+  });
+});
+
+/*
+ * The packing fee (4.2): a per-unit rate NetLet sets on a centre, charged once
+ * per line when NetLet packs it, frozen at that moment's rate, and taken off
+ * the seller's next payout run as a fee line — the shape a placement uses.
+ */
+describe("the packing fee", () => {
+  it("is NetLet's to set, and blank is no charge", async () => {
+    await expect(fulfilment.setPackRate(manager(), ids.centre, "0.250")).rejects.toThrow("FORBIDDEN:fulfilment.operate");
+    await expect(fulfilment.setPackRate(admin(), ids.centre, "-1")).rejects.toMatchObject({ reason: "fulfilment.badRate" });
+    await fulfilment.setPackRate(admin(), ids.centre, "0.250");
+  });
+
+  it("is charged once per line packed, at the rate of that moment, and comes off the next payout", async () => {
+    const [product] = await db.insert(products).values({ vendorId: ids.acme, handle: "candle", title: "Candle", status: "published" }).returning();
+    const [candle] = await db.insert(productVariants).values({ productId: product.id, title: "Default", price: "5.000", stock: 10, centreId: ids.centre }).returning();
+    const [cart] = await db.insert(carts).values({ id: "cart-fee", userId: ids.shopper }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: candle.id, quantity: 3 });
+    const placed = await ordersModule.placeOrder(cart.id, { email: "noura@shop.test", userId: ids.shopper, contactName: "Noura", contactPhone: "+96550000000", deliveryZoneId: "hawalli", addressLine: "Block 4", paymentMethod: "cod" });
+
+    expect(await fulfilment.markPacked(admin(), placed.order.id, ids.centre)).toEqual({ packed: 1 });
+    /* A later rate does not reach a charge already made. */
+    await fulfilment.setPackRate(admin(), ids.centre, "9.000");
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    await db.update(orderItems).set({ fulfilment: "pending" }).where(eq(orderItems.id, line.id));
+    await fulfilment.markPacked(admin(), placed.order.id, ids.centre);
+
+    const charges = await fulfilment.listCharges(manager());
+    expect(charges.rows).toHaveLength(1);
+    expect(charges.rows[0]).toMatchObject({ orderReference: placed.order.reference, units: 3, ratePerUnit: "0.250", amount: "0.750", deducted: false });
+    /* Another store sees none of it. */
+    expect((await fulfilment.listCharges({ kind: "vendor", userId: ids.staff, vendorId: ids.other, role: "manager" })).total).toBe(0);
+
+    const batches = await payoutRuns.readyBatches(admin());
+    const acme = batches.find(batch => batch.vendorId === ids.acme)!;
+    expect(acme.lines).toContainEqual({ orderId: null, reference: charges.rows[0].reference, amount: "-0.750", kind: "fee" });
+    await fulfilment.setPackRate(admin(), ids.centre, null);
   });
 });

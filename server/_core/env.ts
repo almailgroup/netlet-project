@@ -43,4 +43,8 @@ export const ENV = {
   invoiceIssuerNameAr: process.env.INVOICE_ISSUER_NAME_AR ?? "",
   invoiceIssuerLicence: process.env.INVOICE_ISSUER_LICENCE ?? "",
   invoiceIssuerAddress: process.env.INVOICE_ISSUER_ADDRESS ?? "",
+  /* NetLet's own WhatsApp and phone for support (3.5.1). Public numbers, and
+     unset is no channel: the Help section draws only what is configured. */
+  supportWhatsapp: process.env.SUPPORT_WHATSAPP ?? "",
+  supportPhone: process.env.SUPPORT_PHONE ?? "",
 };

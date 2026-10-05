@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SUPPORT_MESSAGE, firstAnswer, messageProblem, nextStatus } from "./support.js";
+import { MAX_SUPPORT_MESSAGE, firstAnswer, messageProblem, nextStatus, phoneLink, supportNumber, whatsappLink } from "./support.js";
 
 describe("a conversation's state", () => {
   it("waits on whoever has not answered, and reopens when the shopper writes again", () => {
@@ -54,5 +54,19 @@ describe("the automatic first answer", () => {
 
   it("only promises a person on a question no rule reads", () => {
     expect(firstAnswer("other", { returnWindowDays: 14 }).map(part => part.key)).toEqual(["support.answerPerson"]);
+  });
+});
+
+describe("the other channels", () => {
+  it("take a number in any of the ways people write one, and refuse what is not one", () => {
+    expect(supportNumber("+965 5000 1234")).toBe("96550001234");
+    expect(supportNumber("0096550001234")).toBe("96550001234");
+    expect(supportNumber("5000-1234")).toBeNull();
+    expect(supportNumber("call us")).toBeNull();
+  });
+
+  it("open WhatsApp with the reference written in, and nothing else of the shopper's", () => {
+    expect(whatsappLink("96550001234", "About order NL-20261004-QRTVW: ")).toBe("https://wa.me/96550001234?text=About%20order%20NL-20261004-QRTVW%3A%20");
+    expect(phoneLink("96550001234")).toBe("tel:+96550001234");
   });
 });

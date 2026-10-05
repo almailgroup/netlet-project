@@ -13,6 +13,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { supportNumber } from "../shared/commerce/support.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -141,6 +142,13 @@ if ((process.env.CRON_SECRET ?? "").trim().length >= 16) {
 } else {
   add("warn", "Standing orders", "CRON_SECRET not set (or shorter than 16 characters) — no subscription runs on its own",
     "Set CRON_SECRET to a long random string, and the same value in Vercel; /admin/subscriptions can still run them by hand");
+}
+
+for (const [name, label] of [["SUPPORT_WHATSAPP", "WhatsApp support"], ["SUPPORT_PHONE", "Phone support"]] as const) {
+  const value = (process.env[name] ?? "").trim();
+  if (!value) add("warn", label, `${name} not set — the Help section offers no ${label.toLowerCase()} channel`, `Set ${name} to NetLet's number in international form`);
+  else if (!supportNumber(value)) add("blocked", label, `${name} is not an international number`, "Write it like 96550001234 or +965 5000 1234");
+  else add("ok", label, `+${supportNumber(value)}`);
 }
 
 if ((process.env.INVOICE_ISSUER_LICENCE ?? "").trim()) {

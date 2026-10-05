@@ -7,7 +7,8 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS } from "../../shared/commerce/support.js";
+import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS, supportNumber } from "../../shared/commerce/support.js";
+import { ENV } from "../_core/env.js";
 import {
   conversationForShopper,
   conversationForStaff,
@@ -25,7 +26,7 @@ import {
 import { draftAvailable, draftReply } from "../supportDraft.js";
 import { resolveActor } from "../inventory.js";
 import { rowId } from "../_core/schemas.js";
-import { protectedProcedure, router } from "../_core/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -47,6 +48,13 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 const body = z.string().max(MAX_SUPPORT_MESSAGE + 200);
 
 export const supportRouter = router({
+  /* NetLet's WhatsApp and phone (3.5.1), when configured. Public numbers; a
+     malformed one is no channel rather than a link to nobody. */
+  channels: publicProcedure.query(() => ({
+    whatsapp: supportNumber(ENV.supportWhatsapp),
+    phone: supportNumber(ENV.supportPhone),
+  })),
+
   open: protectedProcedure
     .input(z.object({ topic: z.enum(SUPPORT_TOPICS), orderReference: z.string().trim().min(1).max(64).nullish(), body }))
     .mutation(({ ctx, input }) => guard(() => openConversation(ctx.user.id, input))),

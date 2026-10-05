@@ -1257,8 +1257,15 @@ NetLet's "Picked and packed" moves it to `preparing` with the old state in the
 predicate. A parcel's key carries the centre (`|c<id>`), so a seller's own box
 and a NetLet one for the same door are two parcels, and the board names where
 to collect; seller-shipped keys are unchanged, so ratings and claims filed
-before still find theirs. No fee is charged: that is a contract nobody has
-written, and when it is, it is a payout fee line like a placement's.
+before still find theirs.
+
+**The packing fee is a rate, never a figure in code.** `fulfilment_centres.pack_fee_per_unit`
+is null until NetLet decides one, and null charges nothing. `markPacked` writes
+one `fulfilment_charges` row per line in the same transaction as the move, at
+that moment's rate (the unique index makes a line restored and packed again
+charge once), and `feesFor` hands it to the payout run beside placement fees —
+`FeeCharge` takes a `bookingId` or a `chargeId`, and a charge is whole the
+moment it exists, so its accrued figure and its ceiling are both the amount.
 
 **Units go back only to the shelf they belong on.** Every path that puts stock
 back asks whose shelf it is, in the write: a return restocks only where the
@@ -1387,6 +1394,15 @@ conversation with NetLet is about NetLet. Three states, and a shopper writing
 into an answered conversation reopens it — somebody still typing has not been
 answered, whatever a button said. Throttled by account in Postgres, for the
 price-ask reason: there is a real identity, and what runs out is people.
+
+**WhatsApp and the phone sit beside the inbox, not inside it.**
+`SUPPORT_WHATSAPP` and `SUPPORT_PHONE` are NetLet's public numbers; `supportNumber`
+takes them as people write them and refuses anything under ten digits, because a
+local number without its country code opens a chat with nobody. WhatsApp opens
+with the chosen order's reference written in and nothing else of the shopper's —
+they send it from their own phone. Unset, a channel is absent, and the page says
+the conversation happens there rather than here: bringing those messages into
+this inbox is the WhatsApp Business API, which is a provider account.
 
 **A model drafts; a person replies.** `shared/commerce/supportDraft.ts` is what
 it is given and `server/supportDraft.ts` the call. "Draft a reply" fills the

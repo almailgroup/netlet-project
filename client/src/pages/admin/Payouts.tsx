@@ -113,7 +113,7 @@ function BatchCard({ batch, canRecord }: { batch: Batch; canRecord: boolean }) {
             <span>
               <bdi dir="ltr">{line.reference}</bdi>
               {line.kind === "clawback" ? <span className="ms-2 font-bold text-[#8c2f22]">{t("admin.payoutClawback")}</span> : null}
-              {line.kind === "fee" ? <span className="ms-2 font-bold text-[#536b8c]">{t("admin.payoutPlacementFee")}</span> : null}
+              {line.kind === "fee" ? <span className="ms-2 font-bold text-[#536b8c]">{t(line.reference.startsWith("FF-") ? "fulfilment.packingFee" : "admin.payoutPlacementFee")}</span> : null}
             </span>
             <bdi dir="ltr" className="font-bold">{amount(line.amount)}</bdi>
           </li>

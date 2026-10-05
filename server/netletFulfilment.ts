@@ -16,16 +16,19 @@
 import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import {
   fulfilmentCentres,
+  fulfilmentCharges,
   inboundLines,
   inboundShipments,
   orderItems,
   orders,
+  payoutRunItems,
   productVariants,
   products,
   stockMovements,
   vendors,
 } from "../drizzle/schema.js";
-import { MAX_INBOUND_LINES, inboundProblem, inboundReference, receiptGap, validCount, type InboundStatus } from "../shared/commerce/netletFulfilment.js";
+import { MAX_INBOUND_LINES, inboundProblem, inboundReference, packCharge, receiptGap, validCount, validPackRate, type InboundStatus } from "../shared/commerce/netletFulfilment.js";
+import { chargeReference } from "../shared/commerce/payoutRuns.js";
 import { assertCan, can, type Actor } from "../shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { getDb } from "./db.js";
@@ -44,7 +47,8 @@ export type FulfilmentRefusal =
   | "fulfilment.notAnnounced"
   | "fulfilment.countMissing"
   | "fulfilment.notHeld"
-  | "fulfilment.notFound";
+  | "fulfilment.notFound"
+  | "fulfilment.badRate";
 
 export class FulfilmentProblem extends Error {
   constructor(readonly reason: FulfilmentRefusal) {
@@ -475,15 +479,94 @@ export async function pickList(actor: Actor): Promise<{ orders: PickOrder[]; tru
  * "ready to collect". The old state is in the predicate, so a line a seller's
  * desk or a second packer moved first is left alone and not counted.
  */
-export async function markPacked(actor: Actor, orderId: number, centreId: number): Promise<{ packed: number }> {
+export async function markPacked(actor: Actor, orderId: number, centreId: number, now = new Date()): Promise<{ packed: number }> {
   assertCan(actor, "fulfilment.operate");
   const db = await handle();
-  const moved = await db
-    .update(orderItems)
-    .set({ fulfilment: "preparing" })
-    .where(and(eq(orderItems.orderId, orderId), eq(orderItems.centreId, centreId), eq(orderItems.fulfilment, "pending")))
-    .returning({ id: orderItems.id });
-  return { packed: moved.length };
+  return db.transaction(async tx => {
+    const moved = await tx
+      .update(orderItems)
+      .set({ fulfilment: "preparing" })
+      .where(and(eq(orderItems.orderId, orderId), eq(orderItems.centreId, centreId), eq(orderItems.fulfilment, "pending")))
+      .returning({ id: orderItems.id, vendorId: orderItems.vendorId, quantity: orderItems.quantity });
+
+    /*
+     * The packing charge (4.2), in the same transaction as the work it is for:
+     * at the centre's rate now, frozen on the charge, one per line — the unique
+     * index makes a line packed, restored and packed again charge once. No
+     * rate is no charge.
+     */
+    const [centre] = await tx.select({ rate: fulfilmentCentres.packFeePerUnit }).from(fulfilmentCentres).where(eq(fulfilmentCentres.id, centreId)).limit(1);
+    const charged = moved.filter(line => line.vendorId !== null);
+    if (centre?.rate && packCharge(centre.rate, 1) !== "0.000" && charged.length) {
+      const [order] = await tx.select({ reference: orders.reference }).from(orders).where(eq(orders.id, orderId)).limit(1);
+      await tx
+        .insert(fulfilmentCharges)
+        .values(charged.map(line => ({
+          vendorId: line.vendorId!,
+          orderItemId: line.id,
+          centreId,
+          orderReference: order?.reference ?? "",
+          units: line.quantity,
+          ratePerUnit: centre.rate!,
+          amount: packCharge(centre.rate!, line.quantity),
+          createdAt: now,
+        })))
+        .onConflictDoNothing({ target: fulfilmentCharges.orderItemId });
+    }
+    return { packed: moved.length };
+  });
+}
+
+/** NetLet sets what a centre charges per unit packed (4.2); null stops charging. */
+export async function setPackRate(actor: Actor, centreId: number, rate: string | null): Promise<void> {
+  assertCan(actor, "fulfilment.operate");
+  if (rate !== null && !validPackRate(rate)) throw new FulfilmentProblem("fulfilment.badRate");
+  const db = await handle();
+  const [row] = await db.update(fulfilmentCentres).set({ packFeePerUnit: rate }).where(eq(fulfilmentCentres.id, centreId)).returning({ id: fulfilmentCentres.id });
+  if (!row) throw new FulfilmentProblem("fulfilment.notFound");
+}
+
+export type ChargeRow = { id: number; reference: string; orderReference: string; centreName: string; vendorName: string; units: number; ratePerUnit: string; amount: string; createdAt: Date; deducted: boolean };
+
+/** Packing charges, newest first: a seller's own, or every store's for NetLet. Paged; each says whether a payout run has taken it. */
+export async function listCharges(actor: Actor, request: { page?: number; pageSize?: number } = {}): Promise<Page<ChargeRow>> {
+  const scope = vendorScope(actor);
+  if (scope === "all") assertCan(actor, "fulfilment.operate");
+  else assertCan(actor, "fulfilment.send", scope);
+  const db = await handle();
+  const where = scope === "all" ? undefined : eq(fulfilmentCharges.vendorId, scope);
+  const pageSize = clampPageSize(request.pageSize ?? 25);
+  const [{ total }] = await db.select({ total: sql<number>`count(*)::int` }).from(fulfilmentCharges).where(where);
+  const page = clampPage(request.page ?? 1, total, pageSize);
+  const rows = await db
+    .select({ charge: fulfilmentCharges, centreName: fulfilmentCentres.name, vendorName: vendors.name })
+    .from(fulfilmentCharges)
+    .innerJoin(fulfilmentCentres, eq(fulfilmentCharges.centreId, fulfilmentCentres.id))
+    .innerJoin(vendors, eq(fulfilmentCharges.vendorId, vendors.id))
+    .where(where)
+    .orderBy(desc(fulfilmentCharges.id))
+    .limit(pageSize)
+    .offset(offsetFor(page, pageSize));
+  const taken = rows.length
+    ? new Set((await db.select({ id: payoutRunItems.chargeId }).from(payoutRunItems).where(inArray(payoutRunItems.chargeId, rows.map(row => row.charge.id)))).map(row => row.id))
+    : new Set<number | null>();
+  return {
+    rows: rows.map(({ charge, centreName, vendorName }) => ({
+      id: charge.id,
+      reference: chargeReference(charge.id),
+      orderReference: charge.orderReference,
+      centreName,
+      vendorName,
+      units: charge.units,
+      ratePerUnit: charge.ratePerUnit,
+      amount: charge.amount,
+      createdAt: charge.createdAt,
+      deducted: taken.has(charge.id),
+    })),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 /** What is waiting on NetLet's floor, for the overview: shipments to count and orders to pick. */

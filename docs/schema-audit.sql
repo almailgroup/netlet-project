@@ -9,7 +9,7 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 618 columns across 60 tables.
+-- Expected: 629 columns across 61 tables.
 
 WITH expected AS (
   SELECT
@@ -40,7 +40,8 @@ WITH expected AS (
     ('driver_positions', 'accuracy_m,courier_id,position,recorded_at,user_id'),
     ('feature_switches', 'enabled,key,updated_at,updated_by'),
     ('followed_products', 'back_in_stock,created_at,id,last_notified_price,price_drop,product_id,updated_at,user_id'),
-    ('fulfilment_centres', 'active,address_line,created_at,governorate,id,name'),
+    ('fulfilment_centres', 'active,address_line,created_at,governorate,id,name,pack_fee_per_unit'),
+    ('fulfilment_charges', 'amount,centre_id,created_at,id,order_item_id,order_reference,rate_per_unit,units,vendor_id'),
     ('gift_card_uses', 'amount,created_at,gift_card_id,id,order_id'),
     ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
     ('inbound_lines', 'expected,id,product_title,received,shipment_id,sku,variant_id,variant_title'),
@@ -54,7 +55,7 @@ WITH expected AS (
     ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
     ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
-    ('payout_run_items', 'amount,booking_id,id,order_id,order_reference,run_id,vendor_id'),
+    ('payout_run_items', 'amount,booking_id,charge_id,id,order_id,order_reference,run_id,vendor_id'),
     ('payout_runs', 'bank_reference,iban_used,id,paid_at,paid_by,total,vendor_id,vendor_name'),
     ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
     ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),

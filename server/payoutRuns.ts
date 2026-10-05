@@ -13,10 +13,10 @@
  * first's run, finds nothing outstanding, and is refused.
  */
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { adBookings, orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
+import { adBookings, fulfilmentCharges, orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
 import { bookingRoom, feeAccrued, feeCeiling, kuwaitToday } from "../shared/commerce/adBookings.js";
 import { lineOutcome } from "../shared/commerce/finance.js";
-import { batchFor, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../shared/commerce/payoutRuns.js";
+import { batchFor, chargeReference, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../shared/commerce/payoutRuns.js";
 import { payoutDue } from "../shared/commerce/payoutSchedule.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { fromFils, toFils } from "../shared/money.js";
@@ -130,6 +130,30 @@ async function feesFor(db: Db | Tx, vendorId: number | undefined, now: Date) {
     });
     bySeller.set(booking.vendorId, held);
   }
+
+  /*
+   * NetLet's packing charges (4.2): whole the moment they are made, so the
+   * accrued figure and the ceiling are both the charge. Read with the same
+   * scope, and taken the same way — a negative fee line on the next run.
+   */
+  const charges = await db
+    .select({ id: fulfilmentCharges.id, vendorId: fulfilmentCharges.vendorId, amount: fulfilmentCharges.amount })
+    .from(fulfilmentCharges)
+    .where(vendorId === undefined ? undefined : eq(fulfilmentCharges.vendorId, vendorId));
+  if (charges.length) {
+    const chargeTaken = await db
+      .select({ chargeId: payoutRunItems.chargeId, amount: sql<string>`sum(${payoutRunItems.amount})` })
+      .from(payoutRunItems)
+      .where(sql`${payoutRunItems.chargeId} is not null`)
+      .groupBy(payoutRunItems.chargeId);
+    const chargeDeducted = new Map(chargeTaken.map(row => [row.chargeId!, toFils(row.amount)]));
+    for (const charge of charges) {
+      const held = bySeller.get(charge.vendorId) ?? [];
+      const fils = toFils(charge.amount);
+      held.push({ chargeId: charge.id, reference: chargeReference(charge.id), accruedFils: fils, deductedFils: chargeDeducted.get(charge.id) ?? 0n, ceilingFils: fils });
+      bySeller.set(charge.vendorId, held);
+    }
+  }
   return bySeller;
 }
 
@@ -237,6 +261,7 @@ export async function recordPayout(actor: Actor, vendorId: number, bankReference
       runId: written.id,
       orderId: line.orderId,
       bookingId: line.bookingId,
+      chargeId: line.chargeId,
       orderReference: line.reference,
       vendorId,
       amount: fromFils(line.amountFils),

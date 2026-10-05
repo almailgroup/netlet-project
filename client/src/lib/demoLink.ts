@@ -462,6 +462,8 @@ function resolve(path: string, rawInput: unknown): unknown {
        portal is a seller, so neither has conversations with NetLet. */
     case "support.mine":
       return [];
+    case "support.channels":
+      return { whatsapp: null, phone: null };
     case "support.unread":
     case "support.waiting":
       return 0;
@@ -484,6 +486,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return [];
     case "fulfilment.shipments":
     case "fulfilment.held":
+    case "fulfilment.charges":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "fulfilment.pickList":
       return { orders: [], truncated: false };
@@ -496,6 +499,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "fulfilment.receive":
     case "fulfilment.returnToSeller":
     case "fulfilment.markPacked":
+    case "fulfilment.setPackRate":
     case "fulfilment.cancel":
       throw new Error("fulfilment.notFound");
     /* Membership (4.1): the demo shopper is a guest and the demo portal a seller. */

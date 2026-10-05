@@ -12,12 +12,12 @@
  */
 import { useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, LifeBuoy, Sparkles } from "lucide-react";
+import { CheckCircle2, LifeBuoy, MessageCircle, Phone, Sparkles } from "lucide-react";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import { SUPPORT_TOPICS, MAX_SUPPORT_MESSAGE, messageProblem, type SupportStatus, type SupportTopic } from "@shared/commerce/support";
+import { SUPPORT_TOPICS, MAX_SUPPORT_MESSAGE, messageProblem, phoneLink, whatsappLink, type SupportStatus, type SupportTopic } from "@shared/commerce/support";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 export const TOPIC_LABEL: Record<SupportTopic, MessageKey> = {
@@ -91,6 +91,8 @@ export function AccountSupport() {
         {problem === "support.tooLong" ? <p className="mt-2 text-[12px] font-bold text-[#8c2f22]">{t(problem)}</p> : null}
         <button type="submit" disabled={Boolean(messageProblem(body)) || open.isPending} className="glass-navy pressable type-control mt-3 rounded-full px-5 py-2 disabled:opacity-50">{t("support.send")}</button>
       </form>
+
+      <OtherChannels reference={reference} />
 
       <QueryGate queries={[mine]}>
         {() => {
@@ -174,6 +176,39 @@ function Thread({ id }: { id: number }) {
           );
         }}
       </QueryGate>
+    </div>
+  );
+}
+
+/**
+ * NetLet's WhatsApp and phone (3.5.1), drawn only when configured — a channel
+ * with no number behind it is not one. WhatsApp opens with the chosen order's
+ * reference written in; the conversation happens there, not in this inbox,
+ * and the line under the links says so.
+ */
+function OtherChannels({ reference }: { reference: string }) {
+  const { t } = useTranslation();
+  const channels = trpc.support.channels.useQuery(undefined, { staleTime: 300_000 });
+  const whatsapp = channels.data?.whatsapp ?? null;
+  const phone = channels.data?.phone ?? null;
+  if (!whatsapp && !phone) return null;
+  const text = reference ? t("support.whatsappAboutOrder", { reference }) : t("support.whatsappHello");
+  return (
+    <div className="rounded-2xl border border-[#e6e9ef] bg-white p-5">
+      <h3 className="text-[13px] font-extrabold text-[#0a285a]">{t("support.otherChannels")}</h3>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {whatsapp ? (
+          <a href={whatsappLink(whatsapp, text)} target="_blank" rel="noopener noreferrer" className="glass pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2">
+            <MessageCircle className="size-4" aria-hidden />{t("support.whatsapp")}<span className="sr-only"> {t("support.opensNewTab")}</span>
+          </a>
+        ) : null}
+        {phone ? (
+          <a href={phoneLink(phone)} className="glass pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2">
+            <Phone className="size-4" aria-hidden />{t("support.call")} <bdi dir="ltr">+{phone}</bdi>
+          </a>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[11px] leading-5 ink-muted">{t("support.otherChannelsNote")}</p>
     </div>
   );
 }

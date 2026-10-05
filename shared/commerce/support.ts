@@ -118,3 +118,30 @@ export function firstAnswer(topic: SupportTopic, facts: AnswerFacts): AnswerPart
   parts.push({ key: "support.answerPerson" });
   return parts;
 }
+
+/* ---------------------------------------------------------- other legs --- */
+
+/**
+ * NetLet's own number as a channel needs it: international digits only, or
+ * null when what was configured is not one. At least ten digits, because a
+ * local number with no country code — "5000 1234" — opens a chat with nobody;
+ * a leading + or 00 and the spaces people type are dropped.
+ */
+export function supportNumber(raw: string): string | null {
+  const digits = raw.trim().replace(/^(\+|00)/, "").replace(/[\s\-()]/g, "");
+  return /^[1-9]\d{9,14}$/.test(digits) ? digits : null;
+}
+
+/**
+ * A WhatsApp chat with NetLet (3.5.1), opened with the order reference already
+ * written so whoever answers can look it up. Nothing else about the shopper
+ * goes into the message: they are about to send it from their own phone, and
+ * what they add is theirs to add.
+ */
+export function whatsappLink(number: string, text: string): string {
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
+export function phoneLink(number: string): string {
+  return `tel:+${number}`;
+}

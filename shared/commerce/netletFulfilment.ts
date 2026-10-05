@@ -40,10 +40,16 @@
  * rather than a flag: sellers can announce stock only once an administrator
  * has recorded a fulfilment centre to send it to. With none, the page says so.
  *
- * No fee is charged. What NetLet charges for holding and packing is a contract
- * nobody has written yet, and a rate invented here would be money taken on a
- * guess; when there is one, it is a payout fee line like a paid placement's.
+ * ## The packing fee is a rate NetLet sets, per centre
+ *
+ * What NetLet charges for packing is a contract, so the code holds no figure:
+ * each centre carries a per-unit rate, null until somebody decides one, and a
+ * null rate charges nothing. Packing a line writes one charge at the rate of
+ * that moment, frozen like a price, and the seller's next payout run takes it
+ * as a fee line — the shape a paid placement already uses.
  */
+
+import { fromFils, toFils } from "../money.js";
 
 export const INBOUND_STATUSES = ["announced", "received", "cancelled"] as const;
 export type InboundStatus = (typeof INBOUND_STATUSES)[number];
@@ -95,4 +101,14 @@ export function inboundReference(when: Date, random: () => number = Math.random)
   let tail = "";
   for (let index = 0; index < 5; index += 1) tail += ALPHABET[Math.floor(random() * ALPHABET.length)];
   return `IN-${day}-${tail}`;
+}
+
+/** A per-unit packing rate NetLet may set: a whole amount of fils, not negative, not absurd. */
+export function validPackRate(rate: string): boolean {
+  return /^\d{1,6}(\.\d{1,3})?$/.test(rate);
+}
+
+/** What packing this many units costs at this rate, to the fil. Exact: integers all the way. */
+export function packCharge(rate: string, units: number): string {
+  return fromFils(toFils(rate) * BigInt(units));
 }

@@ -20,7 +20,7 @@ describe("a seller's batch", () => {
   it("takes back a refund already paid out, even before anything else is due", () => {
     /* Paid 5.000, then a line came back and the order now earns 2.000. */
     const batch = batchFor([ob(1, 2000n, { state: "refunded" }), ob(2, 4000n, held)], new Map([[1, 5000n]]));
-    expect(batch.lines).toEqual([{ orderId: 1, bookingId: null, reference: "NL-1", amountFils: -3000n, kind: "clawback" }]);
+    expect(batch.lines).toEqual([{ orderId: 1, bookingId: null, chargeId: null, reference: "NL-1", amountFils: -3000n, kind: "clawback" }]);
     expect(batch).toMatchObject({ totalFils: -3000n, payable: false });
   });
 
@@ -35,13 +35,13 @@ describe("placement fees", () => {
 
   it("takes what has accrued off the batch, whatever is due", () => {
     const batch = batchFor([ob(1, 50_000n)], new Map(), [fee(7, 20_000n)]);
-    expect(batch.lines.at(-1)).toEqual({ orderId: null, bookingId: 7, reference: "AD-7", amountFils: -20_000n, kind: "fee" });
+    expect(batch.lines.at(-1)).toEqual({ orderId: null, bookingId: 7, chargeId: null, reference: "AD-7", amountFils: -20_000n, kind: "fee" });
     expect(batch).toMatchObject({ totalFils: 30_000n, payable: true });
   });
 
   it("takes only the part a run has not already taken", () => {
     const batch = batchFor([], new Map(), [fee(7, 50_000n, -20_000n)]);
-    expect(batch.lines).toEqual([{ orderId: null, bookingId: 7, reference: "AD-7", amountFils: -30_000n, kind: "fee" }]);
+    expect(batch.lines).toEqual([{ orderId: null, bookingId: 7, chargeId: null, reference: "AD-7", amountFils: -30_000n, kind: "fee" }]);
     expect(batch.payable).toBe(false);
   });
 

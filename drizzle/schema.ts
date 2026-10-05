@@ -1149,6 +1149,12 @@ export const fulfilmentCentres = pgTable("fulfilment_centres", {
   addressLine: varchar("address_line", { length: 300 }).notNull(),
   /** Closed to new shipments; stock already there stays and still ships. */
   active: boolean("active").notNull().default(true),
+  /**
+   * What NetLet charges a seller per unit it picks and packs here (4.2). Null
+   * is no charge — the rate is a contract, and until there is one nothing is
+   * taken. Frozen onto each charge when the line is packed.
+   */
+  packFeePerUnit: numeric("pack_fee_per_unit", { precision: 12, scale: 3 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -1174,6 +1180,30 @@ export const inboundShipments = pgTable(
   table => [
     index("inbound_shipments_vendor_idx").on(table.vendorId, table.id),
     index("inbound_shipments_status_idx").on(table.status, table.id),
+  ],
+);
+
+/**
+ * What NetLet charged a seller for packing one line (4.2), at the centre's rate
+ * when it was packed. Whole the moment it is made, and taken off the seller's
+ * next payout run as a fee line, the way a placement's fee is. One per line.
+ */
+export const fulfilmentCharges = pgTable(
+  "fulfilment_charges",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    orderItemId: integer("order_item_id").references(() => orderItems.id, { onDelete: "set null" }),
+    centreId: integer("centre_id").notNull().references(() => fulfilmentCentres.id, { onDelete: "restrict" }),
+    orderReference: varchar("order_reference", { length: 24 }).notNull(),
+    units: integer("units").notNull(),
+    ratePerUnit: numeric("rate_per_unit", { precision: 12, scale: 3 }).notNull(),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("fulfilment_charges_line_unique").on(table.orderItemId),
+    index("fulfilment_charges_vendor_idx").on(table.vendorId, table.id),
   ],
 );
 
@@ -2727,12 +2757,15 @@ export const payoutRunItems = pgTable(
      * written after placements existed.
      */
     bookingId: integer("booking_id").references(() => adBookings.id, { onDelete: "set null" }),
+    /** A packing charge taken off this run (4.2), as a negative amount. */
+    chargeId: integer("charge_id").references((): AnyPgColumn => fulfilmentCharges.id, { onDelete: "set null" }),
     amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
   },
   table => [
     index("payout_run_items_order_idx").on(table.orderId, table.vendorId),
     uniqueIndex("payout_run_items_run_order_unique").on(table.runId, table.orderId),
     uniqueIndex("payout_run_items_run_booking_unique").on(table.runId, table.bookingId),
+    uniqueIndex("payout_run_items_run_charge_unique").on(table.runId, table.chargeId),
   ],
 );
 

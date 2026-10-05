@@ -23,6 +23,8 @@ import {
   receiveShipment,
   returnToSeller,
   sendableVariants,
+  setPackRate,
+  listCharges,
   setCentreActive,
   waitingAtCentres,
 } from "../netletFulfilment.js";
@@ -82,6 +84,15 @@ export const fulfilmentRouter = router({
       if (!vendorId) return [];
       return sendableVariants(actor, vendorId, input.query);
     })),
+
+  /* The packing fee (4.2): a rate per centre that NetLet sets, null for none. */
+  setPackRate: protectedProcedure
+    .input(z.object({ id: rowId, rate: z.string().trim().max(16).nullable() }))
+    .mutation(async ({ ctx, input }) => guard(async () => setPackRate(await resolveActor(ctx.user), input.id, input.rate || null))),
+
+  charges: protectedProcedure
+    .input(z.object({ page }).optional())
+    .query(async ({ ctx, input }) => guard(async () => listCharges(await resolveActor(ctx.user), input ?? {}))),
 
   cancel: protectedProcedure
     .input(z.object({ id: rowId }))
