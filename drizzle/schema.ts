@@ -1252,6 +1252,8 @@ export const mediaFiles = pgTable(
     width: integer("width").notNull(),
     height: integer("height").notNull(),
     byteSize: integer("byte_size").notNull(),
+    /** Where the uploader says the picture came from (3.1.10): a manufacturer's image they pulled, or null for their own photo. */
+    sourceUrl: varchar("source_url", { length: 2048 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("media_files_uploader_idx").on(table.uploadedBy, table.createdAt)],

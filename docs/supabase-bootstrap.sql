@@ -1655,6 +1655,9 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "payout_runs_status_idx" ON "payout_runs" USING btree ("status","file_id");
 
+-- ===== 0056_moaning_hemingway.sql =====
+ALTER TABLE "media_files" ADD COLUMN IF NOT EXISTS "source_url" varchar(2048);
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1698,6 +1701,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  56 AS migrations_in_this_file,
+  57 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -186,3 +186,35 @@ describe("password-reset throttling", () => {
     ).resolves.toMatchObject({ sent: true });
   });
 });
+
+/*
+ * One table holds every ceiling, and two sign-in housekeeping steps reached
+ * past their own kind: pruning at fifteen minutes on every failed sign-in
+ * deleted hourly and daily counts, and forgiving an account on sign-in
+ * deleted its message and price-request counts — so signing in again reset
+ * them.
+ */
+describe("the other ceilings in the same table", () => {
+  it("survive a failed sign-in's pruning and a successful sign-in's forgiving", async () => {
+    await freshUser("keeps@example.com");
+    const halfAnHourAgo = new Date(Date.now() - 30 * 60 * 1000);
+    await db.insert(authAttempts).values([
+      { bucket: "account:keeps@example.com", kind: "chatMessage", createdAt: halfAnHourAgo },
+      { bucket: "account:keeps@example.com", kind: "offerRequest", createdAt: halfAnHourAgo },
+      { bucket: "address:10.0.9.1", kind: "assistant", createdAt: halfAnHourAgo },
+      { bucket: "account:keeps@example.com", kind: "login", createdAt: halfAnHourAgo },
+    ]);
+    const caller = appRouter.createCaller(contextFrom("10.0.9.1"));
+    await caller.auth.login(wrongPassword("keeps@example.com")).catch(() => {});
+    await caller.auth.login({ email: "keeps@example.com", password: PASSWORD });
+
+    const kinds = (await db.select({ kind: authAttempts.kind, bucket: authAttempts.bucket }).from(authAttempts)).map(row => `${row.bucket} ${row.kind}`).sort();
+    expect(kinds).toEqual([
+      "account:keeps@example.com chatMessage",
+      "account:keeps@example.com offerRequest",
+      /* The failed attempt against the address stays: success forgives the account, not the host. */
+      "address:10.0.9.1 assistant",
+      "address:10.0.9.1 login",
+    ]);
+  });
+});

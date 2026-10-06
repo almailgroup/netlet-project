@@ -11,7 +11,7 @@
  * `db.ts` call its module-local `getDb`, which nothing outside can redirect,
  * so they cannot be tested against a real database.
  */
-import { and, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import { authAttempts } from "../drizzle/schema.js";
 import {
   ALLOWED,
@@ -28,13 +28,15 @@ import {
   MAX_MESSAGES_PER_ACCOUNT,
   MESSAGE_WINDOW_MS,
   MAX_LOOKUPS_PER_ADDRESS,
+  MAX_IMPORTS_PER_ACCOUNT,
+  IMPORT_WINDOW_MS,
   limitVerdict,
   strictest,
   type RateVerdict,
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage";
+export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -49,9 +51,18 @@ export type Caller = { email?: string | null; address?: string | null };
 const accountBucket = (email: string) => `account:${email.trim().toLowerCase()}`;
 const addressBucket = (address: string) => `address:${address.trim()}`;
 
-/** Rows older than the window can never affect a verdict again. */
+/**
+ * Sign-in and reset rows older than their window can never affect a verdict
+ * again. Only those two kinds: the table also holds every hourly and daily
+ * ceiling, and pruning them at fifteen minutes — which this did, on every
+ * failed sign-in — quietly turned a sixty-an-hour limit into sixty a quarter
+ * of an hour and a twelve-a-day one into twelve a quarter of an hour. Each of
+ * those kinds prunes its own, at its own window, when it records.
+ */
 async function prune(db: NonNullable<Awaited<ReturnType<typeof getDb>>>): Promise<void> {
-  await db.delete(authAttempts).where(lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS)));
+  await db.delete(authAttempts).where(
+    and(inArray(authAttempts.kind, ["login", "reset"]), lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS))),
+  );
 }
 
 async function failuresIn(
@@ -122,7 +133,10 @@ export async function recordAuthAttempt(caller: Caller, kind: AttemptKind): Prom
 export async function clearAccountFailures(email: string): Promise<void> {
   const db = await getDb();
   if (!db) return;
-  await db.delete(authAttempts).where(eq(authAttempts.bucket, accountBucket(email)));
+  /* Sign-in failures only. The same bucket holds the account's message, price-request
+     and import counts, and clearing those on sign-in let anybody reset a ceiling by
+     signing in again. */
+  await db.delete(authAttempts).where(and(eq(authAttempts.bucket, accountBucket(email)), eq(authAttempts.kind, "login")));
 }
 
 /**
@@ -304,5 +318,39 @@ export async function recordMessage(email: string | null | undefined): Promise<v
   await db.insert(authAttempts).values([{ bucket: accountBucket(email), kind: "chatMessage" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "chatMessage"), lt(authAttempts.createdAt, new Date(Date.now() - MESSAGE_WINDOW_MS))),
+  );
+}
+
+/**
+ * May this account ask NetLet to fetch another outside page or image? Counted
+ * per account over an hour — `MAX_IMPORTS_PER_ACCOUNT` says why. Keyed on the
+ * account's id rather than its email, because an account without an email
+ * would otherwise not be counted at all.
+ */
+const userBucket = (userId: number) => `user:${userId}`;
+
+export async function checkImportAllowed(userId: number): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(
+      and(
+        eq(authAttempts.bucket, userBucket(userId)),
+        eq(authAttempts.kind, "imageImport"),
+        gt(authAttempts.createdAt, new Date(Date.now() - IMPORT_WINDOW_MS)),
+      ),
+    );
+  return limitVerdict(rows.map(row => row.at), MAX_IMPORTS_PER_ACCOUNT, new Date(), IMPORT_WINDOW_MS);
+}
+
+/** Count one outside fetch. */
+export async function recordImport(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(authAttempts).values([{ bucket: userBucket(userId), kind: "imageImport" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "imageImport"), lt(authAttempts.createdAt, new Date(Date.now() - IMPORT_WINDOW_MS))),
   );
 }

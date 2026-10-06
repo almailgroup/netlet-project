@@ -1,4 +1,5 @@
 import { adsRouter } from "./routers/ads.js";
+import { mediaRouter } from "./routers/media.js";
 import { subscriptionsRouter } from "./routers/subscriptions.js";
 import { supportRouter } from "./routers/support.js";
 import { fulfilmentRouter } from "./routers/fulfilment.js";
@@ -27,6 +28,7 @@ import { wishlistsRouter } from "./routers/wishlists.js";
 
 export const appRouter = router({
   ads: adsRouter,
+  media: mediaRouter,
   subscriptions: subscriptionsRouter,
   support: supportRouter,
   fulfilment: fulfilmentRouter,

@@ -87,6 +87,6 @@ describe("storing a photo", () => {
     })));
     await expect(media.saveUpload(manager(), JPEG, "image/jpeg")).rejects.toMatchObject({ reason: "media.tooMany" });
     /* An hour later the window has moved on. */
-    expect(await media.saveUpload(manager(), JPEG, "image/jpeg", new Date(Date.now() + 61 * 60_000))).toMatchObject({ width: 1200 });
+    expect(await media.saveUpload(manager(), JPEG, "image/jpeg", null, new Date(Date.now() + 61 * 60_000))).toMatchObject({ width: 1200 });
   });
 });

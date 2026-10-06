@@ -17,6 +17,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { mediaFiles } from "../drizzle/schema.js";
 import { MAX_UPLOADS_PER_HOUR, mediaPath, sniffImage, uploadProblem, type StoredType, type UploadProblem } from "../shared/commerce/media.js";
+import { urlProblem } from "../shared/commerce/manufacturerImages.js";
 import { can, type Actor } from "../shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
@@ -27,7 +28,15 @@ export class MediaError extends Error {
   }
 }
 
-export async function saveUpload(actor: Actor, bytes: Uint8Array, declared: string, now = new Date()) {
+/**
+ * Store one photo. `source` is where the seller says it came from — a
+ * manufacturer's image they pulled (3.1.10) — kept for provenance, so a
+ * rights question about a picture can be answered with where it was found.
+ * It is the uploader's claim, recorded as such, and anything that is not an
+ * https address is dropped rather than refused: a missing provenance line
+ * costs less than a photo the seller cannot add.
+ */
+export async function saveUpload(actor: Actor, bytes: Uint8Array, declared: string, source: string | null = null, now = new Date()) {
   if (!can(actor, "product.edit")) throw new MediaError("media.notAllowed");
   const problem = uploadProblem(bytes, declared);
   if (problem) throw new MediaError(problem);
@@ -51,6 +60,7 @@ export async function saveUpload(actor: Actor, bytes: Uint8Array, declared: stri
     width: info.width,
     height: info.height,
     byteSize: bytes.length,
+    sourceUrl: source && !urlProblem(source) ? source.trim() : null,
   });
   return { url: mediaPath(id, info.type), width: info.width, height: info.height };
 }

@@ -26,6 +26,7 @@ import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../subscriptions.js";
 import { MediaError, readMedia, saveUpload } from "../media.js";
+import { fetchManufacturerImage, ImportRefused } from "../manufacturerImages.js";
 import { authenticateRequest } from "./auth.js";
 import { resolveActor } from "../inventory.js";
 
@@ -146,7 +147,8 @@ export function createApp(): Express {
       const user = await authenticateRequest(req).catch(() => null);
       if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
       if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
-      const saved = await saveUpload(await resolveActor(user), new Uint8Array(req.body), req.headers["content-type"] ?? "");
+      const source = req.headers["x-netlet-source"];
+      const saved = await saveUpload(await resolveActor(user), new Uint8Array(req.body), req.headers["content-type"] ?? "", typeof source === "string" ? source : null);
       res.status(201).json(saved);
     } catch (error) {
       if (error instanceof MediaError) {
@@ -155,6 +157,41 @@ export function createApp(): Express {
       }
       console.error(`[media] upload failed: ${describeError(error)}`);
       res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * One image from a manufacturer's page (3.1.10), fetched by NetLet's server
+   * for the seller's browser to prepare like an upload. Nothing is stored
+   * here: what is kept is what the seller then chooses to upload.
+   *
+   * A JSON body, which an HTML form on another site cannot send, and a
+   * SameSite=Lax cookie a cross-site request does not carry. The bytes are
+   * only ever one of the image types `sniffRemoteImage` recognised, served
+   * under that type with `nosniff` and a sandbox, never cached.
+   */
+  app.post("/api/media/remote", async (req, res) => {
+    try {
+      if (!req.is("application/json")) { res.status(415).json({ error: "manufacturer.badUrl" }); return; }
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      const url = typeof req.body?.url === "string" ? req.body.url : "";
+      const image = await fetchManufacturerImage(await resolveActor(user), url);
+      res.set({
+        "Content-Type": image.type,
+        "Content-Length": String(image.bytes.length),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+      });
+      res.end(image.bytes);
+    } catch (error) {
+      if (error instanceof ImportRefused) {
+        res.status(error.reason === "media.notAllowed" ? 403 : error.reason === "manufacturer.tooMany" ? 429 : 400).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] remote fetch failed: ${describeError(error)}`);
+      res.status(502).json({ error: "manufacturer.unreachable" });
     }
   });
 

@@ -110,6 +110,19 @@ export const OFFER_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MAX_MESSAGES_PER_ACCOUNT = 60;
 export const MESSAGE_WINDOW_MS = 60 * 60 * 1000;
 
+/**
+ * How many outside fetches one account may ask NetLet to make in an hour
+ * (3.1.10): a manufacturer's page, and each of its images previewed or used.
+ *
+ * Per account, because importing needs a store manager's sign-in, and counted
+ * on every request rather than every failure, because the cost — NetLet's
+ * server going out to somebody else's — is spent either way. One page and its
+ * eight previews is nine; this is a dozen or so products an hour, which is a
+ * seller listing by hand and not a crawler.
+ */
+export const MAX_IMPORTS_PER_ACCOUNT = 150;
+export const IMPORT_WINDOW_MS = 60 * 60 * 1000;
+
 export type RateVerdict =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number };

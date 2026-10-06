@@ -231,6 +231,14 @@ attacker with an account of their own could launder their history at will. A
 throttled caller gets `TOO_MANY_REQUESTS`, never "wrong password" — behaving
 differently for the right password would make the throttle an oracle.
 
+**One table holds every ceiling, so housekeeping must name its kind.** Sign-in's
+fifteen-minute prune deleted *every* row older than fifteen minutes, so each
+failed sign-in cut the hourly chat, assistant and lookup ceilings and the daily
+price-request one down to a quarter of an hour; and forgiving an account on
+sign-in cleared its whole bucket, so signing in again reset its message and
+price-request counts. Both now name `login`/`reset`, and `rateLimit.test.ts`
+seeds the other kinds and signs in over them.
+
 Password reset is throttled too, and there it counts every request rather than
 every failure: the reply is identical for an address with no account, on
 purpose, so there is no failure to count. The abuse being stopped is using
@@ -1524,6 +1532,34 @@ product came out maroon, which only looking at the picture showed. Photos are
 gallery accepts their `/media/...` path beside an https URL
 (`acceptableImageUrl`), and `vercel.json` routes `/media` to the function.
 
+## Manufacturer images
+
+`shared/commerce/manufacturerImages.ts` is the rule, pure; `server/manufacturerImages.ts`
+goes out to the internet; the panel sits beside upload in `PhotoUpload`. A
+seller pastes the maker's product page; NetLet reads the images the maker
+*declares* for the product — schema.org `Product.image` first, the share image
+after, never every picture on the page — previews each **through NetLet's
+server** (`POST /api/media/remote`, so the seller's browser never contacts the
+maker and the CSP is untouched), and the one chosen goes through the ordinary
+before-and-after upload, carrying `X-NetLet-Source` into `media_files.source_url`
+for provenance. That header is the uploader's claim and is recorded as one.
+
+**A server fetching a typed URL is SSRF, and the guard is the lookup.**
+https on 443, a hostname rather than an address (an address never goes through
+a lookup at all — and `0x7f.1` and `2130706433` parse *to* addresses), and
+`guardedLookup` is the `lookup` handed to the request itself, refusing a name
+if *any* answer is non-public, mapped addresses and tunnels included. Checking
+first and connecting second would resolve twice, which is DNS rebinding.
+Redirects are followed by hand, at most three, each asked again; one deadline
+and one ceiling cover the whole fetch, *after* decompression, or a small gzip
+is a memory bomb. An image is one by its bytes, so an SVG served as
+`image/jpeg` is refused. `transport` is the seam the tests replace; the walk
+used a preload patching `https.request` and `dns.lookup` before the module
+captured them.
+
+Finding the page from a name alone is the gap — it needs a search or catalogue
+provider, and a model asked for the URL makes one up.
+
 ## Live tracking
 
 `shared/commerce/tracking.ts` is the rule, pure; `server/tracking.ts` the
@@ -2267,6 +2303,13 @@ darkening would make it worse), and `.ink-muted` (`#536b8c`, replacing
 
 Use those rather than a raw hex for anything that is words. The fills are
 untouched: orange is still orange everywhere it is a surface.
+
+**A hover state is a state axe has to see.** `.glass-navy:hover` turned the
+button orange at 82%, which put white on the brand orange at about 2.5:1 on
+every primary button for as long as the cursor rested on it — the pairing the
+dialogs had already been moved off. Every audit passed because none left the
+mouse on a button. It is a step of navy now (`#0d3372`, 11.9:1), the one
+`ConfirmDialog` already used.
 
 Variants cannot be stacked on these: write `hover:text-[#a44a2b]`, not
 `hover:ink-accent`, which resolves to nothing at all.

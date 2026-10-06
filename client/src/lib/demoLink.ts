@@ -449,6 +449,9 @@ function resolve(path: string, rawInput: unknown): unknown {
       return [];
     case "finance.payoutHistory":
       return { rows: [], total: 0, page: 1, pageSize: 20 };
+    /* No server to fetch a manufacturer's page with; the upload panel is absent in the demo anyway. */
+    case "media.scanPage":
+      throw new Error("manufacturer.unreachable");
     /* Every step of sending money is NetLet's, and the demo is a store's manager. */
     case "finance.preparePayout":
     case "finance.prepareAllPayouts":
