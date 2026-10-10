@@ -27,7 +27,7 @@ import { trpc } from "@/lib/trpc";
 import { ItemDestinations } from "@/components/cart/ItemDestinations";
 import { useEffect, useState } from "react";
 import AuthDialog from "@/components/auth/AuthDialog";
-import { readStored, writeStored } from "@/lib/browserStore";
+import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
 import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -36,8 +36,6 @@ import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { PinPicker } from "@/components/map/PinPicker";
 import type { Pin } from "@shared/commerce/geo";
 
-/** The saved address used last on this device, so the next checkout starts there. */
-const LAST_ADDRESS_KEY = "netlet.checkoutAddress";
 
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
 
@@ -105,12 +103,12 @@ export default function Checkout() {
       pin: address.pin ?? null,
     });
     if (address.governorate) setDeliveryZoneId(address.governorate);
-    writeStored(LAST_ADDRESS_KEY, String(address.id));
+    rememberAddress(address.id);
   };
   useEffect(() => {
     if (picked !== null || !book.data) return;
-    const remembered = Number(readStored(LAST_ADDRESS_KEY));
-    const choice = book.data.find(address => address.id === remembered) ?? book.data[0];
+    /* The saved address used last on this device, so the next checkout starts there. */
+    const choice = addressToUse(book.data, readLastAddressId());
     if (choice) pickAddress(choice);
     else {
       setPicked("new");

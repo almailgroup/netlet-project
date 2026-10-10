@@ -1,3 +1,4 @@
+import { readLastAddressId, zoneFromAddressBook } from "@/lib/lastAddress";
 import { readStored, readStoredList, removeStored, writeStored } from "@/lib/browserStore";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -127,6 +128,25 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     // row, and a row created without one takes the column's "en" default.
     if (isAuthenticated) updateProfile.mutate({ deliveryZoneId: zoneId, locale });
   }, [isAuthenticated, locale, updateProfile]);
+
+  /*
+   * A signed-in shopper who never chose an area but has an address book gets
+   * the area of the address checkout would choose — the one used last on this
+   * device, else the first. Only while nothing is chosen, here or on the
+   * account: a choice is never overwritten by a guess, however good. Asked
+   * once the profile has answered, so a choice stored on the account is not
+   * raced by the book.
+   */
+  const needsArea = isAuthenticated && Boolean(profile.data) && !profile.data?.deliveryZoneId && !guestDeliveryZoneId;
+  const book = trpc.customer.addresses.list.useQuery(undefined, { enabled: needsArea, staleTime: 5 * 60 * 1000 });
+  const adoptedFromBook = useRef(false);
+  useEffect(() => { if (!isAuthenticated) adoptedFromBook.current = false; }, [isAuthenticated]);
+  useEffect(() => {
+    if (!needsArea || !book.data || adoptedFromBook.current) return;
+    adoptedFromBook.current = true;
+    const zone = zoneFromAddressBook(book.data, readLastAddressId());
+    if (zone) setDeliveryZoneId(zone);
+  }, [book.data, needsArea, setDeliveryZoneId]);
 
   const value = useMemo<CustomerContextValue>(() => ({
     locale,

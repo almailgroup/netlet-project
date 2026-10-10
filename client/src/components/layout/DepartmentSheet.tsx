@@ -8,24 +8,30 @@
  * pressed.
  *
  * Each department is a link, so it can be long-pressed and opened elsewhere.
+ * Deals closes the list when the home page would draw a Deals shelf, the rule
+ * the wide header's row follows.
+ *
  * Portalled to `<body>` for the reason every overlay opened from a bar is.
  */
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
-import { categoryRail } from "@/content/homeLayout";
+import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categorySlug } from "@shared/commerce/browse";
-import { X } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { Tag, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Link } from "wouter";
 
 export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
+  const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { enabled: open, staleTime: 5 * 60 * 1000 });
+  const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
   useOverlay(open, onClose);
   if (!open) return null;
   return createPortal(
     <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={onClose}>
-      <aside
+      <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="department-sheet-title"
@@ -51,8 +57,20 @@ export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () 
               </Link>
             </li>
           ))}
+          {dealsDrawn ? (
+            <li>
+              <Link
+                href="/category/all?offer=1"
+                onClick={onClose}
+                className="glass pressable flex w-full items-center gap-3 rounded-xl px-4 py-4 text-start text-sm font-extrabold ink-accent"
+              >
+                <Tag className="size-4 shrink-0" aria-hidden />
+                {t("rail.deals.title")}
+              </Link>
+            </li>
+          ) : null}
         </ul>
-      </aside>
+      </div>
     </div>,
     document.body,
   );

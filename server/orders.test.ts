@@ -1292,3 +1292,33 @@ describe("cancelling and restoring a line", () => {
     expect(asOther?.orderTotal).toBe("0.000");
   });
 });
+
+/*
+ * The header's "on its way" (3.4.3). A parcel is on the road when a line is
+ * shipped and not yet delivered; it is a fact about this shopper's own orders
+ * and nobody else's.
+ */
+describe("orders on their way", () => {
+  it("counts an order once it has a shipped line, and only the shopper's own", async () => {
+    expect(await ordersModule.ordersOnTheWay(ids.shopper)).toEqual({ count: 0, latest: null });
+
+    const first = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper },
+    );
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, first.order.id));
+    /* Two lines shipped is still one order on its way. */
+    for (const line of lines) await db.update(orderItems).set({ fulfilment: "shipped" }).where(eq(orderItems.id, line.id));
+    expect(await ordersModule.ordersOnTheWay(ids.shopper)).toEqual({ count: 1, latest: first.order.reference });
+    expect(await ordersModule.ordersOnTheWay(ids.admin)).toEqual({ count: 0, latest: null });
+
+    /* Delivered is no longer on its way. */
+    for (const line of lines) await db.update(orderItems).set({ fulfilment: "delivered" }).where(eq(orderItems.id, line.id));
+    expect((await ordersModule.ordersOnTheWay(ids.shopper)).count).toBe(0);
+
+    /* Nor is a cancelled order, whatever a line still says. */
+    await db.update(orderItems).set({ fulfilment: "shipped" }).where(eq(orderItems.id, lines[0].id));
+    await db.update(orders).set({ status: "cancelled" }).where(eq(orders.id, first.order.id));
+    expect((await ordersModule.ordersOnTheWay(ids.shopper)).count).toBe(0);
+  });
+});

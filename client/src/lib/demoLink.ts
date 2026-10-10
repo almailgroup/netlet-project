@@ -279,6 +279,8 @@ function resolve(path: string, rawInput: unknown): unknown {
       return onePage([]);
     case "orders.get":
       return null;
+    case "orders.onTheWay":
+      return { count: 0, latest: null };
 
     /*
      * Wishlists in the demo are empty rather than invented, and that is the

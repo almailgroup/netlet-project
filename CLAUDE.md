@@ -342,6 +342,42 @@ the name reads "Deliver toHawalli"), which is the whole of WCAG 2.5.3: the butto
 so somebody driving the page by voice said what they could see and nothing
 happened.
 
+**The account control says what is waiting, and only that.** A dot on the
+button, and in the menu "1 on the way" beside Orders and "2 unread" beside
+Messages — and Help from NetLet, which is in the menu only while NetLet has
+answered and the shopper has not read it. `useAccountSignals` is the one
+reader, so the phone's Account tab shows the same count; it is the server's
+own figures (`chat.unread`, `support.unread`, `orders.onTheWay`), asked each
+minute while the tab is visible, and zero outright when signed out because the
+cache still holds the last account's. **While the session loads, the control
+is a quiet block of its own size**: it said "Sign in" for that moment and then
+turned into a name, which shifted the bar and told a signed-in shopper they
+were not. "On the way" is a line shipped and not yet delivered, on an order not
+cancelled or refunded.
+
+**The area starts from the address book.** A signed-in shopper who never chose
+one gets the governorate of the address checkout would pick — the one used last
+on this device, else the first — and the dialog lists their addresses above the
+governorates, picking one making it checkout's starting address too
+(`lib/lastAddress.ts`, one key and one rule for both). Only while nothing is
+chosen: a guess never overwrites a choice.
+
+**The empty search box offers what is true.** It listed the first four products
+under "Popular searches", and nothing counts what anybody searches. It offers
+this device's recent searches (`lib/recentSearches.ts`, never sent anywhere,
+with Clear) and the departments. The panel stays open while focus is anywhere
+inside the search, so a keyboard can Tab to Clear and the departments — it
+closed on the field's own blur, which left everything below the suggestions to
+the mouse. **"/" goes to the field** (`aria-keyshortcuts`), never from inside
+another field or past an open dialog, and also by its key position on an Arabic
+layout, where it types a letter.
+
+**Deals ends the department row, on the home shelf's rule.** `shelvesFor`
+decides whether the home page draws a Deals shelf, and the same answer decides
+the link — in the wide row and at the foot of the phone's department sheet — so
+a link never leads to the half-empty shelf the home page refuses to draw. On
+`/category/all?offer=1` it is the current one and "All departments" is not.
+
 **On a phone the top bar does not repeat the bottom one.** Home's had a
 hamburger and a cart, and every other page's had saved, account and cart —
 all of it already in `MobileTabBar`, a thumb's reach below. The top row carries

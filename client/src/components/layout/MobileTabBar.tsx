@@ -12,6 +12,7 @@
 import { DepartmentSheet } from "@/components/layout/DepartmentSheet";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
+import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Heart, Menu, ShoppingBag, Store, UserRound } from "lucide-react";
 import { useState } from "react";
@@ -23,6 +24,8 @@ export function MobileTabBar() {
   const { itemCount, openCart } = useCart();
   const { savedIds } = useCustomer();
   const [browsing, setBrowsing] = useState(false);
+  /* The same counts the header's account menu reads, so the two agree. */
+  const signals = useAccountSignals();
 
   const tabs = [
     {
@@ -56,6 +59,9 @@ export function MobileTabBar() {
       label: t("nav.account"),
       icon: <UserRound className="size-5" />,
       active: location === "/account",
+      /* Unread replies, from sellers and from NetLet: on a phone this tab is
+         the only account control there is. */
+      badge: signals.unreadMessages + signals.unreadSupport,
       action: () => navigate("/account"),
     },
     {

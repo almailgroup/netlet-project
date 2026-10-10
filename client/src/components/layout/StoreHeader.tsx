@@ -28,13 +28,20 @@
  *
  * The departments row is a row of links, it marks the department the shopper
  * is in, and it folds away on scroll and comes back on hover or focus
- * (`useCompactHeader`).
+ * (`useCompactHeader`). It ends on **Deals**, drawn by the rule that draws the
+ * home page's Deals shelf (`shelvesFor`): offers had no standing place in the
+ * navigation, and a link to a shelf of one or two would be the half-empty
+ * shelf the home page already refuses to draw.
+ *
+ * **"/" goes to the search field**, as it does on most shops with a keyboard
+ * to press it on — never while somebody is typing somewhere else, and never
+ * past an open dialog.
  */
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
-import { categoryRail } from "@/content/homeLayout";
+import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useCompactHeader } from "@/hooks/useCompactHeader";
@@ -43,9 +50,10 @@ import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { ChevronDown, Heart, MapPin, ShoppingBag } from "lucide-react";
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { trpc } from "@/lib/trpc";
+import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 
 /** A plain bar control: an icon and a word, a tint on hover, no fill of its own. */
 const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";
@@ -75,11 +83,16 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   activeDepartment?: string | null;
 }) {
   const { t, isArabic } = useTranslation();
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
+  const query = useSearch();
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const { compact, handlers } = useCompactHeader();
+  /* The home page's own read, so on Home the header asks nothing new. */
+  const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { staleTime: 5 * 60 * 1000 });
+  const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
+  const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 
   // A page with nothing to search (an invoice, the sell page) passes no handler
   // and gets the header without the field rather than a field that does nothing.
@@ -89,6 +102,23 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
   /* The language a press would give you, spoken in that language. */
   const otherLanguage = isArabic ? "en" : "ar";
+
+  useEffect(() => {
+    if (!searchable) return;
+    const toSearch = (event: KeyboardEvent) => {
+      /* The key, or the key in its place on an Arabic layout, where it types a letter. */
+      if ((event.key !== "/" && event.code !== "Slash") || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      if (document.querySelector("[aria-modal=true]")) return;
+      const input = [...document.querySelectorAll<HTMLInputElement>("header input[role=combobox]")].find(candidate => candidate.offsetParent !== null);
+      if (!input) return;
+      event.preventDefault();
+      input.focus();
+    };
+    window.addEventListener("keydown", toSearch);
+    return () => window.removeEventListener("keydown", toSearch);
+  }, [searchable]);
 
   const field = searchable ? <LiveSearch catalog={catalog} value={search} onChange={onSearch!} onSelectProduct={onSelectProduct!} /> : null;
 
@@ -180,7 +210,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
           className={`container hidden items-center gap-1.5 overflow-hidden transition-all duration-300 ease-out lg:flex ${compact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`}
         >
           {categoryRail.map(department => {
-            const current = activeDepartment === department.query;
+            const current = !onDeals && activeDepartment === department.query;
             const lead = department.query === ALL_DEPARTMENTS.query;
             return (
               <Link
@@ -194,6 +224,16 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
               </Link>
             );
           })}
+          {dealsDrawn ? (
+            <Link
+              href="/category/all?offer=1"
+              aria-current={onDeals ? "page" : undefined}
+              className={`pressable ms-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-extrabold transition-colors ${onDeals ? "glass glass-navy" : "ink-accent hover:bg-[#0a285a]/[.06]"}`}
+            >
+              <Tag className="size-3.5 shrink-0" aria-hidden />
+              {t("rail.deals.title")}
+            </Link>
+          ) : null}
         </nav>
       </header>
       <DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />

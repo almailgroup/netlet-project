@@ -824,6 +824,33 @@ export type OrderRow = typeof orders.$inferSelect & {
 };
 
 /**
+ * How many of this shopper's orders have a parcel on the road, and the most
+ * recent one's reference — the header's "on its way" (3.4.3).
+ *
+ * On the road is a line marked shipped and not yet delivered; an order that
+ * was cancelled or refunded is not on its way whatever a line says. Scoped by
+ * the account in the query, like every order read here, and capped: a count
+ * past fifty is still "on its way", and an unbounded scan for a header is the
+ * admin lists' ceiling problem.
+ */
+export async function ordersOnTheWay(userId: number): Promise<{ count: number; latest: string | null }> {
+  const db = await getDb();
+  if (!db) return { count: 0, latest: null };
+  const rows = await db
+    .selectDistinct({ id: orders.id, reference: orders.reference, placedAt: orders.placedAt })
+    .from(orders)
+    .innerJoin(orderItems, eq(orderItems.orderId, orders.id))
+    .where(and(
+      eq(orders.userId, userId),
+      eq(orderItems.fulfilment, "shipped"),
+      inArray(orders.status, ["pending_payment", "paid"]),
+    ))
+    .orderBy(desc(orders.placedAt), desc(orders.id))
+    .limit(50);
+  return { count: rows.length, latest: rows[0]?.reference ?? null };
+}
+
+/**
  * A shopper's own orders.
  *
  * Scoped by `userId` and nothing else: an order id is a serial, and "show me
