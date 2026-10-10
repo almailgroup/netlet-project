@@ -536,6 +536,14 @@ looks. It is its own corner now, on its own, and Home (its shelves) and
 `/saved` (with the recommendation rail) mount the popup too, once per
 page beside the other overlays.
 
+**No hook below a `return`.** `QuickView` renders with no product first and
+called `useBuyNow()` after `if (!product) return null`, so opening the preview
+ran one more hook than the render before it and React replaced the shop with
+error #310 — on every card, on the live site, while every test passed. There is
+no lint step to catch it, so `client/src/lib/hookOrder.test.ts` reads every
+component and hook and fails on a `use…()` after the function's first
+`return`. It was checked against the broken file before the fix went in.
+
 It is icon-only, so it carries an `aria-label` **and** a `title`. `aria-label`
 wins the accessible name and `title` becomes the description — which is the
 arrangement that wanted checking, because the tooltip is the only thing that

@@ -33,6 +33,10 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
+  /* Above the early return, with every other hook: the popup renders with no
+     product first, so a hook below `if (!product)` ran on the second render
+     and not the first, and React refused the whole page (error #310). */
+  const buyNow = useBuyNow();
 
   useOverlay(Boolean(product), onClose);
 
@@ -55,7 +59,6 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const image = product.images[imageIndex] ?? product.images[0];
   const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
-  const buyNow = useBuyNow();
   const add = async (thenCheckout: boolean) => {
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
