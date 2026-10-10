@@ -6,15 +6,16 @@ import { useBuyNow } from "@/hooks/useBuyNow";
 import { useAuth } from "@/hooks/useAuth";
 import { Thumb } from "@/components/product/Thumb";
 import { LiveSearch } from "@/components/search/LiveSearch";
-import { categoryRail, editorialUpdates, homeRailDefinitions } from "@/content/homeLayout";
+import { categoryRail, editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
+import { useFeature } from "@/hooks/useFeature";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
-import { filterAndSortCatalog } from "@shared/commerce/catalog";
 import { categorySlug } from "@shared/commerce/browse";
+import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { Product } from "@shared/commerce/types";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import {
   Minus,
   PackageCheck,
   Plus,
+  RotateCcw,
   Search,
   ShoppingBag,
   Share2,
@@ -39,6 +41,7 @@ import {
   Trash2,
   Truck,
   UserRound,
+  Wallet,
   X,
   Zap,
 } from "lucide-react";
@@ -49,7 +52,6 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { QuickView } from "@/components/product/QuickView";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
-import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
@@ -99,8 +101,7 @@ function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: () => v
   return <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" onClick={onClose}>
     <section role="dialog" aria-modal="true" aria-labelledby="delivery-zone-title" className="w-full max-w-lg rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7" onClick={event => event.stopPropagation()}>
       <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold tracking-[.14em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h2 id="delivery-zone-title" className="display-face mt-1 text-3xl text-[#0a285a]">{t("delivery.chooseGovernorate")}</h2><p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("delivery.note")}</p></div><IconButton label={t("delivery.close")} onClick={onClose}><X className="size-5" /></IconButton></div>
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">{kuwaitDeliveryZones.map(zone => <button key={zone.id} onClick={() => { setDeliveryZoneId(zone.id); onClose(); }} className={`pressable rounded-2xl border p-4 text-start ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}><span className="block text-sm font-extrabold text-[#0a285a]">{isArabic ? zone.labelAr : zone.label}</span><span className="mt-1 block text-[10px] font-semibold ink-muted">{t("delivery.pending")}</span></button>)}</div>
-      <p className="mt-5 flex items-start gap-2 rounded-xl bg-[#fff0ab] p-3 text-xs leading-5 text-[#705523]"><Truck className="mt-0.5 size-4 shrink-0" />{t("delivery.setupPending")}</p>
+      <div className="mt-6 grid gap-2 sm:grid-cols-2">{kuwaitDeliveryZones.map(zone => <button key={zone.id} onClick={() => { setDeliveryZoneId(zone.id); onClose(); }} className={`pressable rounded-2xl border p-4 text-start ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}><span className="block text-sm font-extrabold text-[#0a285a]">{isArabic ? zone.labelAr : zone.label}</span></button>)}</div>
     </section>
   </div>;
 }
@@ -316,11 +317,6 @@ function CategoryRail({ categories, onSelect }: {
   );
 }
 
-function DealsSurface({ loading, error, product, saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding, onRetry, onViewAll }: { loading: boolean; error: boolean; product?: Product; saved: string[]; onSave: (id: string, title: string) => void; onDetails: (product: Product) => void; onQuickView: (product: Product) => void; onAdd: (product: Product, quantity: number) => void; onBuyNow: (product: Product, quantity: number) => void; isAdding: boolean; onRetry: () => void; onViewAll: () => void }) {
-  const { t } = useTranslation();
-  const money = useMoney();
-  return <section id="deals" className="container py-9 sm:py-12"><div className="mb-5 flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.freshNow")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.deals")}</h2><p className="mt-1 text-xs text-[#536b8c]">{t("home.dealsNote")}</p></div><button onClick={onViewAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div>{loading ? <CatalogSkeleton /> : error ? <div className="rounded-[1.5rem] border border-[#f2b69e] bg-white px-6 py-14 text-center"><PackageCheck className="mx-auto size-7 ink-accent" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.dealsSlow")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.refreshNote")}</p><button onClick={onRetry} className="glass glass-navy pressable mt-5 rounded-full px-4 py-3 text-xs font-extrabold">{t("home.refreshCatalog")}</button></div> : !product ? <div className="rounded-[1.5rem] border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center"><Search className="mx-auto size-6 ink-muted" /><h3 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.newDeals")}</h3><p className="mt-2 text-sm text-[#536b8c]">{t("home.newDealsNote")}</p><button onClick={onViewAll} className="mt-4 text-xs font-extrabold ink-accent underline underline-offset-4">{t("home.browseDepartments")}</button></div> : <div className="grid gap-3 lg:grid-cols-[1.45fr_1fr_1fr]"><button onClick={() => onDetails(product)} className="pressable group relative min-h-[270px] overflow-hidden rounded-[1.5rem] bg-[#f2683a] p-6 text-start text-white sm:min-h-[330px]"><div className="absolute end-0 top-0 h-full w-[54%] overflow-hidden"><Thumb src={product.images[0]?.url} alt="" className="size-full object-cover opacity-95 transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-r from-[#f2683a] via-[#f2683a]/25 to-transparent rtl:bg-gradient-to-l" /></div><div className="relative z-10 flex h-full max-w-[250px] flex-col"><span className="w-fit rounded-full bg-[#8c2f22] px-3 py-1 text-[9px] font-extrabold tracking-[.14em] uppercase">{t("home.todaysEdit")}</span><p className="mt-6 text-[11px] font-bold text-white">{product.productType || t("home.netletSelection")}</p><h3 className="display-face mt-2 text-3xl leading-[.92]">{product.title}</h3><p className="mt-3 text-sm text-white">{money(product.priceRange.min)}</p><span className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold">{t("home.shopDeal")} <ArrowRight className="size-4 rtl:-scale-x-100" /></span></div></button><ProductCard product={product} compact saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onQuickView={() => onQuickView(product)} onAdd={(quantity) => void onAdd(product, quantity)} onBuyNow={(quantity) => void onBuyNow(product, quantity)} isAdding={isAdding} /><div className="relative overflow-hidden rounded-[1.5rem] border border-[#d5dfeb] bg-[#fff0ab] p-6"><div className="absolute -end-8 -top-8 size-32 rounded-full border-[18px] border-[#f2683a]/25" /><div className="relative flex h-full flex-col"><span className="grid size-10 place-items-center rounded-2xl bg-white/80 ink-accent"><Truck className="size-5" /></span><p className="mt-5 text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h3 className="display-face mt-2 text-3xl leading-[.92] text-[#0a285a]">{t("home.deliveryCloser")}</h3><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("home.deliveryCloserNote")}</p><button onClick={onViewAll} className="mt-auto inline-flex items-center gap-2 text-xs font-extrabold text-[#0a285a]">{t("home.browseCatalogAction")} <ArrowRight className="size-4 ink-accent rtl:-scale-x-100" /></button></div></div></div>}</section>;
-}
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -343,12 +339,10 @@ export default function Home() {
   const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, toggleLocale } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError, refetch } = trpc.commerce.products.list.useQuery({ first: 24 });
 
-  const visibleProducts = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-    const matchingProducts = catalog.filter((product) =>
-      !searchTerm || [product.title, product.description, product.productType, product.vendor, ...product.tags].join(" ").toLowerCase().includes(searchTerm));
-    return filterAndSortCatalog(matchingProducts, { availability: "all", sort: "catalog" });
-  }, [catalog, search]);
+  /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
+  const shelves = useMemo(() => shelvesFor(catalog), [catalog]);
+  const articlesOn = useFeature("articles");
+  const appBannerOn = useFeature("appBanner");
   const liveCategories = useMemo(() => Array.from(new Set(catalog.map((product) => product.productType).filter((productType): productType is string => Boolean(productType)))).sort((left, right) => left.localeCompare(right)), [catalog]);
 
   /**
@@ -388,7 +382,6 @@ export default function Home() {
 
     return [...named, ...extra];
   }, [catalog, liveCategories, t]);
-  const rotateProducts = (offset: number) => visibleProducts.length ? [...visibleProducts.slice(offset), ...visibleProducts.slice(0, offset)] : [];
   // Departments lead to the listing page rather than scrolling this one. A
   // rail of four products was a teaser; the shopper asking for "Electronics"
   // wants the department, with everything in it and a way to narrow it.
@@ -412,10 +405,6 @@ export default function Home() {
     if (isAuthenticated) navigate("/account");
     else openAuth();
   };
-  // Footer links go where they say they go: a category filter, an on-page
-  // rail, or another route. Only the two links with nothing behind them yet
-  // fall through to a notice.
-  const firstProduct = visibleProducts[0] ?? catalog[0];
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
@@ -498,7 +487,7 @@ export default function Home() {
               guessing which way it goes. Currency is gone from here: there is
               one, and a control that cannot change is not a control. */}
           <HeaderAction title={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} label={t("header.language")} />
-          <HeaderAction title={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} label={isAuthenticated ? (user?.name ? user.name : t("header.myProfile")) : t("header.signIn")} />
+          <HeaderAction title={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} label={isAuthenticated ? t("nav.account") : t("header.signIn")} />
           <HeaderAction title={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} label={t("nav.cart")} />
         </div>
         <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable relative grid size-10 shrink-0 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
@@ -525,20 +514,11 @@ export default function Home() {
         the page ground is a near-white neutral: a deep navy field lifted toward
         an electric blue, a brand-orange bloom on the warm side and a cool one
         opposite so the warmth reads as deliberate rather than as a cast. */}
-    <section id="main" className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden loading="eager" fetchPriority="high" decoding="async" className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button><button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button></div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Store className="size-3.5 text-[#ff9a70]" /> {t("home.liveCatalog")}</span><span className="flex items-center gap-1.5"><ShoppingBag className="size-3.5 text-[#ff9a70]" /> {t("home.persistentCart")}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
+    <section id="main" className="container pt-5 sm:pt-6"><div className="relative isolate min-h-[200px] overflow-hidden rounded-[1.5rem] bg-[#06162f] lg:min-h-[248px]"><div className="absolute inset-0 bg-[linear-gradient(105deg,#06162f_0%,#0a285a_44%,#14428f_78%,#1c58b8_100%)]" /><div className="absolute -end-16 -top-32 size-[420px] rounded-full bg-[radial-gradient(circle,rgba(242,104,58,.52)_0%,rgba(242,104,58,0)_65%)]" /><div className="absolute -bottom-40 start-[36%] size-[380px] rounded-full bg-[radial-gradient(circle,rgba(56,189,248,.34)_0%,rgba(56,189,248,0)_68%)]" /><img src={heroImage} alt="" aria-hidden loading="eager" fetchPriority="high" decoding="async" className="pointer-events-none absolute inset-y-0 end-0 hidden h-full w-[46%] object-cover opacity-30 [mask-image:linear-gradient(to_right,transparent,#000_58%)] rtl:[mask-image:linear-gradient(to_left,transparent,#000_58%)] lg:block" /><div className="absolute inset-0 bg-[linear-gradient(90deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)] rtl:bg-[linear-gradient(270deg,#06162f_0%,rgba(6,22,47,.62)_44%,rgba(6,22,47,0)_74%)]" /><div className="relative z-10 flex min-h-[200px] max-w-[640px] flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[248px] lg:px-12"><div className="reveal-up flex items-center gap-2"><span className="h-px w-6 bg-[#ff8a5c]" /><span className="text-[10px] font-extrabold tracking-[0.17em] text-[#ffb495] uppercase">{t("home.eyebrow")}</span></div><h1 className="reveal-up reveal-delay-1 display-face mt-2.5 text-[2rem] leading-[.98] text-white sm:text-[2.5rem] lg:text-[3rem]">{t("home.heroTitle")} <em className="font-normal text-[#9fc6ff]">{t("home.heroTitleEm")}</em></h1><div className="reveal-up reveal-delay-2 mt-4 flex flex-wrap items-center gap-2.5"><button onClick={showAll} className="glass glass-accent pressable flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold">{t("home.shopCatalog")} <ArrowRight className="size-4 rtl:-scale-x-100" /></button>{/* Only while the Deals shelf is drawn: it hides below four offers, and a
+        button scrolling to a shelf that is not there does nothing. */}{shelves.deals.length ? <button onClick={() => document.getElementById("deals")?.scrollIntoView({ behavior: "smooth" })} className="glass glass-on-dark pressable rounded-full px-5 py-3 text-xs font-extrabold">{t("home.exploreDeals")}</button> : null}</div><div className="mt-4 hidden flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] font-bold text-[#a9c6ec] lg:flex"><span className="flex items-center gap-1.5"><Truck className="size-3.5 text-[#ff9a70]" /> {deliveryZone ? t("delivery.selected", { name: isArabic ? deliveryZone.labelAr : deliveryZone.label }) : t("home.chooseArea")}</span><span className="flex items-center gap-1.5"><Wallet className="size-3.5 text-[#ff9a70]" /> {t("home.payOnDelivery")}</span><span className="flex items-center gap-1.5"><RotateCcw className="size-3.5 text-[#ff9a70]" /> {t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</span></div></div><div className="glass glass-on-dark absolute end-4 top-4 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.newSeason")}</div></div></section>
 
     <CategoryRail categories={departmentTiles} onSelect={selectCategory} />
-    <DealsSurface loading={catalogLoading} error={Boolean(catalogError)} product={firstProduct} saved={saved} onSave={toggleSaved} onDetails={openProduct} onQuickView={setQuickProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onRetry={() => void refetch()} onViewAll={showAll} />
 
-    <RecommendedRail
-      saved={saved}
-      onSave={toggleSaved}
-      onDetails={openProduct}
-      onQuickView={setQuickProduct}
-      onAdd={(product, quantity) => void addProduct(product, quantity)}
-      onBuyNow={(product, quantity) => void buyProduct(product, quantity)}
-      isAdding={cartLoading}
-    />
 
     {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
     <SponsoredShelf
@@ -553,15 +533,24 @@ export default function Home() {
       isAdding={cartLoading}
     />
 
-    {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onQuickView={setQuickProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} />)}
+    {/* Two shelves, each hidden below four products (`shelvesFor`). While the
+        catalog loads the first draws its skeleton, so the page does not jump. */}
+    {homeRailDefinitions.map((rail, index) => {
+      const products = shelves[rail.id];
+      if (!catalogLoading && !catalogError && products.length === 0) return null;
+      if ((catalogLoading || catalogError) && index > 0) return null;
+      return <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={products} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onQuickView={setQuickProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={() => navigate(rail.select === "offers" ? "/category/all?offer=1&sort=discount" : "/category/all?sort=newest")} />;
+    })}
 
-    <section className="container py-10 sm:py-14"><div className="mb-5 flex items-end justify-between"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.browseYourPace")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.categories")}</h2></div><button onClick={showAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("nav.allDepartments")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="hide-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-6">{categoryRail.map((category) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable group min-w-[132px] rounded-2xl border p-3 text-start shadow-[0_5px_15px_rgba(10,40,90,.04)] sm:min-w-0 border-[#d5dfeb] bg-white hover:border-[#aac0da]`}><div className="grid aspect-[1.38] place-items-center rounded-xl" style={{ backgroundColor: category.color }}><span className="grid size-11 place-items-center rounded-2xl bg-white/80 text-[#0a285a] shadow-sm"><DepartmentIcon query={category.query} className="size-5" /></span></div><span className="mt-3 block text-xs font-extrabold text-[#0a285a]">{t(category.key)}</span><span className="mt-1 flex items-center text-[10px] font-bold text-[#536b8c]">{t("home.browse")} <ArrowDownRight className="ms-1 size-3 rtl:-scale-x-100" /></span></button>)}</div></section>
 
-    <section className="border-y border-[#d5dfeb] bg-white/45 py-10 sm:py-14"><div className="container"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.notesFrom")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.usefulReading")}</h2></div><button onClick={() => toast(t("home.editorialSoon"))} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="mt-6 grid gap-3 md:grid-cols-3">{editorialUpdates.map((entry) => <article key={entry.title} className="rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-6"><p className="text-[9px] font-extrabold tracking-[.14em] ink-accent uppercase">{t(entry.date)}</p><h3 className="type-heading mt-4 text-lg tracking-[-.025em] text-[#0a285a]">{t(entry.title)}</h3><p className="type-body mt-3 text-sm leading-6 text-[#536b8c]">{t(entry.summary)}</p><button onClick={() => toast(t("home.guideSoon"))} className="mt-5 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.1em] text-[#0a285a] uppercase">{t("home.readMore")} <ArrowRight className="size-3.5 ink-accent rtl:-scale-x-100" /></button></article>)}</div></div></section>
 
-    <section className="container grid gap-4 py-10 sm:py-14 lg:grid-cols-2"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("home.application")}</p><h2 className="display-face mt-3 text-3xl leading-[.94] text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.appUpdates")}</button></div></div><div className="relative overflow-hidden rounded-[1.5rem] bg-[#e7edf5] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -end-14 -top-14 size-72 rounded-full border-[28px] border-[#d1e3d0]" /><div className="absolute bottom-7 end-9 grid size-16 place-items-center rounded-2xl bg-[#fff0ab] text-[#0a285a] shadow-lg"><MapPin className="size-7" /></div><div className="relative z-10 max-w-[60%]"><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h2 className="display-face mt-3 text-3xl leading-[.94] text-[#0a285a]">{t("home.deliveryTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.deliveryNote")}</p><button onClick={() => setDeliveryOpen(true)} className="glass glass-accent pressable mt-6 inline-flex items-center gap-2 rounded-full px-4 py-3 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.chooseDeliveryArea")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div></div></section>
+    {articlesOn ? (
+      <section className="border-y border-[#d5dfeb] bg-white/45 py-10 sm:py-14"><div className="container"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.notesFrom")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.usefulReading")}</h2></div><button onClick={() => toast(t("home.editorialSoon"))} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="mt-6 grid gap-3 md:grid-cols-3">{editorialUpdates.map((entry) => <article key={entry.title} className="rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-6"><p className="text-[9px] font-extrabold tracking-[.14em] ink-accent uppercase">{t(entry.date)}</p><h3 className="type-heading mt-4 text-lg tracking-[-.025em] text-[#0a285a]">{t(entry.title)}</h3><p className="type-body mt-3 text-sm leading-6 text-[#536b8c]">{t(entry.summary)}</p><button onClick={() => toast(t("home.guideSoon"))} className="mt-5 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.1em] text-[#0a285a] uppercase">{t("home.readMore")} <ArrowRight className="size-3.5 ink-accent rtl:-scale-x-100" /></button></article>)}</div></div></section>
+    ) : null}
 
-    <section className="container pb-10"><div className="grid overflow-hidden rounded-[1.6rem] bg-[#0a285a] text-[#fffdf9] lg:grid-cols-[1.1fr_.9fr]"><div className="relative p-7 sm:p-10"><div className="pointer-events-none absolute -bottom-24 -start-12 size-64 rounded-full border border-[#f2683a]/55" /><p className="relative text-[10px] font-extrabold tracking-[.15em] text-[#ffcc64] uppercase">{t("home.promise")}</p><h2 className="relative display-face mt-3 text-4xl leading-[.94] sm:text-5xl">{t("home.lessSearching")}<br /><em className="font-normal">{t("home.moreFinding")}</em></h2><p className="relative mt-4 max-w-md text-sm leading-6 text-[#d9e7f7]">{t("home.promiseNote")}</p></div><div className="grid grid-cols-3 divide-x divide-[#49658d] border-t border-[#49658d] lg:border-s lg:border-t-0"><div className="grid place-items-center p-5 text-center"><Truck className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{t(deliveryZone ? "home.statSaved" : "home.statChoose")}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.deliveryArea")}</p></div><div className="grid place-items-center p-5 text-center"><PackageCheck className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{catalog.length}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.statLiveItems")}</p></div><div className="grid place-items-center p-5 text-center"><ShoppingBag className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{t("home.statEasy")}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.statNativeCart")}</p></div></div></div></section>
+    <section className={`container grid gap-4 py-10 sm:py-14 ${appBannerOn ? "lg:grid-cols-2" : ""}`}>{appBannerOn ? <div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("home.application")}</p><h2 className="display-face mt-3 text-3xl leading-[.94] text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.appUpdates")}</button></div></div> : null}<div className="relative overflow-hidden rounded-[1.5rem] bg-[#e7edf5] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -end-14 -top-14 size-72 rounded-full border-[28px] border-[#d1e3d0]" /><div className="absolute bottom-7 end-9 grid size-16 place-items-center rounded-2xl bg-[#fff0ab] text-[#0a285a] shadow-lg"><MapPin className="size-7" /></div><div className="relative z-10 max-w-[60%]"><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h2 className="display-face mt-3 text-3xl leading-[.94] text-[#0a285a]">{t("home.deliveryTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.deliveryNote")}</p><button onClick={() => setDeliveryOpen(true)} className="glass glass-accent pressable mt-6 inline-flex items-center gap-2 rounded-full px-4 py-3 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.chooseDeliveryArea")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div></div></section>
+
+
 
     <SiteFooter />
 

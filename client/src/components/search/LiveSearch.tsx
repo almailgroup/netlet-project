@@ -1,7 +1,8 @@
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
-import { PhotoSearchPanel, showSearchModes, VoiceSearchPanel } from "@/components/search/SearchModes";
+import { PhotoSearchPanel, VoiceSearchPanel } from "@/components/search/SearchModes";
+import { useFeature } from "@/hooks/useFeature";
 import { ArrowRight, Camera, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -57,6 +58,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   };
   const [photoOpen, setPhotoOpen] = useState(false);
   const refine = trpc.search.refine.useMutation();
+  const voiceOn = useFeature("voiceSearch");
+  const photoOn = useFeature("photoSearch");
   const searchTerm = value.trim().toLowerCase();
   const example = useMemo(() => catalogExample(catalog), [catalog]);
 
@@ -166,10 +169,10 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
         */}
         {value ? (
           <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applySearch("")} aria-label={t("header.searchClear")} className="glass type-control grid size-7 shrink-0 place-items-center rounded-full !text-[#536b8c]"><X className="size-4" /></button>
-        ) : showSearchModes ? (
+        ) : voiceOn || photoOn ? (
           <>
-            <button type="button" onClick={() => setVoiceOpen(true)} aria-label={t("search.voice")} title={t("search.voice")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Mic className="size-[18px]" /></button>
-            <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t("search.photo")} title={t("search.photo")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Camera className="size-[18px]" /></button>
+            {voiceOn ? <button type="button" onClick={() => setVoiceOpen(true)} aria-label={t("search.voice")} title={t("search.voice")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Mic className="size-[18px]" /></button> : null}
+            {photoOn ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t("search.photo")} title={t("search.photo")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Camera className="size-[18px]" /></button> : null}
             {/* A hairline, so the pair reads as other ways *in* rather than as
                 two more things the submit button might mean. */}
             <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-[#c9d6e6]" />

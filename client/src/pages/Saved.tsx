@@ -12,6 +12,7 @@
 import { useBuyNow } from "@/hooks/useBuyNow";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
+import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -142,6 +143,21 @@ export default function Saved() {
           </p>
         ) : null}
       </div>
+      {/* Under the hearts it learns from, and only once it has learned
+          something: the rail draws nothing until it is personal. */}
+      <RecommendedRail
+        saved={savedIds}
+        onSave={(id, title) => {
+          const adding = !savedIds.includes(id);
+          toggleSaved(id);
+          toast(t(adding ? "saved.savedForLater" : "saved.removed", { name: title }));
+        }}
+        onDetails={openProduct}
+        onQuickView={setQuickProduct}
+        onAdd={(product, quantity) => void addToCart(product, quantity)}
+        onBuyNow={(product, quantity) => void buyNow(product, quantity)}
+        isAdding={cartLoading}
+      />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />
       <div aria-hidden className="h-12 lg:h-16" />

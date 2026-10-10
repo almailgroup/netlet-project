@@ -532,8 +532,8 @@ for — `QuickView` and `ProductCard`'s `onQuickView` were wired on
 `/category/:slug` alone, opened by an eye stacked third in a hover-revealed
 corner cluster, and a shopper asked for the feature to be added. That is the
 whole verdict on *that* treatment: three icons deep is not somewhere anybody
-looks. It is its own corner now, on its own, and Home (the rails, the deals
-surface, the recommendation rail) and `/saved` mount the popup too, once per
+looks. It is its own corner now, on its own, and Home (its shelves) and
+`/saved` (with the recommendation rail) mount the popup too, once per
 page beside the other overlays.
 
 It is icon-only, so it carries an `aria-label` **and** a `title`. `aria-label`
@@ -583,6 +583,26 @@ red beside it computes 4.58:1 and was left alone.
 the light `.glass` disc — blank circles on the navy shelves — and pressing them
 toasted "more controls soon". They scroll a screenful at a time, appear only
 when there is something off-screen, and wear `.glass-on-dark` on navy.
+
+**Home carries two shelves, and a shelf below four products is not drawn.**
+There were five — Deals, Popular right now, Bestsellers, Most popular, Newest —
+and on a dozen-product catalog they were the same dozen five times. `shelvesFor`
+in `client/src/content/homeLayout.ts` decides: Deals is what is actually
+discounted, deepest first; Newest is the most recent, leaving out anything Deals
+already shows; what a hidden shelf did not show is free for the next. Anything
+that points at a shelf asks whether it is drawn — "Explore deals" in the hero
+scrolled to a Deals shelf that had hidden itself. The promise block, the
+Categories section (the chips and the tile row already name every department)
+and the deals surface went with them.
+
+**Copy a shopper reads is never a status report.** "Live catalog", "Persistent
+cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
+delivery policy is configured": each was true and each was written for whoever
+was building the page. Checkout says cash on delivery and the returns window
+now, and the four card logos are gone — brands drawn beside an order nobody can
+pay with them. When a card service is integrated they come back as choices in
+the payment fieldset, not as pictures. Staff pages may still speak plainly about
+configuration; a shopper's may not.
 
 **`SiteFooter` is the one footer** — Home, departments and search, the product
 page and Saved; checkout has none, for the bare-header reason. Every entry is an
@@ -675,6 +695,19 @@ identifier in the middle of an Arabic page. A vendor with nothing yet scores
 100 — a new seller has done nothing wrong. `verified` is the one badge no
 amount of good behaviour earns: a human checked the documents, and a badge a
 seller could earn by behaving well would be saying something else.
+
+**And it is the only badge a person awards.** The row used to take any of
+four by hand, so "High Rating" could sit on a store nobody had reviewed and
+"Fast Shipping" on one that had never delivered. `storefrontBadges` measures
+the other two on every catalog read — `badgesFor` in `server/catalog.ts`, two
+grouped queries for the whole shelf: High Rating at a 4.5 average over at
+least five visible reviews, Fast Shipping when four in five of the last ninety
+days' deliveries (counted per order) arrived within 72 hours of being placed,
+from at least five. A floor on the count as well as the figure, because one
+five-star review is an anecdote. Nothing earned is stored, so a store whose
+numbers slip stops showing it without anybody pressing anything; old values in
+`vendors.badges` are simply not read (`awardedBadges`). "Top Seller" went, since
+nothing measured it. The demo catalog carries none, being invented.
 
 **A SKU belongs to the seller who typed it, not to the marketplace.** It was
 globally unique, so the first shop to record "BATT-1" owned the string and every
@@ -1954,13 +1987,19 @@ already had a deterministic answer for "no key", and off is that branch. Every
 call spends money at a third party and sends it catalogue text, so "stop all
 of it now" has to be one control rather than four.
 
-**Absent is on, and switches are read per call rather than cached.** A fresh
-database behaves exactly as before; a row is written only when somebody
-decides, and the trail records who. No in-process cache, for the reason
+**Absent is the feature's `defaultOn`, and switches are read per call rather
+than cached.** Most features default on, so a fresh database behaves as it
+always did. The ones with nothing behind them yet — voice and photo search, the
+app banner, the articles, affiliates, Subscribe & Save — default off: a control
+answering "soon" is worse than no control, and hiding them behind the switch
+keeps the code rather than deleting it. Off, a shopper who already holds one
+(an affiliate account, a standing order) still sees that section on `/account`,
+because a switch closes the door and never locks anybody in the room. A row is
+written only when somebody decides, and the trail records who. No in-process cache, for the reason
 `rateLimit.ts` counts in Postgres: one cache per short-lived instance would
 leave chat off on one and on everywhere else. The read happens only on an entry
 path or a model call, never while browsing. The client's `useFeature` answers
-*on* while loading, because hiding every optional control from everybody for
+the default while loading, because hiding every optional control from everybody for
 the length of a request, to spare the rare shop that turned one off, is the
 wrong way round — and the server refuses regardless.
 
@@ -2029,9 +2068,11 @@ onto the shelf, applied at the third. Both cut a four-card rail to one on the
 current catalog, which is the honest answer rather than a bug.
 
 **"Picked for you" is a claim, and `personalised` is what earns it.** Below
-`TASTE_FLOOR` the rail says "Popular right now" and explains how to make it
-personal. One saved product is a data point, not a taste, and a rail claiming
-otherwise is checked once and never trusted again.
+`TASTE_FLOOR` the rail is not drawn at all. It used to fall back to "Popular
+right now" on the home page, where it was one more shelf of the same products;
+it lives on `/saved` now, under the hearts it learns from. One saved product is
+a data point, not a taste, and a rail claiming otherwise is checked once and
+never trusted again.
 
 **Only interest terms leave NetLet.** `tasteTerms` is the entire payload sent to
 the model — "lighting, home, warm", true of thousands of people and identifying

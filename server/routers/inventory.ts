@@ -62,7 +62,7 @@ import {
 } from "../inventory.js";
 import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../audit.js";
-import { TRUST_BADGES } from "../../shared/inventory/vendorHealth.js";
+import { AWARDED_BADGES } from "../../shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
 import { ADDON_KINDS } from "../../shared/commerce/addons.js";
@@ -962,7 +962,7 @@ export const inventoryRouter = router({
     setBadges: protectedProcedure
       .input(z.object({
         vendorId: rowId,
-        badges: z.array(z.enum(TRUST_BADGES)).max(TRUST_BADGES.length),
+        badges: z.array(z.enum(AWARDED_BADGES)).max(AWARDED_BADGES.length),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);

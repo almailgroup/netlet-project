@@ -22,9 +22,15 @@
  * a read rather than an act (a rail, a panel) answers empty instead of
  * refusing, because a shelf that errors is worse than a shelf that is absent.
  *
- * **Absent is on.** A fresh database has no rows and behaves exactly as it did
- * before the switchboard existed; a row is written only when an administrator
- * changes something, and it records who.
+ * **Absent is the feature's default**, and for almost every feature that is on:
+ * a fresh database behaves exactly as it did before the switchboard existed, a
+ * row is written only when an administrator changes something, and it records
+ * who. A few start **off** — voice and photo search, the app banner, the
+ * articles, affiliates and Subscribe & Save — because nothing a shopper can use
+ * is behind them yet on a shop that has not set them up: an app that is not
+ * published, articles nobody has written, a scheduler nobody has configured.
+ * Hidden behind a switch rather than deleted, so turning one on is a press on
+ * `/admin/features` rather than a release.
  *
  * ## The model switch
  *
@@ -54,6 +60,10 @@ export const FEATURE_KEYS = [
   "subscriptions",
   "fulfilment",
   "membership",
+  "voiceSearch",
+  "photoSearch",
+  "appBanner",
+  "articles",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -70,45 +80,55 @@ export type FeatureDefinition = {
    * presentation: a switch applies to everybody.
    */
   audience: "shopper" | "seller" | "everyone";
+  /** What the feature is with no row stored. On, except for the few listed above. */
+  defaultOn: boolean;
 };
 
 export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
-  ai: { entries: [], audience: "everyone" },
-  assistant: { entries: ["assistant.ask"], audience: "shopper" },
-  recommendations: { entries: [], audience: "shopper" },
-  boughtTogether: { entries: [], audience: "shopper" },
+  ai: { entries: [], audience: "everyone", defaultOn: true },
+  assistant: { entries: ["assistant.ask"], audience: "shopper", defaultOn: true },
+  recommendations: { entries: [], audience: "shopper", defaultOn: true },
+  boughtTogether: { entries: [], audience: "shopper", defaultOn: true },
   /* The shopper writing is the entry; the seller answering an open thread is
      finishing one. */
-  chat: { entries: ["chat.send"], audience: "everyone" },
-  priceOffers: { entries: ["offers.request"], audience: "everyone" },
-  returns: { entries: ["orders.requestReturn"], audience: "everyone" },
-  deliveryRatings: { entries: ["orders.rateDelivery"], audience: "shopper" },
-  damageClaims: { entries: ["orders.claimDamage", "dispatch.claims.file"], audience: "everyone" },
+  chat: { entries: ["chat.send"], audience: "everyone", defaultOn: true },
+  priceOffers: { entries: ["offers.request"], audience: "everyone", defaultOn: true },
+  returns: { entries: ["orders.requestReturn"], audience: "everyone", defaultOn: true },
+  deliveryRatings: { entries: ["orders.rateDelivery"], audience: "shopper", defaultOn: true },
+  damageClaims: { entries: ["orders.claimDamage", "dispatch.claims.file"], audience: "everyone", defaultOn: true },
   /* The public surfaces close — the phone lookup above all, which is the one
      part of this feature with an abuse case — while an owner keeps their own
      lists. A claim already made still releases. */
-  wishlists: { entries: ["wishlists.create", "wishlists.addItem", "wishlists.findByPhone", "wishlists.byToken", "wishlists.claim"], audience: "shopper" },
+  wishlists: { entries: ["wishlists.create", "wishlists.addItem", "wishlists.findByPhone", "wishlists.byToken", "wishlists.claim"], audience: "shopper", defaultOn: true },
   /* Issuing new cards. A card already sold is money somebody holds, and it
      goes on being spendable. */
-  giftCards: { entries: ["orders.createGiftCard"], audience: "seller" },
+  giftCards: { entries: ["orders.createGiftCard"], audience: "seller", defaultOn: true },
   /* New applications close, and checkout stops attributing new orders. An
      order already attributed is still credited when it is paid, and a balance
      already earned can still be paid out. */
-  affiliates: { entries: ["affiliates.join"], audience: "everyone" },
+  affiliates: { entries: ["affiliates.join"], audience: "everyone", defaultOn: false },
   /* Paid placements (3.3.15): off stops new bookings. One already sold runs
      out its days and is charged for them, so it keeps its place on the shelf. */
-  ads: { entries: ["ads.book"], audience: "seller" },
+  ads: { entries: ["ads.book"], audience: "seller", defaultOn: true },
   /* Subscribe & Save (3.1.19): off stops new standing orders. Those already
      standing keep running and can be paused or cancelled. */
-  subscriptions: { entries: ["subscriptions.create"], audience: "shopper" },
+  subscriptions: { entries: ["subscriptions.create"], audience: "shopper", defaultOn: false },
   /* Fulfilled by NetLet (4.2): off stops sellers announcing new shipments.
      What is already on its way is still counted in, what NetLet holds still
      sells, and sold lines are still picked and packed. */
-  fulfilment: { entries: ["fulfilment.announce"], audience: "seller" },
+  fulfilment: { entries: ["fulfilment.announce"], audience: "seller", defaultOn: true },
   /* NetLet membership (4.1): off stops new grants. A member's membership
      runs out its time with every benefit — it was given, and taking it back
      with a switch would be keeping a promise only while it was convenient. */
-  membership: { entries: ["membership.grant"], audience: "shopper" },
+  membership: { entries: ["membership.grant"], audience: "shopper", defaultOn: true },
+  /* The browser's own recogniser; there is no entry, only the microphone in the search box. */
+  voiceSearch: { entries: [], audience: "shopper", defaultOn: false },
+  /* A model reading a photo: off refuses the call as well as hiding the camera. */
+  photoSearch: { entries: ["search.photo"], audience: "shopper", defaultOn: false },
+  /* The home page's invitation to an app that is not yet in a store. */
+  appBanner: { entries: [], audience: "shopper", defaultOn: false },
+  /* The home page's "Useful reading", until there are articles to read. */
+  articles: { entries: [], audience: "shopper", defaultOn: false },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;
@@ -117,14 +137,14 @@ export function isFeatureKey(value: string): value is FeatureKey {
   return (FEATURE_KEYS as readonly string[]).includes(value);
 }
 
-/** Every feature on: what a database with no switch rows means. */
-export function allOn(): FeatureStates {
-  return Object.fromEntries(FEATURE_KEYS.map(key => [key, true])) as FeatureStates;
+/** Every feature at its default: what a database with no switch rows means. */
+export function defaultStates(): FeatureStates {
+  return Object.fromEntries(FEATURE_KEYS.map(key => [key, FEATURES[key].defaultOn])) as FeatureStates;
 }
 
-/** The stored rows folded over the default, ignoring keys this build does not know. */
+/** The stored rows folded over the defaults, ignoring keys this build does not know. */
 export function resolveStates(rows: readonly { key: string; enabled: boolean }[]): FeatureStates {
-  const states = allOn();
+  const states = defaultStates();
   for (const row of rows) if (isFeatureKey(row.key)) states[row.key] = row.enabled;
   return states;
 }

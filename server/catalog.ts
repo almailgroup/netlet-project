@@ -16,16 +16,19 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   cartItemAddons,
   cartItems,
   carts,
   categories,
+  orderItems,
+  orders,
   productAddons,
   productImages,
   products,
   productVariants,
+  reviews,
   vendors,
 } from "../drizzle/schema.js";
 import {
@@ -51,11 +54,18 @@ import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { shopperPrice } from "../shared/commerce/shopperPrice.js";
 import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
 import { discountAllowed } from "../shared/inventory/discountLicence.js";
+import {
+  awardedBadges,
+  FAST_SHIPPING_HOURS,
+  FAST_SHIPPING_WINDOW_DAYS,
+  storefrontBadges,
+  type TrustBadge,
+} from "../shared/inventory/vendorHealth.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 
 type Named = { id: number; name: string; nameAr: string | null };
-/** A vendor also carries its awarded badges, which a category has no analogue of. */
+/** A vendor also carries its badges — awarded on the row, then measured by `badgesFor`. */
 type VendorNamed = Named & {
   badges: string[] | null;
   discountLicenceNumber: string | null;
@@ -86,9 +96,62 @@ async function contextFor(
       : Promise.resolve([] as Named[]),
   ]);
 
-  const vendorById = new Map(vendorRows.map(row => [row.id, row]));
+  const badgesById = await badgesFor(db, vendorRows);
+  const vendorById = new Map(vendorRows.map(row => [row.id, { ...row, badges: badgesById.get(row.id) ?? [] }]));
   const categoryById = new Map(categoryRows.map(row => [row.id, row]));
   return { vendorById, categoryById };
+}
+
+/**
+ * The badges each store's own numbers support, measured on the read.
+ *
+ * Two grouped queries for the whole set rather than two per product. Earned
+ * badges are never stored, so a store whose reviews slip or whose parcels
+ * start arriving late stops showing them without anybody pressing anything —
+ * the rule the discount permit follows for the strikethrough.
+ */
+async function badgesFor(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  vendorRows: { id: number; badges: string[] | null }[],
+): Promise<Map<number, TrustBadge[]>> {
+  const vendorIds = vendorRows.map(row => row.id);
+  if (!vendorIds.length) return new Map();
+  const since = new Date(Date.now() - FAST_SHIPPING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const [ratings, deliveries] = await Promise.all([
+    db
+      .select({
+        vendorId: reviews.vendorId,
+        count: sql<number>`count(*)::int`,
+        average: sql<string | null>`avg(${reviews.rating})`,
+      })
+      .from(reviews)
+      .where(and(inArray(reviews.vendorId, vendorIds), isNull(reviews.hiddenAt)))
+      .groupBy(reviews.vendorId),
+    /* One delivery per order, not per line: two items in one parcel arrived once. */
+    db
+      .select({
+        vendorId: orderItems.vendorId,
+        count: sql<number>`count(distinct ${orderItems.orderId})::int`,
+        fast: sql<number>`(count(distinct ${orderItems.orderId}) filter (where ${orderItems.deliveredAt} <= ${orders.placedAt} + make_interval(hours => ${FAST_SHIPPING_HOURS})))::int`,
+      })
+      .from(orderItems)
+      .innerJoin(orders, eq(orders.id, orderItems.orderId))
+      .where(and(inArray(orderItems.vendorId, vendorIds), isNotNull(orderItems.deliveredAt), gte(orderItems.deliveredAt, since)))
+      .groupBy(orderItems.vendorId),
+  ]);
+  const ratingBy = new Map(ratings.map(row => [row.vendorId, row]));
+  const deliveryBy = new Map(deliveries.map(row => [row.vendorId, row]));
+  return new Map(vendorRows.map(row => {
+    const rating = ratingBy.get(row.id);
+    const delivered = deliveryBy.get(row.id);
+    return [row.id, storefrontBadges({
+      awarded: awardedBadges(row.badges),
+      reviews: Number(rating?.count ?? 0),
+      averageRating: rating?.average == null ? null : Number(rating.average),
+      deliveries: Number(delivered?.count ?? 0),
+      fastDeliveries: Number(delivered?.fast ?? 0),
+    })];
+  }));
 }
 
 type CatalogRow = Awaited<ReturnType<typeof publishedCatalog>>[number];

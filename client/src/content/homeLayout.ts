@@ -8,6 +8,8 @@
  */
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
+import { browse, EMPTY_FILTERS } from "@shared/commerce/browse";
+import type { Product } from "@shared/commerce/types";
 
 /**
  * The departments, as the home page draws them.
@@ -28,12 +30,45 @@ export const categoryRail: readonly { key: MessageKey; query: string; color: str
   })),
 ];
 
+/**
+ * The home page's shelves: two, and each with its own reason to exist.
+ *
+ * There were five — Deals, Popular right now, Bestsellers, Most popular and
+ * Newest — and on a catalog of a dozen products they were the same dozen in a
+ * different order, five times down one page. A shelf earns its place by what
+ * selects it: **Deals** is what is actually discounted (a compare-at price the
+ * permit allows, which `fromInventory` has already checked), deepest saving
+ * first; **Newest** is what was added most recently, leaving out anything the
+ * Deals shelf above already shows.
+ */
 export const homeRailDefinitions = [
-  { id: "deals", title: "rail.deals.title", description: "rail.deals.description", treatment: "light" },
-  { id: "bestsellers", title: "rail.bestsellers.title", description: "rail.bestsellers.description", treatment: "navy" },
-  { id: "popular", title: "rail.popular.title", description: "rail.popular.description", treatment: "light" },
-  { id: "newest", title: "rail.newest.title", description: "rail.newest.description", treatment: "navy" },
-] as const satisfies readonly { id: string; title: MessageKey; description: MessageKey; treatment: string }[];
+  { id: "deals", title: "rail.deals.title", description: "rail.deals.description", treatment: "light", select: "offers" },
+  { id: "newest", title: "rail.newest.title", description: "rail.newest.description", treatment: "navy", select: "newest" },
+] as const satisfies readonly { id: string; title: MessageKey; description: MessageKey; treatment: string; select: "offers" | "newest" }[];
+
+/** Fewer than this and a shelf is not drawn: one or two products under a heading read as a broken page. */
+export const MIN_SHELF_PRODUCTS = 4;
+/** The most one shelf carries; "View all" is the rest. */
+export const MAX_SHELF_PRODUCTS = 12;
+
+/**
+ * What each shelf shows, in page order, given the catalog. A shelf below the
+ * floor comes back empty, and what an empty shelf did not show is free for the
+ * next one — so a small shop is one full shelf rather than two half ones.
+ */
+export function shelvesFor(catalog: Product[]): Record<(typeof homeRailDefinitions)[number]["id"], Product[]> {
+  const shown = new Set<string>();
+  const pick = (candidates: Product[]) => {
+    const fresh = candidates.filter(product => !shown.has(product.id));
+    if (fresh.length < MIN_SHELF_PRODUCTS) return [];
+    const chosen = fresh.slice(0, MAX_SHELF_PRODUCTS);
+    for (const product of chosen) shown.add(product.id);
+    return chosen;
+  };
+  const deals = pick(browse(catalog, { ...EMPTY_FILTERS, onOffer: true, sort: "discount" }));
+  const newest = pick(browse(catalog, { ...EMPTY_FILTERS, sort: "newest" }));
+  return { deals, newest };
+}
 
 export const editorialUpdates = [
   { date: "editorial.delivery.date", title: "editorial.delivery.title", summary: "editorial.delivery.summary" },

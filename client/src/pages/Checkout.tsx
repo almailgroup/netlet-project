@@ -1,13 +1,19 @@
 /**
- * NetLet native checkout mockup: Kuwait-focused delivery UI with visual-only
- * KNET, Visa, Mastercard, and Google Pay presentation. No payment is processed.
+ * Checkout: where it goes, and cash on delivery.
+ *
+ * Cash is the one way to pay (3.2.2), and the page says so in a shopper's
+ * words. It used to carry "Payment mockup only", a row of KNET, Visa,
+ * Mastercard and Google Pay logos, and "Cards, KNET and instalments are not
+ * connected yet" — a developer's status report on the one page where a shopper
+ * reads every line, and four brands drawn beside an order they cannot pay
+ * with. When a card service is integrated (3.2.1) the methods come back as
+ * real choices in the payment fieldset, not as logos.
  */
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { KUWAIT_PAYMENT_METHODS } from "@/lib/checkoutMock";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { kuwaitDeliveryZones } from "@shared/customer";
@@ -25,7 +31,8 @@ import { readStored, writeStored } from "@/lib/browserStore";
 import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Check, LoaderCircle, LockKeyhole, MapPin, PackageCheck, ShoppingBag, Truck } from "lucide-react";
+import { ArrowLeft, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
+import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { PinPicker } from "@/components/map/PinPicker";
 import type { Pin } from "@shared/commerce/geo";
 
@@ -33,22 +40,6 @@ import type { Pin } from "@shared/commerce/geo";
 const LAST_ADDRESS_KEY = "netlet.checkoutAddress";
 
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
-
-/**
- * A payment brand drawn rather than imaged.
- *
- * `role="img"` because each is a picture made of spans: without a role,
- * `aria-label` on a span is ignored, which left these announced as nothing at
- * all. The label says "mockup only" on purpose — nothing is charged here, and
- * a screen reader should not be the last to know.
- */
-function PaymentMark({ id, label }: { id: string; label: string }) {
-  const { t } = useTranslation();
-  const described = t("checkout.paymentIcon", { label });
-  if (id === "mastercard") return <span role="img" aria-label={described} className="relative inline-flex h-7 w-11 items-center justify-center"><span className="absolute start-1 size-6 rounded-full bg-[#ed1b2f]" /><span className="absolute end-1 size-6 rounded-full bg-[#f79e1b] mix-blend-multiply" /></span>;
-  if (id === "google-pay") return <span role="img" aria-label={described} className="text-lg font-bold tracking-[-.09em] text-[#202124]">G<span className="ms-0.5 font-medium tracking-[-.04em]">Pay</span></span>;
-  return <span role="img" aria-label={described} className={id === "visa" ? "text-lg font-black italic tracking-[-.08em] text-[#1434cb]" : "rounded-md bg-[#0a285a] px-2 py-1 text-sm font-black tracking-[-.06em] text-white"}>{label}</span>;
-}
 
 function CheckoutField({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return <label className={`type-label text-[#0a285a] ${className}`}>{label}{children}</label>;
@@ -228,9 +219,9 @@ export default function Checkout() {
   return (
     <main className="type-body min-h-screen bg-background text-[#0a285a]">
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <header className="border-b border-[#d5dfeb] bg-background/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label={t("checkout.return")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><LockKeyhole className="size-4 ink-accent" /> {t("checkout.mockBadge")}</div><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2.5"><ArrowLeft className="size-3.5 rtl:-scale-x-100" /> {t("header.continueShopping")}</a></div></header>
+      <header className="border-b border-[#d5dfeb] bg-background/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label={t("checkout.return")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[126px] object-contain" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><Wallet className="size-4 ink-accent" /> {t("home.payOnDelivery")}</div><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2.5"><ArrowLeft className="size-3.5 rtl:-scale-x-100" /> {t("header.continueShopping")}</a></div></header>
 
-      <div className="container py-8 sm:py-12"><div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="type-label tracking-[.16em] text-[#a44a2b] uppercase">{t("checkout.eyebrow")}</p><h1 className="type-display mt-2 text-4xl sm:text-5xl">{t("checkout.title")}</h1><p className="type-body mt-3 max-w-xl text-[#536b8c]">{t("checkout.note")}</p></div><div className="type-label inline-flex w-fit items-center gap-2 rounded-full bg-[#fff0ab] px-3 py-2 tracking-[.08em] text-[#0a285a] uppercase"><PackageCheck className="size-3.5" /> {t("checkout.mockOnly")}</div></div>
+      <div className="container py-8 sm:py-12"><div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="type-label tracking-[.16em] text-[#a44a2b] uppercase">{t("checkout.eyebrow")}</p><h1 className="type-display mt-2 text-4xl sm:text-5xl">{t("checkout.title")}</h1><p className="type-body mt-3 max-w-xl text-[#536b8c]">{t("checkout.note")}</p></div></div>
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_.8fr]">
           {/* Both columns carry `min-w-0`: a grid item's minimum is its content's,
@@ -303,7 +294,7 @@ export default function Checkout() {
                   </label>
                 )}
               </fieldset>
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{KUWAIT_PAYMENT_METHODS.map((method) => <div key={method.id} className="flex min-h-16 items-center justify-center rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3"><PaymentMark id={method.id} label={method.label} /></div>)}</div><p className="type-label mt-3 text-[#536b8c]">{t("checkout.otherMethodsSoon")}</p></div>
+              </div>
           </section>
 
           <aside className="h-fit min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-[#0a285a] p-5 text-white shadow-[0_18px_50px_rgba(10,40,90,.13)] sm:p-6"><p className="type-label tracking-[.16em] text-[#ffcc64] uppercase">{t("checkout.orderSummary")}</p><h2 className="type-display mt-2 text-3xl">{t("checkout.summaryTitle")}</h2><div className="mt-6 space-y-4 border-y border-[#49658d] py-5">{items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? item.productTitle} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p className="type-product">{item.productTitle}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
@@ -314,7 +305,7 @@ export default function Checkout() {
                     that can only be ticked to no effect is the dead control
                     rule again. */}{balance > 0 ? (<label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{/* One field for a discount code or a gift card. The refusal names the
                     one fixable thing rather than shrugging, which is what makes
-                    somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.deliveryLater")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
+                    somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.parcelsNote")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already
                 follow. */}
             {via.data ? <p className="type-label mt-4 text-[#d9e7f7]">{t("affiliate.viaDisclosure", { name: via.data.displayName })}</p> : null}
@@ -350,7 +341,7 @@ export default function Checkout() {
             ) : null}</aside>
         </div>
 
-        <section className="type-label mt-8 grid gap-3 border-t border-[#d5dfeb] pt-6 text-[#536b8c] sm:grid-cols-3"><div className="flex items-center gap-2"><MapPin className="size-4 ink-accent" /> {t("checkout.builtForKuwait")}</div><div className="flex items-center gap-2"><Truck className="size-4 ink-accent" /> {t("checkout.clearSetup")}</div><div className="flex items-center gap-2"><Check className="size-4 ink-accent" /> {t("checkout.paymentPlanned")}</div></section>
+        <section className="type-label mt-8 grid gap-3 border-t border-[#d5dfeb] pt-6 text-[#536b8c] sm:grid-cols-3"><div className="flex items-center gap-2"><MapPin className="size-4 ink-accent" /> {t("checkout.builtForKuwait")}</div><div className="flex items-center gap-2"><Wallet className="size-4 ink-accent" /> {t("home.payOnDelivery")}</div><div className="flex items-center gap-2"><RotateCcw className="size-4 ink-accent" /> {t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</div></section>
       </div>
     </main>
   );

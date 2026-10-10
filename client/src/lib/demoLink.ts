@@ -19,7 +19,7 @@ import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, 
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
 import { MIN_CASH_OUT_POINTS, referralCodeFor } from "@shared/commerce/referral";
-import { allOn, FEATURE_KEYS } from "@shared/features";
+import { defaultStates, FEATURE_KEYS } from "@shared/features";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
 const CURRENCY = "KWD";
@@ -437,7 +437,7 @@ function resolve(path: string, rawInput: unknown): unknown {
        has touched means. The demo manager cannot reach the page, so the list
        and the setter are unreachable — answered anyway, as the others are. */
     case "features.states":
-      return allOn();
+      return defaultStates();
     case "features.list":
       return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
     case "features.set":

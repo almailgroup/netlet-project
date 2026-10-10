@@ -14,13 +14,13 @@
  */
 import { eq } from "drizzle-orm";
 import { featureSwitches, users } from "../drizzle/schema.js";
-import { FEATURE_KEYS, resolveStates, type FeatureKey, type FeatureStates } from "../shared/features.js";
+import { FEATURE_KEYS, FEATURES, resolveStates, type FeatureKey, type FeatureStates } from "../shared/features.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { getDb } from "./db.js";
 
-/** Every feature's state, the stored rows folded over "on". */
+/** Every feature's state, the stored rows folded over the defaults. */
 export async function featureStates(): Promise<FeatureStates> {
   const db = await getDb();
   if (!db) return resolveStates([]);
@@ -28,12 +28,12 @@ export async function featureStates(): Promise<FeatureStates> {
   return resolveStates(rows);
 }
 
-/** Whether one feature is on. */
+/** Whether one feature is on: its stored row, or its default. */
 export async function featureOn(key: FeatureKey): Promise<boolean> {
   const db = await getDb();
-  if (!db) return true;
+  if (!db) return FEATURES[key].defaultOn;
   const [row] = await db.select({ enabled: featureSwitches.enabled }).from(featureSwitches).where(eq(featureSwitches.key, key)).limit(1);
-  return row?.enabled ?? true;
+  return row?.enabled ?? FEATURES[key].defaultOn;
 }
 
 /** The switchboard as an administrator sees it: state, and who last moved it. */
@@ -51,7 +51,7 @@ export async function listSwitches(actor: Actor) {
      switches are written. */
   return FEATURE_KEYS.map(key => {
     const row = byKey.get(key);
-    return { key, enabled: row?.enabled ?? true, updatedAt: row?.updatedAt ?? null, updatedByEmail: row?.updatedByEmail ?? null };
+    return { key, enabled: row?.enabled ?? FEATURES[key].defaultOn, updatedAt: row?.updatedAt ?? null, updatedByEmail: row?.updatedByEmail ?? null };
   });
 }
 

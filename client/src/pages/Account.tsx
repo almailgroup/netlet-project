@@ -36,6 +36,7 @@ import { useEffect, useState } from "react";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useFeature } from "@/hooks/useFeature";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronRight, LogIn, LogOut, ShoppingBag, UserPlus, UserRound } from "lucide-react";
@@ -97,6 +98,21 @@ export default function Account() {
     retry: false,
   });
   const isSeller = Boolean(me.data && me.data.kind !== "customer");
+  /*
+   * Subscribe & Save and the affiliate programme are switched off until there
+   * is something behind them. Off, the section is drawn only for somebody who
+   * already has a standing order or an affiliate account — a switch closes the
+   * door, it does not hide what a shopper already holds. These are the same
+   * queries the sections ask, so React Query answers both from one request.
+   */
+  const subscriptionsOn = useFeature("subscriptions");
+  const affiliatesOn = useFeature("affiliates");
+  const mySubscriptions = trpc.subscriptions.mine.useQuery(undefined, { enabled: isAuthenticated && !subscriptionsOn });
+  const myAffiliate = trpc.affiliates.mine.useQuery(undefined, { enabled: isAuthenticated && !affiliatesOn });
+  const hidden = new Set<string>();
+  if (!isSeller) hidden.add("selling");
+  if (!subscriptionsOn && !(mySubscriptions.data?.length)) hidden.add("subscriptions");
+  if (!affiliatesOn && !myAffiliate.data) hidden.add("affiliate");
   const openAuth = () => DEMO_MODE
     ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
     : setAuthOpen(true);
@@ -154,7 +170,7 @@ export default function Account() {
 
         {!loading && isAuthenticated && user ? (
           <div className="mt-8 lg:grid lg:grid-cols-[196px_minmax(0,1fr)] lg:items-start lg:gap-8">
-            <SectionNav selling={isSeller} />
+            <SectionNav hidden={hidden} />
 
             <div className="space-y-10">
               <AccountIdentity user={user} />
@@ -172,9 +188,11 @@ export default function Account() {
               </Section>
 
               {/* Standing orders (3.1.19), beside the orders they place. */}
-              <Section id="subscriptions" title={t("subscriptions.section")}>
-                <AccountSubscriptions />
-              </Section>
+              {hidden.has("subscriptions") ? null : (
+                <Section id="subscriptions" title={t("subscriptions.section")}>
+                  <AccountSubscriptions />
+                </Section>
+              )}
 
               {/* Directly after orders: a conversation with a shop is most often
                   about something bought from it. */}
@@ -217,19 +235,21 @@ export default function Account() {
 
               {/* Beside the rewards: the same ledger, a different promise —
                   promotion paid in money rather than a favour paid in points. */}
-              <Section id="affiliate" title={t("affiliate.section")}>
-                <AccountAffiliate />
-              </Section>
+              {hidden.has("affiliate") ? null : (
+                <Section id="affiliate" title={t("affiliate.section")}>
+                  <AccountAffiliate />
+                </Section>
+              )}
 
               {/* Only for somebody who has the second identity — the server
                   decides, and a shopper never sees the section at all. It sits
                   above the settings because switching is something you do,
                   not something you configure. */}
-              {isSeller ? (
+              {hidden.has("selling") ? null : (
                 <Section id="selling" title={t("account.sectionSelling")}>
                   <SellerMode />
                 </Section>
-              ) : null}
+              )}
 
               <Section id="details" title={t("account.sectionProfile")}>
                 <ProfileManager user={user} />
@@ -280,16 +300,16 @@ export default function Account() {
  * On a phone the page is short enough to scroll and a nav would be one more
  * thing between somebody and the first setting.
  */
-function SectionNav({ selling }: { selling: boolean }) {
+function SectionNav({ hidden }: { hidden: ReadonlySet<string> }) {
   const { t } = useTranslation();
   return (
     <nav aria-label={t("account.jumpTo")} className="sticky top-6 hidden lg:block">
       <p className="text-[10px] font-extrabold tracking-[.12em] ink-muted uppercase">{t("account.jumpTo")}</p>
       <ul className="mt-3 space-y-1">
-        {/* The selling anchor is dropped for a shopper along with the
-            section itself: a nav entry that jumps to nothing is the same dead
-            control as the section being empty. */}
-        {SECTIONS.filter(section => section.id !== "selling" || selling).map(section => (
+        {/* An anchor is dropped along with its section: a nav entry that
+            jumps to nothing is the same dead control as the section being
+            empty. */}
+        {SECTIONS.filter(section => !hidden.has(section.id)).map(section => (
           <li key={section.id}>
             <a
               href={`#${section.id}`}

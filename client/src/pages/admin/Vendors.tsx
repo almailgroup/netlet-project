@@ -19,7 +19,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { visibleBadges } from "@shared/inventory/vendorHealth";
+import { awardedBadges } from "@shared/inventory/vendorHealth";
 import { missingStoreDetails } from "@shared/inventory/storeProfile";
 import { ArrowRight, Plus } from "lucide-react";
 import { useState } from "react";
@@ -72,7 +72,7 @@ function VendorList() {
         <div className="mt-5 space-y-2">
           {rows.map(vendor => {
             const missing = missingStoreDetails(vendor).length;
-            const badges = visibleBadges(vendor.badges);
+            const badges = awardedBadges(vendor.badges);
             return (
               <Link
                 key={vendor.id}

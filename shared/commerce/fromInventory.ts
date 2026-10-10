@@ -106,7 +106,7 @@ export type ProductContext = {
   /** Display name of the vendor that owns the product. */
   vendorName?: string | null;
   vendorNameAr?: string | null;
-  /** Awarded badges, unfiltered — `visibleBadges` drops anything unknown. */
+  /** The badges the store's evidence supports (`storefrontBadges`); `visibleBadges` drops anything unknown. */
   vendorBadges?: string[] | null;
   /* The store's usual band, which this product may override (3.2.5). */
   vendorDeliverySpeed?: string | null;

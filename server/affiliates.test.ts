@@ -83,6 +83,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(featureSwitches);
+  /* The programme starts switched off (nothing is behind it until a shop
+     decides to run one), so every case here is a shop that has turned it on. */
+  await db.insert(featureSwitches).values({ key: "affiliates", enabled: true });
   await db.delete(pointEntries);
   await db.delete(invoices);
   await db.delete(invoiceCounters);

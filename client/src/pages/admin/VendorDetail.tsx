@@ -20,7 +20,16 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
-import { TRUST_BADGES, visibleBadges, type TrustBadge } from "@shared/inventory/vendorHealth";
+import {
+  AWARDED_BADGES,
+  awardedBadges,
+  FAST_SHIPPING_HOURS,
+  FAST_SHIPPING_MIN_DELIVERIES,
+  FAST_SHIPPING_SHARE,
+  FAST_SHIPPING_WINDOW_DAYS,
+  HIGH_RATING_FLOOR,
+  HIGH_RATING_MIN_REVIEWS,
+} from "@shared/inventory/vendorHealth";
 import { isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { ArrowLeft, LoaderCircle, Save, UserPlus } from "lucide-react";
@@ -107,7 +116,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   if (draft.contactPhone.trim() && !isValidKuwaitPhone(draft.contactPhone)) problems.contactPhone = "admin.invalidPhone";
   if (draft.payoutIban.trim() && !isValidIban(draft.payoutIban)) problems.payoutIban = "admin.invalidIban";
 
-  const held = visibleBadges(row.badges);
+  const held = awardedBadges(row.badges);
   const missing = missingStoreDetails(row).length;
   const blank = (value: string) => (value.trim() === "" ? null : value.trim());
 
@@ -345,7 +354,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
         <h2 className="text-sm font-extrabold">{t("admin.badges")}</h2>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {TRUST_BADGES.map(badge => {
+          {AWARDED_BADGES.map(badge => {
             const on = held.includes(badge);
             return (
               <button
@@ -366,6 +375,20 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             );
           })}
         </div>
+        {/* The other two are measured, never ticked: a "High Rating" typed onto
+            a store nobody has reviewed is a claim to a shopper with nothing
+            behind it. Said here with the thresholds, so nobody looks for the
+            switch. */}
+        <p className="mt-3 max-w-prose text-xs leading-5 ink-muted">
+          {t("admin.badgesEarned", {
+            rating: HIGH_RATING_FLOOR,
+            reviews: HIGH_RATING_MIN_REVIEWS,
+            share: Math.round(FAST_SHIPPING_SHARE * 100),
+            hours: FAST_SHIPPING_HOURS,
+            days: FAST_SHIPPING_WINDOW_DAYS,
+            deliveries: FAST_SHIPPING_MIN_DELIVERIES,
+          })}
+        </p>
       </section>
 
       <VendorTeam vendorId={vendorId} />

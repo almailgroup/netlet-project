@@ -905,9 +905,10 @@ describe("per-product commission", () => {
 
 describe("trust badges and account health", () => {
   it("lets an admin award a badge and refuses a vendor owner", async () => {
+    /* Only verified is awarded; anything else asked for is not stored. */
     await inv.setVendorBadges(adminActor(), ids.acme, ["verified", "fastShipping"]);
     const [row] = await db.select().from(vendors).where(eq(vendors.id, ids.acme));
-    expect(row.badges).toEqual(["verified", "fastShipping"]);
+    expect(row.badges).toEqual(["verified"]);
 
     await expect(inv.setVendorBadges(ownerActor(), ids.acme, ["verified"]))
       .rejects.toThrow("FORBIDDEN:vendor.approve");

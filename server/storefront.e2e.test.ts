@@ -12,7 +12,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { categories, users, vendorMembers, vendors } from "../drizzle/schema.js";
+import { categories, orderItems, orders, reviews, users, vendorMembers, vendors } from "../drizzle/schema.js";
 import { eq } from "drizzle-orm";
 import type { TrpcContext } from "./_core/context.js";
 import type { User } from "../drizzle/schema.js";
@@ -153,14 +153,55 @@ describe("a product's journey from the admin portal to the shop", () => {
     const [admin] = await db.select().from(users).where(eq(users.id, ids.admin));
     const adminCaller = appRouter.createCaller(contextFor(admin as User));
 
-    await adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: ["verified", "fastShipping"] });
+    await adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: ["verified"] });
 
     const shown = await shopper.commerce.products.byHandle({ handle });
-    expect(shown.vendorBadges).toEqual(["verified", "fastShipping"]);
+    expect(shown.vendorBadges).toEqual(["verified"]);
 
     // And removing it removes it, rather than only ever adding.
     await adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: [] });
     expect((await shopper.commerce.products.byHandle({ handle })).vendorBadges).toEqual([]);
+
+    /* The other two cannot be awarded at all: the schema refuses them. */
+    await expect(adminCaller.inventory.vendors.setBadges({ vendorId: ids.vendor, badges: ["fastShipping" as "verified"] })).rejects.toThrow();
+  });
+
+  /*
+   * "High Rating" and "Fast Shipping" are measured from the store's own
+   * reviews and delivery times on every read, so a store shows them only once
+   * its numbers say so — and four glowing reviews or four quick parcels are
+   * not enough to say anything.
+   */
+  it("shows an earned badge only once the store's own numbers support it", async () => {
+    const [{ id: shopperId }] = await db.insert(users).values({ openId: "badge-shopper", email: "badges@shop.test", name: "B" }).returning({ id: users.id });
+    const deliver = async (n: number, hoursLater: number) => {
+      const lineIds: number[] = [];
+      for (let i = 0; i < n; i += 1) {
+        const placed = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+        const [order] = await db.insert(orders).values({ reference: `NL-BADGE-${Math.random().toString(36).slice(2, 10)}`, email: "badges@shop.test", userId: shopperId, itemsTotal: "5.000", grandTotal: "5.000", status: "paid", placedAt: placed }).returning({ id: orders.id });
+        const [line] = await db.insert(orderItems).values({ orderId: order.id, vendorId: ids.vendor, productTitle: "Lamp", unitPrice: "5.000", quantity: 1, lineTotal: "5.000", fulfilment: "delivered", deliveredAt: new Date(placed.getTime() + hoursLater * 60 * 60 * 1000) }).returning({ id: orderItems.id });
+        lineIds.push(line.id);
+      }
+      return lineIds;
+    };
+    const badges = async () => (await shopper.commerce.products.byHandle({ handle })).vendorBadges;
+
+    const quick = await deliver(4, 30);
+    for (const orderItemId of quick) await db.insert(reviews).values({ orderItemId, userId: shopperId, vendorId: ids.vendor, productTitle: "Lamp", rating: 5 });
+    expect(await badges()).toEqual([]);
+
+    /* A fifth of each, and both arrive. */
+    const [fifth] = await deliver(1, 30);
+    await db.insert(reviews).values({ orderItemId: fifth, userId: shopperId, vendorId: ids.vendor, productTitle: "Lamp", rating: 4 });
+    expect(await badges()).toEqual(["highRating", "fastShipping"]);
+
+    /* Two slow parcels take the share below four in five. */
+    await deliver(2, 120);
+    expect(await badges()).toEqual(["highRating"]);
+
+    /* A review an administrator hid stops counting, which leaves four. */
+    await db.update(reviews).set({ hiddenAt: new Date() }).where(eq(reviews.orderItemId, fifth));
+    expect(await badges()).toEqual([]);
   });
 
   /*

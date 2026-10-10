@@ -34,12 +34,13 @@ import { Camera, CameraOff, Image as ImageIcon, Keyboard, Mic, MicOff, RotateCcw
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-/**
- * Whether the controls are drawn at all — everywhere, deliberately. Gating
- * this on the build meant the deployed site showed a bare field, which is not
- * a design anybody can review or sign off.
+/*
+ * Whether the two controls are drawn is a shop's decision now, on the
+ * switchboard (`voiceSearch`, `photoSearch`), and both start off: a camera
+ * that answers "nothing is looking yet" is a control with nothing behind it on
+ * a shop with no model key. The sheets themselves stay mounted, so every state
+ * still opens at `?searchTest=` for review whatever the switches say.
  */
-export const showSearchModes = true;
 
 export type VoiceState = "listening" | "heard" | "nothing" | "denied" | "unsupported";
 export type PhotoState = "choose" | "preview" | "scanning" | "noMatch" | "denied";

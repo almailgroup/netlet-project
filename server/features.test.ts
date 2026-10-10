@@ -72,10 +72,10 @@ describe("the switchboard's list", () => {
     }
   });
 
-  it("starts with everything on, on a database nobody has touched", async () => {
+  /* Most features start on; the ones with nothing behind them yet start off. */
+  it("starts each feature at its default, on a database nobody has touched", async () => {
     const states = await as(null).features.states();
-    expect(Object.values(states).every(Boolean)).toBe(true);
-    expect(Object.keys(states).sort()).toEqual([...FEATURE_KEYS].sort());
+    expect(states).toEqual(Object.fromEntries(FEATURE_KEYS.map(key => [key, FEATURES[key].defaultOn])));
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { earnedBadges, vendorHealth, visibleBadges, type HealthInputs } from "./vendorHealth.js";
+import { awardedBadges, storefrontBadges, vendorHealth, visibleBadges, type BadgeEvidence, type HealthInputs } from "./vendorHealth.js";
 
 const base: HealthInputs = {
   published: 10, pendingReview: 0, rejections: 0, outOfStock: 0, variants: 10, rating: 5,
@@ -48,20 +48,32 @@ describe("account health", () => {
 });
 
 describe("trust badges", () => {
-  it("earns a high rating badge only at 4.5 and above", () => {
-    expect(earnedBadges({ ...base, rating: 4.5 })).toContain("highRating");
-    expect(earnedBadges({ ...base, rating: 4.4 })).not.toContain("highRating");
+  const none: BadgeEvidence = { awarded: [], reviews: 0, averageRating: null, deliveries: 0, fastDeliveries: 0 };
+
+  it("shows nothing for a store with nothing behind it", () => {
+    expect(storefrontBadges(none)).toEqual([]);
   });
 
-  it("needs both a real catalog and a good score for top seller", () => {
-    expect(earnedBadges({ ...base, published: 20, variants: 20 })).toContain("topSeller");
-    expect(earnedBadges({ ...base, published: 19, variants: 19 })).not.toContain("topSeller");
+  it("earns a high rating at 4.5 over five reviews, and not on fewer", () => {
+    expect(storefrontBadges({ ...none, reviews: 5, averageRating: 4.5 })).toEqual(["highRating"]);
+    expect(storefrontBadges({ ...none, reviews: 5, averageRating: 4.4 })).toEqual([]);
+    /* One glowing review is an anecdote. */
+    expect(storefrontBadges({ ...none, reviews: 4, averageRating: 5 })).toEqual([]);
+  });
+
+  it("earns fast shipping from delivery times, on enough deliveries", () => {
+    expect(storefrontBadges({ ...none, deliveries: 10, fastDeliveries: 8 })).toEqual(["fastShipping"]);
+    expect(storefrontBadges({ ...none, deliveries: 10, fastDeliveries: 7 })).toEqual([]);
+    expect(storefrontBadges({ ...none, deliveries: 4, fastDeliveries: 4 })).toEqual([]);
   });
 
   // Verification means a human checked documents. It cannot be earned by
-  // behaving well, or the badge would mean something different to a buyer.
-  it("never awards verified from behaviour", () => {
-    expect(earnedBadges({ ...base, published: 500, variants: 500 })).not.toContain("verified");
+  // behaving well, or the badge would mean something different to a buyer —
+  // and nothing else can be awarded by hand, or it would mean nothing at all.
+  it("takes verified only from an administrator, and only verified", () => {
+    expect(storefrontBadges({ ...none, reviews: 500, averageRating: 5, deliveries: 500, fastDeliveries: 500 })).not.toContain("verified");
+    expect(awardedBadges(["verified", "fastShipping", "highRating", "topSeller"])).toEqual(["verified"]);
+    expect(storefrontBadges({ ...none, awarded: awardedBadges(["verified", "highRating"]) })).toEqual(["verified"]);
   });
 
   it("drops a stored badge it does not recognise", () => {

@@ -33,7 +33,7 @@ import { violatesUnique } from "./_core/describeError.js";
 import { recordAudit, violationCount } from "./audit.js";
 import { memberPriceProblem } from "../shared/commerce/membership.js";
 import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
-import { vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
+import { awardedBadges, vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
@@ -1579,9 +1579,14 @@ export async function vendorHealthFor(actor: Actor, vendorId?: number) {
  *
  * A badge a seller can grant themselves tells a buyer nothing, so this sits
  * behind `vendor.approve` — the same judgement as letting them trade at all.
+ * Only `verified` is awarded at all: the others are measured on the read, and
+ * one typed in here would be a claim with nothing behind it. Filtered here as
+ * well as in the router's schema, for the reason every guard lives beside its
+ * query.
  */
-export async function setVendorBadges(actor: Actor, vendorId: number, badges: string[]) {
+export async function setVendorBadges(actor: Actor, vendorId: number, requested: string[]) {
   assertCan(actor, "vendor.approve");
+  const badges = awardedBadges(requested);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);

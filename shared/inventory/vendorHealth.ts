@@ -9,11 +9,19 @@
  *
  * Verification is the exception and is deliberately awarded, not computed:
  * "Verified Seller" means a human checked the documents, and a badge a seller
- * can earn by behaving well would say something else entirely.
+ * can earn by behaving well would say something else entirely. Everything else
+ * is earned and only earned: "High Rating" is the store's own reviews and
+ * "Fast Shipping" its own delivery times, so neither can be shown on a store
+ * whose numbers do not support it.
  */
 
-export const TRUST_BADGES = ["verified", "fastShipping", "highRating", "topSeller"] as const;
+/** The one badge a person awards: an administrator checked the documents. */
+export const AWARDED_BADGES = ["verified"] as const;
+/** The badges the numbers award, measured again on every read. */
+export const EARNED_BADGES = ["highRating", "fastShipping"] as const;
+export const TRUST_BADGES = [...AWARDED_BADGES, ...EARNED_BADGES] as const;
 export type TrustBadge = (typeof TRUST_BADGES)[number];
+export type AwardedBadge = (typeof AWARDED_BADGES)[number];
 
 export function isTrustBadge(value: string): value is TrustBadge {
   return (TRUST_BADGES as readonly string[]).includes(value);
@@ -22,6 +30,53 @@ export function isTrustBadge(value: string): value is TrustBadge {
 /** Only what a shopper should see: an unknown stored badge is dropped. */
 export function visibleBadges(stored: string[] | null | undefined): TrustBadge[] {
   return (stored ?? []).filter(isTrustBadge);
+}
+
+/**
+ * What an administrator has awarded, out of what a vendor row stores.
+ *
+ * The row used to take any of four badges by hand, so "High Rating" could sit
+ * on a store nobody had reviewed and "Fast Shipping" on one that had never
+ * delivered — a claim to a shopper with nothing behind it. A row written
+ * before this keeps those values; they are simply not read.
+ */
+export function awardedBadges(stored: string[] | null | undefined): AwardedBadge[] {
+  return (stored ?? []).filter((badge): badge is AwardedBadge => (AWARDED_BADGES as readonly string[]).includes(badge));
+}
+
+/** An average this high, over at least this many visible reviews. */
+export const HIGH_RATING_FLOOR = 4.5;
+export const HIGH_RATING_MIN_REVIEWS = 5;
+/** This share of the window's deliveries arrived within this many hours of the order. */
+export const FAST_SHIPPING_HOURS = 72;
+export const FAST_SHIPPING_SHARE = 0.8;
+export const FAST_SHIPPING_MIN_DELIVERIES = 5;
+export const FAST_SHIPPING_WINDOW_DAYS = 90;
+
+/** What the storefront's badges are measured from, for one store. */
+export type BadgeEvidence = {
+  /** The badges an administrator awarded — `awardedBadges` of the row. */
+  awarded: readonly AwardedBadge[];
+  /** Reviews a shopper can see, across the store's products. */
+  reviews: number;
+  averageRating: number | null;
+  /** Orders with something of theirs delivered in the window, and how many arrived in time. */
+  deliveries: number;
+  fastDeliveries: number;
+};
+
+/**
+ * The badges a shopper is shown.
+ *
+ * A floor on the count as well as on the figure, because one five-star review
+ * is an anecdote and a badge built on it is the kind a shopper checks once and
+ * never trusts again — the argument `TASTE_FLOOR` makes for "Picked for you".
+ */
+export function storefrontBadges(evidence: BadgeEvidence): TrustBadge[] {
+  const shown: TrustBadge[] = [...evidence.awarded];
+  if (evidence.reviews >= HIGH_RATING_MIN_REVIEWS && (evidence.averageRating ?? 0) >= HIGH_RATING_FLOOR) shown.push("highRating");
+  if (evidence.deliveries >= FAST_SHIPPING_MIN_DELIVERIES && evidence.fastDeliveries / evidence.deliveries >= FAST_SHIPPING_SHARE) shown.push("fastShipping");
+  return shown;
 }
 
 export type HealthInputs = {
@@ -119,19 +174,4 @@ export function vendorHealth(inputs: HealthInputs): Health {
 
   const score = clamp(components.reduce((sum, part) => sum + part.score, 0) / components.length);
   return { score, band: score >= 80 ? "good" : score >= 55 ? "fair" : "poor", components };
-}
-
-/**
- * Which badges the numbers themselves support.
- *
- * `verified` is never returned here — it is awarded by an admin and read from
- * the vendor row. The rest are earned and are recomputed, so a vendor who
- * stops earning one stops showing it.
- */
-export function earnedBadges(inputs: HealthInputs): TrustBadge[] {
-  const earned: TrustBadge[] = [];
-  const health = vendorHealth(inputs);
-  if ((inputs.rating ?? 0) >= 4.5) earned.push("highRating");
-  if (inputs.published >= 20 && health.score >= 80) earned.push("topSeller");
-  return earned;
 }

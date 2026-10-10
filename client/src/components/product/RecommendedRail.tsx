@@ -4,11 +4,14 @@
  * Three things here are deliberate, and all three are the same idea: the rail
  * says exactly what it is and never more.
  *
- * **It only claims "for you" when it is.** The server sends `personalised`,
- * and with too little to go on the heading reads "Popular right now" and the
- * note says how to make it personal. A rail headed "Picked for you" over a
- * generic list is a claim a shopper checks once and never trusts again — the
- * same reason there are no invented seller counts on the sign-in wall.
+ * **It only draws when it is "for you".** The server sends `personalised`,
+ * and with too little to go on the rail is absent. It used to fall back to
+ * "Popular right now" on the home page, where it was the fourth shelf of the
+ * same dozen products in a different order; it lives on `/saved` now, under
+ * the hearts it learns from, and a generic list there would be a fifth. A rail
+ * headed "Picked for you" over a generic list is a claim a shopper checks once
+ * and never trusts again — the same reason there are no invented seller
+ * counts on the sign-in wall.
  *
  * **It shows what it thinks it knows.** The interest terms are printed under
  * the heading, in the shopper's own language. A shop that profiles somebody
@@ -56,7 +59,7 @@ export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, 
     <QueryGate queries={[query]}>
       {() => {
         const data = query.data;
-        if (!data || data.items.length === 0) return null;
+        if (!data || !data.personalised || data.items.length === 0) return null;
 
         return (
           <section id="for-you" className="container py-9 sm:py-12">
@@ -64,12 +67,10 @@ export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, 
               <div className="min-w-0">
                 <p className="type-label ink-accent uppercase">{t("home.netletSelection")}</p>
                 <h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">
-                  {t(data.personalised ? "taste.railPersonal" : "taste.railGeneric")}
+                  {t("taste.railPersonal")}
                 </h2>
                 <p dir="auto" className="mt-1 max-w-prose text-xs leading-5 ink-muted">
-                  {data.personalised
-                    ? t("taste.railNotePersonal", { terms: data.terms.slice(0, 4).join(isArabic ? "، " : ", ") })
-                    : t("taste.railNoteGeneric")}
+                  {t("taste.railNotePersonal", { terms: data.terms.slice(0, 4).join(isArabic ? "، " : ", ") })}
                 </p>
               </div>
               {/* Only when a model actually ran. Every fallback sends false. */}
