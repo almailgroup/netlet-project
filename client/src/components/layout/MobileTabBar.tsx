@@ -9,17 +9,20 @@
  * The current page is marked rather than left to guess, and the labels are the
  * same words as the header's, so the two do not read as different sites.
  */
+import { DepartmentSheet } from "@/components/layout/DepartmentSheet";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Heart, Menu, ShoppingBag, Store, UserRound } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 
-export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
+export function MobileTabBar() {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
   const { itemCount, openCart } = useCart();
   const { savedIds } = useCustomer();
+  const [browsing, setBrowsing] = useState(false);
 
   const tabs = [
     {
@@ -36,7 +39,9 @@ export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
       label: t("nav.browse"),
       icon: <Menu className="size-5" />,
       active: location.startsWith("/category"),
-      action: () => (onBrowse ? onBrowse() : navigate("/category/all")),
+      /* The departments, on every page — not the whole catalogue here and a
+         sheet on the home page, which made one tab mean two things. */
+      action: () => setBrowsing(true),
     },
     {
       key: "saved",
@@ -64,6 +69,8 @@ export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
   ];
 
   return (
+    <>
+    <DepartmentSheet open={browsing} onClose={() => setBrowsing(false)} />
     <nav
       aria-label={t("nav.mobile")}
       className="fixed inset-x-3 bottom-3 z-30 flex items-center justify-around rounded-2xl border border-[#ece7da] bg-[#fffdf7] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_28px_rgba(10,40,90,.10)] lg:hidden"
@@ -78,7 +85,7 @@ export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
           <span className="relative">
             {tab.icon}
             {tab.badge ? (
-              <span className="absolute -end-1.5 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[8px] font-extrabold text-white">
+              <span className="absolute -end-1.5 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[8px] font-extrabold text-[#0a285a]">
                 {tab.badge > 99 ? "99+" : tab.badge}
               </span>
             ) : null}
@@ -87,5 +94,6 @@ export function MobileTabBar({ onBrowse }: { onBrowse?: () => void }) {
         </button>
       ))}
     </nav>
+    </>
   );
 }

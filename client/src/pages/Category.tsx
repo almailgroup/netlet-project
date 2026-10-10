@@ -50,7 +50,7 @@ import {
   type BrowseSort,
 } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -226,7 +226,14 @@ export default function Category() {
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">
-      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
+      {/* The department row marks where the shopper is; a search spans them all, so it marks none. */}
+      <StoreHeader
+        catalog={catalog}
+        search={search}
+        onSearch={setSearch}
+        onSelectProduct={openProduct}
+        activeDepartment={onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category}
+      />
 
       <div className="container pt-4 sm:pt-6">
         <nav className="flex items-center gap-1.5 text-[12px] ink-muted" aria-label={t("nav.breadcrumb")}>

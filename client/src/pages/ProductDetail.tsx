@@ -995,7 +995,7 @@ export default function ProductDetail() {
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">
-      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} />
+      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} activeDepartment={product?.productType ?? null} />
 
       <div className="container py-6 sm:py-8">
         <nav className="flex flex-wrap items-center gap-x-2 text-[13px] ink-muted" aria-label={t("nav.breadcrumb")}>

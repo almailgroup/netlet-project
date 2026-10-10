@@ -203,9 +203,9 @@ change it.
 **The header opens the profile; it does not sign you out.** Home's own header
 used to sign out on one click, which put the most destructive thing available
 there under the friendliest label on the bar, beside the cart and the language
-switch where nothing else costs anything. `StoreHeader` and `MobileTabBar`
-already went to `/account`; Home now does too, and signing out lives on that
-page behind its confirmation, next to everything else about the account.
+switch where nothing else costs anything. The header's account menu reaches
+orders, messages and the account page; signing out lives on that page behind
+its confirmation, next to everything else about the account.
 
 **Signing out asks first**, on the account page. `ConfirmDialog` is what asks, and its confirm button
 carries the verb rather than "OK" — somebody who opened it by accident reads
@@ -258,10 +258,17 @@ page uses both. They exist because the cart did not: a shopper could add four
 things from a category page and have no way to reach the cart from it. The
 drawer is mounted once in `App`, not per page, for the same reason.
 
-Two pages deliberately opt out. Home keeps its own taller header — it carries
-the department rail and the hover-to-expand behaviour, which only earn their
-place on the page you land on. Checkout keeps a bare one: every extra exit on a
-payment page is an invitation to take it.
+**One header, on every shopping page, Home included.** Home kept its own for a
+long time — taller, labelled, with the departments and the delivery area —
+while every other page wore four unlabelled circles and no area at all, so the
+departments vanished and the controls lost their names the moment a shopper
+left the landing page, and two copies drifted apart more than once. The area
+also decides what delivery costs, which made "only on Home, only on a wide
+screen" the wrong answer once delivery was priced per seller. `StoreHeader` is
+the one copy; `activeDepartment` marks the department a page is in, and a
+search marks none. Checkout opts out and keeps a bare header: every extra exit
+on a payment page is an invitation to take it. The account page keeps its own
+too, as a settings page with a way back.
 
 **Checkout asks for the region once.** It asked twice: the governorate, which is
 complete and is what the order stores, and an "Area" dropdown with no `value`,
@@ -272,11 +279,11 @@ since an order stores `delivery_zone_id`, `address_line` and `address_notes` and
 a saved address has the same three. The street and the district go in the
 address line, which is what the account page's own address form does.
 
-**Both headers carry the same four controls in the same order**: saved,
-language, account, cart. Both have drifted into it at some point, which is what
-two copies do — most recently `StoreHeader`, which had language and saved the
-other way round, so the first control on the bar moved when a shopper left the
-home page. Home's drifted further: it grew an advert for an unpublished app in
+**The bar carries area, saved, language, account and cart, in that order.**
+The two old headers drifted into that order at different times, which is what
+two copies do — `StoreHeader` once had language and saved the other way round,
+so the first control on the bar moved when a shopper left the home page. Home's
+drifted further: it grew an advert for an unpublished app in
 the spot a shopper looks for their account — with a QR that decoded to nothing and store buttons that toasted
 "soon", the same dishonesty the Publish button and the absent social sign-in are
 careful to avoid. It grew a notifications bell that only ever said "coming
@@ -293,15 +300,33 @@ half a control that cannot change is not a control.
 **One label per control, not a caption stacked over a value.** "Your list /
 Saved", "Welcome / Sign in" — the caption was always the less informative half,
 and four of them meant eight lines of 10px and 12px text across one bar.
-Dropping it halves each control, which is what buys the labels their place from
-`lg` up: they used to appear only above 1280px, so everything from 1024 to 1280
-was four mute circles, and that is the width band most laptops browse at.
+
+**The search field takes the room, and the controls beside it are plain.** Each
+control was a pill of its own, with a fill and a shadow, five in a row: that is
+what read as busy, and it left the field the narrowest thing on the bar — 460px
+at 1280. They are an icon and a word now, a tint on hover, and the cart is the
+only filled button; the field is about 630px at 1280. The words that can go
+when the bar is tight go first, hidden from the eye and never from the name:
+"Deliver to" waits for `2xl`, "Saved" for `xl`. The language control is the word
+alone, marked with its own `lang` so a screen reader says "العربية" in Arabic.
+
+**The account control names the shopper and opens a short menu** —
+`AccountMenu`: orders, messages, the account page, and the portal for somebody
+who also runs a store or the shop. It is the WAI-ARIA menu button (arrows,
+Home/End, Escape back to the button, Tab out). **Signing out is not in it**, for
+the reason it left the header in the first place. The name is the first word of
+the display name as typed, so an account named "Admin Panel" reads "Admin".
+Signed out it opens the sign-in dialog where the shopper is. Anything the bar
+opens is portalled to `<body>` — `AuthDialog`, `DeliveryZoneDialog`,
+`DepartmentSheet` — because `backdrop-filter` on the header is the containing
+block for every `position: fixed` inside it.
 
 **A badge draws only when it has something to say.** A cart badge reading "0"
 is an alert that never stops firing, which is the fastest way to teach somebody
-to ignore the one place a count matters. Both cart buttons need the guard —
-the desktop cluster and the phone-only one at the end of the bar; the second
-was missed on the first pass and still showed a zero.
+to ignore the one place a count matters. One phone-only cart button once
+missed the guard and still showed a zero. **The count is navy on the orange**:
+white on `#f2683a` is 3.08:1 at 10px, navy on it is 4.65:1, and the badge keeps
+the brand colour.
 
 **Delivery sits in the primary bar, because that is the row that survives a
 scroll.** It spent one release at the end of the department rail, put there to
@@ -311,26 +336,24 @@ that scrolls away. The rail collapses on scroll too, so that fixed nothing and
 had not been checked. A row ending where its departments end is fine; a
 control you can only reach by scrolling back up is not, and inventing work to
 fill space is how the wrong row gets chosen. `Deliver to` goes `sr-only` below
-`xl` so the bar still works at 1024 — visually hidden, never hidden from the
-name, which is the whole of WCAG 2.5.3: the button used to carry an
+`2xl` — visually hidden, never hidden from the name (with a trailing space, or
+the name reads "Deliver toHawalli"), which is the whole of WCAG 2.5.3: the button used to carry an
 `aria-label` of "Choose your governorate" while reading "Deliver to Hawalli",
 so somebody driving the page by voice said what they could see and nothing
 happened.
 
-Delivery is Home's alone, and that is not drift. `DeliveryZoneDialog` lives in
-`Home.tsx` and the only other place an area is set is checkout's own select —
-which is the one page that must ask. The four-control rule is about the account
-cluster; Home is already the header that carries more shopping context.
-
-**On a phone the compact bar takes the search field and drops the wordmark.**
-Collapsing the search row on its own left a scrolled phone with a hamburger, a
-wordmark and a cart — no way to search the catalog from the page the catalog is
-on, while a category page kept its field because `StoreHeader` never collapses.
-The wordmark is the half worth spending: somebody four screens into NetLet
-knows they are on NetLet. The bar costs the same 58px either way. The collapsed
-row below it is `inert` as well as `aria-hidden` — `aria-hidden` over a
-still-focusable input is a violation of its own, and the two search fields would
-otherwise both be in the tab order.
+**On a phone the top bar does not repeat the bottom one.** Home's had a
+hamburger and a cart, and every other page's had saved, account and cart —
+all of it already in `MobileTabBar`, a thumb's reach below. The top row carries
+what the bottom does not: the logo, the area and the language, and the search
+field has a whole row under it. Scrolled, the top row folds away and the search
+row *is* the header — somebody four screens in knows they are on NetLet. A page
+with nothing to search keeps its top row, or it would have no header. The
+folded row is `inert` as well as `aria-hidden`: `aria-hidden` over still
+focusable controls is a violation of its own. The hamburger's department list
+is `DepartmentSheet` now, behind the bottom bar's Browse on every page — Browse
+used to open it on Home and go to the whole catalogue everywhere else, one tab
+meaning two things.
 
 **A sticky header earns its shadow in the compact state and nowhere else.** At
 rest the hero sits directly beneath with its own edge, so a hairline separates
@@ -342,7 +365,10 @@ The search placeholder takes its example **from the live catalog**, and holds
 still. It used to cycle four hard-coded phrases every 2.6 seconds — "espresso
 maker", "wireless headphones" — naming things the shop may not sell, and moving
 in the corner of the eye while somebody is trying to read the page. With no
-product type to draw on it asks plainly rather than inventing one.
+product type to draw on it asks plainly rather than inventing one. **And it is
+in the page's language**: a product type is the seller's word, so the Arabic
+field read "ابحث عن electronics". A type that is a department takes the
+department's name; any other is used on the Arabic page only if it is Arabic.
 
 **Voice and photo search are wired, and each says where the input goes.**
 `SearchModes.tsx` holds both, with every state drawn — listening, heard,
@@ -357,9 +383,9 @@ with a line saying where it goes, and sent only on the press. The model may
 return a few words and nothing else; they go into the field like typing.
 
 **The dropdown is a solid sheet**, not glass: the department rail read through
-its 82% white. And on a phone the home page's search row is `overflow-hidden`
-only while collapsed — it clipped the dropdown entirely at rest, which a
-screenshot showed and `elementFromPoint` confirmed.
+its 82% white. And the phone's search row is never `overflow-hidden` — a row
+that was clipped the dropdown entirely at rest, which a screenshot showed and
+`elementFromPoint` confirmed.
 
 **What was heard, and the photo, are shown back before anything is searched.**
 Recognition mishears and a half-framed shot matches nothing; both are obvious
@@ -423,7 +449,7 @@ is scoped by it, so a guessed line id edits nothing. Lines store no price:
 a cart is a list of intentions and the price is whatever the variant costs
 when the shopper looks. Freezing a price is the order's job.
 
-**Every header starts with a skip link.** Home was the one page without one,
+**Every header starts with a skip link.** Home was once the one page without one,
 which is the wrong way round: it carries the most header of any page — a bar,
 a search row and a department rail — so it is where tabbing past costs the
 most. It lands on `#main`, which is the hero, the same id every other page

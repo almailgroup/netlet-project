@@ -8,6 +8,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
 import { matchesSearch, searchPath } from "@shared/commerce/browse";
+import { categoryMessageKey } from "@/content/homeLayout";
+import type { MessageKey } from "@shared/i18n/dictionary";
 
 /**
  * What the placeholder suggests searching for, taken from the shelf.
@@ -21,11 +23,23 @@ import { matchesSearch, searchPath } from "@shared/commerce/browse";
  * A real product type from the live catalog says something true about this
  * shop, and stays still. With nothing to draw on, the field asks plainly
  * rather than making something up.
+ *
+ * **In the page's language.** A product type is what the seller typed, so the
+ * Arabic field read "ابحث عن electronics". A type that is one of NetLet's
+ * departments takes the department's own name in either language; any other
+ * type is the seller's word, which suits the English page and suits the
+ * Arabic one only if the seller wrote it in Arabic.
  */
-function catalogExample(catalog: Product[]): string | null {
+const ARABIC_LETTERS = /[\u0600-\u06FF]/;
+
+export function catalogExample(catalog: Product[], translate: (key: MessageKey) => string, arabic: boolean): string | null {
   for (const product of catalog) {
     const type = product.productType?.trim();
-    if (type) return type.toLowerCase();
+    if (!type) continue;
+    const department = categoryMessageKey(type);
+    if (department) return arabic ? translate(department) : translate(department).toLowerCase();
+    if (!arabic) return type.toLowerCase();
+    if (ARABIC_LETTERS.test(type)) return type;
   }
   return null;
 }
@@ -38,7 +52,7 @@ type LiveSearchProps = {
 };
 
 export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSearchProps) {
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
   const mobilePreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("searchTest") === "mobile";
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -61,7 +75,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   const voiceOn = useFeature("voiceSearch");
   const photoOn = useFeature("photoSearch");
   const searchTerm = value.trim().toLowerCase();
-  const example = useMemo(() => catalogExample(catalog), [catalog]);
+  const example = useMemo(() => catalogExample(catalog, t, isArabic), [catalog, t, isArabic]);
 
   useEffect(() => {
     if (mobilePreview && !value) {

@@ -3,21 +3,16 @@
  * persistent bag, native checkout mockup, and responsive marketplace rails.
  */
 import { useBuyNow } from "@/hooks/useBuyNow";
-import { useAuth } from "@/hooks/useAuth";
 import { Thumb } from "@/components/product/Thumb";
-import { LiveSearch } from "@/components/search/LiveSearch";
 import { categoryRail, editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import AuthDialog from "@/components/auth/AuthDialog";
-import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { Product } from "@shared/commerce/types";
-import { kuwaitDeliveryZones } from "@shared/customer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownRight,
@@ -25,30 +20,24 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Globe2,
-  Heart,
   LoaderCircle,
   MapPin,
-  Menu,
   Minus,
   PackageCheck,
   Plus,
   RotateCcw,
   Search,
-  ShoppingBag,
   Share2,
   Store,
   Trash2,
   Truck,
-  UserRound,
   Wallet,
-  X,
   Zap,
 } from "lucide-react";
-import { useCompactHeader } from "@/hooks/useCompactHeader";
-import { useOverlay } from "@/hooks/useOverlay";
 import { ProductCard } from "@/components/product/ProductCard";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { StoreHeader } from "@/components/layout/StoreHeader";
+import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { QuickView } from "@/components/product/QuickView";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
@@ -58,53 +47,14 @@ import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { homeMeta } from "@shared/seo";
 import { heroImage, logoImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
-import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 
-function Logo({ t }: { t: Translate }) {
-  return <a href="#top" className="flex shrink-0 items-center" aria-label={t("header.home")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-11 w-auto max-w-[140px] object-contain" /></a>;
-}
 
 
-function IconButton({ label, children, onClick, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; className?: string }) {
-  return <button aria-label={label} title={label} onClick={onClick} className={`glass pressable grid size-10 place-items-center rounded-full ${className}`}>{children}</button>;
-}
 
-/**
- * Header control: an icon and one label.
- *
- * It used to stack a caption over a value — "Your list / Saved", "Welcome /
- * Sign in" — which is two lines of 10px and 12px text, four times across the
- * bar. The caption was always the less informative half, and dropping it
- * halves each control's width. That is what buys the labels their place at
- * laptop widths: they used to appear only above 1280px, so everything from
- * 1024 to 1280 was four mute circles, which is the width band most people
- * actually browse at.
- *
- * The badge draws only when it has something to say. A badge showing "0" is an
- * alert that is never not firing, and the fastest way to teach somebody to
- * stop looking at the one place a count matters.
- */
-function HeaderAction({ icon, label, onClick, title, badge, tone = "quiet" }: { icon: React.ReactNode; label: string; onClick: () => void; title: string; badge?: number; tone?: "quiet" | "primary" }) {
-  return <button onClick={onClick} aria-label={title} title={title} className={`pressable flex h-12 shrink-0 items-center gap-2.5 rounded-2xl px-3.5 ${tone === "primary" ? "glass glass-navy" : "glass"}`}>
-    <span className="relative grid shrink-0 place-items-center">{icon}{badge ? <span className="absolute -end-2 -top-2 grid min-w-[17px] place-items-center rounded-full bg-[#f2683a] px-1 text-[10px] font-extrabold text-white"><bdi dir="ltr">{badge > 99 ? "99+" : badge}</bdi></span> : null}</span>
-    <span dir="auto" className="hidden max-w-[120px] truncate text-[13px] font-extrabold lg:block">{label}</span>
-  </button>;
-}
 
-function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { deliveryZoneId, setDeliveryZoneId } = useCustomer();
-  const { isArabic, t } = useTranslation();
-  useOverlay(open, onClose);
-  if (!open) return null;
-  return <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" onClick={onClose}>
-    <section role="dialog" aria-modal="true" aria-labelledby="delivery-zone-title" className="w-full max-w-lg rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7" onClick={event => event.stopPropagation()}>
-      <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold tracking-[.14em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p><h2 id="delivery-zone-title" className="display-face mt-1 text-3xl text-[#0a285a]">{t("delivery.chooseGovernorate")}</h2><p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("delivery.note")}</p></div><IconButton label={t("delivery.close")} onClick={onClose}><X className="size-5" /></IconButton></div>
-      <div className="mt-6 grid gap-2 sm:grid-cols-2">{kuwaitDeliveryZones.map(zone => <button key={zone.id} onClick={() => { setDeliveryZoneId(zone.id); onClose(); }} className={`pressable rounded-2xl border p-4 text-start ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}><span className="block text-sm font-extrabold text-[#0a285a]">{isArabic ? zone.labelAr : zone.label}</span></button>)}</div>
-    </section>
-  </div>;
-}
 
 function CatalogSkeleton({ dark = false }: { dark?: boolean }) {
   return <div className="hide-scrollbar mt-5 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((item) => <div key={item} className={`min-w-[172px] animate-pulse rounded-2xl border p-3 sm:min-w-[195px] lg:min-w-0 lg:flex-1 ${dark ? "border-[#49658d] bg-white/10" : "border-[#d5dfeb] bg-white"}`}><div className={`aspect-[1.02] rounded-xl ${dark ? "bg-white/10" : "bg-[#e7edf5]"}`} /><div className={`mt-4 h-4 w-2/3 rounded ${dark ? "bg-white/10" : "bg-[#dce5e9]"}`} /><div className={`mt-2 h-3 w-1/3 rounded ${dark ? "bg-white/10" : "bg-[#e7edf5]"}`} /></div>)}</div>;
@@ -319,24 +269,16 @@ function CategoryRail({ categories, onSelect }: {
 
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   // One dialog for the whole page: three rails and the deals surface all open
   // the same overlay, the way the drawer is mounted once in `App`.
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
-  const { compact: headerCompact, handlers: headerHandlers } = useCompactHeader();
-  useOverlay(menuOpen, () => setMenuOpen(false));
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
   const { isArabic, t } = useTranslation();
-  const openAuth = () => DEMO_MODE
-    ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
-    : setAuthOpen(true);
   const [search, setSearch] = useState("");
-  const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { itemCount, openCart, addItem, loading: cartLoading } = useCart();
-  const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone, toggleLocale } = useCustomer();
+  const { addItem, loading: cartLoading } = useCart();
+  const { savedIds: saved, toggleSaved: togglePersistentSaved, deliveryZone } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError, refetch } = trpc.commerce.products.list.useQuery({ first: 24 });
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
@@ -391,123 +333,15 @@ export default function Home() {
   const addProduct = async (product: Product, quantity = 1) => { const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0]; if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable")); try { await addItem(variant.id, quantity); toast.success(quantity > 1 ? t("cart.addedQuantity", { count: String(quantity), name: product.title }) : t("cart.added", { name: product.title })); } catch { toast.error(t("cart.addFailed")); } };
   // Buy now is add-to-cart plus the checkout step, not a separate path (3.2.9).
   const buyProduct = useBuyNow();
-  /*
-   * Signed in, this opens the profile; signed out, it opens the dialog.
-   *
-   * It used to sign you out on one click, which put the most destructive thing
-   * the header can do under the friendliest label on it — beside the cart and
-   * the language switch, where nothing else costs anything. Signing out now
-   * lives on /account behind its confirmation, which is also where everything
-   * else about the account is.
-   */
-  const accountAction = () => {
-    if (authLoading) return;
-    if (isAuthenticated) navigate("/account");
-    else openAuth();
-  };
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
   return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
-    <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    {/*
-      The shadow is the compact state's job. At rest the hero sits directly
-      below with its own edge, so a hairline is separation enough; once the page
-      is moving underneath, a sticky bar with only a 1px border reads as part of
-      the page rather than above it. `data-compact` was on this element already
-      and nothing read it — it drives this now rather than sitting as a hook
-      somebody left for later.
-    */}
-    <header
-      {...headerHandlers}
-      data-compact={headerCompact}
-      className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl transition-shadow duration-300 data-[compact=true]:shadow-[0_6px_20px_rgba(10,40,90,.09)]"
-    >
-      {/* Every other shopping page had this and the landing page did not, which
-          is the wrong way round: home carries the most header of any page, so
-          it is the one where tabbing past it costs the most. */}
-      <a href="#main" className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:absolute focus:start-4 focus:top-3 focus:z-50">{t("nav.skipToContent")}</a>
-      {/* Primary bar: logo, a search field that takes all remaining width, then
-          the account cluster — the layout marketplaces converge on. */}
-      <div className={`container relative flex items-center gap-3 transition-[height] duration-300 ease-out lg:gap-5 ${headerCompact ? "h-[58px] lg:h-[62px]" : "h-[68px] lg:h-[76px]"}`}>
-        <div className="lg:hidden"><IconButton label={t("header.openMenu")} onClick={() => setMenuOpen(true)}><Menu className="size-6" /></IconButton></div>
-        {/*
-          On a phone the compact bar drops the logo and takes the search field
-          into the row the logo was in. Collapsing the search row on its own
-          left a scrolled phone with a hamburger, a wordmark and a cart — no
-          way to search the catalog from the page the catalog is on, while a
-          category page (`StoreHeader`, which never collapses) kept its field.
-          The wordmark is the half worth spending: somebody four screens into
-          NetLet knows they are on NetLet, and the bar costs the same 58px
-          either way.
-        */}
-        <div className={`origin-left transition-transform rtl:origin-right duration-300 ease-out lg:mx-0 ${headerCompact ? "hidden lg:block lg:scale-[.82]" : "mx-auto scale-100"}`}><Logo t={t} /></div>
-        {headerCompact && <div className="min-w-0 flex-1 lg:hidden"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>}
-        <div className="hidden min-w-0 flex-1 lg:block"><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
-        {/*
-          Delivery lives in the bar rather than the rail below because this row
-          is the one that survives a scroll. It is the only shopping context a
-          Kuwait-first shop should never make somebody scroll back for: it is
-          where the parcel goes and it decides what checkout costs.
+    {/* The one header every shopping page wears (`StoreHeader`). Home kept
+        its own for a long time — taller, labelled, with the departments and
+        the area — and the two drifted apart while every other page went
+        without the area and the departments entirely. */}
+    <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
-          "Deliver to" is the half that can go when the bar is tight — the
-          governorate alone beside a truck says the same thing — so the label
-          waits for xl and the value never does.
-        */}
-        <button
-          onClick={() => setDeliveryOpen(true)}
-          className="glass pressable hidden h-12 shrink-0 items-center gap-2 rounded-2xl px-3.5 text-xs font-semibold lg:flex"
-        >
-          <Truck className="size-[18px] shrink-0 ink-accent" aria-hidden />
-          {/*
-            Hidden from the eye below xl, never from the name. This carried an
-            `aria-label` of "Choose your governorate" while reading "Deliver to
-            Hawalli", which is WCAG 2.5.3 the wrong way round: somebody driving
-            the page by voice says what they can see, and "Deliver to" matched
-            nothing. The visible words are the label now, and `sr-only` keeps
-            them in the name at the width that cannot afford to draw them.
-          */}
-          <span className="sr-only ink-muted xl:not-sr-only">{t("home.deliverTo")}</span>
-          <span dir="auto" className="max-w-[120px] truncate text-[13px] font-extrabold text-[#0a285a]">
-            {deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort")}
-          </span>
-        </button>
-
-        {/* Saved, language, account, cart — the same four `StoreHeader` carries,
-            in the same order, so the two headers differ only in the ways they
-            are meant to: this one is taller and keeps the department rail.
-            Delivery sits before them rather than among them; it is shopping
-            context, which is the kind of thing this header is the one to
-            carry. Home's cluster had drifted before — an advert for an
-            unpublished app where a shopper looks for their account, and Saved
-            stranded in the department row below. */}
-        <div className="hidden shrink-0 items-center gap-1.5 lg:flex">
-          <HeaderAction title={t("header.savedItems", { count: saved.length })} onClick={() => navigate("/saved")} badge={saved.length} icon={<Heart className="size-[19px]" />} label={t("nav.saved")} />
-          {/* `header.language` is the language you would get, not the one you
-              are reading — a toggle labelled with its current state leaves you
-              guessing which way it goes. Currency is gone from here: there is
-              one, and a control that cannot change is not a control. */}
-          <HeaderAction title={t("header.changeLanguage")} onClick={toggleLocale} icon={<Globe2 className="size-[19px] ink-accent" />} label={t("header.language")} />
-          <HeaderAction title={t(isAuthenticated ? "nav.account" : "header.signIn")} onClick={accountAction} icon={<UserRound className="size-[19px]" />} label={isAuthenticated ? t("nav.account") : t("header.signIn")} />
-          <HeaderAction title={t("header.openCart")} onClick={openCart} tone="primary" badge={itemCount} icon={<ShoppingBag className="size-[19px]" />} label={t("nav.cart")} />
-        </div>
-        <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable relative grid size-10 shrink-0 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
-      </div>
-      <div className={`container transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 overflow-hidden pb-0 opacity-0" : "max-h-20 overflow-visible pb-3 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
-      {/*
-        Secondary bar: departments, and nothing else.
-
-        Delivery sat here for one release and it was the wrong row. It went in
-        because the only other way to set an area was a hero link that scrolls
-        away — and then this rail collapses on scroll too, so it solved nothing
-        and I had not checked. It lives in the bar above now, which never
-        collapses. The row ending where its departments end is fine: a
-        left-aligned nav is what every marketplace has, and filling the space
-        was a problem I invented.
-      */}
-      <nav className={`container hidden items-center gap-2 overflow-hidden transition-all duration-300 ease-out lg:flex ${headerCompact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact} aria-label={t("nav.primary")}>{categoryRail.map((category, index) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold ${index === 0 ? "glass glass-navy font-bold" : "glass !text-[#536b8c]"}`}><DepartmentIcon query={category.query} className="size-3.5 shrink-0" />{t(category.key)}</button>)}</nav>
-    </header>
-
-    {menuOpen && <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={() => setMenuOpen(false)}><aside role="dialog" aria-modal="true" aria-label={t("nav.allDepartments")} className="netlet-menu-panel h-full w-[82%] max-w-sm bg-[#f3f2ed] px-5 py-7 shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><Logo t={t} /><IconButton label={t("header.closeMenu")} onClick={() => setMenuOpen(false)}><X /></IconButton></div><div className="mt-10 space-y-1">{categoryRail.map((category) => <button key={category.query} onClick={() => { selectCategory(category.query); setMenuOpen(false); }} className="glass pressable mb-1 flex w-full items-center gap-3 rounded-xl px-4 py-4 text-start text-sm font-bold"><DepartmentIcon query={category.query} className="size-4 shrink-0 text-[#536b8c]" />{t(category.key)}</button>)}</div><button onClick={accountAction} className="glass glass-navy pressable mt-7 flex w-full items-center justify-center gap-2 rounded-2xl p-4 text-sm font-bold"><UserRound className="size-4" />{isAuthenticated ? t("header.myProfile") : t("header.signInToNetlet")}</button></aside></div>}
 
     {/* Hero, at roughly half its previous height so the first row of products
         is on screen when the page opens. The panel carries the colour now that
@@ -554,7 +388,7 @@ export default function Home() {
 
     <SiteFooter />
 
-    <MobileTabBar onBrowse={() => setMenuOpen(true)} />
+    <MobileTabBar />
     <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
     <DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
   </main>;
