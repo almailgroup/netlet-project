@@ -110,5 +110,13 @@ export function applySecurity(app: Express): void {
   // 535KB of JavaScript uncompressed. gzip takes that to roughly a third, and
   // on a home connection serving Kuwait that is the difference between a fast
   // first load and a slow one.
-  app.use(compression());
+  //
+  // Except a streamed tRPC batch. Its answers go out one at a time as each
+  // procedure finishes, so one slow query cannot hold the rest of a page on
+  // "Loading…" — and gzip buffers until the end unless something flushes it,
+  // which the tRPC adapter does not, so compressing the stream quietly turned
+  // it back into the all-or-nothing batch it replaced.
+  app.use(compression({
+    filter: (req, res) => req.headers["trpc-accept"] === "application/jsonl" ? false : compression.filter(req, res),
+  }));
 }

@@ -14,6 +14,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
@@ -73,7 +74,7 @@ export default function Saved() {
   const buyNow = useBuyNow();
 
   return (
-    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-16">
+    <main className="min-h-screen bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div id="main" className="container py-8 sm:py-10">
@@ -143,6 +144,8 @@ export default function Saved() {
       </div>
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />
+      <div aria-hidden className="h-12 lg:h-16" />
+      <SiteFooter />
     </main>
   );
 }

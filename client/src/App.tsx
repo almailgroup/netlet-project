@@ -130,6 +130,8 @@ function Router() {
         <Route path="/checkout" component={Checkout} />
         <Route path="/sell" component={Sell} />
         <Route path="/category/:slug" component={Category} />
+        {/* Search results are the department layout over the whole catalog. */}
+        <Route path="/search" component={Category} />
         <Route path="/admin" component={AdminOverview} />
         <Route path="/admin/products" component={AdminProducts} />
         <Route path="/admin/products/:id" component={AdminProductEditor} />
@@ -180,16 +182,19 @@ function Router() {
 }
 
 /**
- * Toasts, on the shopper's side of the screen.
+ * Toasts, at the top of the screen, under the header.
  *
- * Sonner needs both: `dir` so the text lays out right-to-left, and a mirrored
- * corner, because a notice pinned to the bottom-right of an Arabic page sits
- * away from where the eye is already working. Rendered inside the provider so
- * it re-reads the locale when the shopper switches.
+ * They sat in the bottom corner on the bag's side, and "added to your cart" is
+ * the toast that fires as the bag drawer opens — so the confirmation covered
+ * the checkout button it was confirming, on every add, in both languages, and
+ * on a phone it covered the tab bar too. The top centre is the one place
+ * nothing a shopper presses next lives: the drawer's actions are at its foot,
+ * the tab bar is at the bottom, and the offset keeps it under the header's
+ * cart and account controls. `dir` still lays the text out right-to-left.
  */
 function StorefrontToaster() {
   const { direction } = useTranslation();
-  return <Toaster richColors dir={direction} position={direction === "rtl" ? "bottom-left" : "bottom-right"} />;
+  return <Toaster richColors dir={direction} position="top-center" offset={{ top: 84 }} mobileOffset={{ top: 72 }} />;
 }
 
 function App() {

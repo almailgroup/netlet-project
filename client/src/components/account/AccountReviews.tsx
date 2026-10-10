@@ -39,7 +39,7 @@ export function AccountReviews() {
   const lines = trpc.reviews.mine.useQuery();
 
   return (
-    <QueryGate queries={[lines]}>
+    <QueryGate audience="shopper" queries={[lines]}>
       {() => {
         const rows = (lines.data ?? []) as Line[];
         if (rows.length === 0) {

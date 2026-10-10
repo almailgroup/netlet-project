@@ -49,7 +49,7 @@ export function AccountRewards() {
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
   return (
-    <QueryGate queries={[rewards]}>
+    <QueryGate audience="shopper" queries={[rewards]}>
       {() => {
         const view = rewards.data;
         if (!view) return null;

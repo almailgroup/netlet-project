@@ -13,6 +13,7 @@
  * grey square captioned "Oak" is worse than the word "Oak".
  */
 import { useTranslation } from "@/hooks/useTranslation";
+import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import type { Product, ProductVariant } from "@shared/commerce/types";
 
 /**
@@ -34,17 +35,82 @@ function swatchColour(value: string): string | null {
 
 const COLOUR_OPTION = /colou?r|لون/i;
 
+/**
+ * How a product's variants can be chosen.
+ *
+ * - `options`: every variant carries a value for every option that varies,
+ *   and no two share a combination — the swatch and chip rows below.
+ * - `titles`: there is more than one variant but the options cannot tell them
+ *   apart, which is every product whose variants were named in the editor and
+ *   never given option values. Chosen by name. Before this the page drew
+ *   nothing, so a shopper could not pick the green one — and the bag, which
+ *   names the variant, then said "Green" about a choice nobody made.
+ * - `single`: one variant with a real name, shown as a line, so the page says
+ *   what the bag will say.
+ * - `none`: one variant called "Default", which is no choice at all.
+ */
+export function choiceMode(product: Product): "options" | "titles" | "single" | "none" {
+  const options = product.options.filter(option => option.values.length > 1);
+  if (product.variants.length >= 2) {
+    const complete = options.length > 0 && product.variants.every(variant =>
+      options.every(option => variant.selectedOptions.some(chosen => chosen.name === option.name)));
+    const combos = new Set(product.variants.map(variant => options
+      .map(option => variant.selectedOptions.find(chosen => chosen.name === option.name)?.value ?? "")
+      .join("\u001f")));
+    return complete && combos.size === product.variants.length ? "options" : "titles";
+  }
+  const only = product.variants[0];
+  return only && !isDefaultVariantTitle(only.title) ? "single" : "none";
+}
+
 export function VariantPicker({ product, selected, onSelect }: {
   product: Product;
   selected: ProductVariant | undefined;
   onSelect: (variant: ProductVariant) => void;
 }) {
   const { t } = useTranslation();
+  const mode = choiceMode(product);
+  if (mode === "none") return null;
+
+  if (mode === "single") {
+    return (
+      <p className="mt-6 text-xs font-extrabold text-[#0a285a]">
+        {t("product.optionLabel")}<span dir="auto" className="ms-1.5 font-semibold ink-muted">{product.variants[0].title}</span>
+      </p>
+    );
+  }
+
+  if (mode === "titles") {
+    return (
+      <fieldset className="mt-6">
+        <legend className="text-xs font-extrabold text-[#0a285a]">
+          {t("product.optionLabel")}
+          {selected ? <span dir="auto" className="ms-1.5 font-semibold ink-muted">{selected.title}</span> : null}
+        </legend>
+        <div className="mt-2.5 flex flex-wrap gap-2" role="radiogroup" aria-label={t("product.chooseOption")}>
+          {product.variants.map(variant => {
+            const active = selected?.id === variant.id;
+            return (
+              <button
+                key={variant.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => onSelect(variant)}
+                className={`pressable min-h-10 rounded-xl border-2 px-3.5 text-[13px] font-bold transition-colors ${active ? "border-[#f2683a] bg-[#fff7e3] text-[#0a285a]" : "border-[#d5dfeb] bg-white text-[#404553] hover:border-[#aac0da]"} ${variant.availableForSale ? "" : "ink-muted line-through"}`}
+              >
+                <bdi>{variant.title}</bdi>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+    );
+  }
 
   // An option with a single value cannot narrow anything, so it is a label
   // rather than a control and does not earn a row of swatches.
   const options = product.options.filter(option => option.values.length > 1);
-  if (!options.length || product.variants.length < 2) return null;
 
   /**
    * The variant to move to when one option changes.
@@ -120,7 +186,9 @@ export function VariantPicker({ product, selected, onSelect }: {
  */
 export function imageIndexForVariant(product: Product, variant: ProductVariant | undefined): number | null {
   if (!variant) return null;
-  const values = variant.selectedOptions.map(option => option.value.toLowerCase()).filter(Boolean);
+  /* A variant named in the editor has no option values; its name is what the alt text would carry. */
+  const named = variant.selectedOptions.length ? [] : isDefaultVariantTitle(variant.title) ? [] : [variant.title];
+  const values = [...variant.selectedOptions.map(option => option.value), ...named].map(value => value.toLowerCase()).filter(Boolean);
   if (!values.length) return null;
   const index = product.images.findIndex(image => {
     const alt = image.altText?.toLowerCase();

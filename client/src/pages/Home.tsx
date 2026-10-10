@@ -6,7 +6,7 @@ import { useBuyNow } from "@/hooks/useBuyNow";
 import { useAuth } from "@/hooks/useAuth";
 import { Thumb } from "@/components/product/Thumb";
 import { LiveSearch } from "@/components/search/LiveSearch";
-import { categoryRail, editorialUpdates, footerGroups, homeRailDefinitions, railSupportCardContent } from "@/content/homeLayout";
+import { categoryRail, editorialUpdates, homeRailDefinitions } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -46,6 +46,7 @@ import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { useOverlay } from "@/hooks/useOverlay";
 import { ProductCard } from "@/components/product/ProductCard";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { QuickView } from "@/components/product/QuickView";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
@@ -53,21 +54,16 @@ import { useLocation } from "wouter";
 import { appPath } from "@/lib/basePath";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { homeMeta } from "@shared/seo";
-import { collectionImages, footerLogoImage, heroImage, logoImage } from "@/lib/brandAssets";
+import { heroImage, logoImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
-const railSupportImages = [collectionImages[1], collectionImages[0], collectionImages[2]];
-const railSupportCards = railSupportCardContent.map((card, index) => ({ ...card, image: railSupportImages[index] }));
 
 function Logo({ t }: { t: Translate }) {
   return <a href="#top" className="flex shrink-0 items-center" aria-label={t("header.home")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-11 w-auto max-w-[140px] object-contain" /></a>;
 }
 
-function FooterLogo({ t }: { t: Translate }) {
-  return <a href="#top" className="flex w-fit items-center" aria-label={t("header.home")}><img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-12 w-auto max-w-[165px] object-contain" /></a>;
-}
 
 function IconButton({ label, children, onClick, className = "" }: { label: string; children: React.ReactNode; onClick?: () => void; className?: string }) {
   return <button aria-label={label} title={label} onClick={onClick} className={`glass pressable grid size-10 place-items-center rounded-full ${className}`}>{children}</button>;
@@ -121,8 +117,6 @@ function CatalogSkeleton({ dark = false }: { dark?: boolean }) {
  * turning. The hold is the settled time plus the fade.
  */
 
-type RailSupportCard = { eyebrow: MessageKey; title: MessageKey; image: string; category: string };
-
 type RailProps = {
   id: string;
   title: MessageKey;
@@ -139,15 +133,88 @@ type RailProps = {
   onBuyNow: (product: Product, quantity: number) => void;
   isAdding: boolean;
   onViewAll: () => void;
-  supportCard?: RailSupportCard;
-  onSelectSupport: (category: string) => void;
 };
 
-function ProductRail({ id, title, description, dark = false, products, catalogLoading, catalogError, saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding, onViewAll, supportCard, onSelectSupport }: RailProps) {
+/**
+ * One shelf of products, scrolled sideways.
+ *
+ * Its arrows used to be white icons on the light `.glass` disc — blank circles
+ * on the navy shelves — and pressing them only raised "more controls will
+ * arrive", the dead-control rule twice over. They scroll the shelf now, a
+ * screenful at a time, and appear only when there is something off-screen to
+ * reach; on a navy shelf they wear the on-dark tint so the chevron is visible.
+ */
+function ProductRail({ id, title, description, dark = false, products, catalogLoading, catalogError, saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding, onViewAll }: RailProps) {
   const { t } = useTranslation();
-  const railProducts = products.slice(0, 4);
+  const railProducts = products.slice(0, 12);
   const railTitle = t(title);
-  return <section id={id} className={dark ? "bg-[#0a285a] py-9 sm:py-12" : "py-9 sm:py-12"}><div className="container"><div className="flex items-end justify-between gap-4"><div><p className={`text-[10px] font-extrabold tracking-[.16em] uppercase ${dark ? "text-[#ffcc64]" : "text-[#a44a2b]"}`}>{t("home.liveCatalogAria")}</p><h2 className={`display-face mt-1 text-3xl sm:text-4xl ${dark ? "text-white" : "text-[#0a285a]"}`}>{railTitle}</h2><p className={`mt-1 text-xs ${dark ? "text-[#b9cce5]" : "text-[#536b8c]"}`}>{t(description)}</p></div><div className="hidden items-center gap-2 sm:flex"><IconButton label={t("home.previousProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronLeft className="size-4 rtl:-scale-x-100" /></IconButton><IconButton label={t("home.nextProducts", { title: railTitle })} onClick={() => toast(t("home.moreControlsSoon"))} className={dark ? "border border-[#49658d] text-white hover:bg-white/10" : "border border-[#d5dfeb]"}><ChevronRight className="size-4 rtl:-scale-x-100" /></IconButton><button onClick={onViewAll} className={`pressable rounded-full px-3.5 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase ${dark ? "bg-white/10 text-white hover:bg-white/20" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"}`}>{t("home.viewAll")}</button></div></div>{catalogLoading ? <CatalogSkeleton dark={dark} /> : catalogError ? <div className={`mt-5 rounded-2xl border px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-white" : "border-[#f2b69e] bg-white text-[#0a285a]"}`}><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div> : railProducts.length ? <div className="hide-scrollbar mt-5 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{railProducts.map((product) => <div key={`${id}-${product.id}`} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0"><ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onQuickView={() => onQuickView(product)} onAdd={(quantity) => void onAdd(product, quantity)} onBuyNow={(quantity) => void onBuyNow(product, quantity)} isAdding={isAdding} /></div>)}{supportCard && products.length < 4 ? <button onClick={() => onSelectSupport(supportCard.category)} className="group relative min-h-[248px] min-w-[230px] overflow-hidden rounded-2xl text-start sm:min-w-[260px] lg:min-w-0"><Thumb src={supportCard.image} alt="" className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" /><div className="absolute inset-0 bg-gradient-to-t from-[#061b3b]/85 via-[#061b3b]/16 to-transparent" /><div className="absolute bottom-0 start-0 end-0 p-5 text-white"><p className="text-[9px] font-extrabold tracking-[.14em] text-[#ffe6b2] uppercase">{t(supportCard.eyebrow)}</p><h3 className="display-face mt-2 max-w-[220px] text-3xl leading-[.92]">{t(supportCard.title)}</h3><span className="mt-4 inline-flex items-center gap-1 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("home.shopCollection")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></span></div></button> : null}</div> : <div className={`mt-5 rounded-2xl border border-dashed px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-[#d9e7f7]" : "border-[#b8c9dc] bg-white/55 text-[#536b8c]"}`}><Search className="mx-auto size-5" /><p className="mt-2 text-sm font-bold">{t("home.noMatches")}</p><button onClick={onViewAll} className={`mt-3 text-xs font-extrabold underline underline-offset-4 ${dark ? "ink-accent-on-dark" : "ink-accent"}`}>{t("home.showCatalog")}</button></div>}</div></section>;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ back: false, forward: false });
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    /* scrollLeft runs negative in a right-to-left page, so measure the distance from each end. */
+    const measure = () => {
+      const travelled = Math.abs(track.scrollLeft);
+      const room = track.scrollWidth - track.clientWidth;
+      setEdges({ back: travelled > 4, forward: room - travelled > 4 });
+    };
+    measure();
+    track.addEventListener("scroll", measure, { passive: true });
+    const observer = new ResizeObserver(measure);
+    observer.observe(track);
+    return () => { track.removeEventListener("scroll", measure); observer.disconnect(); };
+  }, [railProducts.length, catalogLoading]);
+
+  const scrollBy = (direction: -1 | 1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const rtl = getComputedStyle(track).direction === "rtl";
+    track.scrollBy({ left: (rtl ? -direction : direction) * Math.round(track.clientWidth * 0.9), behavior: "smooth" });
+  };
+
+  const arrowClass = `pressable grid size-10 place-items-center rounded-full disabled:opacity-35 ${dark ? "glass glass-on-dark" : "glass border border-[#d5dfeb] text-[#0a285a]"}`;
+
+  return (
+    <section id={id} className={dark ? "bg-[#0a285a] py-9 sm:py-12" : "py-9 sm:py-12"} aria-labelledby={`${id}-title`}>
+      <div className="container">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 id={`${id}-title`} className={`display-face text-3xl sm:text-4xl ${dark ? "text-white" : "text-[#0a285a]"}`}>{railTitle}</h2>
+            <p className={`mt-1 text-xs ${dark ? "text-[#b9cce5]" : "text-[#536b8c]"}`}>{t(description)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {edges.back || edges.forward ? (
+              <div className="hidden items-center gap-2 sm:flex">
+                <button type="button" onClick={() => scrollBy(-1)} disabled={!edges.back} aria-label={t("home.previousProducts", { title: railTitle })} title={t("home.previousProducts", { title: railTitle })} className={arrowClass}>
+                  <ChevronLeft className="size-4 rtl:-scale-x-100" />
+                </button>
+                <button type="button" onClick={() => scrollBy(1)} disabled={!edges.forward} aria-label={t("home.nextProducts", { title: railTitle })} title={t("home.nextProducts", { title: railTitle })} className={arrowClass}>
+                  <ChevronRight className="size-4 rtl:-scale-x-100" />
+                </button>
+              </div>
+            ) : null}
+            <button onClick={onViewAll} className={`pressable rounded-full px-3.5 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase ${dark ? "bg-white/10 text-white hover:bg-white/20" : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"}`}>{t("home.viewAll")}</button>
+          </div>
+        </div>
+        {catalogLoading ? <CatalogSkeleton dark={dark} /> : catalogError ? (
+          <div className={`mt-5 rounded-2xl border px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-white" : "border-[#f2b69e] bg-white text-[#0a285a]"}`}><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div>
+        ) : railProducts.length ? (
+          <div ref={trackRef} className="hide-scrollbar mt-5 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
+            {railProducts.map((product) => (
+              /* Four to a row from lg up, whatever the container's width, so a shelf fills its row. */
+              <div key={`${id}-${product.id}`} className="w-[172px] shrink-0 snap-start sm:w-[195px] lg:w-[calc((100%-2.25rem)/4)]">
+                <ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onDetails={() => onDetails(product)} onQuickView={() => onQuickView(product)} onAdd={(quantity) => void onAdd(product, quantity)} onBuyNow={(quantity) => void onBuyNow(product, quantity)} isAdding={isAdding} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`mt-5 rounded-2xl border border-dashed px-6 py-10 text-center ${dark ? "border-[#49658d] bg-white/5 text-[#d9e7f7]" : "border-[#b8c9dc] bg-white/55 text-[#536b8c]"}`}><Search className="mx-auto size-5" /><p className="mt-2 text-sm font-bold">{t("home.noMatches")}</p><button onClick={onViewAll} className={`mt-3 text-xs font-extrabold underline underline-offset-4 ${dark ? "ink-accent-on-dark" : "ink-accent"}`}>{t("home.showCatalog")}</button></div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 /**
@@ -348,12 +415,6 @@ export default function Home() {
   // Footer links go where they say they go: a category filter, an on-page
   // rail, or another route. Only the two links with nothing behind them yet
   // fall through to a notice.
-  const followFooterLink = (link: { key: MessageKey; query?: string; href?: string; route?: string }) => {
-    if (link.query) return selectCategory(link.query);
-    if (link.href) return document.querySelector(link.href)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    if (link.route) return window.location.assign(appPath(link.route));
-    toast(t("home.footerSoon", { link: t(link.key) }));
-  };
   const firstProduct = visibleProducts[0] ?? catalog[0];
   const openProduct = (product: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
 
@@ -442,7 +503,7 @@ export default function Home() {
         </div>
         <button onClick={openCart} aria-label={t("header.openCart")} className="glass glass-navy pressable relative grid size-10 shrink-0 place-items-center rounded-full lg:hidden"><ShoppingBag className="size-[18px]" />{itemCount ? <span className="absolute -end-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold text-white"><bdi dir="ltr">{itemCount > 99 ? "99+" : itemCount}</bdi></span> : null}</button>
       </div>
-      <div className={`container overflow-hidden transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 pb-0 opacity-0" : "max-h-20 pb-3 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
+      <div className={`container transition-all duration-300 ease-out lg:hidden ${headerCompact ? "max-h-0 overflow-hidden pb-0 opacity-0" : "max-h-20 overflow-visible pb-3 opacity-100"}`} aria-hidden={headerCompact} inert={headerCompact}><LiveSearch catalog={catalog} value={search} onChange={setSearch} onSelectProduct={openProduct} /></div>
       {/*
         Secondary bar: departments, and nothing else.
 
@@ -492,7 +553,7 @@ export default function Home() {
       isAdding={cartLoading}
     />
 
-    {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onQuickView={setQuickProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} supportCard={railSupportCards[index]} onSelectSupport={selectCategory} />)}
+    {homeRailDefinitions.slice(1).map((rail, index) => <ProductRail key={rail.id} id={rail.id} title={rail.title} description={rail.description} dark={rail.treatment === "navy"} products={rotateProducts(index)} catalogLoading={catalogLoading} catalogError={Boolean(catalogError)} saved={saved} onSave={toggleSaved} onDetails={openProduct} onQuickView={setQuickProduct} onAdd={addProduct} onBuyNow={buyProduct} isAdding={cartLoading} onViewAll={showAll} />)}
 
     <section className="container py-10 sm:py-14"><div className="mb-5 flex items-end justify-between"><div><p className="text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">{t("home.browseYourPace")}</p><h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("home.categories")}</h2></div><button onClick={showAll} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("nav.allDepartments")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="hide-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-6">{categoryRail.map((category) => <button key={category.query} onClick={() => selectCategory(category.query)} className={`pressable group min-w-[132px] rounded-2xl border p-3 text-start shadow-[0_5px_15px_rgba(10,40,90,.04)] sm:min-w-0 border-[#d5dfeb] bg-white hover:border-[#aac0da]`}><div className="grid aspect-[1.38] place-items-center rounded-xl" style={{ backgroundColor: category.color }}><span className="grid size-11 place-items-center rounded-2xl bg-white/80 text-[#0a285a] shadow-sm"><DepartmentIcon query={category.query} className="size-5" /></span></div><span className="mt-3 block text-xs font-extrabold text-[#0a285a]">{t(category.key)}</span><span className="mt-1 flex items-center text-[10px] font-bold text-[#536b8c]">{t("home.browse")} <ArrowDownRight className="ms-1 size-3 rtl:-scale-x-100" /></span></button>)}</div></section>
 
@@ -502,7 +563,7 @@ export default function Home() {
 
     <section className="container pb-10"><div className="grid overflow-hidden rounded-[1.6rem] bg-[#0a285a] text-[#fffdf9] lg:grid-cols-[1.1fr_.9fr]"><div className="relative p-7 sm:p-10"><div className="pointer-events-none absolute -bottom-24 -start-12 size-64 rounded-full border border-[#f2683a]/55" /><p className="relative text-[10px] font-extrabold tracking-[.15em] text-[#ffcc64] uppercase">{t("home.promise")}</p><h2 className="relative display-face mt-3 text-4xl leading-[.94] sm:text-5xl">{t("home.lessSearching")}<br /><em className="font-normal">{t("home.moreFinding")}</em></h2><p className="relative mt-4 max-w-md text-sm leading-6 text-[#d9e7f7]">{t("home.promiseNote")}</p></div><div className="grid grid-cols-3 divide-x divide-[#49658d] border-t border-[#49658d] lg:border-s lg:border-t-0"><div className="grid place-items-center p-5 text-center"><Truck className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{t(deliveryZone ? "home.statSaved" : "home.statChoose")}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.deliveryArea")}</p></div><div className="grid place-items-center p-5 text-center"><PackageCheck className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{catalog.length}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.statLiveItems")}</p></div><div className="grid place-items-center p-5 text-center"><ShoppingBag className="size-5 text-[#ffcc64]" /><p className="mt-2 text-lg font-extrabold">{t("home.statEasy")}</p><p className="mt-1 text-[9px] font-bold tracking-[.08em] text-[#b9cce5] uppercase">{t("home.statNativeCart")}</p></div></div></div></section>
 
-    <footer className="bg-[#0a285a] pb-24 pt-12 text-white lg:pb-7"><div className="container grid gap-9 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]"><div><FooterLogo t={t} /><p className="mt-4 max-w-xs text-sm leading-6 text-[#b9cce5]">{t("home.footerNote")}</p><button onClick={toggleLocale} className="glass glass-on-dark pressable mt-6 rounded-full px-3 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("header.language")}</button></div>{footerGroups.map((group) => <div key={group.title}><p className="text-xs font-extrabold text-white">{t(group.title)}</p>{group.links.map((link) => <button key={link.key} onClick={() => followFooterLink(link)} className="mt-3 block text-start text-xs font-medium text-[#b9cce5] hover:text-[#ffcc64]">{t(link.key)}</button>)}</div>)}</div><div className="container mt-10 flex flex-col gap-3 border-t border-[#49658d] pt-5 text-[10px] font-semibold text-[#b9cce5] sm:flex-row sm:items-center sm:justify-between"><span>{t("home.copyright", { year: new Date().getFullYear() })}</span><span>{t("home.legal")}</span></div></footer>
+    <SiteFooter />
 
     <MobileTabBar onBrowse={() => setMenuOpen(true)} />
     <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />

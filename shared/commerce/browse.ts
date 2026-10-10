@@ -74,6 +74,70 @@ export function categoryFromSlug(slug: string, categories: string[]): string {
   return categories.find((category) => categorySlug(category) === slug) ?? "all";
 }
 
+/**
+ * Every department a slug may name: NetLet's own, whether or not anything is
+ * on their shelves yet, and any product type a merchant typed.
+ *
+ * Resolving against the catalog alone is what sent `/category/home-and-kitchen`
+ * to "2 results for All products": a department with nothing in it was not a
+ * product type of anything, so the slug matched nothing and fell back to the
+ * whole shop. A department exists before its first product does.
+ */
+export function knownCategories(departmentNames: readonly string[], products: Product[]): string[] {
+  const types = products.map((product) => product.productType).filter((type): type is string => Boolean(type));
+  return Array.from(new Set([...departmentNames, ...types]));
+}
+
+/* --------------------------------------------------------------- search --- */
+
+/**
+ * The query-string key a search term travels under. Not a facet: it narrows
+ * whatever department the page is showing, and `/search` is that page for the
+ * whole catalog.
+ */
+export const SEARCH_PARAM = "q";
+
+/** Where a search for this term lands: the ordinary results page, not a model. */
+export function searchPath(term: string): string {
+  const trimmed = term.trim();
+  return trimmed ? `/search?${SEARCH_PARAM}=${encodeURIComponent(trimmed)}` : "/search";
+}
+
+/** The term in a query string, trimmed, or "". */
+export function searchTermFrom(search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  return (params.get(SEARCH_PARAM) ?? "").trim().slice(0, 200);
+}
+
+/** The query string for these filters with a search term kept beside them. */
+export function searchWithTerm(filters: BrowseFilters, term: string): string {
+  const query = searchFromFilters(filters);
+  const trimmed = term.trim();
+  if (!trimmed) return query;
+  const param = `${SEARCH_PARAM}=${encodeURIComponent(trimmed)}`;
+  return query ? `${query}&${param}` : `?${param}`;
+}
+
+/**
+ * Whether a product answers a search. Every word must appear somewhere in what
+ * the shopper can see about it — title, description, type,
+ * seller, tags, a variant's name — so "brass lamp" does not match every brass
+ * thing and every lamp.
+ */
+export function matchesSearch(product: Product, term: string): boolean {
+  const words = term.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const haystack = [
+    product.title,
+    product.description,
+    product.productType,
+    product.vendor,
+    ...product.tags,
+    ...product.variants.map((variant) => variant.title),
+  ].join(" ").toLowerCase();
+  return words.every((word) => haystack.includes(word));
+}
+
 /* -------------------------------------------------------------- helpers --- */
 
 function priceOf(product: Product): number {

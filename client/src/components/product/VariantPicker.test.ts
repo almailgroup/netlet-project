@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageIndexForVariant } from "./VariantPicker";
+import { choiceMode, imageIndexForVariant } from "./VariantPicker";
 import type { Product, ProductVariant } from "@shared/commerce/types";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
@@ -55,5 +55,34 @@ describe("imageIndexForVariant", () => {
     const v = variant("v1", []);
     expect(imageIndexForVariant(product(["anything"], [v]), v)).toBeNull();
     expect(imageIndexForVariant(product(["anything"], []), undefined)).toBeNull();
+  });
+});
+
+describe("choiceMode", () => {
+  const titled = (id: string, title: string, options: [string, string][] = []): ProductVariant => ({ ...variant(id, options), title });
+  const withOptions = (p: Product, options: Product["options"]): Product => ({ ...p, options });
+
+  it("chooses by name when the variants carry no option values", () => {
+    expect(choiceMode(product([], [titled("a", "Green"), titled("b", "Blue")]))).toBe("titles");
+  });
+
+  it("chooses by name when the options cannot tell two variants apart, or miss one", () => {
+    const half = withOptions(product([], [titled("a", "S", [["Size", "S"]]), titled("b", "M"), titled("c", "L", [["Size", "L"]])]), [{ name: "Size", values: ["S", "L"] }]);
+    expect(choiceMode(half)).toBe("titles");
+  });
+
+  it("uses the option rows when they cover every variant once", () => {
+    const full = withOptions(product([], [titled("a", "S", [["Size", "S"]]), titled("b", "L", [["Size", "L"]])]), [{ name: "Size", values: ["S", "L"] }]);
+    expect(choiceMode(full)).toBe("options");
+  });
+
+  it("names a lone variant, and draws nothing for a lone Default", () => {
+    expect(choiceMode(product([], [titled("a", "Green")]))).toBe("single");
+    expect(choiceMode(product([], [titled("a", "Default")]))).toBe("none");
+  });
+
+  it("matches a named variant's photo by its name", () => {
+    const green = titled("a", "Green");
+    expect(imageIndexForVariant(product(["Lamp in blue", "Lamp in green"], [green]), green)).toBe(1);
   });
 });

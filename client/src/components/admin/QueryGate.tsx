@@ -22,10 +22,18 @@ type GatedQuery = {
   refetch: () => unknown;
 };
 
-export function QueryGate({ queries, children }: {
+export function QueryGate({ queries, children, audience = "staff" }: {
   /** Every query the page cannot render without. */
   queries: GatedQuery[];
   children: () => ReactNode;
+  /**
+   * Who is reading. Staff see what the server said — "column contact_email
+   * does not exist" is what tells an administrator to run the migration. A
+   * shopper is told the section could not load and offered a retry: a raw
+   * database sentence on their account page is neither theirs to act on nor
+   * NetLet's to show them. A message we wrote is shown to both.
+   */
+  audience?: "staff" | "shopper";
 }) {
   const { t } = useTranslation();
 
@@ -42,12 +50,13 @@ export function QueryGate({ queries, children }: {
      * "something went wrong" and "column contact_email does not exist", and
      * only one of those tells you to run the migration.
      */
-    const detail = failed.error?.message ?? "";
+    const raw = failed.error?.message ?? "";
+    const detail = isMessageKey(raw) || audience === "staff" ? raw : "";
     return (
       <div className="rounded-2xl border border-[#f2b69e] bg-[#fdeceb] p-5">
         <p className="flex items-center gap-2 text-sm font-extrabold text-[#8c2f22]">
           <AlertTriangle className="size-4 shrink-0" />
-          {t("admin.loadFailed")}
+          {t(audience === "shopper" ? "account.sectionFailed" : "admin.loadFailed")}
         </p>
         {detail ? (
           <p dir="auto" className="mt-2 text-[12px] leading-5 break-words text-[#8c2f22]/80">

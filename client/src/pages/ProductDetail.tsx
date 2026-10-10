@@ -45,6 +45,7 @@ import { StoreHeader } from "@/components/layout/StoreHeader";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useFeature } from "@/hooks/useFeature";
 import { useMembership } from "@/hooks/useMembership";
@@ -993,7 +994,7 @@ export default function ProductDetail() {
   const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "ink-muted hover:text-[#0a285a]"}`;
 
   return (
-    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-14">
+    <main className="min-h-screen bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} />
 
       <div className="container py-6 sm:py-8">
@@ -1183,6 +1184,8 @@ export default function ProductDetail() {
       <MobileTabBar />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
+      <div aria-hidden className="h-12 lg:h-16" />
+      <SiteFooter clearance="tall" />
     </main>
   );
 }

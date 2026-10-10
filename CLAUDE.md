@@ -356,6 +356,11 @@ holds a camera permission), shrunk to 768px in the browser and under the API's
 with a line saying where it goes, and sent only on the press. The model may
 return a few words and nothing else; they go into the field like typing.
 
+**The dropdown is a solid sheet**, not glass: the department rail read through
+its 82% white. And on a phone the home page's search row is `overflow-hidden`
+only while collapsed — it clipped the dropdown entirely at rest, which a
+screenshot showed and `elementFromPoint` confirmed.
+
 **What was heard, and the photo, are shown back before anything is searched.**
 Recognition mishears and a half-framed shot matches nothing; both are obvious
 in a preview and invisible in "no results".
@@ -404,6 +409,12 @@ white on `#f2683a` at 3.08:1 and these labels are `text-xs`, nowhere near
 large-text size, so 4.5:1 is the bar. axe passes the existing orange buttons
 only by reporting `incomplete` over the gradient, which is not the same as
 passing.
+
+**The bag never says "empty" before it knows.** `settling` is true while a
+stored bag loads or the first item is being added, and the drawer draws a
+skeleton then — it used to say "your bag is empty" to somebody who had just
+pressed Add. **Toasts sit top-centre under the header**: in the bag's bottom
+corner, "added to your cart" covered the checkout button it was confirming.
 
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
@@ -465,6 +476,12 @@ measured rather than guessed: a 226px grid card takes the full label, a 173px
 rail card takes the short one, and the check fails on any label whose
 `scrollWidth` exceeds its `clientWidth` — which is what caught the clipping a
 screenshot had already shown and no assertion had.
+
+**A product's variants can always be chosen.** The editor names variants and
+saves no option values, so `VariantPicker`, which reads options, drew nothing —
+and the bag then named "Green" for a choice nobody had been offered.
+`choiceMode` picks options when they tell every variant apart, names
+otherwise, a line for one named variant, and nothing for a lone "Default".
 
 `QuantityStepper` stays the always-visible control for the product page and
 Quick View, where the product is the subject rather than one card in a rail.
@@ -561,6 +578,17 @@ tab, no copy address, nothing in the status bar. They carry `href` now.
 The in-stock line was `#28a745` on pearl — 3.13:1, the same failure the orange
 has. It is `#2f5d33` at 7.68:1, a darkening rather than a new hue. The refusal
 red beside it computes 4.58:1 and was left alone.
+
+**A shelf's arrows scroll it, or are not drawn.** They were white chevrons on
+the light `.glass` disc — blank circles on the navy shelves — and pressing them
+toasted "more controls soon". They scroll a screenful at a time, appear only
+when there is something off-screen, and wear `.glass-on-dark` on navy.
+
+**`SiteFooter` is the one footer** — Home, departments and search, the product
+page and Saved; checkout has none, for the bare-header reason. Every entry is an
+anchor that goes somewhere: "Returns", "Contact" and "Our story" used to toast
+"coming soon". The account page scrolls to `#orders`/`#help` once its sections
+exist, since the browser's own jump happens before the session has loaded.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
@@ -2218,6 +2246,13 @@ its own (`${`%${term}%`}`) — so it read `lower(title) like ${` and never saw t
 drafts included, while the test passed. It scans templates properly now, and
 its first test is that it reads a nested one whole.
 
+**A draft's address follows its name.** Every product starts as "New
+product", so every one was `new-product-N` for ever. `updateProduct` re-makes
+the handle from the title while the product is a draft or in review — nothing
+public links to it yet. A published product keeps its address until old
+addresses can redirect, which needs a table and so waits on an approved
+migration.
+
 **Every admin page has three states, not two.** `QueryGate` renders loading,
 failed, or ready; a failed query shows what the server actually said and
 offers to retry. Before it, every page branched on `isLoading` and then read
@@ -2355,9 +2390,24 @@ source of truth and the page reads back from it. Option facets are namespaced
 `opt.<name>` so a merchant option called "sort" cannot collide.
 
 Slugs are lossy on purpose — "Home & Kitchen" becomes `home-and-kitchen` — and
-`categoryFromSlug` resolves them back against the live catalog rather than
-trying to invert them. An unrecognised slug falls back to the whole catalog,
-never to an empty page.
+`categoryFromSlug` resolves them back rather than trying to invert them,
+against **`knownCategories`: NetLet's departments and the catalog's product
+types together**. Against the catalog alone, a department with nothing on its
+shelf matched nothing and `/category/home-and-kitchen` read "2 results for All
+products"; a department exists before its first product does, so it shows its
+own name and an empty state. A slug matching neither still falls back to the
+whole catalog. The heading is the department's name with the count under it —
+"No results for Beauty" read as a failed search.
+
+**Enter in the search box opens `/search?q=`, which is this page.** The term is
+`q` beside the facets (`searchWithTerm`), a department page honours it too, and
+`matchesSearch` — every word somewhere in what the shopper can see — is the one
+rule the grid and the dropdown's suggestions share, so a suggestion is never
+something "See all results" leaves out. Enter used to send the words to the
+model, so the commonest act on a shop's search box depended on a third party
+and failed to "AI search is temporarily unavailable" with no results at all.
+"Refine with NetLet AI" is the quieter button under the results now, lands on
+the same page, and when it fails says so and leaves the standard results.
 
 ## Languages
 
@@ -2475,6 +2525,18 @@ beside it already had a pattern of its own; both use one now, capped at 100.
 A zod schema looser than its column moves the refusal from the router to the
 driver, and a driver refusal is always the wrong answer. That is what makes the
 shape of the column part of the contract rather than an implementation detail.
+
+**Queries stream; mutations batch.** The account page asks nineteen things at
+once, and an ordinary tRPC batch answers when its slowest procedure does — one
+slow or failing query held Orders, Messages, Reviews and the rest on
+"Loading…" together. `main.tsx` sends queries through `httpBatchStreamLink`
+(each answer as it is ready) and mutations through `httpBatchLink`, because
+sign-in sets a cookie and a header cannot follow a started stream. Compression
+skips `trpc-accept: application/jsonl`, since gzip without a flush buffers the
+stream back into one answer. Measured: a procedure slowed to 4s held the orders
+to 4.97s before, 2.5s after. A client error is never retried, anything else
+once, and no request waits more than 25s. `QueryGate audience="shopper"` shows a
+shopper a sentence rather than the database's.
 
 **A NUL byte is refused before any router sees it.** Postgres `text` cannot hold
 `\u0000`, so every free-text field in the API — a review's reason, a wishlist's

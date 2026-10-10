@@ -9,6 +9,11 @@
  * list is a thing you can bookmark, share and go back to. The sidebar's facets
  * are derived from the products on the page, so they describe this catalog
  * rather than an assumed one.
+ *
+ * It is also the search results page. `/search?q=lamp` is the whole catalog
+ * narrowed by a term, and a department page takes the same `q`, so pressing
+ * Enter in the header lands on the layout every department already has —
+ * filters, sort, the empty state — rather than on a model's answer.
  */
 import { useBuyNow } from "@/hooks/useBuyNow";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
@@ -17,6 +22,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { SiteFooter } from "@/components/layout/SiteFooter";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { appPath } from "@/lib/basePath";
@@ -30,6 +36,10 @@ import {
   browse,
   categoryFromSlug,
   categorySlug,
+  knownCategories,
+  matchesSearch,
+  searchTermFrom,
+  searchWithTerm,
   EMPTY_FILTERS,
   facetsFor,
   filtersFromSearch,
@@ -40,6 +50,7 @@ import {
   type BrowseSort,
 } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
+import { DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -59,6 +70,7 @@ const SORT_LABELS: Record<BrowseSort, MessageKey> = {
 
 export default function Category() {
   const [, params] = useRoute("/category/:slug");
+  const [onSearchPage] = useRoute("/search");
   const [location, navigate] = useLocation();
   const { t } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
@@ -70,16 +82,20 @@ export default function Category() {
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   useOverlay(sheetOpen, () => setSheetOpen(false));
 
-  const slug = params?.slug ?? "all";
+  const slug = onSearchPage ? "all" : params?.slug ?? "all";
+  const basePath = onSearchPage ? "/search" : `/category/${slug}`;
 
   // wouter's `location` is the path only, so the query string is read from the
   // browser. Keyed off `location` as well so a navigation that only changes the
   // query still re-reads it.
   const [queryString, setQueryString] = useState(() => window.location.search);
   useEffect(() => { setQueryString(window.location.search); }, [location]);
+  /* What the URL searched for; the header field starts from it and Enter writes it back. */
+  const term = searchTermFrom(queryString);
+  useEffect(() => { setSearch(term); }, [term]);
 
   const categories = useMemo(
-    () => Array.from(new Set(catalog.map(product => product.productType).filter((type): type is string => Boolean(type)))),
+    () => knownCategories(DEPARTMENTS.map(department => department.name), catalog),
     [catalog],
   );
   const category = categoryFromSlug(slug, categories);
@@ -97,19 +113,21 @@ export default function Category() {
 
   const results = useMemo(() => {
     const matched = browse(catalog, filters);
-    const term = search.trim().toLowerCase();
-    if (!term) return matched;
-    return matched.filter(product =>
-      [product.title, product.description, product.productType, product.vendor, ...product.tags]
-        .join(" ").toLowerCase().includes(term));
+    const words = search.trim();
+    return words ? matched.filter(product => matchesSearch(product, words)) : matched;
   }, [catalog, filters, search]);
 
   // Translated where NetLet knows the department, shown as the merchant typed
   // it otherwise — a product type is their words, not ours.
   const translatedName = category === "all" ? null : categoryMessageKey(category);
-  const title = category === "all"
+  const departmentName = category === "all"
     ? t("browse.allProducts")
     : translatedName ? t(translatedName) : category;
+  /* A search reads as what was searched for, in the department it was searched in. */
+  const searched = search.trim();
+  const title = searched
+    ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
+    : departmentName;
 
   usePageMeta(privatePageMeta(title));
 
@@ -119,8 +137,9 @@ export default function Category() {
   /** Writes the filters into the URL, which is the only place they live. */
   const setFilters = (patch: Partial<BrowseFilters>) => {
     const next = { ...filters, ...patch };
-    navigate(`/category/${slug}${searchFromFilters(next)}`, { replace: true });
-    setQueryString(searchFromFilters(next));
+    const query = searchWithTerm(next, term);
+    navigate(`${basePath}${query}`, { replace: true });
+    setQueryString(query);
   };
 
   const selectCategory = (nextCategory: string) => {
@@ -129,13 +148,17 @@ export default function Category() {
     // shopper on an empty page they did not ask for.
     setSheetOpen(false);
     const target = nextCategory === "all" ? "all" : categorySlug(nextCategory);
-    navigate(`/category/${target}${searchFromFilters({ ...EMPTY_FILTERS, sort: filters.sort })}`);
-    setQueryString(searchFromFilters({ ...EMPTY_FILTERS, sort: filters.sort }));
+    /* The search term survives a change of department; the facets do not. */
+    const query = searchWithTerm({ ...EMPTY_FILTERS, sort: filters.sort }, term);
+    navigate(`/category/${target}${query}`);
+    setQueryString(query);
   };
 
+  /* Clears the facets and keeps what was searched for: "Clear all" sits beside the filters, not the search box. */
   const clearAll = () => {
-    navigate(`/category/${slug}`, { replace: true });
-    setQueryString("");
+    const query = searchWithTerm(EMPTY_FILTERS, term);
+    navigate(`${basePath}${query}`, { replace: true });
+    setQueryString(query);
   };
 
   const openProduct = (product: Product) =>
@@ -202,14 +225,14 @@ export default function Category() {
   );
 
   return (
-    <main className="min-h-screen bg-background pb-40 text-[#0a285a] lg:pb-10">
+    <main className="min-h-screen bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div className="container pt-4 sm:pt-6">
         <nav className="flex items-center gap-1.5 text-[12px] ink-muted" aria-label={t("nav.breadcrumb")}>
           <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
           <ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
-          <span className="text-[#404553]">{title}</span>
+          <span className="text-[#404553]">{onSearchPage ? t("browse.searchCrumb") : departmentName}</span>
         </nav>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
@@ -223,13 +246,18 @@ export default function Category() {
 
           <section id="main" aria-label={t("browse.resultsRegion")}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-[15px] font-extrabold text-[#0a285a]" aria-live="polite">
-                {isLoading || error ? " " : results.length === 0
-                  ? t("browse.resultsNone", { name: title })
-                  : results.length === 1
-                    ? t("browse.resultOne", { name: title })
-                    : t("browse.results", { count: results.length, name: title })}
-              </h1>
+              <div>
+                <h1 className="text-[17px] font-extrabold text-[#0a285a]">{title}</h1>
+                {/* The count beside the name rather than as the heading: "No results for Beauty"
+                    read as a search that failed, for a department that simply has nothing yet. */}
+                <p className="mt-0.5 text-[12px] font-bold ink-muted" aria-live="polite">
+                  {isLoading || error ? " " : results.length === 0
+                    ? t("browse.countNone")
+                    : results.length === 1
+                      ? t("browse.countOne")
+                      : t("browse.countMany", { count: results.length })}
+                </p>
+              </div>
 
               <label className="flex items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2 text-[12px] font-bold text-[#536b8c]">
                 <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
@@ -266,7 +294,7 @@ export default function Category() {
 
             {/* Paid placements for this department (3.3.15): a strip of their
                 own above the grid, so the grid stays the order the shopper chose. */}
-            {slug !== "all" ? (
+            {slug !== "all" && !searched ? (
               <SponsoredShelf
                 slot="department"
                 departmentSlug={slug}
@@ -332,17 +360,18 @@ export default function Category() {
               <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
                 <PackageOpen className="mx-auto size-7 ink-muted" aria-hidden />
                 <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">
-                  {activeCount || search ? t("browse.empty") : t("browse.emptyCategory")}
+                  {activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
                 </h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">
-                  {activeCount || search ? t("browse.emptyNote") : t("browse.emptyCategoryNote")}
+                  {activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
                 </p>
                 {activeCount ? (
                   <button onClick={clearAll} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
                     {t("browse.clearAll")}
                   </button>
                 ) : (
-                  <button onClick={() => selectCategory("all")} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
+                  /* Everything means everything: the search term goes as well. */
+                  <button onClick={() => { setSheetOpen(false); navigate("/category/all"); setQueryString(""); }} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
                     {t("browse.browseEverything")}
                   </button>
                 )}
@@ -398,6 +427,8 @@ export default function Category() {
       ) : null}
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />
+      <div aria-hidden className="h-12 lg:h-16" />
+      <SiteFooter clearance="tall" />
     </main>
   );
 }

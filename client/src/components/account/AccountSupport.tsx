@@ -94,7 +94,7 @@ export function AccountSupport() {
 
       <OtherChannels reference={reference} />
 
-      <QueryGate queries={[mine]}>
+      <QueryGate audience="shopper" queries={[mine]}>
         {() => {
           const rows = mine.data ?? [];
           if (rows.length === 0) return <p className="text-[12px] ink-muted">{t("support.none")}</p>;
@@ -138,7 +138,7 @@ function Thread({ id }: { id: number }) {
 
   return (
     <div className="border-t border-[#eef1f6] px-4 py-3">
-      <QueryGate queries={[thread]}>
+      <QueryGate audience="shopper" queries={[thread]}>
         {() => {
           const data = thread.data!;
           return (

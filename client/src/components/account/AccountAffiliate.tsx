@@ -42,7 +42,7 @@ export function AccountAffiliate() {
   const on = useFeature("affiliates");
 
   return (
-    <QueryGate queries={[mine]}>
+    <QueryGate audience="shopper" queries={[mine]}>
       {() => (mine.data ? <Dashboard view={mine.data} /> : on ? <Join /> : <p className="text-sm ink-muted">{t("affiliate.switchedOff")}</p>)}
     </QueryGate>
   );

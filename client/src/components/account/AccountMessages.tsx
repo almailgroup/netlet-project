@@ -24,7 +24,7 @@ export function AccountMessages() {
   const [openId, setOpenId] = useState<number | null>(null);
 
   return (
-    <QueryGate queries={[list]}>
+    <QueryGate audience="shopper" queries={[list]}>
       {() => {
         const rows = list.data ?? [];
         if (rows.length === 0) {
@@ -107,7 +107,7 @@ function ShopperThread({ conversationId }: { conversationId: number }) {
   };
 
   return (
-    <QueryGate queries={[thread]}>
+    <QueryGate audience="shopper" queries={[thread]}>
       {() => {
         const data = thread.data;
         if (!data) return null;

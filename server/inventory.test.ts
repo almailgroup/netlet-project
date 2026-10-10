@@ -230,6 +230,23 @@ describe("creating", () => {
     await expect(inv.createProduct(ownerActor(), { vendorId: ids.other, title: "Not mine" }))
       .rejects.toThrow("FORBIDDEN:product.create");
   });
+
+  /* Every product starts as "New product", so without this every one was /products/new-product-N. */
+  it("re-makes a draft's address from its new name, and leaves a published one where it is", async () => {
+    const first = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "New product" });
+    const second = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "New product" });
+    expect([first.handle, second.handle]).toEqual(["new-product", "new-product-2"]);
+
+    const renamed = await inv.updateProduct(ownerActor(), first.id, { title: "Brass Floor Lamp" });
+    expect(renamed.handle).toBe("brass-floor-lamp");
+    /* The same name again, or a description edit, keeps it. */
+    expect((await inv.updateProduct(ownerActor(), first.id, { title: "Brass Floor Lamp", description: "Tall." })).handle).toBe("brass-floor-lamp");
+    /* Two drafts given one name do not collide. */
+    expect((await inv.updateProduct(ownerActor(), second.id, { title: "Brass Floor Lamp" })).handle).toBe("brass-floor-lamp-2");
+
+    await db.update(products).set({ status: "published" }).where(eq(products.id, first.id));
+    expect((await inv.updateProduct(ownerActor(), first.id, { title: "Copper Floor Lamp" })).handle).toBe("brass-floor-lamp");
+  });
 });
 
 /*

@@ -41,6 +41,13 @@ type CartContextValue = {
   cart: Cart | null;
   isOpen: boolean;
   loading: boolean;
+  /**
+   * The bag is on its way and its contents are not known yet — a stored bag
+   * still loading, or the first item being added. The drawer said "your bag is
+   * empty" in that gap, which is the one thing a shopper who just pressed Add
+   * cannot be told.
+   */
+  settling: boolean;
   itemCount: number;
   openCart: () => void;
   closeCart: () => void;
@@ -74,6 +81,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  /* A stored bag still on its way from the server: not empty, not yet known. */
+  const [hydrating, setHydrating] = useState(() => readStoredCartId() !== null);
 
   const utils = trpc.useUtils();
   const { isAuthenticated } = useAuth();
@@ -102,6 +111,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!cartId) {
       setCart(null);
+      setHydrating(false);
       return;
     }
     let cancelled = false;
@@ -123,7 +133,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCartId(null);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setHydrating(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -235,11 +248,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.location.assign(appPath(cart.checkoutUrl));
   }, [cart]);
 
+  const settling = hydrating || (loading && !cart?.items.length);
+
   const value = useMemo<CartContextValue>(
     () => ({
       cart,
       isOpen,
       loading,
+      settling,
       itemCount,
       openCart,
       closeCart,
@@ -254,6 +270,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       cart,
       isOpen,
       loading,
+      settling,
       itemCount,
       openCart,
       closeCart,

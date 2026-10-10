@@ -2,9 +2,11 @@ import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { PhotoSearchPanel, showSearchModes, VoiceSearchPanel } from "@/components/search/SearchModes";
-import { Camera, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
+import { ArrowRight, Camera, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
+import { matchesSearch, searchPath } from "@shared/commerce/browse";
 
 /**
  * What the placeholder suggests searching for, taken from the shelf.
@@ -66,9 +68,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   }, [mobilePreview, onChange, value]);
 
   const suggestions = useMemo(() => {
-    const base = searchTerm
-      ? catalog.filter(product => [product.title, product.description, product.productType, product.vendor, ...product.tags].join(" ").toLowerCase().includes(searchTerm))
-      : catalog;
+    /* The results page's own rule, so a suggestion is never something "See all" then leaves out. */
+    const base = searchTerm ? catalog.filter(product => matchesSearch(product, searchTerm)) : catalog;
     return base.slice(0, 4);
   }, [catalog, searchTerm]);
 
@@ -84,6 +85,29 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
     setFocused(false);
   };
 
+  const [, navigate] = useLocation();
+
+  /**
+   * Enter opens the ordinary results page — the department layout, with its
+   * filters and sort — for whatever is typed. It used to send the words to the
+   * model instead, so the most common act on a shop's search box depended on a
+   * third party being up, and when it was not the shopper got an apology and
+   * no results at all.
+   */
+  const openResults = (query: string) => {
+    const term = query.trim();
+    if (!term) return;
+    setFocused(false);
+    field.current?.blur();
+    navigate(searchPath(term));
+  };
+
+  /**
+   * The model's version of the request, as an option rather than the default.
+   * Whatever it says, the shopper lands on the same results page; when it is
+   * down they are told so and taken to the standard results for what they
+   * typed, rather than left in the dropdown with nothing.
+   */
   const refineQuery = async () => {
     if (value.trim().length < 2 || refine.isPending) return;
     try {
@@ -91,7 +115,9 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
         throw new Error("Development-only AI search outage simulation");
       }
       const result = await refine.mutateAsync({ query: value.trim(), catalogTitles: catalog.map(product => product.title).slice(0, 24) });
-      applySearch(result.query);
+      const refined = result.query.trim() || value.trim();
+      applySearch(refined);
+      openResults(refined);
     } catch {
       setRefineMessage(t("header.aiUnavailable"));
     }
@@ -100,7 +126,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   // Same behaviour as pressing Enter, so the button and the keyboard agree.
   const submitSearch = () => {
     if (activeIndex >= 0 && suggestions[activeIndex]) selectSuggestion(suggestions[activeIndex]);
-    else void refineQuery();
+    else openResults(value);
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -109,8 +135,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
     if (event.key === "Escape") { setFocused(false); event.currentTarget.blur(); }
     if (event.key === "Enter") {
       event.preventDefault();
-      if (activeIndex >= 0 && suggestions[activeIndex]) selectSuggestion(suggestions[activeIndex]);
-      else void refineQuery();
+      submitSearch();
     }
   };
 
@@ -118,7 +143,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   return (
     <div className="relative ms-auto w-full min-w-0 flex-1 lg:ms-0">
       <label className="glass-field group flex h-11 items-center rounded-full py-1 ps-5 pe-1">
-        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 140)} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} role="combobox" aria-autocomplete="list" aria-expanded={showPanel} aria-controls="netlet-search-suggestions" className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
+        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 140)} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} role="combobox" aria-autocomplete="list" aria-expanded={showPanel && suggestions.length > 0} aria-controls={showPanel && suggestions.length > 0 ? "netlet-search-suggestions" : undefined} className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
         {/*
           Voice and camera stand where the clear button stands, because the two
           are never wanted at once: you speak or point *instead* of typing, and
@@ -152,7 +177,45 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
         ) : null}
         <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={submitSearch} aria-label={t("header.searchSubmit")} className="glass glass-navy pressable ms-1.5 grid size-9 shrink-0 place-items-center rounded-full"><Search className="size-[17px]" /></button>
       </label>
-      {showPanel && <div id="netlet-search-suggestions" role="listbox" className="glass absolute inset-x-0 top-[calc(100%+.5rem)] z-50 w-full overflow-hidden rounded-2xl p-2 !bg-[rgba(255,253,249,.82)] shadow-[0_18px_45px_rgba(10,40,90,.18)]"><div className="type-label flex items-center justify-between px-3 pb-2 pt-1 text-[#536b8c]"><span>{t(value ? "header.matchingCatalog" : "header.popularSearches")}</span><span className="flex items-center gap-1 ink-accent"><Sparkles className="size-3" /> {t("header.searchBrand")}</span></div>{refineMessage && <div className="type-label mx-1 mb-2 rounded-xl bg-[#fff7e3] px-3 py-2 text-[#705523]">{refineMessage}</div>}{suggestions.length ? <div>{suggestions.map((product, index) => <button key={product.id} role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#e7edf5]" : "hover:bg-[#f3f2ed]"}`}><Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} /><span className="min-w-0 flex-1"><span className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType || t("header.netletFind")}</span></span><CornerDownLeft className="size-4 ink-muted" /></button>)}</div> : <div className="type-body px-3 py-4 text-center text-[#536b8c]">{t(refineMessage ? "header.keepBrowsingSearch" : "header.noMatchYet")}</div>}{value.trim().length >= 2 && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="glass glass-navy pressable type-control mt-2 flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 disabled:opacity-60">{refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}{t(refine.isPending ? "header.refining" : "header.refineWithAi")}</button>}</div>}
+      {/*
+        A solid sheet, not glass: the department rail sat behind it and read
+        through the 82% white, so the suggestions shared their background with a
+        row of other links. Above the header's own layers, under the overlays.
+      */}
+      {showPanel && (
+        <div className="absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] w-full overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-2 shadow-[0_18px_45px_rgba(10,40,90,.18)]">
+          <div className="type-label flex items-center justify-between px-3 pb-2 pt-1 text-[#536b8c]">
+            <span>{t(value ? "header.matchingCatalog" : "header.popularSearches")}</span>
+          </div>
+          {refineMessage && <div role="status" className="type-label mx-1 mb-2 rounded-xl bg-[#fff7e3] px-3 py-2 text-[#705523]">{refineMessage}</div>}
+          {suggestions.length ? (
+            <div id="netlet-search-suggestions" role="listbox" aria-label={t("header.matchingCatalog")}>
+              {suggestions.map((product, index) => (
+                <button key={product.id} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#e7edf5]" : "hover:bg-[#f3f2ed]"}`}>
+                  <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
+                  <span className="min-w-0 flex-1"><span className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType || t("header.netletFind")}</span></span>
+                  <CornerDownLeft className="size-4 ink-muted" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="type-body px-3 py-4 text-center text-[#536b8c]">{t("header.noMatchYet")}</div>
+          )}
+          {value.trim() ? (
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#f3f2ed]">
+              <span className="min-w-0 truncate">{t("header.seeAllResults", { query: value.trim() })}</span>
+              <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
+            </button>
+          ) : null}
+          {/* Optional, and quieter than the results it sits under. */}
+          {value.trim().length >= 2 && (
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f3f2ed] disabled:opacity-60">
+              {refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 ink-accent" />}
+              {t(refine.isPending ? "header.refining" : "header.refineWithAi")}
+            </button>
+          )}
+        </div>
+      )}
       <VoiceSearchPanel
         open={voiceOpen}
         onClose={() => setVoiceOpen(false)}

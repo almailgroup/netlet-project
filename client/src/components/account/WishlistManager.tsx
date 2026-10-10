@@ -58,7 +58,7 @@ export function WishlistManager() {
 
       <PhoneCard current={phone.data ?? null} onSaved={() => void phone.refetch()} />
 
-      <QueryGate queries={[lists]}>
+      <QueryGate audience="shopper" queries={[lists]}>
         {() => (
           <>
             {(lists.data ?? []).length === 0 ? (
@@ -350,7 +350,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
         <X className="size-3.5" aria-hidden />{t("wish.back")}
       </button>
 
-      <QueryGate queries={[detail]}>
+      <QueryGate audience="shopper" queries={[detail]}>
         {() => (
           <>
             <ShownAs listId={listId} current={detail.data?.list.ownerName ?? null} onSaved={() => void detail.refetch()} />

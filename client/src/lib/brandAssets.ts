@@ -17,10 +17,3 @@ export const footerLogoImage = appPath("/brand/netlet-logo-white.png");
 export const heroImage = appPath("/brand/hero.svg");
 
 /** Placeholder QR for the app-download panel: reads as a code, decodes to nothing. */
-
-/** Artwork for the home-page rail support cards, in tech / home / style order. */
-export const collectionImages = [
-  appPath("/brand/collection-tech.svg"),
-  appPath("/brand/collection-home.svg"),
-  appPath("/brand/collection-style.svg"),
-];

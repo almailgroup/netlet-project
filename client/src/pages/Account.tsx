@@ -32,7 +32,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { DEMO_MODE } from "@/lib/demoMode";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -68,6 +68,17 @@ export default function Account() {
   const [signingOut, setSigningOut] = useState(false);
   const { t } = useTranslation();
   const { user, loading, isAuthenticated, logout } = useAuth();
+  /*
+   * A link to one section — the footer's "Your orders", "Help from NetLet" —
+   * lands on it. The browser's own jump happens before the sections exist,
+   * since they wait for the session, so it is done again once they do.
+   */
+  const ready = !loading && isAuthenticated && Boolean(user);
+  useEffect(() => {
+    if (!ready || !window.location.hash) return;
+    const target = document.getElementById(decodeURIComponent(window.location.hash.slice(1)));
+    if (target) window.requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+  }, [ready]);
   /*
    * Whether this account also sells (3.4.17). Asked of the server rather than
    * inferred from anything the client holds, cached hard because it only

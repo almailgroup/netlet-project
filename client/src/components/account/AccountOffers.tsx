@@ -35,7 +35,7 @@ export function AccountOffers() {
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
   return (
-    <QueryGate queries={[list]}>
+    <QueryGate audience="shopper" queries={[list]}>
       {() => {
         const rows = list.data ?? [];
         if (!rows.length) {

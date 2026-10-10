@@ -385,9 +385,14 @@ function windowFor(request: PageRequest, total: number) {
 
 /* --------------------------------------------------------------- writing --- */
 
+/** The readable part of a handle: the title, lower-cased, hyphenated, ASCII. */
+function handleBase(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 150) || "product";
+}
+
 /** Slug from a title, deduplicated against what already exists. */
 async function uniqueHandle(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, title: string): Promise<string> {
-  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 150) || "product";
+  const base = handleBase(title);
   const taken = await db.select({ handle: products.handle }).from(products).where(sql`${products.handle} like ${base + "%"}`);
   if (!taken.some(row => row.handle === base)) return base;
   for (let suffix = 2; ; suffix++) {
@@ -623,7 +628,26 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
   const row = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
-  await db.update(products).set(patch).where(eq(products.id, productId));
+
+  /*
+   * A product's address follows its name until anybody can see it. Every
+   * product starts as "New product", so every one was `new-product`,
+   * `new-product-2`… for ever, because the handle was chosen at creation and
+   * never again. A draft or a product in review has no public page and no
+   * link anybody has shared, so its handle is re-made from the new title on
+   * the save that renames it. A published one keeps its address here: moving
+   * it needs the old one to redirect, which is a table of its own.
+   */
+  const renamed = patch.title !== undefined && patch.title.trim() !== row.title.trim();
+  const base = renamed ? handleBase(patch.title!) : null;
+  const keepsHandle = !base || row.status === "published" || row.handle === base || new RegExp(`^${base}-[a-z0-9]+$`).test(row.handle);
+  if (keepsHandle) {
+    await db.update(products).set(patch).where(eq(products.id, productId));
+  } else {
+    await withFreeHandle(async attempt => db.update(products)
+      .set({ ...patch, handle: await uniqueHandle(db, handleSeed(patch.title!, attempt)) })
+      .where(eq(products.id, productId)));
+  }
   return getProduct(actor, productId);
 }
 

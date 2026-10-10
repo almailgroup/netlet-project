@@ -70,7 +70,7 @@ export function AccountOrders() {
   const list = trpc.orders.list.useQuery({ page });
 
   return (
-    <QueryGate queries={[list]}>
+    <QueryGate audience="shopper" queries={[list]}>
       {() => {
         const data = list.data;
         if (!data || data.total === 0) return <EmptyOrders />;
@@ -160,7 +160,7 @@ function OrderLines({ reference }: { reference: string }) {
   const formatDate = useDateFormat();
 
   return (
-    <QueryGate queries={[detail]}>
+    <QueryGate audience="shopper" queries={[detail]}>
       {() => {
         const data = detail.data;
         if (!data) return <p className="text-sm ink-muted">{t("orders.detailMissing")}</p>;

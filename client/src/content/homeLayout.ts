@@ -46,57 +46,6 @@ export const editorialUpdates = [
  * footer lands on the same filtered view as "Electronics" in the header rail
  * instead of raising a "coming soon" toast.
  */
-export const footerGroups = [
-  {
-    title: "footer.categories",
-    links: [
-      { key: "category.electronics", query: "Electronics" },
-      { key: "category.homeKitchen", query: "Home & Kitchen" },
-      { key: "category.beauty", query: "Beauty" },
-      { key: "category.style", query: "Style" },
-      { key: "category.grocery", query: "Grocery" },
-    ],
-  },
-  {
-    title: "footer.shopping",
-    links: [
-      { key: "footer.allProducts", query: "All" },
-      { key: "footer.newArrivals", href: "#newest" },
-      { key: "footer.bestsellers", href: "#bestsellers" },
-      { key: "footer.savedItems", route: "/saved" },
-    ],
-  },
-  {
-    title: "footer.service",
-    links: [
-      { key: "footer.delivery", route: "/checkout" },
-      { key: "footer.returns" },
-      { key: "footer.nativeCheckout", route: "/checkout" },
-      { key: "footer.contact" },
-    ],
-  },
-  {
-    title: "footer.netlet",
-    links: [
-      { key: "footer.ourStory" },
-      /* Had no route at all until self-registration landed (3.3.1), which
-         made it the dead control this codebase keeps warning about: a link
-         that reads like an offer and answers a press with nothing. */
-      { key: "footer.sellWithUs", route: "/sell" },
-      { key: "footer.kuwaitDelivery", route: "/checkout" },
-      { key: "footer.account", route: "/account" },
-    ],
-  },
-] as const satisfies readonly {
-  title: MessageKey;
-  links: readonly { key: MessageKey; query?: string; href?: string; route?: string }[];
-}[];
-
-export const railSupportCardContent = [
-  { eyebrow: "support.mornings.eyebrow", title: "support.mornings.title", category: "Home & Kitchen" },
-  { eyebrow: "support.tech.eyebrow", title: "support.tech.title", category: "Electronics" },
-  { eyebrow: "support.everyday.eyebrow", title: "support.everyday.title", category: "All" },
-] as const satisfies readonly { eyebrow: MessageKey; title: MessageKey; category: string }[];
 
 /**
  * The message key for a merchant's department name, when NetLet has one.

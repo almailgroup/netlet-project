@@ -41,7 +41,7 @@ export function AccountSubscriptions() {
   const { t } = useTranslation();
   const mine = trpc.subscriptions.mine.useQuery();
   return (
-    <QueryGate queries={[mine]}>
+    <QueryGate audience="shopper" queries={[mine]}>
       {() => {
         const rows = mine.data ?? [];
         if (rows.length === 0) return <p className="rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">{t("subscriptions.none")}</p>;
