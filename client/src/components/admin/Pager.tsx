@@ -45,6 +45,7 @@ export function Pager({ page, onPage }: { page: Page<unknown>; onPage: (next: nu
               </span>
             ) : (
               <button
+                type="button"
                 key={number}
                 onClick={() => onPage(number)}
                 aria-current={number === page.page ? "page" : undefined}
@@ -81,6 +82,7 @@ function Step({ label, disabled, onClick, children }: {
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       aria-label={label}

@@ -74,6 +74,7 @@ export function QueryGate({ queries, children, audience = "staff" }: {
           </p>
         ) : null}
         <button
+          type="button"
           onClick={() => queries.forEach(query => query.refetch())}
           className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-[#efc6bd] bg-white px-4 text-[14px] font-semibold text-[#8c2f22] hover:bg-[#fff5f3]"
         >

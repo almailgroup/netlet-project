@@ -83,6 +83,7 @@ export function ConfirmDialog({
 
         <div className="mt-6 flex flex-wrap gap-2.5">
           <button
+            type="button"
             onClick={onConfirm}
             disabled={pending}
             className={`pressable inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white transition disabled:opacity-60 ${
@@ -93,6 +94,7 @@ export function ConfirmDialog({
             {confirmLabel}
           </button>
           <button
+            type="button"
             ref={cancelRef}
             onClick={onClose}
             disabled={pending}
