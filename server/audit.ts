@@ -33,6 +33,8 @@ export type AuditAction =
   | "product.priceChange"
   | "product.create"
   | "product.delete"
+  /* A product handed from one store to another, by an administrator. */
+  | "product.move"
   | "user.setAdmin"
   | "user.sendPasswordReset"
   | "admin.signIn"

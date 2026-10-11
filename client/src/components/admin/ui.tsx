@@ -41,11 +41,19 @@ export const buttonClass = {
   quietDanger: `${buttonBase} border border-[#efc6bd] bg-white text-[#8c2f22] hover:bg-[#fdeceb]`,
 } as const;
 
-/** The page's own heading, its one line of explanation and its actions. */
-export function PageHeader({ title, description, actions, children }: {
+/**
+ * The page's own heading, its one line of explanation and its actions.
+ *
+ * `leading` sits before the heading (a store's logo) and `meta` under it (its
+ * status and address), outside the `h1`, so the heading a screen reader lists
+ * is the name and nothing else.
+ */
+export function PageHeader({ title, description, actions, leading, meta, children }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  leading?: ReactNode;
+  meta?: ReactNode;
   /** Anything that belongs above the heading, like a way back. */
   children?: ReactNode;
 }) {
@@ -53,9 +61,13 @@ export function PageHeader({ title, description, actions, children }: {
     <div className="mb-6">
       {children}
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <h1 dir="auto" className="text-[22px] leading-8 font-extrabold text-[#0a285a] sm:text-[24px]">{title}</h1>
-          {description ? <p className="mt-1 max-w-2xl text-[14px] leading-6 ink-muted">{description}</p> : null}
+        <div className="flex min-w-0 items-center gap-4">
+          {leading}
+          <div className="min-w-0">
+            <h1 dir="auto" className="text-[22px] leading-8 font-extrabold break-words text-[#0a285a] sm:text-[24px]">{title}</h1>
+            {meta ? <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px]">{meta}</div> : null}
+            {description ? <p className="mt-1 max-w-2xl text-[14px] leading-6 ink-muted">{description}</p> : null}
+          </div>
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>

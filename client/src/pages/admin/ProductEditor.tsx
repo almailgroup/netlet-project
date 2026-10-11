@@ -28,13 +28,15 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ExternalLink, Info, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, ExternalLink, Info, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
-import { Card, PageHeader, buttonClass, fieldClass } from "@/components/admin/ui";
+import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
+import { StoreAvatar } from "@/components/admin/StoreAvatar";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const REASONS = ["received", "sold", "damaged", "correction", "returned"] as const;
 
@@ -54,6 +56,12 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const utils = trpc.useUtils();
   const [, navigate] = useLocation();
   const [deleting, setDeleting] = useState(false);
+  /* Moving a product to another store (admin only): the store chosen, and
+     whether the confirmation is open. */
+  const [moveTo, setMoveTo] = useState("");
+  const [confirmMove, setConfirmMove] = useState(false);
+  const mayMove = can(actor, "product.reassign");
+  const stores = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: mayMove });
   const product = trpc.inventory.products.get.useQuery({ id: productId }, { enabled: productId > 0 });
   const categories = trpc.inventory.categories.useQuery();
 
@@ -161,6 +169,19 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onSuccess: count => { refresh(); toast.success(t("admin.stockUpdated", { count })); },
     onError: fail,
   });
+  const move = trpc.inventory.products.move.useMutation({
+    onSuccess: result => {
+      refresh();
+      setConfirmMove(false);
+      setMoveTo("");
+      void utils.inventory.vendors.list.invalidate();
+      toast.success(
+        t("admin.moved", { store: isolate(result.to.name) }),
+        result.bundlesWithdrawn > 0 ? { description: t("admin.movedBundles", { count: result.bundlesWithdrawn }) } : undefined,
+      );
+    },
+    onError: error => { setConfirmMove(false); fail(error); },
+  });
   const setCommission = trpc.inventory.products.setCommission.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
@@ -201,6 +222,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     { id: "sizes", label: "admin.sectionSizes" },
     { id: "extras", label: "admin.addons" },
     ...(mayPrice ? [{ id: "commission", label: "admin.productCommission" as MessageKey }] : []),
+    ...(mayMove ? [{ id: "store", label: "admin.sectionStore" as MessageKey }] : []),
     ...(mayDelete ? [{ id: "delete", label: "admin.deleteProduct" as MessageKey }] : []),
   ];
   const saveButton = (pending: boolean, onClick: () => void, disabled = false) => (
@@ -686,6 +708,58 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               onSave={rule => setCommission.mutate({ id: row.id, ...rule })}
             />
           ) : null}
+
+          {/* Which store sells it, and handing it to another (admin only).
+              `server/productMove.ts` decides what follows the product and
+              what stays with the store that sold it; the dialog says so
+              before anybody confirms. */}
+          {mayMove ? (() => {
+            const current = (stores.data?.rows ?? []).find(store => store.id === row.vendorId);
+            const others = (stores.data?.rows ?? []).filter(store => store.id !== row.vendorId);
+            const target = others.find(store => String(store.id) === moveTo);
+            const currentName = current?.name ?? `#${row.vendorId}`;
+            return (
+              <Card id="store" title={t("admin.sectionStore")} description={t("admin.sectionStoreNote")}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <StoreAvatar name={currentName} logoUrl={current?.logoUrl} />
+                  <div className="min-w-0 flex-1">
+                    <p dir="auto" className="truncate text-[15px] font-bold text-[#0a285a]">{currentName}</p>
+                    <Link href={`/admin/vendors/${row.vendorId}`} className="text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a] hover:underline">
+                      {t("admin.storeLink")}
+                    </Link>
+                  </div>
+                </div>
+                {others.length ? (
+                  <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#eef1f5] pt-4">
+                    <label className="block min-w-0 flex-1 basis-60">
+                      <span className="block text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.moveTo")}</span>
+                      <select value={moveTo} onChange={event => setMoveTo(event.target.value)} className={`${inputClass} mt-1.5`}>
+                        <option value="">—</option>
+                        {others.map(store => (
+                          <option key={store.id} value={store.id}>
+                            {store.name}{store.status !== "approved" ? ` — ${t(`vendorStatus.${store.status}` as MessageKey)}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="button" onClick={() => setConfirmMove(true)} disabled={!target || move.isPending} className={buttonClass.secondary}>
+                      <ArrowLeftRight className="size-4" aria-hidden />{t("admin.moveButton")}
+                    </button>
+                  </div>
+                ) : null}
+                <ConfirmDialog
+                  open={confirmMove && Boolean(target)}
+                  title={t("admin.moveTitle", { title: isolate(row.title), store: isolate(target?.name ?? "") })}
+                  body={t("admin.moveBody", { from: isolate(currentName), store: isolate(target?.name ?? "") })}
+                  confirmLabel={t("admin.moveButton")}
+                  pending={move.isPending}
+                  icon={<ArrowLeftRight className="size-5" aria-hidden />}
+                  onConfirm={() => target && move.mutate({ id: row.id, vendorId: target.id })}
+                  onClose={() => setConfirmMove(false)}
+                />
+              </Card>
+            );
+          })() : null}
 
           {/* Last, apart, and in red: the one act on this page that cannot be
               taken back. The dialog asks for the name. */}

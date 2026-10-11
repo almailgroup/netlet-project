@@ -1733,17 +1733,85 @@ export async function setProductCommission(
 
 /* --------------------------------------------------------------- vendors --- */
 
-export async function listVendors(actor: Actor, request: PageRequest = {}) {
+export const VENDOR_STATUSES = ["pending", "approved", "suspended"] as const;
+
+/**
+ * Every store, paged, with what an administrator scans the list for: how many
+ * products each has and how many of them are live, and how many people can
+ * sign in for it.
+ *
+ * Searching and the status filter happen here rather than over the loaded
+ * page, for the reason product search does: a filter over one page answers
+ * "no matches" for a store on the next. `counts` is per status over the whole
+ * table, so the filter can say how many each would show before it is pressed.
+ */
+export async function listVendors(
+  actor: Actor,
+  request: PageRequest & { query?: string; status?: (typeof VENDOR_STATUSES)[number] } = {},
+) {
   assertCan(actor, "platform.viewAll");
   const db = await getDb();
-  if (!db) return emptyPage<typeof vendors.$inferSelect>(request);
+  type Row = typeof vendors.$inferSelect & { productCount: number; liveCount: number; memberCount: number };
+  const noCounts = { all: 0, pending: 0, approved: 0, suspended: 0 };
+  if (!db) return { ...emptyPage<Row>(request), counts: noCounts };
 
-  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(vendors);
+  const term = request.query?.trim().toLowerCase();
+  const scope = and(
+    request.status ? eq(vendors.status, request.status) : undefined,
+    /* Bracketed, for the reason every `or` fragment here is. */
+    term
+      ? sql`(lower(${vendors.name}) like ${`%${term}%`} or lower(coalesce(${vendors.nameAr}, '')) like ${`%${term}%`} or ${vendors.slug} like ${`%${term}%`} or lower(coalesce(${vendors.contactEmail}, '')) like ${`%${term}%`})`
+      : undefined,
+  );
+
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(vendors).where(scope);
   const total = counted?.n ?? 0;
   const { page, pageSize, offset } = windowFor(request, total);
 
-  const rows = await db.select().from(vendors).orderBy(asc(vendors.name), asc(vendors.id)).limit(pageSize).offset(offset);
-  return { rows, total, page, pageSize };
+  const rows = await db.select().from(vendors).where(scope).orderBy(asc(vendors.name), asc(vendors.id)).limit(pageSize).offset(offset);
+  const ids = rows.map(row => row.id);
+  const [catalogue, teams, byStatus] = await Promise.all([
+    ids.length
+      ? db
+        .select({
+          vendorId: products.vendorId,
+          all: sql<number>`count(*)::int`,
+          live: sql<number>`count(*) filter (where ${products.status} = 'published')::int`,
+        })
+        .from(products)
+        .where(inArray(products.vendorId, ids))
+        .groupBy(products.vendorId)
+      : [],
+    ids.length
+      ? db
+        .select({ vendorId: vendorMembers.vendorId, n: sql<number>`count(*)::int` })
+        .from(vendorMembers)
+        .where(inArray(vendorMembers.vendorId, ids))
+        .groupBy(vendorMembers.vendorId)
+      : [],
+    db.select({ status: vendors.status, n: sql<number>`count(*)::int` }).from(vendors).groupBy(vendors.status),
+  ]);
+
+  const counts = { ...noCounts };
+  for (const entry of byStatus) {
+    counts[entry.status as keyof typeof counts] = entry.n;
+    counts.all += entry.n;
+  }
+  return {
+    rows: rows.map(row => {
+      const shelf = catalogue.find(entry => entry.vendorId === row.id);
+      return {
+        ...row,
+        productCount: shelf?.all ?? 0,
+        liveCount: shelf?.live ?? 0,
+        memberCount: teams.find(entry => entry.vendorId === row.id)?.n ?? 0,
+      };
+    }),
+    total,
+    page,
+    pageSize,
+    counts,
+  };
 }
 
 export async function setVendorCommission(actor: Actor, vendorId: number, percent: string, fixed?: string | null) {
@@ -1913,7 +1981,59 @@ export async function getVendor(actor: Actor, vendorId: number) {
   const db = await getDb();
   if (!db) return null;
   const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
-  return vendor ?? null;
+  if (!vendor) return null;
+  /* The figures the store's page opens on: what is on its shelf, what is
+     waiting for somebody, and who can sign in for it. */
+  const [[shelf], [team]] = await Promise.all([
+    db
+      .select({
+        all: sql<number>`count(*)::int`,
+        live: sql<number>`count(*) filter (where ${products.status} = 'published')::int`,
+        review: sql<number>`count(*) filter (where ${products.status} = 'pending_review')::int`,
+        drafts: sql<number>`count(*) filter (where ${products.status} = 'draft')::int`,
+      })
+      .from(products)
+      .where(eq(products.vendorId, vendorId)),
+    db.select({ n: sql<number>`count(*)::int` }).from(vendorMembers).where(eq(vendorMembers.vendorId, vendorId)),
+  ]);
+  return {
+    ...vendor,
+    stats: {
+      products: shelf?.all ?? 0,
+      live: shelf?.live ?? 0,
+      inReview: shelf?.review ?? 0,
+      drafts: shelf?.drafts ?? 0,
+      members: team?.n ?? 0,
+    },
+  };
+}
+
+/**
+ * Whether this store's products go live without review (3.3.7).
+ *
+ * It could only be set when the store was opened, so a store that earned the
+ * trust later — or lost it — needed a database client. It is the review
+ * queue's own decision moved earlier, so it needs what the review queue needs,
+ * and the trail records it as a change to the store.
+ */
+export async function setVendorAutoPublish(actor: Actor, vendorId: number, autoPublish: boolean) {
+  assertCan(actor, "product.review");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  if (!was) throw new Error("NOT_FOUND");
+  if (was.autoPublish === autoPublish) return was;
+  const [updated] = await db.update(vendors).set({ autoPublish }).where(eq(vendors.id, vendorId)).returning();
+  await recordAudit(await auditActor(actor), {
+    action: "vendor.update",
+    subjectType: "vendor",
+    subjectId: vendorId,
+    subjectLabel: updated.name,
+    vendorId,
+    before: { autoPublish: was.autoPublish },
+    after: { autoPublish },
+  });
+  return updated;
 }
 
 /**

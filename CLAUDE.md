@@ -2570,6 +2570,46 @@ Three defects the restyle turned up, each by doing rather than reading:
   grows with it — `innerHeight` came back 2382 on a 900px screen. **Measure
   against the width you asked for**, not against `clientWidth`.
 
+## Stores in the portal
+
+**A store's page is eight sections, each saving only its own fields.** It was
+four, and the first held twenty-one fields — the name beside the IBAN beside the
+discount permit beside the cash-on-delivery ceiling — with one Save that wrote
+all of them, so somebody fixing a phone number rewrote the payout account on the
+way past. `storeDetailColumns` already wrote an absent key as nothing; the page
+now sends only the section's keys, so a delivery change cannot touch the IBAN
+and the audit row names what changed. Status, auto-publish, commission and
+badges save as they change — each is one audited act.
+
+It opens on its figures (`vendors.get` carries `stats`: products, live, in
+review, drafts, who can sign in) and on what is missing, named — "Still missing:
+contact email, address" rather than a count. The discount permit's state is said
+in words (valid until, expired on, recorded with no end date, not recorded),
+because two boxes and a date are a sum somebody had to do. **Publishing without
+review is a switch there now** (`setVendorAutoPublish`, `product.review`,
+audited): it could only be set when the store was opened.
+
+**The list is searched and filtered on the server, with counts.** Name, Arabic
+name, web address or email; each status says how many stores it holds before it
+is pressed; each row carries the shelf ("4 live of 96"), the team and the rate,
+from two grouped queries for the page. Stores have a logo or initials
+(`StoreAvatar`), so twenty rows are not one block of text.
+
+**Which store a product belongs to is an administrator's to choose, and to
+change.** The new-product form always draws the store for an administrator —
+it hid itself until there were two, which is a choice nobody knows they made —
+and `?vendor=` arrives from a store's "Add a product" already chosen. The
+product list filters by store in the address (`?vendor=`), which is where a
+store's "See its products" lands. And `server/productMove.ts` hands a product
+to another store (`product.reassign`, admin-only, audited as `product.move`):
+stock, photos, reviews, saved hearts and the address go with it; the order lines
+it already sold stay with the store that sold them, because `vendor_id` and
+`vendor_net` were frozen for exactly that. Three obligations refuse it, each
+being the old store's money: a placement still running or booked, stock NetLet
+holds or expects, and a price a shopper asked for or was agreed. The old store's
+own bundles naming it are taken off the shop (NetLet's cross-store ones are
+not), and a SKU the new store already uses refuses it, as typing it would.
+
 ## Colour and contrast
 
 **The brand orange is a fill, not an ink.** `#f2683a` on a pale surface

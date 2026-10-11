@@ -392,6 +392,8 @@ function resolve(path: string, rawInput: unknown): unknown {
       };
     }
     case "inventory.products.delete":
+    case "inventory.products.move":
+    case "inventory.vendors.setAutoPublish":
       throw new Error("admin.saveFailed");
 
     /* The demo's fixtures hold no bundles, and inventing one would put a set
@@ -785,7 +787,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.get":
       return demoInventoryProducts.find(row => row.id === (input as { id: number })?.id) ?? null;
     case "inventory.vendors.list":
-      return onePage([]);
+      return { ...onePage([]), counts: { all: 0, pending: 0, approved: 0, suspended: 0 } };
     case "inventory.vendors.members":
       return [];
     /* Admin-only, like the list above: the demo actor is a vendor manager and

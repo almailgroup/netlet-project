@@ -14,6 +14,7 @@
  * database client this replaces.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { Card, Field, PageHeader, buttonClass, fieldClass } from "@/components/admin/ui";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -21,6 +22,7 @@ import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
 import { isValidIban, isValidKuwaitPhone, storeSlug } from "@shared/inventory/storeProfile";
+import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { ArrowLeft, LoaderCircle, Store } from "lucide-react";
 import { useState } from "react";
@@ -32,10 +34,7 @@ export default function AdminVendorNew() {
   return <AdminShell need={"platform.manageUsers"}>{() => <NewStore />}</AdminShell>;
 }
 
-const field =
-  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
-const area =
-  "type-body min-h-20 w-full rounded-xl border border-[#d5dfeb] bg-white p-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
+const textarea = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -62,7 +61,9 @@ const EMPTY: Draft = {
   licenceNumber: "", payoutIban: "",
   description: "", descriptionAr: "", logoUrl: "",
   ownerName: "", ownerEmail: "", ownerPassword: "", ownerRole: "owner",
-  status: "approved", commissionPercent: "10.00", commissionFixed: "", autoPublish: false,
+  /* The one constant `/sell` quotes and a new store is charged, so this page
+     cannot open a store at a rate the rest of NetLet does not know. */
+  status: "approved", commissionPercent: DEFAULT_COMMISSION_PERCENT, commissionFixed: "", autoPublish: false,
 };
 
 function NewStore() {
@@ -110,7 +111,7 @@ function NewStore() {
       name: draft.name.trim(),
       slug,
       status: draft.status,
-      commissionPercent: draft.commissionPercent || "10.00",
+      commissionPercent: draft.commissionPercent || DEFAULT_COMMISSION_PERCENT,
       commissionFixed: blank(draft.commissionFixed),
       autoPublish: draft.autoPublish,
       nameAr: blank(draft.nameAr),
@@ -136,156 +137,124 @@ function NewStore() {
 
   return (
     <>
-      <Link href="/admin/vendors" className="inline-flex items-center gap-2 text-[12px] font-bold text-[#536b8c] hover:text-[#0a285a]">
-        <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.backToVendors")}
-      </Link>
+      <PageHeader title={t("admin.openStoreButton")} description={t("admin.newStoreIntro")}>
+        <Link href="/admin/vendors" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a]">
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.backToVendors")}
+        </Link>
+      </PageHeader>
 
-      <h1 className="mt-3 text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.newStore")}</h1>
-      <p className="mt-1 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("admin.newStoreIntro")}</p>
+      <form
+        noValidate
+        onSubmit={event => { event.preventDefault(); if (ready && !create.isPending) submit(); }}
+        className="max-w-4xl space-y-5"
+      >
+        <Card step={1} title={t("admin.storeDetails")}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("admin.storeName")}>
+              <input dir="auto" value={draft.name} onChange={e => set("name", e.target.value)} required className={fieldClass} />
+            </Field>
+            <Field label={t("admin.storeNameAr")} optional>
+              <input dir="rtl" lang="ar" value={draft.nameAr} onChange={e => set("nameAr", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.storeSlug")} hint={t("admin.storeSlugHint")}>
+              <input
+                dir="ltr"
+                value={slug}
+                onChange={e => { setSlugTouched(true); set("slug", e.target.value); }}
+                autoComplete="off"
+                spellCheck={false}
+                className={fieldClass}
+              />
+            </Field>
+            <Field label={t("admin.logoUrl")} optional>
+              <input dir="ltr" type="url" inputMode="url" placeholder="https://" value={draft.logoUrl} onChange={e => set("logoUrl", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.contactEmail")}>
+              <input dir="ltr" type="email" value={draft.contactEmail} onChange={e => set("contactEmail", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.contactPhone")} error={problems.contactPhone && t(problems.contactPhone)}>
+              <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.governorate")}>
+              <select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
+                <option value="">{t("admin.notSet")}</option>
+                {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
+              </select>
+            </Field>
+            <Field label={t("admin.addressLine")}>
+              <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.licenceNumber")}>
+              <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.payoutIban")} error={problems.payoutIban && t(problems.payoutIban)}>
+              <input dir="ltr" autoComplete="off" spellCheck={false} value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.storeDescription")} optional className="sm:col-span-2">
+              <textarea dir="auto" value={draft.description} onChange={e => set("description", e.target.value)} rows={4} className={textarea} />
+            </Field>
+            <Field label={t("admin.storeDescriptionAr")} optional className="sm:col-span-2">
+              <textarea dir="rtl" lang="ar" value={draft.descriptionAr} onChange={e => set("descriptionAr", e.target.value)} rows={4} className={textarea} />
+            </Field>
+          </div>
+        </Card>
 
-      <Group title={t("admin.storeDetails")}>
-        <Labelled label={t("admin.storeName")} className="sm:col-span-2">
-          <input dir="auto" value={draft.name} onChange={e => set("name", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.storeNameAr")} className="sm:col-span-2">
-          <input dir="rtl" value={draft.nameAr} onChange={e => set("nameAr", e.target.value)} className={field} />
-        </Labelled>
+        <Card step={2} title={t("admin.ownerAccount")} description={t("admin.ownerAccountNote")}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("admin.ownerName")} optional>
+              <input dir="auto" value={draft.ownerName} onChange={e => set("ownerName", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.ownerRole")}>
+              <select value={draft.ownerRole} onChange={e => set("ownerRole", e.target.value as VendorRole)} className={fieldClass}>
+                {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
+              </select>
+            </Field>
+            <Field label={t("admin.ownerEmail")}>
+              <input dir="ltr" type="email" value={draft.ownerEmail} onChange={e => set("ownerEmail", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.ownerPassword")} hint={t("admin.ownerPasswordHint")}>
+              <input dir="ltr" type="password" autoComplete="new-password" value={draft.ownerPassword} onChange={e => set("ownerPassword", e.target.value)} className={fieldClass} />
+            </Field>
+          </div>
+        </Card>
 
-        <Labelled label={t("admin.storeSlug")} hint={t("admin.storeSlugHint")} className="sm:col-span-2">
-          <input
-            dir="ltr"
-            value={slug}
-            onChange={e => { setSlugTouched(true); set("slug", e.target.value); }}
-            className={field}
-          />
-        </Labelled>
-        <Labelled label={t("admin.logoUrl")} className="sm:col-span-2">
-          <input dir="ltr" value={draft.logoUrl} onChange={e => set("logoUrl", e.target.value)} className={field} />
-        </Labelled>
+        <Card step={3} title={t("admin.commercialTerms")}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("admin.vendorStatus")} hint={t("admin.statusHint")}>
+              <select value={draft.status} onChange={e => set("status", e.target.value as Draft["status"])} className={fieldClass}>
+                {STATUSES.map(status => <option key={status} value={status}>{t(`vendorStatus.${status}` as MessageKey)}</option>)}
+              </select>
+            </Field>
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={draft.autoPublish}
+                onChange={e => set("autoPublish", e.target.checked)}
+                className="mt-0.5 size-5 shrink-0 accent-[#0a285a]"
+              />
+              <span className="min-w-0">
+                <span className="block text-[14px] font-semibold text-[#0a285a]">{t("admin.autoPublishLabel")}</span>
+                <span className="mt-0.5 block text-[12px] leading-5 ink-muted">{t("admin.autoPublishHint")}</span>
+              </span>
+            </label>
+            <Field label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")}>
+              <input dir="ltr" inputMode="decimal" value={draft.commissionPercent} onChange={e => set("commissionPercent", e.target.value)} className={fieldClass} />
+            </Field>
+            <Field label={t("admin.commissionFixed")} optional>
+              <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.commissionFixed} onChange={e => set("commissionFixed", e.target.value)} className={fieldClass} />
+            </Field>
+          </div>
+        </Card>
 
-        <Labelled label={t("admin.contactEmail")}>
-          <input dir="ltr" type="email" value={draft.contactEmail} onChange={e => set("contactEmail", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.contactPhone")} problem={problems.contactPhone}>
-          <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={field} />
-        </Labelled>
-
-        <Labelled label={t("admin.governorate")}>
-          <select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={field}>
-            <option value="">{t("admin.notSet")}</option>
-            {kuwaitDeliveryZones.map(zone => (
-              <option key={zone.id} value={zone.id}>{zone.label}</option>
-            ))}
-          </select>
-        </Labelled>
-        <Labelled label={t("admin.addressLine")}>
-          <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={field} />
-        </Labelled>
-
-        <Labelled label={t("admin.licenceNumber")}>
-          <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.payoutIban")} problem={problems.payoutIban}>
-          <input dir="ltr" value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
-        </Labelled>
-
-        <Labelled label={t("admin.storeDescription")} className="sm:col-span-2">
-          <textarea dir="auto" value={draft.description} onChange={e => set("description", e.target.value)} className={area} />
-        </Labelled>
-        <Labelled label={t("admin.storeDescriptionAr")} className="sm:col-span-2">
-          <textarea dir="rtl" value={draft.descriptionAr} onChange={e => set("descriptionAr", e.target.value)} className={area} />
-        </Labelled>
-      </Group>
-
-      <Group title={t("admin.ownerAccount")} note={t("admin.ownerAccountNote")}>
-        <Labelled label={t("admin.ownerName")}>
-          <input dir="auto" value={draft.ownerName} onChange={e => set("ownerName", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.ownerRole")}>
-          <select value={draft.ownerRole} onChange={e => set("ownerRole", e.target.value as VendorRole)} className={field}>
-            {VENDOR_ROLES.map(role => (
-              <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>
-            ))}
-          </select>
-        </Labelled>
-        <Labelled label={t("admin.ownerEmail")}>
-          <input dir="ltr" type="email" value={draft.ownerEmail} onChange={e => set("ownerEmail", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.ownerPassword")} hint={t("admin.ownerPasswordHint")}>
-          <input
-            dir="ltr"
-            type="password"
-            autoComplete="new-password"
-            value={draft.ownerPassword}
-            onChange={e => set("ownerPassword", e.target.value)}
-            className={field}
-          />
-        </Labelled>
-      </Group>
-
-      <Group title={t("admin.commercialTerms")}>
-        <Labelled label={t("admin.vendorStatus")}>
-          <select value={draft.status} onChange={e => set("status", e.target.value as Draft["status"])} className={field}>
-            {STATUSES.map(status => (
-              <option key={status} value={status}>{t(`vendorStatus.${status}` as MessageKey)}</option>
-            ))}
-          </select>
-        </Labelled>
-        <Labelled label={t("admin.commissionPercent")}>
-          <input dir="ltr" inputMode="decimal" value={draft.commissionPercent} onChange={e => set("commissionPercent", e.target.value)} className={field} />
-        </Labelled>
-        <Labelled label={t("admin.commissionFixed")}>
-          <input dir="ltr" inputMode="decimal" value={draft.commissionFixed} onChange={e => set("commissionFixed", e.target.value)} className={field} />
-        </Labelled>
-        <label className="flex items-center gap-2.5 self-end pb-2.5">
-          <input
-            type="checkbox"
-            checked={draft.autoPublish}
-            onChange={e => set("autoPublish", e.target.checked)}
-            className="size-4 rounded border-[#d5dfeb] accent-[#0a285a]"
-          />
-          <span className="text-[12px] font-bold text-[#0a285a]">{t("admin.autoPublish")}</span>
-        </label>
-      </Group>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
-          onClick={submit}
-          disabled={!ready || create.isPending}
-          className="glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-full px-5 text-xs font-extrabold disabled:opacity-60"
-        >
-          {create.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Store className="size-4" />}
-          {t("admin.createStore")}
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={!ready || create.isPending} className={buttonClass.primary}>
+            {create.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Store className="size-4" aria-hidden />}
+            {t("admin.createStore")}
+          </button>
+          <Link href="/admin/vendors" className={buttonClass.secondary}>{t("common.cancel")}</Link>
+        </div>
+      </form>
     </>
-  );
-}
-
-function Group({ title, note, children }: { title: string; note?: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-      <h2 className="text-sm font-extrabold">{title}</h2>
-      {note ? <p className="mt-1 text-[12px] leading-5 text-[#536b8c]">{note}</p> : null}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
-    </section>
-  );
-}
-
-function Labelled({ label, hint, problem, className = "", children }: {
-  label: string;
-  hint?: string;
-  problem?: MessageKey;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  const { t } = useTranslation();
-  return (
-    <label className={`block ${className}`}>
-      <span className="text-[11px] font-extrabold text-[#0a285a]">{label}</span>
-      {hint ? <span className="mt-0.5 block text-[10px] font-semibold ink-muted">{hint}</span> : null}
-      <span className="mt-1.5 block">{children}</span>
-      {problem ? <span className="mt-1 block text-[10px] font-bold text-[#8c2f22]">{t(problem)}</span> : null}
-    </label>
   );
 }

@@ -100,6 +100,10 @@ export type Capability =
   | "vendor.setCommission"
   | "vendor.approve"
   | "product.review"
+  /* Moving a product to another store. Admin-only: a store that could take a
+     product from another — or hand its own away — would be moving stock,
+     reviews and sales history between two companies' books. */
+  | "product.reassign"
   | "platform.viewAll"
   | "platform.manageUsers"
   /* The feature switchboard (2.3). Turning a feature off for every store and
@@ -184,6 +188,7 @@ const ADMIN_ONLY: Capability[] = [
   "vendor.setCommission",
   "vendor.approve",
   "product.review",
+  "product.reassign",
   "platform.viewAll",
   // Who reaches the admin panel is decided by people who are already in it.
   // A vendor owner runs their own team — `vendor.manageMembers` — and that is

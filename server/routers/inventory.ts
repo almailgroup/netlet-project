@@ -51,6 +51,8 @@ import {
   setVendorBadges,
   setVendorCommission,
   setVendorStatus,
+  setVendorAutoPublish,
+  VENDOR_STATUSES,
   stockHistory,
   myStore,
   setProductAttributes,
@@ -80,6 +82,7 @@ import {
 import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { deleteProduct, deletionCheck } from "../productDeletion.js";
+import { moveProductToVendor } from "../productMove.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../shared/commerce/sizeGuide.js";
 
@@ -146,8 +149,13 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* An obligation the product outlives — a placement still being paid for,
        stock NetLet holds — named, so the seller knows what to undo first. */
-    if (message.startsWith("admin.deleteBlocked")) {
+    if (message.startsWith("admin.deleteBlocked") || message.startsWith("admin.moveBlocked") || message === "admin.moveSameStore") {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message });
+    }
+    /* Moving a product onto a shelf where its code is already in use: the
+       same refusal typing that code would get. */
+    if (message === "admin.skuTaken") {
+      throw new TRPCError({ code: "CONFLICT", message });
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
@@ -431,6 +439,17 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => deleteProduct(actor, input.id));
+      }),
+
+    /**
+     * Hands a product to another store (admin only). `server/productMove.ts`
+     * says what follows the product and what stays with the store that sold.
+     */
+    move: protectedProcedure
+      .input(z.object({ id: rowId, vendorId: rowId }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => moveProductToVendor(actor, input.id, input.vendorId));
       }),
 
     /**
@@ -876,6 +895,8 @@ export const inventoryRouter = router({
       .input(z.object({
         page: z.number().int().min(1).max(100_000).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
+        query: z.string().trim().max(160).optional(),
+        status: z.enum(VENDOR_STATUSES).optional(),
       }).optional())
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
@@ -887,6 +908,13 @@ export const inventoryRouter = router({
       .query(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => getVendor(actor, input.vendorId));
+      }),
+
+    setAutoPublish: protectedProcedure
+      .input(z.object({ vendorId: rowId, autoPublish: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setVendorAutoPublish(actor, input.vendorId, input.autoPublish));
       }),
 
     /**

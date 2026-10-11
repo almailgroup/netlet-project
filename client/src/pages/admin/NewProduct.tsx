@@ -46,7 +46,7 @@ import {
 import { privatePageMeta, toPreviewText } from "@shared/seo";
 import { ArrowLeft, Check, Circle, ImageOff, LoaderCircle, Star, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
 export default function AdminNewProduct() {
@@ -64,6 +64,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const { t, locale } = useTranslation();
   const money = useMoney();
   const [, navigate] = useLocation();
+  const search = useSearch();
   const utils = trpc.useUtils();
 
   const [draft, setDraft] = useState<ProductDraft>(EMPTY);
@@ -77,7 +78,9 @@ function NewProductForm({ actor }: { actor: Actor }) {
   /* What the server refused that the form could not know — a SKU another of
      the store's products already carries. Cleared as soon as it is edited. */
   const [serverErrors, setServerErrors] = useState<Partial<Record<DraftField, MessageKey>>>({});
-  const [chosenVendor, setChosenVendor] = useState("");
+  /* `?vendor=` is how a store's own page sends somebody here to add a product
+     to that store, so it arrives already chosen. */
+  const [chosenVendor, setChosenVendor] = useState(() => new URLSearchParams(search).get("vendor") ?? "");
   const [busy, setBusy] = useState<"draft" | "publish" | null>(null);
 
   const categories = trpc.inventory.categories.useQuery();
@@ -89,7 +92,10 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const setStatus = trpc.inventory.products.setStatus.useMutation();
 
   const vendorRows = vendors.data?.rows ?? [];
-  const vendorId = actor.kind === "vendor" ? actor.vendorId : Number(chosenVendor) || vendorRows[0]?.id || null;
+  /* A chosen id counts only if it is a store that exists; otherwise the first,
+     which on a fresh install is the house store the seed writes. */
+  const chosen = vendorRows.find(row => String(row.id) === chosenVendor);
+  const vendorId = actor.kind === "vendor" ? actor.vendorId : chosen?.id ?? vendorRows[0]?.id ?? null;
   const vendorName = actor.kind === "vendor" ? store.data?.name ?? null : vendorRows.find(row => row.id === vendorId)?.name ?? null;
   const mayPublish = vendorId !== null && can(actor, "product.publish", vendorId);
   const publishGoesToReview = actor.kind === "vendor" && store.data ? !store.data.autoPublish : false;
@@ -240,10 +246,18 @@ function NewProductForm({ actor }: { actor: Actor }) {
         <div className="min-w-0 space-y-5">
           <Card step={1} title={t("admin.newStepBasics")}>
             <div className="grid gap-4 sm:grid-cols-2">
-              {actor.kind === "admin" && vendorRows.length > 1 ? (
-                <Field label={t("admin.newStore")} className="sm:col-span-2">
+              {/* Always drawn for an administrator, even with one store: which
+                  store sells a product decides its commission, its delivery fee
+                  and whose discount permit governs it, and a choice that is only
+                  offered once there are two is one nobody knows they made. */}
+              {actor.kind === "admin" && vendorRows.length > 0 ? (
+                <Field label={t("admin.newStore")} hint={t("admin.newStoreHint")} className="sm:col-span-2">
                   <select value={vendorId ?? ""} onChange={event => setChosenVendor(event.target.value)} className={fieldClass}>
-                    {vendorRows.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+                    {vendorRows.map(vendor => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.name}{vendor.status !== "approved" ? ` — ${t(`vendorStatus.${vendor.status}` as MessageKey)}` : ""}
+                      </option>
+                    ))}
                   </select>
                 </Field>
               ) : null}

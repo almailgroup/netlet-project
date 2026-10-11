@@ -34,7 +34,7 @@ import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
 import { ImageOff, PackagePlus, Search, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 
 export default function AdminProducts() {
   usePageMeta(privatePageMeta("Admin"));
@@ -60,10 +60,23 @@ function ProductTable({ actor }: { actor: Actor }) {
    * narrowed list would open on a page that no longer exists.
    */
   const term = search.trim();
+  /*
+   * Which store, for an administrator. In the address rather than in state, so
+   * a store's page can link to "its products" and the link can be kept — the
+   * rule the shop's own filters follow.
+   */
+  const address = useSearch();
+  const storeFilter = actor.kind === "admin" ? new URLSearchParams(address).get("vendor") ?? "" : "";
+  const stores = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: actor.kind === "admin" });
+  const storeId = Number(storeFilter) || undefined;
   const products = trpc.inventory.products.list.useQuery(
-    { page, query: term || undefined, status: filter === "all" ? undefined : filter },
+    { page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId },
     { placeholderData: previous => previous },
   );
+  const chooseStore = (value: string) => {
+    setPage(1);
+    navigate(value ? `/admin/products?vendor=${value}` : "/admin/products", { replace: true });
+  };
 
   const rows = products.data?.rows ?? [];
   const ownVendor = actor.kind === "vendor" ? actor.vendorId : undefined;
@@ -87,7 +100,7 @@ function ProductTable({ actor }: { actor: Actor }) {
             <Link href="/admin/import" className={buttonClass.secondary}>
               <Upload className="size-4" aria-hidden />{t("admin.import")}
             </Link>
-            <Link href="/admin/products/new" className={buttonClass.primary}>
+            <Link href={storeId ? `/admin/products/new?vendor=${storeId}` : "/admin/products/new"} className={buttonClass.primary}>
               <PackagePlus className="size-4" aria-hidden />{t("admin.newProduct")}
             </Link>
           </>
@@ -106,6 +119,17 @@ function ProductTable({ actor }: { actor: Actor }) {
             className={`${fieldClass} ps-10`}
           />
         </div>
+        {actor.kind === "admin" && (stores.data?.rows.length ?? 0) > 1 ? (
+          <select
+            value={storeFilter}
+            onChange={event => chooseStore(event.target.value)}
+            aria-label={t("admin.filterStore")}
+            className={`${fieldClass} lg:w-56`}
+          >
+            <option value="">{t("admin.statusAllStores")}</option>
+            {(stores.data?.rows ?? []).map(store => <option key={store.id} value={store.id}>{store.name}</option>)}
+          </select>
+        ) : null}
         {/* A segmented control rather than a dropdown: five states read at a
             glance, and the one in force is visible without opening anything. */}
         <div role="group" aria-label={t("admin.filterStatus")} className="hide-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1">
@@ -217,7 +241,16 @@ function ProductTable({ actor }: { actor: Actor }) {
                             </div>
                           </div>
                         </td>
-                        {showVendor ? <td dir="auto" className="px-4 py-3 text-[#536b8c]">{row.vendorName ?? `#${row.vendorId}`}</td> : null}
+                        {showVendor ? (
+                          <td className="px-4 py-3">
+                            {/* The store's own page, for whoever may open it. */}
+                            {actor.kind === "admin" ? (
+                              <Link href={`/admin/vendors/${row.vendorId}`} dir="auto" className="text-[#536b8c] hover:text-[#0a285a] hover:underline">
+                                {row.vendorName ?? `#${row.vendorId}`}
+                              </Link>
+                            ) : <span dir="auto" className="text-[#536b8c]">{row.vendorName ?? `#${row.vendorId}`}</span>}
+                          </td>
+                        ) : null}
                         <td className="px-4 py-3"><StatusPill status={row.status} /></td>
                         <td className="px-4 py-3 text-end tabular-nums">
                           {stock === 0
