@@ -237,43 +237,48 @@ export async function approveApplication(
   const verdict = readyToApprove(toShared(row));
   if (!verdict.ok) throw new ApplicationError("application.incomplete");
 
-  const slug = await freeSlug(db, storeSlug(row.storeName));
+  /*
+   * One transaction, and the application is claimed first — the update whose
+   * predicate is "still submitted" — so two presses cannot both open a store.
+   * It read the status, then made the store, then marked the application, so
+   * a double click or two administrators at once gave the applicant two
+   * stores. Anything failing after the claim rolls the whole of it back,
+   * which is also what used to need a hand-written delete of the store.
+   */
+  const vendor = await db.transaction(async tx => {
+    const [claimed] = await tx
+      .update(vendorApplications)
+      .set({ status: "approved", reviewedBy: actor.userId, reviewedAt: new Date(), rejectionReason: null })
+      .where(and(eq(vendorApplications.id, applicationId), eq(vendorApplications.status, "submitted")))
+      .returning({ id: vendorApplications.id });
+    if (!claimed) throw new ApplicationError("application.notWaiting");
 
-  const [vendor] = await db
-    .insert(vendors)
-    .values({
-      slug,
-      name: row.storeName,
-      nameAr: row.storeNameAr,
-      status: "approved",
-      contactEmail: row.contactEmail,
-      contactPhone: row.contactPhone,
-      governorate: row.governorate,
-      addressLine: row.addressLine,
-      licenceNumber: row.licenceNumber,
-      licenceExpiresAt: row.licenceExpiresAt,
-      payoutIban: row.payoutIban,
-      underPlatformLicence: row.underPlatformLicence,
-      commissionPercent: rate,
-    })
-    .returning({ id: vendors.id });
-
-  try {
+    const slug = await freeSlug(tx, storeSlug(row.storeName));
+    const [created] = await tx
+      .insert(vendors)
+      .values({
+        slug,
+        name: row.storeName,
+        nameAr: row.storeNameAr,
+        status: "approved",
+        contactEmail: row.contactEmail,
+        contactPhone: row.contactPhone,
+        governorate: row.governorate,
+        addressLine: row.addressLine,
+        licenceNumber: row.licenceNumber,
+        licenceExpiresAt: row.licenceExpiresAt,
+        payoutIban: row.payoutIban,
+        underPlatformLicence: row.underPlatformLicence,
+        commissionPercent: rate,
+      })
+      .returning({ id: vendors.id });
     /* The applicant already has an account — that is the whole point of the
        self-serve path — so this attaches it rather than minting one. Owner,
        because it is their store. */
-    await db.insert(vendorMembers).values({ vendorId: vendor.id, userId: row.userId, role: "owner" });
-  } catch (error) {
-    /* A store nobody can sign into looks finished, so nobody goes back to fix
-       it — the reason `createVendorWithOwner` undoes its vendor too. */
-    await db.delete(vendors).where(eq(vendors.id, vendor.id));
-    throw error;
-  }
-
-  await db
-    .update(vendorApplications)
-    .set({ status: "approved", vendorId: vendor.id, reviewedBy: actor.userId, reviewedAt: new Date(), rejectionReason: null })
-    .where(eq(vendorApplications.id, applicationId));
+    await tx.insert(vendorMembers).values({ vendorId: created.id, userId: row.userId, role: "owner" });
+    await tx.update(vendorApplications).set({ vendorId: created.id }).where(eq(vendorApplications.id, applicationId));
+    return created;
+  });
 
   /* A rate other than the standard one is a commission decision like any
      other, and is recorded as one — with the authorisation chain, and with
@@ -355,7 +360,7 @@ function toShared(row: Row): SellerApplication {
 
 /** A slug nothing has taken, from one that may be taken. */
 async function freeSlug(
-  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  db: Pick<NonNullable<Awaited<ReturnType<typeof getDb>>>, "select">,
   base: string,
 ): Promise<string> {
   const taken = await db
