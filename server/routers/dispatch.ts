@@ -246,10 +246,10 @@ export const dispatchRouter = router({
         return guard(() => listCourierMembers(actor, input.courierId));
       }),
     addMember: protectedProcedure
-      .input(z.object({ courierId: rowId, userId: rowId }))
+      .input(z.object({ courierId: rowId, email: z.string().trim().email().max(320) }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
-        await guard(() => addCourierMember(actor, input.courierId, input.userId));
+        await guard(() => addCourierMember(actor, input.courierId, input.email));
         return { success: true } as const;
       }),
     removeMember: protectedProcedure

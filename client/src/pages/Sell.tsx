@@ -159,6 +159,10 @@ export default function Sell() {
     commissionNote: form.proposing ? form.commissionNote.trim() || null : null,
   };
   const proposalIssue = form.proposing ? proposalProblem(form.proposedCommissionPercent) : null;
+  /* The server takes web addresses only (a reviewer opens these); said here,
+     beside the box, rather than as a refused save. */
+  const badLink = (value: string) => value.trim() !== "" && !/^https?:\/\/\S+$/i.test(value.trim());
+  const linksOk = !badLink(form.licenceDocUrl) && !badLink(form.identityDocUrl);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(current => ({ ...current, [key]: value }));
 
@@ -272,10 +276,12 @@ export default function Sell() {
                     <input dir="ltr" value={form.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
                   </Labelled>
                   <Labelled label={t("sell.fieldLicenceDoc")}>
-                    <input dir="ltr" value={form.licenceDocUrl} onChange={e => set("licenceDocUrl", e.target.value)} className={field} />
+                    <input dir="ltr" type="url" placeholder="https://" value={form.licenceDocUrl} aria-invalid={badLink(form.licenceDocUrl) || undefined} aria-describedby={badLink(form.licenceDocUrl) ? "licence-doc-error" : undefined} onChange={e => set("licenceDocUrl", e.target.value)} className={field} />
+                    {badLink(form.licenceDocUrl) ? <span id="licence-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
                   </Labelled>
                   <Labelled label={t("sell.fieldIdentityDoc")}>
-                    <input dir="ltr" value={form.identityDocUrl} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
+                    <input dir="ltr" type="url" placeholder="https://" value={form.identityDocUrl} aria-invalid={badLink(form.identityDocUrl) || undefined} aria-describedby={badLink(form.identityDocUrl) ? "identity-doc-error" : undefined} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
+                    {badLink(form.identityDocUrl) ? <span id="identity-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
                   </Labelled>
                 </div>
               </section>
@@ -367,7 +373,7 @@ export default function Sell() {
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button
                     onClick={() => save.mutate(payload)}
-                    disabled={!form.storeName.trim() || save.isPending}
+                    disabled={!form.storeName.trim() || !linksOk || save.isPending}
                     className="glass type-control pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-5 py-3 disabled:opacity-60"
                   >
                     {save.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
@@ -383,7 +389,7 @@ export default function Sell() {
                         setSending(false);
                       }
                     }}
-                    disabled={missing.length > 0 || !form.storeName.trim() || submit.isPending}
+                    disabled={missing.length > 0 || !form.storeName.trim() || !linksOk || submit.isPending}
                     className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-5 py-3 disabled:opacity-60"
                   >
                     {submit.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}

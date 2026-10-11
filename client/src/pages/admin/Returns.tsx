@@ -16,6 +16,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -50,6 +51,16 @@ const STATUS_LABEL: Record<string, MessageKey> = {
   cancelled: "returns.statusCancelled",
 };
 
+const STATUS_TONE: Record<string, "warning" | "navy" | "good" | "neutral" | "danger"> = {
+  requested: "warning",
+  approved: "navy",
+  collected: "navy",
+  refunded: "good",
+  exchanged: "good",
+  declined: "danger",
+  cancelled: "neutral",
+};
+
 export default function AdminReturns() {
   usePageMeta(privatePageMeta("Returns"));
   return <AdminShell need="returns.handle">{actor => <Returns actor={actor} />}</AdminShell>;
@@ -57,38 +68,31 @@ export default function AdminReturns() {
 
 function Returns({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
-  const [openOnly, setOpenOnly] = useState(true);
-  const list = trpc.returns.list.useQuery({ open: openOnly });
+  const [openOnly, setOpenOnly] = useState<"open" | "all">("open");
+  const list = trpc.returns.list.useQuery({ open: openOnly === "open" });
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.returns")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.returnsNote")}</p>
+      <PageHeader title={t("admin.returns")} description={t("admin.returnsNote")} />
+      <Segmented
+        label={t("admin.returns")}
+        className="mb-4 w-fit"
+        value={openOnly}
+        onChange={setOpenOnly}
+        options={[{ value: "open", label: t("admin.returnsTabOpen") }, { value: "all", label: t("admin.returnsTabAll") }]}
+      />
 
-      <div role="tablist" aria-label={t("admin.returns")} className="mt-5 inline-flex gap-1 rounded-2xl bg-[#eef1f6] p-1">
-        {([true, false] as const).map(value => (
-          <button
-            key={String(value)}
-            role="tab"
-            type="button"
-            aria-selected={openOnly === value}
-            onClick={() => setOpenOnly(value)}
-            className={`rounded-xl px-4 py-2 text-[12px] font-extrabold ${openOnly === value ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c]"}`}
-          >
-            {t(value ? "admin.returnsTabOpen" : "admin.returnsTabAll")}
-          </button>
-        ))}
-      </div>
-
-      <QueryGate queries={[list]}>
-        {() => {
-          const rows = list.data ?? [];
-          if (rows.length === 0) {
-            return <p className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">{t("admin.returnsNone")}</p>;
-          }
-          return <ul className="mt-5 space-y-3">{rows.map(row => <ReturnCard key={row.id} row={row} actor={actor} />)}</ul>;
-        }}
-      </QueryGate>
+      {list.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => {
+            const rows = list.data ?? [];
+            if (rows.length === 0) return <EmptyState title={t("admin.returnsNone")} />;
+            return <ul className="space-y-3">{rows.map(row => <ReturnCard key={row.id} row={row} actor={actor} />)}</ul>;
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }
@@ -127,90 +131,100 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
   const pending = decide.isPending || collect.isPending || receive.isPending || paid.isPending;
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="font-extrabold">
-          <bdi dir="ltr">{row.reference}</bdi>
-          <span dir="auto" className="ms-2 text-[13px] font-bold">{row.productTitle}</span>
-          {row.quantity > 1 ? <span className="text-[12px] text-[#536b8c]"> ×{row.quantity}</span> : null}
+    <li className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <p dir="auto" className="text-[15px] font-bold text-[#0a285a]">
+              {row.productTitle}
+              {row.quantity > 1 ? <span className="text-[13px] font-semibold text-[#536b8c]"> ×{row.quantity}</span> : null}
+            </p>
+            <p className="mt-0.5 text-[13px] ink-muted">
+              <bdi dir="ltr" className="font-semibold text-[#3d5376]">{row.reference}</bdi>
+              {actor.kind === "admin" && row.vendorName ? <> · <bdi>{row.vendorName}</bdi></> : null}
+              {" · "}{formatDate(row.createdAt)}
+            </p>
+          </div>
+          <Pill tone={STATUS_TONE[row.status] ?? "neutral"}>{t(STATUS_LABEL[row.status] ?? "returns.statusRequested")}</Pill>
+        </div>
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#3d5376]">
+          <Pill tone="navy">{t(row.kind === "exchange" ? "returns.kindExchange" : "returns.kindRefund")}</Pill>
+          <span>{t(REASON_LABEL[row.reason] ?? "returns.reasonOther")}</span>
+          {row.decidedBy === "auto" ? <span className="ink-muted">· {t("returns.decidedAutomatically")}</span> : null}
         </p>
-        <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">{t(STATUS_LABEL[row.status] ?? "returns.statusRequested")}</span>
-      </div>
-      <p className="mt-1 text-[12px] text-[#536b8c]">
-        {t(row.kind === "exchange" ? "returns.kindExchange" : "returns.kindRefund")} · {t(REASON_LABEL[row.reason] ?? "returns.reasonOther")}
-        {actor.kind === "admin" && row.vendorName ? <> · <span dir="auto">{row.vendorName}</span></> : null}
-        {" · "}{formatDate(row.createdAt)}
-        {row.decidedBy === "auto" ? <> · {t("returns.decidedAutomatically")}</> : null}
-      </p>
-      {row.note ? <p dir="auto" className="mt-2 text-[13px] leading-6">“{row.note}”</p> : null}
-      {row.declineReason ? <p dir="auto" className="mt-1 text-[12px] text-[#536b8c]">{isMessageKey(row.declineReason) ? t(row.declineReason) : row.declineReason}</p> : null}
+        {row.note ? <p dir="auto" className="mt-3 rounded-xl bg-[#f4f6f9] px-3.5 py-2.5 text-[14px] leading-6 text-[#3d5376]">{row.note}</p> : null}
+        {row.declineReason ? <p dir="auto" className="mt-2 text-[13px] text-[#8c2f22]">{isMessageKey(row.declineReason) ? t(row.declineReason) : row.declineReason}</p> : null}
 
-      {/* Where to collect it, while there is something to collect. */}
-      {row.status === "approved" ? (
-        <p className="mt-2 text-[12px] leading-5 text-[#536b8c]" dir="auto">
-          {t("admin.returnsCollectFrom")} {[row.contactName, row.contactPhone, where].filter(Boolean).join(" · ")}
-        </p>
-      ) : null}
-      {row.status === "refunded" ? (
-        <p className="mt-2 text-[13px] font-extrabold">
-          {row.refundPaidAt
-            ? t("returns.refundPaid", { amount: money(row.refundAmount ?? "0", "KWD") })
-            : t("admin.returnsRefundOwed", { amount: money(row.refundAmount ?? "0", "KWD") })}
-        </p>
-      ) : null}
-      {row.status === "exchanged" && row.replacementReference ? (
-        <p className="mt-2 text-[12px] text-[#536b8c]">{t("returns.replacementSent")} <bdi dir="ltr">{row.replacementReference}</bdi></p>
-      ) : null}
+        {/* Where to collect it, while there is something to collect. */}
+        {row.status === "approved" ? (
+          <p className="mt-3 text-[13px] leading-5 text-[#3d5376]">
+            <span className="font-semibold text-[#0a285a]">{t("admin.returnsCollectFrom")}</span>{" "}
+            <bdi>{[row.contactName, row.contactPhone, where].filter(Boolean).join(" · ")}</bdi>
+          </p>
+        ) : null}
+        {row.status === "refunded" ? (
+          <p className={`mt-3 text-[14px] font-bold ${row.refundPaidAt ? "text-[#2f5d33]" : "text-[#8c2f22]"}`}>
+            {row.refundPaidAt
+              ? t("returns.refundPaid", { amount: money(row.refundAmount ?? "0", "KWD") })
+              : t("admin.returnsRefundOwed", { amount: money(row.refundAmount ?? "0", "KWD") })}
+          </p>
+        ) : null}
+        {row.status === "exchanged" && row.replacementReference ? (
+          <p className="mt-3 text-[13px] text-[#3d5376]">{t("returns.replacementSent")} <bdi dir="ltr" className="font-semibold">{row.replacementReference}</bdi></p>
+        ) : null}
+      </div>
 
       {row.actions.length > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {row.actions.includes("approve") ? (
-            <button type="button" disabled={pending} onClick={() => decide.mutate({ requestId: row.id, approve: true })} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
-              {t("admin.returnsApprove")}
-            </button>
-          ) : null}
-          {row.actions.includes("decline") ? (
-            <button type="button" disabled={pending} onClick={() => setDeclining(!declining)} className="glass type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
-              {t("admin.returnsDecline")}
-            </button>
-          ) : null}
-          {row.actions.includes("collect") ? (
-            <button type="button" disabled={pending} onClick={() => collect.mutate({ requestId: row.id })} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
-              {t("admin.returnsCollected")}
-            </button>
-          ) : null}
-          {row.actions.includes("receive") ? (
-            <>
-              {/* The one question only the person holding the item can answer,
-                  asked before the press rather than inside the dialog. */}
-              <label className="flex items-center gap-2 text-[12px] font-bold text-[#0a285a]">
+        <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-3 sm:px-5">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {row.actions.includes("receive") ? (
+              /* The one question only the person holding the item can answer,
+                 asked before the press rather than inside the dialog. */
+              <label className="me-auto flex items-center gap-2 text-[13px] font-semibold text-[#0a285a]">
                 <input type="checkbox" checked={restock} onChange={event => setRestock(event.target.checked)} className="size-4 accent-[#0a285a]" />
                 {t("admin.returnsRestock")}
               </label>
-              <button type="button" disabled={pending} onClick={() => setReceiving(true)} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
+            ) : null}
+            {row.actions.includes("decline") ? (
+              <button type="button" disabled={pending} aria-expanded={declining} onClick={() => setDeclining(!declining)} className={smallButtonClass.quietDanger}>
+                {t("admin.returnsDecline")}
+              </button>
+            ) : null}
+            {row.actions.includes("approve") ? (
+              <button type="button" disabled={pending} onClick={() => decide.mutate({ requestId: row.id, approve: true })} className={smallButtonClass.primary}>
+                {t("admin.returnsApprove")}
+              </button>
+            ) : null}
+            {row.actions.includes("collect") ? (
+              <button type="button" disabled={pending} onClick={() => collect.mutate({ requestId: row.id })} className={smallButtonClass.primary}>
+                {t("admin.returnsCollected")}
+              </button>
+            ) : null}
+            {row.actions.includes("receive") ? (
+              <button type="button" disabled={pending} onClick={() => setReceiving(true)} className={smallButtonClass.primary}>
                 {t(row.kind === "exchange" ? "admin.returnsReceiveExchange" : "admin.returnsReceiveRefund")}
               </button>
-            </>
-          ) : null}
-          {row.actions.includes("markRefundPaid") ? (
-            <button type="button" disabled={pending} onClick={() => paid.mutate({ requestId: row.id })} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
-              {t("admin.returnsMarkPaid")}
-            </button>
+            ) : null}
+            {row.actions.includes("markRefundPaid") ? (
+              <button type="button" disabled={pending} onClick={() => paid.mutate({ requestId: row.id })} className={smallButtonClass.primary}>
+                {t("admin.returnsMarkPaid")}
+              </button>
+            ) : null}
+          </div>
+
+          {declining ? (
+            <form
+              className="mt-3 flex flex-wrap items-end gap-2"
+              onSubmit={event => { event.preventDefault(); decide.mutate({ requestId: row.id, approve: false, reason }); }}
+            >
+              <div className="min-w-[220px] flex-1">
+                <label htmlFor={`decline-${row.id}`} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.returnsDeclineWhy")}</label>
+                <input id={`decline-${row.id}`} value={reason} onChange={event => setReason(event.target.value)} maxLength={400} dir="auto" required className={`${fieldClass} mt-1.5`} />
+              </div>
+              <button type="submit" disabled={pending || !reason.trim()} className={`${smallButtonClass.danger} h-11`}>{t("admin.returnsDecline")}</button>
+            </form>
           ) : null}
         </div>
-      ) : null}
-
-      {declining ? (
-        <form
-          className="mt-3 flex flex-wrap items-end gap-2"
-          onSubmit={event => { event.preventDefault(); decide.mutate({ requestId: row.id, approve: false, reason }); }}
-        >
-          <label className="block min-w-[220px] flex-1">
-            <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("admin.returnsDeclineWhy")}</span>
-            <input value={reason} onChange={event => setReason(event.target.value)} maxLength={400} dir="auto" required className="glass-field mt-1 w-full rounded-full px-4 py-2 text-sm" />
-          </label>
-          <button type="submit" disabled={pending} className="glass type-control pressable rounded-full px-4 py-2 disabled:opacity-60">{t("admin.returnsDecline")}</button>
-        </form>
       ) : null}
 
       {/* Receiving is the refund or the exchange, so it asks first. */}

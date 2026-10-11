@@ -19,13 +19,14 @@
  * a fourth thing to keep in step with those lines. The one fact the grouping
  * cannot derive — which company was asked to carry it — lives on the line.
  */
-import { and, desc, eq, inArray, notInArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
 import {
   courierMembers,
   couriers,
   fulfilmentCentres,
   orderItems,
   orders,
+  users,
 } from "../drizzle/schema.js";
 import {
   courierMoves,
@@ -126,25 +127,40 @@ export async function setCourierStatus(actor: Actor, courierId: number, status: 
   if (!row) throw new DispatchError("dispatch.unknownCourier");
 }
 
-/** Who has a login on this company. */
+/**
+ * Who has a login on this company, by name and address.
+ *
+ * It used to answer with account numbers alone, so the page listed "#12" and
+ * "#31" and nobody could say who those were without a database client. Every
+ * caller is an administrator (`delivery.assign` is admin-only), who reads the
+ * same names on `/admin/people`.
+ */
 export async function listCourierMembers(actor: Actor, courierId: number) {
   assertCan(actor, "delivery.assign");
   const db = await handle();
   return db
-    .select({ id: courierMembers.id, userId: courierMembers.userId, courierId: courierMembers.courierId })
+    .select({ id: courierMembers.id, userId: courierMembers.userId, courierId: courierMembers.courierId, email: users.email, name: users.name })
     .from(courierMembers)
-    .where(eq(courierMembers.courierId, courierId));
+    .innerJoin(users, eq(users.id, courierMembers.userId))
+    .where(eq(courierMembers.courierId, courierId))
+    .orderBy(asc(courierMembers.id));
 }
 
 /**
- * Attach an existing account to a delivery company.
+ * Attach an existing account to a delivery company, by its address.
  *
  * `platform.manageUsers` as well as `delivery.assign`: giving somebody a login
  * that reaches a NetLet interface is administering NetLet, which is the same
  * line `vendors.addNewMember` draws — an owner ranks their own people, and
  * minting access is a different act.
+ *
+ * By address rather than by account number, which is what a store's team page
+ * already takes. The worry that kept it to numbers — that an address lookup
+ * tells somebody which addresses are registered — does not apply to the one
+ * person who may call it, who can already search every account; and an id
+ * that named no account reached the insert and came back as a foreign-key 500.
  */
-export async function addCourierMember(actor: Actor, courierId: number, userId: number): Promise<void> {
+export async function addCourierMember(actor: Actor, courierId: number, email: string): Promise<void> {
   assertCan(actor, "delivery.assign");
   assertCan(actor, "platform.manageUsers");
   const db = await handle();
@@ -152,7 +168,14 @@ export async function addCourierMember(actor: Actor, courierId: number, userId: 
   const [company] = await db.select({ id: couriers.id }).from(couriers).where(eq(couriers.id, courierId)).limit(1);
   if (!company) throw new DispatchError("dispatch.unknownCourier");
 
-  await db.insert(courierMembers).values({ courierId, userId }).onConflictDoNothing();
+  const [account] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email.trim().toLowerCase()))
+    .limit(1);
+  if (!account) throw new DispatchError("admin.noSuchAccount");
+
+  await db.insert(courierMembers).values({ courierId, userId: account.id }).onConflictDoNothing();
 }
 
 export async function removeCourierMember(actor: Actor, courierId: number, userId: number): Promise<void> {

@@ -17,6 +17,7 @@
  * leaving somebody to discover it from an error.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { buttonClass, Card, Field, fieldClass, Notice, PageHeader, tableClass } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
@@ -59,7 +60,7 @@ function Import({ actor }: { actor: Actor }) {
   const [chosenVendor, setChosenVendor] = useState("");
 
   const vendors = trpc.inventory.vendors.list.useQuery(
-    {},
+    { pageSize: 200 },
     { enabled: actor.kind === "admin" },
   );
   const utils = trpc.useUtils();
@@ -82,10 +83,12 @@ function Import({ actor }: { actor: Actor }) {
     ),
   });
 
-  const vendorId =
-    actor.kind === "vendor"
-      ? actor.vendorId
-      : Number(chosenVendor) || vendors.data?.rows?.[0]?.id || null;
+  /* An administrator names the store, every time. It used to fall back to
+     whichever store came first in the list, so a file uploaded without
+     touching the picker landed four hundred products on somebody else's
+     shelf — and the picker was only drawn at all once there were two. */
+  const vendorId = actor.kind === "vendor" ? actor.vendorId : Number(chosenVendor) || null;
+  const storeRows = vendors.data?.rows ?? [];
   const mayCreate = can(actor, "product.create", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   const read = async (file: File) => {
@@ -113,150 +116,146 @@ function Import({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.import")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.importNote")}</p>
+      <PageHeader
+        title={t("admin.import")}
+        description={t("admin.importNote")}
+        actions={
+          <button type="button" onClick={download} className={buttonClass.secondary}>
+            <Download className="size-4" aria-hidden /> {t("admin.importTemplate")}
+          </button>
+        }
+      />
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <label className="glass glass-navy pressable inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
-          <Upload className="size-4" aria-hidden />
-          {t("admin.importChoose")}
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="sr-only"
-            onChange={event => {
-              const file = event.target.files?.[0];
-              if (file) void read(file);
-            }}
-          />
-        </label>
-
-        <button type="button" onClick={download} className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2.5">
-          <Download className="size-4" aria-hidden /> {t("admin.importTemplate")}
-        </button>
-
-        {/* Only a real choice for an admin with more than one store. */}
-        {actor.kind === "admin" && (vendors.data?.rows ?? []).length > 1 ? (
-          <label className="text-[11px] font-extrabold text-[#536b8c]">
-            {t("admin.productVendor")}
-            {/* Named itself, because a <label> wrapping a select pulls every
-                option's text into the accessible name. */}
-            <select
-              aria-label={t("admin.productVendor")}
-              value={chosenVendor || String(vendors.data?.rows?.[0]?.id ?? "")}
-              onChange={event => setChosenVendor(event.target.value)}
-              className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#0a285a]"
-            >
-              {(vendors.data?.rows ?? []).map(vendor => (
-                <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-              ))}
-            </select>
-          </label>
+      <div className="max-w-4xl space-y-5">
+        {actor.kind === "admin" ? (
+          <Card title={t("admin.importStoreTitle")} step={1}>
+            {vendors.isSuccess && storeRows.length === 0 ? (
+              <Notice tone="warning">{t("admin.needVendorFirst")}</Notice>
+            ) : (
+              <Field label={t("admin.newStore")} hint={t("admin.newStoreHint")}>
+                <select value={chosenVendor} onChange={event => setChosenVendor(event.target.value)} className={`${fieldClass} sm:max-w-md`}>
+                  <option value="" disabled>{t("admin.chooseStore")}</option>
+                  {storeRows.map(vendor => (
+                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                  ))}
+                </select>
+              </Field>
+            )}
+          </Card>
         ) : null}
 
-        {fileName ? <p className="text-[12px] text-[#536b8c]"><bdi dir="ltr">{fileName}</bdi></p> : null}
+        <Card title={t("admin.importFileTitle")} step={actor.kind === "admin" ? 2 : 1} description={t("admin.importFileHint")}>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className={`${buttonClass.primary} cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#0a285a]`}>
+              <Upload className="size-4" aria-hidden />
+              {t("admin.importChoose")}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="sr-only"
+                onChange={event => {
+                  const file = event.target.files?.[0];
+                  if (file) void read(file);
+                }}
+              />
+            </label>
+            {fileName ? <p className="text-[13px] font-semibold text-[#3d5376]"><bdi dir="ltr">{fileName}</bdi></p> : null}
+          </div>
+        </Card>
+
+        {plan ? (
+          <Card
+            title={t("admin.importCheckTitle")}
+            step={actor.kind === "admin" ? 3 : 2}
+            description={t("admin.importSummary", { rows: plan.products.length, problems: plan.problems.length })}
+            footer={
+              mayCreate ? (
+                <button
+                  type="button"
+                  disabled={upload.isPending || plan.products.length === 0 || tooMany || vendorId === null}
+                  onClick={() => vendorId !== null && upload.mutate({
+                    vendorId,
+                    rows: plan.products.map(({ line: _line, categoryGuessed: _guessed, ...row }) => row),
+                  })}
+                  className={buttonClass.primary}
+                >
+                  {upload.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
+                  {t("admin.importCreate", { count: plan.products.length })}
+                </button>
+              ) : null
+            }
+          >
+            <div className="space-y-4">
+              {/* The guesses are named rather than counted quietly: a seller who
+                  disagrees with one can fix the column and upload again, and one
+                  who is never told cannot. */}
+              {plan.guessed > 0 ? (
+                <Notice tone="info">
+                  <span className="inline-flex items-start gap-2"><Sparkles className="mt-1 size-4 shrink-0 ink-accent" aria-hidden />{t("admin.importGuessed", { count: plan.guessed })}</span>
+                </Notice>
+              ) : null}
+
+              {plan.problems.length > 0 ? (
+                <div>
+                  <h3 id="import-problems" className="text-[14px] font-bold text-[#8c2f22]">{t("admin.importProblems")}</h3>
+                  <ul className="mt-2 space-y-1.5">
+                    {plan.problems.map(problem => (
+                      <li key={`${problem.line}-${problem.reason}`} className="rounded-lg border border-[#f2b69e] bg-[#fdeceb] px-3.5 py-2 text-[13px] text-[#8c2f22]">
+                        <span className="font-semibold">{t("admin.importLine", { line: problem.line })}</span> · {t(problem.reason)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {plan.products.length > 0 ? (
+                <div role="region" aria-labelledby="import-preview" tabIndex={0} className={tableClass.wrap}>
+                  <h3 id="import-preview" className="sr-only">{t("admin.importPreview")}</h3>
+                  <table className={`${tableClass.table} min-w-[560px]`}>
+                    <thead className={tableClass.head}>
+                      <tr>
+                        <th scope="col" className={tableClass.th}>{t("admin.importLineShort")}</th>
+                        <th scope="col" className={tableClass.th}>{t("admin.productTitle")}</th>
+                        <th scope="col" className={tableClass.thEnd}>{t("admin.price")}</th>
+                        <th scope="col" className={tableClass.thEnd}>{t("admin.stock")}</th>
+                        <th scope="col" className={tableClass.th}>{t("admin.category")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plan.products.slice(0, 50).map(product => (
+                        <tr key={product.line} className={tableClass.row}>
+                          <th scope="row" className={`${tableClass.td} text-start font-normal text-[#536b8c]`}><bdi dir="ltr">{product.line}</bdi></th>
+                          <td className={`${tableClass.td} font-semibold text-[#0a285a]`}><span dir="auto">{product.title}</span></td>
+                          <td className={`${tableClass.td} text-end tabular-nums`}><bdi dir="ltr">{product.price}</bdi></td>
+                          <td className={`${tableClass.td} text-end tabular-nums`}><bdi dir="ltr">{product.stock}</bdi></td>
+                          <td className={tableClass.td}>
+                            <span dir="auto">{categoryLabel(product.category)}</span>
+                            {product.categoryGuessed ? <span className="ms-1 ink-accent">·&nbsp;{t("admin.importGuessTag")}</span> : null}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+
+              {/* Only ever a count of what is *not* shown, never a silent cut. */}
+              {plan.products.length > 50 ? (
+                <p className="text-[13px] ink-muted">{t("admin.importMore", { count: plan.products.length - 50 })}</p>
+              ) : null}
+
+              {tooMany ? <Notice tone="danger">{t("admin.importTooMany", { limit: BULK_UPLOAD_LIMIT })}</Notice> : null}
+              {actor.kind === "admin" && vendorId === null && plan.products.length > 0 ? <Notice tone="warning">{t("admin.importStoreNeeded")}</Notice> : null}
+
+              {/* Said before the press, not after: everything lands as a draft,
+                  because publishing has its own rules and an importer that could
+                  put four hundred rows in the shop can put four hundred mistakes
+                  there. */}
+              <p className="max-w-2xl text-[13px] leading-5 ink-muted">{t("admin.importDrafts")}</p>
+            </div>
+          </Card>
+        ) : null}
       </div>
-
-      {plan ? (
-        <div className="mt-6 space-y-5">
-          <p className="text-[13px] font-extrabold text-[#0a285a]">
-            {t("admin.importSummary", { rows: plan.products.length, problems: plan.problems.length })}
-          </p>
-
-          {/* The guesses are named rather than counted quietly: a seller who
-              disagrees with one can fix the column and upload again, and one
-              who is never told cannot. */}
-          {plan.guessed > 0 ? (
-            <p className="flex items-start gap-2 rounded-xl border border-[#d5dfeb] bg-white/70 px-4 py-3 text-[12px] leading-5 text-[#536b8c]">
-              <Sparkles className="mt-0.5 size-4 shrink-0 ink-accent" aria-hidden />
-              {t("admin.importGuessed", { count: plan.guessed })}
-            </p>
-          ) : null}
-
-          {plan.problems.length > 0 ? (
-            <div>
-              <h2 id="import-problems" className="text-sm font-extrabold text-[#8c2f22]">{t("admin.importProblems")}</h2>
-              <ul className="mt-2 space-y-1">
-                {plan.problems.map(problem => (
-                  <li key={`${problem.line}-${problem.reason}`} className="rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-2 text-[12px] text-[#8c2f22]">
-                    {t("admin.importLine", { line: problem.line })} · {t(problem.reason)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {plan.products.length > 0 ? (
-            <div
-              role="region"
-              aria-labelledby="import-preview"
-              tabIndex={0}
-              className="overflow-x-auto rounded-xl border border-[#d5dfeb] bg-white/70"
-            >
-              <h2 id="import-preview" className="sr-only">{t("admin.importPreview")}</h2>
-              <table className="w-full min-w-[560px] border-collapse">
-                <thead>
-                  <tr className="border-b border-[#d5dfeb]">
-                    <th scope="col" className="px-4 py-2 text-start text-[11px] font-extrabold ink-muted uppercase">{t("admin.importLineShort")}</th>
-                    <th scope="col" className="px-4 py-2 text-start text-[11px] font-extrabold ink-muted uppercase">{t("admin.productTitle")}</th>
-                    <th scope="col" className="px-4 py-2 text-end text-[11px] font-extrabold ink-muted uppercase">{t("admin.price")}</th>
-                    <th scope="col" className="px-4 py-2 text-end text-[11px] font-extrabold ink-muted uppercase">{t("admin.stock")}</th>
-                    <th scope="col" className="px-4 py-2 text-start text-[11px] font-extrabold ink-muted uppercase">{t("admin.category")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {plan.products.slice(0, 50).map(product => (
-                    <tr key={product.line} className="border-b border-[#eef1f6] last:border-0">
-                      <th scope="row" className="px-4 py-2 text-start text-[12px] font-normal ink-muted"><bdi dir="ltr">{product.line}</bdi></th>
-                      <td className="px-4 py-2 text-[13px] font-bold text-[#0a285a]"><span dir="auto">{product.title}</span></td>
-                      <td className="px-4 py-2 text-end text-[13px]"><bdi dir="ltr">{product.price}</bdi></td>
-                      <td className="px-4 py-2 text-end text-[13px]"><bdi dir="ltr">{product.stock}</bdi></td>
-                      <td className="px-4 py-2 text-[13px]">
-                        <span dir="auto">{categoryLabel(product.category)}</span>
-                        {product.categoryGuessed ? <span className="ms-1 ink-accent">·&nbsp;{t("admin.importGuessTag")}</span> : null}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-
-          {/* Only ever a count of what is *not* shown, never a silent cut. */}
-          {plan.products.length > 50 ? (
-            <p className="text-[12px] ink-muted">{t("admin.importMore", { count: plan.products.length - 50 })}</p>
-          ) : null}
-
-          {tooMany ? (
-            <p className="rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[13px] font-semibold text-[#8c2f22]">
-              {t("admin.importTooMany", { limit: BULK_UPLOAD_LIMIT })}
-            </p>
-          ) : null}
-
-          {mayCreate && vendorId !== null ? (
-            <button
-              type="button"
-              disabled={upload.isPending || plan.products.length === 0 || tooMany}
-              onClick={() => upload.mutate({
-                vendorId,
-                rows: plan.products.map(({ line: _line, categoryGuessed: _guessed, ...row }) => row),
-              })}
-              className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold disabled:opacity-60"
-            >
-              {upload.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
-              {t("admin.importCreate", { count: plan.products.length })}
-            </button>
-          ) : (
-            <p className="text-[12px] font-semibold text-[#8c2f22]">{t("admin.needVendorFirst")}</p>
-          )}
-
-          {/* Said before the press, not after: everything lands as a draft,
-              because publishing has its own rules and an importer that could
-              put four hundred rows in the shop can put four hundred mistakes
-              there. */}
-          <p className="max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.importDrafts")}</p>
-        </div>
-      ) : null}
     </>
   );
 }

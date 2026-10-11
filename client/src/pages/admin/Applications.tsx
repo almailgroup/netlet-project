@@ -16,6 +16,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, EmptyState, fieldClass, Notice, PageHeader, Pill, SkeletonCards, smallButtonClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -86,154 +87,168 @@ function Applications() {
     onError: error => toast.error(tError(error.message)),
   });
 
+  /* Only a web address becomes a link. The server refuses anything else now,
+     but an application saved before that may still carry one, and the person
+     opening it is an administrator. */
+  const webAddress = (value: string | null) => (value && /^https?:\/\/\S+$/i.test(value) ? value : null);
+  const deciding = approve.isPending ? approve.variables?.id : reject.isPending ? reject.variables?.id : undefined;
+
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.applications")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.applicationsNote")}</p>
+      <PageHeader title={t("admin.applications")} description={t("admin.applicationsNote")} />
 
-      <QueryGate queries={[list]}>
-        {() => {
-          const rows = list.data?.rows ?? [];
-          if (rows.length === 0) {
+      {list.isLoading ? (
+        <SkeletonCards count={2} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => {
+            const rows = list.data?.rows ?? [];
+            if (rows.length === 0) return <EmptyState title={t("admin.applicationsEmpty")} />;
             return (
-              <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-                <p className="text-sm font-extrabold">{t("admin.applicationsEmpty")}</p>
-              </div>
-            );
-          }
-          return (
-            <div className="mt-5 space-y-3">
-              {rows.map(row => {
-                const missing = missingFromApplication(row);
-                return (
-                  <article key={row.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p dir="auto" className="font-bold text-[#0a285a]">{row.storeName}</p>
-                        <p className="mt-0.5 text-[11px] ink-muted">
-                          <bdi dir="ltr">{row.applicantEmail}</bdi> · {formatDate(row.createdAt)}
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">
-                        {t(STATUS_LABEL[row.status] ?? "admin.applicationStatusSubmitted")}
-                      </span>
-                    </div>
+              <>
+                <ul className="space-y-4">
+                  {rows.map(row => {
+                    const missing = missingFromApplication(row);
+                    const licenceDoc = webAddress(row.licenceDocUrl);
+                    const identityDoc = webAddress(row.identityDocUrl);
+                    const reasonId = `reject-${row.id}`;
+                    const rateId = `rate-${row.id}`;
+                    return (
+                      <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                        <div className="p-4 sm:p-5">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p dir="auto" className="text-[16px] font-bold text-[#0a285a]">{row.storeName}</p>
+                              <p className="mt-0.5 text-[13px] ink-muted">
+                                <bdi dir="ltr">{row.applicantEmail}</bdi> · {formatDate(row.createdAt)}
+                              </p>
+                            </div>
+                            <Pill tone="warning">{t(STATUS_LABEL[row.status] ?? "admin.applicationStatusSubmitted")}</Pill>
+                          </div>
 
-                    <dl className="mt-3 grid gap-x-6 gap-y-1 text-[13px] sm:grid-cols-2">
-                      <Row label={t("sell.fieldEmail")} value={row.contactEmail} ltr />
-                      <Row label={t("sell.fieldPhone")} value={row.contactPhone} ltr />
-                      <Row label={t("sell.fieldGovernorate")} value={row.governorate} />
-                      <Row label={t("sell.fieldAddress")} value={row.addressLine} />
-                      <Row
-                        label={t("sell.fieldLicence")}
-                        value={row.underPlatformLicence ? t("admin.underPlatformLicence") : row.licenceNumber}
-                        ltr={!row.underPlatformLicence}
-                      />
-                      <Row label={t("sell.fieldIban")} value={row.payoutIban} ltr />
-                    </dl>
+                          <dl className="mt-4 grid gap-x-6 gap-y-2 text-[14px] sm:grid-cols-2">
+                            <Row label={t("sell.fieldEmail")} value={row.contactEmail} ltr />
+                            <Row label={t("sell.fieldPhone")} value={row.contactPhone} ltr />
+                            <Row label={t("sell.fieldGovernorate")} value={row.governorate} />
+                            <Row label={t("sell.fieldAddress")} value={row.addressLine} />
+                            <Row
+                              label={t("sell.fieldLicence")}
+                              value={row.underPlatformLicence ? t("admin.underPlatformLicence") : row.licenceNumber}
+                              ltr={!row.underPlatformLicence}
+                            />
+                            <Row label={t("sell.fieldIban")} value={row.payoutIban} ltr />
+                          </dl>
 
-                    {/* Links, because that is what an applicant could give. They
-                        open in a new tab: losing the queue to read a PDF means
-                        finding your place in it again. */}
-                    {row.licenceDocUrl || row.identityDocUrl ? (
-                      <p className="mt-3 flex flex-wrap items-center gap-3 text-[12px]">
-                        <span className="font-extrabold ink-muted">{t("admin.applicationDocs")}</span>
-                        {row.licenceDocUrl ? (
-                          <a href={row.licenceDocUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-bold text-[#a44a2b] hover:underline">
-                            {t("admin.applicationLicenceDoc")} <ExternalLink className="size-3" aria-hidden />
-                          </a>
-                        ) : null}
-                        {row.identityDocUrl ? (
-                          <a href={row.identityDocUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 font-bold text-[#a44a2b] hover:underline">
-                            {t("admin.applicationIdentityDoc")} <ExternalLink className="size-3" aria-hidden />
-                          </a>
-                        ) : null}
-                      </p>
-                    ) : null}
+                          {/* Links, because that is what an applicant could give. They
+                              open in a new tab: losing the queue to read a PDF means
+                              finding your place in it again. */}
+                          {licenceDoc || identityDoc ? (
+                            <p className="mt-4 flex flex-wrap items-center gap-2 text-[13px]">
+                              <span className="font-semibold text-[#536b8c]">{t("admin.applicationDocs")}</span>
+                              {licenceDoc ? (
+                                <a href={licenceDoc} target="_blank" rel="noreferrer noopener" className={smallButtonClass.secondary}>
+                                  {t("admin.applicationLicenceDoc")} <ExternalLink className="size-3.5" aria-hidden />
+                                </a>
+                              ) : null}
+                              {identityDoc ? (
+                                <a href={identityDoc} target="_blank" rel="noreferrer noopener" className={smallButtonClass.secondary}>
+                                  {t("admin.applicationIdentityDoc")} <ExternalLink className="size-3.5" aria-hidden />
+                                </a>
+                              ) : null}
+                            </p>
+                          ) : null}
 
-                    {row.agreementVersion ? (
-                      <p className="mt-2 text-[12px] ink-muted">
-                        {t("admin.applicationAgreed", { version: row.agreementVersion })}
-                        {row.agreementVersion !== AGREEMENT_VERSION ? " ⚠" : ""}
-                      </p>
-                    ) : null}
+                          {row.agreementVersion ? (
+                            <p className="mt-3 text-[13px] ink-muted">
+                              {t("admin.applicationAgreed", { version: row.agreementVersion })}
+                              {row.agreementVersion !== AGREEMENT_VERSION ? " ⚠" : ""}
+                            </p>
+                          ) : null}
 
-                    {/* The rate is NetLet's decision, taken here, with the
-                        applicant's proposal and reason beside it — and the
-                        standard rate unless somebody changes it, so approving
-                        never quietly applies what was asked for. */}
-                    <div className="mt-3 rounded-xl bg-[#f3f2ed] px-3 py-3">
-                      <p className="text-[12px] text-[#0a285a]">
-                        {row.proposedCommissionPercent
-                          ? t("admin.applicationProposed", { rate: String(Number(row.proposedCommissionPercent)), standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })
-                          : t("admin.applicationNoProposal", { standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
-                      </p>
-                      {row.commissionNote ? <p dir="auto" className="mt-1 text-[12px] leading-5 ink-muted">“{row.commissionNote}”</p> : null}
-                      <div className="mt-2 flex flex-wrap items-end gap-2">
-                        <label className="block">
-                          <span className="block text-[11px] font-extrabold ink-muted">{t("admin.applicationRate")}</span>
+                          {/* The rate is NetLet's decision, taken here, with the
+                              applicant's proposal and reason beside it — and the
+                              standard rate unless somebody changes it, so approving
+                              never quietly applies what was asked for. */}
+                          <div className="mt-4 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
+                            <p className="text-[13px] text-[#0a285a]">
+                              {row.proposedCommissionPercent
+                                ? t("admin.applicationProposed", { rate: String(Number(row.proposedCommissionPercent)), standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })
+                                : t("admin.applicationNoProposal", { standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
+                            </p>
+                            {row.commissionNote ? <p dir="auto" className="mt-1 text-[13px] leading-5 ink-muted">“{row.commissionNote}”</p> : null}
+                            <div className="mt-3 flex flex-wrap items-end gap-2">
+                              <div>
+                                <label htmlFor={rateId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.applicationRate")}</label>
+                                <input
+                                  id={rateId}
+                                  dir="ltr"
+                                  inputMode="decimal"
+                                  value={rates[row.id] ?? String(Number(DEFAULT_COMMISSION_PERCENT))}
+                                  onChange={event => setRates({ ...rates, [row.id]: event.target.value })}
+                                  className={`${fieldClass} mt-1.5 h-9 w-24`}
+                                />
+                              </div>
+                              {row.proposedCommissionPercent ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setRates({ ...rates, [row.id]: String(Number(row.proposedCommissionPercent)) })}
+                                  className={smallButtonClass.secondary}
+                                >
+                                  {t("admin.applicationUseProposed")}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {/* Approving is guarded by the same function the server
+                              runs, so the button cannot offer what the API refuses. */}
+                          {missing.length > 0 ? (
+                            <Notice tone="danger" className="mt-4">
+                              {t("admin.applicationMissing", { fields: missing.map(item => t(MISSING_LABEL[item])).join(", ") })}
+                            </Notice>
+                          ) : null}
+                        </div>
+
+                        <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5">
+                          <label htmlFor={reasonId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.applicationReason")}</label>
                           <input
-                            dir="ltr"
-                            inputMode="decimal"
-                            value={rates[row.id] ?? String(Number(DEFAULT_COMMISSION_PERCENT))}
-                            onChange={event => setRates({ ...rates, [row.id]: event.target.value })}
-                            className="type-body mt-1 h-9 w-24 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
+                            id={reasonId}
+                            dir="auto"
+                            value={reasons[row.id] ?? ""}
+                            onChange={event => setReasons({ ...reasons, [row.id]: event.target.value })}
+                            className={`${fieldClass} mt-1.5`}
                           />
-                        </label>
-                        {row.proposedCommissionPercent ? (
-                          <button
-                            type="button"
-                            onClick={() => setRates({ ...rates, [row.id]: String(Number(row.proposedCommissionPercent)) })}
-                            className="glass pressable rounded-full px-3 py-2 text-[11px] font-extrabold"
-                          >
-                            {t("admin.applicationUseProposed")}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    {/* Approving is guarded by the same function the server
-                        runs, so the button cannot offer what the API refuses. */}
-                    {missing.length > 0 ? (
-                      <p className="mt-3 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-3 py-2 text-[12px] text-[#8c2f22]">
-                        {t("admin.applicationMissing", { fields: missing.map(item => t(MISSING_LABEL[item])).join(", ") })}
-                      </p>
-                    ) : null}
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null })}
-                        disabled={missing.length > 0 || approve.isPending}
-                        className="glass glass-navy pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                      >
-                        {approve.isPending ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
-                        {t("admin.applicationApprove")}
-                      </button>
-                      <button
-                        onClick={() => reject.mutate({ id: row.id, reason: reasons[row.id] ?? "" })}
-                        disabled={!(reasons[row.id] ?? "").trim() || reject.isPending}
-                        className="glass pressable inline-flex items-center gap-1.5 rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                      >
-                        <X className="size-3.5" aria-hidden /> {t("admin.applicationReject")}
-                      </button>
-                    </div>
-
-                    <input
-                      dir="auto"
-                      value={reasons[row.id] ?? ""}
-                      onChange={event => setReasons({ ...reasons, [row.id]: event.target.value })}
-                      aria-label={t("admin.applicationReason")}
-                      placeholder={t("admin.applicationReason")}
-                      className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
-                    />
-                  </article>
-                );
-              })}
-              {list.data ? <Pager page={list.data} onPage={setPage} /> : null}
-            </div>
-          );
-        }}
-      </QueryGate>
+                          <div className="mt-3 flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => reject.mutate({ id: row.id, reason: reasons[row.id] ?? "" })}
+                              disabled={!(reasons[row.id] ?? "").trim() || deciding !== undefined}
+                              className={buttonClass.quietDanger}
+                            >
+                              {deciding === row.id && reject.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <X className="size-4" aria-hidden />}
+                              {t("admin.applicationReject")}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null })}
+                              disabled={missing.length > 0 || deciding !== undefined}
+                              className={buttonClass.primary}
+                            >
+                              {deciding === row.id && approve.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+                              {t("admin.applicationApprove")}
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {list.data ? <Pager page={list.data} onPage={setPage} /> : null}
+              </>
+            );
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }
@@ -241,8 +256,8 @@ function Applications() {
 function Row({ label, value, ltr }: { label: string; value: string | null; ltr?: boolean }) {
   if (!value) return null;
   return (
-    <div className="flex gap-2">
-      <dt className="shrink-0 font-extrabold ink-muted">{label}</dt>
+    <div className="flex min-w-0 gap-2">
+      <dt className="shrink-0 font-semibold text-[#536b8c]">{label}</dt>
       {/* A value that is always Latin gets `bdi`, never `dir` on the block:
           the characters read left to right, the line belongs on its own side. */}
       <dd className="min-w-0 truncate text-[#0a285a]">

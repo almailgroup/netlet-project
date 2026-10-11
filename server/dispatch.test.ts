@@ -459,3 +459,23 @@ describe("live tracking", () => {
     expect(await db.select().from(driverPositions)).toHaveLength(1);
   });
 });
+
+describe("a company's logins", () => {
+  it("lists them by name and address, and attaches an account by the address it registered with", async () => {
+    const before = await dispatch.listCourierMembers(adminActor(), ids.swift);
+    expect(before.map(row => row.email)).toEqual(["driver@swift.test"]);
+
+    await dispatch.addCourierMember(adminActor(), ids.swift, "  Shopper@Example.TEST ");
+    const after = await dispatch.listCourierMembers(adminActor(), ids.swift);
+    expect(after.map(row => row.email)).toEqual(["driver@swift.test", "shopper@example.test"]);
+  });
+
+  it("names an address nobody registered rather than failing on the insert", async () => {
+    await expect(dispatch.addCourierMember(adminActor(), ids.swift, "nobody@example.test")).rejects.toThrow("admin.noSuchAccount");
+  });
+
+  it("is an administrator's alone", async () => {
+    await expect(dispatch.addCourierMember(sellerActor(), ids.swift, "shopper@example.test")).rejects.toThrow("FORBIDDEN");
+  });
+});
+

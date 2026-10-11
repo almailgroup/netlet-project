@@ -19,17 +19,16 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, SkeletonCards, smallButtonClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { Building2, Plus, Trash2 } from "lucide-react";
+import { Building2, Plus, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-const field =
-  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 export default function AdminCouriers() {
   usePageMeta(privatePageMeta("Delivery companies"));
@@ -41,6 +40,7 @@ function Couriers({ actor }: { actor: Actor }) {
   const list = trpc.dispatch.couriers.list.useQuery();
   const utils = trpc.useUtils();
   const [draft, setDraft] = useState({ name: "", nameAr: "", contactPhone: "", contactEmail: "" });
+  const [suspending, setSuspending] = useState<{ id: number; name: string } | null>(null);
 
   const refresh = () => void utils.dispatch.couriers.list.invalidate();
   const refused = (error: { message: string }) => toast.error(tError(error.message));
@@ -53,67 +53,78 @@ function Couriers({ actor }: { actor: Actor }) {
     },
     onError: refused,
   });
-  const setStatus = trpc.dispatch.couriers.setStatus.useMutation({ onSuccess: refresh, onError: refused });
+  const setStatus = trpc.dispatch.couriers.setStatus.useMutation({
+    onSuccess: () => { setSuspending(null); refresh(); },
+    onError: error => { setSuspending(null); refused(error); },
+  });
 
   const mayMintLogins = can(actor, "platform.manageUsers");
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.couriers")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.couriersNote")}</p>
+      <PageHeader title={t("admin.couriers")} description={t("admin.couriersNote")} />
 
-      <QueryGate queries={[list]}>
-        {() => (
-          <ul className="mt-5 space-y-3">
-            {(list.data ?? []).map(company => (
-              <li key={company.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  {/* A heading, so each company's "Members" below sits under
-                      something: it went straight from the page's h1 to an h3. */}
-                  <h2 className="flex items-center gap-1.5 text-base font-bold text-[#0a285a]">
-                    <Building2 className="size-4 ink-accent" aria-hidden />
-                    <span dir="auto">{company.name}</span>
-                    {company.nameAr ? <span className="ink-muted" dir="auto"> · {company.nameAr}</span> : null}
-                  </h2>
-                  <span
-                    className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${
-                      company.status === "active" ? "bg-[#e7f3e8] text-[#2f5d33]" : "bg-[#fdeceb] text-[#8c2f22]"
-                    }`}
-                  >
-                    {t(company.status === "active" ? "dispatch.statusActive" : "dispatch.statusSuspended")}
-                  </span>
-                </div>
+      {list.isLoading ? (
+        <SkeletonCards count={2} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => (list.data ?? []).length === 0 ? (
+            <EmptyState title={t("dispatch.noCompanies")} />
+          ) : (
+            <ul className="space-y-4">
+              {(list.data ?? []).map(company => (
+                <li key={company.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e7edf5] text-[#0a285a]"><Building2 className="size-5" aria-hidden /></span>
+                      <div className="min-w-0">
+                        {/* A heading, so each company's logins below sit under
+                            something: it went straight from the page's h1 to an h3. */}
+                        <h2 className="text-[16px] font-bold text-[#0a285a]">
+                          <span dir="auto">{company.name}</span>
+                          {company.nameAr ? <span className="font-semibold ink-muted" dir="auto"> · {company.nameAr}</span> : null}
+                        </h2>
+                        {company.contactPhone || company.contactEmail ? (
+                          <p className="mt-0.5 text-[13px] text-[#536b8c]">
+                            {[company.contactPhone, company.contactEmail].filter(Boolean).map((part, index) => (
+                              <span key={index}>
+                                {index > 0 ? " · " : null}
+                                {/* Latin values on an Arabic page: isolated, never given
+                                    the block a direction of their own. */}
+                                <bdi dir="ltr">{part}</bdi>
+                              </span>
+                            ))}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Pill tone={company.status === "active" ? "good" : "danger"}>
+                        {t(company.status === "active" ? "dispatch.statusActive" : "dispatch.statusSuspended")}
+                      </Pill>
+                      <button
+                        type="button"
+                        disabled={setStatus.isPending}
+                        onClick={() => company.status === "active"
+                          ? setSuspending({ id: company.id, name: company.name })
+                          : setStatus.mutate({ courierId: company.id, status: "active" })}
+                        className={company.status === "active" ? smallButtonClass.quietDanger : smallButtonClass.secondary}
+                      >
+                        {t(company.status === "active" ? "dispatch.suspend" : "dispatch.restore")}
+                      </button>
+                    </div>
+                  </div>
 
-                <p className="mt-1 text-[12px] text-[#536b8c]">
-                  {[company.contactPhone, company.contactEmail].filter(Boolean).map((part, index) => (
-                    <span key={index}>
-                      {index > 0 ? " · " : null}
-                      {/* Latin values on an Arabic page: isolated, never given
-                          the block a direction of their own. */}
-                      <bdi dir="ltr">{part}</bdi>
-                    </span>
-                  ))}
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={setStatus.isPending}
-                    onClick={() => setStatus.mutate({ courierId: company.id, status: company.status === "active" ? "suspended" : "active" })}
-                    className="glass pressable rounded-full px-4 py-2 text-[12px] font-extrabold disabled:opacity-60"
-                  >
-                    {t(company.status === "active" ? "dispatch.suspend" : "dispatch.restore")}
-                  </button>
-                </div>
-
-                {mayMintLogins ? <Members courierId={company.id} /> : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </QueryGate>
+                  {mayMintLogins ? <Members courierId={company.id} /> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </QueryGate>
+      )}
 
       <form
+        className="mt-6"
         onSubmit={event => {
           event.preventDefault();
           if (draft.name.trim()) {
@@ -125,118 +136,127 @@ function Couriers({ actor }: { actor: Actor }) {
             });
           }
         }}
-        className="mt-6 rounded-2xl border border-[#e6e9ef] bg-white p-5"
       >
-        <h2 className="text-[13px] font-extrabold text-[#0a285a]">{t("dispatch.newCourier")}</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <label className="text-[12px] font-bold text-[#536b8c]">
-            {t("dispatch.companyName")}
-            <input value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} className={`${field} mt-1 font-normal`} />
-          </label>
-          <label className="text-[12px] font-bold text-[#536b8c]">
-            {t("dispatch.companyNameAr")}
-            <input value={draft.nameAr} onChange={e => setDraft(d => ({ ...d, nameAr: e.target.value }))} className={`${field} mt-1 font-normal`} />
-          </label>
-          <label className="text-[12px] font-bold text-[#536b8c]">
-            {t("dispatch.companyPhone")}
-            <input value={draft.contactPhone} dir="ltr" inputMode="tel" onChange={e => setDraft(d => ({ ...d, contactPhone: e.target.value }))} className={`${field} mt-1 font-normal`} />
-          </label>
-          <label className="text-[12px] font-bold text-[#536b8c]">
-            {t("dispatch.companyEmail")}
-            <input value={draft.contactEmail} dir="ltr" inputMode="email" onChange={e => setDraft(d => ({ ...d, contactEmail: e.target.value }))} className={`${field} mt-1 font-normal`} />
-          </label>
-        </div>
-        <button
-          type="submit"
-          disabled={!draft.name.trim() || create.isPending}
-          className="glass glass-navy pressable mt-4 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[13px] font-bold disabled:opacity-50"
+        <Card
+          title={t("dispatch.newCourier")}
+          footer={
+            <button type="submit" disabled={!draft.name.trim() || create.isPending} className={buttonClass.primary}>
+              <Plus className="size-4" aria-hidden />{t("dispatch.create")}
+            </button>
+          }
         >
-          <Plus className="size-4" aria-hidden /> {t("dispatch.create")}
-        </button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("dispatch.companyName")}>
+              <input dir="auto" value={draft.name} maxLength={200} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} className={fieldClass} />
+            </Field>
+            <Field label={t("dispatch.companyNameAr")} optional>
+              <input dir="rtl" lang="ar" value={draft.nameAr} maxLength={200} onChange={e => setDraft(d => ({ ...d, nameAr: e.target.value }))} className={fieldClass} />
+            </Field>
+            <Field label={t("dispatch.companyPhone")} optional>
+              <input value={draft.contactPhone} dir="ltr" inputMode="tel" onChange={e => setDraft(d => ({ ...d, contactPhone: e.target.value }))} className={fieldClass} />
+            </Field>
+            <Field label={t("dispatch.companyEmail")} optional>
+              <input value={draft.contactEmail} dir="ltr" type="email" onChange={e => setDraft(d => ({ ...d, contactEmail: e.target.value }))} className={fieldClass} />
+            </Field>
+          </div>
+        </Card>
       </form>
+
+      <ConfirmDialog
+        open={suspending !== null}
+        title={t("dispatch.suspendTitle", { name: isolate(suspending?.name ?? "") })}
+        body={t("dispatch.suspendBody")}
+        confirmLabel={t("dispatch.suspend")}
+        tone="danger"
+        pending={setStatus.isPending}
+        onConfirm={() => suspending && setStatus.mutate({ courierId: suspending.id, status: "suspended" })}
+        onClose={() => setSuspending(null)}
+      />
     </>
   );
 }
 
 /**
- * The logins on one company.
- *
- * Attached by account id rather than by email, and the page says where to find
- * one. Looking an account up by address from here would be a way to ask which
- * addresses are registered — the thing sign-in, password reset and the wishlist
- * lookup all refuse to answer.
+ * The logins on one company, by name and address, attached by the address the
+ * person registered with.
  */
 function Members({ courierId }: { courierId: number }) {
   const { t, tError } = useTranslation();
   const members = trpc.dispatch.couriers.members.useQuery({ courierId });
   const utils = trpc.useUtils();
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
+  const [removing, setRemoving] = useState<{ userId: number; name: string } | null>(null);
 
   const refresh = () => void utils.dispatch.couriers.members.invalidate({ courierId });
   const refused = (error: { message: string }) => toast.error(tError(error.message));
 
   const add = trpc.dispatch.couriers.addMember.useMutation({
-    onSuccess: () => { toast.success(t("dispatch.memberAdded")); setUserId(""); refresh(); },
+    onSuccess: () => { toast.success(t("dispatch.memberAdded")); setEmail(""); refresh(); },
     onError: refused,
   });
   const remove = trpc.dispatch.couriers.removeMember.useMutation({
-    onSuccess: () => { toast.success(t("dispatch.memberRemoved")); refresh(); },
-    onError: refused,
+    onSuccess: () => { setRemoving(null); toast.success(t("dispatch.memberRemoved")); refresh(); },
+    onError: error => { setRemoving(null); refused(error); },
   });
 
   const rows = members.data ?? [];
+  const inputId = `courier-${courierId}-email`;
 
   return (
-    <div className="mt-4 border-t border-[#eef1f6] pt-3">
-      <h3 className="text-[11px] font-extrabold tracking-[.1em] text-[#536b8c] uppercase">{t("dispatch.members")}</h3>
+    <div className="mt-4 border-t border-[#eef1f5] pt-4">
+      <h3 className="text-[14px] font-bold text-[#0a285a]">{t("dispatch.members")}</h3>
       {rows.length === 0 ? (
-        <p className="mt-2 text-[12px] ink-muted">{t("dispatch.noMembers")}</p>
+        <p className="mt-1.5 text-[13px] ink-muted">{t("dispatch.noMembers")}</p>
       ) : (
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className="mt-2 divide-y divide-[#eef1f5] rounded-xl border border-[#e1e7ef]">
           {rows.map(row => (
-            <li key={row.id} className="inline-flex items-center gap-2 rounded-full bg-[#eef1f6] px-3 py-1 text-[12px] font-bold text-[#0a285a]">
-              <bdi dir="ltr">#{row.userId}</bdi>
+            <li key={row.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+              <div className="min-w-0">
+                {row.name ? <p dir="auto" className="truncate text-[14px] font-semibold text-[#0a285a]">{row.name}</p> : null}
+                <p className="truncate text-[13px] ink-muted"><bdi dir="ltr">{row.email}</bdi></p>
+              </div>
               <button
                 type="button"
-                aria-label={t("dispatch.removeMember", { id: String(row.userId) })}
+                aria-label={t("dispatch.removeMember", { id: isolate(row.name || row.email) })}
                 disabled={remove.isPending}
-                onClick={() => remove.mutate({ courierId, userId: row.userId })}
-                className="ink-muted hover:text-[#a44a2b] disabled:opacity-60"
+                onClick={() => setRemoving({ userId: row.userId, name: row.name || row.email })}
+                className={`${smallButtonClass.quietDanger} w-9 px-0`}
               >
-                <Trash2 className="size-3.5" aria-hidden />
+                <Trash2 className="size-4" aria-hidden />
               </button>
             </li>
           ))}
         </ul>
       )}
 
-      <p className="mt-2 text-[11px] ink-muted">{t("dispatch.addMemberNote")}</p>
       <form
         onSubmit={event => {
           event.preventDefault();
-          const id = Number(userId);
-          if (Number.isInteger(id) && id > 0) add.mutate({ courierId, userId: id });
+          if (email.trim()) add.mutate({ courierId, email: email.trim() });
         }}
-        className="mt-2 flex flex-wrap items-end gap-2"
+        className="mt-3 flex flex-wrap items-end gap-2"
       >
-        <label className="text-[12px] font-bold text-[#536b8c]">
-          {t("dispatch.memberId")}
-          <input
-            value={userId}
-            dir="ltr"
-            inputMode="numeric"
-            onChange={event => setUserId(event.target.value)}
-            className={`${field} mt-1 w-32 font-normal`}
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={!userId.trim() || add.isPending}
-          className="glass pressable h-10 rounded-full px-4 text-[12px] font-extrabold disabled:opacity-50"
-        >
-          {t("dispatch.addMember")}
+        <div className="min-w-0 flex-1 basis-56">
+          <label htmlFor={inputId} className="block text-[13px] font-semibold text-[#0a285a]">{t("dispatch.memberId")}</label>
+          <input id={inputId} type="email" value={email} dir="ltr" aria-describedby={`${inputId}-hint`} onChange={event => setEmail(event.target.value)} className={`${fieldClass} mt-1.5`} />
+        </div>
+        <button type="submit" disabled={!email.trim() || add.isPending} className={buttonClass.secondary}>
+          <UserPlus className="size-4" aria-hidden />{t("dispatch.addMember")}
         </button>
+        <p id={`${inputId}-hint`} className="basis-full text-[12px] ink-muted">{t("dispatch.addMemberNote")}</p>
       </form>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={t("dispatch.removeMemberTitle", { name: isolate(removing?.name ?? "") })}
+        body={t("dispatch.removeMemberBody")}
+        confirmLabel={t("admin.removeMember")}
+        tone="danger"
+        icon={<UserMinus className="size-5" aria-hidden />}
+        pending={remove.isPending}
+        onConfirm={() => removing && remove.mutate({ courierId, userId: removing.userId })}
+        onClose={() => setRemoving(null)}
+      />
     </div>
   );
 }

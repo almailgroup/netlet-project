@@ -179,6 +179,8 @@ const vendorScope = z.object({ vendorId: rowId.optional() });
  * the same rule rather than a looser one. Empty is allowed throughout: a
  * detail nobody has yet is not an error.
  */
+const webLink = z.string().trim().max(2000).regex(/^https?:\/\/\S+$/i, "sell.badLink");
+
 const blankOr = <T extends z.ZodTypeAny>(schema: T) =>
   z.union([schema, z.literal("")]).nullish();
 
@@ -327,8 +329,11 @@ export const inventoryRouter = router({
         addressLine: z.string().trim().max(300).nullable().optional(),
         licenceNumber: z.string().trim().max(64).nullable().optional(),
         licenceExpiresAt: z.coerce.date().nullable().optional(),
-        licenceDocUrl: z.string().trim().max(2000).nullable().optional(),
-        identityDocUrl: z.string().trim().max(2000).nullable().optional(),
+        /* Web addresses and nothing else: an administrator opens these from
+           the review queue, so a `javascript:` or `data:` value typed here
+           would run in the reviewer's session rather than show a document. */
+        licenceDocUrl: blankOr(webLink),
+        identityDocUrl: blankOr(webLink),
         payoutIban: z.string().trim().max(42).nullable().optional(),
         underPlatformLicence: z.boolean().optional(),
         /* The version they accepted, not a boolean: "they agreed" means

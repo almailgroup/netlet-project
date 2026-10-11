@@ -1,10 +1,12 @@
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '../../shared/const.js';
 import { initTRPC, TRPCError } from "@trpc/server";
+import { ZodError } from "zod";
 import superjson from "superjson";
 import type { TrpcContext } from "./context.js";
 import { rootCauseOf } from "./describeError.js";
 import { featureForEntry } from "../../shared/features.js";
 import { featureOn } from "../features.js";
+import { isMessageKey } from "../../shared/i18n/dictionary.js";
 
 /**
  * What a failure says, and to whom.
@@ -37,6 +39,9 @@ import { featureOn } from "../features.js";
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter({ shape, error, ctx }) {
+    if (error.code === "BAD_REQUEST" && error.cause instanceof ZodError) {
+      return { ...shape, message: inputRefusal(error.cause) };
+    }
     if (error.code !== "INTERNAL_SERVER_ERROR") return shape;
     const forAdmin = ctx?.user?.role === "admin";
     if (forAdmin) return { ...shape, message: rootCauseOf(error) };
@@ -50,6 +55,21 @@ const t = initTRPC.context<TrpcContext>().create({
     return { ...shape, message: "error.serverProblem", data };
   },
 });
+
+/**
+ * What an input the schema refused says.
+ *
+ * tRPC's message for one is zod's whole list of issues as JSON, and every page
+ * put that in a toast — a wall of brackets and paths where a sentence belongs,
+ * in English on the Arabic page. Where a schema was given a message key of its
+ * own (`admin.invalidPhone`, `sell.badLink`) the first one is the answer, since
+ * it names the field; otherwise a sentence that something in the form is not
+ * right. The page's own checks catch nearly all of these first, so this is
+ * what a value typed past them meets.
+ */
+export function inputRefusal(error: ZodError): string {
+  return error.issues.find(issue => isMessageKey(issue.message))?.message ?? "error.invalidInput";
+}
 
 export const router = t.router;
 

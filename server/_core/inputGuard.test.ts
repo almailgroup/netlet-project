@@ -100,3 +100,34 @@ describe("a string longer than its column is refused", () => {
       .rejects.toMatchObject(refused);
   });
 });
+
+describe("what a refused input says", () => {
+  /* Through the HTTP handler, because that is where the shape is made: a
+     server-side caller throws the raw error and never meets the formatter. */
+  async function over(path: string, input: unknown) {
+    const { fetchRequestHandler } = await import("@trpc/server/adapters/fetch");
+    const { appRouter } = await import("../routers.js");
+    const url = `http://shop.test/api/trpc/${path}?input=${encodeURIComponent(JSON.stringify({ json: input }))}`;
+    const response = await fetchRequestHandler({
+      endpoint: "/api/trpc",
+      req: new Request(url),
+      router: appRouter,
+      createContext: () => ({ user: null, req: { protocol: "https", headers: {} }, res: { clearCookie: () => {}, cookie: () => {} } }) as unknown as TrpcContext,
+    });
+    const body = await response.json() as { error: { json: { message: string } } };
+    return body.error.json.message;
+  }
+
+  it("is a sentence, never zod's list of issues", async () => {
+    expect(await over("commerce.bundlesForVariant", { variantId: "oops" })).toBe("error.invalidInput");
+  });
+
+  it("is the schema's own key where one was written", async () => {
+    const { inputRefusal } = await import("./trpc.js");
+    const { z } = await import("zod");
+    const schema = z.object({ link: z.string().regex(/^https?:\/\//, "sell.badLink"), other: z.number() });
+    const result = schema.safeParse({ link: "javascript:alert(1)", other: "x" });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(inputRefusal(result.error)).toBe("sell.badLink");
+  });
+});

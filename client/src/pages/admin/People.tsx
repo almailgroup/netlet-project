@@ -15,22 +15,23 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
+import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
-import { ShieldCheck, ShieldOff, UserPlus, X } from "lucide-react";
+import { Search, ShieldCheck, ShieldOff, UserMinus, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function AdminPeople() {
   usePageMeta(privatePageMeta("People"));
-  return <AdminShell need={"platform.manageUsers"}>{() => <People />}</AdminShell>;
+  return <AdminShell need={"platform.manageUsers"}>{actor => <People selfId={actor.userId} />}</AdminShell>;
 }
-
-const field = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -38,32 +39,25 @@ const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   owner: "admin.roleOwner",
 };
 
-/**
- * A date the way an administrator reads one.
- *
- * Day precision: the question is "recently or long ago", and a timestamp to
- * the second is noise on that question. `ar-KW-u-ca-gregory-nu-latn` keeps the
- * Gregorian calendar and Western digits, matching how prices are rendered —
- * Hijri dates on an audit line would be a different reading of "when".
- */
-const DATE_LOCALE = { en: "en-GB", ar: "ar-KW-u-ca-gregory-nu-latn" } as const;
-
-function onDay(value: Date | string, locale: "en" | "ar"): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(DATE_LOCALE[locale], { year: "numeric", month: "short", day: "numeric" }).format(date);
-}
-
 function asIso(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString();
 }
 
-function People() {
-  const { t, locale } = useTranslation();
+/* The two moves on this page that change who runs NetLet, or who may act for
+   a store, each ask first: one press used to make somebody an administrator,
+   which reaches every store, every payout and this page. */
+type Pending =
+  | { kind: "grant" | "revoke"; userId: number; name: string }
+  | { kind: "remove"; userId: number; name: string; vendorId: number; vendor: string };
+
+function People({ selfId }: { selfId: number }) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [asking, setAsking] = useState<Pending | null>(null);
   /*
    * This list is everyone with an account, shoppers included, so it is the one
    * that outgrew its old ceiling of a hundred first — and choosing who
@@ -78,34 +72,33 @@ function People() {
 
   const refresh = () => void utils.inventory.people.list.invalidate();
   /*
-   * The server sends a message key for the three refusals a person can act on
-   * — "no such account", "you cannot demote yourself", "this is the last
-   * administrator". Anything else is a fault, and gets the generic line
-   * rather than a raw error string in front of a user.
+   * The server sends a message key for the refusals a person can act on —
+   * "no such account", "you cannot demote yourself", "this is the last
+   * administrator", "the store's only owner". Anything else is a fault, and
+   * gets the generic line rather than a raw error string in front of a user.
    */
   const fail = (error: { message: string }) =>
     toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
+  const settle = { onSuccess: () => { setAsking(null); refresh(); toast.success(t("admin.saved")); }, onError: (error: { message: string }) => { setAsking(null); fail(error); } };
 
-  const setAdmin = trpc.inventory.people.setAdmin.useMutation({
-    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    onError: fail,
-  });
+  const setAdmin = trpc.inventory.people.setAdmin.useMutation(settle);
   const addToVendor = trpc.inventory.people.addToVendor.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
-  const removeFromVendor = trpc.inventory.people.removeFromVendor.useMutation({
-    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    onError: fail,
-  });
+  const removeFromVendor = trpc.inventory.people.removeFromVendor.useMutation(settle);
 
   const rows = people.data?.rows ?? [];
   const vendorRows = vendors.data?.rows ?? [];
+  const busy = setAdmin.isPending || removeFromVendor.isPending;
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.people")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.adminNote")}</p>
+      <PageHeader
+        title={t("admin.people")}
+        description={t("admin.adminNote")}
+        meta={people.data ? <span className="font-semibold text-[#3d5376]">{t("admin.peopleCount", { count: people.data.total })}</span> : null}
+      />
 
       <AddToVendor
         vendors={vendorRows}
@@ -113,98 +106,138 @@ function People() {
         onAdd={(vendorId, email, role) => addToVendor.mutate({ vendorId, email, role })}
       />
 
-      <label className="mt-6 block">
-        <span className="sr-only">{t("admin.searchPeople")}</span>
+      <div className="relative mt-6 max-w-md">
+        <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 text-[#536b8c]" aria-hidden />
         <input
+          type="search"
           dir="auto"
           value={query}
           onChange={event => { setQuery(event.target.value); setPage(1); }}
+          aria-label={t("admin.searchPeople")}
           placeholder={t("admin.searchPeople")}
-          className={`${field} max-w-md`}
+          className={`${fieldClass} ps-10`}
         />
-      </label>
+      </div>
 
-      {people.isLoading || people.isError ? (
-        <div className="mt-5"><QueryGate queries={[people]}>{() => null}</QueryGate></div>
-      ) : rows.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-          <p className="text-sm font-extrabold">{t("admin.noPeople")}</p>
-        </div>
-      ) : (
-        <div className="mt-4 space-y-3">
-          {rows.map(person => (
-            <article key={person.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-[#0a285a]"><bdi>{person.name || person.email}</bdi></p>
-                  {/* An address is an address in any language — isolated so it
-                      reads left-to-right, inside a line that still takes the
-                      page's side. */}
-                  <p className="mt-0.5 truncate text-[11px] ink-muted"><bdi dir="ltr">{person.email}</bdi></p>
-                </div>
+      <div className="mt-4">
+        {people.isLoading ? (
+          <SkeletonRows label={t("admin.loading")} />
+        ) : people.isError ? (
+          <QueryGate queries={[people]}>{() => null}</QueryGate>
+        ) : rows.length === 0 ? (
+          <EmptyState title={t("admin.noPeople")} />
+        ) : (
+          <>
+            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+              {rows.map(person => {
+                const name = person.name || person.email;
+                const self = person.id === selfId;
+                return (
+                  <li key={person.id} className="p-4 sm:px-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold text-[#0a285a]">
+                          <bdi>{name}</bdi>
+                          {person.role === "admin" ? <Pill tone="navy">{t("admin.isAdmin")}</Pill> : null}
+                          {self ? <span className="text-[12px] font-semibold ink-muted">{t("admin.you")}</span> : null}
+                        </p>
+                        {/* An address is an address in any language — isolated so it
+                            reads left-to-right, inside a line that still takes the
+                            page's side. */}
+                        <p className="mt-0.5 truncate text-[13px] ink-muted"><bdi dir="ltr">{person.email}</bdi></p>
+                        {/* When an account appeared, and whether it is in use. An
+                            administrator granting access wants to know they are looking
+                            at the colleague who just registered, not a dormant account
+                            with a similar name. */}
+                        <p className="mt-1 flex flex-wrap gap-x-4 text-[12px] ink-muted">
+                          <span>{t("admin.joined")} <time dateTime={asIso(person.createdAt)}>{formatDate(person.createdAt)}</time></span>
+                          <span>{t("admin.lastSeen")} <time dateTime={asIso(person.lastSignedIn)}>{formatDate(person.lastSignedIn)}</time></span>
+                        </p>
+                      </div>
 
-                {person.role === "admin" ? (
-                  <button
-                    onClick={() => setAdmin.mutate({ userId: person.id, isAdmin: false })}
-                    disabled={setAdmin.isPending}
-                    className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                  >
-                    <ShieldOff className="size-3.5" />{t("admin.revokeAdmin")}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setAdmin.mutate({ userId: person.id, isAdmin: true })}
-                    disabled={setAdmin.isPending}
-                    className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                  >
-                    <ShieldCheck className="size-3.5" />{t("admin.makeAdmin")}
-                  </button>
-                )}
-              </div>
+                      {person.role === "admin" ? (
+                        <button
+                          type="button"
+                          onClick={() => setAsking({ kind: "revoke", userId: person.id, name })}
+                          disabled={busy}
+                          className={smallButtonClass.quietDanger}
+                        >
+                          <ShieldOff className="size-4" aria-hidden />{t("admin.revokeAdmin")}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAsking({ kind: "grant", userId: person.id, name })}
+                          disabled={busy}
+                          className={smallButtonClass.secondary}
+                        >
+                          <ShieldCheck className="size-4" aria-hidden />{t("admin.makeAdmin")}
+                        </button>
+                      )}
+                    </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#e6e9ef] pt-3">
-                {person.role === "admin" ? (
-                  <span className="rounded-full bg-[#0a285a] px-2.5 py-1 text-[10px] font-extrabold text-white">
-                    {t("admin.isAdmin")}
-                  </span>
-                ) : null}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-[13px] font-semibold text-[#536b8c]">{t("admin.memberOf")}</span>
+                      {person.vendors.length === 0 ? (
+                        <span className="text-[13px] ink-muted">{t("admin.noVendorMemberships")}</span>
+                      ) : (
+                        person.vendors.map(membership => (
+                          <span
+                            key={`${membership.vendorId}-${person.id}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#e1e7ef] bg-[#f7f9fc] py-1 ps-2.5 pe-1 text-[13px] text-[#0a285a]"
+                          >
+                            <bdi className="font-semibold">{membership.vendorName}</bdi>
+                            <span className="text-[#536b8c]">· {t(ROLE_LABEL[membership.role as VendorRole])}</span>
+                            <button
+                              type="button"
+                              onClick={() => setAsking({ kind: "remove", userId: person.id, name, vendorId: membership.vendorId, vendor: membership.vendorName })}
+                              aria-label={t("admin.removeFrom", { vendor: isolate(membership.vendorName) })}
+                              disabled={busy}
+                              className="grid size-7 place-items-center rounded-md text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
+                            >
+                              <X className="size-3.5" aria-hidden />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {people.data ? <Pager page={people.data} onPage={setPage} /> : null}
+          </>
+        )}
+      </div>
 
-                <span className="text-[11px] font-extrabold text-[#536b8c]">{t("admin.memberOf")}</span>
-                {person.vendors.length === 0 ? (
-                  <span className="text-[11px] ink-muted">{t("admin.noVendorMemberships")}</span>
-                ) : (
-                  person.vendors.map(membership => (
-                    <span
-                      key={`${membership.vendorId}-${person.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-[#e7edf5] px-2.5 py-1 text-[10px] font-extrabold text-[#0a285a]"
-                    >
-                      <span dir="auto">{membership.vendorName}</span>
-                      <span className="text-[#536b8c]">{t(ROLE_LABEL[membership.role as VendorRole])}</span>
-                      <button
-                        onClick={() => removeFromVendor.mutate({ vendorId: membership.vendorId, userId: person.id })}
-                        aria-label={t("admin.removeFrom", { vendor: membership.vendorName })}
-                        className="tap-target ink-muted hover:text-[#a44a2b]"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  ))
-                )}
-              </div>
-
-              {/* When an account appeared, and whether it is in use. An
-                  administrator granting access wants to know they are looking
-                  at the colleague who just registered, not a dormant account
-                  with a similar name. */}
-              <p className="mt-2 flex flex-wrap gap-x-4 text-[10px] ink-muted">
-                <span>{t("admin.joined")} <time dir="ltr" dateTime={asIso(person.createdAt)}>{onDay(person.createdAt, locale)}</time></span>
-                <span>{t("admin.lastSeen")} <time dir="ltr" dateTime={asIso(person.lastSignedIn)}>{onDay(person.lastSignedIn, locale)}</time></span>
-              </p>
-            </article>
-          ))}
-          {people.data ? <Pager page={people.data} onPage={setPage} /> : null}
-        </div>
-      )}
+      <ConfirmDialog
+        open={asking !== null}
+        title={
+          asking?.kind === "grant" ? t("admin.makeAdminTitle", { name: isolate(asking.name) })
+            : asking?.kind === "revoke" ? t("admin.revokeAdminTitle", { name: isolate(asking.name) })
+            : asking?.kind === "remove" ? t("admin.removeFromTitle", { name: isolate(asking.name), vendor: isolate(asking.vendor) })
+            : ""
+        }
+        body={
+          asking?.kind === "grant" ? t("admin.makeAdminBody")
+            : asking?.kind === "revoke" ? t("admin.revokeAdminBody")
+            : t("admin.removeMemberBody")
+        }
+        confirmLabel={
+          asking?.kind === "grant" ? t("admin.makeAdmin")
+            : asking?.kind === "revoke" ? t("admin.revokeAdmin")
+            : t("admin.removeMember")
+        }
+        tone={asking?.kind === "grant" ? "normal" : "danger"}
+        icon={asking?.kind === "grant" ? <ShieldCheck className="size-5" aria-hidden /> : asking?.kind === "revoke" ? <ShieldOff className="size-5" aria-hidden /> : <UserMinus className="size-5" aria-hidden />}
+        pending={busy}
+        onConfirm={() => {
+          if (!asking) return;
+          if (asking.kind === "remove") removeFromVendor.mutate({ vendorId: asking.vendorId, userId: asking.userId });
+          else setAdmin.mutate({ userId: asking.userId, isAdmin: asking.kind === "grant" });
+        }}
+        onClose={() => setAsking(null)}
+      />
     </>
   );
 }
@@ -230,47 +263,32 @@ function AddToVendor({ vendors, pending, onAdd }: {
   if (!vendors.length) return null;
 
   return (
-    <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-      <h2 className="text-sm font-extrabold">{t("admin.addToVendor")}</h2>
-      <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center">
-        <input
-          dir="ltr"
-          type="email"
-          value={email}
-          onChange={event => setEmail(event.target.value)}
-          placeholder={t("admin.emailPlaceholder")}
-          className={field}
-        />
-        {/* Both carry a name of their own, because neither sits in a label:
-            this row is four controls side by side under one heading, and a
-            heading names a section rather than a field. Without these the
-            store and the rank are two unnamed comboboxes — nothing for a
-            screen reader to read out, and nothing to say by voice. */}
-        <select
-          aria-label={t("admin.productVendor")}
-          value={vendorId}
-          onChange={event => setVendorId(event.target.value)}
-          className={`${field} sm:w-44`}
-        >
-          <option value="">{t("admin.fieldNoCategory")}</option>
-          {vendors.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
-        </select>
-        <select
-          aria-label={t("admin.memberRole")}
-          value={role}
-          onChange={event => setRole(event.target.value as VendorRole)}
-          className={`${field} sm:w-36`}
-        >
-          {VENDOR_ROLES.map(entry => <option key={entry} value={entry}>{t(ROLE_LABEL[entry])}</option>)}
-        </select>
-        <button
-          onClick={() => { if (vendorId && email.trim()) onAdd(Number(vendorId), email.trim(), role); }}
-          disabled={pending || !vendorId || !email.trim()}
-          className="glass glass-accent pressable inline-flex h-10 items-center justify-center gap-2 rounded-full px-5 text-xs font-extrabold disabled:opacity-50"
-        >
-          <UserPlus className="size-4" />{t("admin.addMember")}
-        </button>
-      </div>
-    </section>
+    <form onSubmit={event => { event.preventDefault(); if (vendorId && email.trim()) onAdd(Number(vendorId), email.trim(), role); }}>
+      <Card
+        title={t("admin.addToVendor")}
+        footer={
+          <button type="submit" disabled={pending || !vendorId || !email.trim()} className={buttonClass.primary}>
+            <UserPlus className="size-4" aria-hidden />{t("admin.addMember")}
+          </button>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_10rem]">
+          <Field label={t("admin.emailAddress")}>
+            <input dir="ltr" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("admin.emailPlaceholder")} className={fieldClass} />
+          </Field>
+          <Field label={t("admin.newStore")}>
+            <select value={vendorId} onChange={event => setVendorId(event.target.value)} className={fieldClass}>
+              <option value="" disabled>{t("admin.chooseStore")}</option>
+              {vendors.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
+            </select>
+          </Field>
+          <Field label={t("admin.memberRole")}>
+            <select value={role} onChange={event => setRole(event.target.value as VendorRole)} className={fieldClass}>
+              {VENDOR_ROLES.map(entry => <option key={entry} value={entry}>{t(ROLE_LABEL[entry])}</option>)}
+            </select>
+          </Field>
+        </div>
+      </Card>
+    </form>
   );
 }

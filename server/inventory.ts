@@ -1213,13 +1213,33 @@ export async function setMemberRole(actor: Actor, vendorId: number, userId: numb
   assertCan(actor, "vendor.manageMembers", vendorId);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
-  await db.transaction(async tx => {
+  const was = await db.transaction(async tx => {
     if (role !== "owner") await assertKeepsAnOwner(tx, vendorId, userId);
+    const [before] = await tx
+      .select({ role: vendorMembers.role })
+      .from(vendorMembers)
+      .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)))
+      .limit(1);
     await tx
       .insert(vendorMembers)
       .values({ vendorId, userId, role })
       .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+    return before ?? null;
   });
+  /* Who may act for a store is the sensitive operation 3.3.9 names; the
+     administrator's door onto the same rows was audited and the store's own
+     team page was not, so an owner's changes left no trace. */
+  if (was?.role !== role) {
+    await recordAudit(await auditActor(actor), {
+      action: "vendor.addMember",
+      subjectType: "user",
+      subjectId: userId,
+      subjectLabel: await emailOf(db, userId),
+      vendorId,
+      before: was ? { role: was.role } : null,
+      after: { role },
+    });
+  }
   return listMembers(actor, vendorId);
 }
 
@@ -1227,11 +1247,31 @@ export async function removeMember(actor: Actor, vendorId: number, userId: numbe
   assertCan(actor, "vendor.manageMembers", vendorId);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
-  await db.transaction(async tx => {
+  const was = await db.transaction(async tx => {
     await assertKeepsAnOwner(tx, vendorId, userId);
-    await tx.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+    const [removed] = await tx
+      .delete(vendorMembers)
+      .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)))
+      .returning({ role: vendorMembers.role });
+    return removed ?? null;
   });
+  if (was) {
+    await recordAudit(await auditActor(actor), {
+      action: "vendor.removeMember",
+      subjectType: "user",
+      subjectId: userId,
+      subjectLabel: await emailOf(db, userId),
+      vendorId,
+      before: { role: was.role },
+      after: null,
+    });
+  }
   return listMembers(actor, vendorId);
+}
+
+async function emailOf(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, userId: number) {
+  const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.email ?? null;
 }
 
 /**
@@ -1596,10 +1636,15 @@ export async function addMemberByEmail(
     .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, target.id)))
     .limit(1);
 
-  await db
-    .insert(vendorMembers)
-    .values({ vendorId, userId: target.id, role })
-    .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+  await db.transaction(async tx => {
+    /* Adding somebody already in the store sets their rank, so this door can
+       demote the only owner as surely as the team page can. */
+    if (role !== "owner") await assertKeepsAnOwner(tx, vendorId, target.id);
+    await tx
+      .insert(vendorMembers)
+      .values({ vendorId, userId: target.id, role })
+      .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+  });
 
   await recordAudit(await auditActor(actor), {
     action: "vendor.addMember",
@@ -1624,7 +1669,10 @@ export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId
     .from(vendorMembers)
     .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)))
     .limit(1);
-  await db.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+  await db.transaction(async tx => {
+    await assertKeepsAnOwner(tx, vendorId, userId);
+    await tx.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+  });
 
   await recordAudit(await auditActor(actor), {
     action: "vendor.removeMember",

@@ -209,3 +209,27 @@ describe("a store's owners", () => {
     expect(left.map(row => [row.userId, row.role])).toEqual([[ids.owner, "owner"]]);
   });
 });
+
+describe("the store's team, from either door", () => {
+  it("refuses demoting the only owner through the administrator's add-by-address, and removing them", async () => {
+    await expect(inv.addMemberByEmail(admin(), ids.acme, "owner@acme.test", "staff")).rejects.toThrow("admin.lastOwner");
+    await expect(inv.removeMemberAsAdmin(admin(), ids.acme, ids.owner)).rejects.toThrow("admin.lastOwner");
+  });
+
+  it("records an owner's own changes to their team in the trail", async () => {
+    await inv.setMemberRole(owner(), ids.acme, ids.shopper, "staff");
+    await inv.setMemberRole(owner(), ids.acme, ids.shopper, "manager");
+    await inv.removeMember(owner(), ids.acme, ids.shopper);
+    /* The last three: the owners test above already moved this shopper in and out once. */
+    const rows = (await db.select().from(auditLog).where(eq(auditLog.subjectId, ids.shopper)).orderBy(auditLog.id))
+      .filter(row => row.vendorId === ids.acme && row.action.startsWith("vendor."))
+      .slice(-3);
+    expect(rows.map(row => [row.action, (row.before as { role?: string } | null)?.role ?? null, (row.after as { role?: string } | null)?.role ?? null])).toEqual([
+      ["vendor.addMember", null, "staff"],
+      ["vendor.addMember", "staff", "manager"],
+      ["vendor.removeMember", "manager", null],
+    ]);
+    expect(rows[0].subjectLabel).toBe("noura@shop.test");
+  });
+});
+
