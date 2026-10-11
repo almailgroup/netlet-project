@@ -5,8 +5,9 @@ describe("feature switches", () => {
   it("treats a missing row as the feature's default — on, except the few with nothing behind them yet", () => {
     expect(resolveStates([])).toEqual(defaultStates());
     expect(resolveStates([{ key: "chat", enabled: false }])).toMatchObject({ chat: false, returns: true });
-    expect(FEATURE_KEYS.filter(key => !FEATURES[key].defaultOn).sort()).toEqual(["affiliates", "appBanner", "articles", "photoSearch", "subscriptions", "voiceSearch"]);
-    expect(resolveStates([{ key: "voiceSearch", enabled: true }])).toMatchObject({ voiceSearch: true, photoSearch: false });
+    expect(FEATURE_KEYS.filter(key => !FEATURES[key].defaultOn).sort()).toEqual(["affiliates", "appBanner", "articles", "subscriptions"]);
+    /* Voice and photo are on by default; each is drawn only where it works. */
+    expect(resolveStates([{ key: "photoSearch", enabled: false }])).toMatchObject({ voiceSearch: true, photoSearch: false });
   });
 
   it("reads past a row for a feature this build no longer has", () => {

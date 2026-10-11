@@ -318,10 +318,41 @@ and four of them meant eight lines of 10px and 12px text across one bar.
 control was a pill of its own, with a fill and a shadow, five in a row: that is
 what read as busy, and it left the field the narrowest thing on the bar — 460px
 at 1280. They are an icon and a word now, a tint on hover, and the cart is the
-only filled button; the field is about 630px at 1280. The words that can go
-when the bar is tight go first, hidden from the eye and never from the name:
-"Deliver to" waits for `2xl`, "Saved" for `xl`. The language control is the word
-alone, marked with its own `lang` so a screen reader says "العربية" in Arabic.
+only filled button. The words that can go when the bar is tight go first,
+hidden from the eye and never from the name: "Deliver to" is never drawn now
+(the pin and the area say it), "Saved" waits for `xl`. The language control is
+the word alone, marked with its own `lang` so a screen reader says "العربية" in
+Arabic.
+
+**The field is the widest thing on the bar, and the page is wider for it.** It
+was 770px on a 1910px screen, because Tailwind's `container` steps between
+fixed widths and stopped at 1536px. The container fills the window from `lg`
+up to 1680px now (unlayered in `index.css`, since Tailwind's utility beats any
+layer), "Deliver to" stopped taking 70px of the bar, and the field is 48px
+tall: about 1010px at 1910 and 700px at 1366.
+
+**It carries the other ways in, each only where it works.** A department
+picker at its start (`sm` up — a phone's field needs its width for the words)
+searches one department: the department's own page with `q` on it, and the
+suggestions narrowed by `productsInCategory`, the rule that page uses. On a
+department page it starts as that department, the way a shop's own search box
+does. It is a transparent `<select>` lying over its visible label, because a
+native select is as wide as its longest option and "All" sat in the room
+"Home & kitchen" needs. The box is a `<div>`, not a `<label>`: a label names
+the first control inside it, which became the picker, so a click anywhere in
+the field opened a dropdown. The microphone is drawn only in a browser that
+can listen, and the camera only while `search.photoAvailable` says a model can
+read the photo — so both are on by default without either ever being a button
+that can only apologise. A small "/" says the shortcut where there is a
+keyboard to press it on.
+
+**No line between the bar and the department row.** It cut one header into two
+strips. The edge returns only while the header is stuck over moving content:
+a marker just above it, watched by an `IntersectionObserver`, sets
+`data-stuck` on the element directly so scrolling never re-renders anything.
+A CSS `scroll-state` container query did the same in development and was
+silently dropped from the production stylesheet by the minifier — check the
+built CSS for any rule newer than the toolchain, not only the page in dev.
 
 **The account control names the shopper and opens a short menu** —
 `AccountMenu`: orders, messages, the account page, and the portal for somebody
@@ -350,8 +381,8 @@ argument for it was that an area could otherwise only be set from a hero link
 that scrolls away. The rail collapses on scroll too, so that fixed nothing and
 had not been checked. A row ending where its departments end is fine; a
 control you can only reach by scrolling back up is not, and inventing work to
-fill space is how the wrong row gets chosen. `Deliver to` goes `sr-only` below
-`2xl` — visually hidden, never hidden from the name (with a trailing space, or
+fill space is how the wrong row gets chosen. `Deliver to` is `sr-only` —
+visually hidden, never hidden from the name (with a trailing space, or
 the name reads "Deliver toHawalli"), which is the whole of WCAG 2.5.3: the button used to carry an
 `aria-label` of "Choose your governorate" while reading "Deliver to Hawalli",
 so somebody driving the page by voice said what they could see and nothing
@@ -2035,8 +2066,10 @@ of it now" has to be one control rather than four.
 
 **Absent is the feature's `defaultOn`, and switches are read per call rather
 than cached.** Most features default on, so a fresh database behaves as it
-always did. The ones with nothing behind them yet — voice and photo search, the
-app banner, the articles, affiliates, Subscribe & Save — default off: a control
+always did. Voice and photo search are on and draw themselves only where they
+work (a browser that can listen; a configured model). The ones with nothing
+behind them yet — the app banner, the articles, affiliates, Subscribe & Save —
+default off: a control
 answering "soon" is worse than no control, and hiding them behind the switch
 keeps the code rather than deleting it. Off, a shopper who already holds one
 (an affiliate account, a standing order) still sees that section on `/account`,

@@ -121,10 +121,14 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
      runs out its time with every benefit — it was given, and taking it back
      with a switch would be keeping a promise only while it was convenient. */
   membership: { entries: ["membership.grant"], audience: "shopper", defaultOn: true },
-  /* The browser's own recogniser; there is no entry, only the microphone in the search box. */
-  voiceSearch: { entries: [], audience: "shopper", defaultOn: false },
-  /* A model reading a photo: off refuses the call as well as hiding the camera. */
-  photoSearch: { entries: ["search.photo"], audience: "shopper", defaultOn: false },
+  /* The browser's own recogniser; there is no entry, only the microphone in the
+     search box, which is drawn only in a browser that can listen. */
+  voiceSearch: { entries: [], audience: "shopper", defaultOn: true },
+  /* A model reading a photo: off refuses the call as well as hiding the camera.
+     On, the camera is still drawn only while a model key is configured and
+     `ai` is on (`search.photoAvailable`), so it is never a button that can
+     only apologise. */
+  photoSearch: { entries: ["search.photo"], audience: "shopper", defaultOn: true },
   /* The home page's invitation to an app that is not yet in a store. */
   appBanner: { entries: [], audience: "shopper", defaultOn: false },
   /* The home page's "Useful reading", until there are articles to read. */

@@ -586,3 +586,35 @@
 .netlet-map .leaflet-control-attribution a {
   color: #a44a2b;
 }
+
+/*
+ * The page's width on a wide screen: up to 1680px, filling the window on the
+ * way there. Tailwind's own `container` steps between fixed widths — 1280px
+ * from 1280 to 1535, 1536px above — which left a laptop at 1366 with 75px of
+ * empty margin each side and capped the search field at 770px on a 1910px
+ * screen. Unlayered, because Tailwind's utility beats anything in a layer.
+ */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1680px;
+  }
+}
+
+/*
+ * The wide header's bottom edge, drawn only while it is stuck over the page.
+ * At rest the department row sits directly under the bar and a line between
+ * them cut one header into two strips; once the page scrolls, the row has gone
+ * and content passes under the bar, which then needs its edge. `StoreHeader`
+ * sets `data-stuck` from a marker just above the header — a CSS
+ * `scroll-state` query did the same in development and was dropped from the
+ * production stylesheet by the minifier, which does not know the syntax. A
+ * phone's header has its own border, since nothing sits below it.
+ */
+.header-edge {
+  display: none;
+}
+@media (min-width: 1024px) {
+  .sticky-header[data-stuck] .header-edge {
+    display: block;
+  }
+}

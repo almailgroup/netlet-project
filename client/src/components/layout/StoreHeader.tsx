@@ -58,7 +58,7 @@ import { categorySlug } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
 import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 
 /** A plain bar control: an icon and a word, a tint on hover, no fill of its own. */
@@ -106,6 +106,26 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   /* The language a press would give you, spoken in that language. */
   const otherLanguage = isArabic ? "en" : "ar";
 
+  /*
+   * Whether the header is stuck over the page, for its bottom edge. A marker
+   * sits just above it; once the marker has scrolled out of view, the header is
+   * pinned and content is passing underneath. The attribute is set on the
+   * element directly, so scrolling never re-renders the header.
+   */
+  const headerRef = useRef<HTMLElement>(null);
+  const markerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const marker = markerRef.current;
+    const header = headerRef.current;
+    if (!marker || !header || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) header.removeAttribute("data-stuck");
+      else header.setAttribute("data-stuck", "");
+    });
+    observer.observe(marker);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!searchable) return;
     const toSearch = (event: KeyboardEvent) => {
@@ -123,15 +143,16 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
     return () => window.removeEventListener("keydown", toSearch);
   }, [searchable]);
 
-  const field = searchable ? <LiveSearch catalog={catalog} value={search} onChange={onSearch!} onSelectProduct={onSelectProduct!} /> : null;
+  const field = searchable ? <LiveSearch catalog={catalog} value={search} onChange={onSearch!} onSelectProduct={onSelectProduct!} department={activeDepartment} /> : null;
 
   const area = (where: "bar" | "phone") => (
     <button onClick={() => setDeliveryOpen(true)} title={t("delivery.chooseGovernorate")} className={`${plain} ${where === "phone" ? "min-w-0 px-2.5" : ""}`}>
       <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
-      {/* "Deliver to" is in the name at every width (WCAG 2.5.3: what is said
-          aloud has to match what is seen), and drawn only where it fits. */}
-      {/* The trailing space keeps the name "Deliver to Hawalli" rather than one word. */}
-      <span className="sr-only 2xl:not-sr-only 2xl:font-semibold 2xl:text-[#536b8c]">{t("home.deliverTo")} </span>
+      {/* "Deliver to" is in the name and not drawn: the pin and the area say it,
+          and the width it took is the search field's now. The name still
+          starts with what is seen (WCAG 2.5.3), and the trailing space keeps
+          it "Deliver to Hawalli" rather than one word. */}
+      <span className="sr-only">{t("home.deliverTo")} </span>
       <span dir="auto" className={`truncate ${where === "phone" ? "max-w-[118px]" : "max-w-[130px]"}`}>{zoneName}</span>
       {where === "phone" ? <ChevronDown className="size-3.5 shrink-0 text-[#536b8c]" aria-hidden /> : null}
     </button>
@@ -164,12 +185,20 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       </a>
       {/* Above the pinned bar, so it scrolls away; inside it when there is no search row to pin. */}
       {searchable ? <div className="bg-white lg:hidden">{phoneTop}</div> : null}
-      <header className="sticky top-0 z-40 border-b border-[#e6e9ef] bg-white">
+      {/*
+        No line under the bar on a wide screen: the department row sits right
+        below it, and a rule between the two cut one header into two strips.
+        The edge comes back only once the page is moving underneath
+        (`.header-edge`, drawn while the header is stuck). A phone keeps its
+        line, because nothing sits below the search row there.
+      */}
+      <div ref={markerRef} aria-hidden className="pointer-events-none -mb-px h-px" />
+      <header ref={headerRef} className="sticky-header sticky top-0 z-40 border-b border-[#e6e9ef] bg-white lg:border-b-0">
         {searchable ? null : phoneTop}
         {field ? <div className="container pb-2.5 pt-1 lg:hidden">{field}</div> : null}
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
-        <div className="container hidden h-[72px] items-center gap-4 lg:flex">
+        <div className="container hidden h-[76px] items-center gap-5 lg:flex">
           <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[128px] object-contain" />
           </Link>
@@ -202,7 +231,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
             </button>
           </div>
         </div>
-
+        <div aria-hidden className="header-edge pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e6e9ef]" />
       </header>
       <nav aria-label={t("nav.primary")} className="hidden border-b border-[#e6e9ef] bg-white lg:block">
         <div className="container flex h-12 items-center gap-1.5">

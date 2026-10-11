@@ -2,11 +2,12 @@ import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
-import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
+import { ArrowRight, Camera, ChevronDown, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
-import { matchesSearch, searchPath } from "@shared/commerce/browse";
+import { EMPTY_FILTERS, matchesSearch, productsInCategory, searchPath, searchWithTerm } from "@shared/commerce/browse";
+import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey, categoryRail } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";
@@ -60,10 +61,24 @@ type LiveSearchProps = {
   value: string;
   onChange: (query: string) => void;
   onSelectProduct: (product: Product) => void;
+  /** The department the page is in, which the field starts out searching. */
+  department?: string | null;
 };
 
-export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSearchProps) {
+/** Whether this browser can listen at all. Firefox and the iOS app's WebView cannot. */
+const canListen = () => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null }: LiveSearchProps) {
   const { t, isArabic } = useTranslation();
+  /*
+   * Where to search: everywhere, or one department. On a department page it
+   * starts as that department, the way a shop's own search box does — somebody
+   * on Electronics who types "charger" means a phone charger. Changing page
+   * changes it back.
+   */
+  const [scope, setScope] = useState(department ?? ALL_DEPARTMENTS.query);
+  useEffect(() => setScope(department ?? ALL_DEPARTMENTS.query), [department]);
+  const scoped = scope !== ALL_DEPARTMENTS.query;
   const mobilePreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("searchTest") === "mobile";
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -86,8 +101,16 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   };
   const [photoOpen, setPhotoOpen] = useState(false);
   const refine = trpc.search.refine.useMutation();
-  const voiceOn = useFeature("voiceSearch");
-  const photoOn = useFeature("photoSearch");
+  /*
+   * Each other way in is offered only where it works. The microphone needs a
+   * browser that can listen; the camera needs a model to read the photo, which
+   * the server reports, so a shop with no key never shows a camera that can
+   * only say "nothing is looking yet".
+   */
+  const voiceOn = useFeature("voiceSearch") && canListen();
+  const photoSwitch = useFeature("photoSearch");
+  const photoReady = trpc.search.photoAvailable.useQuery(undefined, { enabled: photoSwitch, staleTime: 10 * 60 * 1000, retry: false });
+  const photoOn = photoSwitch && photoReady.data?.available === true;
   const searchTerm = value.trim().toLowerCase();
   const example = useMemo(() => catalogExample(catalog, t, isArabic), [catalog, t, isArabic]);
 
@@ -106,8 +129,9 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   const emptyField = !searchTerm;
   const suggestions = useMemo(() => {
     /* The results page's own rule, so a suggestion is never something "See all" then leaves out. */
-    return searchTerm ? catalog.filter(product => matchesSearch(product, searchTerm)).slice(0, 4) : [];
-  }, [catalog, searchTerm]);
+    const shelf = scoped ? productsInCategory(catalog, scope) : catalog;
+    return searchTerm ? shelf.filter(product => matchesSearch(product, searchTerm)).slice(0, 4) : [];
+  }, [catalog, searchTerm, scope, scoped]);
   const optionCount = emptyField ? recent.length : suggestions.length;
 
   const applySearch = (query: string) => {
@@ -137,7 +161,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
     setRecent(rememberSearch(term));
     setFocused(false);
     field.current?.blur();
-    navigate(searchPath(term));
+    /* A department search is that department's page with the words on it. */
+    navigate(scoped ? `/category/${categorySlug(scope)}${searchWithTerm(EMPTY_FILTERS, term)}` : searchPath(term));
   };
 
   /**
@@ -199,8 +224,48 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
   const showPanel = focused;
   return (
     <div ref={box} className="relative ms-auto w-full min-w-0 flex-1 lg:ms-0">
-      <label className="glass-field group flex h-11 items-center rounded-full py-1 ps-5 pe-1">
-        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => { setFocused(true); setRecent(readRecentSearches()); }} onBlur={leave} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} aria-keyshortcuts="/" role="combobox" aria-autocomplete="list" aria-expanded={showPanel && optionCount > 0} aria-controls={showPanel && optionCount > 0 ? "netlet-search-suggestions" : undefined} className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
+      {/*
+        A box rather than a <label>: a label takes the first control inside it as
+        the one it names, and with the department picker first that was the
+        picker — a click anywhere in the field opened a dropdown. Pressing the
+        box's own padding still lands in the text.
+      */}
+      <div
+        onMouseDown={(event) => { if (event.target === event.currentTarget) { event.preventDefault(); field.current?.focus(); } }}
+        className="glass-field group flex h-11 cursor-text items-center rounded-full py-1 ps-2 pe-1 lg:h-12"
+      >
+        {/*
+          Where to look. Hidden on a phone, where the field is the width of the
+          screen and the words need it; the department pages have their own
+          search there.
+        */}
+        {/*
+          The picker is as wide as what it says. A native <select> is as wide
+          as its longest option, so "All" sat in the room "Home & kitchen"
+          needs; the visible label is drawn beside the select instead, and
+          the select lies over it, transparent, so it is still the control a
+          press, a keyboard and a screen reader reach.
+        */}
+        <span className="relative hidden h-8 shrink-0 items-center gap-1.5 rounded-full border-e border-[#d5dfeb] pe-3 ps-3 text-[13px] font-semibold text-[#0a285a] hover:bg-[#f3f6fa] has-[select:focus-visible]:outline has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-[#f2683a] sm:flex">
+          <span aria-hidden className="max-w-[140px] truncate">{scoped ? t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) : t("search.scopeAll")}</span>
+          <ChevronDown className="size-3.5 shrink-0 text-[#536b8c]" aria-hidden />
+          <select
+            value={scope}
+            onChange={(event) => { setScope(event.target.value); setActiveIndex(-1); field.current?.focus(); }}
+            onBlur={leave}
+            aria-label={t("search.scope")}
+            title={t("search.scope")}
+            className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
+          >
+            {categoryRail.map(entry => (
+              <option key={entry.query} value={entry.query}>{entry.query === ALL_DEPARTMENTS.query ? t("search.scopeAll") : t(entry.key)}</option>
+            ))}
+          </select>
+        </span>
+        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => { setFocused(true); setRecent(readRecentSearches()); }} onBlur={leave} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} aria-keyshortcuts="/" role="combobox" aria-autocomplete="list" aria-expanded={showPanel && optionCount > 0} aria-controls={showPanel && optionCount > 0 ? "netlet-search-suggestions" : undefined} className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={scoped ? t("search.placeholderIn", { department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
+        {/* The shortcut, said where it applies. Only on a wide screen, which is
+            where there is a keyboard to press it on. */}
+        {!value && !focused ? <kbd aria-hidden className="me-2 hidden h-6 min-w-6 shrink-0 place-items-center rounded-md border border-[#d5dfeb] px-1.5 font-sans text-[12px] font-semibold text-[#536b8c] lg:grid">/</kbd> : null}
         {/*
           Voice and camera stand where the clear button stands, because the two
           are never wanted at once: you speak or point *instead* of typing, and
@@ -223,17 +288,20 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
         */}
         {value ? (
           <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => applySearch("")} aria-label={t("header.searchClear")} className="glass type-control grid size-7 shrink-0 place-items-center rounded-full !text-[#536b8c]"><X className="size-4" /></button>
-        ) : voiceOn || photoOn ? (
-          <>
+        ) : null}
+        {/* On a phone they give their place to clear once something is typed;
+            a wide field has room for both. */}
+        {voiceOn || photoOn ? (
+          <span className={`${value ? "hidden lg:flex" : "flex"} shrink-0 items-center`}>
             {voiceOn ? <button type="button" onClick={() => setVoiceOpen(true)} aria-label={t("search.voice")} title={t("search.voice")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Mic className="size-[18px]" /></button> : null}
             {photoOn ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t("search.photo")} title={t("search.photo")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Camera className="size-[18px]" /></button> : null}
             {/* A hairline, so the pair reads as other ways *in* rather than as
                 two more things the submit button might mean. */}
             <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-[#c9d6e6]" />
-          </>
+          </span>
         ) : null}
-        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={submitSearch} aria-label={t("header.searchSubmit")} className="glass glass-navy pressable ms-1.5 grid size-9 shrink-0 place-items-center rounded-full"><Search className="size-[17px]" /></button>
-      </label>
+        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={submitSearch} aria-label={t("header.searchSubmit")} className="glass glass-navy pressable ms-1.5 grid size-9 shrink-0 place-items-center rounded-full lg:size-10"><Search className="size-[17px]" /></button>
+      </div>
       {/*
         A solid sheet, not glass: the department rail sat behind it and read
         through the 82% white, so the suggestions shared their background with a
@@ -305,7 +373,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
           )}
           {value.trim() ? (
             <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#f3f2ed]">
-              <span className="min-w-0 truncate">{t("header.seeAllResults", { query: value.trim() })}</span>
+              <span className="min-w-0 truncate">{scoped ? t("header.seeAllResultsIn", { query: value.trim(), department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : t("header.seeAllResults", { query: value.trim() })}</span>
               <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
             </button>
           ) : null}
