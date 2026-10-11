@@ -19,7 +19,10 @@ import {
   orderItemAddons,
   orderItems,
   orders,
+  discountRedemptions,
+  giftCardUses,
   pointEntries,
+  priceOffers,
   productAddons,
   productVariants,
   products,
@@ -1126,7 +1129,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
 
 /** Why a line could not be moved, as a message key the page translates. */
 export class FulfilmentRefused extends Error {
-  constructor(public readonly reason: "orders.badMove" | "orders.alreadySettled" | "orders.lineMoved" | "orders.noStockToRestore" | "fulfilment.netletShips") {
+  constructor(public readonly reason: "orders.badMove" | "orders.alreadySettled" | "orders.orderClosed" | "orders.lineMoved" | "orders.noStockToRestore" | "fulfilment.netletShips") {
     super(reason);
     this.name = "FulfilmentRefused";
   }
@@ -1186,6 +1189,9 @@ export async function setLineFulfilment(
 
   if (cancelling || restoring) {
     const [order] = await db.select({ status: orders.status }).from(orders).where(eq(orders.id, line.orderId)).limit(1);
+    /* An order closed by its last line going is not reopened by a restore: the
+       shopper's card balance and points went back when it closed. */
+    if (order?.status === "cancelled") throw new FulfilmentRefused("orders.orderClosed");
     if (order && order.status !== "pending_payment") throw new FulfilmentRefused("orders.alreadySettled");
   }
 
@@ -1228,7 +1234,62 @@ export async function setLineFulfilment(
   }
 
   if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool, line.centreId);
+  if (cancelling) await closeIfNothingLeft(db, line.orderId);
   return { ...line, fulfilment, deliveredAt };
+}
+
+/**
+ * Close an unpaid order whose every line has been cancelled, and give back
+ * what the shopper paid toward it in anything but cash.
+ *
+ * A line going takes its own total off what the driver collects, and the
+ * order-level reductions stay whole (`collection.ts`). That is right while
+ * something is still coming; once nothing is, the gift card's balance, the
+ * points and the discount code's use were all spent on an order that delivers
+ * nothing, and nothing gave them back — the shopper paid KWD 10 of a card for
+ * a sofa the seller never had. Placing an order hands all three back when a
+ * later step refuses; this is the same promise kept after the order exists.
+ *
+ * **Exactly once, by the order's own status.** Two sellers cancelling the last
+ * two lines of one basket at once both read the lines after their own write,
+ * so at least one sees them all gone and possibly both do; the `UPDATE` from
+ * `pending_payment` lets one of them through. Everything it returns is in the
+ * same transaction as that move, so a card is never closed without its
+ * balance going back.
+ *
+ * Points come back as an entry of their own rather than by deleting the
+ * spend: the order existed, and the shopper's history should say what happened
+ * to it. A gift card's use row goes, so its uses and its balance still add up
+ * to what it was issued for. An agreed price the order used is free again.
+ */
+export async function closeIfNothingLeft(db: Db, orderId: number): Promise<boolean> {
+  const lines = await db.select({ fulfilment: orderItems.fulfilment }).from(orderItems).where(eq(orderItems.orderId, orderId));
+  if (lines.length === 0 || lines.some(one => one.fulfilment !== "cancelled")) return false;
+
+  return db.transaction(async tx => {
+    const [closed] = await tx
+      .update(orders)
+      .set({ status: "cancelled" })
+      .where(and(eq(orders.id, orderId), eq(orders.status, "pending_payment")))
+      .returning({
+        userId: orders.userId,
+        pointsSpent: orders.pointsSpent,
+        giftCardCode: orders.giftCardCode,
+        giftCardValue: orders.giftCardValue,
+      });
+    if (!closed) return false;
+
+    if (closed.giftCardCode && toFils(closed.giftCardValue) > 0n) {
+      await refundGiftCard(tx as unknown as Db, closed.giftCardCode, closed.giftCardValue);
+      await tx.delete(giftCardUses).where(eq(giftCardUses.orderId, orderId));
+    }
+    if (closed.userId !== null && closed.pointsSpent > 0) {
+      await tx.insert(pointEntries).values({ userId: closed.userId, points: closed.pointsSpent, reason: "order_cancelled", orderId });
+    }
+    await tx.delete(discountRedemptions).where(eq(discountRedemptions.orderId, orderId));
+    await tx.update(priceOffers).set({ usedOnOrderId: null }).where(eq(priceOffers.usedOnOrderId, orderId));
+    return true;
+  });
 }
 
 /**

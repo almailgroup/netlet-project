@@ -29,6 +29,7 @@ const REASON_LABEL: Record<string, MessageKey> = {
   spent_on_order: "rewards.reasonSpentOnOrder",
   cashed_out: "rewards.reasonCashedOut",
   admin_adjustment: "rewards.reasonAdminAdjustment",
+  order_cancelled: "rewards.reasonOrderCancelled",
 };
 
 export function AccountRewards() {

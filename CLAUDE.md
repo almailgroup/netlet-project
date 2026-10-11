@@ -1031,6 +1031,23 @@ order and reading every page afterwards, not by any test:
   with the old state in the predicate so two people pressing at once cannot
   both move it (`orders.lineMoved`, a 409).
 
+**The last line going closes the order and gives back what was not cash.**
+`stillOwed` floors at zero and leaves order-level reductions whole, which is
+right while something is still coming — and once nothing is, a gift card's
+balance, the points and a discount code's use had been spent on an order that
+delivered nothing, and nothing gave them back. `closeIfNothingLeft` moves the
+order to `cancelled` with `pending_payment` in the predicate (two sellers
+cancelling the last two lines at once close it once) and, in the same
+transaction, puts the card's balance back and drops its use row, credits the
+points as an `order_cancelled` entry rather than deleting the spend (the order
+existed, and the shopper's history should say what became of it), hands the
+code's use back and frees an agreed price. A closed order is not reopened by
+restoring a line (`orders.orderClosed`), since what paid for it has gone back;
+the dialog says so when an administrator, who sees every line, cancels the
+last one. An order closed under the old code stays `pending_payment` with every
+line cancelled — owed reads zero, so nobody collects on it, but its stored
+value was not returned.
+
 ## The finance panel
 
 `/admin/finance` reports what the orders already froze. Almost none of this was

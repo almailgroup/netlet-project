@@ -71,6 +71,9 @@ export const POINT_REASONS = [
   "spent_on_order",
   "cashed_out",
   "admin_adjustment",
+  /* Points spent on an order whose every line was cancelled before payment,
+     given back when it closed. */
+  "order_cancelled",
   /* An affiliate's commission and its reversal on a refund (3.7), in the
      affiliate pot rather than the points one. */
   "affiliate_commission",

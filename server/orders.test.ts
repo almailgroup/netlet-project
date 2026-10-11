@@ -25,6 +25,8 @@ import {
   discountCodes,
   discountRedemptions,
   giftCards,
+  giftCardUses,
+  pointEntries,
   productAddons,
   productVariants,
   products,
@@ -1156,6 +1158,17 @@ describe("cancelling and restoring a line", () => {
     return { placed, line };
   }
 
+  /* A kettle beside it, so cancelling the lamp leaves something coming and the
+     order open — the only kind of order a line can be restored on. */
+  async function lampBesideKettle(quantity = 2) {
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity }, { variantId: ids.kettleVariant, quantity: 1 }]),
+      DETAILS,
+    );
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    return { placed, line: lines.find(row => row.vendorId === ids.acme)! };
+  }
+
   it("puts the cancelled units back on the shelf", async () => {
     const { line } = await oneLampLine(2);
     expect(await stockOf(ids.lampVariant)).toBe(8);
@@ -1177,7 +1190,7 @@ describe("cancelling and restoring a line", () => {
   });
 
   it("takes the units again when a cancelled line is restored", async () => {
-    const { line } = await oneLampLine(2);
+    const { line } = await lampBesideKettle(2);
     await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
     await ordersModule.setLineFulfilment(acmeActor(), line.id, "pending");
     expect(await stockOf(ids.lampVariant)).toBe(8);
@@ -1186,7 +1199,7 @@ describe("cancelling and restoring a line", () => {
   /* The checkout's own predicate: there is no restoring a line onto stock that
      has since been sold to somebody else. */
   it("refuses to restore a line when its stock has since sold", async () => {
-    const { line } = await oneLampLine(2);
+    const { line } = await lampBesideKettle(2);
     await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
     await db.update(productVariants).set({ stock: 1 }).where(eq(productVariants.id, ids.lampVariant));
 
@@ -1272,6 +1285,92 @@ describe("cancelling and restoring a line", () => {
       .reduce((sum, charge) => addMoney(sum, charge.fee), "0.000") ?? "0.000";
     expect(mine?.owed?.droppedDelivery).toBe(acmeFee);
     expect(addMoney(mine!.owed!.owed, "88.125", acmeFee)).toBe(placed.order.grandTotal);
+  });
+
+  /* A card, points and a code spent on an order that delivers nothing were
+     simply kept: owed floored at zero and nothing gave them back. */
+  describe("when the last line goes", () => {
+    async function paidWithEverything() {
+      await db.delete(pointEntries);
+      await db.delete(giftCardUses);
+      await db.delete(discountRedemptions);
+      await db.delete(giftCards);
+      await db.delete(discountCodes);
+      await db.insert(pointEntries).values({ userId: ids.shopper, points: 500, reason: "admin_adjustment" });
+      await db.insert(giftCards).values({ code: "NLBACK", initialBalance: "5.000", remaining: "5.000" });
+      await db.insert(discountCodes).values({ code: "ONEUSE", kind: "fixed", value: "1.000", maxRedemptions: 1 });
+
+      const cartId = await basket(
+        [{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }],
+        ids.shopper,
+      );
+      /* The code first; a card in the same box would be a second code. */
+      const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, voucherCode: "ONEUSE", usePoints: true });
+      const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+      return { placed, lamp: lines.find(row => row.vendorId === ids.acme)!, kettle: lines.find(row => row.vendorId === ids.other)! };
+    }
+
+    const balance = async () =>
+      (await db.select().from(pointEntries).where(eq(pointEntries.userId, ids.shopper)))
+        .reduce((sum, row) => sum + row.points, 0);
+
+    it("closes the order and gives the points and the code back", async () => {
+      const { placed, lamp, kettle } = await paidWithEverything();
+      expect(placed.order.pointsSpent).toBeGreaterThan(0);
+      const before = await balance();
+
+      /* One line left: nothing comes back yet, the order is still coming. */
+      await ordersModule.setLineFulfilment(otherActor(), kettle.id, "cancelled");
+      expect((await db.select().from(orders).where(eq(orders.id, placed.order.id)))[0].status).toBe("pending_payment");
+      expect(await balance()).toBe(before);
+
+      await ordersModule.setLineFulfilment(acmeActor(), lamp.id, "cancelled");
+      const [closed] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+      expect(closed.status).toBe("cancelled");
+      expect(await balance()).toBe(before + placed.order.pointsSpent);
+      const entries = await db.select().from(pointEntries).where(and(eq(pointEntries.orderId, placed.order.id), eq(pointEntries.reason, "order_cancelled")));
+      expect(entries).toHaveLength(1);
+      expect(await db.select().from(discountRedemptions).where(eq(discountRedemptions.orderId, placed.order.id))).toHaveLength(0);
+    });
+
+    it("puts a gift card's balance back, and drops its use", async () => {
+      await db.delete(giftCardUses);
+      await db.delete(giftCards);
+      await db.insert(giftCards).values({ code: "NLBACK2", initialBalance: "5.000", remaining: "5.000" });
+      const placed = await ordersModule.placeOrder(
+        await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+        { ...DETAILS, userId: ids.shopper, voucherCode: "NLBACK2" },
+      );
+      expect((await db.select().from(giftCards).where(eq(giftCards.code, "NLBACK2")))[0].remaining).toBe("0.000");
+      const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+
+      await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+      expect((await db.select().from(giftCards).where(eq(giftCards.code, "NLBACK2")))[0].remaining).toBe("5.000");
+      expect(await db.select().from(giftCardUses).where(eq(giftCardUses.orderId, placed.order.id))).toHaveLength(0);
+    });
+
+    /* Its card and points went back when it closed; restoring would deliver
+       goods nobody is now paying for with them. */
+    it("will not reopen a closed order by restoring a line", async () => {
+      const { line, placed } = await oneLampLine(1);
+      await ordersModule.setLineFulfilment(acmeActor(), line.id, "cancelled");
+      expect((await db.select().from(orders).where(eq(orders.id, placed.order.id)))[0].status).toBe("cancelled");
+
+      await expect(ordersModule.setLineFulfilment(acmeActor(), line.id, "pending"))
+        .rejects.toMatchObject({ reason: "orders.orderClosed" });
+      expect(await stockOf(ids.lampVariant)).toBe(10);
+    });
+
+    /* Two sellers cancelling the last two lines at once: one of them closes it. */
+    it("hands everything back once when two lines go at the same moment", async () => {
+      const { placed, lamp, kettle } = await paidWithEverything();
+      const before = await balance();
+      await Promise.all([
+        ordersModule.setLineFulfilment(acmeActor(), lamp.id, "cancelled"),
+        ordersModule.setLineFulfilment(otherActor(), kettle.id, "cancelled"),
+      ]);
+      expect(await balance()).toBe(before + placed.order.pointsSpent);
+    });
   });
 
   /* The order desk is the third place the figure is read. */

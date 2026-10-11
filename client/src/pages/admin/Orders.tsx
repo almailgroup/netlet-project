@@ -284,6 +284,10 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
           const found = detail.data;
           if (!found) return <p className="text-[14px] text-[#536b8c]">{t("admin.orderGone")}</p>;
           const { order, lines } = found;
+          /* An administrator sees every line, so knows when this one is the
+             last still coming and the order will close; a seller sees only
+             their own, and is told the general rule. */
+          const closesOrder = found.scope === "admin" && lines.filter(line => line.fulfilment !== "cancelled").length === 1;
 
           return (
             <>
@@ -367,7 +371,7 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
                           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold ink-muted">
                             <Warehouse className="size-3.5" aria-hidden />{t("fulfilment.netletPacks")}
                           </span>
-                        ) : nextStates(state).map(next => (
+                        ) : nextStates(state).filter(next => !(order.status === "cancelled" && state === "cancelled")).map(next => (
                           /* The states it may move to, each its own button: a
                              select needs a second press to commit and a seller
                              marking twenty parcels shipped presses forty times.
@@ -404,7 +408,7 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
               <ConfirmDialog
                 open={cancelling !== null}
                 title={t("admin.cancelLineTitle", { product: isolate(cancelling?.title ?? "") })}
-                body={t("admin.cancelLineBody")}
+                body={t(closesOrder ? "admin.cancelLastLineBody" : "admin.cancelLineBody")}
                 confirmLabel={t("admin.moveToCancelled")}
                 cancelLabel={t("admin.keepLine")}
                 tone="danger"
