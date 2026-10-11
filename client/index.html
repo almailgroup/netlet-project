@@ -29,6 +29,10 @@
     <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
 
+    <!-- Recovers a visitor whose cache holds something other than a built
+         file under that file's name. public/asset-recovery.js says why. -->
+    <script src="/asset-recovery.js" defer></script>
+
     <!-- The stylesheet is fetched without blocking rendering, then promoted to
          `all` once it arrives. A <link rel=stylesheet> in <head> blocks script
          execution until it resolves, so an unreachable or slow
