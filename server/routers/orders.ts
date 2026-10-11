@@ -19,7 +19,9 @@ import {
   getOrderFor,
   getOrderForUser,
   listOrdersFor,
+  lineForShopper,
   listOrdersForUser,
+  orderForShopper,
   OrderRefused,
   placeOrder,
   ordersOnTheWay,
@@ -54,7 +56,10 @@ export const ordersRouter = router({
    */
   list: protectedProcedure
     .input(z.object({ page: z.number().int().min(1).optional(), pageSize: z.number().int().min(1).max(100).optional() }).optional())
-    .query(({ ctx, input }) => listOrdersForUser(ctx.user.id, input ?? {})),
+    .query(async ({ ctx, input }) => {
+      const page = await listOrdersForUser(ctx.user.id, input ?? {});
+      return { ...page, rows: page.rows.map(row => ({ ...orderForShopper(row), owed: row.owed })) };
+    }),
 
   /** The header's "on its way": how many orders have a parcel on the road, and the latest reference. */
   onTheWay: protectedProcedure.query(({ ctx }) => ordersOnTheWay(ctx.user.id)),
@@ -92,7 +97,7 @@ export const ordersRouter = router({
 
       const now = new Date();
       return {
-        order: found.order,
+        order: orderForShopper(found.order),
         windowDays: RETURN_WINDOW_DAYS,
         /* What can be done about each parcel once it is at the door — rate the
            delivery (3.4.4), report damage (3.4.2) — resolved with the server's
@@ -105,7 +110,7 @@ export const ordersRouter = router({
            at collection or refund missed them. */
         documents: await documentsForShopperOrder(ctx.user.id, input.reference),
         lines: found.lines.map(line => ({
-          ...line,
+          ...lineForShopper(line),
           /*
            * `order_items.delivered_at` is real now, so the window is measured
            * from when the goods arrived rather than from `updatedAt`. That

@@ -888,6 +888,30 @@ export async function listOrdersForUser(
   return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null })), total, page, pageSize };
 }
 
+/**
+ * An order as its shopper may read it.
+ *
+ * The rows are NetLet's record of a sale, and some of what they carry is
+ * between NetLet and the seller or the affiliate: the commission taken on each
+ * line, what the seller nets, the order's commission total, an affiliate's
+ * rate, and which driver's account carried it. The shopper's own orders page
+ * returned the whole row, so any shopper could read a seller's commercial
+ * terms off their receipt. These two are what the shopper's API sends; the
+ * data layer keeps the whole row for the code that needs it.
+ */
+export function orderForShopper<T extends typeof orders.$inferSelect>(order: T) {
+  const { commissionTotal: _commission, affiliateId: _affiliate, affiliateRate: _rate, ...rest } = order;
+  return rest;
+}
+
+export function lineForShopper<T extends typeof orderItems.$inferSelect>(line: T) {
+  const {
+    commissionPercent: _percent, commissionFixed: _fixed, commissionAmount: _amount, vendorNet: _net,
+    carriedBy: _driver, courierId: _courier, ...rest
+  } = line;
+  return rest;
+}
+
 /** One order with its lines, for the shopper who placed it. */
 export async function getOrderForUser(userId: number, reference: string) {
   const db = await getDb();

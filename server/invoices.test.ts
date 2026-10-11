@@ -106,6 +106,27 @@ async function placed() {
 
 const collect = (orderId: number) => as("manager").orders.markCollected({ orderId });
 
+describe("what a shopper's order says", () => {
+  /* The rows are NetLet's record of a sale; the commission, the seller's net,
+     the affiliate's rate and the driver are not the shopper's to read. */
+  it("carries no seller's or NetLet's commercial terms", async () => {
+    const order = await placed();
+    const detail = await as("shopper").orders.get({ reference: order.reference });
+    expect(detail.order).not.toHaveProperty("commissionTotal");
+    expect(detail.order).not.toHaveProperty("affiliateRate");
+    for (const line of detail.lines) {
+      for (const key of ["commissionPercent", "commissionFixed", "commissionAmount", "vendorNet", "carriedBy", "courierId"]) {
+        expect(line).not.toHaveProperty(key);
+      }
+    }
+    expect(detail.lines[0]).toHaveProperty("lineTotal");
+
+    const page = await as("shopper").orders.list({});
+    expect(page.rows[0]).not.toHaveProperty("commissionTotal");
+    expect(page.rows[0]).toHaveProperty("owed");
+  });
+});
+
 describe("issuing", () => {
   it("issues nothing before the money is collected", async () => {
     const order = await placed();

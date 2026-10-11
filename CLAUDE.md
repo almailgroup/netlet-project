@@ -932,6 +932,14 @@ data layer rather than filtered in the router, because a reference is short
 enough to paste and an id is a serial: "show me order 4" has to be refused by
 the query. Tested by handing one shopper another's reference.
 
+**A shopper reads their order, not NetLet's record of it.** `orders.list` and
+`orders.get` returned the whole row, so a shopper could read off their own
+receipt the commission NetLet took on each line, what the seller nets, the
+order's commission total, an affiliate's rate and which driver's account
+carried it. `orderForShopper` and `lineForShopper` in `server/orders.ts` are
+what the shopper's API sends now; the data layer keeps the whole row for the
+code that needs it, and `invoices.test.ts` checks the fields stay out.
+
 **`shared/commerce/returns.ts` is the window, and it is pure.** A return needs
 *both* lifecycles to agree — the money taken and the goods arrived — and asking
 only one is how a shopper gets offered a return on a parcel still in a van.
