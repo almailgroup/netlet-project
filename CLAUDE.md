@@ -92,6 +92,11 @@ session stays the same httpOnly cookie NetLet signs itself. The tokens the grant
 returns are read for the user they name and dropped. `docs/SUPABASE-AUTH.md` is
 the setup, and it is three values from Project Settings.
 
+Every call to it carries a ten-second deadline (`AUTH_DEADLINE_MS`). Without
+one, a stalled Supabase held sign-in, registration and reset open until the
+platform killed the function; with it, a stall is the same "could not reach
+the service" fault a refused connection is, and never a wrong password.
+
 **Two keys, and they are not interchangeable.** The anon key is a public
 identifier and is what the password grant and the reset endpoint take; the
 service-role key bypasses row-level security, owns the whole project, and only

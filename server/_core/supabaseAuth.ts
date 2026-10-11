@@ -97,6 +97,15 @@ export class SupabaseEmailTaken extends Error {
  * because anything could be in there — an admin editing a user in the
  * dashboard can put a number in that field.
  */
+/**
+ * How long a call to Supabase Auth may take. Without one a stalled service held
+ * every sign-in, registration and reset open until the platform killed the
+ * function; a deadline turns it into the same "could not reach the service"
+ * failure a refused connection already is, which the callers report as a fault
+ * and never as a wrong password.
+ */
+const AUTH_DEADLINE_MS = 10_000;
+
 export type SupabaseUser = { uid: string; email: string; name: string | null };
 
 type GoTrueUser = { id?: string; email?: string; user_metadata?: Record<string, unknown> | null };
@@ -138,6 +147,7 @@ export async function createSupabaseUser(input: {
   const response = await fetch(`${base()}/auth/v1/admin/users`, {
     method: "POST",
     headers: adminHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
     body: JSON.stringify({
       email: input.email,
       password: input.password,
@@ -180,6 +190,7 @@ export async function verifySupabasePassword(email: string, password: string): P
   const response = await fetch(`${base()}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
     body: JSON.stringify({ email, password }),
   });
 
@@ -221,6 +232,7 @@ export async function sendSupabasePasswordReset(email: string, _locale: "en" | "
   const response = await fetch(`${base()}/auth/v1/recover`, {
     method: "POST",
     headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
     body: JSON.stringify({ email }),
   });
 
@@ -258,6 +270,7 @@ export async function updateSupabaseUser(
   const response = await fetch(`${base()}/auth/v1/admin/users/${encodeURIComponent(uid)}`, {
     method: "PUT",
     headers: adminHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
     body: JSON.stringify(body),
   });
 
@@ -284,6 +297,7 @@ export async function deleteSupabaseUser(uid: string): Promise<void> {
   const response = await fetch(`${base()}/auth/v1/admin/users/${encodeURIComponent(uid)}`, {
     method: "DELETE",
     headers: adminHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
   });
 
   if (response.ok || response.status === 404) return;
