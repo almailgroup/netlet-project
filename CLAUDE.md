@@ -1863,6 +1863,14 @@ no request can set. Vercel Cron calls `/api/cron/subscriptions` daily with
 `CRON_SECRET`; unset, the endpoint is a 404 and `/admin/subscriptions` runs
 them by hand. The `subscriptions` switch stops new ones only.
 
+The secret is compared in constant time **by bytes**: `timingSafeEqual`
+throws on buffers of different sizes, and the comparison checked the
+*character* length first, so a header as many characters long as the secret
+in wider ones reached it — an unhandled rejection in an Express 4 async
+handler, which hung the request and could take the process with it.
+`server/_core/cron.test.ts` sends exactly that. Every other async route in
+`app.ts` is wrapped in its own try/catch for the same reason.
+
 ## Paid placements
 
 `shared/commerce/adBookings.ts` is the rule, pure; `server/adBookings.ts` the

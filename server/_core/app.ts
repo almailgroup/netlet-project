@@ -220,10 +220,14 @@ export function createApp(): Express {
    * in `.env.example` follows.
    */
   app.get("/api/cron/subscriptions", async (req, res) => {
-    const expected = ENV.cronSecret;
-    const offered = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "");
+    const expected = Buffer.from(ENV.cronSecret);
+    const offered = Buffer.from((req.headers.authorization ?? "").replace(/^Bearer\s+/i, ""));
+    /* Lengths in bytes, not characters: `timingSafeEqual` throws on buffers of
+       different sizes, and a header as many characters long as the secret in
+       wider ones reached it — an unhandled rejection in an Express 4 handler,
+       which hung the request and could take the process with it. */
     const same = expected.length > 0 && offered.length === expected.length
-      && timingSafeEqual(Buffer.from(offered), Buffer.from(expected));
+      && timingSafeEqual(offered, expected);
     if (!same) {
       res.status(404).type("text/plain").send("Not found");
       return;
