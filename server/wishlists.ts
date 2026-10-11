@@ -30,7 +30,7 @@
  * against a real database.
  */
 import { randomBytes } from "node:crypto";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import {
   customerPreferences,
   wishlistItems,
@@ -489,6 +489,32 @@ export async function claimItem(
     .returning({ id: wishlistItems.id });
 
   if (updated.length === 0) throw new WishlistError("alreadyClaimed");
+}
+
+/**
+ * The giver has bought what they claimed.
+ *
+ * A claim lapses after `CLAIM_HOLD_DAYS` and a purchase never does — and
+ * nothing ever wrote the purchase, so a week after an aunt claimed a present
+ * and bought it, it read as free again and the next relative bought it too:
+ * the one failure claiming exists to prevent. Placing an order marks every
+ * item this account holds a claim on for a product in it, a claim that has
+ * lapsed included, as long as nobody else has claimed it since.
+ *
+ * Only a signed-in giver's claim can be matched — checkout needs an account,
+ * and a claim made signed out names nobody. That one still lapses, which is
+ * the cost already written down beside `releaseClaim`.
+ */
+export async function markClaimsBought(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, userId: number, productIds: string[]): Promise<void> {
+  if (productIds.length === 0) return;
+  await database
+    .update(wishlistItems)
+    .set({ boughtAt: new Date() })
+    .where(and(
+      eq(wishlistItems.claimedBy, userId),
+      inArray(wishlistItems.productId, productIds),
+      isNull(wishlistItems.boughtAt),
+    ));
 }
 
 /**

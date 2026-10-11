@@ -9,7 +9,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -34,6 +34,8 @@ import {
   vendorMembers,
   vendors,
   invoices,
+  wishlists,
+  wishlistItems,
 } from "../drizzle/schema.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 import { addMoney } from "../shared/money.js";
@@ -289,6 +291,57 @@ describe("placing an order", () => {
     await expect(ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper }))
       .rejects.toMatchObject({ reason: "order.empty" });
     await db.update(vendors).set({ status: "approved" }).where(eq(vendors.id, ids.acme));
+  });
+
+  /* The order and its lines are one write. A failure after the order row
+     used to leave it standing while the catch put its stock back. */
+  it("leaves no order behind when a later write fails", async () => {
+    const [addon] = await db.insert(productAddons).values({
+      productId: ids.lamp, kind: "installation", label: "Fitting", price: "2.000",
+    }).returning();
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const [inBag] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    await db.insert(cartItemAddons).values({ cartItemId: inBag.id, addonId: addon.id });
+    await db.execute(sql.raw("create or replace function refuse_addon() returns trigger as $$ begin raise exception 'refused for the test'; end $$ language plpgsql"));
+    await db.execute(sql.raw("create trigger refuse_addon before insert on order_item_addons for each row execute function refuse_addon()"));
+    try {
+      await expect(ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper })).rejects.toThrow();
+      expect(await db.select().from(orders)).toHaveLength(0);
+      expect(await db.select().from(orderItems)).toHaveLength(0);
+      expect(await stockOf(ids.lampVariant)).toBe(10);
+      expect(await db.select().from(cartItems).where(eq(cartItems.cartId, cartId))).toHaveLength(1);
+    } finally {
+      await db.execute(sql.raw("drop trigger refuse_addon on order_item_addons"));
+      await db.execute(sql.raw("drop function refuse_addon()"));
+      await db.delete(cartItemAddons);
+      await db.delete(productAddons).where(eq(productAddons.id, addon.id));
+    }
+  });
+
+  /* A present claimed and bought stays bought, however long the hold was. */
+  it("marks what the buyer had claimed off somebody's list as bought", async () => {
+    const [list] = await db.insert(wishlists).values({
+      userId: ids.admin, title: "Birthday", visibility: "public", shareToken: `tok-${Date.now()}`,
+    }).returning();
+    const lapsed = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [mine] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.lamp), claimedAt: lapsed, claimedBy: ids.shopper,
+    }).returning();
+    const [theirs] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.kettle), claimedAt: new Date(), claimedBy: ids.acmeOwner,
+    }).returning();
+
+    await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper },
+    );
+    const [after] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, mine.id));
+    expect(after.boughtAt).not.toBeNull();
+    /* Somebody else's claim is theirs to fulfil. */
+    const [other] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, theirs.id));
+    expect(other.boughtAt).toBeNull();
+    await db.delete(wishlistItems);
+    await db.delete(wishlists);
   });
 
   it("gives every order a reference nobody can count", async () => {

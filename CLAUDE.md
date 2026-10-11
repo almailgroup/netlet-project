@@ -911,6 +911,14 @@ A short read is refused rather than corrected: there is no arithmetic that makes
 an item appear in a warehouse. Anything already taken is handed back when a
 later line cannot be served, so a part-served basket never half-happens.
 
+**The order and everything it writes are one transaction.** The stock, points,
+card and code are each taken first under their own predicate, and handed back
+in the catch when anything after fails — which used to leave the order and its
+lines standing when the failure came after the order row, so an order existed
+for goods whose stock was back on the shelf, paid with a card balance that had
+been restored. `orders.test.ts` makes the extras insert fail with a trigger and
+checks nothing is left.
+
 **The order reference is not the serial id.** `NL-20260915-QRTVW` carries the
 date so support can find it without a lookup, and a random tail so a shopper who
 orders twice cannot tell how many orders NetLet took in between. The alphabet
@@ -2333,7 +2341,11 @@ Claiming is one press with bagging, because they are one intention; two buttons
 would let somebody bag the gift without marking it and the next relative buys
 it too. The predicate lives inside the `UPDATE`, the way the stock take does,
 so two aunts racing cannot both be told they have it. A claim lapses at
-`CLAIM_HOLD_DAYS`; a purchase never does.
+`CLAIM_HOLD_DAYS`; a purchase never does — **and nothing wrote the purchase**,
+so a week after somebody claimed and bought a present it read as free again.
+Placing an order now marks every item the buyer holds a claim on for a product
+in it as bought (`markClaimsBought`), a lapsed claim included unless somebody
+else has claimed since. A claim made signed out names nobody and still lapses.
 
 **Unpublishing mints a new share token.** Otherwise "make this private" would
 only stop *new* people finding it by phone and would leave every link already

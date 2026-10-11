@@ -63,6 +63,7 @@ import { stillOwedFor } from "./owed.js";
 import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
 import { featureOn } from "./features.js";
+import { markClaimsBought } from "./wishlists.js";
 import { isKept, type StillOwed } from "../shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
 
@@ -655,116 +656,137 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   });
 
   try {
-    const [order] = await db
-      .insert(orders)
-      .values({
-        reference: orderReference(new Date()),
-        userId: details.userId ?? null,
-        email: details.email.trim().toLowerCase(),
-        itemsTotal: draft.totals.itemsTotal,
-        deliveryTotal: draft.totals.deliveryTotal,
-        /* Net of the points, so the column that says what is owed needs no
-           arithmetic to read — and no line moves, because the discount comes
-           out of NetLet's cut rather than the seller's net. */
-        /* Net of all three, so the column that says what is owed needs no
-           arithmetic to read. Every one of them is frozen beside it. */
-        grandTotal: settled.payable,
-        pointsSpent,
-        pointsValue,
-        discountCode: toFils(discountValue) > 0n && quoted?.ok ? quoted.code : null,
-        discountValue,
-        giftCardCode: giftTaken && quoted?.ok ? quoted.code : null,
-        giftCardValue,
-        commissionTotal: draft.totals.commissionTotal,
-        /* Frozen beside the total, so an order from last year still says who
-           charged what — the reason the commission rate is copied too. */
-        deliveryBreakdown: freezeDelivery(delivery),
-        /* A member's order (4.1): first on the board, and the delivery NetLet carried. */
-        member,
-        deliveryWaived,
-        paymentMethod: details.paymentMethod ?? null,
-        affiliateId: affiliate?.id ?? null,
-        affiliateRate: affiliate?.ratePercent ?? null,
-        contactName: details.contactName ?? null,
-        contactPhone: details.contactPhone ?? null,
-        deliveryZoneId: details.deliveryZoneId ?? null,
-        addressLine: details.addressLine ?? null,
-        addressNotes: details.addressNotes ?? null,
-        deliveryPin: storedPin(details.pin),
-        subscriptionId: details.subscription?.id ?? null,
-      })
-      .returning();
-
-    const writtenLines = await db.insert(orderItems).values(
-      draft.lines.map(line => ({
-        orderId: order.id,
-        vendorId: line.vendorId,
-        productId: line.productId,
-        variantId: line.variantId,
-        vendorName: line.vendorName,
-        productTitle: line.productTitle,
-        variantTitle: line.variantTitle,
-        sku: line.sku,
-        unitPrice: line.unitPrice,
-        quantity: line.quantity,
-        lineTotal: line.lineTotal,
-        commissionPercent: line.commissionPercent,
-        commissionFixed: line.commissionFixed,
-        commissionAmount: line.commissionAmount,
-        vendorNet: line.vendorNet,
-        /* What was actually taken, not what was offered a moment earlier. */
-        bundleId: line.bundleId ?? null,
-        bundleName: line.bundleName ?? null,
-        destination: line.destination,
-        sizeClass: line.sizeClass,
-        weightGrams: line.weightGrams,
-        preordered: pools.get(line.variantId) === "preorder",
-        preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
-        centreId: shelves.get(line.variantId) ?? null,
-      })),
-    ).returning({ id: orderItems.id, variantId: orderItems.variantId });
-
     /*
-     * The extras, copied beside the price. Everything is frozen and the
-     * reference is `set null`, for the reason every other fact on a line is: a
-     * seller may withdraw an extra or change what it costs, and an order from
-     * last year still has to say what was bought and be refundable at that
-     * figure.
+     * One transaction for every row the order is. Stock, points, the card and
+     * the code were taken before it, each with its own predicate, and the
+     * catch below hands them back — which used to leave the order and its
+     * lines standing when a later write failed: an order for goods whose stock
+     * had gone back on the shelf, paid with a card balance that had been
+     * restored.
      */
-    const frozenAddons = draft.lines.flatMap(line => {
-      const written = writtenLines.find(row => row.variantId === line.variantId);
-      if (!written) return [];
-      return line.addons.map(addon => ({
-        orderItemId: written.id,
-        addonId: addon.id,
-        kind: addon.kind,
-        label: addon.label,
-        price: addon.price,
-      }));
+    const order = await db.transaction(async tx => {
+      const w = tx as unknown as Db;
+      const [order] = await w
+        .insert(orders)
+        .values({
+          reference: orderReference(new Date()),
+          userId: details.userId ?? null,
+          email: details.email.trim().toLowerCase(),
+          itemsTotal: draft.totals.itemsTotal,
+          deliveryTotal: draft.totals.deliveryTotal,
+          /* Net of the points, so the column that says what is owed needs no
+             arithmetic to read — and no line moves, because the discount comes
+             out of NetLet's cut rather than the seller's net. */
+          /* Net of all three, so the column that says what is owed needs no
+             arithmetic to read. Every one of them is frozen beside it. */
+          grandTotal: settled.payable,
+          pointsSpent,
+          pointsValue,
+          discountCode: toFils(discountValue) > 0n && quoted?.ok ? quoted.code : null,
+          discountValue,
+          giftCardCode: giftTaken && quoted?.ok ? quoted.code : null,
+          giftCardValue,
+          commissionTotal: draft.totals.commissionTotal,
+          /* Frozen beside the total, so an order from last year still says who
+             charged what — the reason the commission rate is copied too. */
+          deliveryBreakdown: freezeDelivery(delivery),
+          /* A member's order (4.1): first on the board, and the delivery NetLet carried. */
+          member,
+          deliveryWaived,
+          paymentMethod: details.paymentMethod ?? null,
+          affiliateId: affiliate?.id ?? null,
+          affiliateRate: affiliate?.ratePercent ?? null,
+          contactName: details.contactName ?? null,
+          contactPhone: details.contactPhone ?? null,
+          deliveryZoneId: details.deliveryZoneId ?? null,
+          addressLine: details.addressLine ?? null,
+          addressNotes: details.addressNotes ?? null,
+          deliveryPin: storedPin(details.pin),
+          subscriptionId: details.subscription?.id ?? null,
+        })
+        .returning();
+
+      const writtenLines = await w.insert(orderItems).values(
+        draft.lines.map(line => ({
+          orderId: order.id,
+          vendorId: line.vendorId,
+          productId: line.productId,
+          variantId: line.variantId,
+          vendorName: line.vendorName,
+          productTitle: line.productTitle,
+          variantTitle: line.variantTitle,
+          sku: line.sku,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+          lineTotal: line.lineTotal,
+          commissionPercent: line.commissionPercent,
+          commissionFixed: line.commissionFixed,
+          commissionAmount: line.commissionAmount,
+          vendorNet: line.vendorNet,
+          /* What was actually taken, not what was offered a moment earlier. */
+          bundleId: line.bundleId ?? null,
+          bundleName: line.bundleName ?? null,
+          destination: line.destination,
+          sizeClass: line.sizeClass,
+          weightGrams: line.weightGrams,
+          preordered: pools.get(line.variantId) === "preorder",
+          preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
+          centreId: shelves.get(line.variantId) ?? null,
+        })),
+      ).returning({ id: orderItems.id, variantId: orderItems.variantId });
+
+      /*
+       * The extras, copied beside the price. Everything is frozen and the
+       * reference is `set null`, for the reason every other fact on a line is: a
+       * seller may withdraw an extra or change what it costs, and an order from
+       * last year still has to say what was bought and be refundable at that
+       * figure.
+       */
+      const frozenAddons = draft.lines.flatMap(line => {
+        const written = writtenLines.find(row => row.variantId === line.variantId);
+        if (!written) return [];
+        return line.addons.map(addon => ({
+          orderItemId: written.id,
+          addonId: addon.id,
+          kind: addon.kind,
+          label: addon.label,
+          price: addon.price,
+        }));
+      });
+      if (frozenAddons.length) await w.insert(orderItemAddons).values(frozenAddons);
+
+      /* A special price is spent once. Marking it here rather than when the
+         shopper adds to the bag is deliberate: a grant is not consumed by
+         interest, only by a purchase. The write is guarded by `used_on_order_id
+         is null`, so two tabs checking out cannot both claim it. */
+      await markOffersUsed(w, offerIds, order.id);
+
+      /* The entry exists already — it had to, to close the race — so this is
+         only it learning what it bought. */
+      if (pointsEntryId !== null) {
+        await w.update(pointEntries).set({ orderId: order.id }).where(eq(pointEntries.id, pointsEntryId));
+      }
+
+      /* The redemption row was already taken above — it *is* the count of how
+         often a code has been used, so it had to exist before anybody else could
+         be told the code was still good. This only attaches the order to it. */
+      if (claimId !== null) await stampRedemption(w, claimId, order.id);
+      if (giftTaken && quoted?.ok) await recordGiftCardUse(w, quoted.code, order.id, giftCardValue);
+
+      // The basket has become the order; leaving it would let the same items be
+      // bought twice from a stale tab.
+      await w.delete(cartItems).where(eq(cartItems.cartId, cartId));
+      return order;
     });
-    if (frozenAddons.length) await db.insert(orderItemAddons).values(frozenAddons);
 
-    /* A special price is spent once. Marking it here rather than when the
-       shopper adds to the bag is deliberate: a grant is not consumed by
-       interest, only by a purchase. The write is guarded by `used_on_order_id
-       is null`, so two tabs checking out cannot both claim it. */
-    await markOffersUsed(db, offerIds, order.id);
-
-    /* The entry exists already — it had to, to close the race — so this is
-       only it learning what it bought. */
-    if (pointsEntryId !== null) {
-      await db.update(pointEntries).set({ orderId: order.id }).where(eq(pointEntries.id, pointsEntryId));
+    /* A present claimed off somebody's list and now bought stays bought. After
+       the order, and never undoing it: a list that fails to update is a smaller
+       thing than an order that fails to exist. */
+    if (details.userId) {
+      const productIds = [...new Set(draft.lines.map(line => String(line.productId)))];
+      await markClaimsBought(db, details.userId, productIds)
+        .catch(error => console.error(`[orders] marking order ${order.id}'s wishlist claims bought failed`, error));
     }
-
-    /* The redemption row was already taken above — it *is* the count of how
-       often a code has been used, so it had to exist before anybody else could
-       be told the code was still good. This only attaches the order to it. */
-    if (claimId !== null) await stampRedemption(db, claimId, order.id);
-    if (giftTaken && quoted?.ok) await recordGiftCardUse(db, quoted.code, order.id, giftCardValue);
-
-    // The basket has become the order; leaving it would let the same items be
-    // bought twice from a stale tab.
-    await db.delete(cartItems).where(eq(cartItems.cartId, cartId));
 
     return {
       order,
