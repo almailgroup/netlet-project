@@ -68,7 +68,7 @@ function CheckoutDeliveryZone() {
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
-  const { cart } = useCart();
+  const { cart, refreshCart } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const items = cart?.items ?? [];
@@ -145,8 +145,11 @@ export default function Checkout() {
           /* The order stands; the next checkout simply asks again. */
         }
       }
-      /* The basket has become the order, so the drawer's copy of it is stale. */
+      /* The basket has become the order, so the drawer's copy of it is stale —
+         and the drawer's copy is the context's own, which an invalidated query
+         does not reach. */
       void utils.commerce.cart.get.invalidate();
+      void refreshCart();
       navigate("/account");
     },
     onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("checkout.placeFailed")),

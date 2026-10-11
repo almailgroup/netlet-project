@@ -71,6 +71,13 @@ type CartContextValue = {
   /** Where this line goes (3.2.6). Null puts it back on the order's address. */
   setDestination: (lineId: string, addressId: number | null) => Promise<void>;
   clearCart: () => void;
+  /**
+   * Read the bag again from the server. The context holds its own copy, so
+   * invalidating the query cache does not reach it: after an order was placed
+   * the header went on saying "Cart (1)" and the drawer held what had just
+   * been bought, until a reload.
+   */
+  refreshCart: () => Promise<void>;
   proceedToCheckout: () => void;
 };
 
@@ -264,6 +271,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [cartId, utils.client]
   );
 
+  const refreshCart = useCallback(async () => {
+    if (!cartId) return;
+    const fresh = await utils.commerce.cart.get.fetch({ cartId }, { staleTime: 0 }).catch(() => null);
+    if (fresh) setCart(fresh);
+  }, [cartId, utils.commerce.cart.get]);
+
   const clearCart = useCallback(() => {
     writeStoredCartId(null);
     setCartId(null);
@@ -296,6 +309,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       clearCart,
+      refreshCart,
       proceedToCheckout,
     }),
     [
@@ -311,6 +325,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       clearCart,
+      refreshCart,
       proceedToCheckout,
     ]
   );
