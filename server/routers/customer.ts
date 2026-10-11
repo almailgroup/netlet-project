@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { pinInput, rowId } from "../_core/schemas.js";
 import { getCustomerProfile, upsertCustomerProfile } from "../profile.js";
+import { claimCart } from "../catalog.js";
 import {
   countFollowers,
   listFollowedProducts,
@@ -69,7 +70,16 @@ export const customerRouter = router({
       /* A cart id is 32 characters; `carts.id` holds 64. Uncapped, a long one
          reached `customer_preferences.cart_id` and failed there as a 500. */
       cartId: z.string().min(1).max(64).nullable().optional(),
-    })).mutation(({ ctx, input }) => upsertCustomerProfile(ctx.user.id, input)),
+    })).mutation(async ({ ctx, input }) => {
+      /* The account points at a bag only once the bag is the account's: an
+         unowned one is claimed here, and one belonging to somebody else is
+         not pointed at — the pointer is left as it was, and the page reads
+         back which bag the account has. */
+      if (input.cartId && (await claimCart(input.cartId, ctx.user.id)) !== ctx.user.id) {
+        return upsertCustomerProfile(ctx.user.id, { ...input, cartId: undefined });
+      }
+      return upsertCustomerProfile(ctx.user.id, input);
+    }),
   }),
   /**
    * Products the shopper asked to be told about.

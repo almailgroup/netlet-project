@@ -713,13 +713,23 @@ export async function removeCartLines(cartId: string, lineIds: string[]): Promis
 }
 
 /**
- * Attach a guest cart to an account on sign-in.
+ * Attach a guest cart to an account on sign-in, and say whose it is now.
  *
  * The bag a shopper filled before signing in is theirs; replacing it with the
- * empty one on their account would throw away the reason they signed in.
+ * empty one on their account would throw away the reason they signed in. Only
+ * an unowned bag is taken — one that already belongs to an account stays with
+ * it, which is what stops somebody signing in on a device where another
+ * shopper's bag was left from walking off with it.
+ *
+ * This existed from the start and nothing called it, so a bag filled before
+ * signing in stayed nobody's: it never showed the shopper's agreed or member
+ * prices, which are read against the bag's owner, and the account's pointer to
+ * it was a pointer to a stranger's bag as far as the shop could tell.
  */
-export async function claimCart(cartId: string, userId: number): Promise<void> {
+export async function claimCart(cartId: string, userId: number): Promise<number | null> {
   const db = await getDb();
-  if (!db) return;
+  if (!db) return null;
   await db.update(carts).set({ userId }).where(and(eq(carts.id, cartId), sql`${carts.userId} is null`));
+  const [row] = await db.select({ userId: carts.userId }).from(carts).where(eq(carts.id, cartId)).limit(1);
+  return row?.userId ?? null;
 }

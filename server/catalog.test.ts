@@ -270,9 +270,15 @@ describe("the cart", () => {
 
   it("attaches a guest cart to the account that claims it, once", async () => {
     const cart = await catalog.createCart([{ variantId: String(ids.lampSmall), quantity: 1 }]);
-    await catalog.claimCart(cart!.id, ids.shopper);
+    expect(await catalog.claimCart(cart!.id, ids.shopper)).toBe(ids.shopper);
     const [row] = await db.select().from(carts).where(eq(carts.id, cart!.id));
     expect(row.userId).toBe(ids.shopper);
+  });
+
+  it("leaves a bag that already belongs to an account with that account", async () => {
+    const cart = await catalog.createCart([{ variantId: String(ids.lampSmall), quantity: 1 }], ids.shopper);
+    expect(await catalog.claimCart(cart!.id, ids.shopper + 1000)).toBe(ids.shopper);
+    expect(await catalog.claimCart("not-a-real-cart-id", ids.shopper)).toBeNull();
   });
 });
 

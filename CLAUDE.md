@@ -536,6 +536,20 @@ is scoped by it, so a guessed line id edits nothing. Lines store no price:
 a cart is a list of intentions and the price is whatever the variant costs
 when the shopper looks. Freezing a price is the order's job.
 
+**A bag belongs to the account that claimed it, and leaves the device at
+sign-out.** `claimCart` was written for the first and nothing called it, so a
+bag filled before signing in stayed nobody's: it never showed the shopper's
+agreed or member prices (read against the bag's owner), and the account's
+pointer to it was a pointer to a bag the shop thought was a stranger's.
+`customer.profile.update` now claims an unowned bag and refuses to point an
+account at somebody else's, answering with the bag the account has; and
+`CartContext` forgets the bag on this device when a shopper signs out, because
+the next person to use it saw the last shopper's bag and, signing in, pointed
+their own account at it. The account keeps it and hands it back at the next
+sign-in. Signing out also resets the query cache (`useAuth`): it held the last
+account's orders, addresses and messages for five minutes, drawn for whoever
+signed in next before the refetch.
+
 **Every header starts with a skip link.** Home was once the one page without one,
 which is the wrong way round: it carries the most header of any page — a bar,
 a search row and a department rail — so it is where tabbing past costs the

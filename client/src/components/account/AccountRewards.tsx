@@ -20,6 +20,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { isolate } from "@/lib/isolate";
 import { QueryGate } from "@/components/admin/QueryGate";
 
 const REASON_LABEL: Record<string, MessageKey> = {
@@ -137,7 +138,7 @@ export function AccountRewards() {
                       </span>
                       <span className="w-full text-xs text-[#536b8c]">
                         {formatDate(entry.createdAt)}
-                        {entry.orderReference ? <> · <bdi dir="ltr">{t("rewards.onOrder", { reference: entry.orderReference })}</bdi></> : null}
+                        {entry.orderReference ? <> · {t("rewards.onOrder", { reference: isolate(entry.orderReference) })}</> : null}
                         {entry.reason === "cashed_out" ? (
                           <> · {entry.settledAt ? t("rewards.paidOn", { date: formatDate(entry.settledAt) }) : t("rewards.awaitingPayment")}</>
                         ) : null}

@@ -17,10 +17,17 @@ describe("the week", () => {
   /* Sunday, because the Kuwaiti weekend is Friday and Saturday — a week
      starting Monday would cut one in half. */
   it("runs Sunday to Saturday", () => {
-    expect(weekStartOf(new Date("2026-09-23T10:00:00Z"))).toBe("2026-09-20"); // Wed
-    expect(weekStartOf(new Date("2026-09-20T00:00:00Z"))).toBe("2026-09-20"); // Sun
-    expect(weekStartOf(new Date("2026-09-26T23:59:00Z"))).toBe("2026-09-20"); // Sat
-    expect(weekStartOf(new Date("2026-09-27T00:00:00Z"))).toBe("2026-09-27"); // next Sun
+    expect(weekStartOf(new Date("2026-09-23T10:00:00+03:00"))).toBe("2026-09-20"); // Wed
+    expect(weekStartOf(new Date("2026-09-20T00:00:00+03:00"))).toBe("2026-09-20"); // Sun
+    expect(weekStartOf(new Date("2026-09-26T23:59:00+03:00"))).toBe("2026-09-20"); // Sat
+    expect(weekStartOf(new Date("2026-09-27T00:00:00+03:00"))).toBe("2026-09-27"); // next Sun
+  });
+
+  /* The week is Kuwait's: one in the morning on a Sunday there is still
+     Saturday in UTC, and was counted in the week before. */
+  it("starts at midnight in Kuwait, not in UTC", () => {
+    expect(weekStartOf(new Date("2026-09-27T01:00:00+03:00"))).toBe("2026-09-27");
+    expect(weekStartOf(new Date("2026-09-26T23:30:00+03:00"))).toBe("2026-09-20");
   });
 });
 

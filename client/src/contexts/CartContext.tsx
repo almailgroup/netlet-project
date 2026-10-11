@@ -90,22 +90,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateProfile = trpc.customer.profile.update.useMutation();
   const accountCartHydrated = useRef(false);
 
+  /* Whether this tab has seen a signed-in shopper, so a sign-out can be told
+     apart from a guest who never signed in. */
+  const wasSignedIn = useRef(false);
+
   useEffect(() => {
     if (!isAuthenticated) {
       accountCartHydrated.current = false;
+      /*
+       * Signing out leaves the bag with the account, not on the device. It
+       * stayed in this browser, so whoever used it next saw the last shopper's
+       * bag — with their agreed and member prices on it — and signing in as
+       * somebody else pointed that account at it. The account keeps the bag
+       * and hands it back at the next sign-in.
+       */
+      if (wasSignedIn.current) {
+        wasSignedIn.current = false;
+        writeStoredCartId(null);
+        setCartId(null);
+        setCart(null);
+      }
       return;
     }
+    wasSignedIn.current = true;
     if (!accountProfile.data || accountCartHydrated.current) return;
     accountCartHydrated.current = true;
     // The bag filled before signing in wins over an older one on the account:
-    // it is the one the shopper is looking at.
+    // it is the one the shopper is looking at — when it can become theirs.
+    // The server claims an unowned bag and refuses one that is somebody
+    // else's, and answers with the bag the account has either way.
     if (cartId) {
-      updateProfile.mutate({ cartId });
+      updateProfile.mutate({ cartId }, {
+        onSuccess: profile => {
+          const kept = profile?.cartId ?? null;
+          if (kept !== cartId) {
+            setCartId(kept);
+            writeStoredCartId(kept);
+          } else {
+            /* Claimed: read it again, so prices that follow the shopper —
+               an agreed price, a member's — appear in the bag now. */
+            void utils.commerce.cart.get.fetch({ cartId }, { staleTime: 0 }).then(fresh => { if (fresh) setCart(fresh); });
+          }
+        },
+      });
     } else if (accountProfile.data.cartId) {
       setCartId(accountProfile.data.cartId);
       writeStoredCartId(accountProfile.data.cartId);
     }
-  }, [accountProfile.data, cartId, isAuthenticated, updateProfile]);
+  }, [accountProfile.data, cartId, isAuthenticated, updateProfile, utils.commerce.cart.get]);
 
   // Re-hydrate cart on mount or whenever cartId changes.
   useEffect(() => {

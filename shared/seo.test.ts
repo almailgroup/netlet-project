@@ -96,6 +96,19 @@ describe("productJsonLd", () => {
     expect(ld.sku).toBeUndefined();
   });
 
+  it("advertises the option that can be bought, not merely the first", () => {
+    const firstSoldOut = product({
+      variants: [
+        { id: "v1", title: "Small", sku: "S", price: money("289.00"), compareAtPrice: null, availableForSale: false, selectedOptions: [] },
+        { id: "v2", title: "Large", sku: "L", price: money("299.00"), compareAtPrice: null, availableForSale: true, selectedOptions: [] },
+      ],
+    });
+    const ld = productJsonLd(firstSoldOut, "https://netlet.com") as any;
+    expect(ld.offers.availability).toBe("https://schema.org/InStock");
+    expect(ld.offers.price).toBe("299.00");
+    expect(ld.sku).toBe("L");
+  });
+
   it("includes a rating only when there is a review count behind it", () => {
     const rated = product({
       attributes: [
@@ -129,6 +142,11 @@ describe("breadcrumbJsonLd", () => {
       [2, "Electronics"],
       [3, 'Horizon 65" QLED Smart TV'],
     ]);
+  });
+
+  it("links the department step to the department's page", () => {
+    const ld = breadcrumbJsonLd(product(), "https://netlet.com") as any;
+    expect(ld.itemListElement[1].item).toBe("https://netlet.com/category/electronics");
   });
 
   it("skips the category step when the product has none", () => {

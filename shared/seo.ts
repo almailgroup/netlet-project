@@ -7,6 +7,7 @@
  */
 import { isExpressEligible, productRating } from "./commerce/productDetail.js";
 import type { Product } from "./commerce/types.js";
+import { categorySlug } from "./commerce/browse.js";
 
 export type PageMeta = {
   title: string;
@@ -64,7 +65,6 @@ function shareableImage(url: string | undefined, siteUrl: string): string {
 }
 
 export function productMeta(product: Product, siteUrl: string): PageMeta {
-  const price = product.priceRange.min;
   const description = product.description.trim()
     ? toPreviewText(product.description)
     : `${product.title}${product.vendor ? ` by ${product.vendor}` : ""} on NetLet.`;
@@ -92,7 +92,10 @@ export function privatePageMeta(title: string): PageMeta {
  * a sold-out product does not advertise itself as in stock.
  */
 export function productJsonLd(product: Product, siteUrl: string): Record<string, unknown> {
-  const variant = product.variants[0];
+  /* The option a shopper can actually buy, when there is one. The first
+     variant alone made a product whose first size had sold out tell search
+     engines the whole product was out of stock. */
+  const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
   const price = variant?.price ?? product.priceRange.min;
   const rating = productRating(product.attributes);
 
@@ -132,7 +135,9 @@ export function productJsonLd(product: Product, siteUrl: string): Record<string,
 export function breadcrumbJsonLd(product: Product, siteUrl: string): Record<string, unknown> {
   const trail = [
     { name: "Home", url: absoluteUrl(siteUrl, "/") },
-    ...(product.productType ? [{ name: product.productType, url: absoluteUrl(siteUrl, "/") }] : []),
+    /* The department's own page, which is what the step names; it pointed
+       at the home page, so the middle of the trail led nowhere it said. */
+    ...(product.productType ? [{ name: product.productType, url: absoluteUrl(siteUrl, `/category/${categorySlug(product.productType)}`) }] : []),
     { name: product.title, url: absoluteUrl(siteUrl, `/products/${encodeURIComponent(product.handle)}`) },
   ];
   return {

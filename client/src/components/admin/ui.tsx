@@ -17,15 +17,8 @@ import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, CircleAlert, Info 
 import { Link } from "wouter";
 import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 
-/**
- * A merchant's words placed inside one of ours, kept in their own direction.
- *
- * A product name goes into "Delete “{title}”?" and into toasts, and a Latin
- * name inside an Arabic sentence otherwise takes the sentence's punctuation
- * with it — the quote marks and a trailing hyphen landed on the wrong sides.
- * First-strong isolate and its pop are what `<bdi>` does, for a string.
- */
-export const isolate = (text: string) => `\u2068${text}\u2069`;
+/** Re-exported so every portal page takes it from where it takes the rest. */
+export { isolate } from "@/lib/isolate";
 
 /** A text box, a select or a textarea. Grows to 44px, so a thumb can hit it. */
 export const fieldClass =

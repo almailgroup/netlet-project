@@ -43,6 +43,7 @@ import {
   HIGH_RATING_MIN_REVIEWS,
 } from "@shared/inventory/vendorHealth";
 import { privatePageMeta } from "@shared/seo";
+import { kuwaitDay } from "@shared/kuwaitDay";
 import { ArrowLeft, CircleAlert, KeyRound, LayoutGrid, LoaderCircle, PackagePlus, Save, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useEffect, useState, type ReactNode } from "react";
@@ -115,7 +116,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       licenceNumber: row.licenceNumber ?? "", underPlatformLicence: row.underPlatformLicence ?? false,
       discountLicenceNumber: row.discountLicenceNumber ?? "",
       // <input type="date"> speaks yyyy-mm-dd and nothing else.
-      discountLicenceExpiresAt: row.discountLicenceExpiresAt ? new Date(row.discountLicenceExpiresAt).toISOString().slice(0, 10) : "",
+      discountLicenceExpiresAt: row.discountLicenceExpiresAt ? kuwaitDay(new Date(row.discountLicenceExpiresAt)) : "",
       deliverySpeed: row.deliverySpeed ?? "", deliveryFlat: row.deliveryFlat ?? "",
       deliveryFreeOver: row.deliveryFreeOver ?? "", deliveryProvider: row.deliveryProvider ?? "",
       acceptsCod: row.acceptsCod ?? true, codCeiling: row.codCeiling ?? "",

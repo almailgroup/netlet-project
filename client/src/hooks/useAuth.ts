@@ -1,19 +1,11 @@
 import { trpc } from "@/lib/trpc";
+import { useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-type UseAuthOptions = {
-  redirectOnUnauthenticated?: boolean;
-  redirectPath?: string;
-};
-
-export function useAuth(options?: UseAuthOptions) {
-  // Login is started via startLogin() in the effect below, only when we actually
-  // navigate — never during render. startLogin() mints a one-time nonce + writes
-  // the state cookie, so calling it per render would overwrite the cookie and
-  // desync it from an in-flight login's `state`.
-  const { redirectOnUnauthenticated = false, redirectPath } = options ?? {};
+export function useAuth() {
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
 
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
@@ -38,10 +30,17 @@ export function useAuth(options?: UseAuthOptions) {
       }
       throw error;
     } finally {
-        utils.auth.me.setData(undefined, null);
-      await utils.auth.me.invalidate();
+      /*
+       * Everything the account read goes with it. The cache kept the last
+       * account's orders, addresses and messages for five minutes, so whoever
+       * signed in next on a shared device saw them drawn before the refetch
+       * replaced them. Resetting drops the data and asks again for whatever is
+       * on screen — as nobody, now.
+       */
+      utils.auth.me.setData(undefined, null);
+      await queryClient.resetQueries();
     }
-  }, [logoutMutation, utils]);
+  }, [logoutMutation, utils, queryClient]);
 
   const state = useMemo(() => {
     return {

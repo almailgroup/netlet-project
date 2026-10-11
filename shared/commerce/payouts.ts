@@ -52,6 +52,7 @@
  * against nothing sold means the seller owes NetLet, and hiding that behind a
  * zero is how a payout run quietly overpays.
  */
+import { KUWAIT_OFFSET_MS } from "../kuwaitDay.js";
 import { fromFils, toFils } from "../money.js";
 import { lineOutcome } from "./finance.js";
 
@@ -97,13 +98,17 @@ function asDate(value: Date | string): Date | null {
 }
 
 /**
- * The Sunday on or before this date, as `YYYY-MM-DD`.
+ * The Sunday on or before this date in Kuwait, as `YYYY-MM-DD`.
  *
  * Sunday, because the Kuwaiti weekend is Friday and Saturday and a week that
- * starts on Monday would cut one in half.
+ * starts on Monday would cut one in half. And Kuwait's Sunday, not UTC's: the
+ * page says the week is the Kuwaiti working week, and counted in UTC a sale at
+ * one in the morning on a Sunday in Kuwait — still Saturday in UTC — landed in
+ * the week before.
  */
 export function weekStartOf(date: Date): string {
-  const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const local = new Date(date.getTime() + KUWAIT_OFFSET_MS);
+  const start = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()));
   start.setUTCDate(start.getUTCDate() - start.getUTCDay());
   return start.toISOString().slice(0, 10);
 }
