@@ -364,7 +364,11 @@ export async function getProduct(actor: Actor, productId: number) {
   // Scope is checked against the product's own vendor, so asking for somebody
   // else's id is a refusal rather than a leak.
   assertCan(actor, "product.view", row.vendorId);
-  return (await hydrate(db, [row]))[0];
+  const [product] = await hydrate(db, [row]);
+  /* Whether the shop is withholding this product's saving, and why — so the
+     editor can say so beside the price rather than the seller finding out by
+     looking at their own shop. */
+  return { ...product, offerHidden: await offerHiddenFor(db, productId, row.vendorId) };
 }
 
 /* ------------------------------------------------------------------ paging --- */
@@ -895,29 +899,35 @@ async function assertSkuFree(
 }
 
 /**
- * A product carrying an offer needs its vendor's discount permit — Kuwaiti law.
+ * Why this product's saving is not shown in the shop, or null when it is (or
+ * when it has none to show).
  *
- * Refused at the door onto the shelf rather than at the moment a compare-at
- * price is typed, because a price and a permit arrive in either order: a vendor
- * setting up a sale before their paperwork clears is ordinary, and blocking the
- * save would make them delete the price and type it again later. Publishing is
- * where the claim actually reaches a shopper.
+ * Kuwaiti law needs a Ministry of Commerce discount permit before a shop may
+ * *advertise* a saving, and the storefront enforces that on every read:
+ * `fromInventory` drops `compareAtPrice` while the store's permit is not valid,
+ * so the strikethrough, the badge and the savings line never reach a shopper
+ * without one. That read is the whole of the law's protection.
  *
- * The storefront checks it *again* on read, and that is not belt and braces:
- * a permit expires on a date with nobody publishing anything, and only the read
- * catches that.
+ * Publishing used to refuse an offer without a permit as well, and that was a
+ * second rule in the wrong place: it stopped a store selling a product at its
+ * ordinary price because of a was-price nobody would have been shown — the
+ * product "sells at its price but stops showing a discount", which is what the
+ * store's own permit field has always said. So this answers instead of
+ * throwing, and the editor says it beside the product for as long as it holds.
+ * The was-price stays saved, and appears by itself once a valid permit is
+ * recorded, because the read decides that and not the write.
  */
-async function assertDiscountLicensed(
+async function offerHiddenFor(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   productId: number,
   vendorId: number,
-) {
+): Promise<"missing" | "expired" | null> {
   const rows = await db
     .select({ price: productVariants.price, compareAtPrice: productVariants.compareAtPrice })
     .from(productVariants)
     .where(eq(productVariants.productId, productId));
 
-  if (!rows.some(row => isOffer(row.price, row.compareAtPrice))) return;
+  if (!rows.some(row => isOffer(row.price, row.compareAtPrice))) return null;
 
   const vendor = (await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1))[0];
   const verdict = discountAllowed({
@@ -925,7 +935,7 @@ async function assertDiscountLicensed(
     expiresAt: vendor?.discountLicenceExpiresAt,
   });
   // The reason travels, so the portal can say "expired" rather than "no".
-  if (!verdict.allowed) throw new Error(`DISCOUNT_LICENCE_${verdict.reason.toUpperCase()}`);
+  return verdict.allowed ? null : verdict.reason;
 }
 
 export async function setProductStatus(
@@ -940,10 +950,7 @@ export async function setProductStatus(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.publish", row.vendorId);
 
-  if (target === "published") {
-    await assertPriced(db, productId);
-    await assertDiscountLicensed(db, productId, row.vendorId);
-  }
+  if (target === "published") await assertPriced(db, productId);
 
   let status: typeof row.status = target;
   if (target === "published" && actor.kind === "vendor") {
@@ -977,13 +984,10 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
   if (!was) throw new Error("NOT_FOUND");
 
   // The review queue is the other door onto the shelf, and it has to be shut
-  // against an unpriced product too — an admin approving is publishing. The
-  // discount permit rides along for the same reason: approving an offer is
-  // advertising it.
-  if (approve) {
-    await assertPriced(db, productId);
-    await assertDiscountLicensed(db, productId, was.vendorId);
-  }
+  // against an unpriced product too — an admin approving is publishing. A
+  // missing discount permit does not shut it: the read hides the saving
+  // (`offerHiddenFor`), and the product sells at its price.
+  if (approve) await assertPriced(db, productId);
 
   await db
     .update(products)

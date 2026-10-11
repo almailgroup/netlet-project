@@ -136,14 +136,6 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "UNPRICED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.unpriced" });
     }
-    /* Two reasons, not one refusal: "record a permit" and "renew the permit"
-       are different things for an admin to go and do. */
-    if (message === "DISCOUNT_LICENCE_MISSING") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.discountLicenceMissing" });
-    }
-    if (message === "DISCOUNT_LICENCE_EXPIRED") {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.discountLicenceExpired" });
-    }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
     }

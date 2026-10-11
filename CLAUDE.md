@@ -1275,12 +1275,21 @@ means the shop may not call it a discount; it does not mean the thing cannot be
 sold, and pulling it off the shelf would punish a shopper for a vendor's
 paperwork.
 
-Both doors onto the shelf refuse an unlicensed offer — `setProductStatus` and
-the review queue's approval, the pair `assertPriced` already guards — and they
-refuse at *publish* rather than at save, because a price and a permit arrive in
-either order and a vendor setting up a sale before the paperwork clears is
-ordinary. Two reasons travel, not one: "record a permit" and "renew the permit"
-are different things for an admin to go and do.
+**Publishing does not ask for the permit, and that is a reversal.** Both doors
+onto the shelf — `setProductStatus` and the review queue's approval — used to
+refuse a product with a was-price from a store without a valid permit. That
+was a second rule in the wrong place: the read above already keeps an
+unpermitted saving away from every shopper, so the refusal protected nobody and
+stopped a store selling something at its ordinary price over a was-price no
+shopper would have seen. An administrator publishing a Philips fryer with no
+permit on the store hit it as a wall. Now the product publishes, the was-price
+stays saved, and `offerHiddenFor` answers on `products.get` why the saving is
+withheld — "missing" or "expired", because "record a permit" and "renew the
+permit" are different things to go and do. The editor says it beside the
+product for as long as it holds, and in the toast after Publish, with a link to
+the store's page for an administrator. Recording a permit later shows the
+saving with nothing re-saved, because the read decides that and not the
+write.
 
 **A number with no end date is allowed.** An expiry the vendor has not recorded
 is a gap in our own form rather than evidence they have no permit, and refusing
@@ -2498,8 +2507,8 @@ under the box while somebody types and Create never produces an error the form
 could have shown. A field is judged once it has been left or once Create is
 pressed, never before somebody reaches it. A SKU another of the store's
 products uses is the one thing only the server knows; it comes back onto the
-SKU field. Publishing stays its own act after the create: if the discount
-permit refuses it, the product exists as a draft and the toast says why.
+SKU field. Publishing stays its own act after the create: if it is refused,
+the product exists as a draft and the toast says why.
 
 **The search preview is `productMeta`'s rule, not an SEO field.** Name with the
 shop's after it, the description cut where a share card cuts it, the address

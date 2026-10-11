@@ -2,10 +2,11 @@
  * The discount permit, against a real Postgres.
  *
  * The rule is proved pure in `shared/inventory/discountLicence.test.ts`. What
- * these cover is the half that cannot be: that both doors onto the shelf are
- * shut against an unlicensed offer, and — the one that matters most — that the
- * storefront stops advertising a saving when a permit lapses *with nobody
- * saving anything*, which is the case a write-time check alone would miss.
+ * these cover is the half that cannot be: that the storefront never advertises
+ * a saving without a valid permit — including when a permit lapses *with nobody
+ * saving anything*, the case a write-time check alone would miss — and that
+ * both doors onto the shelf publish such a product at its price and say why
+ * the saving is not shown.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -66,39 +67,62 @@ beforeEach(async () => {
   await setLicence(null, null);
 });
 
+/*
+ * Publishing used to refuse an offer without a permit. It publishes now: the
+ * law is about *advertising* a saving, the read below is what stops that, and
+ * refusing at the door stopped a store selling at its ordinary price over a
+ * was-price no shopper would have been shown.
+ */
 describe("publishing an offer", () => {
-  it("is refused when the store has recorded no permit", async () => {
-    await expect(inventory.setProductStatus(adminActor(), ids.product, "published"))
-      .rejects.toThrow("DISCOUNT_LICENCE_MISSING");
+  const hidden = async () => (await inventory.getProduct(adminActor(), ids.product))?.offerHidden;
+
+  it("goes through when the store has recorded no permit, and says the saving is withheld", async () => {
+    await expect(inventory.setProductStatus(adminActor(), ids.product, "published")).resolves.toBe("published");
+    expect(await hidden()).toBe("missing");
+
+    const live = await catalog.getProductByHandle("sale-lamp");
+    expect(live?.variants[0].price.amount).toBe("20.000");
+    expect(live?.variants[0].compareAtPrice).toBeNull();
   });
 
-  it("is refused when the permit has expired", async () => {
+  it("goes through when the permit has expired, and names that reason", async () => {
     await setLicence("MOCI-2026-4471", past());
-    await expect(inventory.setProductStatus(adminActor(), ids.product, "published"))
-      .rejects.toThrow("DISCOUNT_LICENCE_EXPIRED");
+    await expect(inventory.setProductStatus(adminActor(), ids.product, "published")).resolves.toBe("published");
+    expect(await hidden()).toBe("expired");
   });
 
-  it("goes through with a valid permit", async () => {
+  it("withholds nothing with a valid permit", async () => {
     await setLicence("MOCI-2026-4471", future());
     await expect(inventory.setProductStatus(adminActor(), ids.product, "published")).resolves.toBe("published");
+    expect(await hidden()).toBeNull();
   });
 
-  /* No compare-at price is no offer, so it needs no paperwork. */
-  it("does not ask for a permit from a product that is not on offer", async () => {
+  /* No compare-at price is no offer, so there is nothing to withhold. */
+  it("has nothing to withhold from a product that is not on offer", async () => {
     await db.update(productVariants).set({ compareAtPrice: null }).where(eq(productVariants.id, ids.variant));
-    await expect(inventory.setProductStatus(adminActor(), ids.product, "published")).resolves.toBe("published");
+    expect(await hidden()).toBeNull();
   });
 
-  it("does not ask when the compare-at price is not above the price", async () => {
+  it("has nothing to withhold when the compare-at price is not above the price", async () => {
     await db.update(productVariants).set({ compareAtPrice: "20.000" }).where(eq(productVariants.id, ids.variant));
-    await expect(inventory.setProductStatus(adminActor(), ids.product, "published")).resolves.toBe("published");
+    expect(await hidden()).toBeNull();
   });
 
-  /* The review queue is the other door, and approving is publishing. */
-  it("is refused at the review queue too", async () => {
+  /* The review queue is the other door, and the two must agree. */
+  it("goes through at the review queue too", async () => {
     await db.update(products).set({ status: "pending_review" }).where(eq(products.id, ids.product));
-    await expect(inventory.reviewProduct(adminActor(), ids.product, true))
-      .rejects.toThrow("DISCOUNT_LICENCE_MISSING");
+    await inventory.reviewProduct(adminActor(), ids.product, true);
+    const [row] = await db.select().from(products).where(eq(products.id, ids.product));
+    expect(row.status).toBe("published");
+  });
+
+  /* The was-price is kept, so recording a permit later is all it takes. */
+  it("shows the saving once a permit is recorded, with nothing re-saved or re-published", async () => {
+    await inventory.setProductStatus(adminActor(), ids.product, "published");
+    expect((await catalog.getProductByHandle("sale-lamp"))?.variants[0].compareAtPrice).toBeNull();
+
+    await setLicence("MOCI-2026-4471", future());
+    expect((await catalog.getProductByHandle("sale-lamp"))?.variants[0].compareAtPrice?.amount).toBe("25.000");
   });
 });
 

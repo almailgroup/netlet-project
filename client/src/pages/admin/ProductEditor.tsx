@@ -28,7 +28,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ExternalLink, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Info, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -135,7 +135,14 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const setStatus = trpc.inventory.products.setStatus.useMutation({
     onSuccess: status => {
       refresh();
-      toast.success(t(status === "pending_review" ? "admin.sentForReview" : status === "published" ? "admin.nowLive" : "admin.saved"));
+      /* Live, and the was-price withheld for want of a permit: said with the
+         confirmation, because it is the one thing about this publish the
+         seller would otherwise find out from their own shop. */
+      const hidden = status !== "draft" ? product.data?.offerHidden : null;
+      toast.success(
+        t(status === "pending_review" ? "admin.sentForReview" : status === "published" ? "admin.nowLive" : "admin.saved"),
+        hidden ? { description: t(hidden === "expired" ? "admin.offerHiddenExpired" : "admin.offerHiddenMissing") } : undefined,
+      );
     },
     onError: fail,
   });
@@ -234,6 +241,21 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.products")}
         </Link>
       </PageHeader>
+
+      {/* The shop is selling this at its price and not showing the saving,
+          because the store's discount permit is missing or out of date. Said
+          for as long as it is true, not only in the toast after Publish. */}
+      {row.offerHidden ? (
+        <div role="note" className="-mt-2 mb-5 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border border-[#ecd49a] bg-[#fff8e6] px-4 py-3 text-[14px] leading-6 text-[#5c3f0c]">
+          <Info className="mt-1 size-4 shrink-0" aria-hidden />
+          <p className="min-w-0 flex-1">{t(row.offerHidden === "expired" ? "admin.offerHiddenExpired" : "admin.offerHiddenMissing")}</p>
+          {can(actor, "platform.viewAll") ? (
+            <Link href={`/admin/vendors/${row.vendorId}`} className="font-semibold whitespace-nowrap underline underline-offset-2 hover:text-[#0a285a]">
+              {t("admin.offerHiddenLink")}
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* An admin's verdict is written back here, so a rejected vendor sees why
           without being told separately. */}
