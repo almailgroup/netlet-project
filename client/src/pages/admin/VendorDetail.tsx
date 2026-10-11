@@ -21,7 +21,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
-import { Card, Field, PageHeader, buttonClass, fieldClass } from "@/components/admin/ui";
+import { Card, Field, PageHeader, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -43,7 +43,8 @@ import {
   HIGH_RATING_MIN_REVIEWS,
 } from "@shared/inventory/vendorHealth";
 import { privatePageMeta } from "@shared/seo";
-import { ArrowLeft, CircleAlert, KeyRound, LayoutGrid, LoaderCircle, PackagePlus, Save, Trash2, UserPlus } from "lucide-react";
+import { ArrowLeft, CircleAlert, KeyRound, LayoutGrid, LoaderCircle, PackagePlus, Save, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -495,53 +496,6 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
 }
 
 /** One figure the page opens on, linking to where it is acted on. */
-function Stat({ label, value, note, href }: { label: string; value: ReactNode; note?: string; href?: string }) {
-  const body = (
-    <>
-      <span className="block text-[13px] font-semibold ink-muted">{label}</span>
-      <span className="mt-1 block text-[24px] leading-8 font-extrabold text-[#0a285a] tabular-nums">{value}</span>
-      {note ? <span className="block text-[12px] ink-muted">{note}</span> : null}
-    </>
-  );
-  const box = "block h-full rounded-2xl border border-[#e1e7ef] bg-white p-4";
-  return (
-    <li>
-      {href ? (
-        href.startsWith("#") ? <a href={href} className={`${box} hover:border-[#0a285a]/30`}>{body}</a> : <Link href={href} className={`${box} hover:border-[#0a285a]/30`}>{body}</Link>
-      ) : (
-        <div className={box}>{body}</div>
-      )}
-    </li>
-  );
-}
-
-/** A labelled switch with its explanation, for a yes/no that changes behaviour. */
-function Toggle({ checked, onChange, label, hint, disabled, className = "" }: {
-  checked: boolean;
-  onChange: (value: boolean) => void;
-  label: string;
-  hint?: string;
-  disabled?: boolean;
-  className?: string;
-}) {
-  return (
-    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5 ${disabled ? "opacity-60" : ""} ${className}`}>
-      <input
-        type="checkbox"
-        role="switch"
-        checked={checked}
-        disabled={disabled}
-        onChange={event => onChange(event.target.checked)}
-        className="mt-0.5 size-5 shrink-0 accent-[#0a285a]"
-      />
-      <span className="min-w-0">
-        <span className="block text-[14px] font-semibold text-[#0a285a]">{label}</span>
-        {hint ? <span className="mt-0.5 block text-[12px] leading-5 ink-muted">{hint}</span> : null}
-      </span>
-    </label>
-  );
-}
-
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
   manager: "admin.roleManager",
@@ -592,9 +546,10 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
     onError: fail,
   });
+  const [removing, setRemoving] = useState<{ userId: number; email: string } | null>(null);
   const remove = trpc.inventory.vendors.removeMember.useMutation({
-    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    onError: fail,
+    onSuccess: () => { setRemoving(null); refresh(); toast.success(t("admin.saved")); },
+    onError: error => { setRemoving(null); fail(error); },
   });
   const sendReset = trpc.inventory.vendors.sendPasswordReset.useMutation({
     // Says which of the two happened. "Sent" when nothing could be sent is
@@ -637,7 +592,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
               <button type="button" onClick={() => sendReset.mutate({ userId: member.userId, locale })} disabled={sendReset.isPending} className={buttonClass.secondary}>
                 <KeyRound className="size-4" aria-hidden />{t("admin.sendReset")}
               </button>
-              <button type="button" onClick={() => remove.mutate({ vendorId, userId: member.userId })} disabled={remove.isPending} className={buttonClass.quietDanger}>
+              <button type="button" onClick={() => setRemoving({ userId: member.userId, email: member.email })} disabled={remove.isPending} className={buttonClass.quietDanger}>
                 <Trash2 className="size-4" aria-hidden />{t("admin.removeMember")}
               </button>
             </li>
@@ -690,6 +645,18 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
           </button>
         </form>
       </div>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={t("admin.removeMemberTitle", { name: isolate(removing?.email ?? "") })}
+        body={t("admin.removeMemberBody")}
+        confirmLabel={t("admin.removeMember")}
+        tone="danger"
+        icon={<UserMinus className="size-5" aria-hidden />}
+        pending={remove.isPending}
+        onConfirm={() => removing && remove.mutate({ vendorId, userId: removing.userId })}
+        onClose={() => setRemoving(null)}
+      />
     </Card>
   );
 }

@@ -13,7 +13,7 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { pinInput, rowId } from "../_core/schemas.js";
+import { lastDay, pinInput, rowId } from "../_core/schemas.js";
 import {
   FulfilmentRefused,
   getOrderFor,
@@ -286,7 +286,7 @@ export const ordersRouter = router({
       value: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
       minSpend: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/).nullable().optional(),
       startsAt: z.coerce.date().nullable().optional(),
-      endsAt: z.coerce.date().nullable().optional(),
+      endsAt: lastDay.nullable().optional(),
       maxRedemptions: z.number().int().min(1).max(1_000_000).nullable().optional(),
       perShopper: z.number().int().min(1).max(100).optional(),
     }))
@@ -298,7 +298,7 @@ export const ordersRouter = router({
     .input(z.object({
       amount: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
       note: z.string().trim().max(200).nullable().optional(),
-      expiresAt: z.coerce.date().nullable().optional(),
+      expiresAt: lastDay.nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => guard(async () =>
       createGiftCard(await resolveActor(ctx.user), input))),

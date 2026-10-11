@@ -12,9 +12,11 @@
  * address; they do not need a way to reach them anywhere else.
  */
 import { useEffect, useState } from "react";
+import { ArrowLeft, MessagesSquare } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { EmptyState, Notice, PageHeader, SkeletonRows } from "@/components/admin/ui";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatThread } from "@/components/chat/ChatThread";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -29,6 +31,11 @@ export default function AdminMessages() {
   return <AdminShell need="chat.answer">{actor => <Messages actor={actor} />}</AdminShell>;
 }
 
+/*
+ * A list and the open conversation. Side by side on a wide screen; on a phone
+ * the open one replaces the list, with a way back — stacked, the thread opened
+ * below a list of twenty and somebody pressing a name saw nothing happen.
+ */
 function Messages({ actor }: { actor: Actor }) {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
@@ -37,56 +44,75 @@ function Messages({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.messages")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">
-        {actor.kind === "admin" ? t("admin.messagesNoteAdmin") : t("admin.messagesNote")}
-      </p>
+      <PageHeader title={t("admin.messages")} description={actor.kind === "admin" ? t("admin.messagesNoteAdmin") : t("admin.messagesNote")} />
 
-      <QueryGate queries={[list]}>
-        {() => {
-          const rows = list.data ?? [];
-          if (rows.length === 0) {
-            return <p className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">{t("admin.messagesNone")}</p>;
-          }
-          return (
-            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-              <ul className="space-y-2" aria-label={t("admin.messages")}>
-                {rows.map(row => (
-                  <li key={row.id}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(row.id)}
-                      aria-current={openId === row.id ? "true" : undefined}
-                      className={`w-full rounded-2xl border px-4 py-3 text-start transition ${
-                        openId === row.id ? "border-[#0a285a] bg-white shadow-sm" : "border-[#e6e9ef] bg-white hover:border-[#c3ccda]"
-                      }`}
-                    >
-                      <span className="flex items-center justify-between gap-2">
-                        <span dir="auto" className="truncate text-[13px] font-extrabold">{row.counterpart || t("chat.aShopper")}</span>
-                        {row.unread > 0 ? (
-                          <span className="shrink-0 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
-                            {t(row.unread === 1 ? "chat.unreadOne" : "chat.unread", { count: row.unread })}
+      {list.isLoading ? (
+        <SkeletonRows rows={4} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => {
+            const rows = list.data ?? [];
+            if (rows.length === 0) return <EmptyState title={t("admin.messagesNone")} />;
+            return (
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+                <ul
+                  aria-label={t("admin.messages")}
+                  className={`divide-y divide-[#eef1f5] self-start overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white ${openId !== null ? "hidden lg:block" : ""}`}
+                >
+                  {rows.map(row => {
+                    const current = openId === row.id;
+                    return (
+                      <li key={row.id}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenId(row.id)}
+                          aria-current={current ? "true" : undefined}
+                          className={`w-full border-s-[3px] px-4 py-3 text-start transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#f7f9fc]"}`}
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span dir="auto" className={`truncate text-[14px] text-[#0a285a] ${row.unread > 0 ? "font-bold" : "font-semibold"}`}>{row.counterpart || t("chat.aShopper")}</span>
+                            <span className="shrink-0 text-[12px] ink-muted">{formatDate(row.lastMessageAt)}</span>
                           </span>
-                        ) : null}
-                      </span>
-                      {actor.kind === "admin" ? <span dir="auto" className="block text-[11px] font-bold text-[#536b8c]">{row.vendorName}</span> : null}
-                      {row.preview ? <span dir="auto" className="mt-0.5 block truncate text-[12px] text-[#536b8c]">{row.preview}</span> : null}
-                      <span className="mt-0.5 block text-[10px] text-[#536b8c]">{formatDate(row.lastMessageAt)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <div>
-                {openId === null ? (
-                  <p className="rounded-2xl border border-dashed border-[#d5dfeb] px-5 py-10 text-center text-sm text-[#536b8c]">{t("admin.messagesPick")}</p>
-                ) : (
-                  <SellerThread key={openId} conversationId={openId} canReply={actor.kind === "vendor"} />
-                )}
+                          {actor.kind === "admin" ? <span dir="auto" className="block text-[12px] font-semibold text-[#536b8c]">{row.vendorName}</span> : null}
+                          <span className="mt-0.5 flex items-center justify-between gap-2">
+                            <span dir="auto" className="min-w-0 truncate text-[13px] text-[#536b8c]">{row.preview ?? ""}</span>
+                            {row.unread > 0 ? (
+                              <span className="shrink-0 rounded-full bg-[#0a285a] px-2 py-0.5 text-[11px] font-bold text-white">
+                                {t(row.unread === 1 ? "chat.unreadOne" : "chat.unread", { count: row.unread })}
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className={openId === null ? "hidden lg:block" : ""}>
+                  {openId === null ? (
+                    <div className="grid h-full min-h-60 place-items-center rounded-2xl border border-dashed border-[#cfd9e6] bg-white px-5 py-10 text-center">
+                      <div>
+                        <MessagesSquare className="mx-auto size-8 text-[#8a9bb3]" aria-hidden />
+                        <p className="mt-3 text-[14px] text-[#536b8c]">{t("admin.messagesPick")}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(null)}
+                        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a] lg:hidden"
+                      >
+                        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.messagesBack")}
+                      </button>
+                      <SellerThread key={openId} conversationId={openId} canReply={actor.kind === "vendor"} />
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        }}
-      </QueryGate>
+            );
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }
@@ -112,8 +138,8 @@ function SellerThread({ conversationId, canReply }: { conversationId: number; ca
         if (!data) return null;
         const name = data.shopperName || t("chat.aShopper");
         return (
-          <section aria-label={t("chat.threadWith", { name })} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-            <h2 dir="auto" className="mb-3 text-sm font-extrabold">{name}</h2>
+          <section aria-label={t("chat.threadWith", { name })} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+            <h2 dir="auto" className="mb-3 border-b border-[#eef1f5] pb-3 text-[16px] font-bold text-[#0a285a]">{name}</h2>
             <ChatThread messages={data.messages} mySide="seller" theirName={name} />
             {canReply ? (
               <ChatComposer
@@ -133,7 +159,7 @@ function SellerThread({ conversationId, canReply }: { conversationId: number; ca
                 }}
               />
             ) : (
-              <p className="mt-3 text-[12px] text-[#536b8c]">{t("admin.messagesReadOnly")}</p>
+              <Notice className="mt-4">{t("admin.messagesReadOnly")}</Notice>
             )}
           </section>
         );

@@ -20,40 +20,49 @@ import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { describeError } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 
-/** The sensitive operations the requirements name, and nothing else. */
-export type AuditAction =
-  | "vendor.create"
-  | "vendor.update"
-  | "vendor.setCommission"
-  | "vendor.setStatus"
-  | "vendor.addMember"
-  | "vendor.removeMember"
-  | "product.review"
-  | "product.setStatus"
-  | "product.priceChange"
-  | "product.create"
-  | "product.delete"
+/*
+ * The sensitive operations the requirements name, and nothing else.
+ *
+ * A list rather than only a union, so a test can ask that every act the trail
+ * records has words on the audit page — three of them were printed as their
+ * raw names ("vendor.update") because a label was never written.
+ */
+export const AUDIT_ACTIONS = [
+  "vendor.create",
+  "vendor.update",
+  "vendor.setCommission",
+  "vendor.setStatus",
+  "vendor.addMember",
+  "vendor.removeMember",
+  "product.review",
+  "product.setStatus",
+  "product.priceChange",
+  "product.create",
+  "product.delete",
   /* A product handed from one store to another, by an administrator. */
-  | "product.move"
-  | "user.setAdmin"
-  | "user.sendPasswordReset"
-  | "admin.signIn"
+  "product.move",
+  "user.setAdmin",
+  "user.sendPasswordReset",
+  "admin.signIn",
   /* Money assigned between two companies (3.4.2): who pays for a broken box. */
-  | "delivery.decideClaim"
+  "delivery.decideClaim",
   /* A feature switched on or off for the whole shop (2.3). */
-  | "platform.setFeature"
+  "platform.setFeature",
   /* An affiliate approved, suspended, or given a new rate (3.7). */
-  | "affiliate.update"
+  "affiliate.update",
   /* Money sent to a seller (3.3.21): frozen, filed, downloaded, sent or cancelled. */
-  | "payout.prepare"
-  | "payout.file"
+  "payout.prepare",
+  "payout.file",
   /* The file carries every seller's account number, so reading it is recorded too. */
-  | "payout.download"
-  | "payout.record"
-  | "payout.cancel"
+  "payout.download",
+  "payout.record",
+  "payout.cancel",
   /* A placement booked, or stopped (3.3.15): money the store commits to spend. */
-  | "ads.book"
-  | "ads.cancel";
+  "ads.book",
+  "ads.cancel",
+] as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export type AuditActor = {
   id?: number | null;

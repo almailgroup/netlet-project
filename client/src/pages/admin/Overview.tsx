@@ -18,7 +18,8 @@ import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import type { HealthDetailKey } from "@shared/inventory/vendorHealth";
-import { ArrowRight } from "lucide-react";
+import { PageHeader, SectionHeading } from "@/components/admin/ui";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 
 export default function AdminOverview() {
@@ -92,10 +93,10 @@ function Overview({ actor }: { actor: Actor }) {
   if (isCourier) {
     return (
       <>
-        <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.overview")}</h1>
-        <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
+        <PageHeader title={t("admin.overview")} description={t("admin.overviewIntro")} />
+        <SectionHeading>{t("admin.needsYou")}</SectionHeading>
         {(waitingParcels.data ?? 0) + (openClaims.data ?? 0) > 0 ? (
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {(waitingParcels.data ?? 0) > 0 ? (
               <Tile tile={{ label: "dispatch.waiting", value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" }} />
             ) : null}
@@ -104,9 +105,7 @@ function Overview({ actor }: { actor: Actor }) {
             ) : null}
           </div>
         ) : (
-          <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
-            {t("dispatch.noneCourier")}
-          </p>
+          <AllClear>{t("dispatch.noneCourier")}</AllClear>
         )}
       </>
     );
@@ -157,25 +156,27 @@ function Overview({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.overview")}</h1>
+      <PageHeader title={t("admin.overview")} description={t("admin.overviewIntro")} />
 
-      <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
-      {waiting.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
-          {t("admin.allClear")}
-        </p>
-      ) : (
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {waiting.map(tile => <Tile key={tile.label} tile={tile} />)}
-        </div>
-      )}
+      <section aria-labelledby="needs-you">
+        <SectionHeading><span id="needs-you">{t("admin.needsYou")}</span></SectionHeading>
+        {waiting.length === 0 ? (
+          <AllClear>{t("admin.allClear")}</AllClear>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {waiting.map(tile => <Tile key={tile.label} tile={tile} />)}
+          </div>
+        )}
+      </section>
 
       {health.data ? <HealthPanel health={health.data} /> : null}
 
-      <h2 className="mt-8 text-[11px] font-extrabold tracking-[.12em] text-[#536b8c] uppercase">{t("admin.atAGlance")}</h2>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {standing.map(tile => <Tile key={tile.label} tile={tile} />)}
-      </div>
+      <section aria-labelledby="at-a-glance" className="mt-8">
+        <SectionHeading><span id="at-a-glance">{t("admin.atAGlance")}</span></SectionHeading>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {standing.map(tile => <Tile key={tile.label} tile={tile} />)}
+        </div>
+      </section>
     </>
   );
 }
@@ -222,25 +223,24 @@ function HealthPanel({ health }: {
   };
 }) {
   const { t } = useTranslation();
-  const tone = health.band === "good" ? "#155724" : health.band === "fair" ? "#8a6d3b" : "#8c2f22";
+  const tone = health.band === "good" ? "#155724" : health.band === "fair" ? "#6b4f1d" : "#8c2f22";
 
   return (
-    <section className="mt-8">
-      <h2 className="text-[11px] font-extrabold tracking-[.12em] text-[#536b8c] uppercase">{t("admin.health")}</h2>
-      <div className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+    <section aria-labelledby="account-health" className="mt-8">
+      <SectionHeading description={t("admin.healthNote")}><span id="account-health">{t("admin.health")}</span></SectionHeading>
+      <div className="rounded-2xl border border-[#e1e7ef] bg-white p-5">
         <div className="flex flex-wrap items-baseline gap-3">
           {/* A score is a number: isolated so it reads the same in both scripts. */}
-          <p className="text-3xl font-extrabold" style={{ color: tone }}><bdi dir="ltr">{health.score}</bdi></p>
-          <p className="text-[12px] font-extrabold" style={{ color: tone }}>{t(BAND_LABEL[health.band])}</p>
-          <p className="w-full text-[12px] leading-5 text-[#536b8c] sm:w-auto sm:flex-1">{t("admin.healthNote")}</p>
+          <p className="text-[32px] leading-none font-extrabold" style={{ color: tone }}><bdi dir="ltr">{health.score}</bdi></p>
+          <p className="text-[14px] font-semibold" style={{ color: tone }}>{t(BAND_LABEL[health.band])}</p>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {health.components.map(part => (
-            <div key={part.key} className="rounded-xl border border-[#e6e9ef] p-3">
+            <div key={part.key} className="rounded-xl border border-[#e1e7ef] p-3.5">
               <div className="flex items-baseline justify-between gap-2">
-                <p className="text-[12px] font-bold text-[#0a285a]">{t(COMPONENT_LABEL[part.key])}</p>
-                <p className="text-[13px] font-extrabold text-[#536b8c]"><bdi dir="ltr">{part.score}</bdi></p>
+                <p className="text-[14px] font-semibold text-[#0a285a]">{t(COMPONENT_LABEL[part.key])}</p>
+                <p className="text-[14px] font-bold text-[#536b8c]"><bdi dir="ltr">{part.score}</bdi></p>
               </div>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#eef1f6]">
                 <div className="h-full rounded-full bg-[#0a285a]" style={{ width: `${part.score}%` }} />
@@ -248,7 +248,7 @@ function HealthPanel({ health }: {
               {/* The numbers behind the bar, so the bar is checkable. The
                   count is isolated so it reads as a number in either script;
                   the label around it takes the page's direction. */}
-              <p className="mt-2 text-[10px] ink-muted">
+              <p className="mt-2 text-[12px] leading-5 ink-muted">
                 {Object.keys(part.detail).length === 0
                   ? "—"
                   : (Object.entries(part.detail) as [HealthDetailKey, number][]).map(([key, value], index) => (
@@ -266,22 +266,36 @@ function HealthPanel({ health }: {
   );
 }
 
+/**
+ * One count and where it is acted on. Work waiting carries a mark on its
+ * leading edge rather than a red box: a page of alarm-red tiles is one people
+ * learn to stop reading, and the number is the news.
+ */
 function Tile({ tile }: { tile: Tile }) {
   const { t } = useTranslation();
   const urgent = tile.tone === "urgent";
   return (
     <Link
       href={tile.href}
-      className={`pressable block rounded-2xl border p-4 ${urgent ? "border-[#f2b69e] bg-[#fdeceb]" : "border-[#e6e9ef] bg-white"}`}
+      className={`group block rounded-2xl border border-[#e1e7ef] bg-white p-4 transition hover:border-[#0a285a]/30 hover:shadow-sm ${urgent ? "border-s-4 border-s-[#d9622b]" : ""}`}
     >
       {/* The number is read as a number, so it stays LTR even in Arabic. */}
-      <p className={`text-2xl font-extrabold ${urgent ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
+      <p className="text-[28px] leading-9 font-extrabold text-[#0a285a] tabular-nums">
         <bdi dir="ltr">{tile.value}</bdi>
       </p>
-      <p className={`mt-1 flex items-center gap-1.5 text-[12px] font-bold ${urgent ? "text-[#8c2f22]" : "text-[#536b8c]"}`}>
+      <p className="mt-1 flex items-center gap-1.5 text-[14px] font-semibold text-[#536b8c] group-hover:text-[#0a285a]">
         {t(tile.label)}
-        <ArrowRight className="size-3.5 rtl:-scale-x-100" />
+        <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
       </p>
     </Link>
+  );
+}
+
+/** Nothing waiting, said plainly and without a box that looks like a warning. */
+function AllClear({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2.5 rounded-2xl border border-[#e1e7ef] bg-white px-5 py-5 text-[14px] text-[#2f5d33]">
+      <CheckCircle2 className="size-5 shrink-0" aria-hidden />{children}
+    </p>
   );
 }

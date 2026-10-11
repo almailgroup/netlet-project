@@ -20,6 +20,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
+import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass, Toggle } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -53,168 +54,167 @@ const STATE_LABEL: Record<string, MessageKey> = {
 };
 
 function Inbox({ actor }: { actor: Actor }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [page, setPage] = useState(1);
-  const [openOnly, setOpenOnly] = useState(true);
+  const [openOnly, setOpenOnly] = useState<"open" | "all">("open");
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
 
   const vendorId = actor.kind === "vendor" ? actor.vendorId : undefined;
-  const inbox = trpc.offers.inbox.useQuery({ page, open: openOnly }, { placeholderData: previous => previous });
+  const inbox = trpc.offers.inbox.useQuery({ page, open: openOnly === "open" }, { placeholderData: previous => previous });
   const storeOpen = trpc.offers.storeOpen.useQuery({ vendorId }, { enabled: vendorId !== undefined });
 
   const refresh = () => {
     void utils.offers.inbox.invalidate();
     void utils.offers.waiting.invalidate();
   };
+  const fail = (error: { message: string }) => toast.error(tError(error.message));
   const answer = trpc.offers.answer.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    onError: error => toast.error(t(error.message as MessageKey)),
+    onError: fail,
   });
   const decline = trpc.offers.decline.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    onError: error => toast.error(t(error.message as MessageKey)),
+    onError: fail,
   });
   const setStoreOpen = trpc.offers.setStoreOpen.useMutation({
     onSuccess: () => { void utils.offers.storeOpen.invalidate(); toast.success(t("admin.saved")); },
-    onError: error => toast.error(t(error.message as MessageKey)),
+    onError: fail,
   });
+  const answering = answer.isPending ? answer.variables?.offerId : undefined;
 
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
+  const tone = (state: string) => state === "pending" ? "warning" : state === "offered" ? "good" : state === "used" ? "navy" : "neutral";
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.offersTitle")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.offersNote")}</p>
+      <PageHeader title={t("admin.offersTitle")} description={t("admin.offersNote")} />
 
       {/* Only a vendor has one store to switch. An admin reading every seller's
           inbox has no single store this could mean, so it is not drawn. */}
       {vendorId !== undefined && can(actor, "vendor.editProfile", vendorId) ? (
-        <label className="mt-5 flex items-start gap-3 rounded-xl border border-[#d5dfeb] bg-white/70 px-4 py-3">
-          <input
-            type="checkbox"
-            checked={storeOpen.data ?? false}
-            disabled={storeOpen.isLoading || setStoreOpen.isPending}
-            onChange={event => setStoreOpen.mutate({ vendorId, accepts: event.target.checked })}
-            className="mt-0.5 size-4"
-          />
-          <span>
-            <span className="block text-[13px] font-extrabold text-[#0a285a]">{t("admin.offersStoreOpen")}</span>
-            <span className="block text-[11px] leading-5 ink-muted">{t("admin.offersStoreOpenNote")}</span>
-          </span>
-        </label>
+        <Toggle
+          className="mb-5 max-w-2xl"
+          checked={storeOpen.data ?? false}
+          disabled={storeOpen.isLoading || setStoreOpen.isPending}
+          onChange={accepts => setStoreOpen.mutate({ vendorId, accepts })}
+          label={t("admin.offersStoreOpen")}
+          hint={t("admin.offersStoreOpenNote")}
+        />
       ) : null}
 
-      <div className="mt-5 flex gap-2">
-        {([[true, "admin.offersOpenOnly"], [false, "admin.offersAll"]] as const).map(([value, label]) => (
-          <button
-            key={String(value)}
-            onClick={() => { setOpenOnly(value); setPage(1); }}
-            aria-pressed={openOnly === value}
-            className={`pressable rounded-full px-4 py-2 text-[12px] font-extrabold ${openOnly === value ? "glass glass-navy" : "glass"}`}
-          >
-            {t(label)}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label={t("admin.offersTitle")}
+        className="mb-4 w-fit"
+        value={openOnly}
+        onChange={value => { setOpenOnly(value); setPage(1); }}
+        options={[{ value: "open", label: t("admin.offersOpenOnly") }, { value: "all", label: t("admin.offersAll") }]}
+      />
 
-      <QueryGate queries={[inbox]}>
-        {() => {
-          const rows = inbox.data?.rows ?? [];
-          if (!rows.length) {
+      {inbox.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[inbox]}>
+          {() => {
+            const rows = inbox.data?.rows ?? [];
+            if (!rows.length) return <EmptyState title={t("admin.offersEmpty")} />;
             return (
-              <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-                <p className="text-sm font-extrabold">{t("admin.offersEmpty")}</p>
-              </div>
-            );
-          }
-          return (
-            <div className="mt-5 space-y-3">
-              {rows.map(row => (
-                <article key={row.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <p dir="auto" className="font-bold text-[#0a285a]">{row.productTitle}</p>
-                    <span className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
-                      {t(STATE_LABEL[row.state])}
-                    </span>
-                  </div>
-                  <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[12px] ink-muted">
-                    <span><bdi dir="ltr">{t("admin.offersShopperAsked", { price: amount(row.askedPrice) })}</bdi></span>
-                    <span><bdi dir="ltr">{t("admin.offersListed", { price: amount(row.listPrice) })}</bdi></span>
-                    <span>{t("admin.offersQuantity", { count: row.quantity })}</span>
-                    <span>{formatDate(row.createdAt)}</span>
-                  </p>
-                  {row.shopperNote ? (
-                    <p dir="auto" className="mt-2 rounded-xl bg-[#f3f2ed] px-3 py-2 text-[13px] leading-6 text-[#404553]">
-                      {row.shopperNote}
-                    </p>
-                  ) : null}
+              <>
+                <ul className="space-y-3">
+                  {rows.map(row => {
+                    const priceId = `price-${row.id}`;
+                    const noteId = `note-${row.id}`;
+                    return (
+                      <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                        <div className="p-4 sm:p-5">
+                          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                            <p dir="auto" className="min-w-0 text-[15px] font-bold text-[#0a285a]">{row.productTitle}</p>
+                            <Pill tone={tone(row.state)}>{t(STATE_LABEL[row.state])}</Pill>
+                          </div>
+                          {/* The sentences follow the page; only the amounts
+                              inside them are isolated. */}
+                          <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#3d5376]">
+                            <span className="font-semibold text-[#0a285a]">{t("admin.offersShopperAsked", { price: amount(row.askedPrice) })}</span>
+                            <span>{t("admin.offersListed", { price: amount(row.listPrice) })}</span>
+                            <span>{t("admin.offersQuantity", { count: row.quantity })}</span>
+                            <span className="ink-muted">{formatDate(row.createdAt)}</span>
+                          </p>
+                          {row.shopperNote ? (
+                            <p dir="auto" className="mt-3 rounded-xl bg-[#f4f6f9] px-3.5 py-2.5 text-[14px] leading-6 text-[#3d5376]">
+                              {row.shopperNote}
+                            </p>
+                          ) : null}
+                          {row.state !== "pending" && row.offeredPrice ? (
+                            <p className="mt-3 text-[14px] font-bold text-[#0a285a]">{amount(row.offeredPrice)}</p>
+                          ) : null}
+                        </div>
 
-                  {row.state === "pending" ? (
-                    <div className="mt-3 grid gap-2 sm:grid-cols-[150px_minmax(0,1fr)_auto_auto] sm:items-end">
-                      <div>
-                        <label htmlFor={`price-${row.id}`} className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
-                          {t("admin.offersAnswerPrice")}
-                        </label>
-                        <input
-                          id={`price-${row.id}`}
-                          dir="ltr"
-                          inputMode="decimal"
-                          value={prices[row.id] ?? ""}
-                          placeholder={row.askedPrice}
-                          onChange={event => setPrices(map => ({ ...map, [row.id]: event.target.value }))}
-                          className="glass-field mt-1 w-full rounded-xl px-3 py-2 text-[14px] font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor={`note-${row.id}`} className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
-                          {t("admin.offersAnswerNote")}
-                        </label>
-                        <input
-                          id={`note-${row.id}`}
-                          dir="auto"
-                          maxLength={MAX_NOTE}
-                          value={notes[row.id] ?? ""}
-                          onChange={event => setNotes(map => ({ ...map, [row.id]: event.target.value }))}
-                          className="glass-field mt-1 w-full rounded-xl px-3 py-2 text-[13px]"
-                        />
-                      </div>
-                      <button
-                        onClick={() => answer.mutate({
-                          offerId: row.id,
-                          offeredPrice: (prices[row.id] ?? "").trim(),
-                          note: (notes[row.id] ?? "").trim() || null,
-                          vendorId,
-                        })}
-                        disabled={!(prices[row.id] ?? "").trim() || answer.isPending}
-                        className="glass glass-navy pressable inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-[11px] font-extrabold disabled:opacity-50"
-                      >
-                        {answer.isPending ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <Check className="size-3.5" aria-hidden />}
-                        {t("admin.offersSend")}
-                      </button>
-                      <button
-                        onClick={() => decline.mutate({ offerId: row.id, note: (notes[row.id] ?? "").trim() || null, vendorId })}
-                        disabled={decline.isPending}
-                        className="glass pressable inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-[11px] font-extrabold disabled:opacity-50"
-                      >
-                        <X className="size-3.5" aria-hidden />{t("admin.offersDecline")}
-                      </button>
-                    </div>
-                  ) : row.offeredPrice ? (
-                    <p className="mt-2 text-[13px] font-extrabold text-[#0a285a]">
-                      <bdi dir="ltr">{amount(row.offeredPrice)}</bdi>
-                    </p>
-                  ) : null}
-                </article>
-              ))}
-              {inbox.data ? <Pager page={inbox.data} onPage={setPage} /> : null}
-            </div>
-          );
-        }}
-      </QueryGate>
+                        {row.state === "pending" ? (
+                          <div className="grid gap-3 border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:px-5">
+                            <div>
+                              <label htmlFor={priceId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.offersAnswerPrice")}</label>
+                              <input
+                                id={priceId}
+                                dir="ltr"
+                                inputMode="decimal"
+                                value={prices[row.id] ?? ""}
+                                placeholder={row.askedPrice}
+                                onChange={event => setPrices(map => ({ ...map, [row.id]: event.target.value }))}
+                                className={`${fieldClass} mt-1.5`}
+                              />
+                            </div>
+                            <div>
+                              <label htmlFor={noteId} className="block text-[13px] font-semibold text-[#0a285a]">
+                                {t("admin.offersAnswerNote")} <span className="text-[12px] font-normal ink-muted">{t("admin.optional")}</span>
+                              </label>
+                              <input
+                                id={noteId}
+                                dir="auto"
+                                maxLength={MAX_NOTE}
+                                value={notes[row.id] ?? ""}
+                                onChange={event => setNotes(map => ({ ...map, [row.id]: event.target.value }))}
+                                className={`${fieldClass} mt-1.5`}
+                              />
+                            </div>
+                            <div className="flex flex-wrap justify-end gap-2 sm:col-span-2">
+                              <button
+                                type="button"
+                                onClick={() => decline.mutate({ offerId: row.id, note: (notes[row.id] ?? "").trim() || null, vendorId })}
+                                disabled={decline.isPending || answer.isPending}
+                                className={smallButtonClass.quietDanger}
+                              >
+                                <X className="size-4" aria-hidden />{t("admin.offersDecline")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => answer.mutate({
+                                  offerId: row.id,
+                                  offeredPrice: (prices[row.id] ?? "").trim(),
+                                  note: (notes[row.id] ?? "").trim() || null,
+                                  vendorId,
+                                })}
+                                disabled={!(prices[row.id] ?? "").trim() || answer.isPending || decline.isPending}
+                                className={smallButtonClass.primary}
+                              >
+                                {answering === row.id ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+                                {t("admin.offersSend")}
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+                {inbox.data ? <Pager page={inbox.data} onPage={setPage} /> : null}
+              </>
+            );
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }

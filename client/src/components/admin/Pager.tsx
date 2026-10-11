@@ -21,7 +21,7 @@ export function Pager({ page, onPage }: { page: Page<unknown>; onPage: (next: nu
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p aria-live="polite" className="text-[12px] ink-muted">
+      <p aria-live="polite" className="text-[13px] ink-muted">
         {page.total === 0
           ? t("admin.showingNone")
           : t("admin.showingRange", { first: String(first), last: String(last), total: String(page.total) })}
@@ -49,10 +49,10 @@ export function Pager({ page, onPage }: { page: Page<unknown>; onPage: (next: nu
                 onClick={() => onPage(number)}
                 aria-current={number === page.page ? "page" : undefined}
                 aria-label={t("admin.goToPage", { page: String(number) })}
-                className={`tap-target min-w-8 rounded-lg px-2 py-1.5 text-[12px] font-extrabold transition ${
+                className={`grid h-9 min-w-9 place-items-center rounded-lg px-2 text-[13px] font-semibold transition ${
                   number === page.page
                     ? "bg-[#0a285a] text-white"
-                    : "border border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#e7edf5]"
+                    : "border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"
                 }`}
               >
                 <bdi dir="ltr">{number}</bdi>
@@ -84,7 +84,7 @@ function Step({ label, disabled, onClick, children }: {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="tap-target grid size-8 place-items-center rounded-lg border border-[#d5dfeb] bg-white text-[#0a285a] transition hover:bg-[#e7edf5] disabled:opacity-40 disabled:hover:bg-white"
+      className="grid size-9 place-items-center rounded-lg border border-[#cfd9e6] bg-white text-[#0a285a] transition hover:bg-[#f2f5f9] disabled:opacity-40 disabled:hover:bg-white"
     >
       {children}
     </button>

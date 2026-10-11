@@ -9,11 +9,14 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
+import { buttonClass, EmptyState, PageHeader, Pill, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
+import { Thumb } from "@/components/product/Thumb";
 import { trpc } from "@/lib/trpc";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import { Check, LoaderCircle, Sparkles, X } from "lucide-react";
+import { Check, ImageOff, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
 import type { Flag } from "@shared/inventory/productReview";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useState } from "react";
@@ -26,7 +29,9 @@ export default function AdminReview() {
 }
 
 function Queue() {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
+  const money = useMoney();
+  const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [page, setPage] = useState(1);
@@ -41,10 +46,18 @@ function Queue() {
     { placeholderData: previous => previous },
   );
 
+  /* The server's own reason: approving a product priced at zero is refused
+     with "set a price first", which "not allowed" used to hide. */
   const review = trpc.inventory.products.review.useMutation({
-    onSuccess: () => { void utils.inventory.products.list.invalidate(); toast.success(t("admin.saved")); },
-    onError: () => toast.error(t("admin.forbidden")),
+    onSuccess: () => {
+      void utils.inventory.products.list.invalidate();
+      toast.success(t("admin.saved"));
+    },
+    onError: error => toast.error(tError(error.message)),
   });
+  /* Which row is being decided, so one press does not put a spinner on
+     every row's buttons. */
+  const deciding = review.isPending ? review.variables?.id : undefined;
 
   const waiting = products.data?.rows ?? [];
 
@@ -60,60 +73,89 @@ function Queue() {
      deployment, not about a product. */
   const modelReview = trpc.inventory.products.modelReviewAvailable.useQuery();
 
-  if (products.isLoading || products.isError) return <QueryGate queries={[products]}>{() => null}</QueryGate>;
-
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.review")}</h1>
-      {waiting.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-          <p className="text-sm font-extrabold">{t("admin.nothingToReview")}</p>
-        </div>
+      <PageHeader
+        title={t("admin.review")}
+        description={t("admin.reviewIntro")}
+        meta={products.data && products.data.total > 0 ? <Pill tone="warning">{t("admin.reviewWaiting", { count: products.data.total })}</Pill> : null}
+      />
+      {products.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : products.isError ? (
+        <QueryGate queries={[products]}>{() => null}</QueryGate>
+      ) : waiting.length === 0 ? (
+        <EmptyState title={t("admin.nothingToReview")} />
       ) : (
-        <div className="mt-5 space-y-3">
-          {waiting.map(row => (
-            <article key={row.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <Link href={`/admin/products/${row.id}`} className="font-bold text-[#0a285a] hover:text-[#a44a2b]" dir="auto">
-                    {row.title}
-                  </Link>
-                  <p className="mt-0.5 text-[11px] ink-muted">
-                    {t("admin.columnVendor")} #{row.vendorId} · {row.variants.length === 1 ? t("admin.variantOne") : t("admin.variantCount", { count: row.variants.length })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => review.mutate({ id: row.id, approve: true })}
-                    disabled={review.isPending}
-                    className="glass glass-accent pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                  >
-                    {review.isPending ? <LoaderCircle className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                    {t("admin.approve")}
-                  </button>
-                  <button
-                    onClick={() => review.mutate({ id: row.id, approve: false, note: notes[row.id] || undefined })}
-                    disabled={review.isPending}
-                    className="glass pressable inline-flex items-center gap-1.5 rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
-                  >
-                    <X className="size-3.5" />{t("admin.reject")}
-                  </button>
-                </div>
-              </div>
-              <ReviewFlags flags={flagsFor(row.id)} productId={row.id} modelAvailable={modelReview.data?.available ?? false} />
-
-              <input
-                dir="auto"
-                value={notes[row.id] ?? ""}
-                onChange={event => setNotes({ ...notes, [row.id]: event.target.value })}
-                aria-label={t("admin.reviewNote")}
-                placeholder={t("admin.reviewNote")}
-                className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
-              />
-            </article>
-          ))}
+        <>
+          <ul className="space-y-4">
+            {waiting.map(row => {
+              const cover = row.images.find(image => image.kind !== "video")?.url;
+              const prices = row.variants.map(variant => Number(variant.price)).filter(Number.isFinite);
+              const cheapest = row.variants.reduce<string | null>((low, variant) => low === null || Number(variant.price) < Number(low) ? variant.price : low, null);
+              const note = (notes[row.id] ?? "").trim();
+              const noteId = `review-note-${row.id}`;
+              const busy = deciding === row.id;
+              return (
+                <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                  <div className="flex gap-4 p-4 sm:p-5">
+                    <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
+                      <Thumb src={cover} alt="" className="size-full object-cover" icon={<ImageOff className="size-5 text-[#536b8c]" />} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/admin/products/${row.id}`} className="text-[15px] font-bold text-[#0a285a] hover:underline" dir="auto">
+                        {row.title}
+                      </Link>
+                      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] ink-muted">
+                        {row.vendorName ? <bdi className="font-semibold text-[#3d5376]">{row.vendorName}</bdi> : null}
+                        <span aria-hidden>·</span>
+                        <span>{row.variants.length === 1 ? t("admin.variantOne") : t("admin.variantCount", { count: row.variants.length })}</span>
+                        {cheapest !== null && prices.length ? <><span aria-hidden>·</span><span>{money({ amount: cheapest, currencyCode: "KWD" })}</span></> : null}
+                        <span aria-hidden>·</span>
+                        <span>{formatDate(row.updatedAt)}</span>
+                      </p>
+                      <ReviewFlags flags={flagsFor(row.id)} productId={row.id} modelAvailable={modelReview.data?.available ?? false} />
+                    </div>
+                  </div>
+                  <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5">
+                    <label htmlFor={noteId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.reviewNote")}</label>
+                    <textarea
+                      id={noteId}
+                      dir="auto"
+                      rows={2}
+                      maxLength={2000}
+                      value={notes[row.id] ?? ""}
+                      onChange={event => setNotes({ ...notes, [row.id]: event.target.value })}
+                      aria-describedby={`${noteId}-hint`}
+                      className={`${textareaClass} mt-1.5 min-h-16`}
+                    />
+                    <p id={`${noteId}-hint`} className="mt-1 text-[12px] ink-muted">{t("admin.reviewNoteHint")}</p>
+                    <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => review.mutate({ id: row.id, approve: false, note })}
+                        disabled={review.isPending || note === ""}
+                        className={buttonClass.secondary}
+                      >
+                        <Undo2 className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.reject")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => review.mutate({ id: row.id, approve: true, note: note || undefined })}
+                        disabled={review.isPending}
+                        className={buttonClass.primary}
+                      >
+                        {busy && review.variables?.approve ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+                        {t("admin.approve")}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
           {products.data ? <Pager page={products.data} onPage={setPage} /> : null}
-        </div>
+        </>
       )}
     </>
   );
@@ -143,7 +185,7 @@ const FINDING_LABEL: Record<string, MessageKey> = {
  * choice the shopper's assistant makes.
  */
 function ReviewFlags({ flags, productId, modelAvailable }: { flags: Flag[]; productId: number; modelAvailable: boolean }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [extra, setExtra] = useState<Flag | null>(null);
   const [asked, setAsked] = useState(false);
 
@@ -153,7 +195,7 @@ function ReviewFlags({ flags, productId, modelAvailable }: { flags: Flag[]; prod
       setExtra(reply.flag);
       if (!reply.flag) toast.success(t("admin.flagModelNothing"));
     },
-    onError: () => toast.error(t("admin.saveFailed")),
+    onError: error => toast.error(tError(error.message)),
   });
 
   const all = extra ? [...flags, extra] : flags;
@@ -161,19 +203,19 @@ function ReviewFlags({ flags, productId, modelAvailable }: { flags: Flag[]; prod
   return (
     <div className="mt-3">
       {all.length === 0 ? (
-        <p className="text-[11px] ink-muted">{t("admin.flagsNone")}</p>
+        <p className="flex items-center gap-1.5 text-[13px] text-[#2f5d33]"><Check className="size-4" aria-hidden />{t("admin.flagsNone")}</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-1.5" aria-label={t("admin.reviewFindings")}>
           {all.map((flag, index) => (
             <li
               key={`${flag.finding}-${index}`}
-              className={`rounded-xl px-3 py-2 text-[12px] leading-5 ${
+              className={`rounded-lg px-3 py-2 text-[13px] leading-5 ${
                 flag.severity === "serious"
                   ? "border border-[#f2b69e] bg-[#fdeceb] text-[#8c2f22]"
-                  : "border border-[#d5dfeb] bg-[#f3f2ed] text-[#536b8c]"
+                  : "border border-[#ecd49a] bg-[#fff8e6] text-[#5c3f0c]"
               }`}
             >
-              <span className="font-extrabold">{t(FINDING_LABEL[flag.finding] ?? "admin.flagModelConcern")}</span>
+              <span className="font-semibold">{t(FINDING_LABEL[flag.finding] ?? "admin.flagModelConcern")}</span>
               {/* The evidence travels with the finding, so "there is a phone
                   number in the title" shows which number. */}
               {flag.detail ? <span dir="auto"> · {flag.detail}</span> : null}
@@ -189,7 +231,7 @@ function ReviewFlags({ flags, productId, modelAvailable }: { flags: Flag[]; prod
           type="button"
           disabled={ask.isPending || asked}
           onClick={() => ask.mutate({ id: productId })}
-          className="glass type-control pressable mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 disabled:opacity-60"
+          className={`${smallButtonClass.secondary} mt-2`}
         >
           {ask.isPending ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />}
           {t(asked ? "admin.flagModelAsked" : "admin.flagModelAsk")}

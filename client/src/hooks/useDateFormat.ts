@@ -23,3 +23,19 @@ export function useDateFormat() {
       year: "numeric",
     });
 }
+
+/**
+ * A moment rather than a day — a stock movement, an audit row, a message —
+ * on the same rules, with the time in the reader's own clock.
+ */
+export function useDateTimeFormat() {
+  const { isArabic } = useTranslation();
+  return (value: string | Date) =>
+    new Date(value).toLocaleString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+}

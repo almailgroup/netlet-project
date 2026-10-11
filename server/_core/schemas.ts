@@ -14,6 +14,7 @@
  * negative one reached the query and `-9007199254740991` reached Postgres.
  */
 import { z } from "zod";
+import { DAY_ONLY, endOfKuwaitDay } from "../../shared/kuwaitDay.js";
 
 /**
  * The largest value a Postgres `integer` holds, which is what every serial
@@ -75,3 +76,17 @@ export const pinInput = z
   .object({ lat: z.number().finite(), lng: z.number().finite() })
   .strict()
   .nullish();
+
+/**
+ * The last day something is good for — a code's end, a card's or a permit's
+ * expiry — as a date box sends it.
+ *
+ * A bare `yyyy-mm-dd` means the whole of that day in Kuwait, not its first
+ * second in UTC, which is three in the morning there: the code that "ends on
+ * the 20th" used to stop working at 3am on the 20th. A full timestamp is taken
+ * as given, so an API caller that means a moment can still say one.
+ */
+export const lastDay = z.preprocess(
+  value => (typeof value === "string" && DAY_ONLY.test(value) ? endOfKuwaitDay(value) : value),
+  z.coerce.date(),
+);

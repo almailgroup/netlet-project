@@ -37,8 +37,18 @@ export function QueryGate({ queries, children, audience = "staff" }: {
 }) {
   const { t } = useTranslation();
 
+  /* A shape where the content will be rather than a word in its place: the
+     page does not jump when it arrives, and "Loading…" is still what a screen
+     reader is told. */
   if (queries.some(query => query.isLoading)) {
-    return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
+    return (
+      <div role="status" className="space-y-3">
+        <span className="sr-only">{t("admin.loading")}</span>
+        {[0, 1, 2].map(index => (
+          <div key={index} aria-hidden className="h-16 animate-pulse rounded-2xl border border-[#e1e7ef] bg-white" />
+        ))}
+      </div>
+    );
   }
 
   const failed = queries.find(query => query.isError);
@@ -53,19 +63,19 @@ export function QueryGate({ queries, children, audience = "staff" }: {
     const raw = failed.error?.message ?? "";
     const detail = isMessageKey(raw) || audience === "staff" ? raw : "";
     return (
-      <div className="rounded-2xl border border-[#f2b69e] bg-[#fdeceb] p-5">
-        <p className="flex items-center gap-2 text-sm font-extrabold text-[#8c2f22]">
+      <div role="alert" className="rounded-2xl border border-[#f2b69e] bg-[#fdeceb] p-5">
+        <p className="flex items-center gap-2 text-[15px] font-bold text-[#8c2f22]">
           <AlertTriangle className="size-4 shrink-0" />
           {t(audience === "shopper" ? "account.sectionFailed" : "admin.loadFailed")}
         </p>
         {detail ? (
-          <p dir="auto" className="mt-2 text-[12px] leading-5 break-words text-[#8c2f22]/80">
+          <p dir="auto" className="mt-2 text-[13px] leading-5 break-words text-[#8c2f22]">
             {isMessageKey(detail) ? t(detail) : detail}
           </p>
         ) : null}
         <button
           onClick={() => queries.forEach(query => query.refetch())}
-          className="glass pressable mt-4 inline-flex items-center gap-2 rounded-full border border-[#8c2f22]/20 px-4 py-2 text-xs font-extrabold text-[#8c2f22]"
+          className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-[#efc6bd] bg-white px-4 text-[14px] font-semibold text-[#8c2f22] hover:bg-[#fff5f3]"
         >
           <RotateCw className="size-4" />{t("admin.retry")}
         </button>

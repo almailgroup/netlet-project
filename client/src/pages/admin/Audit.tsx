@@ -11,6 +11,8 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { EmptyState, isolate, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { useDateTimeFormat } from "@/hooks/useDateFormat";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -50,7 +52,8 @@ function summarise(before: unknown, after: unknown): { field: string; from: stri
 }
 
 function Trail() {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
+  const when = useDateTimeFormat();
   const utils = trpc.useUtils();
   /*
    * Two views of one table, not two pages. "Everything" is the trail;
@@ -69,105 +72,84 @@ function Trail() {
 
   const active = view === "all" ? entries : seller;
   const rows = view === "all" ? entries.data ?? [] : seller.data?.rows ?? [];
-
-  const when = (value: Date | string) => {
-    const date = value instanceof Date ? value : new Date(value);
-    return Number.isNaN(date.getTime())
-      ? "—"
-      : new Intl.DateTimeFormat(locale === "ar" ? "ar-KW-u-ca-gregory-nu-latn" : "en-GB", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(date);
-  };
+  const unseen = unread.data?.unseen ?? 0;
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.audit")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.auditNote")}</p>
+      <PageHeader title={t("admin.audit")} description={t("admin.auditNote")} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {([["all", "admin.auditEverything"], ["sellers", "admin.sellerChanges"]] as const).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => setView(value)}
-            aria-pressed={view === value}
-            className={`pressable rounded-full px-4 py-2 text-[12px] font-extrabold ${view === value ? "glass glass-navy" : "glass"}`}
-          >
-            {t(label)}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <Segmented
+          label={t("admin.audit")}
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "all", label: t("admin.auditEverything") },
+            { value: "sellers", label: t("admin.sellerChanges"), count: unseen > 0 ? unseen : null },
+          ]}
+        />
         {/* The count is what makes the log visible rather than merely
             available, and pressing the button is what clears it — never the
             tile rendering somewhere else, which would hide work by drawing. */}
-        {unread.data && unread.data.unseen > 0 ? (
-          <>
-            <span className="text-[12px] font-bold ink-accent">
-              {t("admin.auditUnseen", { count: unread.data.unseen })}
-            </span>
-            <button
-              onClick={() => markSeen.mutate()}
-              disabled={markSeen.isPending}
-              className="glass pressable rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-50"
-            >
-              {t("admin.auditMarkSeen")}
-            </button>
-          </>
-        ) : (
-          <span className="text-[12px] ink-muted">{t("admin.auditAllRead")}</span>
-        )}
+        {unread.data ? (
+          unseen > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[13px] font-semibold ink-accent">{t("admin.auditUnseen", { count: unseen })}</span>
+              <button type="button" onClick={() => markSeen.mutate()} disabled={markSeen.isPending} className={smallButtonClass.secondary}>
+                {t("admin.auditMarkSeen")}
+              </button>
+            </div>
+          ) : (
+            <span className="text-[13px] ink-muted">{t("admin.auditAllRead")}</span>
+          )
+        ) : null}
       </div>
 
-      {active.isLoading || active.isError ? (
-        <div className="mt-5"><QueryGate queries={[active]}>{() => null}</QueryGate></div>
+      {active.isLoading ? (
+        <SkeletonRows label={t("admin.loading")} />
+      ) : active.isError ? (
+        <QueryGate queries={[active]}>{() => null}</QueryGate>
       ) : rows.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-          <p className="text-sm font-extrabold">{t("admin.noAudit")}</p>
-        </div>
+        <EmptyState title={t("admin.noAudit")} />
       ) : (
-        <ol className="mt-5 space-y-2">
+        <ol className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
           {rows.map(entry => {
             const change = summarise(entry.before, entry.after);
             const label = `action.${entry.action}`;
             const automatic = (entry.after as Record<string, unknown> | null)?.automatic === true;
             return (
-              <li key={entry.id} className="rounded-2xl border border-[#e6e9ef] bg-white px-4 py-3">
+              <li key={entry.id} className="px-4 py-3.5 sm:px-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <p className="text-[13px] font-extrabold text-[#0a285a]">
+                  <p className="text-[14px] font-bold text-[#0a285a]">
                     {isMessageKey(label) ? t(label as MessageKey) : entry.action}
+                    {entry.subjectLabel ? <span dir="auto" className="ms-2 font-semibold text-[#3d5376]">{entry.subjectLabel}</span> : null}
                   </p>
-                  <time dir="ltr" className="text-[11px] ink-muted">{when(entry.createdAt)}</time>
+                  <time dateTime={new Date(entry.createdAt).toISOString()} className="text-[12px] ink-muted">{when(entry.createdAt)}</time>
                 </div>
 
-                <p className="mt-0.5 flex flex-wrap items-baseline gap-x-3 text-[12px] text-[#536b8c]">
-                  {entry.subjectLabel ? <span dir="auto" className="font-semibold">{entry.subjectLabel}</span> : null}
+                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-[#536b8c]">
                   {change ? (
                     // The values are data, not prose: isolated so a status or a
                     // price does not reorder inside an Arabic sentence.
-                    <span dir="ltr" className="font-mono text-[11px]">
+                    <bdi dir="ltr" className="rounded-md bg-[#f2f5f9] px-1.5 py-0.5 font-mono text-[12px] text-[#0a285a]">
                       {change.from} → {change.to}
-                    </span>
+                    </bdi>
                   ) : null}
-                  <span className="ink-muted">
+                  <span>
                     {automatic || !entry.actorEmail
                       ? t("admin.auditAutomatic")
-                      : t("admin.auditBy", { name: entry.actorEmail })}
+                      : t("admin.auditBy", { name: isolate(entry.actorEmail) })}
                   </span>
+                  {/* The rank they held at the time, frozen on the row — not
+                      the one they hold today, which is a different fact. */}
+                  {entry.actorRole ? <Pill>{t(roleLabel(entry.actorRole))}</Pill> : null}
                   {/* "And who authorised them" — the half of requirement 3.3.9
                       the trail could not answer. Shown only where it was
                       resolved: absent means the actor is this installation's
                       first administrator, and a row reading "authorised by
                       nobody" would be an accusation rather than a fact. */}
                   {entry.authorisedByEmail ? (
-                    <span className="ink-muted">
-                      {t("admin.auditAuthorisedBy", { name: entry.authorisedByEmail })}
-                    </span>
-                  ) : null}
-                  {/* The rank they held at the time, frozen on the row — not
-                      the one they hold today, which is a different fact. */}
-                  {entry.actorRole ? (
-                    <span className="ink-muted">
-                      {t("admin.auditRole", { role: t(roleLabel(entry.actorRole)) })}
-                    </span>
+                    <span className="ink-muted">{t("admin.auditAuthorisedBy", { name: isolate(entry.authorisedByEmail) })}</span>
                   ) : null}
                 </p>
               </li>

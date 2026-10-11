@@ -9,10 +9,11 @@
  */
 import { useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, EmptyState, fieldClass, PageHeader, Pill, SkeletonRows, tableClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -32,68 +33,99 @@ function Invoices() {
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
   const list = trpc.invoices.list.useQuery({ page, query: query || null }, { placeholderData: previous => previous });
+  const kind = (value: string) => (
+    <Pill tone={value === "credit_note" ? "warning" : "navy"}>{t(value === "credit_note" ? "invoice.creditNote" : "invoice.title")}</Pill>
+  );
+  const total = (row: { kind: string; total: string }) => (
+    <span className="font-bold tabular-nums text-[#0a285a]">{row.kind === "credit_note" ? "−" : ""}{money(row.total, "KWD")}</span>
+  );
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.invoices")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.invoicesNote")}</p>
+      <PageHeader title={t("admin.invoices")} description={t("admin.invoicesNote")} />
 
       <form
         role="search"
-        className="mt-5 flex max-w-md items-center gap-2"
+        className="mb-5 flex max-w-md items-center gap-2"
         onSubmit={event => { event.preventDefault(); setPage(1); setQuery(typed.trim()); }}
       >
         <label className="min-w-0 flex-1">
           <span className="sr-only">{t("admin.invoicesSearch")}</span>
           <input
+            type="search"
             value={typed}
             onChange={event => setTyped(event.target.value)}
             maxLength={40}
             dir="ltr"
             placeholder="INV-2026-000001"
-            className="glass-field h-10 w-full rounded-full px-4 text-sm"
+            className={fieldClass}
           />
         </label>
-        <button type="submit" className="glass-navy pressable grid size-10 shrink-0 place-items-center rounded-full" aria-label={t("admin.invoicesSearch")}>
+        <button type="submit" className={`${buttonClass.primary} w-11 px-0`} aria-label={t("admin.invoicesSearch")}>
           <Search className="size-4" aria-hidden />
         </button>
       </form>
 
-      <QueryGate queries={[list]}>
-        {() => {
-          const result = list.data;
-          const rows = result?.rows ?? [];
-          if (rows.length === 0) {
-            return <p className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">{t(query ? "admin.invoicesNoMatch" : "admin.invoicesNone")}</p>;
-          }
-          return (
-            <div className="mt-5 space-y-2">
-              {rows.map(row => (
-                <Link
-                  key={row.number}
-                  href={`/invoices/${row.number}`}
-                  className="pressable flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-4 hover:border-[#0a285a]/30"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-bold text-[#0a285a]">
-                      <bdi dir="ltr">{row.number}</bdi>
-                      <span className="ms-2 rounded-full bg-[#eaf1fb] px-2 py-0.5 text-[10px] font-extrabold">
-                        {t(row.kind === "credit_note" ? "invoice.creditNote" : "invoice.title")}
-                      </span>
-                    </p>
-                    <p className="mt-0.5 text-[11px] ink-muted">
-                      <bdi dir="ltr">{row.orderReference}</bdi> · {formatDate(row.issuedAt)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-extrabold">{row.kind === "credit_note" ? "−" : ""}{money(row.total, "KWD")}</span>
-                  <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
-                </Link>
-              ))}
-              {result ? <Pager page={result} onPage={setPage} /> : null}
-            </div>
-          );
-        }}
-      </QueryGate>
+      {list.isLoading ? (
+        <SkeletonRows label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => {
+            const result = list.data;
+            const rows = result?.rows ?? [];
+            if (rows.length === 0) return <EmptyState title={t(query ? "admin.invoicesNoMatch" : "admin.invoicesNone")} />;
+            return (
+              <>
+                <ul className="space-y-2 md:hidden">
+                  {rows.map(row => (
+                    <li key={row.number}>
+                      <Link href={`/invoices/${row.number}`} className="block rounded-2xl border border-[#e1e7ef] bg-white p-3.5 hover:border-[#0a285a]/30">
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="min-w-0 font-bold text-[#0a285a]"><bdi dir="ltr">{row.number}</bdi></span>
+                          {total(row)}
+                        </span>
+                        <span className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] ink-muted">
+                          {kind(row.kind)}
+                          <bdi dir="ltr">{row.orderReference}</bdi>
+                          <span aria-hidden>·</span>
+                          {formatDate(row.issuedAt)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <div className={`hidden md:block ${tableClass.wrap}`}>
+                  <table className={tableClass.table}>
+                    <thead className={tableClass.head}>
+                      <tr>
+                        <th scope="col" className={tableClass.th}>{t("admin.columnDocument")}</th>
+                        <th scope="col" className={tableClass.th}>{t("admin.columnKind")}</th>
+                        <th scope="col" className={tableClass.th}>{t("admin.columnOrder")}</th>
+                        <th scope="col" className={tableClass.th}>{t("admin.columnIssued")}</th>
+                        <th scope="col" className={tableClass.thEnd}>{t("admin.columnTotal")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(row => (
+                        <tr key={row.number} className={`${tableClass.row} hover:bg-[#f7f9fc]`}>
+                          <td className={tableClass.td}>
+                            <Link href={`/invoices/${row.number}`} className="font-bold text-[#0a285a] hover:underline"><bdi dir="ltr">{row.number}</bdi></Link>
+                          </td>
+                          <td className={tableClass.td}>{kind(row.kind)}</td>
+                          <td className={`${tableClass.td} text-[#536b8c]`}><bdi dir="ltr">{row.orderReference}</bdi></td>
+                          <td className={`${tableClass.td} whitespace-nowrap text-[#536b8c]`}>{formatDate(row.issuedAt)}</td>
+                          <td className={`${tableClass.td} text-end whitespace-nowrap`}>{total(row)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {result ? <Pager page={result} onPage={setPage} /> : null}
+              </>
+            );
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }

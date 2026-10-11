@@ -1213,10 +1213,13 @@ export async function setMemberRole(actor: Actor, vendorId: number, userId: numb
   assertCan(actor, "vendor.manageMembers", vendorId);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
-  await db
-    .insert(vendorMembers)
-    .values({ vendorId, userId, role })
-    .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+  await db.transaction(async tx => {
+    if (role !== "owner") await assertKeepsAnOwner(tx, vendorId, userId);
+    await tx
+      .insert(vendorMembers)
+      .values({ vendorId, userId, role })
+      .onConflictDoUpdate({ target: [vendorMembers.vendorId, vendorMembers.userId], set: { role } });
+  });
   return listMembers(actor, vendorId);
 }
 
@@ -1224,8 +1227,32 @@ export async function removeMember(actor: Actor, vendorId: number, userId: numbe
   assertCan(actor, "vendor.manageMembers", vendorId);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
-  await db.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+  await db.transaction(async tx => {
+    await assertKeepsAnOwner(tx, vendorId, userId);
+    await tx.delete(vendorMembers).where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.userId, userId)));
+  });
   return listMembers(actor, vendorId);
+}
+
+/**
+ * A store keeps at least one owner.
+ *
+ * Demoting or removing the only one left the store with nobody who can run its
+ * team — an owner doing it to themselves by accident locked their own staff out
+ * of the people page, and only an administrator could put it back. The same
+ * reason `/admin/people` refuses removing the last administrator. The store's
+ * row is locked first, so two owners demoting each other at once cannot both
+ * see the other as the one who stays.
+ */
+type Tx = Parameters<Parameters<NonNullable<Awaited<ReturnType<typeof getDb>>>["transaction"]>[0]>[0];
+
+async function assertKeepsAnOwner(tx: Tx, vendorId: number, userId: number) {
+  await tx.select({ id: vendors.id }).from(vendors).where(eq(vendors.id, vendorId)).for("update");
+  const owners = await tx
+    .select({ userId: vendorMembers.userId })
+    .from(vendorMembers)
+    .where(and(eq(vendorMembers.vendorId, vendorId), eq(vendorMembers.role, "owner")));
+  if (owners.length === 1 && owners[0].userId === userId) throw new Error("admin.lastOwner");
 }
 
 /* -------------------------------------------------------------- overview --- */

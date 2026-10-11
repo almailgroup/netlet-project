@@ -13,7 +13,8 @@
  * 14px/500 is the storefront's and would flatten a portal heading.
  */
 import { useTranslation } from "@/hooks/useTranslation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, CircleAlert, Info } from "lucide-react";
+import { Link } from "wouter";
 import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
 
 /**
@@ -40,6 +41,230 @@ export const buttonClass = {
   /* For a destructive act that is not the page's main one: red words, no fill. */
   quietDanger: `${buttonBase} border border-[#efc6bd] bg-white text-[#8c2f22] hover:bg-[#fdeceb]`,
 } as const;
+
+/** The same three, a size down, for an action inside a row of a list. */
+const smallBase =
+  "inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a285a] disabled:cursor-not-allowed disabled:opacity-60";
+
+export const smallButtonClass = {
+  primary: `${smallBase} bg-[#0a285a] text-white hover:bg-[#0d3372]`,
+  secondary: `${smallBase} border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]`,
+  danger: `${smallBase} bg-[#8c2f22] text-white hover:bg-[#7a2a1e]`,
+  quietDanger: `${smallBase} border border-[#efc6bd] bg-white text-[#8c2f22] hover:bg-[#fdeceb]`,
+} as const;
+
+/** A text box that grows, on the same rules as a field. */
+export const textareaClass = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
+
+/** A list's table, its header cells and its body cells. */
+export const tableClass = {
+  wrap: "overflow-x-auto rounded-2xl border border-[#e1e7ef] bg-white",
+  table: "w-full text-start text-[14px]",
+  head: "border-b border-[#e1e7ef] bg-[#fafbfd] text-[13px] text-[#536b8c]",
+  th: "px-4 py-3 text-start font-semibold whitespace-nowrap",
+  /* A header cell's own alignment is the browser's centre, not inherited, so
+     a right-hand column needs its own class rather than `th` plus `text-end`
+     — the two utilities tie and whichever Tailwind wrote later wins. */
+  thEnd: "px-4 py-3 text-end font-semibold whitespace-nowrap",
+  row: "border-b border-[#f0f2f6] last:border-b-0",
+  td: "px-4 py-3 align-top",
+} as const;
+
+/** The way back to the list a page belongs to, above its heading. */
+export function BackLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a]">
+      <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{children}
+    </Link>
+  );
+}
+
+/**
+ * A heading inside a page that is not a card's — a group of tiles, a list.
+ * Sentence case and 16px: an uppercase tracked label over a section is the
+ * mark of generated design the storefront already removed, and it does
+ * nothing in Arabic.
+ */
+export function SectionHeading({ children, description, actions, className = "" }: {
+  children: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 ${className}`}>
+      <div className="min-w-0">
+        <h2 className="text-[16px] leading-6 font-bold text-[#0a285a]">{children}</h2>
+        {description ? <p className="mt-0.5 max-w-2xl text-[13px] leading-5 ink-muted">{description}</p> : null}
+      </div>
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+}
+
+/** Nothing here yet, said in a sentence, with the one thing to do about it. */
+export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-6 py-12 text-center">
+      <p className="text-[15px] font-bold text-[#0a285a]">{title}</p>
+      {children ? <div className="mx-auto mt-2 max-w-md text-[14px] leading-6 text-[#536b8c]">{children}</div> : null}
+      {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
+const NOTICE_TONE = {
+  info: { box: "border-[#cfd9e6] bg-[#f4f7fb] text-[#0a285a]", icon: Info },
+  warning: { box: "border-[#ecd49a] bg-[#fff8e6] text-[#5c3f0c]", icon: CircleAlert },
+  danger: { box: "border-[#f2b69e] bg-[#fdeceb] text-[#8c2f22]", icon: AlertTriangle },
+  success: { box: "border-[#b9dcc1] bg-[#eef8f0] text-[#1f4d2a]", icon: CheckCircle2 },
+} as const;
+
+/** A sentence the page needs somebody to read before they act. */
+export function Notice({ tone = "info", children, action, className = "" }: {
+  tone?: keyof typeof NOTICE_TONE;
+  children: ReactNode;
+  action?: ReactNode;
+  className?: string;
+}) {
+  const { box, icon: Icon } = NOTICE_TONE[tone];
+  return (
+    <div role="note" className={`flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border px-4 py-3 text-[14px] leading-6 ${box} ${className}`}>
+      <Icon className="mt-1 size-4 shrink-0" aria-hidden />
+      <div className="min-w-0 flex-1">{children}</div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+const PILL_TONE = {
+  neutral: "bg-[#eef1f5] text-[#3d5376]",
+  navy: "bg-[#e7edf5] text-[#0a285a]",
+  good: "bg-[#d4edda] text-[#155724]",
+  warning: "bg-[#fff3cd] text-[#6b4f1d]",
+  danger: "bg-[#fdeceb] text-[#8c2f22]",
+} as const;
+
+/** A short state beside a name: a status, a count, a badge. */
+export function Pill({ tone = "neutral", children }: { tone?: keyof typeof PILL_TONE; children: ReactNode }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold whitespace-nowrap ${PILL_TONE[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * A filter of a few states, all visible at once — the one in force is seen
+ * without opening anything, which a dropdown cannot say. Buttons with
+ * `aria-pressed` in a named group: it filters a list, it does not switch
+ * panels, so it is not a tablist.
+ */
+export function Segmented<T extends string>({ label, options, value, onChange, className = "" }: {
+  label: string;
+  options: readonly { value: T; label: ReactNode; count?: number | null }[];
+  value: T;
+  onChange: (value: T) => void;
+  className?: string;
+}) {
+  return (
+    <div role="group" aria-label={label} className={`hide-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1 ${className}`}>
+      {options.map(option => (
+        <button
+          key={option.value}
+          type="button"
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
+          className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold transition ${value === option.value ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c] hover:text-[#0a285a]"}`}
+        >
+          {option.label}
+          {option.count != null ? <span className="tabular-nums text-[12px] font-normal ink-muted">{option.count}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A labelled switch with its explanation, for a yes/no that changes behaviour. */
+export function Toggle({ checked, onChange, label, hint, disabled, className = "" }: {
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  label: ReactNode;
+  hint?: ReactNode;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5 ${disabled ? "cursor-not-allowed opacity-60" : ""} ${className}`}>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={checked}
+        disabled={disabled}
+        onChange={event => onChange(event.target.checked)}
+        className="mt-0.5 size-5 shrink-0 accent-[#0a285a]"
+      />
+      <span className="min-w-0">
+        <span className="block text-[14px] font-semibold text-[#0a285a]">{label}</span>
+        {hint ? <span className="mt-0.5 block text-[12px] leading-5 ink-muted">{hint}</span> : null}
+      </span>
+    </label>
+  );
+}
+
+/**
+ * A figure and what it counts. The row is a list, not a `dl`: a tile that is
+ * also a link cannot hold `dt`/`dd`, and axe refuses the pair inside an anchor.
+ */
+export function Stat({ label, value, note, href, tone = "normal" }: {
+  label: ReactNode;
+  value: ReactNode;
+  note?: ReactNode;
+  href?: string;
+  tone?: "normal" | "good" | "warning" | "danger";
+}) {
+  const ink = tone === "good" ? "text-[#2f5d33]" : tone === "warning" ? "text-[#6b4f1d]" : tone === "danger" ? "text-[#8c2f22]" : "text-[#0a285a]";
+  const body = (
+    <>
+      <span className="block text-[13px] font-semibold ink-muted">{label}</span>
+      <span className={`mt-1 block text-[24px] leading-8 font-extrabold tabular-nums ${ink}`}>{value}</span>
+      {note ? <span className="mt-0.5 block text-[12px] leading-5 ink-muted">{note}</span> : null}
+    </>
+  );
+  const box = "block h-full rounded-2xl border border-[#e1e7ef] bg-white p-4";
+  return (
+    <li className="min-w-0">
+      {href ? (
+        href.startsWith("#")
+          ? <a href={href} className={`${box} transition hover:border-[#0a285a]/30`}>{body}</a>
+          : <Link href={href} className={`${box} transition hover:border-[#0a285a]/30`}>{body}</Link>
+      ) : (
+        <div className={box}>{body}</div>
+      )}
+    </li>
+  );
+}
+
+/** A row of `Stat`s: two to a phone, more as the page widens. */
+export function StatGrid({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 ${className}`}>{children}</ul>;
+}
+
+/** Placeholder blocks while a page's cards load, announced once. */
+export function SkeletonCards({ count = 3, label }: { count?: number; label: string }) {
+  return (
+    <div role="status" className="space-y-4">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: count }, (_, index) => (
+        <div key={index} aria-hidden className="rounded-2xl border border-[#e1e7ef] bg-white p-5">
+          <div className="h-4 w-1/3 animate-pulse rounded bg-[#eef1f6]" />
+          <div className="mt-4 h-3 w-2/3 animate-pulse rounded bg-[#f3f5f8]" />
+          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#f3f5f8]" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /**
  * The page's own heading, its one line of explanation and its actions.

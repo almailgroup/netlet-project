@@ -9,17 +9,20 @@
  * Staff and managers see this list read-only: knowing who else is in the
  * vendor is reasonable, changing it is not.
  */
+import { useState } from "react";
+import { Trash2, UserMinus } from "lucide-react";
+import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Link } from "wouter";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Card, EmptyState, fieldClass, isolate, Notice, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, VENDOR_ROLES, type Actor, type VendorRole } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { Link } from "wouter";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -39,17 +42,23 @@ export default function AdminTeam() {
 }
 
 function Team({ actor }: { actor: Actor }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const utils = trpc.useUtils();
   // An admin has no single vendor of their own, so there is no team page for
   // them — they reach a vendor's people through the vendor list.
   const vendorId = actor.kind === "vendor" ? actor.vendorId : 0;
   const members = trpc.inventory.vendors.members.useQuery({ vendorId }, { enabled: vendorId > 0 });
+  const [removing, setRemoving] = useState<{ userId: number; name: string } | null>(null);
 
   const done = () => { void utils.inventory.vendors.members.invalidate({ vendorId }); toast.success(t("admin.saved")); };
-  const fail = () => toast.error(t("admin.forbidden"));
+  /* The server's own reason — "the only owner" is something to act on, and
+     reporting every refusal as "not allowed" hid it. */
+  const fail = (error: { message: string }) => toast.error(tError(error.message));
   const setRole = trpc.inventory.vendors.setMemberRole.useMutation({ onSuccess: done, onError: fail });
-  const remove = trpc.inventory.vendors.removeMember.useMutation({ onSuccess: done, onError: fail });
+  const remove = trpc.inventory.vendors.removeMember.useMutation({
+    onSuccess: () => { setRemoving(null); done(); },
+    onError: error => { setRemoving(null); fail(error); },
+  });
 
   const mayManage = can(actor, "vendor.manageMembers", vendorId);
 
@@ -60,66 +69,95 @@ function Team({ actor }: { actor: Actor }) {
   if (vendorId === 0) {
     return (
       <>
-        <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.team")}</h1>
-        <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("admin.teamAdminNote")}</p>
-        <Link href="/admin/vendors" className="glass pressable mt-4 inline-flex rounded-full px-4 py-2 text-xs font-extrabold">{t("admin.vendors")}</Link>
+        <PageHeader title={t("admin.team")} />
+        <Notice action={<Link href="/admin/vendors" className={smallButtonClass.secondary}>{t("admin.vendors")}</Link>}>
+          {t("admin.teamAdminNote")}
+        </Notice>
       </>
     );
   }
-  if (members.isLoading || members.isError) return <QueryGate queries={[members]}>{() => null}</QueryGate>;
 
   const rows = members.data ?? [];
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.team")}</h1>
+      <PageHeader title={t("admin.teamTitle")} description={t("admin.teamIntro")} />
 
-      <ul className="mt-5 space-y-2">
-        {rows.map(member => (
-          <li key={member.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-4">
-            <div className="min-w-0 flex-1">
-              <p className="font-bold text-[#0a285a]"><bdi>{member.name || member.email}</bdi></p>
-              <p className="mt-0.5 text-[11px] ink-muted"><bdi dir="ltr">{member.email}</bdi></p>
-            </div>
-            {mayManage ? (
-              <>
-                <select
-                  value={member.role}
-                  onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
-                  aria-label={t("admin.memberRole")}
-                  className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#0a285a]"
-                >
-                  {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
-                </select>
-                <button
-                  onClick={() => remove.mutate({ vendorId, userId: member.userId })}
-                  aria-label={t("admin.remove")}
-                  className="glass pressable grid size-9 place-items-center rounded-full text-[#8c2f22]"
-                >
-                  <Trash2 className="size-4" />
-                </button>
-              </>
-            ) : (
-              <span className="rounded-full bg-[#e7edf5] px-2.5 py-1 text-[10px] font-extrabold">{t(ROLE_LABEL[member.role as VendorRole])}</span>
-            )}
-          </li>
-        ))}
-        {rows.length === 0 ? (
-          <li className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center text-sm font-extrabold">
-            {t("admin.noMembers")}
-          </li>
-        ) : null}
-      </ul>
+      {members.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[members]}>
+          {() => rows.length === 0 ? (
+            <EmptyState title={t("admin.noMembers")} />
+          ) : (
+            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+              {rows.map(member => {
+                const self = member.userId === actor.userId;
+                return (
+                  <li key={member.id} className="flex flex-wrap items-center gap-3 p-4">
+                    <div className="min-w-0 flex-1 basis-48">
+                      <p className="truncate text-[14px] font-bold text-[#0a285a]">
+                        <bdi>{member.name || member.email}</bdi>
+                        {self ? <span className="ms-2 text-[12px] font-semibold ink-muted">{t("admin.you")}</span> : null}
+                      </p>
+                      <p className="mt-0.5 truncate text-[13px] ink-muted"><bdi dir="ltr">{member.email}</bdi></p>
+                    </div>
+                    {mayManage ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={member.role}
+                          onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
+                          aria-label={t("admin.memberRole")}
+                          disabled={setRole.isPending}
+                          className={`${fieldClass} h-9 w-auto text-[13px]`}
+                        >
+                          {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setRemoving({ userId: member.userId, name: member.name || member.email })}
+                          aria-label={`${t("admin.remove")}: ${member.name || member.email}`}
+                          className={`${smallButtonClass.quietDanger} w-9 px-0`}
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    ) : (
+                      <Pill tone="navy">{t(ROLE_LABEL[member.role as VendorRole])}</Pill>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </QueryGate>
+      )}
 
       {/* What each rank actually means, next to where it is chosen. */}
-      <dl className="mt-6 space-y-2 rounded-2xl border border-[#e6e9ef] bg-[#fbfcfe] p-4 text-[12px]">
-        {VENDOR_ROLES.map(role => (
-          <div key={role} className="flex gap-2">
-            <dt className="shrink-0 font-extrabold text-[#0a285a]">{t(ROLE_LABEL[role])}</dt>
-            <dd className="text-[#536b8c]">{t(ROLE_NOTE[role])}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className="mt-6">
+        <Card title={t("admin.rolesTitle")}>
+          <ul className="space-y-3">
+            {VENDOR_ROLES.map(role => (
+              <li key={role} className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+                <span className="w-24 shrink-0 text-[14px] font-bold text-[#0a285a]">{t(ROLE_LABEL[role])}</span>
+                <span className="text-[14px] leading-6 text-[#536b8c]">{t(ROLE_NOTE[role])}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title={t("admin.removeMemberTitle", { name: isolate(removing?.name ?? "") })}
+        body={t("admin.removeMemberBody")}
+        confirmLabel={t("admin.removeMember")}
+        tone="danger"
+        icon={<UserMinus className="size-5" aria-hidden />}
+        pending={remove.isPending}
+        onConfirm={() => removing && remove.mutate({ vendorId, userId: removing.userId })}
+        onClose={() => setRemoving(null)}
+      />
     </>
   );
 }

@@ -13,7 +13,7 @@ const TONE: Record<string, string> = {
 export function StatusPill({ status }: { status: string }) {
   const { t } = useTranslation();
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-extrabold ${TONE[status] ?? TONE.draft}`}>
+    <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold whitespace-nowrap ${TONE[status] ?? TONE.draft}`}>
       {t(`status.${status}` as MessageKey)}
     </span>
   );

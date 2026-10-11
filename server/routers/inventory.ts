@@ -12,7 +12,7 @@
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
-import { percentSchema, rowId } from "../_core/schemas.js";
+import { lastDay, percentSchema, rowId } from "../_core/schemas.js";
 import { MAX_SUBSCRIPTION_PERCENT } from "../../shared/commerce/subscriptions.js";
 import { acceptableImageUrl } from "../../shared/commerce/media.js";
 import { SELL_UNITS } from "../../shared/commerce/units.js";
@@ -149,7 +149,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* An obligation the product outlives — a placement still being paid for,
        stock NetLet holds — named, so the seller knows what to undo first. */
-    if (message.startsWith("admin.deleteBlocked") || message.startsWith("admin.moveBlocked") || message === "admin.moveSameStore") {
+    if (message.startsWith("admin.deleteBlocked") || message.startsWith("admin.moveBlocked") || message === "admin.moveSameStore" || message === "admin.lastOwner") {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message });
     }
     /* Moving a product onto a shelf where its code is already in use: the
@@ -196,7 +196,7 @@ export const storeDetails = {
   /* The Ministry of Commerce discount permit. Kuwaiti law requires one before
      a shop may advertise a saving — `shared/inventory/discountLicence.ts`. */
   discountLicenceNumber: z.string().trim().max(120).nullish(),
-  discountLicenceExpiresAt: z.coerce.date().nullish(),
+  discountLicenceExpiresAt: lastDay.nullish(),
   /* What this store charges to deliver (3.2.4). Blank or absent is free —
      `shared/commerce/delivery.ts` treats an unset fee as no charge, which
      errs toward the shopper rather than inventing a price. */

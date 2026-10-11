@@ -9,12 +9,13 @@
  */
 import { useState } from "react";
 import { toast } from "sonner";
-import { LoaderCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, Headset, LoaderCircle, Sparkles } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, EmptyState, PageHeader, Pill, Segmented, SkeletonRows, textareaClass } from "@/components/admin/ui";
 import { STATUS_LABEL, TOPIC_LABEL } from "@/components/account/AccountSupport";
-import { useDateFormat } from "@/hooks/useDateFormat";
+import { useDateFormat, useDateTimeFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -38,57 +39,80 @@ function Inbox() {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("support.inboxTitle")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("support.inboxNote")}</p>
-      <div role="tablist" aria-label={t("support.inboxTitle")} className="mt-5 inline-flex flex-wrap gap-1 rounded-2xl bg-[#eef1f6] p-1">
-        {FILTERS.map(entry => (
-          <button
-            key={entry}
-            type="button"
-            role="tab"
-            aria-selected={filter === entry}
-            onClick={() => { setFilter(entry); setPage(1); setSelected(null); }}
-            className={`rounded-xl px-4 py-2 text-[12px] font-extrabold ${filter === entry ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c]"}`}
-          >
-            {entry === "all" ? t("support.filterAll") : t(STATUS_LABEL[entry])}
-          </button>
-        ))}
-      </div>
+      <PageHeader title={t("support.inboxTitle")} description={t("support.inboxNote")} />
+      <Segmented
+        label={t("support.inboxTitle")}
+        className="mb-4 w-fit"
+        value={filter}
+        onChange={entry => { setFilter(entry); setPage(1); setSelected(null); }}
+        options={FILTERS.map(entry => ({ value: entry, label: entry === "all" ? t("support.filterAll") : t(STATUS_LABEL[entry]) }))}
+      />
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <QueryGate queries={[inbox]}>
-          {() => {
-            const result = inbox.data!;
-            if (result.rows.length === 0) return <p className="rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] text-[#536b8c]">{t("support.inboxEmpty")}</p>;
-            return (
-              <div className="min-w-0 space-y-2">
-                <ul className="space-y-2">
-                  {result.rows.map(row => (
-                    <li key={row.id}>
-                      <button
-                        type="button"
-                        aria-pressed={selected === row.id}
-                        onClick={() => setSelected(row.id)}
-                        className={`w-full rounded-2xl border px-4 py-3 text-start text-[12px] text-[#0a285a] ${selected === row.id ? "border-[#0a285a] bg-[#eaf1fb]" : "border-[#e6e9ef] bg-white"}`}
-                      >
-                        <span className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-extrabold">
-                            {t(TOPIC_LABEL[row.topic])}
-                            {row.orderReference ? <> · <bdi dir="ltr">{row.orderReference}</bdi></> : null}
-                          </span>
-                          {row.unread ? <span className="rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">{t("support.unreadStaff")}</span> : <span className="ink-muted">{t(STATUS_LABEL[row.status])}</span>}
-                        </span>
-                        <span className="mt-1 block ink-muted"><bdi dir="ltr">{row.shopperEmail ?? "—"}</bdi> · {formatDate(row.lastMessageAt)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <Pager page={result} onPage={setPage} />
+      {/* Side by side on a wide screen; on a phone the open conversation
+          replaces the list, with a way back. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className={`min-w-0 ${selected !== null ? "hidden lg:block" : ""}`}>
+          {inbox.isLoading ? (
+            <SkeletonRows rows={4} label={t("admin.loading")} />
+          ) : (
+            <QueryGate queries={[inbox]}>
+              {() => {
+                const result = inbox.data!;
+                if (result.rows.length === 0) return <EmptyState title={t("support.inboxEmpty")} />;
+                return (
+                  <>
+                    <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                      {result.rows.map(row => {
+                        const current = selected === row.id;
+                        return (
+                          <li key={row.id}>
+                            <button
+                              type="button"
+                              aria-pressed={current}
+                              onClick={() => setSelected(row.id)}
+                              className={`w-full border-s-[3px] px-4 py-3 text-start text-[#0a285a] transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#f7f9fc]"}`}
+                            >
+                              <span className="flex flex-wrap items-center justify-between gap-2">
+                                <span className={`text-[14px] ${row.unread ? "font-bold" : "font-semibold"}`}>
+                                  {t(TOPIC_LABEL[row.topic])}
+                                  {row.orderReference ? <> · <bdi dir="ltr">{row.orderReference}</bdi></> : null}
+                                </span>
+                                {row.unread ? <Pill tone="navy">{t("support.unreadStaff")}</Pill> : <span className="text-[12px] ink-muted">{t(STATUS_LABEL[row.status])}</span>}
+                              </span>
+                              <span className="mt-0.5 block truncate text-[13px] ink-muted"><bdi dir="ltr">{row.shopperEmail ?? "—"}</bdi> · {formatDate(row.lastMessageAt)}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <Pager page={result} onPage={setPage} />
+                  </>
+                );
+              }}
+            </QueryGate>
+          )}
+        </div>
+        <div className={`min-w-0 ${selected === null ? "hidden lg:block" : ""}`}>
+          {selected ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a] lg:hidden"
+              >
+                <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.messagesBack")}
+              </button>
+              <StaffThread key={selected} id={selected} />
+            </>
+          ) : (
+            <div className="grid h-full min-h-60 place-items-center rounded-2xl border border-dashed border-[#cfd9e6] bg-white px-5 py-10 text-center">
+              <div>
+                <Headset className="mx-auto size-8 text-[#8a9bb3]" aria-hidden />
+                <p className="mt-3 text-[14px] text-[#536b8c]">{t("support.pickOne")}</p>
               </div>
-            );
-          }}
-        </QueryGate>
-        <div className="min-w-0">{selected ? <StaffThread key={selected} id={selected} /> : <p className="text-[13px] ink-muted">{t("support.pickOne")}</p>}</div>
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
@@ -96,7 +120,7 @@ function Inbox() {
 
 function StaffThread({ id }: { id: number }) {
   const { t, tError } = useTranslation();
-  const formatDate = useDateFormat();
+  const formatDate = useDateTimeFormat();
   const utils = trpc.useUtils();
   const thread = trpc.support.staffThread.useQuery({ id });
   const [body, setBody] = useState("");
@@ -119,18 +143,22 @@ function StaffThread({ id }: { id: number }) {
       {() => {
         const data = thread.data!;
         return (
-          <section aria-label={t("support.thread")} className="rounded-2xl border border-[#e6e9ef] bg-white p-4 text-[#0a285a]">
-            <p className="text-[13px] font-extrabold">
-              {t(TOPIC_LABEL[data.topic])}
-              {data.orderReference ? <> · <bdi dir="ltr">{data.orderReference}</bdi></> : null}
-              {" · "}{t(STATUS_LABEL[data.status])}
-            </p>
-            <p className="mt-0.5 text-[12px] ink-muted">{data.shopperName ? <bdi>{data.shopperName}</bdi> : null} <bdi dir="ltr">{data.shopperEmail ?? ""}</bdi></p>
-            <ol className="mt-3 space-y-2">
+          <section aria-label={t("support.thread")} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[#0a285a] sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#eef1f5] pb-3">
+              <div className="min-w-0">
+                <h2 className="text-[16px] font-bold">
+                  {t(TOPIC_LABEL[data.topic])}
+                  {data.orderReference ? <> · <bdi dir="ltr">{data.orderReference}</bdi></> : null}
+                </h2>
+                <p className="mt-0.5 text-[13px] ink-muted">{data.shopperName ? <><bdi>{data.shopperName}</bdi> · </> : null}<bdi dir="ltr">{data.shopperEmail ?? ""}</bdi></p>
+              </div>
+              <Pill tone={data.status === "resolved" ? "good" : data.status === "open" ? "warning" : "neutral"}>{t(STATUS_LABEL[data.status])}</Pill>
+            </div>
+            <ol className="mt-4 space-y-3">
               {data.messages.map(message => (
                 <li key={message.id} className={message.author === "staff" ? "flex justify-end" : "flex justify-start"}>
-                  <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${message.author === "staff" ? "bg-[#0a285a] text-white" : message.author === "automatic" ? "border border-[#d5dfeb] bg-[#f6f8fb]" : "bg-[#e7edf5]"}`}>
-                    <p className={`text-[10px] font-extrabold tracking-[.08em] uppercase ${message.author === "staff" ? "text-[#d9e7f7]" : "ink-muted"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 ${message.author === "staff" ? "bg-[#0a285a] text-white" : message.author === "automatic" ? "border border-[#cfd9e6] bg-[#f6f8fb]" : "bg-[#e7edf5]"}`}>
+                    <p className={`text-[12px] font-semibold ${message.author === "staff" ? "text-[#d9e7f7]" : "ink-muted"}`}>
                       {message.author === "automatic" ? <span className="inline-flex items-center gap-1"><Sparkles className="size-3" aria-hidden />{t("support.automaticSent")}</span> : t(message.author === "staff" ? "support.netlet" : "support.shopper")}
                       {" · "}{formatDate(message.createdAt)}
                     </p>
@@ -141,33 +169,34 @@ function StaffThread({ id }: { id: number }) {
                 </li>
               ))}
             </ol>
-            <form className="mt-3" onSubmit={event => { event.preventDefault(); if (!messageProblem(body)) reply.mutate({ id, body }); }}>
-              <label className="block text-[11px] font-extrabold ink-muted">
-                {t("support.replyAsNetlet")}
-                <textarea
-                  value={body}
-                  maxLength={MAX_SUPPORT_MESSAGE}
-                  dir="auto"
-                  aria-describedby={drafted ? "support-draft-note" : undefined}
-                  onChange={event => { setBody(event.target.value); if (!event.target.value) setDrafted(false); }}
-                  className="glass-field mt-1 min-h-24 w-full rounded-xl px-4 py-3 text-[14px] font-normal outline-none"
-                />
-              </label>
+            <form className="mt-5 border-t border-[#eef1f5] pt-4" onSubmit={event => { event.preventDefault(); if (!messageProblem(body)) reply.mutate({ id, body }); }}>
+              <label htmlFor={`support-reply-${id}`} className="block text-[13px] font-semibold text-[#0a285a]">{t("support.replyAsNetlet")}</label>
+              <textarea
+                id={`support-reply-${id}`}
+                value={body}
+                maxLength={MAX_SUPPORT_MESSAGE}
+                dir="auto"
+                aria-describedby={drafted ? "support-draft-note" : undefined}
+                onChange={event => { setBody(event.target.value); if (!event.target.value) setDrafted(false); }}
+                className={`${textareaClass} mt-1.5`}
+              />
               {drafted ? (
-                <p id="support-draft-note" className="mt-1 flex items-start gap-1.5 text-[11px] leading-5 ink-muted">
+                <p id="support-draft-note" className="mt-1.5 flex items-start gap-1.5 text-[12px] leading-5 ink-muted">
                   <Sparkles className="mt-1 size-3 shrink-0" aria-hidden />{t("support.draftNote")}
                 </p>
               ) : null}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button type="submit" disabled={Boolean(messageProblem(body)) || reply.isPending} className="glass-navy pressable type-control rounded-full px-4 py-2 disabled:opacity-50">{t("support.send")}</button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="submit" disabled={Boolean(messageProblem(body)) || reply.isPending} className={buttonClass.primary}>
+                  {reply.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t("support.send")}
+                </button>
                 {canDraft.data && !body ? (
-                  <button type="button" onClick={() => draft.mutate({ id })} disabled={draft.isPending} className="glass pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2">
+                  <button type="button" onClick={() => draft.mutate({ id })} disabled={draft.isPending} className={buttonClass.secondary}>
                     {draft.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
                     {t(draft.isPending ? "support.drafting" : "support.draft")}
                   </button>
                 ) : null}
                 {data.status !== "resolved" ? (
-                  <button type="button" onClick={() => resolve.mutate({ id })} disabled={resolve.isPending} className="glass pressable type-control rounded-full px-4 py-2">{t("support.resolve")}</button>
+                  <button type="button" onClick={() => resolve.mutate({ id })} disabled={resolve.isPending} className={buttonClass.secondary}>{t("support.resolve")}</button>
                 ) : null}
               </div>
             </form>

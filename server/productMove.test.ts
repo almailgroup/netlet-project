@@ -190,3 +190,22 @@ describe("the store list", () => {
     expect(rows.some(row => row.action === "vendor.update" && (row.after as { autoPublish?: boolean }).autoPublish === true)).toBe(true);
   });
 });
+
+describe("a store's owners", () => {
+  it("refuses demoting or removing the last one, and allows it once there is another", async () => {
+    await expect(inv.removeMember(owner(), ids.acme, ids.owner)).rejects.toThrow("admin.lastOwner");
+    await expect(inv.setMemberRole(owner(), ids.acme, ids.owner, "manager")).rejects.toThrow("admin.lastOwner");
+    await expect(inv.setMemberRole(admin(), ids.acme, ids.owner, "manager")).rejects.toThrow("admin.lastOwner");
+    const [still] = await db.select().from(vendorMembers).where(eq(vendorMembers.userId, ids.owner));
+    expect(still.role).toBe("owner");
+
+    await inv.setMemberRole(admin(), ids.acme, ids.shopper, "owner");
+    await inv.setMemberRole(owner(), ids.acme, ids.owner, "manager");
+    await expect(inv.removeMember(admin(), ids.acme, ids.shopper)).rejects.toThrow("admin.lastOwner");
+
+    await inv.setMemberRole(admin(), ids.acme, ids.owner, "owner");
+    await inv.removeMember(admin(), ids.acme, ids.shopper);
+    const left = await db.select().from(vendorMembers).where(eq(vendorMembers.vendorId, ids.acme));
+    expect(left.map(row => [row.userId, row.role])).toEqual([[ids.owner, "owner"]]);
+  });
+});
