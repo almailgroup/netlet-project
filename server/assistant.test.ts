@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authAttempts } from "../drizzle/schema.js";
-import { MAX_ASSISTANT_PER_ADDRESS } from "../shared/auth/rateLimit.js";
+import { MAX_ASSISTANT_PER_ADDRESS, MAX_SEARCH_REFINE_PER_ADDRESS } from "../shared/auth/rateLimit.js";
 
 let db: ReturnType<typeof drizzle>;
 let limits: typeof import("./rateLimit.js");
@@ -72,6 +72,17 @@ describe("the assistant's hourly ceiling", () => {
   it("counts nothing when there is no address to count", async () => {
     await limits.recordAssistantCall(null);
     expect((await limits.checkAssistantAllowed(null)).allowed).toBe(true);
+  });
+});
+
+/* "Refine with NetLet AI" was the one model call open to a signed-out
+   browser with no ceiling at all. */
+describe("the search refinement's hourly ceiling", () => {
+  it("refuses once the address has spent its hour's worth, apart from the assistant's", async () => {
+    for (let i = 0; i < MAX_SEARCH_REFINE_PER_ADDRESS; i += 1) await limits.recordSearchRefine(ADDRESS);
+    expect((await limits.checkSearchRefineAllowed(ADDRESS)).allowed).toBe(false);
+    expect((await limits.checkAssistantAllowed(ADDRESS)).allowed).toBe(true);
+    expect((await limits.checkSearchRefineAllowed("198.51.100.4")).allowed).toBe(true);
   });
 });
 

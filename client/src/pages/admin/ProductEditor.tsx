@@ -11,6 +11,7 @@
  * is what happened; setting the box to 47 loses why it changed and races with
  * anyone else editing.
  */
+import { STOCK_REASONS, stockMoveProblem } from "@shared/inventory/stockMoves";
 import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Thumb } from "@/components/product/Thumb";
@@ -38,7 +39,7 @@ import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components
 import { StoreAvatar } from "@/components/admin/StoreAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
-const REASONS = ["received", "sold", "damaged", "correction", "returned"] as const;
+const REASONS = STOCK_REASONS;
 
 export default function AdminProductEditor() {
   usePageMeta(privatePageMeta("Product"));
@@ -912,6 +913,8 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
   const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
+  /* The server's own rule, asked before the press. */
+  const moveProblem = stockMoveProblem(delta, reason);
 
   return (
     <div className="rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-4">
@@ -1046,11 +1049,15 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
           </Labelled>
           <button
             onClick={() => onAdjust(delta, reason)}
-            disabled={pending || delta === 0}
+            disabled={pending || moveProblem !== null}
+            aria-describedby={moveProblem ? `adjust-problem-${variant.id}` : undefined}
             className={buttonClass.primary}
           >
             {t("admin.adjustStock")}
           </button>
+          {moveProblem === "stock.wrongDirection" ? (
+            <p id={`adjust-problem-${variant.id}`} className="basis-full text-[12px] leading-5 font-semibold text-[#8c2f22]">{t(moveProblem)}</p>
+          ) : null}
         </div>
       ) : null}
     </div>

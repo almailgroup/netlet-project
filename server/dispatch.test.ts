@@ -479,3 +479,10 @@ describe("a company's logins", () => {
   });
 });
 
+describe("who sees which companies", () => {
+  it("shows a company's people their own company and no rival", async () => {
+    expect((await dispatch.listCouriers(driverActor())).map(row => row.id)).toEqual([ids.swift]);
+    expect((await dispatch.listCouriers(adminActor())).map(row => row.id).sort()).toEqual([ids.swift, ids.rival].sort());
+  });
+});
+

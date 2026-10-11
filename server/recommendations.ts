@@ -26,6 +26,7 @@
  * malformed JSON, an invented product id — every one of them falls back to the
  * deterministic ranking, which was already good enough to render.
  */
+import { takeRecommendModelCall } from "./rateLimit.js";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   cartItems,
@@ -241,7 +242,16 @@ export async function recommendFor(
   if (ranked.length === 0) return { ...empty, terms: tasteTerms(profile) };
 
   const terms = tasteTerms(profile);
-  const refined = await refineWithModel(ranked, terms);
+  /*
+   * The model only for an account, and only so often. The rail is a public
+   * read — a guest's bag is enough to make it personal — and it called the
+   * model on every request, so a loop holding a full bag could run up the
+   * shop's bill. Past the ceiling, or for a guest, the rail is the ranking it
+   * already had, which is what it falls back to on any model failure.
+   */
+  const refined = userId !== null && (await takeRecommendModelCall(userId))
+    ? await refineWithModel(ranked, terms)
+    : null;
 
   return {
     items: (refined ?? ranked).slice(0, limit),

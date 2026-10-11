@@ -9,6 +9,7 @@
  * admin and a vendor calling `products.list` get different rows from the same
  * code path.
  */
+import { STOCK_REASONS } from "../../shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
 import { z } from "zod";
@@ -157,7 +158,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
-    if (message.startsWith("fulfilment.") || message.startsWith("membership.")) {
+    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
@@ -745,7 +746,7 @@ export const inventoryRouter = router({
       .input(z.object({
         variantId: rowId,
         delta: z.number().int().min(-1_000_000).max(1_000_000),
-        reason: z.enum(["received", "sold", "damaged", "correction", "returned"]),
+        reason: z.enum(STOCK_REASONS),
         note: z.string().max(500).optional(),
       }))
       .mutation(async ({ ctx, input }) => {

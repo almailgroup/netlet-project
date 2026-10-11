@@ -9,6 +9,7 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
+import { stockMoveProblem, type StockReason } from "../shared/inventory/stockMoves.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
@@ -1039,9 +1040,11 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
  * negative stock is not a state the storefront can render honestly, and a
  * vendor who oversells wants the error now rather than a minus sign later.
  */
-export async function adjustStock(actor: Actor, variantId: number, delta: number, reason: string, note?: string) {
+export async function adjustStock(actor: Actor, variantId: number, delta: number, reason: StockReason, note?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  const problem = stockMoveProblem(delta, reason);
+  if (problem) throw new Error(problem);
 
   const variant = (await db.select().from(productVariants).where(eq(productVariants.id, variantId)).limit(1))[0];
   if (!variant) throw new Error("NOT_FOUND");
@@ -1070,6 +1073,9 @@ export async function adjustStock(actor: Actor, variantId: number, delta: number
     await tx.update(productVariants).set({ stock: level }).where(eq(productVariants.id, variantId));
     return { before: row.stock, resulting: level };
   });
+  /* Taking five off a shelf already at zero changed nothing, and a movement
+     of nothing is noise in the one log that explains the number. */
+  if (resulting === before) return resulting;
   await db.insert(stockMovements).values({
     variantId,
     // The recorded delta is what actually happened, not what was asked for, so

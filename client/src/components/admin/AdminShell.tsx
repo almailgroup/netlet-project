@@ -261,7 +261,10 @@ export function AdminShell({ need, children }: {
             {navList}
           </div>
         </nav>
-        <section className="min-w-0">{children(actor)}</section>
+        {/* Any word that cannot fit breaks rather than pushing the page
+            sideways: names, emails and links here are typed by merchants and
+            shoppers, and one long enough held a phone layout 55px open. */}
+        <section className="min-w-0 [overflow-wrap:anywhere]">{children(actor)}</section>
       </div>
     </main>
   );

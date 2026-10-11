@@ -82,6 +82,24 @@ export const MAX_PHOTO_SEARCH_PER_ADDRESS = 20;
 export const PHOTO_SEARCH_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * "Refine with NetLet AI" on the search results: a short text call, cheaper
+ * than a question to the assistant, so the ceiling is higher — and counted per
+ * request for the same reason. It was the one model call open to a signed-out
+ * browser with no ceiling at all.
+ */
+export const MAX_SEARCH_REFINE_PER_ADDRESS = 60;
+export const SEARCH_REFINE_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * How often one account's "Picked for you" rail may be reordered by the model.
+ * The rail is read on every visit to the saved page, so it is drawn far more
+ * often than it changes; past the ceiling it is the ranking it already had,
+ * which the rail falls back to on any model failure anyway.
+ */
+export const MAX_RECOMMEND_MODEL_PER_ACCOUNT = 30;
+export const RECOMMEND_MODEL_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * How many special-price requests one account may send in a day.
  *
  * Keyed on the **account** rather than the address, which is the opposite of

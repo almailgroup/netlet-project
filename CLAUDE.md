@@ -1286,6 +1286,17 @@ the call: a request that times out has still spent the money. The product is
 deliberately not a bucket, or one script could make a popular item unaskable
 for everybody.
 
+**Every model call open to the public has a ceiling.** "Refine with NetLet
+AI" (`search.refine`) was the one with none — public, no count and no deadline,
+forwarding caller-supplied text to the model — so a loop could run up the bill.
+It counts per address in Postgres before the call
+(`MAX_SEARCH_REFINE_PER_ADDRESS`) and gives up after five seconds, and the
+client already falls back to the plain results. The "Picked for you" rail
+reordered by the model on every read, and a guest's bag was enough to make it
+personal; the model now reorders only for an account and at most
+`MAX_RECOMMEND_MODEL_PER_ACCOUNT` times an hour (`takeRecommendModelCall`),
+past which the rail is the ranking it falls back to on any failure.
+
 ## The discount permit
 
 Kuwaiti law requires a Ministry of Commerce discount permit before a shop may
@@ -1674,6 +1685,10 @@ Two rules there came from looking at the page rather than from the design:
   unit separator now. No seeded order had a second destination, so neither the
   fuzzer nor any test met it; a guard on every input changes what every value
   that *becomes* an input may contain.
+
+**A delivery company's people see their own company.** They could list every
+rival with its phone and email through `dispatch.couriers.list`, the one thing
+the rest of `dispatch.ts` is careful never to say about a rival.
 
 `/admin/claims` is one page for three parties, which needed `AdminShell`'s
 `need` to accept a list meaning "any of": no single capability is shared by the
@@ -2502,6 +2517,12 @@ Stock moves by a delta with a reason, never by typing a new total. "We received
 12" is what happened; setting the box to 47 loses why and races with whoever
 else is editing. `/admin/stock` is what reads those rows back, which is the
 whole reason for recording them.
+
+**The reason and the sign agree** (`shared/inventory/stockMoves.ts`):
+received and returned add, sold and damaged take away, a correction goes either
+way, and nothing is recorded for a change of nothing. They were chosen
+separately and checked nowhere, so the log could read "Stock received: −1",
+which is the one log that exists to say why the number is what it is.
 
 **Saving a variant never writes its stock.** `saveVariant` wrote `input.stock ?? 0`
 on every save, and the editor sends no stock when it saves a price or a title —

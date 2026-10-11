@@ -22,6 +22,10 @@ import {
   MAX_ASSISTANT_PER_ADDRESS,
   ASSISTANT_WINDOW_MS,
   MAX_PHOTO_SEARCH_PER_ADDRESS,
+  MAX_RECOMMEND_MODEL_PER_ACCOUNT,
+  MAX_SEARCH_REFINE_PER_ADDRESS,
+  RECOMMEND_MODEL_WINDOW_MS,
+  SEARCH_REFINE_WINDOW_MS,
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
@@ -36,7 +40,7 @@ import {
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport";
+export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -253,6 +257,56 @@ export async function recordPhotoSearch(address: string | null | undefined): Pro
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "photoSearch"), lt(authAttempts.createdAt, new Date(Date.now() - PHOTO_SEARCH_WINDOW_MS))),
   );
+}
+
+/** Whether this address may ask the model to refine another search. Every request counts. */
+export async function checkSearchRefineAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, addressBucket(address)),
+      eq(authAttempts.kind, "searchRefine"),
+      gt(authAttempts.createdAt, new Date(Date.now() - SEARCH_REFINE_WINDOW_MS)),
+    ));
+  return limitVerdict(rows.map(row => row.at), MAX_SEARCH_REFINE_PER_ADDRESS, new Date(), SEARCH_REFINE_WINDOW_MS);
+}
+
+/** Count one refinement, answered or not — the call cost the same either way. */
+export async function recordSearchRefine(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "searchRefine" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "searchRefine"), lt(authAttempts.createdAt, new Date(Date.now() - SEARCH_REFINE_WINDOW_MS))),
+  );
+}
+
+/**
+ * Whether the model may reorder this account's rail once more, counting the
+ * call if so. One function rather than a check and a record, because the rail
+ * is a read: there is no later moment to record it at.
+ */
+export async function takeRecommendModelCall(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const bucket = `user:${userId}`;
+  const [counted] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, bucket),
+      eq(authAttempts.kind, "recommendModel"),
+      gt(authAttempts.createdAt, new Date(Date.now() - RECOMMEND_MODEL_WINDOW_MS)),
+    ));
+  if ((counted?.n ?? 0) >= MAX_RECOMMEND_MODEL_PER_ACCOUNT) return false;
+  await db.insert(authAttempts).values([{ bucket, kind: "recommendModel" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "recommendModel"), lt(authAttempts.createdAt, new Date(Date.now() - RECOMMEND_MODEL_WINDOW_MS))),
+  );
+  return true;
 }
 
 /**

@@ -84,6 +84,10 @@ export async function listCouriers(actor: Actor): Promise<CourierRow[]> {
       status: couriers.status,
     })
     .from(couriers)
+    /* A company's people see their own company and no other. They could list
+       every rival with its phone and email — the one thing the rest of this
+       file is careful never to say about a rival. */
+    .where(actor.kind === "courier" ? eq(couriers.id, actor.courierId) : undefined)
     .orderBy(couriers.name);
 }
 

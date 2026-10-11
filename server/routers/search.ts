@@ -5,7 +5,7 @@ import { featureOn } from "../features.js";
 import { publicProcedure, router } from "../_core/trpc.js";
 import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../shared/commerce/photoSearch.js";
 import { describePhoto, photoSearchAvailable } from "../photoSearch.js";
-import { checkPhotoSearchAllowed, recordPhotoSearch } from "../rateLimit.js";
+import { checkPhotoSearchAllowed, checkSearchRefineAllowed, recordPhotoSearch, recordSearchRefine } from "../rateLimit.js";
 
 const refinementSchema = z.object({
   query: z.string().trim().min(2).max(120),
@@ -54,33 +54,51 @@ export const searchRouter = router({
       return describePhoto(input.image, input.locale ?? "en");
     }),
 
-  refine: publicProcedure.input(refinementSchema).mutation(async ({ input }) => {
+  refine: publicProcedure.input(refinementSchema).mutation(async ({ ctx, input }) => {
     /* No key and models switched off (2.3) are one answer: the client already
        falls back to the plain search on this refusal. */
     if (!ENV.mistralApiKey || !(await featureOn("ai"))) {
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "AI search is not configured." });
     }
+    /* Counted in Postgres before the call, like the assistant and the photo:
+       this was the one model call open to a signed-out browser with no
+       ceiling, so a loop could run up the shop's bill. */
+    const address = ctx.req.ip ?? null;
+    const verdict = await checkSearchRefineAllowed(address);
+    if (!verdict.allowed) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "search.refineTooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
+    }
+    await recordSearchRefine(address);
 
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${ENV.mistralApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        temperature: 0.1,
-        max_tokens: 60,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: "You refine shopping searches for a Kuwait marketplace. Return JSON only: {\"query\":\"exact best matching catalog title or concise catalog search\",\"terms\":[\"up to five concrete product keywords\"]}. Choose the closest available catalog item when one fits. Preserve the shopper's intent, do not invent brands, prices, availability, or product facts.",
-          },
-          { role: "user", content: `Shopper request: ${input.query}\n\nAvailable catalog titles: ${input.catalogTitles.join(" | ")}` },
-        ],
-      }),
-    });
+    /* A deadline, because the shopper is waiting on a search box: a model that
+       does not answer in five seconds is one the plain results should not wait
+       for, and the client already falls back on any failure. */
+    let response: Response;
+    try {
+      response = await fetch("https://api.mistral.ai/v1/chat/completions", {
+        signal: AbortSignal.timeout(5000),
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ENV.mistralApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "mistral-small-latest",
+          temperature: 0.1,
+          max_tokens: 60,
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: "You refine shopping searches for a Kuwait marketplace. Return JSON only: {\"query\":\"exact best matching catalog title or concise catalog search\",\"terms\":[\"up to five concrete product keywords\"]}. Choose the closest available catalog item when one fits. Preserve the shopper's intent, do not invent brands, prices, availability, or product facts.",
+            },
+            { role: "user", content: `Shopper request: ${input.query}\n\nAvailable catalog titles: ${input.catalogTitles.join(" | ")}` },
+          ],
+        }),
+      });
+    } catch {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI search is temporarily unavailable." });
+    }
 
     if (!response.ok) {
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI search is temporarily unavailable." });
