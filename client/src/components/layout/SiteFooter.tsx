@@ -12,6 +12,7 @@
  * entries that both opened checkout; those were dropped rather than kept as
  * decoration. Each link is an anchor, so it can be opened in a new tab.
  */
+import { Globe } from "lucide-react";
 import { Link } from "wouter";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -40,13 +41,13 @@ const NETLET: FooterLink[] = [
   { key: "footer.account", href: "/account" },
 ];
 
-const linkClass = "mt-3 block w-fit text-start text-xs font-medium text-[#b9cce5] hover:text-[#ffcc64]";
+const linkClass = "mt-3 block w-fit text-start text-[14px] text-[#c5d3e6] hover:text-white hover:underline";
 
 function Group({ title, links }: { title: MessageKey; links: FooterLink[] }) {
   const { t } = useTranslation();
   return (
     <div>
-      <p className="text-xs font-extrabold text-white">{t(title)}</p>
+      <h2 className="text-[15px] font-bold text-white">{t(title)}</h2>
       {links.map(link => <Link key={link.key + link.href} href={link.href} className={linkClass}>{t(link.key)}</Link>)}
     </div>
   );
@@ -57,31 +58,48 @@ function Group({ title, links }: { title: MessageKey; links: FooterLink[] }) {
  * bar always, and on a page with a floating bar of its own — the filters
  * button, the product page's buy bar — that as well, or the last line of the
  * footer sits under it.
+ *
+ * **Four columns of links, then one line: the logo, the year, the language.**
+ * The logo used to head a column of its own beside the links, and once the
+ * slogan under it went it was a logo and a lone language button over an empty
+ * column. The divider sits inside the container's padding, so it starts and
+ * ends where the text does rather than 16px beyond it on both sides.
+ *
+ * `mt-auto` is half of keeping it at the bottom of the window: every page that
+ * draws it is a flex column at least a screen tall, so on a short page — a
+ * shop with three products, an empty Saved list — the space goes above the
+ * footer instead of below it as a band of page colour.
  */
 export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall" }) {
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
   const { toggleLocale } = useCustomer();
+  const departments: FooterLink[] = DEPARTMENTS.map(department => ({ key: department.label, href: `/category/${categorySlug(department.name)}` }));
   return (
-    <footer className={`bg-[#0a285a] pt-12 text-white lg:pb-7 ${clearance === "tall" ? "pb-44" : "pb-24"}`}>
-      <div className="container grid gap-9 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
-        <div>
-          <Link href="/" className="flex w-fit items-center" aria-label={t("header.home")}>
-            <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-12 w-auto max-w-[165px] object-contain" />
-          </Link>
-          <button onClick={toggleLocale} className="glass glass-on-dark pressable mt-5 rounded-full px-3 py-2 text-[12px] font-semibold">{t("header.language")}</button>
+    <footer className={`mt-auto bg-[#0a285a] pt-10 text-white sm:pt-12 lg:pb-8 ${clearance === "tall" ? "pb-44" : "pb-24"}`}>
+      <div className="container">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-4">
+          <Group title="footer.categories" links={departments} />
+          <Group title="footer.shopping" links={SHOPPING} />
+          <Group title="footer.service" links={SERVICE} />
+          <Group title="footer.netlet" links={NETLET} />
         </div>
-        <div>
-          <p className="text-xs font-extrabold text-white">{t("footer.categories")}</p>
-          {DEPARTMENTS.map(department => (
-            <Link key={department.slug} href={`/category/${categorySlug(department.name)}`} className={linkClass}>{t(department.label)}</Link>
-          ))}
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/15 pt-6">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="shrink-0" aria-label={t("header.home")}>
+              <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-9 w-auto object-contain" />
+            </Link>
+            <span className="text-[13px] text-[#c5d3e6]">{t("home.copyright", { year: new Date().getFullYear() })}</span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleLocale}
+            title={t("header.changeLanguage")}
+            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-2 text-[14px] font-semibold text-white hover:bg-white/10"
+          >
+            <Globe className="size-4" aria-hidden />
+            <span lang={isArabic ? "en" : "ar"}>{t("header.language")}</span>
+          </button>
         </div>
-        <Group title="footer.shopping" links={SHOPPING} />
-        <Group title="footer.service" links={SERVICE} />
-        <Group title="footer.netlet" links={NETLET} />
-      </div>
-      <div className="container mt-10 flex flex-col gap-3 border-t border-[#49658d] pt-5 text-[10px] font-semibold text-[#b9cce5] sm:flex-row sm:items-center sm:justify-between">
-        <span>{t("home.copyright", { year: new Date().getFullYear() })}</span>
       </div>
     </footer>
   );

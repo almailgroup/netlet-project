@@ -974,7 +974,7 @@ export default function ProductDetail() {
   const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "ink-muted hover:text-[#0a285a]"}`;
 
   return (
-    <main className="min-h-screen bg-background text-[#0a285a]">
+    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} activeDepartment={product?.productType ?? null} />
 
       <div className="container py-6 sm:py-8">

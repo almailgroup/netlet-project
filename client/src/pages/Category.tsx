@@ -204,7 +204,7 @@ export default function Category() {
   );
 
   return (
-    <main className="min-h-screen bg-background text-[#0a285a]">
+    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
       {/* The department row marks where the shopper is; a search spans them all, so it marks none. */}
       <StoreHeader
         catalog={catalog}

@@ -46,27 +46,37 @@ export const homeRailDefinitions = [
   { id: "newest", title: "rail.newest.title", select: "newest", layout: "grid" },
 ] as const satisfies readonly { id: string; title: MessageKey; select: "offers" | "newest"; layout: "rail" | "grid" }[];
 
-/** Fewer than this and a shelf is not drawn: one or two products under a heading read as a broken page. */
+/**
+ * Fewer than this and the Deals strip is not drawn: two cards in a row built
+ * to scroll sideways read as a broken shelf.
+ *
+ * It is the Deals floor only. It used to hold New arrivals to it too, and a
+ * shop with three products live opened on its departments and nothing else —
+ * no product anywhere on the home page of a shop that had them. New arrivals
+ * is a grid, the last shelf on the page, and a grid of two is a small shop
+ * telling the truth.
+ */
 export const MIN_SHELF_PRODUCTS = 4;
 /** The most one shelf carries; "View all" is the rest. */
 export const MAX_SHELF_PRODUCTS = 12;
 
 /**
- * What each shelf shows, in page order, given the catalog. A shelf below the
- * floor comes back empty, and what an empty shelf did not show is free for the
- * next one — so a small shop is one full shelf rather than two half ones.
+ * What each shelf shows, in page order, given the catalog. Deals below its
+ * floor comes back empty, and what it did not show is free for New arrivals —
+ * so every product the shop has live is on the home page somewhere, and a
+ * small shop is one honest grid rather than an empty page.
  */
 export function shelvesFor(catalog: Product[]): Record<(typeof homeRailDefinitions)[number]["id"], Product[]> {
   const shown = new Set<string>();
-  const pick = (candidates: Product[]) => {
+  const pick = (candidates: Product[], floor: number) => {
     const fresh = candidates.filter(product => !shown.has(product.id));
-    if (fresh.length < MIN_SHELF_PRODUCTS) return [];
+    if (fresh.length < floor) return [];
     const chosen = fresh.slice(0, MAX_SHELF_PRODUCTS);
     for (const product of chosen) shown.add(product.id);
     return chosen;
   };
-  const deals = pick(browse(catalog, { ...EMPTY_FILTERS, onOffer: true, sort: "discount" }));
-  const newest = pick(browse(catalog, { ...EMPTY_FILTERS, sort: "newest" }));
+  const deals = pick(browse(catalog, { ...EMPTY_FILTERS, onOffer: true, sort: "discount" }), MIN_SHELF_PRODUCTS);
+  const newest = pick(browse(catalog, { ...EMPTY_FILTERS, sort: "newest" }), 1);
   return { deals, newest };
 }
 

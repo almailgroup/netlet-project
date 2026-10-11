@@ -54,7 +54,7 @@ export default function Saved() {
 
 
   return (
-    <main className="min-h-screen bg-background text-[#0a285a]">
+    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div id="main" className="container py-8 sm:py-10">

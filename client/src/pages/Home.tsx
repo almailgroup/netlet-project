@@ -210,7 +210,7 @@ export default function Home() {
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
   const openProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
 
-  return <main id="top" className="min-h-screen bg-background text-[#0a285a]">
+  return <main id="top" className="flex min-h-screen flex-col bg-background text-[#0a285a]">
     {/* The one header every shopping page wears (`StoreHeader`). Home kept
         its own for a long time — taller, labelled, with the departments and
         the area — and the two drifted apart while every other page went
@@ -234,8 +234,9 @@ export default function Home() {
       onQuickView={setQuickProduct}
     />
 
-    {/* Two shelves, each hidden below four products (`shelvesFor`). While the
-        catalog loads the first draws its skeleton, so the page does not jump. */}
+    {/* Deals, drawn from four discounted products up, then every other live
+        product as New arrivals (`shelvesFor`). While the catalog loads the
+        first draws its skeleton, so the page does not jump. */}
     {homeRailDefinitions.map((rail, index) => {
       const products = shelves[rail.id];
       if (!catalogLoading && !catalogError && products.length === 0) return null;

@@ -61,11 +61,21 @@ describe("what each shelf shows", () => {
     expect(shelvesFor(plain(20)).deals).toEqual([]);
   });
 
-  it("caps a shelf, and hides Newest when Deals took nearly everything", () => {
+  it("caps a shelf, and New arrivals takes whatever Deals left", () => {
     const shelves = shelvesFor([...offers(15), ...plain(3)]);
     expect(shelves.deals).toHaveLength(MAX_SHELF_PRODUCTS);
-    /* Three left over plus three plain is six: drawn. */
+    /* Three left over plus three plain is six. */
     expect(shelves.newest).toHaveLength(6);
-    expect(shelvesFor([...offers(12), ...plain(3)]).newest).toEqual([]);
+    expect(shelvesFor([...offers(12), ...plain(3)]).newest).toHaveLength(3);
+    expect(shelvesFor(offers(12)).newest).toEqual([]);
+  });
+
+  /* A shop with three products live opened on its departments and nothing
+     else, because both shelves were held to the four-product floor. */
+  it("shows every product of a small shop under New arrivals", () => {
+    const shelves = shelvesFor([...offers(2), ...plain(1)]);
+    expect(shelves.deals).toEqual([]);
+    expect(shelves.newest.map(p => p.id).sort()).toEqual(["d0", "d1", "p0"]);
+    expect(shelvesFor([]).newest).toEqual([]);
   });
 });
