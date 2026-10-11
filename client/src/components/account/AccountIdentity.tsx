@@ -11,6 +11,7 @@
  * Initials at least identify the account at a glance, which is what an avatar
  * on a settings page is actually for.
  */
+import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { ArrowRight, CalendarDays, Clock, ShieldCheck } from "lucide-react";
@@ -45,7 +46,7 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
 
   const day = (value: string | Date) =>
     new Intl.DateTimeFormat(isArabic ? "ar-KW-u-ca-gregory-nu-latn" : "en-GB", {
-      day: "numeric", month: "short", year: "numeric",
+      day: "numeric", month: "short", year: "numeric", timeZone: SHOP_TIME_ZONE,
     }).format(new Date(value));
 
   const facts = [

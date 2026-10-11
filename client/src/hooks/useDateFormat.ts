@@ -1,3 +1,5 @@
+import { useTranslation } from "@/hooks/useTranslation";
+
 /**
  * A date in the reader's own language, spelled out rather than numeric.
  *
@@ -11,8 +13,13 @@
  *
  * It lived privately inside `AccountOrders` and was about to be copied a third
  * time, which is what this file is instead.
+ *
+ * **In Kuwait's time, whoever is reading.** The shop's days are Kuwaiti days —
+ * a code's last day, a payout week, a pre-order's release — and formatted in
+ * the browser's own zone a date stored at midnight UTC read as the day before
+ * to anybody west of Greenwich, an administrator travelling included.
  */
-import { useTranslation } from "@/hooks/useTranslation";
+export const SHOP_TIME_ZONE = "Asia/Kuwait";
 
 export function useDateFormat() {
   const { isArabic } = useTranslation();
@@ -21,12 +28,13 @@ export function useDateFormat() {
       day: "numeric",
       month: "long",
       year: "numeric",
+      timeZone: SHOP_TIME_ZONE,
     });
 }
 
 /**
  * A moment rather than a day — a stock movement, an audit row, a message —
- * on the same rules, with the time in the reader's own clock.
+ * on the same rules, with the time on Kuwait's clock.
  */
 export function useDateTimeFormat() {
   const { isArabic } = useTranslation();
@@ -37,5 +45,6 @@ export function useDateTimeFormat() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: SHOP_TIME_ZONE,
     });
 }

@@ -10,6 +10,7 @@
  * column of bubbles told apart by colour and side alone says nothing to
  * somebody who cannot see either.
  */
+import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -41,7 +42,7 @@ export function ChatThread({
      rest of the site prints them. */
   const stamp = (value: Date | string) =>
     new Date(value).toLocaleString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", {
-      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: SHOP_TIME_ZONE,
     });
   const box = useRef<HTMLOListElement>(null);
 

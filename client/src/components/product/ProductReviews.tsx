@@ -18,6 +18,7 @@
 import { QueryGate } from "@/components/admin/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { distributionShare, RATING_MAX, RATING_MIN, type ReviewSummary } from "@shared/commerce/reviews";
 import { Star } from "lucide-react";
 
@@ -49,7 +50,8 @@ export function StarRow({ value, size = "sm" }: { value: number; size?: "sm" | "
 }
 
 export function ProductReviews({ productId, productTitle }: { productId: string; productTitle: string }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const query = trpc.reviews.forProduct.useQuery({ productId, limit: 20 });
 
   return (
@@ -84,7 +86,7 @@ export function ProductReviews({ productId, productTitle }: { productId: string;
                       <span className="text-xs ink-muted">
                         {review.author || t("review.anonymous")}
                         {" · "}
-                        {new Date(review.createdAt).toLocaleDateString(locale === "ar" ? "ar-KW" : "en-GB")}
+                        {formatDate(review.createdAt)}
                       </span>
                     </div>
 

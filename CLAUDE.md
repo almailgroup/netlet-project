@@ -2829,6 +2829,13 @@ disagreeing with the page. Now: no stored preference means the language in use
 is kept *and written up*, and a stored one still wins, so a real choice
 follows the shopper between devices.
 
+**Every date is drawn in Kuwait's time, whoever is reading.** `SHOP_TIME_ZONE`
+in `useDateFormat.ts` is passed to every formatter, because the shop's days are
+Kuwaiti days — a code's last day, a payout week, a release date — and a date
+formatted in the browser's own zone read as the day before to anybody west of
+Greenwich, an administrator travelling included. A review's date was the last
+one still formatted on its own.
+
 Merchant data (product titles, spec rows) is in whatever language the merchant
 typed. Specification rows and description text carry `dir="auto"` so each takes
 its own direction and the punctuation lands on the right side.

@@ -12,6 +12,7 @@
  * The panel says exactly who sees it, because a driver deciding whether to
  * share is deciding about their own whereabouts.
  */
+import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { smallButtonClass } from "@/components/admin/ui";
 import { useEffect, useRef, useState } from "react";
 import { LocateFixed } from "lucide-react";
@@ -84,7 +85,7 @@ export function ShareLocation() {
       </div>
       <p role="status" className={`mt-2 ${status?.tone === "problem" ? "font-bold text-[#8c2f22]" : "ink-muted"}`}>
         {status ? t(status.key) : visible ? t("tracking.stillVisible") : null}
-        {on && lastSent ? <> · {t("tracking.lastSent", { time: lastSent.toLocaleTimeString(isArabic ? "ar-KW-u-nu-latn" : "en-GB") })}</> : null}
+        {on && lastSent ? <> · {t("tracking.lastSent", { time: lastSent.toLocaleTimeString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", { timeZone: SHOP_TIME_ZONE }) })}</> : null}
       </p>
       {problem ? <p role="alert" className="mt-1 font-bold text-[#8c2f22]">{problem}</p> : null}
     </section>
