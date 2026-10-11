@@ -18,7 +18,7 @@ import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
+import { isMessageKey } from "@shared/i18n/dictionary";
 import { useAuth } from "@/hooks/useAuth";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, settle } from "@shared/commerce/vouchers";

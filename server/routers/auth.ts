@@ -30,7 +30,6 @@ import { ENV } from "../_core/env.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   EmailTakenError,
-  canSendReset,
   revertEmail,
   sendReset,
   setDisplayName,

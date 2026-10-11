@@ -84,8 +84,16 @@ describe("a number Postgres cannot hold is refused, not passed on", () => {
       .resolves.toEqual({ items: [], summary: null, total: 0 });
   });
 
-  it.each([2 ** 31, -(2 ** 31) - 1])("refuses category %d on the storefront", async bad => {
-    await expect((await caller()).inventory.storefront.list({ categoryId: bad })).rejects.toMatchObject(refused);
+  it.each([2 ** 31, -(2 ** 31) - 1])("refuses variant %d on the storefront", async bad => {
+    await expect((await caller()).offers.openOn({ variantIds: [bad] })).rejects.toMatchObject(refused);
+  });
+
+  /* A second, public door onto the catalogue's raw rows used to exist beside
+     `commerce.*` and skipped every rule the shop's read applies. */
+  it("has no public door onto the catalogue's raw rows", async () => {
+    const { appRouter } = await import("../routers.js");
+    const paths = Object.keys((appRouter as unknown as { _def: { procedures: Record<string, unknown> } })._def.procedures);
+    expect(paths.filter(path => path.startsWith("inventory.storefront."))).toEqual([]);
   });
 });
 

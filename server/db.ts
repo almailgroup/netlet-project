@@ -9,7 +9,6 @@ import {
   users,
   type User,
 } from "../drizzle/schema.js";
-import { ENV } from './_core/env.js';
 
 /*
  * `createUser`, `linkExternalUser` and `deleteUserRow` are in

@@ -23,7 +23,6 @@ import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -41,7 +40,6 @@ import {
   facetsFor,
   filtersFromSearch,
   productsInCategory,
-  searchFromFilters,
   BROWSE_SORTS,
   type BrowseFilters,
   type BrowseSort,
@@ -51,7 +49,7 @@ import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, ChevronRight, PackageOpen, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";

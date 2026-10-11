@@ -18,7 +18,6 @@ import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { useOverlay } from "@/hooks/useOverlay";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
-import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { canUseGalleryKeyboard, galleryIndex, galleryOf } from "@shared/commerce/gallery";
 import {
@@ -34,7 +33,7 @@ import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import { ArrowLeft, ArrowRight, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";

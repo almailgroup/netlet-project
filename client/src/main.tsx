@@ -1,7 +1,7 @@
 import { loadAnalytics } from "@/lib/analytics";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
-import { COOKIE_NAME, UNAUTHED_ERR_MSG } from "@shared/const";
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, httpBatchStreamLink, splitLink, TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";

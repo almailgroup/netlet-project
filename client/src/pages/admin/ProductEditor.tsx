@@ -23,7 +23,7 @@ import { memberPriceProblem } from "@shared/commerce/membership";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { SIZE_CLASSES, vehicleFor, type SizeClass } from "@shared/commerce/vehicle";
-import { fieldsFor, freeFormRows, mergeAttributes, valueOf } from "@shared/commerce/attributeSchema";
+import { fieldsFor, freeFormRows, mergeAttributes } from "@shared/commerce/attributeSchema";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";

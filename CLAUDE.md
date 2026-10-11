@@ -773,6 +773,15 @@ categories, products, variants, images and stock movements, in the Supabase
 Postgres that `DATABASE_URL` points at. Money is `numeric`, never a float — the
 dinar has three decimal places and a binary fraction cannot hold 24.375.
 
+**And one door onto it for the public.** A pair of public procedures,
+`inventory.storefront.list` and `.byHandle`, answered with the catalogue's raw
+rows beside `commerce.*`, and nothing called them — so anybody could read each
+product's own commission terms, the moderator's review note, every variant's
+exact stock, reorder point and member price, and a was-price the store's lapsed
+discount permit forbids showing. Every rule the shop's read applies in
+`fromInventory` was skipped by a second door onto the same rows. They are gone,
+and `inputGuard.test.ts` fails if the path comes back.
+
 There is one catalog, not two. The storefront reads the same tables the
 admin portal writes: `server/catalog.ts` is the read side,
 `shared/commerce/fromInventory.ts` turns rows into the `Product` shape the

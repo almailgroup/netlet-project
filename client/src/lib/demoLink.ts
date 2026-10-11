@@ -782,8 +782,6 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.list":
       return onePage(demoInventoryProducts.filter(row =>
         !(input as { status?: string })?.status || row.status === (input as { status?: string }).status));
-    case "inventory.storefront.list":
-      return demoInventoryProducts;
     case "inventory.products.get":
       return demoInventoryProducts.find(row => row.id === (input as { id: number })?.id) ?? null;
     case "inventory.vendors.list":
@@ -807,8 +805,6 @@ function resolve(path: string, rawInput: unknown): unknown {
        and the table behind it cannot disagree. */
     case "inventory.health":
       return demoHealth;
-    case "inventory.storefront.byHandle":
-      return demoInventoryProducts.find(row => row.handle === (input as { handle: string })?.handle) ?? null;
     /* Admin-only, and the demo actor is a vendor manager — so an empty list is
        the honest answer rather than invented evidence. The route refuses
        before this is reached anyway. */

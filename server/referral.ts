@@ -24,7 +24,6 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { orders, pointEntries, referrals, users } from "../drizzle/schema.js";
 import {
   acceptableReferral,
-  balanceOf,
   canCashOut,
   cashOutValue,
   MIN_CASH_OUT_POINTS,

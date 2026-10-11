@@ -16,15 +16,14 @@ import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
-import { ArrowLeft, ArrowRight, Heart } from "lucide-react";
+import { ArrowRight, Heart } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 
 export default function Saved() {

@@ -35,8 +35,6 @@ import {
   listVendors,
   lowStock,
   overview,
-  publishedCatalog,
-  publishedProduct,
   removeMember,
   removeMemberAsAdmin,
   resolveActor,
@@ -259,15 +257,16 @@ export const inventoryRouter = router({
 
   categories: publicProcedure.query(() => listCategories()),
 
-  /** The storefront's reads. No actor: only ever published, approved products. */
-  storefront: router({
-    list: publicProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(200).optional(), categoryId: rowId.optional() }).optional())
-      .query(({ input }) => publishedCatalog(input ?? {})),
-    byHandle: publicProcedure
-      .input(z.object({ handle: z.string().min(1).max(191) }))
-      .query(({ input }) => publishedProduct(input.handle)),
-  }),
+  /*
+   * There used to be a `storefront` pair here — the published catalogue and one
+   * product by handle, public — and nothing called them: the shop reads through
+   * `commerce.*`, which runs every row through `fromInventory`. These answered
+   * with the raw rows instead, so anybody could read each product's own
+   * commission terms (an administrator's alone), the moderator's review note,
+   * every variant's exact stock, reorder point and member price, and a
+   * was-price the store's lapsed discount permit forbids showing — every rule
+   * the shop's own read applies, skipped by a second door onto the same rows.
+   */
 
   /**
    * Seller self-registration (3.3.1).
