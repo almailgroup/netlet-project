@@ -82,7 +82,7 @@ function Trail() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.audit")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.audit")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.auditNote")}</p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

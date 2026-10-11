@@ -95,7 +95,7 @@ function Features() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.features")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.features")}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("features.note")}</p>
 
       <QueryGate queries={[list]}>

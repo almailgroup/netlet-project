@@ -717,8 +717,9 @@ item's minimum width is its content's, so a tab strip that scrolls inside
 itself still props the whole column open: every product page scrolled 120px
 sideways on an Arabic phone and 176px on an English one, and checkout did at
 320px because of the payment marks. Neither was visible in a screenshot that
-only shows the viewport. Measure `scrollWidth - clientWidth` on every route at
-320 and 390 in both languages; finding the culprit is easier by clipping each
+only shows the viewport. Measure `scrollWidth` against the width asked for on every route at
+320 and 390 in both languages (phone emulation zooms out to fit, so
+`clientWidth` grows with the overflow and hides it); finding the culprit is easier by clipping each
 subtree in turn (`overflow: clip`) than by hiding it, which shifts the layout
 and points at the wrong element.
 
@@ -2475,6 +2476,90 @@ In a demo build the portal opens against fixtures as a vendor `manager` —
 the one place the storefront's signed-out-guest rule is bent, because a sign-in
 wall would show nothing of the thing being demonstrated. `/admin/people` is
 admin-only, so in the demo it correctly refuses.
+
+## Managing products
+
+**Adding a product is one form and one press.** "New product" used to create a
+draft called "New product" with a variant at KWD 0.000 the moment it was
+pressed, then open the full editor — eleven sections, each with its own Save —
+and backing out left that blank draft on the shelf for good.
+`/admin/products/new` asks for what a shopper decides on (name, price, photos,
+description, category), and `createProduct` writes the product, its first
+variant, the opening count as a `received` movement and the gallery **in one
+transaction**, so Create is one outcome and leaving is none. Sizes, specs and
+extras stay in the editor it lands on. The route sits before `:id` in `App`,
+or "new" reads as a product id.
+
+**The form's rules are the server's, asked early.**
+`shared/inventory/productDraft.ts` is the client half of the router's own
+refusals — the money shape, a price above zero (`assertPriced` refuses zero at
+publish anyway), a was-price that is really higher — so the message appears
+under the box while somebody types and Create never produces an error the form
+could have shown. A field is judged once it has been left or once Create is
+pressed, never before somebody reaches it. A SKU another of the store's
+products uses is the one thing only the server knows; it comes back onto the
+SKU field. Publishing stays its own act after the create: if the discount
+permit refuses it, the product exists as a draft and the toast says why.
+
+**The search preview is `productMeta`'s rule, not an SEO field.** Name with the
+shop's after it, the description cut where a share card cuts it, the address
+from `handleBase` — now shared, so the preview shows what the server will make.
+A separate search title and description would need columns; that is a
+migration nobody has approved, so nothing pretends to store one.
+
+**Deleting is for good, and asks for the name.** Archiving hides a product;
+`server/productDeletion.ts` removes it. Nearly all of it is the schema's
+cascade (variants, images, add-ons, stock history, basket lines, price asks,
+bundle items) and every order reference is `set null` with the facts frozen
+beside it, so orders keep their copy. What no foreign key sees is done by hand
+in the same transaction: the three tables keyed by the storefront's *string*
+id (saved, wishlists, follows) are cleared; a bundle naming a variant is taken
+off the shelf rather than left to sell what remains at the set's price; a
+standing order is paused now with `unavailable` rather than at its next run;
+and an uploaded photo nothing else shows is deleted. **Two obligations refuse
+it**: a paid placement still running or booked (its fee accrues for a shelf
+that would show nothing — cancelling is its own decision about money) and
+stock NetLet holds or is expecting. `deletionCheck` shows the counts before
+anybody confirms; the delete asks every question again under the row lock.
+
+The dialog wants the name typed (case and outer spaces ignored): the list is a
+column of near-identical rows and the wrong one is one row away. One Cancel is
+drawn in every state, because focus put on it at open was dropped when the
+counts arrived and a second Cancel replaced the first.
+
+**`product.create`, `product.setStatus` and `product.delete` were named in
+`SELLER_ACTIONS` and never written.** "What the sellers changed" could not show
+a product going live or a new listing — only price changes. All three are
+recorded now, and a delete's row carries the variants as they were.
+
+**`ui.tsx` is the portal's one copy of a heading, a card, a field and three
+buttons.** Labels had drifted across five sizes (10px to 13px), inputs across
+three heights, and focus rings between orange and navy; fields are 44px now,
+labels 13px, hints under the box, focus navy. `Field` hands its control the id
+and the description, so the note under a box is what a screen reader says on
+entering it. `isolate()` wraps a merchant's name in first-strong isolates
+before it goes into one of our sentences — a Latin name inside the Arabic
+"Delete «…»?" took the quote marks with it.
+
+**The navigation is grouped and folds on a phone.** Twenty-eight links in one
+column were in the order the features were built; they are five groups by
+task now, and below `lg` one button names the current page and opens the
+list — the sideways strip had no visible end. A page under a link marks the
+link (`/admin/products/12` is Products); only Overview matches exactly.
+
+Three defects the restyle turned up, each by doing rather than reading:
+
+- **Saving the editor's images dropped `kind` and `posterUrl`**, so every save
+  turned a product's video back into a "photo" of an .mp4 — while the comment
+  above the state said the opposite was the point.
+- **A label wrapped round the stock stepper named its minus button**, so
+  pressing the words "Change by" took one off. It is a group now.
+- **The editor's jump list propped the phone layout open**: a grid item with a
+  sideways scroller inside needs `min-w-0`, the rule written below under
+  Chrome. It did not show as `scrollWidth > clientWidth`, because Chromium's
+  phone emulation zooms out to fit a page that is too wide and `clientWidth`
+  grows with it — `innerHeight` came back 2382 on a 900px screen. **Measure
+  against the width you asked for**, not against `clientWidth`.
 
 ## Colour and contrast
 

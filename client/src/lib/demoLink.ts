@@ -343,7 +343,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { ok: true };
 
     case "inventory.myStore":
-      return { id: 1, name: "Demo Store" };
+      return { id: 1, name: "Demo Store", autoPublish: false };
 
     case "inventory.sellerChanges":
       return { rows: [], unseen: 0, seenAt: null };
@@ -378,6 +378,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("admin.saveFailed");
 
     case "inventory.products.bulkCreate":
+      throw new Error("admin.saveFailed");
+
+    /* The check is answered so the dialog can be looked at; the delete is
+       refused, because a demo row that vanished and came back on the next
+       load would look like a delete that did not work. */
+    case "inventory.products.deletionCheck": {
+      const row = demoInventoryProducts.find(product => product.id === (input as { id: number })?.id);
+      return {
+        id: row?.id ?? 0, title: row?.title ?? "", variants: row?.variants.length ?? 0, images: row?.images.length ?? 0,
+        unitsOnHand: (row?.variants ?? []).reduce((total, variant) => total + variant.stock, 0),
+        inCarts: 0, savedBy: 0, openOrderLines: 0, bundles: 0, subscriptions: 0, blockers: [],
+      };
+    }
+    case "inventory.products.delete":
       throw new Error("admin.saveFailed");
 
     /* The demo's fixtures hold no bundles, and inventing one would put a set

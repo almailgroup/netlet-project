@@ -87,7 +87,7 @@ function Dispatch({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.dispatch")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.dispatch")}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.dispatchNote")}</p>
 
       {/* Live tracking (3.4.3) is a driver's own choice, so only a driver sees it. */}
@@ -237,7 +237,7 @@ function Dispatch({ actor }: { actor: Actor }) {
                               courierId: event.target.value ? Number(event.target.value) : null,
                             })
                           }
-                          className="h-9 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[12px] text-[#0a285a] outline-none focus:border-[#f2683a]"
+                          className="h-9 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[12px] text-[#0a285a] outline-none focus:border-[#0a285a]"
                         >
                           <option value="">{t("dispatch.unassigned")}</option>
                           {(companies.data ?? [])

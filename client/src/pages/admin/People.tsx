@@ -30,7 +30,7 @@ export default function AdminPeople() {
   return <AdminShell need={"platform.manageUsers"}>{() => <People />}</AdminShell>;
 }
 
-const field = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+const field = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -104,7 +104,7 @@ function People() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.people")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.people")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.adminNote")}</p>
 
       <AddToVendor

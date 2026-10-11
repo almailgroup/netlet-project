@@ -67,7 +67,7 @@ function Payouts({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.payoutsPage")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.payoutsPage")}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t(admin ? "admin.payoutsNoteAdmin" : "admin.payoutsNoteStore")}</p>
 
       <section className="mt-6" aria-labelledby="payouts-ready">

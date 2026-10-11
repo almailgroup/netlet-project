@@ -11,6 +11,7 @@
  * rule the server refuses with, asked as the seller types, so Save is disabled
  * on exactly what the API would bounce and the reason is said in words.
  */
+import { buttonClass } from "./ui";
 import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus, Ruler, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -92,13 +93,13 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
   }));
 
   return (
-    <section className="mt-5 min-w-0 rounded-2xl border border-[#e6e9ef] bg-white p-5" aria-labelledby="size-guide-heading">
-      <h2 id="size-guide-heading" className="flex items-center gap-2 text-sm font-extrabold"><Ruler className="size-4" aria-hidden />{t("sizeGuide.editorHeading")}</h2>
-      <p className="mt-1 max-w-2xl text-[11px] font-semibold ink-muted">{t("sizeGuide.editorHint")}</p>
+    <section className="min-w-0 rounded-2xl border border-[#e1e7ef] bg-white p-5 sm:p-6" aria-labelledby="size-guide-heading">
+      <h2 id="size-guide-heading" className="flex items-center gap-2 text-[16px] leading-6 font-bold text-[#0a285a]"><Ruler className="size-4" aria-hidden />{t("sizeGuide.editorHeading")}</h2>
+      <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("sizeGuide.editorHint")}</p>
 
       {!draft ? (
         mayEdit ? (
-          <button type="button" onClick={start} className="glass type-control pressable mt-4 inline-flex items-center gap-2 rounded-full px-4 py-2">
+          <button type="button" onClick={start} className={`${buttonClass.secondary} mt-4`}>
             <Plus className="size-4" aria-hidden />{t("sizeGuide.add")}
           </button>
         ) : <p className="mt-4 text-[13px] text-[#536b8c]">{t("sizeGuide.none")}</p>
@@ -107,7 +108,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
           <div className="mt-4 flex flex-wrap items-end gap-4">
             {axes.length > 1 ? (
               <label className="block">
-                <span className="block text-[11px] font-extrabold ink-muted">{t("sizeGuide.axis")}</span>
+                <span className="block text-[13px] font-semibold text-[#0a285a]">{t("sizeGuide.axis")}</span>
                 <select
                   value={draft.axis}
                   disabled={!mayEdit}
@@ -119,7 +120,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
               </label>
             ) : null}
             <fieldset>
-              <legend className="text-[11px] font-extrabold ink-muted">{t("sizeGuide.measures")}</legend>
+              <legend className="text-[13px] font-semibold text-[#0a285a]">{t("sizeGuide.measures")}</legend>
               <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
                 {MEASURES.map(measure => (
                   <label key={measure} className="flex items-center gap-1.5 text-[12px] font-bold text-[#0a285a]">
@@ -206,7 +207,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
           {mayEdit ? (
             <div className="mt-4 flex flex-wrap gap-2">
               {draft.rows.length < MAX_SIZES ? (
-                <button type="button" onClick={() => setDraft({ ...draft, rows: [...draft.rows, { size: "", ranges: {} }] })} className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
+                <button type="button" onClick={() => setDraft({ ...draft, rows: [...draft.rows, { size: "", ranges: {} }] })} className={buttonClass.secondary}>
                   <Plus className="size-4" aria-hidden />{t("sizeGuide.addSize")}
                 </button>
               ) : null}
@@ -214,7 +215,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
                 type="button"
                 disabled={problem !== null || save.isPending}
                 onClick={() => save.mutate({ productId, chart: toChart(draft) })}
-                className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-5 py-2 disabled:opacity-60"
+                className={buttonClass.primary}
               >
                 {save.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
                 {t("admin.save")}

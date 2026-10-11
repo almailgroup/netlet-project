@@ -28,11 +28,13 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, LoaderCircle, Minus, Play, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
+import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
+import { Card, PageHeader, buttonClass, fieldClass } from "@/components/admin/ui";
 
 const REASONS = ["received", "sold", "damaged", "correction", "returned"] as const;
 
@@ -43,11 +45,15 @@ export default function AdminProductEditor() {
   return <AdminShell need="product.view">{actor => <Editor actor={actor} productId={id} />}</AdminShell>;
 }
 
-const inputClass = "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+/* The portal's one field style (`ui.tsx`), under the name this file has
+   always used for it. */
+const inputClass = fieldClass;
 
 function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const { t, locale } = useTranslation();
   const utils = trpc.useUtils();
+  const [, navigate] = useLocation();
+  const [deleting, setDeleting] = useState(false);
   const product = trpc.inventory.products.get.useQuery({ id: productId }, { enabled: productId > 0 });
   const categories = trpc.inventory.categories.useQuery();
 
@@ -175,450 +181,507 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      than shown disabled — a greyed-out commission box invites the question of
      how to enable it. */
   const mayPrice = can(actor, "vendor.setCommission");
+  const mayDelete = can(actor, "product.delete", row.vendorId);
+
+  /* The sections, in the order a listing is finished: what it is, what it
+     looks like, what it costs, then the rest. The jump list is drawn from the
+     same array so a section cannot be added without a way to reach it. */
+  const sections: { id: string; label: MessageKey }[] = [
+    { id: "details", label: "admin.sectionDetails" },
+    { id: "photos", label: "admin.images" },
+    { id: "variants", label: "admin.variants" },
+    { id: "shipping", label: "admin.sectionShipping" },
+    { id: "sizes", label: "admin.sectionSizes" },
+    { id: "extras", label: "admin.addons" },
+    ...(mayPrice ? [{ id: "commission", label: "admin.productCommission" as MessageKey }] : []),
+    ...(mayDelete ? [{ id: "delete", label: "admin.deleteProduct" as MessageKey }] : []),
+  ];
+  const saveButton = (pending: boolean, onClick: () => void, disabled = false) => (
+    <button type="button" onClick={onClick} disabled={pending || disabled} className={buttonClass.primary}>
+      {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+      {t(pending ? "admin.saving" : "admin.save")}
+    </button>
+  );
 
   return (
     <>
-      <Link href="/admin/products" className="inline-flex items-center gap-2 text-[12px] font-bold text-[#536b8c] hover:text-[#0a285a]">
-        <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.products")}
-      </Link>
-
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 dir="auto" className="text-xl font-extrabold">{row.title}</h1>
-        <div className="flex items-center gap-2">
-          <StatusPill status={row.status} />
-          {mayPublish ? (
-            row.status === "published" ? (
-              <button onClick={() => setStatus.mutate({ id: row.id, status: "draft" })} className="glass pressable rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold">
-                {t("admin.unpublish")}
-              </button>
-            ) : (
-              <button onClick={() => setStatus.mutate({ id: row.id, status: "published" })} disabled={setStatus.isPending} className="glass glass-accent pressable rounded-full px-4 py-2 text-xs font-extrabold disabled:opacity-60">
-                {t("admin.publish")}
-              </button>
-            )
-          ) : null}
-        </div>
-      </div>
+      <PageHeader
+        title={row.title}
+        actions={
+          <>
+            <StatusPill status={row.status} />
+            {row.status === "published" ? (
+              <a href={`/products/${encodeURIComponent(row.handle)}`} target="_blank" rel="noreferrer" className={buttonClass.secondary}>
+                <ExternalLink className="size-4" aria-hidden />{t("admin.viewInShop")}
+              </a>
+            ) : null}
+            {mayPublish ? (
+              row.status === "published" ? (
+                <button type="button" onClick={() => setStatus.mutate({ id: row.id, status: "draft" })} disabled={setStatus.isPending} className={buttonClass.secondary}>
+                  {t("admin.unpublish")}
+                </button>
+              ) : (
+                <button type="button" onClick={() => setStatus.mutate({ id: row.id, status: "published" })} disabled={setStatus.isPending} className={buttonClass.primary}>
+                  {setStatus.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                  {t("admin.publish")}
+                </button>
+              )
+            ) : null}
+          </>
+        }
+      >
+        <Link href="/admin/products" className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a]">
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.products")}
+        </Link>
+      </PageHeader>
 
       {/* An admin's verdict is written back here, so a rejected vendor sees why
           without being told separately. */}
       {row.reviewNote ? (
-        <p className="mt-3 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[13px] text-[#8c2f22]">{row.reviewNote}</p>
+        <p dir="auto" className="-mt-2 mb-5 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[14px] text-[#8c2f22]">{row.reviewNote}</p>
       ) : null}
 
-      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Labelled label={t("admin.fieldTitle")}>
-            <input dir="auto" value={draft.title} disabled={!mayEdit} onChange={e => setDraft({ ...draft, title: e.target.value })} className={inputClass} />
-          </Labelled>
-          <Labelled label={t("admin.fieldTitleAr")}>
-            <input dir="rtl" value={draft.titleAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, titleAr: e.target.value })} className={inputClass} />
-          </Labelled>
-          <Labelled label={t("admin.fieldCategory")} className="sm:col-span-2">
-            <select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={inputClass}>
-              <option value="">{t("admin.fieldNoCategory")}</option>
-              {(categories.data ?? []).map(category => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-          </Labelled>
-          <Labelled label={t("admin.fieldDescription")} className="sm:col-span-2">
-            <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} className={`${inputClass} h-28 py-2`} />
-          </Labelled>
-          <Labelled label={t("admin.fieldTags")} hint={t("admin.tagsHint")} className="sm:col-span-2">
-            <input value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={inputClass} />
-          </Labelled>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-[200px_minmax(0,1fr)] xl:items-start">
+        {/* Eight sections is a long page, and it was one with no way to move
+            through it but scrolling. A list of anchors, beside the form where
+            there is room and across the top where there is not. */}
+        <nav aria-label={t("admin.onThisPage")} className="min-w-0 xl:sticky xl:top-24">
+          <p className="hidden text-[12px] font-semibold ink-muted xl:block">{t("admin.onThisPage")}</p>
+          <ul className="hide-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 xl:mx-0 xl:mt-2 xl:flex-col xl:overflow-visible xl:px-0">
+            {sections.map(section => (
+              <li key={section.id} className="shrink-0">
+                <a
+                  href={`#${section.id}`}
+                  className={`block rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-[#e7edf5] hover:text-[#0a285a] ${section.id === "delete" ? "text-[#8c2f22]" : "text-[#536b8c]"}`}
+                >
+                  {t(section.label)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        {mayEdit ? (
-          <button
-            onClick={() => save.mutate({
+        <div className="min-w-0 space-y-5">
+          <Card
+            id="details"
+            title={t("admin.sectionDetails")}
+            footer={mayEdit ? saveButton(save.isPending, () => save.mutate({
               id: row.id,
               title: draft.title,
               titleAr: draft.titleAr || null,
               description: draft.description || null,
               categoryId: draft.categoryId ? Number(draft.categoryId) : null,
               tags: draft.tags.split(",").map(tag => tag.trim()).filter(Boolean),
-            })}
-            disabled={save.isPending}
-            className="glass glass-navy pressable mt-5 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
+            }), !draft.title.trim()) : null}
           >
-            {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-            {t(save.isPending ? "admin.saving" : "admin.save")}
-          </button>
-        ) : null}
-      </section>
-
-      {/* Its own control saving on its own, like every section of a store's
-          page: one Save across the page writes a change somebody made while
-          editing something else entirely. Three states, not a checkbox —
-          "always", "never" and "follow the store" are different instructions
-          and a boolean would have lost the third, exactly as the per-product
-          commission rate does. */}
-      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-        {/* This product's own band, overriding the store's (3.2.5). Same
-            three-state shape as the price-request flag beside it: "follow the
-            store" is a different instruction from choosing a band, and a
-            two-state control would lose it. A sofa built to order and a cable
-            off the shelf leave the same warehouse. */}
-        <Labelled label={t("admin.fieldDeliverySpeedProduct")} className="mb-4">
-          <select
-            value={row.deliverySpeed ?? ""}
-            disabled={!mayEdit || setSpeed.isPending}
-            onChange={e => setSpeed.mutate({ productId: row.id, speed: e.target.value === "" ? null : (e.target.value as DeliverySpeed) })}
-            className={inputClass}
-          >
-            <option value="">{t("admin.speedInherit")}</option>
-            {DELIVERY_SPEEDS.map(speed => (
-              <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
-            ))}
-          </select>
-        </Labelled>
-        {/* The rows this department expects (3.1.7). The schema *offers* rows
-            rather than restricting them: anything a seller typed that it does
-            not know about is listed below, untouched, because a schema that
-            deletes merchant data on first save is one nobody uses twice. */}
-        {schemaFields.length ? (
-          <div className="mb-4">
-            <p className="text-[11px] font-extrabold text-[#0a285a]">{t("admin.specifications")}</p>
-            <div className="mt-2 grid gap-3 sm:grid-cols-2">
-              {schemaFields.map(spec => (
-                <Labelled
-                  key={spec.key}
-                  label={locale === "ar" ? spec.labelAr : spec.label}
-                  hint={spec.unit ?? undefined}
-                >
-                  {spec.options ? (
-                    <select
-                      value={specs[spec.key] ?? ""}
-                      disabled={!mayEdit}
-                      onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
-                      className={inputClass}
-                    >
-                      <option value="">{t("admin.sizeUnset")}</option>
-                      {spec.options.map(option => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      dir="auto"
-                      value={specs[spec.key] ?? ""}
-                      disabled={!mayEdit}
-                      onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
-                      className={inputClass}
-                    />
-                  )}
-                </Labelled>
-              ))}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Labelled label={t("admin.fieldTitle")}>
+                <input dir="auto" value={draft.title} disabled={!mayEdit} onChange={e => setDraft({ ...draft, title: e.target.value })} aria-invalid={!draft.title.trim()} className={inputClass} />
+              </Labelled>
+              <Labelled label={t("admin.fieldTitleAr")}>
+                <input dir="rtl" lang="ar" value={draft.titleAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, titleAr: e.target.value })} className={inputClass} />
+              </Labelled>
+              <Labelled label={t("admin.fieldCategory")} className="sm:col-span-2">
+                <select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={inputClass}>
+                  <option value="">{t("admin.fieldNoCategory")}</option>
+                  {(categories.data ?? []).map(category => (
+                    <option key={category.id} value={category.id}>{locale === "ar" ? category.nameAr || category.name : category.name}</option>
+                  ))}
+                </select>
+              </Labelled>
+              <Labelled label={t("admin.fieldDescription")} className="sm:col-span-2">
+                <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} rows={6} className={`${inputClass} h-auto min-h-36 py-2.5 leading-6`} />
+              </Labelled>
+              <Labelled label={t("admin.fieldTags")} hint={t("admin.tagsHint")} className="sm:col-span-2">
+                <input dir="auto" value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={inputClass} />
+              </Labelled>
             </div>
-            {extraRows.length ? (
-              <p className="mt-2 text-[11px] ink-muted">
-                {t("admin.specificationsKept", { rows: extraRows.map(r => r.label).join(", ") })}
-              </p>
+          </Card>
+
+          {/* Images are saved as a whole list, in order, so removing the third
+              and adding a fourth are the same operation. Position is the array
+              index — reordering is a save, not a separate protocol. */}
+          <Card
+            id="photos"
+            title={t("admin.images")}
+            description={t("admin.imagesHint")}
+            footer={mayEdit ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setImages([...images, { url: "", altText: "", kind: "image" as const, posterUrl: "" }])}
+                  className={`${buttonClass.secondary} me-auto`}
+                >
+                  <Plus className="size-4" aria-hidden />{t("admin.addImage")}
+                </button>
+                {saveButton(saveImages.isPending, () => saveImages.mutate({
+                  id: row.id,
+                  /* A row left blank is an abandoned edit, not an image. The
+                     kind and the poster travel too: without them every save
+                     turned a product's video back into a "photo" of an .mp4. */
+                  images: images
+                    .filter(image => image.url.trim())
+                    .map(image => ({
+                      url: image.url.trim(),
+                      altText: image.altText.trim() || null,
+                      kind: image.kind,
+                      posterUrl: image.kind === "video" ? image.posterUrl.trim() || null : null,
+                    })),
+                }))}
+              </>
             ) : null}
-            {mayEdit ? (
-              <button
-                onClick={() => saveSpecs.mutate({ id: row.id, attributes: mergeAttributes(row.attributes ?? [], departmentSlug, specs) })}
-                disabled={saveSpecs.isPending}
-                className="glass glass-navy pressable mt-3 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
-              >
-                {saveSpecs.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-                {t(saveSpecs.isPending ? "admin.saving" : "admin.save")}
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {/* How big it is, and what that means for dispatch (3.4.14). The
-            vehicle is derived rather than a second dropdown: two fields that
-            must agree eventually do not, and the seller can answer the first
-            without a tape measure. */}
-        <Labelled label={t("admin.fieldSizeClass")} className="mb-4">
-          <select
-            value={row.sizeClass ?? ""}
-            disabled={!mayEdit || setSize.isPending}
-            onChange={e => setSize.mutate({ productId: row.id, sizeClass: e.target.value === "" ? null : (e.target.value as SizeClass) })}
-            className={inputClass}
           >
-            <option value="">{t("admin.sizeUnset")}</option>
-            {SIZE_CLASSES.map(size => (
-              <option key={size} value={size}>{t(`size.${size}` as MessageKey)}</option>
-            ))}
-          </select>
-          {needsVehicle ? (
-            <p className="mt-1 text-[11px] ink-muted">
-              {t("admin.needsVehicle", { vehicle: t(`vehicle.${needsVehicle}` as MessageKey) })}
-            </p>
-          ) : null}
-        </Labelled>
-        <Labelled label={t("admin.offersProductOpen")}>
-          <select
-            value={row.acceptsOffers === null || row.acceptsOffers === undefined ? "" : String(row.acceptsOffers)}
-            disabled={!mayEdit || setOffers.isPending}
-            onChange={e => setOffers.mutate({
-              productId: row.id,
-              accepts: e.target.value === "" ? null : e.target.value === "true",
-            })}
-            className={inputClass}
-          >
-            <option value="">{t("admin.offersProductInherit")}</option>
-            <option value="true">{t("admin.offersProductYes")}</option>
-            <option value="false">{t("admin.offersProductNo")}</option>
-          </select>
-        </Labelled>
-      </section>
-
-      {/* The size chart (3.1.20): the sizes start from this product's own. */}
-      <SizeChartEditor
-        productId={row.id}
-        chart={row.sizeChart ?? null}
-        variantOptions={row.variants.map(variant => variant.options ?? {})}
-        mayEdit={mayEdit}
-      />
-
-      {/* Images are saved as a whole list, in order, so removing the third
-          and adding a fourth are the same operation. Position is the array
-          index — reordering is a save, not a separate protocol. */}
-      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-        <h2 className="text-sm font-extrabold">{t("admin.images")}</h2>
-        <p className="mt-1 text-[11px] font-semibold ink-muted">{t("admin.imagesHint")}</p>
-
-        {images.length === 0 ? (
-          <p className="mt-4 text-[13px] text-[#536b8c]">{t("admin.noImages")}</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {images.map((image, index) => (
-              <div key={index} className="flex items-start gap-3 rounded-xl border border-[#e6e9ef] p-3">
-                {/* A live preview is the only way to tell a good URL from a
-                    typo before the product is on the shelf. */}
-                <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-[#eef1f6]">
-                  {/* A video previews from its poster: loading the clip to
-                      draw a 64px square would cost the vendor a download per
-                      row for a thumbnail. */}
-                  <Thumb
-                    src={image.kind === "video" ? (image.posterUrl || undefined) : image.url}
-                    alt=""
-                    className="size-full object-cover"
-                    icon={image.kind === "video" ? <Play className="size-5 text-[#536b8c]" /> : undefined}
-                  />
-                </div>
-                <div className="grid min-w-0 flex-1 gap-2">
-                  <input
-                    dir="ltr"
-                    value={image.url}
-                    disabled={!mayEdit}
-                    placeholder={t("admin.imageUrl")}
-                    aria-label={t("admin.imageUrl")}
-                    onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, url: e.target.value } : entry))}
-                    className={inputClass}
-                  />
-                  <input
-                    dir="auto"
-                    value={image.altText}
-                    disabled={!mayEdit}
-                    placeholder={t("admin.imageAlt")}
-                    aria-label={t("admin.imageAlt")}
-                    onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
-                    className={inputClass}
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="text-[11px] font-extrabold ink-muted" htmlFor={`media-kind-${index}`}>{t("admin.mediaKind")}</label>
-                    <select
-                      id={`media-kind-${index}`}
-                      value={image.kind}
-                      disabled={!mayEdit}
-                      onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, kind: e.target.value as "image" | "video" } : entry))}
-                      className="type-body h-9 rounded-lg border border-[#d5dfeb] bg-white px-2 text-[12px] font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]"
-                    >
-                      <option value="image">{t("admin.mediaImage")}</option>
-                      <option value="video">{t("admin.mediaVideo")}</option>
-                    </select>
-                  </div>
-                  {image.kind === "video" ? (
-                    <>
+            {images.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#cfd9e6] bg-[#fafbfd] px-4 py-6 text-center text-[13px] ink-muted">{t("admin.noImages")}</p>
+            ) : (
+              <ul className="space-y-3">
+                {images.map((image, index) => (
+                  <li key={index} className="flex items-start gap-3 rounded-xl border border-[#e1e7ef] p-3">
+                    {/* A live preview is the only way to tell a good URL from a
+                        typo before the product is on the shelf. A video previews
+                        from its poster: loading the clip to draw a 64px square
+                        would cost the vendor a download per row. */}
+                    <div className={`size-16 shrink-0 overflow-hidden rounded-lg bg-[#f4f6f9] ${index === 0 ? "ring-2 ring-[#0a285a]/30" : ""}`}>
+                      <Thumb
+                        src={image.kind === "video" ? (image.posterUrl || undefined) : image.url}
+                        alt=""
+                        className="size-full object-cover"
+                        icon={image.kind === "video" ? <Play className="size-5 text-[#536b8c]" /> : undefined}
+                      />
+                    </div>
+                    <div className="grid min-w-0 flex-1 gap-2">
                       <input
                         dir="ltr"
-                        value={image.posterUrl}
+                        value={image.url}
                         disabled={!mayEdit}
-                        placeholder={t("admin.mediaPoster")}
-                        aria-label={t("admin.mediaPoster")}
-                        aria-describedby={`poster-hint-${index}`}
-                        onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, posterUrl: e.target.value } : entry))}
+                        placeholder={t("admin.imageUrl")}
+                        aria-label={t("admin.imageUrl")}
+                        onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, url: e.target.value } : entry))}
                         className={inputClass}
                       />
-                      <p id={`poster-hint-${index}`} className="text-[11px] ink-muted">{t("admin.mediaPosterHint")}</p>
-                    </>
-                  ) : null}
-                </div>
-                {mayEdit ? (
-                  <button
-                    onClick={() => setImages(images.filter((_, i) => i !== index))}
-                    aria-label={t("admin.removeImage")}
-                    className="tap-target ink-muted hover:text-[#a44a2b]"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {mayEdit ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => setImages([...images, { url: "", altText: "", kind: "image" as const, posterUrl: "" }])}
-              className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
-            >
-              <Plus className="size-4" />{t("admin.addImage")}
-            </button>
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px]">
+                        <input
+                          dir="auto"
+                          value={image.altText}
+                          disabled={!mayEdit}
+                          placeholder={t("admin.imageAlt")}
+                          aria-label={t("admin.imageAlt")}
+                          onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
+                          className={inputClass}
+                        />
+                        <select
+                          value={image.kind}
+                          disabled={!mayEdit}
+                          aria-label={t("admin.mediaKind")}
+                          onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, kind: e.target.value as "image" | "video" } : entry))}
+                          className={inputClass}
+                        >
+                          <option value="image">{t("admin.mediaImage")}</option>
+                          <option value="video">{t("admin.mediaVideo")}</option>
+                        </select>
+                      </div>
+                      {image.kind === "video" ? (
+                        <>
+                          <input
+                            dir="ltr"
+                            value={image.posterUrl}
+                            disabled={!mayEdit}
+                            placeholder={t("admin.mediaPoster")}
+                            aria-label={t("admin.mediaPoster")}
+                            aria-describedby={`poster-hint-${index}`}
+                            onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, posterUrl: e.target.value } : entry))}
+                            className={inputClass}
+                          />
+                          <p id={`poster-hint-${index}`} className="text-[12px] ink-muted">{t("admin.mediaPosterHint")}</p>
+                        </>
+                      ) : null}
+                    </div>
+                    {mayEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => setImages(images.filter((_, i) => i !== index))}
+                        aria-label={t("admin.removeImage")}
+                        title={t("admin.removeImage")}
+                        className="grid size-10 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
             {/* A photo from the seller's own device, fixed on the way in (3.3.4).
                 It joins the list like a pasted URL and is saved with the rest. */}
-            <PhotoUpload onUploaded={url => setImages(current => [...current, { url, altText: "", kind: "image" as const, posterUrl: "" }])} />
-            <button
-              onClick={() => saveImages.mutate({
-                id: row.id,
-                // A row left blank is an abandoned edit, not an image.
-                images: images
-                  .filter(image => image.url.trim())
-                  .map(image => ({ url: image.url.trim(), altText: image.altText.trim() || null })),
-              })}
-              disabled={saveImages.isPending}
-              className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
-            >
-              {saveImages.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-              {t(saveImages.isPending ? "admin.saving" : "admin.save")}
-            </button>
-          </div>
-        ) : null}
-      </section>
+            {mayEdit ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <PhotoUpload onUploaded={url => setImages(current => [...current, { url, altText: "", kind: "image" as const, posterUrl: "" }])} />
+              </div>
+            ) : null}
+          </Card>
 
-      {/* Optional extras (3.1.2). Beneath the images and above the variants,
-          because they are a fact about the product rather than about one size
-          of it — a fitting is the same visit whichever colour was picked. */}
-      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-        <h2 className="text-sm font-extrabold">{t("admin.addons")}</h2>
-        <p className="mt-1 max-w-2xl text-[11px] leading-5 font-semibold ink-muted">{t("admin.addonsNote")}</p>
+          <Card
+            id="variants"
+            title={t("admin.variants")}
+            footer={mayEdit ? (
+              <button
+                type="button"
+                onClick={() => saveVariant.mutate({ productId: row.id, title: t("admin.addVariant"), price: "0.000" })}
+                className={`${buttonClass.secondary} me-auto`}
+              >
+                <Plus className="size-4" aria-hidden />{t("admin.addVariant")}
+              </button>
+            ) : null}
+          >
+            <div className="space-y-4">
+              {row.variants.map(variant => (
+                <VariantRow
+                  key={variant.id}
+                  variant={variant}
+                  mayEdit={mayEdit}
+                  /* NetLet's shelf is counted by NetLet (4.2); the server refuses a
+                     seller's adjustment there, so the control is not offered. */
+                  mayStock={mayStock && (variant.centreId == null || actor.kind === "admin")}
+                  onSave={values => saveVariant.mutate({ id: variant.id, productId: row.id, ...values })}
+                  onAdjust={(delta, reason) => adjust.mutate({ variantId: variant.id, delta, reason })}
+                  pending={saveVariant.isPending || adjust.isPending}
+                />
+              ))}
+            </div>
+          </Card>
 
-        {addons.length === 0 ? (
-          <p className="mt-4 text-[13px] text-[#536b8c]">{t("admin.addonsEmpty")}</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {addons.map((addon, index) => (
-              <div key={index} className="flex items-start gap-3 rounded-xl border border-[#e6e9ef] p-3">
-                <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_140px_120px]">
-                  <input
-                    dir="auto"
-                    value={addon.label}
-                    disabled={!mayEdit}
-                    placeholder={t("admin.addonLabel")}
-                    aria-label={t("admin.addonLabel")}
-                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))}
-                    className={inputClass}
-                  />
-                  <select
-                    value={addon.kind}
-                    disabled={!mayEdit}
-                    aria-label={t("admin.addonKind")}
-                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, kind: e.target.value as AddonKind } : entry))}
-                    className={inputClass}
-                  >
-                    {ADDON_KINDS.map(kind => (
-                      <option key={kind} value={kind}>
-                        {t(kind === "installation" ? "product.addonInstallation" : kind === "warranty" ? "product.addonWarranty" : "product.addonOther")}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    dir="ltr"
-                    inputMode="decimal"
-                    value={addon.price}
-                    disabled={!mayEdit}
-                    placeholder={t("admin.addonPrice")}
-                    aria-label={t("admin.addonPrice")}
-                    onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, price: e.target.value } : entry))}
-                    className={inputClass}
-                  />
+          {/* Each control saves on its own, like every section of a store's
+              page: one Save across the page writes a change somebody made while
+              editing something else entirely. Three states, not a checkbox —
+              "always", "never" and "follow the store" are different
+              instructions and a boolean would have lost the third, exactly as
+              the per-product commission rate does. */}
+          <Card id="shipping" title={t("admin.sectionShipping")}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* This product's own band, overriding the store's (3.2.5). A sofa
+                  built to order and a cable off the shelf leave the same
+                  warehouse. */}
+              <Labelled label={t("admin.fieldDeliverySpeedProduct")}>
+                <select
+                  value={row.deliverySpeed ?? ""}
+                  disabled={!mayEdit || setSpeed.isPending}
+                  onChange={e => setSpeed.mutate({ productId: row.id, speed: e.target.value === "" ? null : (e.target.value as DeliverySpeed) })}
+                  className={inputClass}
+                >
+                  <option value="">{t("admin.speedInherit")}</option>
+                  {DELIVERY_SPEEDS.map(speed => (
+                    <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
+                  ))}
+                </select>
+              </Labelled>
+              {/* How big it is, and what that means for dispatch (3.4.14). The
+                  vehicle is derived rather than a second dropdown: two fields
+                  that must agree eventually do not. */}
+              <Labelled label={t("admin.fieldSizeClass")} hint={needsVehicle ? t("admin.needsVehicle", { vehicle: t(`vehicle.${needsVehicle}` as MessageKey) }) : undefined}>
+                <select
+                  value={row.sizeClass ?? ""}
+                  disabled={!mayEdit || setSize.isPending}
+                  onChange={e => setSize.mutate({ productId: row.id, sizeClass: e.target.value === "" ? null : (e.target.value as SizeClass) })}
+                  className={inputClass}
+                >
+                  <option value="">{t("admin.sizeUnset")}</option>
+                  {SIZE_CLASSES.map(size => (
+                    <option key={size} value={size}>{t(`size.${size}` as MessageKey)}</option>
+                  ))}
+                </select>
+              </Labelled>
+              <Labelled label={t("admin.offersProductOpen")} className="sm:col-span-2">
+                <select
+                  value={row.acceptsOffers === null || row.acceptsOffers === undefined ? "" : String(row.acceptsOffers)}
+                  disabled={!mayEdit || setOffers.isPending}
+                  onChange={e => setOffers.mutate({
+                    productId: row.id,
+                    accepts: e.target.value === "" ? null : e.target.value === "true",
+                  })}
+                  className={inputClass}
+                >
+                  <option value="">{t("admin.offersProductInherit")}</option>
+                  <option value="true">{t("admin.offersProductYes")}</option>
+                  <option value="false">{t("admin.offersProductNo")}</option>
+                </select>
+              </Labelled>
+            </div>
+
+            {/* The rows this department expects (3.1.7). The schema *offers*
+                rows rather than restricting them: anything a seller typed that
+                it does not know about is listed below, untouched, because a
+                schema that deletes merchant data on first save is one nobody
+                uses twice. */}
+            {schemaFields.length ? (
+              <div className="mt-6 border-t border-[#eef1f5] pt-5">
+                <h3 className="text-[14px] font-bold text-[#0a285a]">{t("admin.specifications")}</h3>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  {schemaFields.map(spec => (
+                    <Labelled
+                      key={spec.key}
+                      label={locale === "ar" ? spec.labelAr : spec.label}
+                      hint={spec.unit ?? undefined}
+                    >
+                      {spec.options ? (
+                        <select
+                          value={specs[spec.key] ?? ""}
+                          disabled={!mayEdit}
+                          onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
+                          className={inputClass}
+                        >
+                          <option value="">{t("admin.sizeUnset")}</option>
+                          {spec.options.map(option => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          dir="auto"
+                          value={specs[spec.key] ?? ""}
+                          disabled={!mayEdit}
+                          onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
+                          className={inputClass}
+                        />
+                      )}
+                    </Labelled>
+                  ))}
                 </div>
+                {extraRows.length ? (
+                  <p className="mt-3 text-[12px] ink-muted">
+                    {t("admin.specificationsKept", { rows: extraRows.map(r => r.label).join(", ") })}
+                  </p>
+                ) : null}
                 {mayEdit ? (
-                  <button
-                    onClick={() => setAddons(addons.filter((_, i) => i !== index))}
-                    aria-label={t("admin.addonRemove")}
-                    className="tap-target ink-muted hover:text-[#a44a2b]"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  <div className="mt-4 flex justify-end">
+                    {saveButton(saveSpecs.isPending, () => saveSpecs.mutate({ id: row.id, attributes: mergeAttributes(row.attributes ?? [], departmentSlug, specs) }))}
+                  </div>
                 ) : null}
               </div>
-            ))}
-          </div>
-        )}
+            ) : null}
+          </Card>
 
-        {mayEdit ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={() => setAddons([...addons, { kind: "installation" as AddonKind, label: "", labelAr: "", price: "" }])}
-              className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
-            >
-              <Plus className="size-4" />{t("admin.addonAdd")}
-            </button>
-            <button
-              onClick={() => saveAddons.mutate({
-                id: row.id,
-                // A row left blank is an abandoned edit, not an extra.
-                addons: addons
-                  .filter(addon => addon.label.trim() && addon.price.trim())
-                  .map(addon => ({
-                    kind: addon.kind,
-                    label: addon.label.trim(),
-                    labelAr: addon.labelAr.trim() || null,
-                    price: addon.price.trim(),
-                  })),
-              })}
-              disabled={saveAddons.isPending}
-              className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-extrabold disabled:opacity-60"
-            >
-              {saveAddons.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-              {t(saveAddons.isPending ? "admin.saving" : "admin.save")}
-            </button>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-        <h2 className="text-sm font-extrabold">{t("admin.variants")}</h2>
-        <div className="mt-4 space-y-4">
-          {row.variants.map(variant => (
-            <VariantRow
-              key={variant.id}
-              variant={variant}
+          {/* The size chart (3.1.20): the sizes start from this product's own. */}
+          <div id="sizes" className="scroll-mt-24">
+            <SizeChartEditor
+              productId={row.id}
+              chart={row.sizeChart ?? null}
+              variantOptions={row.variants.map(variant => variant.options ?? {})}
               mayEdit={mayEdit}
-              /* NetLet's shelf is counted by NetLet (4.2); the server refuses a
-                 seller's adjustment there, so the control is not offered. */
-              mayStock={mayStock && (variant.centreId == null || actor.kind === "admin")}
-              onSave={values => saveVariant.mutate({ id: variant.id, productId: row.id, ...values })}
-              onAdjust={(delta, reason) => adjust.mutate({ variantId: variant.id, delta, reason })}
-              pending={saveVariant.isPending || adjust.isPending}
             />
-          ))}
-        </div>
-        {mayEdit ? (
-          <button
-            onClick={() => saveVariant.mutate({ productId: row.id, title: t("admin.addVariant"), price: "0.000" })}
-            className="glass pressable mt-4 inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold"
-          >
-            <Plus className="size-4" />{t("admin.addVariant")}
-          </button>
-        ) : null}
-      </section>
+          </div>
 
-      {mayPrice ? (
-        <CommissionPanel
-          percent={row.commissionPercent}
-          fixed={row.commissionFixed}
-          pending={setCommission.isPending}
-          onSave={rule => setCommission.mutate({ id: row.id, ...rule })}
-        />
-      ) : null}
+          {/* Optional extras (3.1.2): a fact about the product rather than
+              about one size of it — a fitting is the same visit whichever
+              colour was picked. */}
+          <Card
+            id="extras"
+            title={t("admin.addons")}
+            description={t("admin.addonsNote")}
+            footer={mayEdit ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setAddons([...addons, { kind: "installation" as AddonKind, label: "", labelAr: "", price: "" }])}
+                  className={`${buttonClass.secondary} me-auto`}
+                >
+                  <Plus className="size-4" aria-hidden />{t("admin.addonAdd")}
+                </button>
+                {saveButton(saveAddons.isPending, () => saveAddons.mutate({
+                  id: row.id,
+                  // A row left blank is an abandoned edit, not an extra.
+                  addons: addons
+                    .filter(addon => addon.label.trim() && addon.price.trim())
+                    .map(addon => ({
+                      kind: addon.kind,
+                      label: addon.label.trim(),
+                      labelAr: addon.labelAr.trim() || null,
+                      price: addon.price.trim(),
+                    })),
+                }))}
+              </>
+            ) : null}
+          >
+            {addons.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#cfd9e6] bg-[#fafbfd] px-4 py-6 text-center text-[13px] ink-muted">{t("admin.addonsEmpty")}</p>
+            ) : (
+              <ul className="space-y-3">
+                {addons.map((addon, index) => (
+                  <li key={index} className="flex items-start gap-3 rounded-xl border border-[#e1e7ef] p-3">
+                    <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_160px_130px]">
+                      <input
+                        dir="auto"
+                        value={addon.label}
+                        disabled={!mayEdit}
+                        placeholder={t("admin.addonLabel")}
+                        aria-label={t("admin.addonLabel")}
+                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))}
+                        className={inputClass}
+                      />
+                      <select
+                        value={addon.kind}
+                        disabled={!mayEdit}
+                        aria-label={t("admin.addonKind")}
+                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, kind: e.target.value as AddonKind } : entry))}
+                        className={inputClass}
+                      >
+                        {ADDON_KINDS.map(kind => (
+                          <option key={kind} value={kind}>
+                            {t(kind === "installation" ? "product.addonInstallation" : kind === "warranty" ? "product.addonWarranty" : "product.addonOther")}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        dir="ltr"
+                        inputMode="decimal"
+                        value={addon.price}
+                        disabled={!mayEdit}
+                        placeholder={t("admin.addonPrice")}
+                        aria-label={t("admin.addonPrice")}
+                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, price: e.target.value } : entry))}
+                        className={inputClass}
+                      />
+                    </div>
+                    {mayEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => setAddons(addons.filter((_, i) => i !== index))}
+                        aria-label={t("admin.addonRemove")}
+                        title={t("admin.addonRemove")}
+                        className="grid size-10 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
+                      >
+                        <Trash2 className="size-4" aria-hidden />
+                      </button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {mayPrice ? (
+            <CommissionPanel
+              percent={row.commissionPercent}
+              fixed={row.commissionFixed}
+              pending={setCommission.isPending}
+              onSave={rule => setCommission.mutate({ id: row.id, ...rule })}
+            />
+          ) : null}
+
+          {/* Last, apart, and in red: the one act on this page that cannot be
+              taken back. The dialog asks for the name. */}
+          {mayDelete ? (
+            <Card id="delete" tone="danger" title={t("admin.deleteProduct")} description={t("admin.deleteSectionNote")}>
+              <button type="button" onClick={() => setDeleting(true)} className={buttonClass.quietDanger}>
+                <Trash2 className="size-4" aria-hidden />{t("admin.deleteProduct")}
+              </button>
+            </Card>
+          ) : null}
+        </div>
+      </div>
+
+      <DeleteProductDialog
+        product={deleting ? { id: row.id, title: row.title } : null}
+        onClose={() => setDeleting(false)}
+        onDeleted={() => navigate("/admin/products")}
+      />
     </>
   );
 }
@@ -648,14 +711,27 @@ function CommissionPanel({
   const trimmed = { percent: draft.percent.trim(), fixed: draft.fixed.trim() };
 
   return (
-    <section className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white p-5">
-      <h2 className="text-sm font-extrabold">{t("admin.productCommission")}</h2>
-      <p className="mt-1 text-[11px] text-[#536b8c]">{t("admin.productCommissionNote")}</p>
-      <div className="mt-4 flex flex-wrap items-end gap-3">
+    <Card
+      id="commission"
+      title={t("admin.productCommission")}
+      description={t("admin.productCommissionNote")}
+      footer={
+        <button
+          type="button"
+          onClick={() => onSave({ percent: trimmed.percent || null, fixed: trimmed.fixed || null })}
+          disabled={pending}
+          className={buttonClass.primary}
+        >
+          {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+          {t("admin.save")}
+        </button>
+      }
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
         {/* The ceiling is on the label, because the API refuses above it and a
             form that does not say so leaves an admin typing 500 and reading
             "Could not save". */}
-        <Labelled label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")} className="w-32">
+        <Labelled label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")}>
           <input
             dir="ltr"
             inputMode="decimal"
@@ -664,7 +740,7 @@ function CommissionPanel({
             className={inputClass}
           />
         </Labelled>
-        <Labelled label={t("admin.commissionFixed")} className="w-32">
+        <Labelled label={t("admin.commissionFixed")}>
           <input
             dir="ltr"
             inputMode="decimal"
@@ -673,25 +749,24 @@ function CommissionPanel({
             className={inputClass}
           />
         </Labelled>
-        <button
-          onClick={() => onSave({ percent: trimmed.percent || null, fixed: trimmed.fixed || null })}
-          disabled={pending}
-          className="glass glass-navy pressable inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-extrabold disabled:opacity-60"
-        >
-          {pending ? <LoaderCircle className="size-4 animate-spin" /> : <Save className="size-4" />}
-          {t("admin.save")}
-        </button>
       </div>
-    </section>
+    </Card>
   );
 }
 
+/**
+ * A label wrapped round its control, with the hint under the box.
+ *
+ * Wrapping rather than `htmlFor`, because several of these hold a composite
+ * control (a stepper, a value and its note) and a wrapping label names the
+ * first field inside it without an id to keep in step.
+ */
 function Labelled({ label, hint, className = "", children }: { label: string; hint?: string; className?: string; children: React.ReactNode }) {
   return (
     <label className={`block ${className}`}>
-      <span className="text-[11px] font-extrabold text-[#0a285a]">{label}</span>
-      {hint ? <span className="ms-2 text-[10px] font-semibold ink-muted">{hint}</span> : null}
+      <span className="block text-[13px] leading-5 font-semibold text-[#0a285a]">{label}</span>
       <span className="mt-1.5 block">{children}</span>
+      {hint ? <span className="mt-1.5 block text-[12px] leading-5 ink-muted">{hint}</span> : null}
     </label>
   );
 }
@@ -743,8 +818,8 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
 
   return (
-    <div className="rounded-xl border border-[#e6e9ef] bg-[#fbfcfe] p-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Labelled label={t("admin.variantTitle")}>
           <input dir="auto" value={values.title} disabled={!mayEdit} onChange={e => setValues({ ...values, title: e.target.value })} className={inputClass} />
         </Labelled>
@@ -768,7 +843,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
         every product in the shop does today — so this row costs a vendor who
         sells kettles nothing but two defaults they never touch.
       */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <Labelled label={t("admin.variantUnit")} hint={t("admin.variantUnitHint")}>
           <select
             value={values.unit}
@@ -791,19 +866,19 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
         <Labelled label={t("admin.variantUnitPrice")}>
           {/* Read-only and derived: the figure the shopper will compare on,
               shown to the vendor before they save rather than after. */}
-          <p className="px-1 py-2 text-sm font-extrabold text-[#0a285a]">
+          <p className="flex h-11 items-center px-1 text-[14px] font-bold text-[#0a285a]">
             {perUnit
               ? t("unit.perUnit", { price: perUnit.amount, unit: t(`unit.${perUnit.unit}` as MessageKey) })
               : "—"}
           </p>
         </Labelled>
       </div>
-      {!measureOk ? <p className="mt-1 text-[12px] font-semibold text-[#8c2f22]">{t("admin.variantStepInvalid")}</p> : null}
+      {!measureOk ? <p className="mt-1.5 text-[12px] font-semibold text-[#8c2f22]">{t("admin.variantStepInvalid")}</p> : null}
 
       {/* Pre-order: a second, bounded pool the vendor chooses the size of.
           Beside the stock figure rather than in a panel of its own, because the
           question it answers — how many may I sell — is the same question. */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Labelled label={t("admin.preorderStock")}>
           <input
             type="number"
@@ -816,7 +891,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             aria-describedby={`preorder-hint-${variant.id}`}
             className={inputClass}
           />
-          <p id={`preorder-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderStockHint")}</p>
+          <p id={`preorder-hint-${variant.id}`} className="mt-1.5 text-[12px] leading-5 ink-muted">{t("admin.preorderStockHint")}</p>
         </Labelled>
         <Labelled label={t("admin.preorderReleaseAt")}>
           <input
@@ -827,13 +902,13 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             aria-describedby={`release-hint-${variant.id}`}
             className={inputClass}
           />
-          <p id={`release-hint-${variant.id}`} className="mt-1 text-[11px] ink-muted">{t("admin.preorderReleaseHint")}</p>
+          <p id={`release-hint-${variant.id}`} className="mt-1.5 text-[12px] leading-5 ink-muted">{t("admin.preorderReleaseHint")}</p>
         </Labelled>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-        <p className="text-[12px] font-semibold text-[#536b8c]">
-          {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#e61c38]" : "text-[#0a285a]"}>{variant.stock}</strong>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[14px] font-semibold text-[#536b8c]">
+          {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#b3261e]" : "text-[#0a285a]"}>{variant.stock}</strong>
           {held ? <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-0.5 text-[11px] font-extrabold text-[#0a285a]">{t("fulfilment.heldBadge")}</span> : null}
         </p>
         {mayEdit ? (
@@ -847,9 +922,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
               memberPrice: memberTyped || null,
             })}
             disabled={pending || !measureOk || !preorderOk || Boolean(memberProblem)}
-            className="glass pressable rounded-full border border-[#0a285a]/15 px-4 py-2 text-[11px] font-extrabold disabled:opacity-60"
+            className={buttonClass.secondary}
           >
-            {t("admin.save")}
+            <Save className="size-4" aria-hidden />{t("admin.save")}
           </button>
         ) : null}
       </div>
@@ -857,14 +932,17 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       {/* Staff reach this and nothing else on the row, which is the whole point
           of the rank: count the boxes without touching the price. */}
       {mayStock ? (
-        <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-[#e6e9ef] pt-3">
-          <Labelled label={t("admin.adjustBy")}>
-            <div className="inline-flex items-center gap-1">
-              <button onClick={() => setDelta(d => d - 1)} aria-label={t("product.decreaseQuantity")} className="glass pressable grid size-9 place-items-center rounded-lg"><Minus className="size-3.5" /></button>
-              <input dir="ltr" inputMode="numeric" value={delta} onChange={e => setDelta(Number(e.target.value) || 0)} className={`${inputClass} w-20 text-center`} />
-              <button onClick={() => setDelta(d => d + 1)} aria-label={t("product.increaseQuantity")} className="glass pressable grid size-9 place-items-center rounded-lg"><Plus className="size-3.5" /></button>
+        <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#e1e7ef] pt-4">
+          {/* A group, not a label: a label wrapped round this would name the
+              minus button first, and pressing the words would take one off. */}
+          <div role="group" aria-labelledby={`adjust-${variant.id}`}>
+            <span id={`adjust-${variant.id}`} className="block text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.adjustBy")}</span>
+            <div className="mt-1.5 inline-flex items-center gap-1">
+              <button type="button" onClick={() => setDelta(d => d - 1)} aria-label={t("product.decreaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"><Minus className="size-4" aria-hidden /></button>
+              <input dir="ltr" inputMode="numeric" value={delta} onChange={e => setDelta(Number(e.target.value) || 0)} className={`${inputClass} w-20 text-center`} aria-label={t("admin.adjustBy")} />
+              <button type="button" onClick={() => setDelta(d => d + 1)} aria-label={t("product.increaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"><Plus className="size-4" aria-hidden /></button>
             </div>
-          </Labelled>
+          </div>
           <Labelled label={t("admin.reason")}>
             <select value={reason} onChange={e => setReason(e.target.value as (typeof REASONS)[number])} className={inputClass}>
               {REASONS.map(entry => <option key={entry} value={entry}>{t(`reason.${entry}` as MessageKey)}</option>)}
@@ -873,7 +951,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
           <button
             onClick={() => onAdjust(delta, reason)}
             disabled={pending || delta === 0}
-            className="glass glass-navy pressable h-10 rounded-full px-4 text-[11px] font-extrabold disabled:opacity-60"
+            className={buttonClass.primary}
           >
             {t("admin.adjustStock")}
           </button>

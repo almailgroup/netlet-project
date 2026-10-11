@@ -62,6 +62,7 @@ const Sell = lazy(() => import("@/pages/Sell"));
 const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
 const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
 const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
+const AdminNewProduct = lazy(() => import("@/pages/admin/NewProduct"));
 const AdminReview = lazy(() => import("@/pages/admin/Review"));
 const AdminVendors = lazy(() => import("@/pages/admin/Vendors"));
 const AdminVendorNew = lazy(() => import("@/pages/admin/VendorNew"));
@@ -226,6 +227,8 @@ function Router() {
         <Route path="/search" component={Category} />
         <Route path="/admin" component={AdminOverview} />
         <Route path="/admin/products" component={AdminProducts} />
+        {/* Before `:id`, which would otherwise read "new" as a product id. */}
+        <Route path="/admin/products/new" component={AdminNewProduct} />
         <Route path="/admin/products/:id" component={AdminProductEditor} />
         <Route path="/admin/review" component={AdminReview} />
         <Route path="/admin/stock" component={AdminStock} />

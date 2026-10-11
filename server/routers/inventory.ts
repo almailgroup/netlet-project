@@ -79,6 +79,7 @@ import {
 } from "../applications.js";
 import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
+import { deleteProduct, deletionCheck } from "../productDeletion.js";
 import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../shared/commerce/sizeGuide.js";
 
@@ -150,6 +151,11 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
        it broke so the editor can say which. */
     if (message.startsWith("sizeGuide.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
+    }
+    /* An obligation the product outlives — a placement still being paid for,
+       stock NetLet holds — named, so the seller knows what to undo first. */
+    if (message.startsWith("admin.deleteBlocked")) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message });
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
@@ -396,10 +402,43 @@ export const inventoryRouter = router({
         description: z.string().max(20000).nullable().optional(),
         categoryId: rowId.nullable().optional(),
         tags: z.array(z.string().max(60)).max(40).optional(),
+        /* The guided form's first variant and pictures. The editor's blank
+           draft sends neither and gets the "Default" at 0.000 it always did. */
+        variant: z.object({
+          price: moneySchema,
+          compareAtPrice: moneySchema.nullable().optional(),
+          sku: z.string().trim().max(120).nullable().optional(),
+          stock: z.number().int().min(0).max(1_000_000).optional(),
+        }).optional(),
+        images: z.array(z.object({
+          url: z.string().trim().max(2000).refine(acceptableImageUrl, "Image URLs must start with http:// or https://"),
+          kind: z.enum(["image", "video"]).optional(),
+          altText: z.string().trim().max(255).nullable().optional(),
+        })).max(12).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => createProduct(actor, input));
+      }),
+
+    /**
+     * What deleting a product would touch, for the dialog to show first, and
+     * the delete itself. `server/productDeletion.ts` is both, and the delete
+     * asks every question again inside its transaction — the check is a
+     * preview, not a promise.
+     */
+    deletionCheck: protectedProcedure
+      .input(z.object({ id: rowId }))
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => deletionCheck(actor, input.id));
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: rowId }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => deleteProduct(actor, input.id));
       }),
 
     /**

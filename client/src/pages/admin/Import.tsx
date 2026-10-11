@@ -113,7 +113,7 @@ function Import({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.import")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.import")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.importNote")}</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -145,7 +145,7 @@ function Import({ actor }: { actor: Actor }) {
               aria-label={t("admin.productVendor")}
               value={chosenVendor || String(vendors.data?.rows?.[0]?.id ?? "")}
               onChange={event => setChosenVendor(event.target.value)}
-              className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#f2683a]"
+              className="type-body ms-2 h-10 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] text-[#0a285a] outline-none focus:border-[#0a285a]"
             >
               {(vendors.data?.rows ?? []).map(vendor => (
                 <option key={vendor.id} value={vendor.id}>{vendor.name}</option>

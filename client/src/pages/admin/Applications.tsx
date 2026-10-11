@@ -88,7 +88,7 @@ function Applications() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.applications")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.applications")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.applicationsNote")}</p>
 
       <QueryGate queries={[list]}>
@@ -177,7 +177,7 @@ function Applications() {
                             inputMode="decimal"
                             value={rates[row.id] ?? String(Number(DEFAULT_COMMISSION_PERCENT))}
                             onChange={event => setRates({ ...rates, [row.id]: event.target.value })}
-                            className="type-body mt-1 h-9 w-24 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#f2683a]"
+                            className="type-body mt-1 h-9 w-24 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
                           />
                         </label>
                         {row.proposedCommissionPercent ? (
@@ -224,7 +224,7 @@ function Applications() {
                       onChange={event => setReasons({ ...reasons, [row.id]: event.target.value })}
                       aria-label={t("admin.applicationReason")}
                       placeholder={t("admin.applicationReason")}
-                      className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#f2683a]"
+                      className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
                     />
                   </article>
                 );

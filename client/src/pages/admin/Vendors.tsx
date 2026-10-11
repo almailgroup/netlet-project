@@ -46,7 +46,7 @@ function VendorList() {
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-extrabold">{t("admin.vendors")}</h1>
+        <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.vendors")}</h1>
         <Link
           href="/admin/vendors/new"
           className="glass glass-navy pressable inline-flex h-10 items-center gap-2 rounded-full px-4 text-xs font-extrabold"

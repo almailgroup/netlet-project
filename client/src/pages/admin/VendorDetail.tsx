@@ -45,9 +45,9 @@ export default function AdminVendorDetail() {
 }
 
 const field =
-  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 const area =
-  "type-body min-h-20 w-full rounded-xl border border-[#d5dfeb] bg-white p-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+  "type-body min-h-20 w-full rounded-xl border border-[#d5dfeb] bg-white p-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 const STATUSES = ["pending", "approved", "suspended"] as const;
 
@@ -128,7 +128,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 dir="auto" className="text-xl font-extrabold">{row.name}</h1>
+          <h1 dir="auto" className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{row.name}</h1>
           <p className="mt-0.5 text-[11px] ink-muted"><bdi dir="ltr">/{row.slug}</bdi></p>
         </div>
         <p className={`text-[12px] font-extrabold ${missing > 0 ? "text-[#8a6d3b]" : "text-[#155724]"}`}>
@@ -484,7 +484,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
                 aria-label={t("admin.memberRole")}
                 value={member.role}
                 onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
-                className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#f2683a]"
+                className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#0a285a]"
               >
                 {VENDOR_ROLES.map(role => (
                   <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>

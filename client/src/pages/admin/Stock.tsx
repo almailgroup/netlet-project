@@ -34,7 +34,7 @@ function Stock() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.lowStockTitle")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.lowStockTitle")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.lowStockNote")}</p>
 
       {low.isLoading || low.isError ? (

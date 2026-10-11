@@ -62,7 +62,7 @@ function Returns({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.returns")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.returns")}</h1>
       <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.returnsNote")}</p>
 
       <div role="tablist" aria-label={t("admin.returns")} className="mt-5 inline-flex gap-1 rounded-2xl bg-[#eef1f6] p-1">

@@ -64,7 +64,7 @@ function Queue() {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.review")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.review")}</h1>
       {waiting.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
           <p className="text-sm font-extrabold">{t("admin.nothingToReview")}</p>
@@ -108,7 +108,7 @@ function Queue() {
                 onChange={event => setNotes({ ...notes, [row.id]: event.target.value })}
                 aria-label={t("admin.reviewNote")}
                 placeholder={t("admin.reviewNote")}
-                className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#f2683a]"
+                className="type-body mt-3 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] outline-none focus:border-[#0a285a]"
               />
             </article>
           ))}

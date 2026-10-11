@@ -26,7 +26,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 const field =
-  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 export default function AdminBundles() {
   usePageMeta(privatePageMeta("Bundles"));
@@ -64,7 +64,7 @@ function Bundles({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.bundles")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.bundles")}</h1>
       <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.bundlesNote")}</p>
 
       <section className="mt-6 rounded-2xl border border-[#e6e9ef] bg-white p-5">

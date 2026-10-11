@@ -39,6 +39,9 @@ import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagina
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
 import { canSendReset, deleteLogin, sendReset } from "./_core/passwordStore.js";
 import { chartProblem, cleanChart, type SizeChart } from "../shared/commerce/sizeGuide.js";
+/* The readable part of a handle, shared so the "Add a product" form's search
+   preview shows the address the server will actually make. */
+import { handleBase } from "../shared/inventory/productDraft.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -181,13 +184,13 @@ export async function setProductSizeClass(actor: Actor, productId: number, sizeC
  * Null for an administrator, who acts for NetLet rather than for a store, and
  * for a shopper who is in none.
  */
-export async function myStore(actor: Actor): Promise<{ id: number; name: string } | null> {
+export async function myStore(actor: Actor): Promise<{ id: number; name: string; autoPublish: boolean } | null> {
   if (actor.kind !== "vendor") return null;
   assertCan(actor, "vendor.viewMembers", actor.vendorId);
   const db = await getDb();
   if (!db) return null;
   const [row] = await db
-    .select({ id: vendors.id, name: vendors.name })
+    .select({ id: vendors.id, name: vendors.name, autoPublish: vendors.autoPublish })
     .from(vendors)
     .where(eq(vendors.id, actor.vendorId))
     .limit(1);
@@ -299,7 +302,7 @@ export async function listProductsFor(
 ) {
   assertCan(actor, "product.view", vendorId);
   const db = await getDb();
-  if (!db) return emptyPage<Awaited<ReturnType<typeof hydrate>>[number]>(request);
+  if (!db) return emptyPage<Awaited<ReturnType<typeof hydrate>>[number] & { vendorName: string | null }>(request);
 
   const owned = actor.kind === "admin"
     ? (vendorId ? eq(products.vendorId, vendorId) : undefined)
@@ -319,7 +322,12 @@ export async function listProductsFor(
     /* Bracketed: `and` does not wrap a raw fragment, so without them this read
        "this store's and a title match, or any store's handle match" — and a
        seller's search returned every other store's products, drafts included. */
-    term ? sql`(lower(${products.title}) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`})` : undefined,
+    /* The Arabic title and the seller's own codes too: a seller looking for
+       "BATT-1" types the code they filed it under, and half the shelf is
+       titled in Arabic. */
+    term
+      ? sql`(lower(${products.title}) like ${`%${term}%`} or lower(coalesce(${products.titleAr}, '')) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`} or exists (select 1 from ${productVariants} where ${productVariants.productId} = ${products.id} and lower(coalesce(${productVariants.sku}, '')) like ${`%${term}%`}))`
+      : undefined,
   );
 
   const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(products).where(scope);
@@ -333,7 +341,19 @@ export async function listProductsFor(
     .orderBy(desc(products.updatedAt), desc(products.id))
     .limit(pageSize)
     .offset(offset);
-  return { rows: await hydrate(db, rows), total, page, pageSize };
+  /* The store's name rather than "#3": an administrator scanning every
+     store's shelf reads names, and one query for the page is all it costs. */
+  const vendorIds = Array.from(new Set(rows.map(row => row.vendorId)));
+  const names = vendorIds.length
+    ? await db.select({ id: vendors.id, name: vendors.name }).from(vendors).where(inArray(vendors.id, vendorIds))
+    : [];
+  const hydrated = await hydrate(db, rows);
+  return {
+    rows: hydrated.map(row => ({ ...row, vendorName: names.find(vendor => vendor.id === row.vendorId)?.name ?? null })),
+    total,
+    page,
+    pageSize,
+  };
 }
 
 export async function getProduct(actor: Actor, productId: number) {
@@ -384,11 +404,6 @@ function windowFor(request: PageRequest, total: number) {
 }
 
 /* --------------------------------------------------------------- writing --- */
-
-/** The readable part of a handle: the title, lower-cased, hyphenated, ASCII. */
-function handleBase(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 150) || "product";
-}
 
 /** Slug from a title, deduplicated against what already exists. */
 async function uniqueHandle(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, title: string): Promise<string> {
@@ -452,25 +467,86 @@ export async function createProduct(actor: Actor, input: {
   description?: string | null;
   categoryId?: number | null;
   tags?: string[];
+  /**
+   * The first variant's terms. Absent, the product starts with a "Default" at
+   * 0.000, as it always did — the editor's own "New product" path. The guided
+   * form sends them, so what it creates is a product with a price, a code and
+   * a count rather than a blank draft that is then filled in by five saves.
+   */
+  variant?: { price: string; compareAtPrice?: string | null; sku?: string | null; stock?: number };
+  /** The gallery, in order. Held to the same URL rule as `setProductImages`. */
+  images?: { url: string; kind?: "image" | "video" | null; altText?: string | null }[];
 }) {
   assertCan(actor, "product.create", input.vendorId);
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
-  const [row] = await withFreeHandle(async attempt => db.insert(products).values({
-    vendorId: input.vendorId,
-    categoryId: input.categoryId ?? null,
-    handle: await uniqueHandle(db, handleSeed(input.title, attempt)),
-    title: input.title,
-    titleAr: input.titleAr ?? null,
-    description: input.description ?? null,
-    tags: input.tags ?? [],
-    status: "draft",
-  }).returning());
+  const sku = input.variant?.sku?.trim() || null;
+  const opening = input.variant?.stock ?? 0;
+  await assertSkuFree(db, input.vendorId, sku);
 
-  // A product with no variant cannot be priced or bought, so it starts with
-  // one rather than being a shape the rest of the system has to tolerate.
-  await db.insert(productVariants).values({ productId: row.id, title: "Default", price: "0.000" });
+  /*
+   * One transaction, so the form's one press is one outcome. Three writes in a
+   * row used to be the shape of "New product" — a draft, then a price, then the
+   * pictures — and a failure on the second left a blank "New product" on the
+   * shelf that nobody had asked for and nobody went back to delete.
+   */
+  const row = await withFreeHandle(async attempt => {
+    /* Read before the transaction opens, never inside it on the pool: a
+       second connection asked for while the first holds a transaction is a
+       deadlock on a single-connection database, and a wasted one anywhere. */
+    const handle = await uniqueHandle(db, handleSeed(input.title, attempt));
+    return skuAware(() => db.transaction(async tx => {
+      const [created] = await tx.insert(products).values({
+        vendorId: input.vendorId,
+        categoryId: input.categoryId ?? null,
+        handle,
+        title: input.title,
+        titleAr: input.titleAr ?? null,
+        description: input.description ?? null,
+        tags: input.tags ?? [],
+        status: "draft",
+      }).returning();
+
+      // A product with no variant cannot be priced or bought, so it starts with
+      // one rather than being a shape the rest of the system has to tolerate.
+      const [variant] = await tx.insert(productVariants).values({
+        productId: created.id,
+        title: "Default",
+        sku,
+        price: input.variant?.price ?? "0.000",
+        compareAtPrice: input.variant?.compareAtPrice ?? null,
+        stock: opening,
+      }).returning({ id: productVariants.id });
+
+      /* An opening count is a movement like any other, so the stock page's
+         history starts where the shelf did rather than at a number nobody
+         recorded. */
+      if (opening > 0) {
+        await tx.insert(stockMovements).values({ variantId: variant.id, delta: opening, resulting: opening, reason: "received", note: null, actorId: actor.userId });
+      }
+
+      if (input.images?.length) {
+        await tx.insert(productImages).values(input.images.map((image, position) => ({
+          productId: created.id,
+          url: image.url,
+          altText: image.altText?.trim() || null,
+          position,
+          kind: image.kind === "video" ? ("video" as const) : ("image" as const),
+        })));
+      }
+      return created;
+    }));
+  });
+
+  await recordAudit(await auditActor(actor), {
+    action: "product.create",
+    subjectType: "product",
+    subjectId: row.id,
+    subjectLabel: row.title,
+    vendorId: row.vendorId,
+    after: { title: row.title, price: input.variant?.price ?? "0.000", stock: opening },
+  });
   return row;
 }
 
@@ -876,6 +952,19 @@ export async function setProductStatus(
   }
 
   await db.update(products).set({ status, reviewNote: reviewNote ?? null }).where(eq(products.id, productId));
+  /* Named in `SELLER_ACTIONS` from the start and never written, so "what the
+     sellers changed" could not show a product going live or coming down. */
+  if (status !== row.status) {
+    await recordAudit(await auditActor(actor), {
+      action: "product.setStatus",
+      subjectType: "product",
+      subjectId: productId,
+      subjectLabel: row.title,
+      vendorId: row.vendorId,
+      before: { status: row.status },
+      after: { status },
+    });
+  }
   return status;
 }
 

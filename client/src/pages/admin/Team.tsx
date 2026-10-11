@@ -60,7 +60,7 @@ function Team({ actor }: { actor: Actor }) {
   if (vendorId === 0) {
     return (
       <>
-        <h1 className="text-xl font-extrabold">{t("admin.team")}</h1>
+        <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.team")}</h1>
         <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("admin.teamAdminNote")}</p>
         <Link href="/admin/vendors" className="glass pressable mt-4 inline-flex rounded-full px-4 py-2 text-xs font-extrabold">{t("admin.vendors")}</Link>
       </>
@@ -72,7 +72,7 @@ function Team({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.team")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.team")}</h1>
 
       <ul className="mt-5 space-y-2">
         {rows.map(member => (
@@ -87,7 +87,7 @@ function Team({ actor }: { actor: Actor }) {
                   value={member.role}
                   onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
                   aria-label={t("admin.memberRole")}
-                  className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#f2683a]"
+                  className="type-body h-9 rounded-xl border border-[#d5dfeb] bg-white px-2.5 text-[12px] outline-none focus:border-[#0a285a]"
                 >
                   {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
                 </select>

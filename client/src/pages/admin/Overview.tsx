@@ -92,7 +92,7 @@ function Overview({ actor }: { actor: Actor }) {
   if (isCourier) {
     return (
       <>
-        <h1 className="text-xl font-extrabold">{t("admin.overview")}</h1>
+        <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.overview")}</h1>
         <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
         {(waitingParcels.data ?? 0) + (openClaims.data ?? 0) > 0 ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -157,7 +157,7 @@ function Overview({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-xl font-extrabold">{t("admin.overview")}</h1>
+      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.overview")}</h1>
 
       <h2 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">{t("admin.needsYou")}</h2>
       {waiting.length === 0 ? (

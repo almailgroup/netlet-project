@@ -33,9 +33,9 @@ export default function AdminVendorNew() {
 }
 
 const field =
-  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+  "type-body h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 const area =
-  "type-body min-h-20 w-full rounded-xl border border-[#d5dfeb] bg-white p-3 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
+  "type-body min-h-20 w-full rounded-xl border border-[#d5dfeb] bg-white p-3 text-[13px] text-[#0a285a] outline-none focus:border-[#0a285a]";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -140,7 +140,7 @@ function NewStore() {
         <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.backToVendors")}
       </Link>
 
-      <h1 className="mt-3 text-xl font-extrabold">{t("admin.newStore")}</h1>
+      <h1 className="mt-3 text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.newStore")}</h1>
       <p className="mt-1 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("admin.newStoreIntro")}</p>
 
       <Group title={t("admin.storeDetails")}>

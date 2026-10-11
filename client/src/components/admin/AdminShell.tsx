@@ -17,8 +17,9 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, BadgeCheck, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
-import type { ReactNode } from "react";
+import { logoImage } from "@/lib/brandAssets";
+import { ArrowLeft, BadgeCheck, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
@@ -63,6 +64,7 @@ export function AdminShell({ need, children }: {
 }) {
   const { t } = useTranslation();
   const [location] = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   /*
    * The demo build is a signed-out guest everywhere — there is no server to
@@ -117,83 +119,146 @@ export function AdminShell({ need, children }: {
     );
   }
 
-  const links = ([
-    { href: "/admin", label: "admin.overview", icon: <Gauge className="size-4" />, need: "product.view" },
-    { href: "/admin/products", label: "admin.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
-    { href: "/admin/stock", label: "admin.stock", icon: <PackageSearch className="size-4" />, need: "product.view" },
-    /* Above the review queue and below stock: what a seller opens the portal
-       to do most days is pack what somebody bought. */
-    { href: "/admin/orders", label: "admin.orders", icon: <Receipt className="size-4" />, need: "product.view" },
-    /* The delivery company's own board (2.2, 3.4.2). A courier clears
-       `delivery.view` and nothing else, so this is the only link they see. */
-    { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
-    /* Stock NetLet holds (4.2): a manager sends it, NetLet runs the floor. */
-    { href: "/admin/fulfilment", label: "fulfilment.title", icon: <Warehouse className="size-4" />, need: ["fulfilment.send", "fulfilment.operate"] },
-    { href: "/admin/returns", label: "admin.returns", icon: <RotateCcw className="size-4" />, need: "returns.handle" },
-    { href: "/admin/claims", label: "admin.claims", icon: <ShieldAlert className="size-4" />, need: ["delivery.view", "delivery.fileClaim"] },
-    { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
-    { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
-    { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
-    { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
-    { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
-    /* NetLet's own inbox (3.5.1); a seller's conversations are the line below. */
-    { href: "/admin/membership", label: "membership.title", icon: <BadgeCheck className="size-4" />, need: "membership.manage" },
-    { href: "/admin/support", label: "support.inboxTitle", icon: <LifeBuoy className="size-4" />, need: "support.answer" },
-    { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
-    { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
-    { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
-    { href: "/admin/applications", label: "admin.applications", icon: <ClipboardList className="size-4" />, need: "platform.manageUsers" },
-    { href: "/admin/finance", label: "admin.finance", icon: <Coins className="size-4" />, need: "platform.viewAll" },
-    /* A store's manager reaches this one too: when their money comes is theirs to know. */
-    { href: "/admin/payouts", label: "admin.payoutsPage", icon: <Landmark className="size-4" />, need: "payouts.view" },
-    { href: "/admin/invoices", label: "admin.invoices", icon: <FileText className="size-4" />, need: "platform.viewAll" },
-    { href: "/admin/promotions", label: "admin.promotions", icon: <Ticket className="size-4" />, need: "platform.viewAll" },
-    /* A store's owner books here; an administrator sees every store's bookings. */
-    { href: "/admin/ads", label: "admin.ads", icon: <Sparkles className="size-4" />, need: "ads.book" },
-    { href: "/admin/affiliates", label: "admin.affiliates", icon: <Megaphone className="size-4" />, need: "affiliate.manage" },
-    { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
-    { href: "/admin/subscriptions", label: "subscriptions.adminTitle", icon: <Repeat className="size-4" />, need: "platform.configure" },
-    { href: "/admin/features", label: "admin.features", icon: <ToggleRight className="size-4" />, need: "platform.configure" },
-    { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
-  ] satisfies { href: string; label: MessageKey; icon: ReactNode; need: Capability | Capability[] }[])
-    .filter(link => canAny(actor, link.need));
+  /*
+   * Grouped, because the flat list had grown to twenty-eight links in one
+   * column — the order a feature was built in, not the order anybody works.
+   * Each group is what one kind of task reaches for, and a group a person
+   * cannot use any of disappears with its heading.
+   */
+  const groups = ([
+    { label: null, links: [
+      { href: "/admin", label: "admin.overview", icon: <Gauge className="size-4" />, need: "product.view" },
+    ] },
+    { label: "admin.navCatalogue", links: [
+      { href: "/admin/products", label: "admin.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
+      { href: "/admin/stock", label: "admin.stock", icon: <PackageSearch className="size-4" />, need: "product.view" },
+      { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
+      { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
+      { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
+    ] },
+    /* What a seller opens the portal to do most days is pack what somebody
+       bought, so this group comes straight after the shelf. */
+    { label: "admin.navOrders", links: [
+      { href: "/admin/orders", label: "admin.orders", icon: <Receipt className="size-4" />, need: "product.view" },
+      /* The delivery company's own board (2.2, 3.4.2). A courier clears
+         `delivery.view` and nothing else, so this is the only link they see. */
+      { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
+      /* Stock NetLet holds (4.2): a manager sends it, NetLet runs the floor. */
+      { href: "/admin/fulfilment", label: "fulfilment.title", icon: <Warehouse className="size-4" />, need: ["fulfilment.send", "fulfilment.operate"] },
+      { href: "/admin/returns", label: "admin.returns", icon: <RotateCcw className="size-4" />, need: "returns.handle" },
+      { href: "/admin/claims", label: "admin.claims", icon: <ShieldAlert className="size-4" />, need: ["delivery.view", "delivery.fileClaim"] },
+      { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
+    ] },
+    { label: "admin.navCustomers", links: [
+      { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
+      { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
+      /* NetLet's own inbox (3.5.1); a seller's conversations are the line above. */
+      { href: "/admin/support", label: "support.inboxTitle", icon: <LifeBuoy className="size-4" />, need: "support.answer" },
+      { href: "/admin/membership", label: "membership.title", icon: <BadgeCheck className="size-4" />, need: "membership.manage" },
+    ] },
+    { label: "admin.navMoney", links: [
+      { href: "/admin/finance", label: "admin.finance", icon: <Coins className="size-4" />, need: "platform.viewAll" },
+      /* A store's manager reaches this one too: when their money comes is theirs to know. */
+      { href: "/admin/payouts", label: "admin.payoutsPage", icon: <Landmark className="size-4" />, need: "payouts.view" },
+      { href: "/admin/invoices", label: "admin.invoices", icon: <FileText className="size-4" />, need: "platform.viewAll" },
+      { href: "/admin/promotions", label: "admin.promotions", icon: <Ticket className="size-4" />, need: "platform.viewAll" },
+      /* A store's owner books here; an administrator sees every store's bookings. */
+      { href: "/admin/ads", label: "admin.ads", icon: <Sparkles className="size-4" />, need: "ads.book" },
+      { href: "/admin/affiliates", label: "admin.affiliates", icon: <Megaphone className="size-4" />, need: "affiliate.manage" },
+    ] },
+    { label: "admin.navPlatform", links: [
+      { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
+      { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
+      { href: "/admin/applications", label: "admin.applications", icon: <ClipboardList className="size-4" />, need: "platform.manageUsers" },
+      { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
+      { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
+      { href: "/admin/subscriptions", label: "subscriptions.adminTitle", icon: <Repeat className="size-4" />, need: "platform.configure" },
+      { href: "/admin/features", label: "admin.features", icon: <ToggleRight className="size-4" />, need: "platform.configure" },
+    ] },
+  ] satisfies { label: MessageKey | null; links: { href: string; label: MessageKey; icon: ReactNode; need: Capability | Capability[] }[] }[])
+    .map(group => ({ ...group, links: group.links.filter(link => canAny(actor, link.need)) }))
+    .filter(group => group.links.length > 0);
+
+  /* A product's own page is still Products: the link stays marked on every
+     page under it, which the exact match used to drop the moment a row was
+     opened. Overview is the one that must match exactly, or it would be
+     marked everywhere. */
+  const isActive = (href: string) => location === href || (href !== "/admin" && location.startsWith(`${href}/`));
+  const current = groups.flatMap(group => group.links).find(link => isActive(link.href));
+
+  const navList = (
+    <div className="space-y-5">
+      {groups.map(group => (
+        <div key={group.label ?? "top"}>
+          {group.label ? <p className="mb-1.5 px-3 text-[12px] font-semibold ink-muted">{t(group.label)}</p> : null}
+          <ul className="space-y-0.5">
+            {group.links.map(link => {
+              const active = isActive(link.href);
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-semibold transition ${active ? "bg-[#0a285a] text-white" : "text-[#3d5376] hover:bg-[#e7edf5] hover:text-[#0a285a]"}`}
+                  >
+                    <span aria-hidden className="shrink-0">{link.icon}</span>{t(link.label)}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95">
-        <div className="container flex h-[64px] items-center gap-4">
+      <header className="sticky top-0 z-40 border-b border-[#e1e7ef] bg-white">
+        <div className="container flex h-16 items-center gap-3 sm:gap-4">
+          <Link href="/admin" className="flex shrink-0 items-center gap-2.5" aria-label={t("admin.overview")}>
+            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-7 w-auto object-contain" />
+          </Link>
+          <span aria-hidden className="hidden h-6 w-px bg-[#e1e7ef] sm:block" />
           {/* The label hides below `sm`, leaving an arrow with no accessible
               name at all — on every admin page, on a phone. The `aria-label`
               is the same string the span shows, so WCAG 2.5.3 holds when it
               is visible and there is still a name when it is not. */}
-          <Link href="/" aria-label={t("admin.backToStore")} className="flex items-center gap-2 text-sm font-extrabold">
-            <ArrowLeft className="size-4 rtl:-scale-x-100" />
+          <Link href="/" aria-label={t("admin.backToStore")} className="flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a]">
+            <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
             <span className="hidden sm:inline">{t("admin.backToStore")}</span>
           </Link>
-          <span className="ms-auto text-[11px] font-semibold text-[#536b8c]">
+          <span className="ms-auto hidden truncate text-[13px] text-[#536b8c] md:inline">
             {user?.name || user?.email ? t("admin.signedInAs", { name: user?.name ?? user?.email ?? "" }) : null}
           </span>
-          <span className="rounded-full bg-[#e7edf5] px-2.5 py-1 text-[10px] font-extrabold text-[#0a285a]">
+          <span className="ms-auto shrink-0 rounded-full bg-[#e7edf5] px-2.5 py-1 text-[12px] font-semibold text-[#0a285a] md:ms-0">
             {t(roleLabelKey(actor))}
           </span>
         </div>
       </header>
 
-      <div className="container grid gap-6 py-6 lg:grid-cols-[210px_minmax(0,1fr)]">
-        <nav aria-label={t("admin.title")} className="hide-scrollbar flex gap-2 overflow-x-auto lg:flex-col lg:overflow-visible">
-          {links.map(link => {
-            const active = location === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                aria-current={active ? "page" : undefined}
-                className={`pressable inline-flex shrink-0 items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-[13px] font-bold ${active ? "glass glass-navy" : "text-[#536b8c] hover:bg-[#e7edf5]"}`}
-              >
-                {link.icon}{t(link.label)}
-              </Link>
-            );
-          })}
+      <div className="container grid gap-6 py-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:py-8">
+        <nav aria-label={t("admin.title")} className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pb-6">
+          {/* Below `lg` the menu folds into one button naming where you are:
+              twenty-eight links in a sideways strip was a list nobody could
+              see the end of. */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen(open => !open)}
+            aria-expanded={menuOpen}
+            aria-controls="admin-menu"
+            className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-[#cfd9e6] bg-white px-4 text-[14px] font-semibold lg:hidden"
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <Menu className="size-4 shrink-0" aria-hidden />
+              <span className="truncate">{current ? t(current.label) : t("admin.menu")}</span>
+            </span>
+            <ChevronDown className={`size-4 shrink-0 transition ${menuOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+          <div id="admin-menu" className={`${menuOpen ? "mt-2 block rounded-xl border border-[#e1e7ef] bg-white p-2" : "hidden"} lg:mt-0 lg:block lg:border-0 lg:bg-transparent lg:p-0`}>
+            {navList}
+          </div>
         </nav>
         <section className="min-w-0">{children(actor)}</section>
       </div>
