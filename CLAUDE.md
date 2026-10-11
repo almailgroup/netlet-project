@@ -596,11 +596,15 @@ said "Small upgrades. A brighter everyday." over blurred colour blobs: a slogan
 where a shopper looks for something to tap. `DepartmentCards` is six tiles —
 the five departments and "All departments" — three to a row on a phone and six
 on a wide screen, each a link. **The art is a file per department**,
-`client/public/departments/<slug>.webp`, so a real photograph replaces one by
-dropping a file of the same name. Until then each pairs two objects from
-Microsoft's Fluent 3D emoji (MIT, licence beside the files), composited and
-saved as WebP at about 16 KB each; they are the first paint, so they load
-eagerly. The page's `h1` is the shop's name, for a screen reader's outline; the
+`client/public/departments/<slug>.webp`, so a picture is replaced by dropping
+a file of the same name. Each is a few of the department's typical goods as
+soft, rounded 3D renders in their natural colours — the owner's choice over a
+version held to white, navy and orange, which read as beige on white cards.
+They arrive as transparent squares and are trimmed to the objects and fitted
+into one 480 × 360 frame, so every card's picture is the same size; about
+25 KB each, loaded eagerly as the first paint. A set made as one grid has to be
+redone as separate images: cutting the grid apart clipped a sneaker and left a
+sliver of it beside the grocery basket. The page's `h1` is the shop's name, for a screen reader's outline; the
 banner used to carry it.
 
 Then a Deals shelf that scrolls sideways, the new arrivals as a grid to browse,

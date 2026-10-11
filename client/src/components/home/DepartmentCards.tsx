@@ -8,10 +8,12 @@
  * departments as pictures, big enough to hit with a thumb, and so does this.
  *
  * **The art is a file per department**, `client/public/departments/<slug>.webp`,
- * so a real photograph replaces it by dropping a file with the same name — no
- * code change. Until then each card pairs two objects from Microsoft's Fluent
- * 3D emoji (MIT, licence beside the files), composited and saved as WebP at
- * about 16 KB each. They are the page's first paint, so they load eagerly.
+ * so a picture is replaced by dropping a file with the same name — no code
+ * change. Each is a few of the department's typical goods as soft, rounded 3D
+ * renders in their natural colours, on a transparent background, trimmed to
+ * the objects and fitted into the same 480 × 360 frame so no card's picture
+ * looks bigger than its neighbours'. About 25 KB each; they are the page's
+ * first paint, so they load eagerly.
  *
  * Every card is a link, so it can be opened in a new tab. "All departments"
  * comes last, where a shopper who did not find theirs looks next.
