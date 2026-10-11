@@ -14,9 +14,10 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Minus, Plus } from "lucide-react";
+import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 
-/** Nobody buys a hundred lamps from a product card; a typo could. */
-export const MAX_QUANTITY = 99;
+/** Nobody buys a hundred lamps from a product card; a typo could. The server's own ceiling. */
+export const MAX_QUANTITY = MAX_LINE_QUANTITY;
 
 export function QuantityStepper({ value, onChange, size = "regular", disabled = false }: {
   value: number;

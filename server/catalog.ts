@@ -37,7 +37,7 @@ import {
   toStorefrontProduct,
   type LocalePick,
 } from "../shared/commerce/fromInventory.js";
-import type { Cart, CartItem, Collection, Product } from "../shared/commerce/types.js";
+import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Product } from "../shared/commerce/types.js";
 import type { Measure } from "../shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
@@ -634,7 +634,7 @@ async function putLines(
            set is still in the basket and buying another of one member should
            not cancel it. */
         set: {
-          quantity: sql`${cartItems.quantity} + ${line.quantity}`,
+          quantity: sql`least(${cartItems.quantity} + ${line.quantity}, ${MAX_LINE_QUANTITY})`,
           bundleId: line.bundleId ?? sql`${cartItems.bundleId}`,
           updatedAt: new Date(),
         },

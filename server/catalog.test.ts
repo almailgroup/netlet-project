@@ -186,6 +186,14 @@ describe("the cart", () => {
     expect(after?.items[0].quantity).toBe(3);
   });
 
+  /* The stepper stops at 99; adding again used to add without limit. */
+  it("stops a line at the ceiling however often it is added to", async () => {
+    const created = await catalog.createCart([{ variantId: String(ids.lampSmall), quantity: 90 }]);
+    await catalog.addCartLines(created!.id, [{ variantId: String(ids.lampSmall), quantity: 90 }]);
+    const after = await catalog.addCartLines(created!.id, [{ variantId: String(ids.lampSmall), quantity: 90 }]);
+    expect(after?.items[0].quantity).toBe(99);
+  });
+
   it("refuses a variant belonging to a draft product", async () => {
     const cart = await catalog.createCart([
       { variantId: String(ids.lampSmall), quantity: 1 },

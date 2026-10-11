@@ -24,6 +24,7 @@ import {
   updateCartLines,
 } from "../catalog.js";
 import { publicProcedure, router } from "../_core/trpc.js";
+import { MAX_LINE_QUANTITY } from "../../shared/commerce/types.js";
 import { bundlesForVariant } from "../bundles.js";
 import { AddressError, setLineDestination } from "../addresses.js";
 import { TRPCError } from "@trpc/server";
@@ -38,7 +39,7 @@ const localeSchema = z.enum(["en", "ar"]).optional();
 
 const cartLineInputSchema = z.object({
   variantId: rowIdText,
-  quantity: z.number().int().min(1).max(99),
+  quantity: z.number().int().min(1).max(MAX_LINE_QUANTITY),
   /* The optional extras ticked on this line (3.1.2). Ids only — the price is
      read from the catalog, and an id the product does not offer is dropped. */
   addonIds: z.array(rowIdText).max(20).optional(),
@@ -50,7 +51,7 @@ const cartLineInputSchema = z.object({
 const cartLineUpdateSchema = z.object({
   lineId: rowIdText,
   /** 0 means "remove this line" — the route forwards to removeLines. */
-  quantity: z.number().int().min(0).max(99),
+  quantity: z.number().int().min(0).max(MAX_LINE_QUANTITY),
 });
 
 export const commerceRouter = router({

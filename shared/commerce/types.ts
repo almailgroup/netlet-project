@@ -15,6 +15,13 @@ import type { DeliverySpeed } from "./deliverySpeed.js";
  * number only when calling `Intl.NumberFormat`.
  */
 
+/**
+ * The most of one thing a single cart line holds. The stepper stops here and
+ * so does the server, which used to add to a line without limit: pressing Add
+ * on a product already in the bag added another 99 every time.
+ */
+export const MAX_LINE_QUANTITY = 99;
+
 export type Money = {
   amount: string; // decimal string, e.g. "385.00"
   currencyCode: string; // ISO 4217, e.g. "USD"
