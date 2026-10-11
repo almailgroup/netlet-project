@@ -58,7 +58,7 @@ export function MobileTabBar() {
       key: "account",
       label: t("nav.account"),
       icon: <UserRound className="size-5" />,
-      active: location === "/account",
+      active: location === "/account" || location.startsWith("/account/"),
       /* Unread replies, from sellers and from NetLet: on a phone this tab is
          the only account control there is. */
       badge: signals.unreadMessages + signals.unreadSupport,

@@ -111,7 +111,7 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
             {book.data && book.data.length === 0 ? (
               <p className="text-[12px] text-[#0a285a]">
                 {t("subscribe.needAddress")}{" "}
-                <Link href="/account#addresses" className="font-extrabold ink-accent underline underline-offset-2">{t("subscribe.addAddress")}</Link>
+                <Link href="/account/addresses" className="font-extrabold ink-accent underline underline-offset-2">{t("subscribe.addAddress")}</Link>
               </p>
             ) : (
               <label className="block">

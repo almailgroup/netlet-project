@@ -169,11 +169,11 @@ export function AccountMenu() {
           onKeyDown={onMenuKey}
           className="absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-[#d5dfeb] bg-white p-1.5 shadow-[0_18px_40px_rgba(10,40,90,.16)]"
         >
-          {entry("/account#orders", <Package className="size-4" />, "account.sectionOrders", signals.onTheWay ? t("header.onTheWay", { count: signals.onTheWay }) : null)}
-          {entry("/account#messages", <MessageCircle className="size-4" />, "chat.sectionMessages", signals.unreadMessages ? t("header.unreadCount", { count: signals.unreadMessages }) : null)}
+          {entry("/account/orders", <Package className="size-4" />, "account.sectionOrders", signals.onTheWay ? t("header.onTheWay", { count: signals.onTheWay }) : null)}
+          {entry("/account/messages", <MessageCircle className="size-4" />, "chat.sectionMessages", signals.unreadMessages ? t("header.unreadCount", { count: signals.unreadMessages }) : null)}
           {/* Only while NetLet has answered and the shopper has not read it:
               a standing link to support is on the account page and the footer. */}
-          {signals.unreadSupport ? entry("/account#help", <LifeBuoy className="size-4" />, "support.section", t("header.unreadCount", { count: signals.unreadSupport })) : null}
+          {signals.unreadSupport ? entry("/account/help", <LifeBuoy className="size-4" />, "support.section", t("header.unreadCount", { count: signals.unreadSupport })) : null}
           {entry("/account", <UserRound className="size-4" />, "header.menuAccount")}
           {portal ? (
             <>

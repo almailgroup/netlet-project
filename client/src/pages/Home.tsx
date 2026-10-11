@@ -180,7 +180,7 @@ function DeliveryStrip() {
         <li className={item}><span className={icon}><Wallet className="size-5" aria-hidden /></span><span className="text-sm font-bold text-[#0a285a]">{t("home.payOnDelivery")}</span></li>
         <li className={item}><span className={icon}><RotateCcw className="size-5" aria-hidden /></span><span className="text-sm font-bold text-[#0a285a]">{t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</span></li>
         <li>
-          <Link href="/account#help" className={`${item} h-full hover:bg-[#f7f9fc]`}>
+          <Link href="/account/help" className={`${item} h-full hover:bg-[#f7f9fc]`}>
             <span className={icon}><LifeBuoy className="size-5" aria-hidden /></span>
             <span className="text-sm font-bold text-[#0a285a]">{t("support.section")}</span>
             <ChevronRight className="ms-auto size-4 text-[#536b8c] rtl:-scale-x-100" aria-hidden />

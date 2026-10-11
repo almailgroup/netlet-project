@@ -280,8 +280,9 @@ also decides what delivery costs, which made "only on Home, only on a wide
 screen" the wrong answer once delivery was priced per seller. `StoreHeader` is
 the one copy; `activeDepartment` marks the department a page is in, and a
 search marks none. Checkout opts out and keeps a bare header: every extra exit
-on a payment page is an invitation to take it. The account page keeps its own
-too, as a settings page with a way back.
+on a payment page is an invitation to take it. The account pages wear it too —
+they kept a bare "settings page" header for a long time, which took the search,
+the cart and the phone's tab bar away the moment somebody looked at an order.
 
 **Checkout asks for the region once.** It asked twice: the governorate, which is
 complete and is what the order stores, and an "Area" dropdown with no `value`,
@@ -670,8 +671,9 @@ is, and it does nothing at all in Arabic, which has no capitals.
 **`SiteFooter` is the one footer** — Home, departments and search, the product
 page and Saved; checkout has none, for the bare-header reason. Every entry is an
 anchor that goes somewhere: "Returns", "Contact" and "Our story" used to toast
-"coming soon". The account page scrolls to `#orders`/`#help` once its sections
-exist, since the browser's own jump happens before the session has loaded.
+"coming soon". Links into the account go to its section pages
+(`/account/orders`, `/account/help`); an old `/account#orders` is answered with
+the section page, so a bookmark or an old email is not a dead end.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
@@ -719,6 +721,35 @@ only shows the viewport. Measure `scrollWidth - clientWidth` on every route at
 320 and 390 in both languages; finding the culprit is easier by clipping each
 subtree in turn (`overflow: clip`) than by hiding it, which shifts the layout
 and points at the wrong element.
+
+## The account
+
+**`/account` is a home and one page per section, not one page of everything.**
+It was a single page carrying fifteen sections — orders, messages, help,
+reviews, wishlists, price requests, points, the affiliate programme, selling,
+the profile, addresses, preferences, activity and signing out — 7,000px tall on
+a laptop and 8,300px on a phone, which had no menu at all, so changing a
+password meant scrolling past every parcel ever ordered. The home is now a
+short page of tiles in four groups (shopping, messages and help, rewards,
+account settings), each tile saying in one line what it holds and, where there
+is something, what is waiting — "1 on the way", "2 unread", from
+`useAccountSignals`, the header's own reader. A tile opens
+`/account/<section>`: that section alone, beside a grouped menu on a wide
+screen and under a "← Your account" link on a phone. The section components
+are the ones they always were; only the page around them changed. `ENTRIES` in
+`Account.tsx` is the one list the home and the menu both read.
+
+A section the account does not have — selling for somebody who does not sell,
+a switched-off programme they never joined, or a typo — goes back to the home
+rather than drawing an empty page. Signed out, every account address shows the
+sign-in panel. On a section page the visible title is an `h2` under an
+`sr-only` "Your account" `h1`, which is what the page is, and which keeps the
+cards' own `h3`s one level below a heading.
+
+Signing out is a plain button at the foot of the home and of the menu, still
+asking first. It sat in a red "danger zone" box, which dressed the most
+ordinary thing anybody does on an account page as a hazard. "Your activity"
+went too: its two cards repeated what the Saved and Orders tiles say.
 
 ## Inventory
 
@@ -862,10 +893,10 @@ omission: an order has to exist before a payment can reference it. `orders` and
 page reads its row count and nothing else. It should be folded into orders when
 tracking becomes real.
 
-**Orders and returns are one section on `/account`, not two.** A return is
+**Orders and returns are one section of the account, not two.** A return is
 something you do *to* an order rather than a separate pile of things, and a
 Returns tab is empty for everybody who has never returned anything — which
-teaches people not to look. It is the *first* section, ahead of the settings:
+teaches people not to look. It is the *first* tile, ahead of the settings:
 somebody opening their account on a shop is usually asking where a parcel is,
 not changing a display name.
 

@@ -63,7 +63,7 @@ export default function Invoice() {
       <main id="main" className="container py-8 sm:py-12 print:p-0">
         <div className="mx-auto max-w-3xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
-            <Link href="/account#orders" className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
+            <Link href="/account/orders" className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
               <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("invoice.back")}
             </Link>
             {isAuthenticated ? (

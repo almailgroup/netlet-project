@@ -213,6 +213,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/account" component={Account} />
+        <Route path="/account/:section" component={Account} />
         <Route path="/saved" component={Saved} />
         <Route path="/gifts/:token" component={GiftList} />
         <Route path="/gifts" component={GiftList} />

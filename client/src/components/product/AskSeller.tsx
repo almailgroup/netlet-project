@@ -48,7 +48,7 @@ export function AskSeller({ productId, vendor }: { productId: string; vendor: st
       ) : sent ? (
         <p role="status" className="text-[13px] leading-6 text-[#0a285a]">
           {t("chat.sentToSeller", { vendor })}{" "}
-          <Link href="/account#messages" className="font-extrabold ink-accent underline">{t("chat.openMessages")}</Link>
+          <Link href="/account/messages" className="font-extrabold ink-accent underline">{t("chat.openMessages")}</Link>
         </p>
       ) : (
         <>
