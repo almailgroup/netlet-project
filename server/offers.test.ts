@@ -200,6 +200,50 @@ describe("who may answer", () => {
     await expect(offers.answerOffer(acmeManager(), { offerId: view.id, offeredPrice: "70.000" }))
       .rejects.toMatchObject({ refusal: "NOT_OPEN" });
   });
+
+  /* The page stopped offering the form once the window closed; the API went
+     on accepting an answer, which restarted the clock on a request the shop
+     had already shown the shopper as expired. */
+  it("refuses to answer or decline a request past its window", async () => {
+    const view = await ask();
+    await db.update(priceOffers).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(priceOffers.id, view.id));
+    await expect(offers.answerOffer(acmeManager(), { offerId: view.id, offeredPrice: "85.000" }))
+      .rejects.toMatchObject({ refusal: "NOT_OPEN" });
+    await expect(offers.declineOffer(acmeManager(), { offerId: view.id }))
+      .rejects.toMatchObject({ refusal: "NOT_OPEN" });
+  });
+
+  /* The write carries the condition, not only the read before it: a request
+     withdrawn while the seller typed a price stays withdrawn. */
+  it("leaves a request withdrawn between the seller's read and write withdrawn", async () => {
+    const view = await ask();
+    const original = db.update.bind(db);
+    let withdrawnFirst = false;
+    (db as { update: typeof db.update }).update = ((table: Parameters<typeof db.update>[0]) => {
+      if (table === priceOffers && !withdrawnFirst) {
+        withdrawnFirst = true;
+        return {
+          set: (values: Record<string, unknown>) => ({
+            where: (where: unknown) => ({
+              returning: async (fields: unknown) => {
+                await original(priceOffers).set({ status: "withdrawn" }).where(eq(priceOffers.id, view.id));
+                return original(priceOffers).set(values).where(where as never).returning(fields as never);
+              },
+            }),
+          }),
+        } as never;
+      }
+      return original(table);
+    }) as typeof db.update;
+    try {
+      await expect(offers.answerOffer(acmeManager(), { offerId: view.id, offeredPrice: "85.000" }))
+        .rejects.toMatchObject({ refusal: "NOT_OPEN" });
+    } finally {
+      (db as { update: typeof db.update }).update = original;
+    }
+    const [row] = await db.select().from(priceOffers).where(eq(priceOffers.id, view.id));
+    expect(row.status).toBe("withdrawn");
+  });
 });
 
 describe("the inbox", () => {

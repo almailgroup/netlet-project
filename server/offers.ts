@@ -16,7 +16,7 @@
  * `server/inventory.ts` makes, and the same `assertCan` throwing
  * `FORBIDDEN:<capability>` for the router to turn into a 403.
  */
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { priceOffers, products, productVariants, vendors } from "../drizzle/schema.js";
 import {
   acceptableAsk,
@@ -453,7 +453,7 @@ export async function answerOffer(
   if (!acceptableOffer(row.listPrice, input.offeredPrice)) throw new OfferError("OFFER_OUT_OF_RANGE");
 
   const now = new Date();
-  await db
+  const written = await db
     .update(priceOffers)
     .set({
       status: "offered",
@@ -465,7 +465,9 @@ export async function answerOffer(
          and the shopper now has their own, shorter one to use it. */
       expiresAt: offerExpiry(now),
     })
-    .where(eq(priceOffers.id, row.id));
+    .where(stillOpen(row.id, now))
+    .returning({ id: priceOffers.id });
+  if (written.length === 0) throw new OfferError("NOT_OPEN");
 }
 
 /** A refusal, with a reason if the seller gave one. */
@@ -477,15 +479,34 @@ export async function declineOffer(
   if (!db) throw new OfferError("UNAVAILABLE");
 
   const row = await answerable(db, actor, input.offerId);
-  await db
+  const now = new Date();
+  const written = await db
     .update(priceOffers)
     .set({
       status: "declined",
       vendorNote: trimNote(input.note),
-      answeredAt: new Date(),
+      answeredAt: now,
       answeredBy: input.actorUserId ?? null,
     })
-    .where(eq(priceOffers.id, row.id));
+    .where(stillOpen(row.id, now))
+    .returning({ id: priceOffers.id });
+  if (written.length === 0) throw new OfferError("NOT_OPEN");
+}
+
+/**
+ * The request is still the seller's to answer: pending, unused, inside its
+ * window — asked in the write itself. Checked only on the read before, so a
+ * shopper withdrawing a request while the seller typed a price had it come
+ * back to life as an offer, and a request past its window could still be
+ * answered from the API though the page no longer offered the form.
+ */
+function stillOpen(offerId: number, now: Date) {
+  return and(
+    eq(priceOffers.id, offerId),
+    eq(priceOffers.status, "pending"),
+    isNull(priceOffers.usedOnOrderId),
+    or(isNull(priceOffers.expiresAt), gt(priceOffers.expiresAt, now)),
+  );
 }
 
 /** How many are waiting on this seller — the number the portal's overview shows. */
