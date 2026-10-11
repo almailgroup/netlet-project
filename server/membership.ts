@@ -12,6 +12,7 @@ import { memberships, membershipTerms, orders, users } from "../drizzle/schema.j
 import { MAX_GRANT_NOTE, grantWindow, memberUntil, validMonths, type MembershipRow } from "../shared/commerce/membership.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+import { KUWAIT_OFFSET_MS } from "../shared/kuwaitDay.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -156,7 +157,9 @@ export async function programmeReport(actor: Actor, now = new Date()): Promise<{
     .select({ members: sql<number>`count(distinct ${memberships.userId})::int` })
     .from(memberships)
     .where(and(isNull(memberships.cancelledAt), lte(memberships.startsAt, now), gt(memberships.endsAt, now)));
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  /* This month as Kuwait counts it: the first starts at 9pm UTC the night before. */
+  const local = new Date(now.getTime() + KUWAIT_OFFSET_MS);
+  const monthStart = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) - KUWAIT_OFFSET_MS);
   const [sums] = await db
     .select({ orders: sql<number>`count(*)::int`, waived: sql<string>`coalesce(sum(${orders.deliveryWaived}), 0)::numeric(12,3)::text` })
     .from(orders)

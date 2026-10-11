@@ -28,6 +28,7 @@
  * `shared/commerce/preorder.ts` already carries that date — two promises about
  * one parcel is how a shopper ends up believing the wrong one.
  */
+import { KUWAIT_OFFSET_MS } from "../kuwaitDay.js";
 
 /** The bands a seller may pick, slowest last. */
 export const DELIVERY_SPEEDS = [
@@ -75,9 +76,13 @@ export function windowFor(speed: DeliverySpeed): { min: number; max: number } | 
   return WINDOW[speed];
 }
 
-/** Friday and Saturday, which is the weekend this shop sells into. */
+/**
+ * Friday and Saturday, which is the weekend this shop sells into — on Kuwait's
+ * calendar. Read off the UTC day, an order placed at 1am on a Kuwaiti Friday
+ * was a Thursday order and was promised "today".
+ */
 export function isWeekend(date: Date): boolean {
-  const day = date.getUTCDay();
+  const day = new Date(date.getTime() + KUWAIT_OFFSET_MS).getUTCDay();
   return day === 5 || day === 6;
 }
 
@@ -89,7 +94,9 @@ export function isWeekend(date: Date): boolean {
  * the warehouse is shut.
  */
 export function addBusinessDays(from: Date, days: number): Date {
-  const date = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  /* The Kuwaiti day it was placed on, held as that day's UTC midnight. */
+  const local = new Date(from.getTime() + KUWAIT_OFFSET_MS);
+  const date = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()));
   let left = Math.max(0, Math.trunc(days));
   while (isWeekend(date)) date.setUTCDate(date.getUTCDate() + 1);
   while (left > 0) {

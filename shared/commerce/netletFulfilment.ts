@@ -50,6 +50,7 @@
  */
 
 import { fromFils, toFils } from "../money.js";
+import { kuwaitDay } from "../kuwaitDay.js";
 
 export const INBOUND_STATUSES = ["announced", "received", "cancelled"] as const;
 export type InboundStatus = (typeof INBOUND_STATUSES)[number];
@@ -97,7 +98,7 @@ export function mayMoveLine(centreId: number | null, actorKind: "admin" | "vendo
  */
 const ALPHABET = "ABCDEFGHJKMNPQRTUVWXYZ2346789";
 export function inboundReference(when: Date, random: () => number = Math.random): string {
-  const day = `${when.getUTCFullYear()}${String(when.getUTCMonth() + 1).padStart(2, "0")}${String(when.getUTCDate()).padStart(2, "0")}`;
+  const day = kuwaitDay(when).replaceAll("-", "");
   let tail = "";
   for (let index = 0; index < 5; index += 1) tail += ALPHABET[Math.floor(random() * ALPHABET.length)];
   return `IN-${day}-${tail}`;

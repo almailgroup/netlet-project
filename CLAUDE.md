@@ -2853,6 +2853,14 @@ formatted in the browser's own zone read as the day before to anybody west of
 Greenwich, an administrator travelling included. A review's date was the last
 one still formatted on its own.
 
+The server counts days the same way. An order reference, an inbound
+shipment's reference, the delivery band's business days and the membership
+desk's "this month" all read the UTC calendar, so an order placed at 1am on a
+Kuwaiti Friday carried Thursday's date in its reference — beside a list that
+said Friday — and was promised a same-day dispatch on a day the warehouse is
+shut. `kuwaitDay` and `KUWAIT_OFFSET_MS` in `shared/kuwaitDay.ts` are the one
+rule; finance's monthly buckets stay UTC on purpose, and say so.
+
 Merchant data (product titles, spec rows) is in whatever language the merchant
 typed. Specification rows and description text carry `dir="auto"` so each takes
 its own direction and the punctuation lands on the right side.

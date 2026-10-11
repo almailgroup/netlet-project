@@ -55,6 +55,14 @@ describe("the Kuwaiti weekend", () => {
     expect(day(addBusinessDays(WED, 0))).toBe("2026-09-23");
   });
 
+  /* 22:00 UTC on Thursday is 1am on Friday in Kuwait: the warehouse is shut. */
+  it("counts from the day it is in Kuwait, not in UTC", () => {
+    const lateThursday = new Date("2026-09-24T22:00:00Z");
+    expect(isWeekend(lateThursday)).toBe(true);
+    expect(day(addBusinessDays(lateThursday, 0))).toBe("2026-09-27");
+    expect(day(addBusinessDays(new Date("2026-09-23T21:30:00Z"), 0))).toBe("2026-09-24");
+  });
+
   it("refuses to travel backwards on a negative", () => {
     expect(day(addBusinessDays(WED, -3))).toBe("2026-09-23");
   });

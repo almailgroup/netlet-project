@@ -19,6 +19,7 @@ import { addMoney, multiplyMoney, money } from "../money.js";
 import { fulfilmentFor, type StockLevels } from "./preorder.js";
 import { addonsTotal, type ChosenAddon } from "./addons.js";
 import type { FrozenDestination } from "./addresses.js";
+import { kuwaitDay } from "../kuwaitDay.js";
 
 /** A basket line, with everything needed to price and attribute it. */
 export type PriceableLine = {
@@ -274,15 +275,15 @@ export function sliceByVendor(lines: FrozenLine[]): VendorSlice[] {
 const REFERENCE_ALPHABET = "ABCDEFGHJKMNPQRTUVWXYZ2346789";
 
 export function orderReference(when: Date, random: () => number = Math.random): string {
-  const year = when.getUTCFullYear();
-  const month = String(when.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(when.getUTCDate()).padStart(2, "0");
+  /* The day in Kuwait: support reads the date off it, and an order placed at
+     1am Kuwait time read as the day before. */
+  const day = kuwaitDay(when).replaceAll("-", "");
 
   let tail = "";
   for (let index = 0; index < 5; index += 1) {
     tail += REFERENCE_ALPHABET[Math.floor(random() * REFERENCE_ALPHABET.length)];
   }
-  return `NL-${year}${month}${day}-${tail}`;
+  return `NL-${day}-${tail}`;
 }
 
 /**

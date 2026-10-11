@@ -149,8 +149,11 @@ describe("sliceByVendor", () => {
 describe("orderReference", () => {
   const when = new Date("2026-09-15T21:00:00.000Z");
 
-  it("carries the date, so support can find it without a lookup", () => {
-    expect(orderReference(when, () => 0)).toMatch(/^NL-20260915-[A-Z0-9]{5}$/);
+  /* 21:00 UTC on the 15th is midnight on the 16th in Kuwait, and the day
+     support is told is Kuwait's. */
+  it("carries the Kuwaiti date, so support can find it without a lookup", () => {
+    expect(orderReference(when, () => 0)).toMatch(/^NL-20260916-[A-Z0-9]{5}$/);
+    expect(orderReference(new Date("2026-09-15T20:59:59.999Z"), () => 0)).toMatch(/^NL-20260915-/);
   });
 
   /*
