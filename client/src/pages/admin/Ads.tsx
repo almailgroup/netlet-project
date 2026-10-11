@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, Notice, PageHeader, Pill, SectionHeading, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -42,8 +43,6 @@ const STATE_LABEL: Record<BookingState, MessageKey> = {
 };
 
 const SLOT_LABEL: Record<AdSlot, MessageKey> = { home: "ads.slotHome", department: "ads.slotDepartment" };
-
-const field = "glass-field mt-1 h-10 w-full rounded-full px-4 text-sm";
 
 export default function AdminAds() {
   usePageMeta(privatePageMeta("Placements"));
@@ -72,16 +71,12 @@ function Ads({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.ads")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">
-        {t(actor.kind === "admin" ? "ads.noteAdmin" : "ads.noteStore")}
-      </p>
-      <ul className="mt-3 grid max-w-2xl gap-2 text-[12px] text-[#0a285a] sm:grid-cols-2">
+      <PageHeader title={t("admin.ads")} description={t(actor.kind === "admin" ? "ads.noteAdmin" : "ads.noteStore")} />
+      <ul className="mb-6 grid max-w-3xl gap-3 sm:grid-cols-2">
         {(["home", "department"] as const).map(slot => (
-          <li key={slot} className="rounded-xl border border-[#e6e9ef] bg-white px-3 py-2">
-            <span className="font-extrabold">{t(SLOT_LABEL[slot], { department: t("ads.yourDepartment") })}</span>
-            <br />
-            {t("ads.rateLine", { rate: money({ amount: AD_RATES[slot], currencyCode: "KWD" }), places: AD_CAPACITY[slot] })}
+          <li key={slot} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+            <p className="text-[14px] font-bold text-[#0a285a]">{t(SLOT_LABEL[slot], { department: t("ads.yourDepartment") })}</p>
+            <p className="mt-1 text-[13px] text-[#536b8c]">{t("ads.rateLine", { rate: money({ amount: AD_RATES[slot], currencyCode: "KWD" }), places: AD_CAPACITY[slot] })}</p>
           </li>
         ))}
       </ul>
@@ -89,20 +84,24 @@ function Ads({ actor }: { actor: Actor }) {
       {actor.kind === "vendor" ? <BookForm /> : null}
 
       <section className="mt-8" aria-labelledby="ads-bookings">
-        <h2 id="ads-bookings" className="text-sm font-extrabold">{t("ads.bookings")}</h2>
-        <QueryGate queries={[list]}>
-          {() => {
-            const result = list.data;
-            const rows = result?.rows ?? [];
-            if (rows.length === 0) return <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] text-[#536b8c]">{t("ads.none")}</p>;
-            return (
-              <div className="mt-3 space-y-2">
-                <ul className="space-y-2">{rows.map(row => <BookingRow key={row.id} booking={row} showStore={actor.kind === "admin"} />)}</ul>
-                {result ? <Pager page={result} onPage={setPage} /> : null}
-              </div>
-            );
-          }}
-        </QueryGate>
+        <SectionHeading><span id="ads-bookings">{t("ads.bookings")}</span></SectionHeading>
+        {list.isLoading ? (
+          <SkeletonRows rows={3} label={t("admin.loading")} />
+        ) : (
+          <QueryGate queries={[list]}>
+            {() => {
+              const result = list.data;
+              const rows = result?.rows ?? [];
+              if (rows.length === 0) return <EmptyState title={t("ads.none")} />;
+              return (
+                <>
+                  <ul className="space-y-3">{rows.map(row => <BookingRow key={row.id} booking={row} showStore={actor.kind === "admin"} />)}</ul>
+                  {result ? <Pager page={result} onPage={setPage} /> : null}
+                </>
+              );
+            }}
+          </QueryGate>
+        )}
       </section>
     </>
   );
@@ -145,68 +144,60 @@ function BookForm() {
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
   return (
-    <section className="mt-6 max-w-2xl rounded-2xl border border-[#e6e9ef] bg-white p-5" aria-labelledby="ads-book">
-      <h2 id="ads-book" className="text-sm font-extrabold">{t("ads.bookTitle")}</h2>
-      <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={event => { event.preventDefault(); if (ready) setConfirming(true); }}>
-        <label className="block sm:col-span-2">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("ads.findProduct")}</span>
-          <input value={search} onChange={event => setSearch(event.target.value)} maxLength={160} className={field} />
-        </label>
-        <label className="block sm:col-span-2">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("ads.product")}</span>
-          {/* Named explicitly: a <label> around a <select> pulls every option
-              into the accessible name otherwise. */}
-          <select aria-label={t("ads.product")} value={productId ?? ""} onChange={event => setProductId(event.target.value ? Number(event.target.value) : null)} className={field}>
-            <option value="">—</option>
-            {(products.data?.rows ?? []).map(product => <option key={product.id} value={product.id}>{product.title}</option>)}
-          </select>
-        </label>
-        <fieldset className="sm:col-span-2">
-          <legend className="text-[11px] font-extrabold text-[#536b8c]">{t("ads.place")}</legend>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {(["home", "department"] as const).map(option => (
-              <label key={option} className={`pressable flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-bold ${slot === option ? "border-[#0a285a] bg-[#eaf1fb]" : "border-[#d5dfeb] bg-white"}`}>
-                <input type="radio" name="ads-slot" value={option} checked={slot === option} onChange={() => setSlot(option)} className="accent-[#0a285a]" />
-                {t(SLOT_LABEL[option], { department: t("ads.yourDepartment") })}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <label className="block">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("ads.startsOn")}</span>
-          <input type="date" value={startsOn} min={today} max={addDays(today, MAX_AD_LEAD_DAYS)} onChange={event => setStartsOn(event.target.value)} required className={field} />
-        </label>
-        <label className="block">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("ads.days", { max: MAX_AD_DAYS })}</span>
-          <input type="number" inputMode="numeric" min={1} max={MAX_AD_DAYS} value={Number.isFinite(days) ? days : ""} onChange={event => setDays(Math.trunc(Number(event.target.value)))} required className={field} />
-        </label>
-
-        <div className="sm:col-span-2" aria-live="polite">
-          {request && validDays && answer ? (
-            <div className="rounded-xl bg-[#f6f8fb] px-4 py-3 text-[12px] leading-6 text-[#0a285a]">
-              <p className="text-sm font-extrabold">
-                {days === 1
-                  ? t("ads.quoteLineOne", { total: amount(answer.cost) })
-                  : t("ads.quoteLine", { total: amount(answer.cost), rate: amount(answer.dailyRate), days })}
-              </p>
-              <p>{run(startsOn, addDays(startsOn, days - 1))}</p>
-              <p className="ink-muted">{t("ads.roomLine", { room: amount(answer.room) })}</p>
-              {answer.problem ? (
-                <p className="mt-1 font-bold text-[#8c2f22]">
-                  {isMessageKey(answer.problem) ? t(answer.problem) : answer.problem}
-                  {answer.fullDays.length ? <> {answer.fullDays.map(day).join(" · ")}</> : null}
-                </p>
-              ) : null}
+    <form className="max-w-3xl" onSubmit={event => { event.preventDefault(); if (ready) setConfirming(true); }}>
+      <Card
+        title={t("ads.bookTitle")}
+        footer={<button type="submit" disabled={!ready || book.isPending} className={buttonClass.primary}>{t("ads.book")}</button>}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("ads.findProduct")} className="sm:col-span-2">
+            <input type="search" dir="auto" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} className={fieldClass} />
+          </Field>
+          <Field label={t("ads.product")} className="sm:col-span-2">
+            <select value={productId ?? ""} onChange={event => setProductId(event.target.value ? Number(event.target.value) : null)} className={fieldClass}>
+              <option value="">—</option>
+              {(products.data?.rows ?? []).map(product => <option key={product.id} value={product.id}>{product.title}</option>)}
+            </select>
+          </Field>
+          <fieldset className="sm:col-span-2">
+            <legend className="text-[13px] font-semibold text-[#0a285a]">{t("ads.place")}</legend>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {(["home", "department"] as const).map(option => (
+                <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-[14px] font-semibold text-[#0a285a] ${slot === option ? "border-[#0a285a] bg-[#f4f7fb]" : "border-[#cfd9e6] bg-white"}`}>
+                  <input type="radio" name="ads-slot" value={option} checked={slot === option} onChange={() => setSlot(option)} className="accent-[#0a285a]" />
+                  {t(SLOT_LABEL[option], { department: t("ads.yourDepartment") })}
+                </label>
+              ))}
             </div>
-          ) : !validDays ? (
-            <p className="text-[12px] font-bold text-[#8c2f22]">{t("ads.badLength")}</p>
-          ) : null}
-        </div>
+          </fieldset>
+          <Field label={t("ads.startsOn")}>
+            <input type="date" value={startsOn} min={today} max={addDays(today, MAX_AD_LEAD_DAYS)} onChange={event => setStartsOn(event.target.value)} required className={fieldClass} />
+          </Field>
+          <Field label={t("ads.days", { max: MAX_AD_DAYS })} error={validDays ? undefined : t("ads.badLength")}>
+            <input type="number" inputMode="numeric" min={1} max={MAX_AD_DAYS} value={Number.isFinite(days) ? days : ""} onChange={event => setDays(Math.trunc(Number(event.target.value)))} required className={fieldClass} />
+          </Field>
 
-        <div className="sm:col-span-2">
-          <button type="submit" disabled={!ready || book.isPending} className="glass-navy type-control pressable rounded-full px-5 py-2 disabled:opacity-50">{t("ads.book")}</button>
+          <div className="sm:col-span-2" aria-live="polite">
+            {request && validDays && answer ? (
+              <div className="rounded-xl border border-[#e1e7ef] bg-[#fafbfd] px-4 py-3 text-[13px] leading-6 text-[#0a285a]">
+                <p className="text-[15px] font-bold">
+                  {days === 1
+                    ? t("ads.quoteLineOne", { total: amount(answer.cost) })
+                    : t("ads.quoteLine", { total: amount(answer.cost), rate: amount(answer.dailyRate), days })}
+                </p>
+                <p>{run(startsOn, addDays(startsOn, days - 1))}</p>
+                <p className="ink-muted">{t("ads.roomLine", { room: amount(answer.room) })}</p>
+                {answer.problem ? (
+                  <Notice tone="danger" className="mt-2">
+                    {isMessageKey(answer.problem) ? t(answer.problem) : answer.problem}
+                    {answer.fullDays.length ? <> {answer.fullDays.map(day).join(" · ")}</> : null}
+                  </Notice>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
-      </form>
+      </Card>
 
       <ConfirmDialog
         open={confirming}
@@ -217,7 +208,7 @@ function BookForm() {
         onClose={() => setConfirming(false)}
         onConfirm={() => request && book.mutate(request)}
       />
-    </section>
+    </form>
   );
 }
 
@@ -238,19 +229,17 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
   });
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4 text-[12px] text-[#0a285a]">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="text-[13px] font-extrabold">
+    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <p className="min-w-0 text-[15px] font-bold">
           {booking.productHandle
-            ? <a href={`/products/${booking.productHandle}`} className="underline underline-offset-2"><bdi>{booking.productTitle}</bdi></a>
+            ? <a href={`/products/${booking.productHandle}`} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
             : <bdi>{booking.productTitle}</bdi>}
-          {showStore ? <span className="font-bold ink-muted"> · <bdi>{booking.vendorName}</bdi></span> : null}
+          {showStore ? <span className="text-[13px] font-semibold ink-muted"> · <bdi>{booking.vendorName}</bdi></span> : null}
         </p>
-        <span className={`rounded-full px-3 py-1 text-[11px] font-extrabold ${booking.state === "running" ? "bg-[#e6f2e7] text-[#2f5d33]" : "bg-[#e7edf5] text-[#0a285a]"}`}>
-          {t(STATE_LABEL[booking.state])}
-        </span>
+        <Pill tone={booking.state === "running" ? "good" : booking.state === "upcoming" ? "navy" : "neutral"}>{t(STATE_LABEL[booking.state])}</Pill>
       </div>
-      <p className="mt-1">
+      <p className="mt-1 text-[#3d5376]">
         {t(SLOT_LABEL[booking.slot], { department: (isArabic ? booking.departmentNameAr : null) ?? booking.departmentName ?? t("ads.yourDepartment") })}
         {" · "}
         {/* A run cancelled before it started has no days; it reads as booked. */}
@@ -260,14 +249,16 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
         {t("ads.costLine", { accrued: amount(booking.accrued), total: amount(booking.total), deducted: amount(booking.deducted) })}
       </p>
       {booking.cancellable ? (
-        <button type="button" onClick={() => setConfirming(true)} className="glass pressable type-control mt-3 rounded-full px-4 py-2">
-          {t(showStore ? "ads.takeDown" : "ads.cancel")}
-        </button>
+        <div className="mt-3 border-t border-[#eef1f5] pt-3">
+          <button type="button" onClick={() => setConfirming(true)} className={smallButtonClass.quietDanger}>
+            {t(showStore ? "ads.takeDown" : "ads.cancel")}
+          </button>
+        </div>
       ) : null}
       <ConfirmDialog
         open={confirming}
         tone="danger"
-        title={t(showStore ? "ads.takeDownTitle" : "ads.cancelTitle", { product: booking.productTitle })}
+        title={t(showStore ? "ads.takeDownTitle" : "ads.cancelTitle", { product: isolate(booking.productTitle) })}
         body={t(booking.state === "upcoming" ? "ads.cancelFree" : "ads.cancelToday")}
         confirmLabel={t(showStore ? "ads.takeDown" : "ads.cancel")}
         pending={cancel.isPending}

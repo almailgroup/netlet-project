@@ -16,6 +16,7 @@
  *
  * Absent from the demo build, which has no server to store a photo on.
  */
+import { fieldClass, smallButtonClass } from "@/components/admin/ui";
 import { useEffect, useRef, useState } from "react";
 import { Factory, ImagePlus, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -92,7 +93,7 @@ export function PhotoUpload({ onUploaded }: { onUploaded: (url: string) => void 
         type="button"
         onClick={() => input.current?.click()}
         disabled={busy !== null}
-        className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold disabled:opacity-60"
+        className={smallButtonClass.secondary}
       >
         {busy === "preparing" ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ImagePlus className="size-4" aria-hidden />}
         {t(busy === "preparing" ? "media.preparing" : "media.upload")}
@@ -119,10 +120,10 @@ export function PhotoUpload({ onUploaded }: { onUploaded: (url: string) => void 
             ))}
           </fieldset>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" onClick={() => void upload()} disabled={busy !== null} className="glass-navy pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2 disabled:opacity-60">
+            <button type="button" onClick={() => void upload()} disabled={busy !== null} className={smallButtonClass.primary}>
               {busy === "uploading" ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t("media.add")}
             </button>
-            <button type="button" onClick={() => setChoice(null)} disabled={busy !== null} className="glass pressable type-control rounded-full px-4 py-2">{t("media.cancel")}</button>
+            <button type="button" onClick={() => setChoice(null)} disabled={busy !== null} className={smallButtonClass.secondary}>{t("media.cancel")}</button>
           </div>
         </div>
       ) : null}
@@ -210,7 +211,7 @@ function ManufacturerImport({ busy, onPick }: { busy: boolean; onPick: (blob: Bl
         type="button"
         onClick={() => setOpen(true)}
         disabled={busy}
-        className="glass pressable inline-flex items-center gap-2 rounded-full border border-[#0a285a]/15 px-4 py-2 text-xs font-extrabold disabled:opacity-60"
+        className={smallButtonClass.secondary}
       >
         <Factory className="size-4" aria-hidden />{t("manufacturer.open")}
       </button>
@@ -225,14 +226,14 @@ function ManufacturerImport({ busy, onPick }: { busy: boolean; onPick: (blob: Bl
       <p className="mt-1 leading-5 ink-muted">{t("manufacturer.hint")}</p>
       <form className="mt-3 flex flex-wrap items-end gap-2" onSubmit={event => { event.preventDefault(); if (pageUrl.trim()) scan.mutate({ url: pageUrl.trim() }); }}>
         <label htmlFor={fieldId} className="block min-w-[220px] flex-1">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("manufacturer.urlLabel")}</span>
-          <input id={fieldId} type="url" inputMode="url" value={pageUrl} onChange={event => setPageUrl(event.target.value)} maxLength={2048} required dir="ltr" placeholder="https://" className="glass-field mt-1 h-10 w-full rounded-full px-4 text-sm" />
+          <span className="block text-[13px] font-semibold text-[#0a285a]">{t("manufacturer.urlLabel")}</span>
+          <input id={fieldId} type="url" inputMode="url" value={pageUrl} onChange={event => setPageUrl(event.target.value)} maxLength={2048} required dir="ltr" placeholder="https://" className={`${fieldClass} mt-1 w-full`} />
         </label>
-        <button type="submit" disabled={!pageUrl.trim() || scan.isPending} className="glass-navy pressable type-control inline-flex items-center gap-2 rounded-full px-4 py-2 disabled:opacity-60">
+        <button type="submit" disabled={!pageUrl.trim() || scan.isPending} className={smallButtonClass.primary}>
           {scan.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
           {t(scan.isPending ? "manufacturer.finding" : "manufacturer.find")}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="glass pressable type-control rounded-full px-4 py-2">{t("manufacturer.close")}</button>
+        <button type="button" onClick={() => setOpen(false)} className={smallButtonClass.secondary}>{t("manufacturer.close")}</button>
       </form>
 
       <div aria-live="polite">
@@ -255,17 +256,17 @@ function ManufacturerImport({ busy, onPick }: { busy: boolean; onPick: (blob: Bl
                         ) : preview.state === "loading" ? (
                           <><LoaderCircle className="size-5 animate-spin text-[#536b8c]" aria-hidden /><span className="sr-only">{t("manufacturer.loadingPreview")}</span></>
                         ) : (
-                          <span className="px-2 text-center text-[11px] leading-4 ink-muted">{tError(preview.reason)}</span>
+                          <span className="px-2 text-center text-[12px] leading-4 ink-muted">{tError(preview.reason)}</span>
                         )}
                       </div>
-                      <p className="mt-1 text-[11px] ink-muted">{t(candidate.source === "product" ? "manufacturer.sourceProduct" : "manufacturer.sourceShare")}</p>
+                      <p className="mt-1 text-[12px] ink-muted">{t(candidate.source === "product" ? "manufacturer.sourceProduct" : "manufacturer.sourceShare")}</p>
                       <button
                         type="button"
                         disabled={preview.state !== "ready" || busy}
                         onClick={() => { if (preview.state === "ready") onPick(preview.blob, candidate.url); }}
                         /* The visible words first, so the name a voice user says is the one they see (WCAG 2.5.3). */
                         aria-label={`${t("manufacturer.use")} ${index + 1}`}
-                        className="glass pressable type-control mt-1 w-full rounded-full px-3 py-1.5 disabled:opacity-50"
+                        className={`${smallButtonClass.secondary} mt-1 w-full`}
                       >
                         {t("manufacturer.use")}
                       </button>

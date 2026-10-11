@@ -20,6 +20,7 @@ export function ConfirmDialog({
   title,
   body,
   confirmLabel,
+  cancelLabel,
   tone = "normal",
   pending = false,
   icon,
@@ -30,6 +31,12 @@ export function ConfirmDialog({
   title: string;
   body: string;
   confirmLabel: string;
+  /**
+   * The safe answer's words, when "Cancel" would collide with the act itself —
+   * "Cancel this item?" over a Cancel button and a confirm button is two
+   * buttons that both say cancel.
+   */
+  cancelLabel?: string;
   /** `danger` for anything that destroys or ends something. */
   tone?: "normal" | "danger";
   pending?: boolean;
@@ -91,7 +98,7 @@ export function ConfirmDialog({
             disabled={pending}
             className="glass pressable inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#d5dfeb] text-sm font-extrabold text-[#0a285a] disabled:opacity-60"
           >
-            {t("common.cancel")}
+            {cancelLabel ?? t("common.cancel")}
           </button>
         </div>
       </div>

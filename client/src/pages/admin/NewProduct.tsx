@@ -297,7 +297,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
                       <Thumb src={url} alt="" className="size-full object-cover" icon={<ImageOff className="size-5 text-[#536b8c]" />} />
                     </div>
                     {index === 0 ? (
-                      <span className="absolute start-1.5 top-1.5 rounded-md bg-[#0a285a] px-1.5 py-0.5 text-[11px] font-semibold text-white">{t("admin.newPhotoCover")}</span>
+                      <span className="absolute start-1.5 top-1.5 rounded-md bg-[#0a285a] px-1.5 py-0.5 text-[12px] font-semibold text-white">{t("admin.newPhotoCover")}</span>
                     ) : (
                       <button
                         type="button"
@@ -418,7 +418,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   <span className={item.done ? "text-[#0a285a]" : "text-[#536b8c]"}>{t(item.key)}</span>
                   <span className="sr-only">{t(item.done ? "admin.newDone" : "admin.newNotYet")}</span>
                   {!item.done ? (
-                    <span className={`ms-auto rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.required ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#eef1f5] text-[#536b8c]"}`}>
+                    <span className={`ms-auto rounded-full px-2 py-0.5 text-[12px] font-semibold ${item.required ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#eef1f5] text-[#536b8c]"}`}>
                       {t(item.required ? "admin.newRequired" : "admin.newRecommended")}
                     </span>
                   ) : null}

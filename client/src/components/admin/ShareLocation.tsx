@@ -12,6 +12,7 @@
  * The panel says exactly who sees it, because a driver deciding whether to
  * share is deciding about their own whereabouts.
  */
+import { smallButtonClass } from "@/components/admin/ui";
 import { useEffect, useRef, useState } from "react";
 import { LocateFixed } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -66,19 +67,19 @@ export function ShareLocation() {
   const visible = on || server.data?.sharing;
 
   return (
-    <section aria-labelledby="share-location" className="mt-4 max-w-2xl rounded-2xl border border-[#e6e9ef] bg-white p-4 text-[12px] text-[#0a285a]">
-      <h2 id="share-location" className="flex items-center gap-2 text-sm font-extrabold">
+    <section aria-labelledby="share-location" className="mb-5 max-w-2xl rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+      <h2 id="share-location" className="flex items-center gap-2 text-[16px] font-bold">
         <LocateFixed className="size-4" aria-hidden />{t("tracking.shareTitle")}
       </h2>
       <p className="mt-1 leading-5 ink-muted">{t("tracking.shareNote")}</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {on ? (
-          <button type="button" onClick={() => { setOn(false); stop.mutate(); setStatus(null); }} className="glass pressable type-control rounded-full px-4 py-2">{t("tracking.stop")}</button>
+          <button type="button" onClick={() => { setOn(false); stop.mutate(); setStatus(null); }} className={smallButtonClass.secondary}>{t("tracking.stop")}</button>
         ) : (
-          <button type="button" onClick={() => { alertProblem(null); setOn(true); }} className="glass-navy pressable type-control rounded-full px-4 py-2">{t("tracking.start")}</button>
+          <button type="button" onClick={() => { alertProblem(null); setOn(true); }} className={smallButtonClass.primary}>{t("tracking.start")}</button>
         )}
         {!on && server.data?.sharing ? (
-          <button type="button" onClick={() => stop.mutate()} className="glass pressable type-control rounded-full px-4 py-2">{t("tracking.clear")}</button>
+          <button type="button" onClick={() => stop.mutate()} className={smallButtonClass.secondary}>{t("tracking.clear")}</button>
         ) : null}
       </div>
       <p role="status" className={`mt-2 ${status?.tone === "problem" ? "font-bold text-[#8c2f22]" : "ink-muted"}`}>

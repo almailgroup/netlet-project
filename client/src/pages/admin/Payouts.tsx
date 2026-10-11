@@ -18,6 +18,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { fieldClass, PageHeader, Pill, smallButtonClass } from "@/components/admin/ui";
 import { Pager } from "@/components/admin/Pager";
 import { PayoutsDue } from "@/components/admin/PayoutsDue";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -37,9 +38,9 @@ type Batch = Outputs["payoutBatches"][number];
 type Prepared = Outputs["preparedPayouts"]["rows"][number];
 type BankFile = Outputs["payoutFiles"]["rows"][number];
 
-const empty = "mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] text-[#536b8c]";
-const quiet = "glass type-control pressable rounded-full px-4 py-2 disabled:opacity-60";
-const primary = "glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60";
+const empty = "mt-3 rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-5 py-8 text-center text-[14px] text-[#536b8c]";
+const quiet = smallButtonClass.secondary;
+const primary = smallButtonClass.primary;
 
 export default function AdminPayouts() {
   usePageMeta(privatePageMeta("Payouts"));
@@ -67,12 +68,11 @@ function Payouts({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.payoutsPage")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t(admin ? "admin.payoutsNoteAdmin" : "admin.payoutsNoteStore")}</p>
+      <PageHeader title={t("admin.payoutsPage")} description={t(admin ? "admin.payoutsNoteAdmin" : "admin.payoutsNoteStore")} />
 
-      <section className="mt-6" aria-labelledby="payouts-ready">
+      <section aria-labelledby="payouts-ready">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="payouts-ready" className="text-sm font-extrabold">{t("admin.payoutsReady")}</h2>
+          <h2 id="payouts-ready" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payoutsReady")}</h2>
           {admin ? <PrepareAll batches={batches.data ?? []} /> : null}
         </div>
         <QueryGate queries={[batches]}>
@@ -88,7 +88,7 @@ function Payouts({ actor }: { actor: Actor }) {
       <div className="mt-8"><PayoutsDue /></div>
 
       <section className="mt-8" aria-labelledby="payouts-history">
-        <h2 id="payouts-history" className="text-sm font-extrabold">{t("admin.payoutsHistory")}</h2>
+        <h2 id="payouts-history" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payoutsHistory")}</h2>
         <QueryGate queries={[history]}>
           {() => {
             const result = history.data;
@@ -157,16 +157,16 @@ function BatchCard({ batch, canPrepare }: { batch: Batch; canPrepare: boolean })
   });
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="font-extrabold"><bdi>{batch.vendorName}</bdi></p>
-        <p className={`text-base font-extrabold ${batch.payable ? "text-[#0a285a]" : "text-[#8c2f22]"}`}><bdi dir="ltr">{amount(batch.total)}</bdi></p>
+        <p className="text-[15px] font-bold text-[#0a285a]"><bdi>{batch.vendorName}</bdi></p>
+        <p className={`text-[16px] font-extrabold ${batch.payable ? "text-[#0a285a]" : "text-[#8c2f22]"}`}><bdi dir="ltr">{amount(batch.total)}</bdi></p>
       </div>
-      <p className="mt-1 text-[12px] text-[#536b8c]">
+      <p className="mt-1 text-[13px] text-[#536b8c]">
         {batch.iban ? <>{t("admin.payoutTo")} <bdi dir="ltr" className="font-mono">{batch.iban}</bdi></> : <span className="font-bold text-[#8c2f22]">{t("admin.payoutNoIban")}</span>}
       </p>
-      {!batch.payable ? <p className="mt-1 text-[12px] font-bold text-[#8c2f22]">{t("admin.payoutOwedBack", { amount: amount(batch.total.replace(/^-/, "")) })}</p> : null}
-      <ul className="mt-3 divide-y divide-[#f0f2f6] text-[12px]">
+      {!batch.payable ? <p className="mt-1 text-[13px] font-semibold text-[#8c2f22]">{t("admin.payoutOwedBack", { amount: amount(batch.total.replace(/^-/, "")) })}</p> : null}
+      <ul className="mt-3 divide-y divide-[#f0f2f6] rounded-xl border border-[#e1e7ef] px-3.5 text-[13px]">
         {batch.lines.map(line => (
           /* By reference, which is unique within a batch: a placement fee has no
              order id to key on. */
@@ -185,7 +185,7 @@ function BatchCard({ batch, canPrepare }: { batch: Batch; canPrepare: boolean })
           <button type="button" onClick={() => setConfirming(true)} disabled={prepare.isPending} className={`${primary} mt-3`}>{t("admin.payoutPrepare")}</button>
         ) : (
           /* Nothing to press until there is somewhere to send it — and the way there, rather than a dead button. */
-          <p className="mt-3 text-[12px] text-[#536b8c]">
+          <p className="mt-3 text-[13px] text-[#536b8c]">
             {t("admin.payoutNeedsIban")} <Link href={`/admin/vendors/${batch.vendorId}`} className="font-bold underline ink-accent">{t("admin.payoutStorePage")}</Link>
           </p>
         )
@@ -218,14 +218,14 @@ function Waiting() {
   return (
     <section className="mt-8" aria-labelledby="payouts-waiting">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="payouts-waiting" className="text-sm font-extrabold">{t("admin.payoutsWaiting")}</h2>
+        <h2 id="payouts-waiting" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payoutsWaiting")}</h2>
         {unfiled > 0 ? (
           <button type="button" onClick={() => makeFile.mutate()} disabled={makeFile.isPending} className={primary}>
             {t("admin.payoutMakeFile", { count: String(unfiled) })}
           </button>
         ) : null}
       </div>
-      <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.payoutsWaitingNote")}</p>
+      <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("admin.payoutsWaitingNote")}</p>
       <QueryGate queries={[prepared]}>
         {() => {
           const result = prepared.data;
@@ -255,12 +255,12 @@ function PreparedCard({ run, onChange }: { run: Prepared; onChange: () => void }
   });
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="font-extrabold"><bdi>{run.vendorName}</bdi></p>
-        <p className="text-base font-extrabold text-[#0a285a]"><bdi dir="ltr">{amount}</bdi></p>
+        <p className="text-[15px] font-bold text-[#0a285a]"><bdi>{run.vendorName}</bdi></p>
+        <p className="text-[16px] font-extrabold text-[#0a285a]"><bdi dir="ltr">{amount}</bdi></p>
       </div>
-      <p className="mt-1 text-[12px] text-[#536b8c]">
+      <p className="mt-1 text-[13px] text-[#536b8c]">
         {t("admin.payoutTo")} <bdi dir="ltr" className="font-mono">{run.iban ?? "—"}</bdi>
         {" · "}
         {run.fileReference ? t("admin.payoutInFile", { reference: run.fileReference }) : t("admin.payoutNotInFile")}
@@ -317,8 +317,8 @@ function SendForm({ id, title, body, target, onDone }: {
   return (
     <form className="flex min-w-0 flex-1 flex-wrap items-end gap-2" onSubmit={event => { event.preventDefault(); if (trimmed) setConfirming(true); }}>
       <label htmlFor={id} className="block min-w-[180px] flex-1">
-        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("admin.payoutReference")}</span>
-        <input id={id} value={reference} onChange={event => setReference(event.target.value)} maxLength={80} required dir="ltr" className="glass-field mt-1 h-10 w-full rounded-full px-4 text-sm" />
+        <span className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.payoutReference")}</span>
+        <input id={id} value={reference} onChange={event => setReference(event.target.value)} maxLength={80} required dir="ltr" className={`${fieldClass} mt-1.5 h-9`} />
       </label>
       <button type="submit" disabled={!trimmed || mark.isPending} className={primary}>{"fileId" in target ? t("admin.payoutMarkFileSent") : t("admin.payoutMarkSent")}</button>
       <ConfirmDialog
@@ -353,9 +353,9 @@ function BankFiles() {
 
   return (
     <section className="mt-8" aria-labelledby="payouts-files">
-      <h2 id="payouts-files" className="text-sm font-extrabold">{t("admin.payoutFiles")}</h2>
-      <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.payoutFilesNote")}</p>
-      {problem ? <p className="mt-1 max-w-2xl text-[12px] leading-5 text-[#8c2f22]">{t("admin.payoutXmlUnavailable")} {tError(problem)}</p> : null}
+      <h2 id="payouts-files" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payoutFiles")}</h2>
+      <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("admin.payoutFilesNote")}</p>
+      {problem ? <p className="mt-1 max-w-2xl text-[13px] leading-5 text-[#8c2f22]">{t("admin.payoutXmlUnavailable")} {tError(problem)}</p> : null}
       <QueryGate queries={[files]}>
         {() => {
           const result = files.data;
@@ -386,12 +386,12 @@ function FileCard({ file, xmlReady }: { file: BankFile; xmlReady: boolean }) {
   const live = file.waiting + file.sent > 0;
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p id={`payout-file-name-${file.id}`} className="font-extrabold"><bdi dir="ltr">{file.reference}</bdi> · <span className="font-bold text-[#536b8c]">{formatDate(file.createdAt)}</span></p>
-        <p className="text-base font-extrabold text-[#0a285a]"><bdi dir="ltr">{money({ amount: file.total, currencyCode: "KWD" })}</bdi></p>
+        <p id={`payout-file-name-${file.id}`} className="text-[15px] font-bold text-[#0a285a]"><bdi dir="ltr">{file.reference}</bdi> · <span className="font-semibold text-[#536b8c]">{formatDate(file.createdAt)}</span></p>
+        <p className="text-[16px] font-extrabold text-[#0a285a]"><bdi dir="ltr">{money({ amount: file.total, currencyCode: "KWD" })}</bdi></p>
       </div>
-      <p className="mt-1 text-[12px] text-[#536b8c]">
+      <p className="mt-1 text-[13px] text-[#536b8c]">
         {t("admin.payoutFileCounts", { waiting: String(file.waiting), sent: String(file.sent), cancelled: String(file.cancelled) })}
       </p>
       {live ? (
@@ -422,19 +422,19 @@ function HistoryRow({ run }: { run: Outputs["payoutHistory"]["rows"][number] }) 
   const formatDate = useDateFormat();
   const when = run.paidAt ?? run.preparedAt;
   return (
-    <details className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+    <details className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
       <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="font-bold">
           <bdi>{run.vendorName}</bdi>{when ? <> · {formatDate(when)}</> : null}
-          {run.status === "prepared" ? <span className="ms-2 rounded-full bg-[#e7edf5] px-2 py-0.5 text-[11px] font-extrabold text-[#0a285a]">{t("admin.payoutBeingSent")}</span> : null}
+          {run.status === "prepared" ? <span className="ms-2"><Pill tone="navy">{t("admin.payoutBeingSent")}</Pill></span> : null}
         </span>
         <bdi dir="ltr" className="font-extrabold">{money({ amount: run.total, currencyCode: "KWD" })}</bdi>
       </summary>
-      <p className="mt-2 text-[12px] text-[#536b8c]">
+      <p className="mt-2 text-[13px] text-[#536b8c]">
         {run.bankReference ? <>{t("admin.payoutReference")}: <bdi dir="ltr">{run.bankReference}</bdi></> : t("admin.payoutBeingSent")}
         {run.iban ? <> · <bdi dir="ltr" className="font-mono">{run.iban}</bdi></> : null}
       </p>
-      <ul className="mt-2 text-[12px]">
+      <ul className="mt-2 text-[13px]">
         {run.lines.map((line, index) => (
           <li key={index} className="flex justify-between gap-3 py-0.5"><bdi dir="ltr">{line.reference}</bdi><bdi dir="ltr">{money({ amount: line.amount, currencyCode: "KWD" })}</bdi></li>
         ))}

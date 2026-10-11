@@ -20,6 +20,8 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { cell, head, Scroller } from "@/components/admin/FinanceTable";
+import { isolate, Notice, PageHeader, smallButtonClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PayoutsDue } from "@/components/admin/PayoutsDue";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { useTranslation, useMoney } from "@/hooks/useTranslation";
@@ -28,7 +30,8 @@ import { privatePageMeta } from "@shared/seo";
 import { takeRate, type MonthTotals, type Totals, type VendorTotals } from "@shared/commerce/finance";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Coins, RotateCcw, Store, Wallet } from "lucide-react";
+import { Banknote, Coins, RotateCcw, Store, Wallet } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export default function AdminFinance() {
@@ -42,26 +45,22 @@ function Finance() {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.financeTitle")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.financeNote")}</p>
+      <PageHeader title={t("admin.financeTitle")} description={t("admin.financeNote")} />
 
       <QueryGate queries={[report]}>
         {() => {
           const data = report.data;
           if (!data) return null;
           return (
-          <div className="mt-6 space-y-8">
+          <div className="space-y-10">
             {data.truncated ? (
               /* Under-reporting silently is the same lie a table showing one
                  page of an answer tells. Say it. */
-              <p className="flex items-start gap-2 rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] px-4 py-3 text-[13px] font-semibold text-[#8c2f22]">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {t("admin.financeTruncated")}
-              </p>
+              <Notice tone="warning">{t("admin.financeTruncated")}</Notice>
             ) : null}
 
             {data.totals.paidLines === 0 && data.totals.refundedLines === 0 ? (
-              <p className="rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+              <p className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-5 py-8 text-center text-[14px] leading-6 text-[#536b8c]">
                 {t("admin.financeEmpty")}
               </p>
             ) : (
@@ -82,7 +81,7 @@ function Finance() {
           exist without a sale behind it — an adjustment, a goodwill credit —
           and a cash-out somebody is waiting on must not be hidden by an empty
           sales table. */}
-      <div className="mt-8">
+      <div className="mt-10">
         <CashOuts />
       </div>
     </>
@@ -91,13 +90,13 @@ function Finance() {
 
 function Tile({ label, value, sub, icon }: { label: string; value: string; sub?: string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-[#d5dfeb] bg-white/70 p-4">
-      <div className="flex items-center gap-2 text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase">
-        <span className="grid size-6 place-items-center rounded-lg bg-[#0a285a]/8 text-[#0a285a]">{icon}</span>
+    <div className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+      <div className="flex items-center gap-2 text-[13px] font-semibold text-[#536b8c]">
+        <span className="grid size-7 place-items-center rounded-lg bg-[#e7edf5] text-[#0a285a]">{icon}</span>
         {label}
       </div>
-      <p className="mt-2 text-xl font-extrabold text-[#0a285a]"><bdi dir="ltr">{value}</bdi></p>
-      {sub ? <p className="mt-0.5 text-[11px] text-[#536b8c]">{sub}</p> : null}
+      <p className="mt-2 text-[22px] leading-8 font-extrabold text-[#0a285a] tabular-nums">{value}</p>
+      {sub ? <p className="mt-0.5 text-[12px] leading-5 text-[#536b8c]">{sub}</p> : null}
     </div>
   );
 }
@@ -163,11 +162,11 @@ function VendorTable({ rows }: { rows: VendorTotals[] }) {
 
   return (
     <section>
-      <h2 id="finance-by-seller" className="text-sm font-extrabold text-[#0a285a]">{t("admin.financeBySeller")}</h2>
+      <h2 id="finance-by-seller" className="text-[16px] font-bold text-[#0a285a]">{t("admin.financeBySeller")}</h2>
       <Scroller labelledBy="finance-by-seller">
         <table className="w-full min-w-[680px] border-collapse">
           <thead>
-            <tr className="border-b border-[#d5dfeb]">
+            <tr className="border-b border-[#e1e7ef]">
               <th scope="col" className={`${head} text-start`}>{t("admin.financeSeller")}</th>
               <th scope="col" className={`${head} text-end`}>{t("admin.financeLinesColumn")}</th>
               <th scope="col" className={`${head} text-end`}>{t("admin.financeSales")}</th>
@@ -179,7 +178,7 @@ function VendorTable({ rows }: { rows: VendorTotals[] }) {
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr key={String(row.vendorId ?? row.vendorName)} className="border-b border-[#eef1f6] last:border-0">
+              <tr key={String(row.vendorId ?? row.vendorName)} className="border-b border-[#f0f2f6] last:border-0">
                 <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}><span dir="auto">{row.vendorName}</span></th>
                 <MoneyRow totals={row} />
               </tr>
@@ -224,15 +223,15 @@ function MonthTable({ rows }: { rows: MonthTotals[] }) {
 
   return (
     <section>
-      <h2 id="finance-by-month" className="text-sm font-extrabold text-[#0a285a]">{t("admin.financeByMonth")}</h2>
+      <h2 id="finance-by-month" className="text-[16px] font-bold text-[#0a285a]">{t("admin.financeByMonth")}</h2>
       {/* UTC, and the page says so: Kuwait is UTC+3, so a sale at 2am on the
           first falls in the previous month by this reckoning. Stating it beats
           a silent local-time conversion inside the arithmetic. */}
-      <p className="mt-1 text-[11px] text-[#536b8c]">{t("admin.financeMonthNote")}</p>
+      <p className="mt-1 text-[12px] text-[#536b8c]">{t("admin.financeMonthNote")}</p>
       <Scroller labelledBy="finance-by-month">
         <table className="w-full min-w-[680px] border-collapse">
           <thead>
-            <tr className="border-b border-[#d5dfeb]">
+            <tr className="border-b border-[#e1e7ef]">
               <th scope="col" className={`${head} text-start`}>{t("admin.financeMonth")}</th>
               <th scope="col" className={`${head} text-end`}>{t("admin.financeLinesColumn")}</th>
               <th scope="col" className={`${head} text-end`}>{t("admin.financeSales")}</th>
@@ -244,7 +243,7 @@ function MonthTable({ rows }: { rows: MonthTotals[] }) {
           </thead>
           <tbody>
             {rows.map(row => (
-              <tr key={row.month} className="border-b border-[#eef1f6] last:border-0">
+              <tr key={row.month} className="border-b border-[#f0f2f6] last:border-0">
                 <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}><bdi dir="ltr">{row.month}</bdi></th>
                 <MoneyRow totals={row} />
               </tr>
@@ -282,12 +281,12 @@ function Payouts() {
         if (!data) return null;
         return (
           <section>
-            <h2 id="finance-payouts" className="text-sm font-extrabold text-[#0a285a]">{t("admin.payouts")}</h2>
-            <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.payoutsNote")}</p>
-            <p className="mt-0.5 text-[11px] ink-muted">{t("admin.payoutWeekStarts")}</p>
+            <h2 id="finance-payouts" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payouts")}</h2>
+            <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("admin.payoutsNote")}</p>
+            <p className="mt-0.5 text-[12px] ink-muted">{t("admin.payoutWeekStarts")}</p>
 
             {data.vendors.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+              <p className="mt-3 rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-5 py-8 text-center text-[14px] leading-6 text-[#536b8c]">
                 {t("admin.payoutsEmpty")}
               </p>
             ) : (
@@ -295,7 +294,7 @@ function Payouts() {
                 <Scroller labelledBy="finance-payouts">
                   <table className="w-full min-w-[680px] border-collapse">
                     <thead>
-                      <tr className="border-b border-[#d5dfeb]">
+                      <tr className="border-b border-[#e1e7ef]">
                         <th scope="col" className={`${head} text-start`}>{t("admin.financeSeller")}</th>
                         <th scope="col" className={`${head} text-start`}>{t("admin.payoutWeekColumn")}</th>
                         <th scope="col" className={`${head} text-end`}>{t("admin.financeLinesColumn")}</th>
@@ -307,7 +306,7 @@ function Payouts() {
                     </thead>
                     <tbody>
                       {data.vendors.flatMap(vendor => vendor.weeks.map((week, index) => (
-                        <tr key={`${vendor.vendorId}-${week.weekStart}`} className="border-b border-[#eef1f6] last:border-0">
+                        <tr key={`${vendor.vendorId}-${week.weekStart}`} className="border-b border-[#f0f2f6] last:border-0">
                           {/* The seller's name is on every row for a screen
                               reader, which announces rows one at a time and
                               would otherwise be told nothing — but hidden
@@ -331,7 +330,7 @@ function Payouts() {
                     </tbody>
                   </table>
                 </Scroller>
-                <p className="mt-2 text-[13px] font-extrabold text-[#0a285a]">
+                <p className="mt-3 text-[15px] font-bold text-[#0a285a]">
                   {t("admin.payoutTotalOwed")}: <bdi dir="ltr">{amount(data.owed)}</bdi>
                 </p>
               </>
@@ -359,12 +358,17 @@ function CashOuts() {
   const formatDate = useDateFormat();
   const owed = trpc.rewards.pendingCashOuts.useQuery({});
   const utils = trpc.useUtils();
+  /* Recording money as sent asks first, the way every other payment on these
+     pages does: it is one press, and it is the record somebody reconciles the
+     bank statement against. */
+  const [settling, setSettling] = useState<{ id: number; name: string; amount: string } | null>(null);
   const settle = trpc.rewards.settleCashOut.useMutation({
     onSuccess: () => {
+      setSettling(null);
       toast.success(t("admin.markPaidDone"));
       void utils.rewards.pendingCashOuts.invalidate();
     },
-    onError: error => toast.error(tError(error.message)),
+    onError: error => { setSettling(null); toast.error(tError(error.message)); },
   });
 
   return (
@@ -373,17 +377,17 @@ function CashOuts() {
         const rows = owed.data ?? [];
         return (
           <section>
-            <h2 id="finance-cashouts" className="text-sm font-extrabold text-[#0a285a]">{t("admin.cashOuts")}</h2>
-            <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">{t("admin.cashOutsNote")}</p>
+            <h2 id="finance-cashouts" className="text-[16px] font-bold text-[#0a285a]">{t("admin.cashOuts")}</h2>
+            <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("admin.cashOutsNote")}</p>
             {rows.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+              <p className="mt-3 rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-5 py-8 text-center text-[14px] leading-6 text-[#536b8c]">
                 {t("admin.cashOutsEmpty")}
               </p>
             ) : (
               <Scroller labelledBy="finance-cashouts">
                 <table className="w-full min-w-[560px] border-collapse">
                   <thead>
-                    <tr className="border-b border-[#d5dfeb]">
+                    <tr className="border-b border-[#e1e7ef]">
                       <th scope="col" className={`${head} text-start`}>{t("admin.cashOutShopper")}</th>
                       <th scope="col" className={`${head} text-end`}>{t("admin.cashOutPoints")}</th>
                       <th scope="col" className={`${head} text-end`}>{t("admin.payoutOwed")}</th>
@@ -393,7 +397,7 @@ function CashOuts() {
                   </thead>
                   <tbody>
                     {rows.map(row => (
-                      <tr key={row.id} className="border-b border-[#eef1f6] last:border-0">
+                      <tr key={row.id} className="border-b border-[#f0f2f6] last:border-0">
                         <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}>
                           <span dir="auto">{row.name ?? ""}</span>{" "}
                           <bdi dir="ltr" className="font-normal ink-muted">{row.email}</bdi>
@@ -403,7 +407,7 @@ function CashOuts() {
                               money already and is paid at face value. */}
                           {row.pot === "affiliate"
                             ? t("admin.cashOutAffiliate")
-                            : <bdi dir="ltr">{t("rewards.balance", { points: row.points })}</bdi>}
+                            : t("rewards.balance", { points: row.points })}
                         </td>
                         <td className={`${cell} text-end font-extrabold text-[#0a285a]`}>
                           <bdi dir="ltr">{money({ amount: row.value, currencyCode: "KWD" })}</bdi>
@@ -413,8 +417,8 @@ function CashOuts() {
                           <button
                             type="button"
                             disabled={settle.isPending}
-                            onClick={() => settle.mutate({ entryId: row.id })}
-                            className="glass-navy type-control pressable rounded-full px-3 py-1.5 disabled:opacity-60"
+                            onClick={() => setSettling({ id: row.id, name: row.name || row.email, amount: money({ amount: row.value, currencyCode: "KWD" }) })}
+                            className={smallButtonClass.primary}
                           >
                             {t("admin.markPaid")}
                           </button>
@@ -425,6 +429,16 @@ function CashOuts() {
                 </table>
               </Scroller>
             )}
+            <ConfirmDialog
+              open={settling !== null}
+              title={t("admin.markPaidTitle", { amount: settling?.amount ?? "", name: isolate(settling?.name ?? "") })}
+              body={t("admin.markPaidBody")}
+              confirmLabel={t("admin.markPaid")}
+              icon={<Banknote className="size-5" aria-hidden />}
+              pending={settle.isPending}
+              onConfirm={() => settling && settle.mutate({ entryId: settling.id })}
+              onClose={() => setSettling(null)}
+            />
           </section>
         );
       }}

@@ -24,6 +24,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SectionHeading, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -85,182 +86,181 @@ function Dispatch({ actor }: { actor: Actor }) {
     onError: refused,
   });
 
+  /* Which parcel a press is for, so one press does not grey every button on
+     the board. */
+  const moving = move.isPending ? `${move.variables?.orderId}-${move.variables?.key}` : null;
+  const assigning = assign.isPending ? `${assign.variables?.orderId}-${assign.variables?.key}` : null;
+
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.dispatch")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.dispatchNote")}</p>
+      <PageHeader title={t("admin.dispatch")} description={t("admin.dispatchNote")} />
 
       {/* Live tracking (3.4.3) is a driver's own choice, so only a driver sees it. */}
       {actor.kind === "courier" ? <ShareLocation /> : null}
 
-      {/* A real tablist, so the three views are one control rather than three
-          links that happen to sit together. */}
-      <div role="tablist" aria-label={t("admin.dispatch")} className="mt-5 inline-flex gap-1 rounded-2xl bg-[#eef1f6] p-1">
-        {TABS.map(entry => (
-          <button
-            key={entry.id}
-            role="tab"
-            type="button"
-            aria-selected={tab === entry.id}
-            onClick={() => setTab(entry.id)}
-            className={`rounded-xl px-4 py-2 text-[12px] font-extrabold ${
-              tab === entry.id ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c]"
-            }`}
-          >
-            {t(entry.label)}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label={t("admin.dispatch")}
+        className="mb-4 w-fit"
+        value={tab}
+        onChange={setTab}
+        options={TABS.map(entry => ({ value: entry.id, label: t(entry.label) }))}
+      />
 
-      <QueryGate queries={[board]}>
-        {() => {
-          const parcels = board.data?.parcels ?? [];
-          if (parcels.length === 0) {
+      {board.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[board]}>
+          {() => {
+            const parcels = board.data?.parcels ?? [];
+            if (parcels.length === 0) {
+              return <EmptyState title={actor.kind === "courier" ? t("dispatch.noneCourier") : t("dispatch.none")} />;
+            }
             return (
-              <p className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
-                {actor.kind === "courier" ? t("dispatch.noneCourier") : t("dispatch.none")}
-              </p>
-            );
-          }
-          return (
-            <>
-              <ul className="mt-5 space-y-3">
-                {parcels.map(parcel => (
-                  <li key={`${parcel.orderId}-${parcel.key}`} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <p className="font-bold text-[#0a285a]">
-                        <bdi dir="ltr">{parcel.reference}</bdi>
-                        <span className="ink-muted"> · </span>
-                        <span dir="auto">
-                          {t("dispatch.parcelOf", {
-                            seller: parcel.vendorName ?? "—",
-                            where: parcel.destination?.label ?? t("dispatch.toOrderAddress"),
-                          })}
-                        </span>
-                      </p>
-                      <p className="text-[12px] font-extrabold text-[#536b8c]">
-                        {parcel.items === 1 ? t("dispatch.itemsOne") : t("dispatch.items", { count: parcel.items })}
-                      </p>
-                    </div>
+              <>
+                <ul className="space-y-3">
+                  {parcels.map(parcel => {
+                    const id = `${parcel.orderId}-${parcel.key}`;
+                    const moves = courierMoves(parcel as Parcel);
+                    return (
+                      <li key={id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                        <div className="p-4 sm:p-5">
+                          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+                            <p className="min-w-0 text-[15px] font-bold text-[#0a285a]">
+                              <bdi dir="ltr">{parcel.reference}</bdi>
+                              <span className="ink-muted"> · </span>
+                              <span className="font-semibold">
+                                {t("dispatch.parcelOf", {
+                                  seller: parcel.vendorName ?? "—",
+                                  where: parcel.destination?.label ?? t("dispatch.toOrderAddress"),
+                                })}
+                              </span>
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {/* A member's parcel (4.1): first on the board, and said so. */}
+                              {parcel.member && parcel.state !== "delivered" ? (
+                                <Pill tone="navy"><BadgeCheck className="size-3.5" aria-hidden />{t("membership.priority")}</Pill>
+                              ) : null}
+                              <Pill>{parcel.items === 1 ? t("dispatch.itemsOne") : t("dispatch.items", { count: parcel.items })}</Pill>
+                            </div>
+                          </div>
 
-                    {/* Where it actually goes. The parcel's own frozen copy when
-                        it has one, and the order's address otherwise — never a
-                        guess at which. */}
-                    <p className="mt-1 text-[12px] leading-5 text-[#536b8c]" dir="auto">
-                      {parcel.destination
-                        ? [parcel.destination.addressLine, parcel.destination.contactName, parcel.destination.contactPhone]
-                            .filter(Boolean)
-                            .join(" · ")
-                        : [parcel.orderAddress.addressLine, parcel.orderAddress.contactName, parcel.orderAddress.contactPhone]
-                            .filter(Boolean)
-                            .join(" · ")}
-                    </p>
-                    {/* The pin goes with the same door the line above names:
-                        the parcel's own when it has one, the order's otherwise. */}
-                    <p className="mt-1">
-                      <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
-                    </p>
+                          {/* Where it actually goes. The parcel's own frozen copy when
+                              it has one, and the order's address otherwise — never a
+                              guess at which. */}
+                          <p className="mt-1.5 text-[14px] leading-6 text-[#3d5376]" dir="auto">
+                            {parcel.destination
+                              ? [parcel.destination.addressLine, parcel.destination.contactName, parcel.destination.contactPhone]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : [parcel.orderAddress.addressLine, parcel.orderAddress.contactName, parcel.orderAddress.contactPhone]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                          </p>
+                          {/* The pin goes with the same door the line above names:
+                              the parcel's own when it has one, the order's otherwise. */}
+                          <p className="mt-1">
+                            <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
+                          </p>
 
-                    {/* A member's parcel (4.1): first on the board, and said so. */}
-                    {parcel.member && parcel.state !== "delivered" ? (
-                      <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#0a285a] px-2.5 py-0.5 text-[11px] font-extrabold text-white">
-                        <BadgeCheck className="size-3.5" aria-hidden />{t("membership.priority")}
-                      </p>
-                    ) : null}
-                    {/* Collected from a NetLet centre rather than the seller (4.2). */}
-                    {parcel.collectFrom ? (
-                      <p className="mt-1 flex items-start gap-1.5 text-[12px] font-bold text-[#0a285a]">
-                        <Warehouse className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                        <span>{t("fulfilment.collectFrom")} <bdi>{parcel.collectFrom.name}</bdi> <span className="font-normal ink-muted">· <bdi>{parcel.collectFrom.addressLine}</bdi></span></span>
-                      </p>
-                    ) : null}
-                    <p className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-1 font-extrabold text-[#0a285a]">
-                        <Truck className="size-3.5" aria-hidden />
-                        {parcel.vehicle ? t("dispatch.vehicle", { vehicle: t(VEHICLE_LABEL[parcel.vehicle]) }) : t("dispatch.vehicleUnknown")}
-                      </span>
-                      {/* Cash is the driver's to collect, and the figure is the
-                          whole order's rather than this parcel's: it is one
-                          payment however many boxes it arrives in — which is why
-                          the line says so. It read "collect KWD 247.500" on both
-                          parcels of one order before that, which is an
-                          instruction to collect it twice. Recording the cash
-                          stays with the seller, who reconciles with the driver. */}
-                      {parcel.paymentMethod === "cod" ? (
-                        <span className="rounded-full bg-[#fff0ab] px-3 py-1 font-extrabold text-[#0a285a]">
-                          {parcel.paymentCollectedAt ? t("dispatch.cashPaid") : t("dispatch.collectCash", { amount: money({ amount: parcel.orderTotal, currencyCode: "KWD" }) })}
-                        </span>
-                      ) : null}
-                      {/* Who is carrying it. Drawn only where there is no
-                          picker below saying the same thing: for a courier this
-                          is the only answer, and for an admin the select is. */}
-                      {mayAssign ? null : (
-                        <span className="ink-muted">
-                          {parcel.courierName ? t("dispatch.assignedTo", { name: parcel.courierName }) : t("dispatch.unassigned")}
-                        </span>
-                      )}
-                    </p>
+                          {/* Collected from a NetLet centre rather than the seller (4.2). */}
+                          {parcel.collectFrom ? (
+                            <p className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold text-[#0a285a]">
+                              <Warehouse className="mt-0.5 size-4 shrink-0" aria-hidden />
+                              <span>{t("fulfilment.collectFrom")} <bdi>{parcel.collectFrom.name}</bdi> <span className="font-normal ink-muted">· <bdi>{parcel.collectFrom.addressLine}</bdi></span></span>
+                            </p>
+                          ) : null}
+                          <p className="mt-3 flex flex-wrap items-center gap-2">
+                            <Pill tone={parcel.vehicle ? "navy" : "warning"}>
+                              <Truck className="size-3.5" aria-hidden />
+                              {parcel.vehicle ? t("dispatch.vehicle", { vehicle: t(VEHICLE_LABEL[parcel.vehicle]) }) : t("dispatch.vehicleUnknown")}
+                            </Pill>
+                            {/* Cash is the driver's to collect, and the figure is the
+                                whole order's rather than this parcel's: it is one
+                                payment however many boxes it arrives in — which is why
+                                the line says so. It read "collect KWD 247.500" on both
+                                parcels of one order before that, which is an
+                                instruction to collect it twice. Recording the cash
+                                stays with the seller, who reconciles with the driver. */}
+                            {parcel.paymentMethod === "cod" ? (
+                              <Pill tone={parcel.paymentCollectedAt ? "good" : "warning"}>
+                                {parcel.paymentCollectedAt ? t("dispatch.cashPaid") : t("dispatch.collectCash", { amount: money({ amount: parcel.orderTotal, currencyCode: "KWD" }) })}
+                              </Pill>
+                            ) : null}
+                            {/* Who is carrying it. Drawn only where there is no
+                                picker below saying the same thing: for a courier this
+                                is the only answer, and for an admin the select is. */}
+                            {mayAssign ? null : (
+                              <span className="text-[13px] ink-muted">
+                                {parcel.courierName ? t("dispatch.assignedTo", { name: parcel.courierName }) : t("dispatch.unassigned")}
+                              </span>
+                            )}
+                          </p>
 
-                    <ul className="mt-2 space-y-0.5">
-                      {parcel.lines.map(line => (
-                        <li key={line.lineId} className="text-[12px] text-[#536b8c]" dir="auto">
-                          <bdi dir="ltr">{line.quantity} ×</bdi> {line.productTitle}
-                        </li>
-                      ))}
-                    </ul>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      {/* The same pure function the server refuses on, so the
-                          board cannot offer a step the API would reject. */}
-                      {courierMoves(parcel as Parcel).map(state => (
-                        <button
-                          key={state}
-                          type="button"
-                          disabled={move.isPending}
-                          onClick={() => move.mutate({ orderId: parcel.orderId, key: parcel.key, to: state as "shipped" | "delivered" })}
-                          className="glass glass-navy pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[12px] font-extrabold disabled:opacity-60"
-                        >
-                          <PackageCheck className="size-3.5" aria-hidden />
-                          {state === "shipped" ? t("dispatch.collect") : t("dispatch.handOver")}
-                        </button>
-                      ))}
-
-                      {mayAssign ? (
-                        <select
-                          aria-label={t("dispatch.assign", { parcel: parcel.reference })}
-                          disabled={assign.isPending}
-                          value={parcel.courierId ?? ""}
-                          onChange={event =>
-                            assign.mutate({
-                              orderId: parcel.orderId,
-                              key: parcel.key,
-                              courierId: event.target.value ? Number(event.target.value) : null,
-                            })
-                          }
-                          className="h-9 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[12px] text-[#0a285a] outline-none focus:border-[#0a285a]"
-                        >
-                          <option value="">{t("dispatch.unassigned")}</option>
-                          {(companies.data ?? [])
-                            .filter(company => company.status === "active" || company.id === parcel.courierId)
-                            .map(company => (
-                              <option key={company.id} value={company.id}>{company.name}</option>
+                          <ul className="mt-3 divide-y divide-[#f0f2f6] rounded-xl border border-[#e1e7ef]">
+                            {parcel.lines.map(line => (
+                              <li key={line.lineId} className="flex gap-2 px-3.5 py-2 text-[14px] text-[#0a285a]">
+                                <bdi dir="ltr" className="shrink-0 font-semibold tabular-nums">{line.quantity} ×</bdi>
+                                <span dir="auto" className="min-w-0">{line.productTitle}</span>
+                              </li>
                             ))}
-                        </select>
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                          </ul>
+                        </div>
 
-              {/* A board that shows part of the answer looks exactly like one
-                  showing all of it — the lie `QueryGate` exists to stop. */}
-              {board.data?.truncated ? (
-                <p className="mt-4 text-[11px] ink-muted">{t("dispatch.truncated", { count: ORDER_CEILING_NOTE })}</p>
-              ) : null}
-            </>
-          );
-        }}
-      </QueryGate>
+                        {moves.length > 0 || mayAssign ? (
+                          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-3 sm:px-5">
+                            {mayAssign ? (
+                              <select
+                                aria-label={t("dispatch.assign", { parcel: parcel.reference })}
+                                disabled={assigning === id}
+                                value={parcel.courierId ?? ""}
+                                onChange={event =>
+                                  assign.mutate({
+                                    orderId: parcel.orderId,
+                                    key: parcel.key,
+                                    courierId: event.target.value ? Number(event.target.value) : null,
+                                  })
+                                }
+                                className={`${fieldClass} me-auto h-9 w-auto max-w-full text-[13px]`}
+                              >
+                                <option value="">{t("dispatch.unassigned")}</option>
+                                {(companies.data ?? [])
+                                  .filter(company => company.status === "active" || company.id === parcel.courierId)
+                                  .map(company => (
+                                    <option key={company.id} value={company.id}>{company.name}</option>
+                                  ))}
+                              </select>
+                            ) : null}
+                            {/* The same pure function the server refuses on, so the
+                                board cannot offer a step the API would reject. */}
+                            {moves.map(state => (
+                              <button
+                                key={state}
+                                type="button"
+                                disabled={moving === id}
+                                onClick={() => move.mutate({ orderId: parcel.orderId, key: parcel.key, to: state as "shipped" | "delivered" })}
+                                className={smallButtonClass.primary}
+                              >
+                                <PackageCheck className="size-4" aria-hidden />
+                                {state === "shipped" ? t("dispatch.collect") : t("dispatch.handOver")}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {/* A board that shows part of the answer looks exactly like one
+                    showing all of it — the lie `QueryGate` exists to stop. */}
+                {board.data?.truncated ? (
+                  <p className="mt-4 text-[13px] ink-muted">{t("dispatch.truncated", { count: ORDER_CEILING_NOTE })}</p>
+                ) : null}
+              </>
+            );
+          }}
+        </QueryGate>
+      )}
 
       <DeliveryScores />
     </>
@@ -280,21 +280,18 @@ function DeliveryScores() {
   const scores = trpc.dispatch.scores.useQuery();
   return (
     <section aria-labelledby="delivery-scores" className="mt-10">
-      <h2 id="delivery-scores" className="text-sm font-extrabold">{t("delivery.scoresHeading")}</h2>
-      <p className="mt-1 max-w-2xl text-[12px] leading-5 text-[#536b8c]">{t("delivery.scoresNote")}</p>
+      <SectionHeading description={t("delivery.scoresNote")}><span id="delivery-scores">{t("delivery.scoresHeading")}</span></SectionHeading>
       <QueryGate queries={[scores]}>
         {() => {
           const data = scores.data;
-          if (!data || data.scores.length === 0) {
-            return <p className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-4 text-sm text-[#536b8c]">{t("delivery.noScores")}</p>;
-          }
+          if (!data || data.scores.length === 0) return <EmptyState title={t("delivery.noScores")} />;
           return (
             <>
-              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.scores.map(score => (
-                  <li key={score.courierId ?? "seller"} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-                    <p className="text-[13px] font-extrabold" dir="auto">{score.courierName ?? t("delivery.sellerCarried")}</p>
-                    <p className="mt-1 flex items-center gap-2 text-[12px] text-[#536b8c]">
+                  <li key={score.courierId ?? "seller"} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+                    <p className="text-[14px] font-bold text-[#0a285a]" dir="auto">{score.courierName ?? t("delivery.sellerCarried")}</p>
+                    <p className="mt-1 flex items-center gap-2 text-[13px] text-[#536b8c]">
                       <StarRow value={score.average} />
                       <span>{t(score.count === 1 ? "delivery.scoreLineOne" : "delivery.scoreLine", { average: score.average.toFixed(1), count: score.count })}</span>
                     </p>
@@ -303,16 +300,16 @@ function DeliveryScores() {
               </ul>
               {data.recent.some(row => row.comment) ? (
                 <>
-                  <h3 className="mt-5 text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase">{t("delivery.recentHeading")}</h3>
+                  <h3 className="mt-6 text-[14px] font-bold text-[#0a285a]">{t("delivery.recentHeading")}</h3>
                   <ul className="mt-2 space-y-2">
                     {data.recent.filter(row => row.comment).map((row, index) => (
-                      <li key={index} className="rounded-xl border border-[#eef1f6] bg-white px-4 py-3">
-                        <p className="flex flex-wrap items-center gap-2 text-[11px] text-[#536b8c]">
+                      <li key={index} className="rounded-xl border border-[#e1e7ef] bg-white px-4 py-3">
+                        <p className="flex flex-wrap items-center gap-2 text-[12px] text-[#536b8c]">
                           <StarRow value={row.rating} />
                           <span>{formatDate(row.createdAt)}</span>
                           {row.vendorName ? <span dir="auto">· {row.vendorName}</span> : null}
                         </p>
-                        <p dir="auto" className="mt-1 text-[13px] leading-6">{row.comment}</p>
+                        <p dir="auto" className="mt-1 text-[14px] leading-6 text-[#3d5376]">{row.comment}</p>
                       </li>
                     ))}
                   </ul>

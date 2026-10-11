@@ -1005,7 +1005,7 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[14px] font-semibold text-[#536b8c]">
           {t("admin.variantStock")}: <strong className={variant.stock === 0 ? "text-[#b3261e]" : "text-[#0a285a]"}>{variant.stock}</strong>
-          {held ? <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-0.5 text-[11px] font-extrabold text-[#0a285a]">{t("fulfilment.heldBadge")}</span> : null}
+          {held ? <span className="ms-2 inline-flex items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-0.5 text-[12px] font-semibold text-[#0a285a]">{t("fulfilment.heldBadge")}</span> : null}
         </p>
         {mayEdit ? (
           <button

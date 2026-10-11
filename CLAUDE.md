@@ -2610,6 +2610,58 @@ holds or expects, and a price a shopper asked for or was agreed. The old store's
 own bundles naming it are taken off the shop (NetLet's cross-store ones are
 not), and a SKU the new store already uses refuses it, as typing it would.
 
+## One look across the portal
+
+**Every admin page is drawn from `components/admin/ui.tsx`** — `PageHeader`,
+`Card`, `Field`, `SectionHeading`, `Stat`/`StatGrid`, `Notice`, `Pill`,
+`Segmented`, `Toggle`, `EmptyState`, the skeletons, `tableClass` and the button
+sets. Thirty-three pages had each styled their own, and had drifted into five
+label sizes, three field heights, glass buttons beside flat ones, uppercase
+tracked headers over tables, and four different "nothing here" boxes. A list is
+a table from `md` up and cards below it; a filter is `Segmented` (buttons with
+`aria-pressed` in a named group — it narrows a list, so it is not a tablist).
+
+Two things in it were found by looking, not by reading. **A right-hand header
+cell needs `thEnd`, not `th` plus `text-end`**: the two utilities tie and
+whichever Tailwind wrote later wins, so "Balance" sat at the left of its
+column. **`Field` names its one child**, so a field whose child is a box
+holding an icon labels the box; those write their own `label`.
+
+**Anything that moves money, rights or stock asks first** — cancelling an order
+line (it hands units back and changes what the driver collects), recording cash
+as collected (it settles the order and issues the invoice), marking a cash-out
+paid, making or revoking an administrator, taking somebody out of a store or a
+delivery company, suspending a company. `ConfirmDialog` takes a `cancelLabel`
+for the one place its own "Cancel" would collide with the act: "Cancel this
+item?" offers "Keep it". And a button says what pressing does — "Mark shipped",
+"Cancel this item" — never the state the line will be in, which beside a pill
+naming the current state asked a seller to work out which was which.
+
+**A store always keeps an owner.** Demoting or removing the only one, through
+any of the four doors onto `vendor_members` (the team page, the store's page,
+add-by-address on `/admin/people`, which sets the rank of somebody already in
+the store, and removal there), is `admin.lastOwner`, under a lock on the store's
+row so two owners cannot demote each other at once. The store's own team page
+is audited now too; only the administrator's door onto the same rows was.
+
+**A date box's day is the whole of that day in Kuwait.** `lastDay` in
+`server/_core/schemas.ts` turns a bare `yyyy-mm-dd` into 23:59:59.999 at UTC+3
+(`shared/kuwaitDay.ts`). It was midnight UTC — three in the morning in Kuwait,
+on the day named — so a code that "ends on the 20th" stopped at 3am on the
+20th, a gift card was refused on its last day and a discount permit hid a
+store's savings from the morning it expired. A full timestamp is taken as given.
+
+**A refused input says a sentence.** tRPC's message for one is zod's issue list
+as JSON, and every page put that in a toast. `inputRefusal` in
+`server/_core/trpc.ts` answers with the schema's own message key where one was
+written, or `error.invalidInput`.
+
+**A link an administrator will open is a web address or nothing.** Seller
+application documents take `https?://` only (`sell.badLink`) and the review
+queue draws a link only for one; a damage claim's evidence was already https.
+React 19 blocks `javascript:` in `href`, but a reviewer's session is not the
+place to rely on the renderer.
+
 ## Colour and contrast
 
 **The brand orange is a fill, not an ink.** `#f2683a` on a pale surface

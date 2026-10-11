@@ -23,6 +23,8 @@ import { useFeature } from "@/hooks/useFeature";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { buttonClass, EmptyState, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -35,7 +37,7 @@ import { mayMoveLine } from "@shared/commerce/netletFulfilment";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Banknote, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
+import { Banknote, ChevronDown, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -48,6 +50,27 @@ const FULFILMENT_LABEL: Record<FulfilmentState, MessageKey> = {
   delivered: "admin.fulfilDelivered",
   cancelled: "admin.fulfilCancelled",
   returned: "admin.fulfilReturned",
+};
+
+/* What pressing does, not where the line ends up: a button reading
+   "Cancelled" beside a pill reading "Pending" asked a seller to work out which
+   one was the state. */
+const MOVE_LABEL: Record<FulfilmentState, MessageKey> = {
+  pending: "admin.moveToPending",
+  preparing: "admin.moveToPreparing",
+  shipped: "admin.moveToShipped",
+  delivered: "admin.moveToDelivered",
+  cancelled: "admin.moveToCancelled",
+  returned: "admin.fulfilReturned",
+};
+
+const FULFILMENT_TONE: Record<FulfilmentState, "neutral" | "navy" | "good" | "danger" | "warning"> = {
+  pending: "warning",
+  preparing: "navy",
+  shipped: "navy",
+  delivered: "good",
+  cancelled: "neutral",
+  returned: "danger",
 };
 
 const PAYMENT_LABEL: Record<string, MessageKey> = {
@@ -79,35 +102,35 @@ function Orders({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.orders")}</h1>
-      <p className="mt-1 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.ordersNote")}</p>
+      <PageHeader title={t("admin.orders")} description={t("admin.ordersNote")} />
 
-      <QueryGate queries={[list]}>
-        {() => {
-          const rows = list.data?.rows ?? [];
-          if (rows.length === 0) {
+      {list.isLoading ? (
+        <SkeletonRows label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[list]}>
+          {() => {
+            const rows = list.data?.rows ?? [];
+            if (rows.length === 0) return <EmptyState title={t("admin.ordersEmpty")} />;
             return (
-              <div className="mt-5 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-                <p className="text-sm font-extrabold">{t("admin.ordersEmpty")}</p>
-              </div>
+              <>
+                <ul className="space-y-2">
+                  {rows.map(row => (
+                    <li key={row.id}>
+                      <OrderRow
+                        row={row}
+                        risk={riskFor(row.id)}
+                        open={open === row.id}
+                        onToggle={() => setOpen(open === row.id ? null : row.id)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {list.data ? <Pager page={list.data} onPage={setPage} /> : null}
+              </>
             );
-          }
-          return (
-            <div className="mt-5 space-y-2">
-              {rows.map(row => (
-                <OrderRow
-                  key={row.id}
-                  row={row}
-                  risk={riskFor(row.id)}
-                  open={open === row.id}
-                  onToggle={() => setOpen(open === row.id ? null : row.id)}
-                />
-              ))}
-              {list.data ? <Pager page={list.data} onPage={setPage} /> : null}
-            </div>
-          );
-        }}
-      </QueryGate>
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }
@@ -163,7 +186,7 @@ function OrderRow({ row, risk, open, onToggle }: { row: Row; risk?: OrderRisk; o
   const formatDate = useDateFormat();
 
   return (
-    <div className="rounded-2xl border border-[#e6e9ef] bg-white">
+    <div className={`overflow-hidden rounded-2xl border bg-white ${open ? "border-[#0a285a]/30" : "border-[#e1e7ef]"}`}>
       {/*
         A disclosure rather than a second page. An order is read in order to do
         something to one of its lines, and a round trip through a detail route
@@ -173,101 +196,103 @@ function OrderRow({ row, risk, open, onToggle }: { row: Row; risk?: OrderRisk; o
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="pressable flex w-full flex-wrap items-center gap-x-4 gap-y-1 p-4 text-start"
+        className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 text-start transition hover:bg-[#f7f9fc] sm:px-5"
       >
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-[#0a285a]"><bdi dir="ltr">{row.reference}</bdi></p>
-          <p className="mt-0.5 text-[11px] ink-muted">
+        {/* A reference is one unbreakable word; the pills and the total wrap
+            under it on a phone rather than squeezing it a letter to a line. */}
+        <div className="min-w-[12rem] flex-1">
+          <p className="text-[15px] font-bold whitespace-nowrap text-[#0a285a]"><bdi dir="ltr">{row.reference}</bdi></p>
+          <p className="mt-0.5 text-[13px] ink-muted">
             {formatDate(row.placedAt)}
             {row.vendorCount > 1 ? <> · {t("admin.orderSellers", { count: row.vendorCount })}</> : null}
           </p>
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-extrabold ${
-          row.status === "paid" ? "bg-[#e3efe4] text-[#2f5d33]" : "bg-[#e7edf5] text-[#0a285a]"
-        }`}>
-          {t(PAYMENT_LABEL[row.status] ?? "admin.orderPendingPayment")}
+        <span className="flex flex-wrap items-center gap-2">
+          <Pill tone={row.status === "paid" ? "good" : row.status === "pending_payment" ? "warning" : "neutral"}>
+            {t(PAYMENT_LABEL[row.status] ?? "admin.orderPendingPayment")}
+          </Pill>
+          {/* A badge only when there is something to say: "low" on every row is
+              an alert that never stops firing, which teaches people to stop
+              reading the one that matters. */}
+          {risk && risk.risk !== "low" ? (
+            <Pill tone={risk.risk === "high" ? "danger" : "warning"}>{t(risk.risk === "high" ? "admin.riskHigh" : "admin.riskWatch")}</Pill>
+          ) : null}
         </span>
-        {/* A badge only when there is something to say: "low" on every row is
-            an alert that never stops firing, which teaches people to stop
-            reading the one that matters. */}
-        {risk && risk.risk !== "low" ? (
-          <span className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-extrabold ${
-            risk.risk === "high" ? "bg-[#8c2f22] text-white" : "bg-[#fff0ab] text-[#0a285a]"
-          }`}>
-            {t(risk.risk === "high" ? "admin.riskHigh" : "admin.riskWatch")}
-          </span>
-        ) : null}
-        <span className="shrink-0 font-extrabold text-[#0a285a]"><bdi dir="ltr">{money({ amount: row.orderTotal, currencyCode: "KWD" })}</bdi></span>
+        <span className="flex shrink-0 items-center gap-2 text-[15px] font-bold text-[#0a285a]">
+          {money({ amount: row.orderTotal, currencyCode: "KWD" })}
+          <ChevronDown className={`size-4 text-[#536b8c] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+        </span>
       </button>
 
       {/* The evidence, not the verdict: "four accounts have used this address"
           is something an administrator can disagree with, and "risk: high" is
           not. Nothing here has held the order — it is a reason to look. */}
       {open && risk && risk.flags.length > 0 ? (
-        <ul className="border-t border-[#eef1f6] px-4 py-3">
+        <ul className="space-y-1 border-t border-[#eef1f5] bg-[#fffaf0] px-4 py-3 sm:px-5">
           {risk.flags.map(flag => (
-            <li
-              key={flag.signal}
-              className={`text-[12px] leading-5 ${flag.serious ? "font-extrabold text-[#8c2f22]" : "text-[#536b8c]"}`}
-            >
+            <li key={flag.signal} className={`text-[13px] leading-5 ${flag.serious ? "font-semibold text-[#8c2f22]" : "text-[#5c3f0c]"}`}>
               · {t(SIGNAL_LABEL[flag.signal] ?? "admin.riskWatch", moneyDetail(flag.detail, money))}
             </li>
           ))}
         </ul>
       ) : null}
 
-      {open ? <OrderDetail orderId={row.id} /> : null}
+      {open ? <OrderDetail orderId={row.id} reference={row.reference} /> : null}
     </div>
   );
 }
 
-function OrderDetail({ orderId }: { orderId: number }) {
-  const { t } = useTranslation();
+function OrderDetail({ orderId, reference }: { orderId: number; reference: string }) {
+  const { t, tError } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
   const detail = trpc.orders.forSellerDetail.useQuery({ orderId });
   /* Already in the cache: the shell asked it before drawing the page. */
   const me = trpc.inventory.me.useQuery();
   const utils = trpc.useUtils();
+  const [cancelling, setCancelling] = useState<{ lineId: number; title: string } | null>(null);
+  const [collecting, setCollecting] = useState(false);
 
   const refresh = () => {
     void utils.orders.forSellerDetail.invalidate({ orderId });
     void utils.orders.forSeller.invalidate();
   };
+  /* The server's refusals are message keys ("the cash is in, refund it
+     instead"); they were shown raw, as `orders.alreadySettled`. */
   const setFulfilment = trpc.orders.setFulfilment.useMutation({
-    onSuccess: () => { toast.success(t("admin.fulfilmentSaved")); refresh(); },
-    onError: error => toast.error(error.message),
+    onSuccess: () => { setCancelling(null); toast.success(t("admin.fulfilmentSaved")); refresh(); },
+    onError: error => { setCancelling(null); toast.error(tError(error.message)); },
   });
   const markCollected = trpc.orders.markCollected.useMutation({
     /* `recorded: false` is a real answer — somebody else pressed it first, or
        the order was never a cash one — so it is reported rather than shown as
        a success the page cannot back up. */
     onSuccess: reply => {
+      setCollecting(false);
       if (reply.recorded) toast.success(t("admin.collectedSaved"));
       else toast.error(t("admin.collectedAlready"));
       refresh();
     },
-    onError: error => toast.error(error.message),
+    onError: error => { setCollecting(false); toast.error(tError(error.message)); },
   });
+  const movingLine = setFulfilment.isPending ? setFulfilment.variables?.lineId : undefined;
 
   return (
-    <div className="border-t border-[#eef1f6] p-4">
+    <div className="border-t border-[#eef1f5] px-4 py-4 sm:px-5">
       <QueryGate queries={[detail]}>
         {() => {
           const found = detail.data;
-          if (!found) return <p className="text-[13px] text-[#536b8c]">{t("admin.orderGone")}</p>;
+          if (!found) return <p className="text-[14px] text-[#536b8c]">{t("admin.orderGone")}</p>;
           const { order, lines } = found;
 
           return (
             <>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  {order.subscriptionId ? (
-                    <p className="mb-2 inline-flex rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">{t("subscriptions.repeatOrder")}</p>
-                  ) : null}
-                  <p className="text-[11px] font-extrabold tracking-[.06em] ink-muted uppercase">{t("admin.orderDeliverTo")}</p>
-                  <p className="mt-1 text-[13px] leading-6 text-[#0a285a]">
-                    <span dir="auto">{order.contactName ?? t("admin.orderNoName")}</span>
+                  {order.subscriptionId ? <div className="mb-2"><Pill tone="navy">{t("subscriptions.repeatOrder")}</Pill></div> : null}
+                  <p className="text-[13px] font-semibold text-[#536b8c]">{t("admin.orderDeliverTo")}</p>
+                  <p className="mt-1 text-[14px] leading-6 text-[#0a285a]">
+                    <span dir="auto" className="font-semibold">{order.contactName ?? t("admin.orderNoName")}</span>
                     <br />
                     <span dir="auto">{order.addressLine ?? t("admin.orderNoAddress")}</span>
                     {order.addressNotes ? <><br /><span dir="auto" className="ink-muted">{order.addressNotes}</span></> : null}
@@ -277,90 +302,93 @@ function OrderDetail({ orderId }: { orderId: number }) {
 
                 {/* Cash is collected once, for the basket — the one thing on
                     this page that is genuinely about the order rather than a
-                    line. Absent unless it applies, rather than disabled. */}
+                    line. Absent unless it applies, rather than disabled. It
+                    asks first: it settles the order, issues the invoice and
+                    ends cancelling. */}
                 {canRecordCollection(order) ? (
-                  <button
-                    type="button"
-                    disabled={markCollected.isPending}
-                    onClick={() => markCollected.mutate({ orderId })}
-                    className="glass-navy type-control pressable inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 disabled:opacity-60"
-                  >
+                  <button type="button" disabled={markCollected.isPending} onClick={() => setCollecting(true)} className={buttonClass.primary}>
                     <Banknote className="size-4" aria-hidden /> {t("admin.markCollected")}
                   </button>
                 ) : null}
               </div>
 
-              <ul className="mt-4 space-y-2">
-                {lines.map(line => (
-                  <li key={line.id} className="rounded-xl border border-[#eef1f6] bg-[#fbfcfe] p-3">
-                    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <p className="font-bold text-[#0a285a]">
-                        <span dir="auto">{line.productTitle}</span>
-                        {line.variantTitle && !isDefaultVariantTitle(line.variantTitle) ? <span dir="auto" className="ink-muted"> · {line.variantTitle}</span> : null}
-                      </p>
-                      <p className="text-[13px] font-extrabold text-[#0a285a]">
-                        <bdi dir="ltr">{line.quantity} × {money({ amount: line.unitPrice, currencyCode: "KWD" })}</bdi>
-                      </p>
-                    </div>
-                    {/* What was bought with it (3.1.2). The seller is who turns
-                        up to fit the thing, so this is not decoration. */}
-                    {line.addons.length > 0 ? (
-                      <ul className="mt-1 space-y-0.5">
-                        {line.addons.map(addon => (
-                          <li key={addon.id} dir="auto" className="text-[12px] ink-accent">
-                            + {addon.label} · <bdi dir="ltr">{money({ amount: addon.price, currencyCode: "KWD" })}</bdi>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {/* Where this one went (3.2.6), when it did not go where
-                        the rest of the order went. The seller packs the
-                        parcels, so two lines for two doors are two parcels —
-                        and a desk that does not say so sends both to one. */}
-                    {line.destination ? (
-                      <p className="mt-1 text-[12px] font-bold ink-accent" dir="auto">
-                        {t("address.lineWent", { label: line.destination.label })}
-                        {line.destination.addressLine ? (
-                          <span className="ink-muted"> · {line.destination.addressLine}</span>
-                        ) : null}
-                      </p>
-                    ) : null}
-                    {line.destination?.pin ? <p className="mt-1"><PinLink pin={line.destination.pin} /></p> : null}
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">
-                        {t(FULFILMENT_LABEL[line.fulfilment as FulfilmentState])}
-                      </span>
-                      {/* The states it may move to, each its own button: a
-                          select needs a second press to commit and a seller
-                          marking twenty parcels shipped presses forty times. */}
-                      {/* Off NetLet's shelf (4.2): NetLet picks and packs it,
-                          so the seller is told rather than offered buttons the
-                          server would refuse. */}
-                      {me.data && me.data.kind !== "customer" && !mayMoveLine(line.centreId ?? null, me.data.kind) ? (
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold ink-muted">
-                          <Warehouse className="size-3.5" aria-hidden />{t("fulfilment.netletPacks")}
-                        </span>
-                      ) : nextStates(line.fulfilment as FulfilmentState).map(state => (
-                        <button
-                          key={state}
-                          type="button"
-                          disabled={setFulfilment.isPending}
-                          onClick={() => setFulfilment.mutate({ lineId: line.id, fulfilment: state })}
-                          className="glass type-control pressable rounded-full px-3 py-1 disabled:opacity-60"
-                        >
-                          {t(FULFILMENT_LABEL[state])}
-                        </button>
-                      ))}
-                      {line.deliveredAt ? (
-                        <span className="text-[11px] ink-muted">
-                          <PackageCheck className="me-1 inline size-3.5" aria-hidden />
-                          {t("admin.deliveredOn", { date: formatDate(line.deliveredAt) })}
-                        </span>
+              <h3 className="mt-5 text-[14px] font-bold text-[#0a285a]">{t("admin.orderLines")}</h3>
+              <ul className="mt-2 divide-y divide-[#eef1f5] rounded-xl border border-[#e1e7ef]">
+                {lines.map(line => {
+                  const state = line.fulfilment as FulfilmentState;
+                  const netletPacks = me.data && me.data.kind !== "customer" && !mayMoveLine(line.centreId ?? null, me.data.kind);
+                  return (
+                    <li key={line.id} className="p-3.5">
+                      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
+                        <p className="min-w-0 text-[14px] font-semibold text-[#0a285a]">
+                          <span dir="auto">{line.productTitle}</span>
+                          {line.variantTitle && !isDefaultVariantTitle(line.variantTitle) ? <span dir="auto" className="font-normal ink-muted"> · {line.variantTitle}</span> : null}
+                        </p>
+                        <p className="text-[14px] font-bold text-[#0a285a]">
+                          <bdi dir="ltr">{line.quantity} ×</bdi> {money({ amount: line.unitPrice, currencyCode: "KWD" })}
+                        </p>
+                      </div>
+                      {/* What was bought with it (3.1.2). The seller is who turns
+                          up to fit the thing, so this is not decoration. */}
+                      {line.addons.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5">
+                          {line.addons.map(addon => (
+                            <li key={addon.id} dir="auto" className="text-[13px] ink-accent">
+                              + {addon.label} · {money({ amount: addon.price, currencyCode: "KWD" })}
+                            </li>
+                          ))}
+                        </ul>
                       ) : null}
-                    </div>
-                  </li>
-                ))}
+                      {/* Where this one went (3.2.6), when it did not go where
+                          the rest of the order went. The seller packs the
+                          parcels, so two lines for two doors are two parcels —
+                          and a desk that does not say so sends both to one. */}
+                      {line.destination ? (
+                        <p className="mt-1 text-[13px] font-semibold ink-accent" dir="auto">
+                          {t("address.lineWent", { label: line.destination.label })}
+                          {line.destination.addressLine ? <span className="font-normal ink-muted"> · {line.destination.addressLine}</span> : null}
+                        </p>
+                      ) : null}
+                      {line.destination?.pin ? <p className="mt-1"><PinLink pin={line.destination.pin} /></p> : null}
+
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                        <Pill tone={FULFILMENT_TONE[state] ?? "neutral"}>{t(FULFILMENT_LABEL[state])}</Pill>
+                        {line.deliveredAt ? (
+                          <span className="inline-flex items-center gap-1 text-[12px] ink-muted">
+                            <PackageCheck className="size-3.5" aria-hidden />
+                            {t("admin.deliveredOn", { date: formatDate(line.deliveredAt) })}
+                          </span>
+                        ) : null}
+                        <span className="flex-1" />
+                        {/* Off NetLet's shelf (4.2): NetLet picks and packs it,
+                            so the seller is told rather than offered buttons the
+                            server would refuse. */}
+                        {netletPacks ? (
+                          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold ink-muted">
+                            <Warehouse className="size-3.5" aria-hidden />{t("fulfilment.netletPacks")}
+                          </span>
+                        ) : nextStates(state).map(next => (
+                          /* The states it may move to, each its own button: a
+                             select needs a second press to commit and a seller
+                             marking twenty parcels shipped presses forty times.
+                             Cancelling asks first: it hands units back and
+                             changes what the driver collects. */
+                          <button
+                            key={next}
+                            type="button"
+                            disabled={movingLine === line.id}
+                            onClick={() => next === "cancelled"
+                              ? setCancelling({ lineId: line.id, title: line.productTitle })
+                              : setFulfilment.mutate({ lineId: line.id, fulfilment: next })}
+                            className={next === "cancelled" ? smallButtonClass.quietDanger : smallButtonClass.secondary}
+                          >
+                            {t(next === "pending" && state === "cancelled" ? "admin.moveToRestore" : MOVE_LABEL[next])}
+                          </button>
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
 
               {/* Damage in transit (3.4.2). Here rather than on the claims page
@@ -372,6 +400,28 @@ function OrderDetail({ orderId }: { orderId: number }) {
                   lines={lines.filter(line => line.fulfilment === "shipped" || line.fulfilment === "delivered" || (line.fulfilment === "returned" && line.deliveredAt))}
                 />
               ) : null}
+
+              <ConfirmDialog
+                open={cancelling !== null}
+                title={t("admin.cancelLineTitle", { product: isolate(cancelling?.title ?? "") })}
+                body={t("admin.cancelLineBody")}
+                confirmLabel={t("admin.moveToCancelled")}
+                cancelLabel={t("admin.keepLine")}
+                tone="danger"
+                pending={setFulfilment.isPending}
+                onConfirm={() => cancelling && setFulfilment.mutate({ lineId: cancelling.lineId, fulfilment: "cancelled" })}
+                onClose={() => setCancelling(null)}
+              />
+              <ConfirmDialog
+                open={collecting}
+                title={t("admin.collectedTitle", { reference })}
+                body={t("admin.collectedBody")}
+                confirmLabel={t("admin.markCollected")}
+                icon={<Banknote className="size-5" aria-hidden />}
+                pending={markCollected.isPending}
+                onConfirm={() => markCollected.mutate({ orderId })}
+                onClose={() => setCollecting(false)}
+              />
             </>
           );
         }}
@@ -413,30 +463,26 @@ function TransitDamage({ orderId, lines }: { orderId: number; lines: { id: numbe
   if (lines.length === 0 || !claimsOn) return null;
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="pressable mt-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold text-[#8c2f22] hover:bg-[#fdeceb]"
-      >
-        <ShieldAlert className="size-3.5" aria-hidden />{t("claims.reportHeading")}
+      <button type="button" onClick={() => setOpen(true)} className={`${smallButtonClass.quietDanger} mt-4`}>
+        <ShieldAlert className="size-4" aria-hidden />{t("claims.reportHeading")}
       </button>
     );
   }
 
   return (
     <form
-      className="mt-4 rounded-xl border border-[#f3d2cc] bg-white p-4"
+      className="mt-4 rounded-xl border border-[#efc6bd] bg-white p-4"
       onSubmit={event => {
         event.preventDefault();
         file.mutate({ orderId, lineIds: chosen, amount: amount.trim() || ceiling, description, evidenceUrl: evidenceUrl.trim() || null });
       }}
     >
-      <h3 className="text-sm font-extrabold text-[#0a285a]">{t("claims.reportHeading")}</h3>
-      <p className="mt-1 text-[12px] leading-5 text-[#536b8c]">{t("claims.reportNote")}</p>
+      <h3 className="text-[14px] font-bold text-[#0a285a]">{t("claims.reportHeading")}</h3>
+      <p className="mt-1 text-[13px] leading-5 text-[#536b8c]">{t("claims.reportNote")}</p>
       <fieldset className="mt-3">
-        <legend className="text-[11px] font-extrabold text-[#536b8c]">{t("claims.whichItems")}</legend>
+        <legend className="text-[13px] font-semibold text-[#0a285a]">{t("claims.whichItems")}</legend>
         {lines.map(line => (
-          <label key={line.id} className="mt-1 flex items-center gap-2 text-[13px] text-[#0a285a]">
+          <label key={line.id} className="mt-1.5 flex items-center gap-2 text-[14px] text-[#0a285a]">
             <input
               type="checkbox"
               checked={chosen.includes(line.id)}
@@ -444,30 +490,26 @@ function TransitDamage({ orderId, lines }: { orderId: number; lines: { id: numbe
               className="size-4 accent-[#0a285a]"
             />
             <span dir="auto" className="min-w-0 flex-1 truncate">{line.productTitle}</span>
-            <bdi dir="ltr" className="text-[12px] text-[#536b8c]">{money({ amount: line.lineTotal, currencyCode: "KWD" })}</bdi>
+            <span className="text-[13px] text-[#536b8c]">{money({ amount: line.lineTotal, currencyCode: "KWD" })}</span>
           </label>
         ))}
       </fieldset>
-      <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.amountLabel")}</span>
-        <input value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" dir="ltr" placeholder={ceiling} className="glass-field mt-1 w-40 rounded-full px-4 py-2 text-sm" />
-        <span className="mt-1 block text-[11px] text-[#536b8c]">{t("claims.amountHint", { amount: money({ amount: ceiling, currencyCode: "KWD" }) })}</span>
-      </label>
-      <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.descriptionLabel")}</span>
-        <textarea value={description} onChange={event => setDescription(event.target.value)} maxLength={MAX_CLAIM_DESCRIPTION} rows={3} dir="auto" required className="glass-field mt-1 w-full rounded-2xl px-4 py-2.5 text-sm" />
-      </label>
-      <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("claims.evidenceLabel")}</span>
-        <input value={evidenceUrl} onChange={event => setEvidenceUrl(event.target.value)} type="url" dir="ltr" placeholder="https://" className="glass-field mt-1 w-full rounded-full px-4 py-2 text-sm" />
-      </label>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button type="submit" disabled={file.isPending || chosen.length === 0} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
-          {t("claims.submit")}
-        </button>
-        <button type="button" onClick={() => setOpen(false)} className="glass type-control pressable rounded-full px-4 py-2">
-          {t("claims.cancel")}
-        </button>
+      <div className="mt-3 grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
+        <div>
+          <label htmlFor={`claim-amount-${orderId}`} className="block text-[13px] font-semibold text-[#0a285a]">{t("claims.amountLabel")}</label>
+          <input id={`claim-amount-${orderId}`} aria-describedby={`claim-amount-${orderId}-hint`} value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" dir="ltr" placeholder={ceiling} className={`${fieldClass} mt-1.5`} />
+          <p id={`claim-amount-${orderId}-hint`} className="mt-1 text-[12px] ink-muted">{t("claims.amountHint", { amount: money({ amount: ceiling, currencyCode: "KWD" }) })}</p>
+        </div>
+        <div>
+          <label htmlFor={`claim-evidence-${orderId}`} className="block text-[13px] font-semibold text-[#0a285a]">{t("claims.evidenceLabel")}</label>
+          <input id={`claim-evidence-${orderId}`} value={evidenceUrl} onChange={event => setEvidenceUrl(event.target.value)} type="url" dir="ltr" placeholder="https://" className={`${fieldClass} mt-1.5`} />
+        </div>
+      </div>
+      <label htmlFor={`claim-description-${orderId}`} className="mt-3 block text-[13px] font-semibold text-[#0a285a]">{t("claims.descriptionLabel")}</label>
+      <textarea id={`claim-description-${orderId}`} value={description} onChange={event => setDescription(event.target.value)} maxLength={MAX_CLAIM_DESCRIPTION} rows={3} dir="auto" required className={`${textareaClass} mt-1.5`} />
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={() => setOpen(false)} className={smallButtonClass.secondary}>{t("claims.cancel")}</button>
+        <button type="submit" disabled={file.isPending || chosen.length === 0 || !description.trim()} className={smallButtonClass.primary}>{t("claims.submit")}</button>
       </div>
     </form>
   );

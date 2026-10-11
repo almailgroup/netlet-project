@@ -11,6 +11,7 @@
  * guards with. A hidden link is a courtesy, never a control: the server
  * refuses regardless, so the two cannot drift into a button that 403s.
  */
+import { buttonClass } from "@/components/admin/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
@@ -78,14 +79,14 @@ export function AdminShell({ need, children }: {
   if ((!DEMO_MODE && authLoading) || (reachable && me.isLoading)) {
     // Announced rather than only drawn: somebody on a screen reader arriving
     // mid-load otherwise lands on a page that says nothing at all.
-    return <Frame><p role="status" className="text-sm ink-muted">{t("admin.loading")}</p></Frame>;
+    return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;
   }
 
   if (!reachable) {
     return (
       <Frame>
-        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.signInFirst")}</h1>
-        <Link href="/account" className="glass glass-navy pressable mt-4 inline-flex rounded-full px-5 py-3 text-xs font-extrabold">
+        <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.signInFirst")}</h1>
+        <Link href="/account" className={`${buttonClass.primary} mt-5`}>
           {t("header.signIn")}
         </Link>
       </Frame>
@@ -99,10 +100,10 @@ export function AdminShell({ need, children }: {
   if (!actor || actor.kind === "customer") {
     return (
       <Frame>
-        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.noAccess")}</h1>
-        <p className="mt-2 max-w-md text-sm leading-6 text-[#536b8c]">{t("admin.noAccessNote")}</p>
-        <Link href="/" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
-          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.backToStore")}
+        <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.noAccess")}</h1>
+        <p className="mt-2 max-w-md text-[14px] leading-6 text-[#536b8c]">{t("admin.noAccessNote")}</p>
+        <Link href="/" className={`${buttonClass.secondary} mt-5`}>
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.backToStore")}
         </Link>
       </Frame>
     );
@@ -111,9 +112,9 @@ export function AdminShell({ need, children }: {
   if (need && !canAny(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
     return (
       <Frame>
-        <h1 className="text-lg font-extrabold text-[#0a285a]">{t("admin.forbidden")}</h1>
-        <Link href="/admin" className="glass pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold">
-          <ArrowLeft className="size-4 rtl:-scale-x-100" />{t("admin.overview")}
+        <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.forbidden")}</h1>
+        <Link href="/admin" className={`${buttonClass.secondary} mt-5`}>
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.overview")}
         </Link>
       </Frame>
     );

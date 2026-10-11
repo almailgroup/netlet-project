@@ -10,6 +10,7 @@
  * Until a centre is open the seller's desk says the programme has not started,
  * rather than offering a form that can send stock nowhere.
  */
+import { fieldClass, PageHeader, Segmented, smallButtonClass } from "@/components/admin/ui";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Boxes, PackageCheck, PackageOpen, Search, Undo2, Warehouse, X } from "lucide-react";
@@ -28,8 +29,8 @@ import { can, type Actor } from "@shared/inventory/permissions";
 import type { Governorate } from "@shared/inventory/storeProfile";
 import { privatePageMeta } from "@shared/seo";
 
-const field = "glass-field mt-1 w-full rounded-xl px-3 py-2 text-[13px] font-normal text-[#0a285a] outline-none";
-const card = "rounded-2xl border border-[#e6e9ef] bg-white p-4 text-[#0a285a]";
+const field = `${fieldClass} mt-1.5`;
+const card = "rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[#0a285a] sm:p-5";
 
 const STATUS_LABEL: Record<InboundStatus, MessageKey> = {
   announced: "fulfilment.statusAnnounced",
@@ -49,10 +50,7 @@ export default function AdminFulfilment() {
 function Heading({ note }: { note: MessageKey }) {
   const { t } = useTranslation();
   return (
-    <>
-      <h1 className="flex items-center gap-2 text-xl font-extrabold"><Warehouse className="size-5" aria-hidden />{t("fulfilment.title")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 ink-muted">{t(note)}</p>
-    </>
+    <PageHeader title={t("fulfilment.title")} description={t(note)} />
   );
 }
 
@@ -108,17 +106,17 @@ function Announce({ actor }: { actor: Actor }) {
         if (!problem && chosenCentre) announce.mutate({ centreId: chosenCentre, lines: parsed, note: note || null });
       }}
     >
-      <h2 className="flex items-center gap-2 text-[14px] font-extrabold"><PackageOpen className="size-4" aria-hidden />{t("fulfilment.sendTitle")}</h2>
-      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("fulfilment.sendNote")}</p>
+      <h2 className="flex items-center gap-2 text-[16px] font-bold text-[#0a285a]"><PackageOpen className="size-4" aria-hidden />{t("fulfilment.sendTitle")}</h2>
+      <p className="mt-1 text-[13px] leading-5 ink-muted">{t("fulfilment.sendNote")}</p>
 
-      <label className="mt-3 block text-[12px] font-bold ink-muted">
+      <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
         {t("fulfilment.centre")}
         <select value={chosenCentre ?? ""} onChange={event => setCentreId(Number(event.target.value))} className={field}>
           {(centres.data ?? []).map(centre => <option key={centre.id} value={centre.id}>{centre.name}</option>)}
         </select>
       </label>
 
-      <label className="mt-3 block text-[12px] font-bold ink-muted">
+      <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
         {t("fulfilment.findVariant")}
         <span className="relative block">
           <Search className="pointer-events-none absolute start-3 top-1/2 mt-0.5 size-4 -translate-y-1/2 ink-muted" aria-hidden />
@@ -147,7 +145,7 @@ function Announce({ actor }: { actor: Actor }) {
                 type="button"
                 disabled={Boolean(blocked) || added}
                 onClick={() => setLines([...lines, { variantId: variant.variantId, label, quantity: "1" }])}
-                className="glass pressable type-control shrink-0 rounded-full px-3 py-1.5 disabled:opacity-50"
+                className={`${smallButtonClass.secondary} shrink-0`}
               >
                 {t(added ? "fulfilment.added" : "fulfilment.add")}
               </button>
@@ -192,11 +190,11 @@ function Announce({ actor }: { actor: Actor }) {
       ) : null}
       {problem && lines.length ? <p className="mt-2 text-[12px] font-bold text-[#8c2f22]">{t(problem, { max: MAX_INBOUND_UNITS })}</p> : null}
 
-      <label className="mt-3 block text-[12px] font-bold ink-muted">
+      <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
         {t("fulfilment.note")}
         <textarea dir="auto" maxLength={500} value={note} onChange={event => setNote(event.target.value)} className={`${field} min-h-16`} />
       </label>
-      <button type="submit" disabled={Boolean(problem) || !chosenCentre || announce.isPending || !can(actor, "fulfilment.send")} className="glass-navy pressable type-control mt-3 rounded-full px-5 py-2 disabled:opacity-50">
+      <button type="submit" disabled={Boolean(problem) || !chosenCentre || announce.isPending || !can(actor, "fulfilment.send")} className={`${smallButtonClass.primary} mt-3`}>
         {t("fulfilment.announce")}
       </button>
     </form>
@@ -233,8 +231,8 @@ function Centres() {
 
   return (
     <section className={`${card} mt-5`} aria-labelledby="centres-title">
-      <h2 id="centres-title" className="flex items-center gap-2 text-[14px] font-extrabold"><Warehouse className="size-4" aria-hidden />{t("fulfilment.centres")}</h2>
-      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("fulfilment.centresNote")}</p>
+      <h2 id="centres-title" className="flex items-center gap-2 text-[16px] font-bold text-[#0a285a]"><Warehouse className="size-4" aria-hidden />{t("fulfilment.centres")}</h2>
+      <p className="mt-1 text-[13px] leading-5 ink-muted">{t("fulfilment.centresNote")}</p>
       <QueryGate queries={[centres]}>
         {() => (
           <ul className="mt-3 space-y-2">
@@ -246,7 +244,7 @@ function Centres() {
                 </span>
                 <span className="flex flex-wrap items-center gap-2">
                   <PackRate centreId={centre.id} rate={centre.packFeePerUnit} name={centre.name} />
-                  <button type="button" onClick={() => toggle.mutate({ id: centre.id, active: !centre.active })} className="glass pressable type-control rounded-full px-3 py-1.5">
+                  <button type="button" onClick={() => toggle.mutate({ id: centre.id, active: !centre.active })} className={smallButtonClass.secondary}>
                     {t(centre.active ? "fulfilment.closeCentre" : "fulfilment.reopenCentre")}
                   </button>
                 </span>
@@ -260,16 +258,16 @@ function Centres() {
         className="mt-3 grid gap-2 sm:grid-cols-3"
         onSubmit={event => { event.preventDefault(); if (draft.name.trim() && draft.addressLine.trim()) create.mutate({ ...draft, governorate: draft.governorate as Governorate }); }}
       >
-        <label className="text-[12px] font-bold ink-muted">{t("fulfilment.centreName")}<input dir="auto" value={draft.name} maxLength={120} onChange={event => setDraft({ ...draft, name: event.target.value })} className={field} /></label>
-        <label className="text-[12px] font-bold ink-muted">
+        <label className="text-[13px] font-semibold text-[#0a285a]">{t("fulfilment.centreName")}<input dir="auto" value={draft.name} maxLength={120} onChange={event => setDraft({ ...draft, name: event.target.value })} className={field} /></label>
+        <label className="text-[13px] font-semibold text-[#0a285a]">
           {t("admin.governorate")}
           <select value={draft.governorate} onChange={event => setDraft({ ...draft, governorate: event.target.value })} className={field}>
             {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{isArabic ? zone.labelAr : zone.label}</option>)}
           </select>
         </label>
-        <label className="text-[12px] font-bold ink-muted">{t("admin.addressLine")}<input dir="auto" value={draft.addressLine} maxLength={300} onChange={event => setDraft({ ...draft, addressLine: event.target.value })} className={field} /></label>
+        <label className="text-[13px] font-semibold text-[#0a285a]">{t("admin.addressLine")}<input dir="auto" value={draft.addressLine} maxLength={300} onChange={event => setDraft({ ...draft, addressLine: event.target.value })} className={field} /></label>
         <div className="sm:col-span-3">
-          <button type="submit" disabled={!draft.name.trim() || !draft.addressLine.trim() || create.isPending} className="glass-navy pressable type-control rounded-full px-5 py-2 disabled:opacity-50">{t("fulfilment.openCentre")}</button>
+          <button type="submit" disabled={!draft.name.trim() || !draft.addressLine.trim() || create.isPending} className={smallButtonClass.primary}>{t("fulfilment.openCentre")}</button>
         </div>
       </form>
     </section>
@@ -287,20 +285,20 @@ function PickList() {
   });
   return (
     <section className={`${card} mt-5`} aria-labelledby="pick-title">
-      <h2 id="pick-title" className="flex items-center gap-2 text-[14px] font-extrabold"><PackageCheck className="size-4" aria-hidden />{t("fulfilment.pickTitle")}</h2>
-      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("fulfilment.pickNote")}</p>
+      <h2 id="pick-title" className="flex items-center gap-2 text-[16px] font-bold text-[#0a285a]"><PackageCheck className="size-4" aria-hidden />{t("fulfilment.pickTitle")}</h2>
+      <p className="mt-1 text-[13px] leading-5 ink-muted">{t("fulfilment.pickNote")}</p>
       <QueryGate queries={[picks]}>
         {() => {
           const data = picks.data!;
-          if (data.orders.length === 0) return <p className="mt-3 text-[12px] ink-muted">{t("fulfilment.nothingToPick")}</p>;
+          if (data.orders.length === 0) return <p className="mt-3 text-[13px] ink-muted">{t("fulfilment.nothingToPick")}</p>;
           return (
             <>
               <ul className="mt-3 space-y-2">
                 {data.orders.map(order => (
                   <li key={`${order.orderId}-${order.centreId}`} className="rounded-xl bg-[#f6f8fb] px-3 py-2 text-[12px]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-extrabold"><bdi dir="ltr">{order.reference}</bdi> <span className="font-normal ink-muted">· <bdi>{order.centreName}</bdi> · {formatDate(order.placedAt)}</span></p>
-                      <button type="button" disabled={packed.isPending} onClick={() => packed.mutate({ orderId: order.orderId, centreId: order.centreId })} className="glass-navy pressable type-control rounded-full px-3 py-1.5">{t("fulfilment.markPacked")}</button>
+                      <p className="font-bold"><bdi dir="ltr">{order.reference}</bdi> <span className="font-normal ink-muted">· <bdi>{order.centreName}</bdi> · {formatDate(order.placedAt)}</span></p>
+                      <button type="button" disabled={packed.isPending} onClick={() => packed.mutate({ orderId: order.orderId, centreId: order.centreId })} className={smallButtonClass.primary}>{t("fulfilment.markPacked")}</button>
                     </div>
                     <ul className="mt-1 space-y-0.5">
                       {order.lines.map(line => (
@@ -335,43 +333,36 @@ function Shipments({ operator }: { operator: boolean }) {
 
   return (
     <section className={`${card} mt-5`} aria-labelledby="shipments-title">
-      <h2 id="shipments-title" className="flex items-center gap-2 text-[14px] font-extrabold"><Boxes className="size-4" aria-hidden />{t(operator ? "fulfilment.toReceive" : "fulfilment.yourShipments")}</h2>
-      <div role="tablist" aria-label={t("fulfilment.yourShipments")} className="mt-3 inline-flex flex-wrap gap-1 rounded-2xl bg-[#eef1f6] p-1">
-        {([undefined, "announced", "received", "cancelled"] as const).map(entry => (
-          <button
-            key={entry ?? "all"}
-            type="button"
-            role="tab"
-            aria-selected={status === entry}
-            onClick={() => { setStatus(entry); setPage(1); }}
-            className={`rounded-xl px-3 py-1.5 text-[12px] font-extrabold ${status === entry ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c]"}`}
-          >
-            {entry ? t(STATUS_LABEL[entry]) : t("support.filterAll")}
-          </button>
-        ))}
-      </div>
+      <h2 id="shipments-title" className="flex items-center gap-2 text-[16px] font-bold text-[#0a285a]"><Boxes className="size-4" aria-hidden />{t(operator ? "fulfilment.toReceive" : "fulfilment.yourShipments")}</h2>
+      <Segmented
+        label={t("fulfilment.yourShipments")}
+        className="mt-3 w-fit"
+        value={status ?? "all"}
+        onChange={entry => { setStatus(entry === "all" ? undefined : entry); setPage(1); }}
+        options={(["all", "announced", "received", "cancelled"] as const).map(entry => ({ value: entry, label: entry === "all" ? t("support.filterAll") : t(STATUS_LABEL[entry]) }))}
+      />
       <QueryGate queries={[shipments]}>
         {() => {
           const result = shipments.data!;
-          if (result.rows.length === 0) return <p className="mt-3 text-[12px] ink-muted">{t("fulfilment.noShipments")}</p>;
+          if (result.rows.length === 0) return <p className="mt-3 text-[13px] ink-muted">{t("fulfilment.noShipments")}</p>;
           return (
             <>
               <ul className="mt-3 space-y-3">
                 {result.rows.map(shipment => (
                   <li key={shipment.id} className="rounded-xl border border-[#eef1f6] px-3 py-2 text-[12px]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-extrabold">
+                      <p className="font-bold">
                         <bdi dir="ltr">{shipment.reference}</bdi>
                         <span className="font-normal ink-muted"> · {operator ? <><bdi>{shipment.vendorName}</bdi> · </> : null}<bdi>{shipment.centreName}</bdi> · {formatDate(shipment.createdAt)}</span>
                       </p>
-                      <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold">{t(STATUS_LABEL[shipment.status])}</span>
+                      <span className="inline-flex rounded-full bg-[#e7edf5] px-2.5 py-1 text-[12px] leading-none font-semibold text-[#0a285a]">{t(STATUS_LABEL[shipment.status])}</span>
                     </div>
                     {shipment.note ? <p dir="auto" className="mt-1 ink-muted">{shipment.note}</p> : null}
                     {operator && shipment.status === "announced"
                       ? <Receive shipment={shipment} />
                       : <ShipmentLines lines={shipment.lines} />}
                     {!operator && shipment.status === "announced" ? (
-                      <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate({ id: shipment.id })} className="glass pressable type-control mt-2 rounded-full px-3 py-1.5">{t("fulfilment.cancelShipment")}</button>
+                      <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate({ id: shipment.id })} className={`${smallButtonClass.secondary} mt-2`}>{t("fulfilment.cancelShipment")}</button>
                     ) : null}
                   </li>
                 ))}
@@ -453,7 +444,7 @@ function Receive({ shipment }: { shipment: { id: number; reference: string; line
           ))}
         </tbody>
       </table>
-      <button type="button" disabled={!valid || receive.isPending} onClick={() => setAsking(true)} className="glass-navy pressable type-control mt-2 rounded-full px-4 py-2 disabled:opacity-50">{t("fulfilment.recordCount")}</button>
+      <button type="button" disabled={!valid || receive.isPending} onClick={() => setAsking(true)} className={`${smallButtonClass.primary} mt-2`}>{t("fulfilment.recordCount")}</button>
       <ConfirmDialog
         open={asking}
         title={t("fulfilment.recordCountTitle", { reference: shipment.reference })}
@@ -481,11 +472,11 @@ function Held({ operator }: { operator: boolean }) {
 
   return (
     <section className={`${card} mt-5`} aria-labelledby="held-title">
-      <h2 id="held-title" className="flex items-center gap-2 text-[14px] font-extrabold"><Warehouse className="size-4" aria-hidden />{title}</h2>
+      <h2 id="held-title" className="flex items-center gap-2 text-[16px] font-bold text-[#0a285a]"><Warehouse className="size-4" aria-hidden />{title}</h2>
       <QueryGate queries={[held]}>
         {() => {
           const result = held.data!;
-          if (result.rows.length === 0) return <p className="mt-3 text-[12px] ink-muted">{t("fulfilment.nothingHeld")}</p>;
+          if (result.rows.length === 0) return <p className="mt-3 text-[13px] ink-muted">{t("fulfilment.nothingHeld")}</p>;
           return (
             <>
               <ul className="mt-3 space-y-1">
@@ -502,7 +493,7 @@ function Held({ operator }: { operator: boolean }) {
                     <span className="flex items-center gap-2">
                       <strong>{t("fulfilment.onShelf", { count: row.stock })}</strong>
                       {operator ? (
-                        <button type="button" onClick={() => setSending({ variantId: row.variantId, label: `${row.productTitle} — ${row.variantTitle}`, stock: row.stock })} className="glass pressable type-control inline-flex items-center gap-1.5 rounded-full px-3 py-1.5">
+                        <button type="button" onClick={() => setSending({ variantId: row.variantId, label: `${row.productTitle} — ${row.variantTitle}`, stock: row.stock })} className={smallButtonClass.secondary}>
                           <Undo2 className="size-3.5" aria-hidden />{t("fulfilment.sendBack")}
                         </button>
                       ) : null}
@@ -541,11 +532,11 @@ function PackRate({ centreId, rate, name }: { centreId: number; rate: string | n
   });
   return (
     <form className="flex items-center gap-1.5" onSubmit={event => { event.preventDefault(); if (ok) save.mutate({ id: centreId, rate: value.trim() || null }); }}>
-      <label className="text-[11px] font-bold ink-muted">
+      <label className="text-[13px] font-semibold text-[#0a285a]">
         <span className="sr-only">{t("fulfilment.packRateFor", { centre: name })}</span>
-        <input dir="ltr" inputMode="decimal" value={value} placeholder={t("fulfilment.packRatePlaceholder")} aria-invalid={!ok} onChange={event => setValue(event.target.value)} className="glass-field w-28 rounded-xl px-3 py-1.5 text-[12px] font-normal text-[#0a285a] outline-none" />
+        <input dir="ltr" inputMode="decimal" value={value} placeholder={t("fulfilment.packRatePlaceholder")} aria-invalid={!ok} onChange={event => setValue(event.target.value)} className={`${fieldClass} h-9 w-28`} />
       </label>
-      <button type="submit" disabled={!ok || save.isPending} className="glass pressable type-control rounded-full px-3 py-1.5 disabled:opacity-50">{t("fulfilment.setRate")}</button>
+      <button type="submit" disabled={!ok || save.isPending} className={smallButtonClass.secondary}>{t("fulfilment.setRate")}</button>
     </form>
   );
 }
@@ -559,12 +550,12 @@ function Charges({ operator }: { operator: boolean }) {
   const charges = trpc.fulfilment.charges.useQuery({ page }, { placeholderData: previous => previous });
   return (
     <section className={`${card} mt-5`} aria-labelledby="charges-title">
-      <h2 id="charges-title" className="text-[14px] font-extrabold">{t("fulfilment.chargesTitle")}</h2>
-      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("fulfilment.chargesNote")}</p>
+      <h2 id="charges-title" className="text-[16px] font-bold text-[#0a285a]">{t("fulfilment.chargesTitle")}</h2>
+      <p className="mt-1 text-[13px] leading-5 ink-muted">{t("fulfilment.chargesNote")}</p>
       <QueryGate queries={[charges]}>
         {() => {
           const result = charges.data!;
-          if (result.rows.length === 0) return <p className="mt-3 text-[12px] ink-muted">{t("fulfilment.noCharges")}</p>;
+          if (result.rows.length === 0) return <p className="mt-3 text-[13px] ink-muted">{t("fulfilment.noCharges")}</p>;
           return (
             <>
               <ul className="mt-3 space-y-1">
@@ -577,7 +568,7 @@ function Charges({ operator }: { operator: boolean }) {
                     </span>
                     <span className="flex items-center gap-2">
                       <strong><bdi>{money(row.amount)}</bdi></strong>
-                      <span className="rounded-full bg-[#e7edf5] px-2.5 py-0.5 text-[11px] font-extrabold">{t(row.deducted ? "fulfilment.chargeTaken" : "fulfilment.chargeNext")}</span>
+                      <span className="inline-flex rounded-full bg-[#e7edf5] px-2.5 py-1 text-[12px] leading-none font-semibold text-[#0a285a]">{t(row.deducted ? "fulfilment.chargeTaken" : "fulfilment.chargeNext")}</span>
                     </span>
                   </li>
                 ))}

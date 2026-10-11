@@ -61,8 +61,8 @@ export function PayoutsDue() {
         const rows = due.data ?? [];
         return (
           <section>
-            <h2 id="finance-due" className="text-sm font-extrabold text-[#0a285a]">{t("admin.payoutsDue")}</h2>
-            <p className="mt-1 max-w-2xl text-[12px] leading-5 ink-muted">
+            <h2 id="finance-due" className="text-[16px] font-bold text-[#0a285a]">{t("admin.payoutsDue")}</h2>
+            <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">
               {t("admin.payoutsDueNote", {
                 cod: String(SETTLEMENT_DAYS.cod.min),
                 cardMin: String(SETTLEMENT_DAYS.card.min),
@@ -70,14 +70,14 @@ export function PayoutsDue() {
               })}
             </p>
             {rows.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-[#d5dfeb] bg-white/60 px-4 py-5 text-[13px] leading-6 text-[#536b8c]">
+              <p className="mt-3 rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-5 py-8 text-center text-[14px] leading-6 text-[#536b8c]">
                 {t("admin.payoutsDueEmpty")}
               </p>
             ) : (
               <Scroller labelledBy="finance-due">
                 <table className="w-full min-w-[560px] border-collapse">
                   <thead>
-                    <tr className="border-b border-[#d5dfeb]">
+                    <tr className="border-b border-[#e1e7ef]">
                       <th scope="col" className={`${head} text-start`}>{t("admin.payoutOrder")}</th>
                       <th scope="col" className={`${head} text-start`}>{t("admin.financeSeller")}</th>
                       <th scope="col" className={`${head} text-end`}>{t("admin.payoutOwed")}</th>
@@ -88,7 +88,7 @@ export function PayoutsDue() {
                     {rows.map(row => {
                       const shown = state(row);
                       return (
-                        <tr key={`${row.orderId}-${row.vendorId}`} className="border-b border-[#eef1f6] last:border-0">
+                        <tr key={`${row.orderId}-${row.vendorId}`} className="border-b border-[#f0f2f6] last:border-0">
                           <th scope="row" className={`${cell} text-start font-bold text-[#0a285a]`}>
                             <bdi dir="ltr">{row.reference}</bdi>
                           </th>

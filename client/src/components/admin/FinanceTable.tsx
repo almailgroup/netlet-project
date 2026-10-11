@@ -4,8 +4,10 @@
  */
 import type { ReactNode } from "react";
 
-export const cell = "px-3 py-2.5 text-[13px]";
-export const head = "px-3 py-2 text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase";
+export const cell = "px-4 py-3 text-[14px] tabular-nums";
+/* Sentence case, like every other table in the portal: a tracked uppercase
+   header is the mark of generated design, and does nothing in Arabic. */
+export const head = "px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-[#536b8c] bg-[#fafbfd]";
 
 /**
  * The box a wide table scrolls inside.
@@ -25,7 +27,7 @@ export function Scroller({ labelledBy, children }: { labelledBy: string; childre
       role="region"
       aria-labelledby={labelledBy}
       tabIndex={0}
-      className="mt-3 overflow-x-auto rounded-xl border border-[#d5dfeb] bg-white/70"
+      className="mt-3 overflow-x-auto rounded-2xl border border-[#e1e7ef] bg-white"
     >
       {children}
     </div>

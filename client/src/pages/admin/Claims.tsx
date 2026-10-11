@@ -14,6 +14,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { EmptyState, fieldClass, isolate, PageHeader, Pill, Segmented, SectionHeading, SkeletonRows, smallButtonClass, tableClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -64,41 +65,29 @@ function Claims({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <h1 className="text-[22px] leading-8 font-extrabold sm:text-[24px]">{t("admin.claims")}</h1>
-      <p className="mt-2 max-w-2xl text-[13px] leading-6 text-[#536b8c]">{t("admin.claimsNote")}</p>
+      <PageHeader title={t("admin.claims")} description={t("admin.claimsNote")} />
 
       {seesLedger ? <Ledger /> : null}
 
-      <div role="tablist" aria-label={t("admin.claims")} className="mt-6 inline-flex gap-1 rounded-2xl bg-[#eef1f6] p-1">
-        {TABS.map(entry => (
-          <button
-            key={entry.id}
-            role="tab"
-            type="button"
-            aria-selected={tab === entry.id}
-            onClick={() => setTab(entry.id)}
-            className={`rounded-xl px-4 py-2 text-[12px] font-extrabold ${
-              tab === entry.id ? "bg-white text-[#0a285a] shadow-sm" : "text-[#536b8c]"
-            }`}
-          >
-            {t(entry.label)}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        label={t("admin.claims")}
+        className="mb-4 w-fit"
+        value={tab}
+        onChange={setTab}
+        options={TABS.map(entry => ({ value: entry.id, label: t(entry.label) }))}
+      />
 
-      <QueryGate queries={[claims]}>
-        {() => {
-          const rows = claims.data ?? [];
-          if (rows.length === 0) {
-            return <p className="mt-5 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">{t("admin.claimsNone")}</p>;
-          }
-          return (
-            <ul className="mt-5 space-y-3">
-              {rows.map(claim => <ClaimCard key={claim.id} claim={claim} actor={actor} />)}
-            </ul>
-          );
-        }}
-      </QueryGate>
+      {claims.isLoading ? (
+        <SkeletonRows rows={3} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[claims]}>
+          {() => {
+            const rows = claims.data ?? [];
+            if (rows.length === 0) return <EmptyState title={t("admin.claimsNone")} />;
+            return <ul className="space-y-4">{rows.map(claim => <ClaimCard key={claim.id} claim={claim} actor={actor} />)}</ul>;
+          }}
+        </QueryGate>
+      )}
     </>
   );
 }
@@ -113,35 +102,35 @@ function Ledger() {
         const rows = ledger.data ?? [];
         if (rows.length === 0) return null;
         return (
-          <div className="mt-6">
-            <h2 id="claims-ledger" className="text-sm font-extrabold">{t("admin.claimsLedger")}</h2>
+          <section className="mb-8">
+            <SectionHeading><span id="claims-ledger">{t("admin.claimsLedger")}</span></SectionHeading>
             {/* Scrolls sideways on a phone, and a keyboard can reach it — the
                 finance tables' arrangement. */}
-            <div tabIndex={0} role="region" aria-labelledby="claims-ledger" className="mt-2 overflow-x-auto rounded-2xl border border-[#e6e9ef] bg-white">
-              <table className="w-full min-w-[480px] text-[13px]">
-                <thead className="text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase">
+            <div tabIndex={0} role="region" aria-labelledby="claims-ledger" className={tableClass.wrap}>
+              <table className={`${tableClass.table} min-w-[480px]`}>
+                <thead className={tableClass.head}>
                   <tr>
-                    <th scope="col" className="px-4 py-3 text-start">{t("admin.claimsLedgerCompany")}</th>
-                    <th scope="col" className="px-4 py-3 text-end">{t("admin.claimsLedgerOwed")}</th>
-                    <th scope="col" className="px-4 py-3 text-end">{t("admin.claimsLedgerAccepted")}</th>
-                    <th scope="col" className="px-4 py-3 text-end">{t("admin.claimsLedgerOpen")}</th>
-                    <th scope="col" className="px-4 py-3 text-end">{t("admin.claimsLedgerRejected")}</th>
+                    <th scope="col" className={tableClass.th}>{t("admin.claimsLedgerCompany")}</th>
+                    <th scope="col" className={tableClass.thEnd}>{t("admin.claimsLedgerOwed")}</th>
+                    <th scope="col" className={tableClass.thEnd}>{t("admin.claimsLedgerAccepted")}</th>
+                    <th scope="col" className={tableClass.thEnd}>{t("admin.claimsLedgerOpen")}</th>
+                    <th scope="col" className={tableClass.thEnd}>{t("admin.claimsLedgerRejected")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map(row => (
-                    <tr key={row.courierId} className="border-t border-[#eef1f6]">
-                      <th scope="row" dir="auto" className="px-4 py-3 text-start font-bold">{row.courierName ?? "—"}</th>
-                      <td className="px-4 py-3 text-end font-extrabold"><bdi dir="ltr">{money(row.owed, "KWD")}</bdi></td>
-                      <td className="px-4 py-3 text-end">{row.accepted}</td>
-                      <td className="px-4 py-3 text-end">{row.open}</td>
-                      <td className="px-4 py-3 text-end">{row.rejected}</td>
+                    <tr key={row.courierId} className={tableClass.row}>
+                      <th scope="row" dir="auto" className={`${tableClass.td} text-start font-semibold text-[#0a285a]`}>{row.courierName ?? "—"}</th>
+                      <td className={`${tableClass.td} text-end font-bold text-[#0a285a]`}>{money(row.owed, "KWD")}</td>
+                      <td className={`${tableClass.td} text-end tabular-nums`}>{row.accepted}</td>
+                      <td className={`${tableClass.td} text-end tabular-nums`}>{row.open}</td>
+                      <td className={`${tableClass.td} text-end tabular-nums`}>{row.rejected}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          </section>
         );
       }}
     </QueryGate>
@@ -155,53 +144,55 @@ function ClaimCard({ claim, actor }: { claim: Claim; actor: Actor }) {
   const open = claim.status === "open";
 
   return (
-    <li className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <p className="font-extrabold">
-          <bdi dir="ltr">{claim.reference}</bdi>
-          <span className="ms-2 text-[12px] font-bold text-[#536b8c]" dir="auto">{claim.vendorName ?? "—"}</span>
+    <li className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+      <div className="p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-[#0a285a]">
+              <bdi dir="ltr">{claim.reference}</bdi>
+              {claim.vendorName ? <span className="ms-2 text-[13px] font-semibold text-[#536b8c]"><bdi>{claim.vendorName}</bdi></span> : null}
+            </p>
+            <p className="mt-0.5 text-[13px] text-[#536b8c]">
+              {t(FILED_BY[claim.filedAs] ?? "admin.claimsFiledBy.shopper")}
+              {claim.courierName ? <> · {t("admin.claimsAgainst", { company: isolate(claim.courierName) })}</> : null}
+              {" · "}{formatDate(claim.createdAt)}
+            </p>
+          </div>
+          <Pill tone={claim.status === "open" ? "warning" : claim.status === "accepted" ? "good" : "neutral"}>
+            {t(claim.status === "open" ? "admin.claimsTabOpen" : claim.status === "accepted" ? "admin.claimsTabAccepted" : "admin.claimsTabRejected")}
+          </Pill>
+        </div>
+
+        <ul className="mt-3 divide-y divide-[#f0f2f6] rounded-xl border border-[#e1e7ef] text-[14px]">
+          {claim.lines.map(line => (
+            <li key={line.lineId} className="flex justify-between gap-4 px-3.5 py-2">
+              <span dir="auto" className="min-w-0 truncate text-[#0a285a]">{line.productTitle}</span>
+              <span className="shrink-0 text-[#536b8c]">{money(line.lineTotal, "KWD")}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 flex flex-wrap gap-x-4 text-[14px] font-bold text-[#0a285a]">
+          <span>{t("admin.claimsClaimed", { amount: money(claim.claimedAmount, "KWD") })}</span>
+          {claim.awardedAmount ? <span className="text-[#2f5d33]">{t("admin.claimsAwarded", { amount: money(claim.awardedAmount, "KWD") })}</span> : null}
         </p>
-        <span className="text-[11px] text-[#536b8c]">{formatDate(claim.createdAt)}</span>
+        <p dir="auto" className="mt-2 whitespace-pre-line text-[14px] leading-6 text-[#3d5376]">{claim.description}</p>
+        {claim.evidenceUrl ? (
+          <a href={claim.evidenceUrl} target="_blank" rel="noopener noreferrer nofollow" className={`${smallButtonClass.secondary} mt-3`}>
+            {t("admin.claimsEvidence")} <ExternalLink className="size-3.5" aria-hidden />
+          </a>
+        ) : null}
+
+        <div className="mt-4 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
+          <p className="text-[13px] font-semibold text-[#0a285a]">{t("admin.claimsResponse")}</p>
+          {claim.courierResponse ? (
+            <p dir="auto" className="mt-1 whitespace-pre-line text-[14px] leading-6 text-[#3d5376]">{claim.courierResponse}</p>
+          ) : (
+            <p className="mt-1 text-[13px] ink-muted">{t("admin.claimsNoResponse")}</p>
+          )}
+        </div>
+
+        {claim.decisionNote ? <p dir="auto" className="mt-3 text-[13px] leading-5 text-[#536b8c]">{claim.decisionNote}</p> : null}
       </div>
-      <p className="mt-1 text-[12px] text-[#536b8c]">
-        {t(FILED_BY[claim.filedAs] ?? "admin.claimsFiledBy.shopper")}
-        {claim.courierName ? <> · <span dir="auto">{t("admin.claimsAgainst", { company: claim.courierName })}</span></> : null}
-      </p>
-
-      <ul className="mt-3 space-y-0.5 text-[13px]">
-        {claim.lines.map(line => (
-          <li key={line.lineId} className="flex justify-between gap-4">
-            <span dir="auto" className="min-w-0 truncate">{line.productTitle}</span>
-            <bdi dir="ltr" className="shrink-0 text-[#536b8c]">{money(line.lineTotal, "KWD")}</bdi>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-2 text-[13px] font-extrabold">
-        {t("admin.claimsClaimed", { amount: money(claim.claimedAmount, "KWD") })}
-        {claim.awardedAmount ? <span className="ms-3 text-[#2f5d33]">{t("admin.claimsAwarded", { amount: money(claim.awardedAmount, "KWD") })}</span> : null}
-      </p>
-      <p dir="auto" className="mt-2 whitespace-pre-line text-[13px] leading-6">{claim.description}</p>
-      {claim.evidenceUrl ? (
-        <a
-          href={claim.evidenceUrl}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          className="mt-2 inline-flex items-center gap-1 text-[12px] font-extrabold ink-accent underline"
-        >
-          {t("admin.claimsEvidence")} <ExternalLink className="size-3.5" aria-hidden />
-        </a>
-      ) : null}
-
-      <div className="mt-3 rounded-xl bg-[#f7f8fb] p-3">
-        <p className="text-[11px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase">{t("admin.claimsResponse")}</p>
-        {claim.courierResponse ? (
-          <p dir="auto" className="mt-1 whitespace-pre-line text-[13px] leading-6">{claim.courierResponse}</p>
-        ) : (
-          <p className="mt-1 text-[12px] text-[#536b8c]">{t("admin.claimsNoResponse")}</p>
-        )}
-      </div>
-
-      {claim.decisionNote ? <p dir="auto" className="mt-2 text-[12px] leading-5 text-[#536b8c]">{claim.decisionNote}</p> : null}
 
       {open && actor.kind === "courier" ? <Respond claim={claim} /> : null}
       {open && can(actor, "delivery.decideClaims") ? <Decide claim={claim} /> : null}
@@ -218,23 +209,25 @@ function Respond({ claim }: { claim: Claim }) {
     onSuccess: () => { toast.success(t("admin.claimsResponded")); void utils.dispatch.claims.list.invalidate(); },
     onError: error => toast.error(refusal(error.message)),
   });
+  const id = `respond-${claim.id}`;
   return (
-    <form className="mt-3" onSubmit={event => { event.preventDefault(); respond.mutate({ claimId: claim.id, response }); }}>
-      <label className="block">
-        <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("admin.claimsRespondLabel")}</span>
-        <textarea
-          value={response}
-          onChange={event => setResponse(event.target.value)}
-          maxLength={MAX_CLAIM_RESPONSE}
-          rows={3}
-          dir="auto"
-          required
-          className="glass-field mt-1 w-full rounded-2xl px-4 py-2.5 text-sm"
-        />
-      </label>
-      <button type="submit" disabled={respond.isPending} className="glass-navy type-control pressable mt-2 rounded-full px-4 py-2 disabled:opacity-60">
-        {t("admin.claimsRespond")}
-      </button>
+    <form className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5" onSubmit={event => { event.preventDefault(); respond.mutate({ claimId: claim.id, response }); }}>
+      <label htmlFor={id} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.claimsRespondLabel")}</label>
+      <textarea
+        id={id}
+        value={response}
+        onChange={event => setResponse(event.target.value)}
+        maxLength={MAX_CLAIM_RESPONSE}
+        rows={3}
+        dir="auto"
+        required
+        className={`${textareaClass} mt-1.5`}
+      />
+      <div className="mt-3 flex justify-end">
+        <button type="submit" disabled={respond.isPending || !response.trim()} className={smallButtonClass.primary}>
+          {t("admin.claimsRespond")}
+        </button>
+      </div>
     </form>
   );
 }
@@ -257,55 +250,35 @@ function Decide({ claim }: { claim: Claim }) {
       void utils.dispatch.claims.ledger.invalidate();
       void utils.dispatch.claims.openCount.invalidate();
     },
-    onError: error => toast.error(refusal(error.message)),
+    onError: error => { setConfirming(null); toast.error(refusal(error.message)); },
   });
+  const awardId = `award-${claim.id}`;
+  const noteId = `decision-${claim.id}`;
   return (
-    <div className="mt-3 border-t border-[#eef1f6] pt-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="block">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("admin.claimsAwardLabel")}</span>
-          <input
-            value={award}
-            onChange={event => setAward(event.target.value)}
-            inputMode="decimal"
-            dir="ltr"
-            className="glass-field mt-1 w-36 rounded-full px-4 py-2 text-sm"
-          />
-        </label>
-        <label className="block min-w-[220px] flex-1">
-          <span className="block text-[11px] font-extrabold text-[#536b8c]">{t("admin.claimsNoteLabel")}</span>
-          <input
-            value={note}
-            onChange={event => setNote(event.target.value)}
-            maxLength={500}
-            dir="auto"
-            className="glass-field mt-1 w-full rounded-full px-4 py-2 text-sm"
-          />
-        </label>
+    <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5">
+      <div className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
+        <div>
+          <label htmlFor={awardId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.claimsAwardLabel")}</label>
+          <input id={awardId} value={award} onChange={event => setAward(event.target.value)} inputMode="decimal" dir="ltr" className={`${fieldClass} mt-1.5`} />
+        </div>
+        <div>
+          <label htmlFor={noteId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.claimsNoteLabel")}</label>
+          <input id={noteId} value={note} onChange={event => setNote(event.target.value)} maxLength={500} dir="auto" className={`${fieldClass} mt-1.5`} />
+        </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={decide.isPending}
-          onClick={() => setConfirming("accepted")}
-          className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60"
-        >
-          {t("admin.claimsAccept")}
-        </button>
-        <button
-          type="button"
-          disabled={decide.isPending}
-          onClick={() => setConfirming("rejected")}
-          className="glass type-control pressable rounded-full px-4 py-2 disabled:opacity-60"
-        >
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <button type="button" disabled={decide.isPending} onClick={() => setConfirming("rejected")} className={smallButtonClass.quietDanger}>
           {t("admin.claimsReject")}
+        </button>
+        <button type="button" disabled={decide.isPending} onClick={() => setConfirming("accepted")} className={smallButtonClass.primary}>
+          {t("admin.claimsAccept")}
         </button>
       </div>
       <ConfirmDialog
         open={confirming !== null}
         tone={confirming === "rejected" ? "danger" : "normal"}
         title={confirming === "accepted"
-          ? t("admin.claimsConfirmAccept", { amount: money(award || claim.claimedAmount, "KWD"), company: claim.courierName ?? "—" })
+          ? t("admin.claimsConfirmAccept", { amount: money(award || claim.claimedAmount, "KWD"), company: isolate(claim.courierName ?? "—") })
           : t("admin.claimsConfirmReject")}
         body={t("admin.claimsConfirmBody")}
         confirmLabel={confirming === "accepted" ? t("admin.claimsAcceptShort") : t("admin.claimsReject")}
