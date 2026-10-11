@@ -5,15 +5,13 @@
 import { BagDrawer } from "@/components/cart/BagDrawer";
 import { Toaster } from "@/components/ui/sonner";
 import { useTranslation } from "@/hooks/useTranslation";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { captureAffiliate } from "@/lib/affiliate";
-import { lazy, Suspense, useEffect } from "react";
-import { Route, Router as WouterRouter, Switch, useLocation } from "wouter";
-import LiquidGlassFilters from "./components/ui/LiquidGlassFilters";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { Route, Router as WouterRouter, Switch, useLocation, useSearch } from "wouter";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -112,12 +110,105 @@ function ReferralCapture() {
   return null;
 }
 
+/**
+ * A new page starts at its top, and Back returns to where the shopper was.
+ *
+ * Cards and links move between pages without a reload now, and a browser only
+ * manages the scroll on a real navigation — so opening a product from the
+ * bottom of the home page landed on the product's footer, and Back from it
+ * landed at the top of the home page. The browser's own restoration cannot
+ * help with the second: it runs at `popstate`, before React has drawn the page
+ * it is restoring, so it scrolls a page that is not there yet.
+ *
+ * So the position is kept here, per address, and put back once the page is
+ * tall enough to hold it. The address includes the query string, so each set
+ * of a category page's filters keeps its own place. A filter replaces the
+ * history entry rather than pushing one, and a replace on the same page is
+ * left where it is: ticking a box half-way down the grid should not throw the
+ * shopper back to the top.
+ */
+function ScrollMemory() {
+  const [location] = useLocation();
+  const search = useSearch();
+  const key = `${location}?${search}`;
+  const positions = useRef(new Map<string, number>());
+  const current = useRef(key);
+  const traversed = useRef(false);
+  const loaded = useRef(false);
+  const depth = useRef(0);
+  const path = useRef(location);
+
+  useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const onPop = () => { traversed.current = true; };
+    const onScroll = () => { positions.current.set(current.current, window.scrollY); };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  /*
+   * Before paint, so a scroll event fired by the new page's layout is never
+   * recorded against the page being left — and the saved position is read
+   * here for the same reason, before the new page's first scroll overwrites it.
+   */
+  useLayoutEffect(() => {
+    if (current.current === key && loaded.current) return;
+    current.current = key;
+    const target = positions.current.get(key) ?? 0;
+    /* A push grows the history; a replace and a traversal do not. */
+    const pushed = history.length > depth.current;
+    const moved = path.current !== location;
+    depth.current = history.length;
+    path.current = location;
+    if (!loaded.current) {
+      /* A page load: a reload keeps its place, which the browser handles. */
+      loaded.current = true;
+      return;
+    }
+    if (pushed) {
+      traversed.current = false;
+      if (!window.location.hash) window.scrollTo({ top: 0, behavior: "instant" });
+      return;
+    }
+    /*
+     * Back or a replace, and the difference is only known a task later: the
+     * router re-renders in a microtask inside its own \`popstate\` listener,
+     * which is before any listener here has run, in either phase.
+     */
+    let frame = 0;
+    const timer = window.setTimeout(() => {
+      if (!traversed.current) {
+        if (moved && !window.location.hash) window.scrollTo({ top: 0, behavior: "instant" });
+        return;
+      }
+      traversed.current = false;
+      let frames = 0;
+      const settle = () => {
+        const room = document.documentElement.scrollHeight - window.innerHeight;
+        window.scrollTo({ top: Math.min(target, room), behavior: "instant" });
+        /* A page still loading its products is shorter than the place it is
+           being returned to; try again for about a second while it fills. */
+        if (room < target && frames++ < 60) frame = requestAnimationFrame(settle);
+      };
+      settle();
+    }, 0);
+    return () => { window.clearTimeout(timer); cancelAnimationFrame(frame); };
+  }, [key]);
+
+  return null;
+}
+
 function Router() {
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
     // sub-directory (GitHub Pages). It is "" for a root deployment.
     <WouterRouter base={BASE_PATH}>
       <ReferralCapture />
+      <ScrollMemory />
       <Suspense fallback={<RouteFallback />}>
       <Switch>
         <Route path="/" component={Home} />
@@ -201,17 +292,14 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <CustomerProvider>
-            <CartProvider>
-              <StorefrontToaster />
-              <LiquidGlassFilters />
-              {/* One drawer for the whole app: the cart button is on every page. */}
-              <BagDrawer />
-              <Router />
-            </CartProvider>
-          </CustomerProvider>
-        </TooltipProvider>
+        <CustomerProvider>
+          <CartProvider>
+            <StorefrontToaster />
+            {/* One drawer for the whole app: the cart button is on every page. */}
+            <BagDrawer />
+            <Router />
+          </CartProvider>
+        </CustomerProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

@@ -57,7 +57,7 @@ export default function GiftList() {
           <div className="grid size-12 place-items-center rounded-2xl bg-[#e7edf5]">
             <Gift className="size-6 text-[#0a285a]" aria-hidden />
           </div>
-          <h1 className="type-display mt-4 text-3xl text-[#0a285a] sm:text-4xl">{t("gift.heading")}</h1>
+          <h1 className="font-extrabold mt-4 text-2xl text-[#0a285a] sm:text-4xl">{t("gift.heading")}</h1>
           <p className="mt-2 max-w-prose text-sm leading-6 ink-muted">{t("gift.intro")}</p>
 
           {!on
@@ -106,7 +106,7 @@ function Lookup({ locale }: { locale: "en" | "ar" }) {
         onSubmit={event => { event.preventDefault(); if (valid) setAsked(value.trim()); }}
       >
         <label className="min-w-0 flex-1">
-          <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("gift.lookupLabel")}</span>
+          <span className="block text-[12px] font-semibold ink-muted">{t("gift.lookupLabel")}</span>
           <input
             value={value}
             onChange={event => setValue(event.target.value)}
@@ -173,7 +173,7 @@ function ListCard({ list, locale, onChanged }: { list: PublicList; locale: "en" 
 
   return (
     <section className="mt-6 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 sm:p-7">
-      <p className="text-[11px] font-extrabold tracking-[.12em] ink-accent uppercase">
+      <p className="text-[12px] font-semibold ink-accent">
         {list.ownerName ? t("gift.listOf", { name: list.ownerName }) : t("gift.listPlain")}
       </p>
       <h2 dir="auto" className="type-product mt-1 text-2xl text-[#0a285a]">{list.title}</h2>

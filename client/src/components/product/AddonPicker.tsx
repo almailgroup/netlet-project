@@ -43,7 +43,7 @@ export function AddonPicker({
 
   return (
     <fieldset className="mt-6 rounded-[1.1rem] border border-[#d5dfeb] bg-white/70 p-4">
-      <legend className="px-1 text-[11px] font-extrabold tracking-[.06em] ink-muted uppercase">
+      <legend className="px-1 text-[12px] font-semibold ink-muted">
         {t("product.addons")}
       </legend>
       <ul className="space-y-1">

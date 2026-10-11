@@ -22,7 +22,7 @@ const offers = (count: number) => Array.from({ length: count }, (_, i) => produc
 
 describe("NetLet home layout content", () => {
   it("keeps two shelves, each with its own reason to exist", () => {
-    expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Deals", "Newest"]);
+    expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Deals", "New arrivals"]);
   });
 
   it("keeps category and editorial sections available", () => {
@@ -35,7 +35,7 @@ describe("NetLet home layout content", () => {
   it("references only keys the dictionary actually defines", () => {
     const keys: MessageKey[] = [
       ...categoryRail.map((category) => category.key),
-      ...homeRailDefinitions.flatMap((rail) => [rail.title, rail.description]),
+      ...homeRailDefinitions.map((rail) => rail.title),
       ...editorialUpdates.flatMap((entry) => [entry.date, entry.title, entry.summary]),
     ];
     expect(keys.filter((key) => !(key in en))).toEqual([]);

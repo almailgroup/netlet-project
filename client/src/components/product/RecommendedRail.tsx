@@ -35,14 +35,10 @@ import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
 
-export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding }: {
+export function RecommendedRail({ saved, onSave, onQuickView }: {
   saved: string[];
   onSave: (id: string, title: string) => void;
-  onDetails: (product: Product) => void;
   onQuickView: (product: Product) => void;
-  onAdd: (product: Product, quantity: number) => void;
-  onBuyNow: (product: Product, quantity: number) => void;
-  isAdding: boolean;
 }) {
   const { t, locale, isArabic } = useTranslation();
   const { cart } = useCart();
@@ -65,8 +61,7 @@ export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, 
           <section id="for-you" className="container py-9 sm:py-12">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
               <div className="min-w-0">
-                <p className="type-label ink-accent uppercase">{t("home.netletSelection")}</p>
-                <h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">
+                <h2 className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">
                   {t("taste.railPersonal")}
                 </h2>
                 <p dir="auto" className="mt-1 max-w-prose text-xs leading-5 ink-muted">
@@ -75,7 +70,7 @@ export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, 
               </div>
               {/* Only when a model actually ran. Every fallback sends false. */}
               {data.refinedByModel ? (
-                <span className="glass inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-extrabold tracking-[.08em] uppercase">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#e6e9ef] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#0a285a]">
                   <Sparkles className="size-3 ink-accent" aria-hidden />
                   {t("taste.refined")}
                 </span>
@@ -91,11 +86,7 @@ export function RecommendedRail({ saved, onSave, onDetails, onQuickView, onAdd, 
                     note={<ReasonNote reasons={item.reasons} />}
                     saved={saved.includes(item.product.id)}
                     onSave={() => onSave(item.product.id, item.product.title)}
-                    onDetails={() => onDetails(item.product)}
                     onQuickView={() => onQuickView(item.product)}
-                    onAdd={quantity => onAdd(item.product, quantity)}
-                    onBuyNow={quantity => onBuyNow(item.product, quantity)}
-                    isAdding={isAdding}
                   />
                 </div>
               ))}

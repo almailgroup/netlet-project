@@ -73,7 +73,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   };
 
   return (
-    <div className="fixed inset-0 z-[75] grid place-items-end bg-[#061b3b]/40 backdrop-blur-[2px] sm:place-items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[75] grid place-items-end bg-[#061b3b]/40 sm:place-items-center sm:p-4" onClick={onClose}>
       <section
         role="dialog"
         aria-modal="true"
@@ -82,7 +82,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
         className="max-h-[92vh] w-full overflow-y-auto rounded-t-[1.5rem] bg-background p-5 shadow-2xl sm:max-w-3xl sm:rounded-[1.5rem] sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">
-          <p className="type-label text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("quick.title")}</p>
+          <p className="type-label text-[12px] font-semibold text-[#a44a2b]">{t("quick.title")}</p>
           <button onClick={onClose} aria-label={t("quick.close")} className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">
             <X className="size-4" />
           </button>
@@ -117,7 +117,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
           </div>
 
           <div className="min-w-0">
-            {product.vendor ? <p className="type-label text-[9px] font-bold tracking-[.1em] ink-muted uppercase">{product.vendor}</p> : null}
+            {product.vendor ? <p className="type-label text-[12px] font-bold ink-muted">{product.vendor}</p> : null}
             <h2 className="type-product mt-1 text-lg font-extrabold tracking-[-.025em] text-[#0a285a]">{product.title}</h2>
 
             {rating ? (

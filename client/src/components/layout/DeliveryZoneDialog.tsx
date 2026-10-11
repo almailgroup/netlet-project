@@ -41,12 +41,11 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
   };
   const addresses = (isAuthenticated ? book.data ?? [] : []).filter(address => address.governorate && zoneName(address.governorate));
   return createPortal(
-    <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center" onClick={onClose}>
       <section role="dialog" aria-modal="true" aria-labelledby="delivery-zone-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7" onClick={event => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-extrabold tracking-[.14em] text-[#a44a2b] uppercase">{t("delivery.kuwait")}</p>
-            <h2 id="delivery-zone-title" className="display-face mt-1 text-3xl text-[#0a285a]">{t("delivery.chooseGovernorate")}</h2>
+            <h2 id="delivery-zone-title" className="text-xl font-extrabold text-[#0a285a]">{t("delivery.chooseGovernorate")}</h2>
             <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("delivery.note")}</p>
           </div>
           <button onClick={onClose} aria-label={t("delivery.close")} title={t("delivery.close")} className="glass pressable grid size-10 shrink-0 place-items-center rounded-full">
@@ -55,7 +54,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
         </div>
         {addresses.length ? (
           <>
-            <h3 className="mt-6 text-[11px] font-extrabold tracking-[.12em] ink-muted uppercase">{t("delivery.yourAddresses")}</h3>
+            <h3 className="mt-6 text-[13px] font-bold ink-muted">{t("delivery.yourAddresses")}</h3>
             <div className="mt-2 grid gap-2">
               {addresses.map(address => (
                 <button
@@ -71,7 +70,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
                 </button>
               ))}
             </div>
-            <h3 className="mt-5 text-[11px] font-extrabold tracking-[.12em] ink-muted uppercase">{t("delivery.orGovernorate")}</h3>
+            <h3 className="mt-5 text-[13px] font-bold ink-muted">{t("delivery.orGovernorate")}</h3>
           </>
         ) : null}
         <div className={`${addresses.length ? "mt-2" : "mt-6"} grid gap-2 sm:grid-cols-2`}>

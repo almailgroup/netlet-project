@@ -30,7 +30,7 @@ export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () 
   useOverlay(open, onClose);
   if (!open) return null;
   return createPortal(
-    <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 backdrop-blur-sm lg:hidden" onClick={onClose}>
+    <div className="netlet-menu-scrim fixed inset-0 z-50 bg-[#061b3b]/30 lg:hidden" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"

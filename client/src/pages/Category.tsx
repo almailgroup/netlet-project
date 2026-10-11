@@ -15,7 +15,6 @@
  * Enter in the header lands on the layout every department already has —
  * filters, sort, the empty state — rather than on a model's answer.
  */
-import { useBuyNow } from "@/hooks/useBuyNow";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -23,9 +22,7 @@ import { QuickView } from "@/components/product/QuickView";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
-import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -74,7 +71,6 @@ export default function Category() {
   const [location, navigate] = useLocation();
   const { t } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
-  const { addItem, loading: cartLoading } = useCart();
   const { data: catalog = [], isLoading, error, refetch } = trpc.commerce.products.list.useQuery({ first: 100 });
 
   const [search, setSearch] = useState("");
@@ -162,26 +158,9 @@ export default function Category() {
   };
 
   const openProduct = (product: Product) =>
-    window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
+    navigate(`/products/${encodeURIComponent(product.handle)}`);
 
-  const addToCart = async (product: Product, quantity = 1) => {
-    /* The first one that can be bought, not merely the first: a sold-out
-       small should not refuse a shopper the medium beside it. */
-    const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
-    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
-    try {
-      await addItem(variant.id, quantity);
-      // The confirmation counts when the count is not one: "added to your cart"
-      // after picking three is a receipt that does not match the request.
-      toast.success(quantity > 1
-        ? t("cart.addedQuantity", { count: String(quantity), name: product.title })
-        : t("cart.added", { name: product.title }));
-    } catch {
-      toast.error(t("cart.addFailed"));
-    }
-  };
 
-  const buyNow = useBuyNow();
 
   /** The removable chips above the grid, one per selected value. */
   const chips: { key: string; label: string; clear: () => void }[] = [
@@ -312,11 +291,7 @@ export default function Category() {
                   toggleSaved(product.id);
                   toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
                 }}
-                onDetails={openProduct}
                 onQuickView={setQuickProduct}
-                onAdd={(product, quantity) => void addToCart(product, quantity)}
-                onBuyNow={(product, quantity) => void buyNow(product, quantity)}
-                isAdding={cartLoading}
               />
             ) : null}
 
@@ -354,11 +329,7 @@ export default function Category() {
                       toggleSaved(product.id);
                       toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
                     }}
-                    onDetails={() => openProduct(product)}
                     onQuickView={() => setQuickProduct(product)}
-                    onAdd={(quantity) => void addToCart(product, quantity)}
-                    onBuyNow={(quantity) => void buyNow(product, quantity)}
-                    isAdding={cartLoading}
                   />
                 ))}
                 </div>
@@ -399,7 +370,7 @@ export default function Category() {
       </button>
 
       {sheetOpen ? (
-        <div className="fixed inset-0 z-[70] bg-[#061b3b]/35 backdrop-blur-[2px] lg:hidden" onClick={() => setSheetOpen(false)}>
+        <div className="fixed inset-0 z-[70] bg-[#061b3b]/35 lg:hidden" onClick={() => setSheetOpen(false)}>
           <aside
             role="dialog"
             aria-modal="true"

@@ -167,8 +167,8 @@ export default function Sell() {
       <StoreHeader />
 
       <div id="main" className="container max-w-3xl py-8 sm:py-12">
-        <p className="type-label ink-accent uppercase">{t("sell.eyebrow")}</p>
-        <h1 className="type-display mt-2 text-3xl sm:text-4xl">{t("sell.title")}</h1>
+        <p className="type-label ink-accent">{t("sell.eyebrow")}</p>
+        <h1 className="font-extrabold mt-2 text-xl sm:text-2xl">{t("sell.title")}</h1>
         <p className="mt-3 max-w-prose text-sm leading-6 text-[#536b8c]">{t("sell.note")}</p>
 
         {loading ? null : !isAuthenticated ? (
@@ -355,7 +355,7 @@ export default function Sell() {
                   /* Named rather than hidden behind a button that will not
                      press and says nothing. */
                   <div className="rounded-xl border border-[#d5dfeb] bg-white/70 px-4 py-3">
-                    <p className="text-[12px] font-extrabold ink-muted uppercase">{t("sell.stillNeeded")}</p>
+                    <p className="text-[12px] font-semibold ink-muted">{t("sell.stillNeeded")}</p>
                     <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
                       {missing.map(item => (
                         <li key={item} className="text-[13px] text-[#536b8c]">· {t(MISSING_LABEL[item])}</li>

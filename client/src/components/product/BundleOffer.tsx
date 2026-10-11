@@ -40,7 +40,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
 
   return (
     <section className="mt-6 space-y-3">
-      <h2 className="type-label ink-muted uppercase">{t("bundle.heading")}</h2>
+      <h2 className="type-label ink-muted">{t("bundle.heading")}</h2>
 
       {rows.map(bundle => (
         <div key={bundle.id} className="rounded-[1.1rem] border border-[#d5dfeb] bg-white/70 p-4">

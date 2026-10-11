@@ -9,23 +9,20 @@
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
  */
-import { useBuyNow } from "@/hooks/useBuyNow";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
-import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
-import { ArrowLeft, ArrowRight, Heart, LoaderCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Heart } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -37,7 +34,6 @@ export default function Saved() {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  const { addItem, loading: cartLoading } = useCart();
   const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 60 });
 
   // Ordered by the saved list rather than by catalog order, so the most
@@ -53,34 +49,16 @@ export default function Saved() {
   const missingCount = savedIds.length - savedProducts.length;
 
   const openProduct = (product: Product) =>
-    window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`));
+    navigate(`/products/${encodeURIComponent(product.handle)}`);
 
-  const addToCart = async (product: Product, quantity = 1) => {
-    /* The first one that can be bought, not merely the first: a sold-out
-       small should not refuse a shopper the medium beside it. */
-    const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
-    if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
-    try {
-      await addItem(variant.id, quantity);
-      // The confirmation counts when the count is not one: "added to your cart"
-      // after picking three is a receipt that does not match the request.
-      toast.success(quantity > 1
-        ? t("cart.addedQuantity", { count: String(quantity), name: product.title })
-        : t("cart.added", { name: product.title }));
-    } catch {
-      toast.error(t("cart.addFailed"));
-    }
-  };
 
-  const buyNow = useBuyNow();
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
 
       <div id="main" className="container py-8 sm:py-10">
-        <p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("saved.eyebrow")}</p>
-        <h1 className="display-face mt-2 text-4xl text-[#0a285a] sm:text-5xl">{t("saved.title")}</h1>
+        <h1 className="text-2xl font-extrabold text-[#0a285a] sm:text-3xl">{t("saved.title")}</h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-[#536b8c]">
           {savedProducts.length === 0
             ? t("saved.emptyPrompt")
@@ -111,11 +89,7 @@ export default function Saved() {
                   toggleSaved(product.id);
                   toast(t("saved.removed", { name: product.title }));
                 }}
-                onDetails={() => openProduct(product)}
                 onQuickView={() => setQuickProduct(product)}
-                onAdd={(quantity) => void addToCart(product, quantity)}
-                onBuyNow={(quantity) => void buyNow(product, quantity)}
-                isAdding={cartLoading}
               />
             ))}
           </div>
@@ -136,12 +110,6 @@ export default function Saved() {
             </button>
           </div>
         )}
-
-        {cartLoading ? (
-          <p className="mt-6 flex items-center justify-center gap-2 text-xs font-semibold ink-muted">
-            <LoaderCircle className="size-3.5 animate-spin" />{t("saved.updatingCart")}
-          </p>
-        ) : null}
       </div>
       {/* Under the hearts it learns from, and only once it has learned
           something: the rail draws nothing until it is personal. */}
@@ -152,11 +120,7 @@ export default function Saved() {
           toggleSaved(id);
           toast(t(adding ? "saved.savedForLater" : "saved.removed", { name: title }));
         }}
-        onDetails={openProduct}
         onQuickView={setQuickProduct}
-        onAdd={(product, quantity) => void addToCart(product, quantity)}
-        onBuyNow={(product, quantity) => void buyNow(product, quantity)}
-        isAdding={cartLoading}
       />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       <MobileTabBar />

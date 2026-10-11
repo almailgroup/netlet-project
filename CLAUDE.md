@@ -32,8 +32,8 @@ not of code: it is a different stack and a different palette.
 Read it for layout and treatment. Worth knowing what is in there:
 
 - The glass is on the header _bar_, not just its controls:
-  `rgba(247,246,242,0.75)` under `blur(25px) saturate(210%)`. More translucent
-  and more saturated than the current header, which sits at 0.95.
+  `rgba(247,246,242,0.75)` under `blur(25px) saturate(210%)`. NetLet carried
+  that idea for a while and took it out again — see Buttons.
 - The mobile bottom bar floats with a 24px radius, an upward shadow, and
   `env(safe-area-inset-bottom)` — that last part is where the current mobile
   nav's home-indicator fix came from.
@@ -44,17 +44,30 @@ pearl `#f3f2ed`. Do not carry the old colours across without asking.
 
 ## Buttons
 
-One rule, and it is easy to break by accident. The four filled tints
-(`.glass-navy`, `.glass-accent`, `.glass-on-dark`, `.glass-white`) share a
-construction: solid fill, a single hairline along the top edge, a soft inner
-shade at the bottom, a restrained rim. **No diagonal wash and no hover sweep** —
-over a filled surface those read as glare.
+**Every surface is solid, and that is a reversal.** The storefront was glass
+for a long time — translucent fills under `backdrop-filter`, a diagonal wash, a
+hover sweep, a liquid-glass refraction filter — and a shopper asked for the site
+to stop feeling as though a machine had made it. Glass was the clearest single
+reason it did: it is what template storefronts wear, it costs legibility over
+busy content, the refraction only ever worked in Chromium, and a blur behind a
+sticky header is recomputed on every frame of every scroll on the mid-range
+phones this shop sells to.
 
-The clear tint (`.glass`) keeps both, because on a near-transparent surface they
-are what makes the glass legible at all.
+The class names stayed, because some three hundred elements wear them and the
+names are only names now: `.glass` is a white surface with a hairline border,
+`.glass-navy` and `.glass-accent` are flat navy and flat orange, `.glass-white`
+is white with a navy-tinted rim for the one control drawn on a photograph,
+`.glass-on-dark` is a faint white on navy, `.glass-field` is a bordered field
+that takes a navy ring on focus. No pseudo-elements, no `backdrop-filter`
+anywhere in the storefront.
 
-`backdrop-filter` on an opaque fill is wasted work; only the clear tint and
-`.glass-field` carry it.
+**`.glass-accent` carries navy text, not white**: white on `#f2683a` is 3.08:1
+and navy is 4.65:1, so the orange stays the brand's while the words on it pass.
+
+**`.pressable` sets the type, with `!important`**: 14px at weight 500, whatever
+the element's own `text-xs font-extrabold` says. That is old and load bearing —
+removing it would change every button on the site at once — so a control that
+needs its own size or weight leaves `.pressable` off, as the product card does.
 
 ## Accounts
 
@@ -318,8 +331,10 @@ the reason it left the header in the first place. The name is the first word of
 the display name as typed, so an account named "Admin Panel" reads "Admin".
 Signed out it opens the sign-in dialog where the shopper is. Anything the bar
 opens is portalled to `<body>` — `AuthDialog`, `DeliveryZoneDialog`,
-`DepartmentSheet` — because `backdrop-filter` on the header is the containing
-block for every `position: fixed` inside it.
+`DepartmentSheet`. The reason was `backdrop-filter` on the header, which made it
+the containing block for every `position: fixed` inside it; the blur has gone
+and the portals stay, because a header that gains a filter or a transform again
+would otherwise break every overlay in it without a word.
 
 **A badge draws only when it has something to say.** A cart badge reading "0"
 is an alert that never stops firing, which is the fastest way to teach somebody
@@ -382,20 +397,23 @@ a link never leads to the half-empty shelf the home page refuses to draw. On
 hamburger and a cart, and every other page's had saved, account and cart —
 all of it already in `MobileTabBar`, a thumb's reach below. The top row carries
 what the bottom does not: the logo, the area and the language, and the search
-field has a whole row under it. Scrolled, the top row folds away and the search
-row *is* the header — somebody four screens in knows they are on NetLet. A page
+field has a whole row under it. The top row scrolls away with the page and the
+search row stays — somebody four screens in knows they are on NetLet. A page
 with nothing to search keeps its top row, or it would have no header. The
-folded row is `inert` as well as `aria-hidden`: `aria-hidden` over still
-focusable controls is a violation of its own. The hamburger's department list
+hamburger's department list
 is `DepartmentSheet` now, behind the bottom bar's Browse on every page — Browse
 used to open it on Home and go to the whole catalogue everywhere else, one tab
 meaning two things.
 
-**A sticky header earns its shadow in the compact state and nowhere else.** At
-rest the hero sits directly beneath with its own edge, so a hairline separates
-it; once content is moving underneath, a 1px border reads as part of the page.
-`data-compact` was already on the element with nothing reading it, which is a
-hook somebody left for later — it drives this now.
+**Nothing in the header moves on its own.** It used to watch the scroll and fold:
+the phone's logo row collapsed, the department rail shrank away, a shadow
+arrived — all of it animated, all of it driven by a scroll listener and a
+`data-compact` flag. Now the header is one fixed height and only the rows that
+must stay are inside the sticky element: on a phone the logo row sits *before*
+`<header>` and simply scrolls off, and on a wide screen the department row sits
+*after* it and does the same. The page does the moving, which is the one thing
+a shopper expects to move. `StoreHeader` returns a fragment for that reason —
+the rows that leave are siblings of the sticky bar, not children of it.
 
 The search placeholder takes its example **from the live catalog**, and holds
 still. It used to cycle four hard-coded phrases every 2.6 seconds — "espresso
@@ -447,9 +465,10 @@ are unreachable by clicking, so without this the refusals and the no-match
 cannot be looked at at all.
 
 Two things there were found by measuring, not by reading. **The sheet is
-portalled to `<body>`**, because `backdrop-filter` on the header makes it the
-containing block for every `position: fixed` descendant, so `inset-0` resolved
-against a 125px bar and the sheet hung off the top of the screen.
+portalled to `<body>`**, because `backdrop-filter` on the header (since removed)
+made it the containing block for every `position: fixed` descendant, so
+`inset-0` resolved against a 125px bar and the sheet hung off the top of the
+screen.
 `DeliveryZoneDialog` never hit it only because it renders from the page rather
 than from inside the bar. And **the two controls do not swallow their own
 mousedown**, unlike clear and submit beside them: that trick keeps the field
@@ -488,56 +507,53 @@ when the shopper looks. Freezing a price is the order's job.
 **Every header starts with a skip link.** Home was once the one page without one,
 which is the wrong way round: it carries the most header of any page — a bar,
 a search row and a department rail — so it is where tabbing past costs the
-most. It lands on `#main`, which is the hero, the same id every other page
-gives its first content.
+most. It lands on `#main`, which is the department cards, the same id every
+other page gives its first content.
 
-**The quantity control is inside the action button, and reveals on hover.** At
-rest each pill is one label; hovering it slides a minus out of the leading end
-and a plus out of the trailing end, and the label keeps the middle.
+**A product card is a photograph, a name, a price and one button.** It was
+more, and every extra had its reason written down here: the photographs cycled
+on their own every 4.5 seconds and faster under a mouse, a share disc and a
+preview disc slid out on hover, and two pills — Add and Buy now — each grew a
+minus and a plus when a pointer came near, with three container-query
+thresholds measured so the labels fitted in Arabic. Each piece was defensible;
+together they made a grid that moved while somebody was reading it, and a card
+that asked three questions before it would sell anything.
 
-They are three separate `<button>`s sharing one styled wrapper, because **a
-button cannot contain a button** — nested, the markup is invalid and the
-browser decides for itself what a click meant. The wrapper carries the fill and
-the rounding so the three read as one control.
+**Add becomes the quantity once the line is in the bag** — minus (a bin at
+one), the count, plus — the way the delivery apps people here use every day
+work. `CardAction` reads the *plain* line for that variant, no extras and no
+bundle, because that is the only line a card makes, so a card's minus never
+takes apart something built on the product page. It keeps its own `busy` rather
+than the bag's `loading`: one bag-wide flag put a spinner on every card in the
+grid while one of them added. **Adding from a card does not open the drawer**;
+the header's count is the receipt, a live region says it, and focus moves to the
+plus, because the button pressed is gone by the next frame and the keyboard
+would otherwise land on `<body>`.
 
-**Every threshold inside the pill asks the pill.** Three of them did not, and
-each spent width the label needed: the step's own `--qty-step-w`, and the middle
-button's gap and padding, were all chosen by the *card's* container query. Two
-pills side by side in a 260px card are about 120px each — the card cleared
-`15rem`, so each step took 36px, 72px of a 120px pill, and "Add 9" was left 16px
-to draw 37px in, in both languages, on the home rails at a laptop width. The
-icon's stand-down was described in a comment and never implemented. The numbers
-are measured and each carries its own: `9rem` for the full-width steps, `8rem`
-below which the decorative icon goes so the words can stay, `13rem` for the
-short label and for the tighter gap. Checked by sweeping every viewport width
-from 320 to 1600 in both languages — 602 labels, none clipped.
+**A product with more than one variant asks which.** Its button reads "Choose
+an option" and opens the preview. The pages used to add the first variant in
+stock, which is how a shopper who pressed Add on a shirt found a medium in the
+bag. Buy now lives on the product page and in the preview, where somebody has
+chosen; on a card it was a second primary beside the first.
 
-`.qty-step` reveals on hover **and never only on hover**: `:focus-within`
-brings it out for a keyboard, and below `@media (hover: hover) and (pointer:
-fine)` it is simply present, which is every phone this shop sells to. A
-hover-only control on a Kuwait-first storefront is one most shoppers never see.
-It animates `width` but gates hit-testing on `visibility` — at zero width an
-element still catches clicks and still takes a tab stop, so without that the
-hidden minus would swallow presses aimed at the label. The pill's own width
-never changes, only how the three split it, so nothing moves out from under the
-cursor that revealed it.
+**The photo and the title both open the product, and only the title is a link
+anybody hears.** The photo's link is `tabIndex={-1}` and `aria-hidden`: two
+links to one place, read out per card, is a grid that takes twice as long to get
+through. Both are wouter `Link`s — cards used to reload the whole app with
+`window.location.assign` to open a product.
 
-**One quantity per card, not one per pill.** Add-to-cart and buy-now are not two
-things to buy; they are two destinations for the same choice, the bag or the
-checkout. **The label carries the count** — "Add 3 to cart" — because the minus
-and plus show no number, so the label is the only place it can live, and a
-stepper reading 3 beside a button reading "Add to cart" asks somebody to guess
-which the press takes.
+**The preview disc is for a mouse.** `.reveal-control` shows it on hover and on
+keyboard focus under `(hover: hover) and (pointer: fine)` and is `display: none`
+everywhere else: a phone has no hover, the card is one tap from the product, and
+an eye on every photo in a grid answers nothing that tap does not. `visibility`
+rather than opacity alone when it is hidden, because a transparent disc still
+catches the click meant for the photo. **Measure it on a fresh page**: headless
+Chromium's phone emulation starts reporting a fine pointer after simulated
+clicks, which a real phone never does. It carries an `aria-label` and a `title`
+— the tooltip is the only thing that tells somebody with a mouse what an eye
+means before they press it.
 
-**A 172px rail card cannot hold the full label beside the steps, and Arabic is
-where that bites.** "أضف 3 إلى السلة" measures 102px in an 81px slot while the
-English fits — so below `@[12rem]` both pills swap to a short label ("Add 3")
-and the steps give back 8px each. Both strings are rendered and one is shown,
-because a container query can pick a rule and not a string. The threshold is
-measured rather than guessed: a 226px grid card takes the full label, a 173px
-rail card takes the short one, and the check fails on any label whose
-`scrollWidth` exceeds its `clientWidth` — which is what caught the clipping a
-screenshot had already shown and no assertion had.
+The discount badge is navy on the orange, 4.65:1, where white was 3.08:1.
 
 **A product's variants can always be chosen.** The editor names variants and
 saves no option values, so `VariantPicker`, which reads options, drew nothing —
@@ -550,53 +566,9 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
-**A card cycles its photographs on its own, and faster when hovered.** The
-second and third views used to exist only for somebody holding a mouse over the
-picture, which is nobody on a phone — and a phone is most of this shop. Idle is
-`IDLE_HOLD` (4.5s, with a 900ms cross-fade); a hover answers at `PREVIEW_HOLD`
-(1.5s, 450ms). Hovering a dot still pins one and stops both.
-
-Three things are what keep a self-cycling grid from being a page nobody can
-read, and each is why this is not simply a second `setInterval`:
-
-- **Only what is on screen moves.** An `IntersectionObserver` at a 0.35
-  threshold gates the timer, so forty cards run the handful in view. Twenty
-  permanent cross-fades is real battery on a mid-range phone.
-- **Every card starts on its own beat.** A per-card offset, drawn once and
-  kept, so the grid does not turn over as one block every 4.5 seconds — that
-  is a page blinking, not products breathing.
-- **A hidden tab advances nothing.** Browsers throttle background intervals
-  rather than stopping them, and every tick here is a re-render.
-
-All three were verified by measuring, and two of the first tests were wrong in
-ways worth remembering: a page only 1400px tall cannot scroll a card out of a
-900px viewport, so "off screen" passed while the card was still 70% visible;
-and reading `opacity === "1"` to find the showing frame reports nothing during
-a cross-fade, which invented a state change that never happened. Measure which
-image has the *highest* opacity, and check the card is actually off screen.
-
-**Hovering is on the card, not on the picture.** It was on the image alone,
-so a cursor resting over the title — where it lands when somebody is reading a
-card rather than pointing at it — left the photograph idling while the preview
-disc, the share button and the quantity steps were all already out, because
-those key off `group-hover` on the article. That one was invisible until a test
-hovered the title band on purpose.
-
-Reduced motion stops all of it, idle and hover alike, through
-`useReducedMotion` — which *subscribes* rather than reading `matchMedia` once
-inside an effect. Somebody who turns the setting on to stop a page moving
-should not have to reload it, and a preference read inside an effect only takes
-hold the next time that effect happens to re-run.
-
-**Quick View is on every page that draws a card**, and the trigger is a white
-disc in the trailing bottom corner of the photo. It existed before it was asked
-for — `QuickView` and `ProductCard`'s `onQuickView` were wired on
-`/category/:slug` alone, opened by an eye stacked third in a hover-revealed
-corner cluster, and a shopper asked for the feature to be added. That is the
-whole verdict on *that* treatment: three icons deep is not somewhere anybody
-looks. It is its own corner now, on its own, and Home (its shelves) and
-`/saved` (with the recommendation rail) mount the popup too, once per
-page beside the other overlays.
+**Quick View is on every page that draws a card**, opened by the disc and by
+"Choose an option", and mounted once per page beside the other overlays. On
+Home it is fetched on first use rather than with the page.
 
 **No hook below a `return`.** `QuickView` renders with no product first and
 called `useBuyNow()` after `if (!product) return null`, so opening the preview
@@ -605,40 +577,6 @@ error #310 — on every card, on the live site, while every test passed. There i
 no lint step to catch it, so `client/src/lib/hookOrder.test.ts` reads every
 component and hook and fails on a `use…()` after the function's first
 `return`. It was checked against the broken file before the fix went in.
-
-It is icon-only, so it carries an `aria-label` **and** a `title`. `aria-label`
-wins the accessible name and `title` becomes the description — which is the
-arrangement that wanted checking, because the tooltip is the only thing that
-tells somebody with a mouse what an eye means before they press it.
-
-**`.glass-white` is the fourth filled tint**, and it exists because this is the
-only control in the storefront that sits on a *photograph* rather than on the
-page. Navy vanished into a dark picture; the clear tint the heart and the share
-wear vanishes into a pale one. A solid white fill holds on both — and its rim
-is navy rather than white, because on white the rim is the only edge there is.
-It follows the same construction as the other three: one hairline along the top,
-a soft inner shade at the bottom, a restrained rim, no diagonal wash, no sweep.
-
-Checked against a pure-black and a pure-white image, not against the catalog's
-own photographs, which are all mid-tone. That is also how it became obvious that
-the clear-tint heart and share above it go nearly invisible over a dark photo —
-pre-existing, and not this control's to fix.
-
-At `size-11` it is 44px, which *is* the touch minimum, so it carries no
-`.tap-target`: the pseudo-element would be a no-op, and leaving it off also
-keeps a second 44px hit area from sitting under the share button's.
-
-`.reveal-control` is the second user of the rule `.qty-step` already follows:
-hidden and not hit-testable at rest under a mouse, revealed on `:hover` and on
-`:focus-within`, and simply present below `@media (hover: hover) and (pointer:
-fine)` — which is every phone this shop sells to. `visibility`, not `opacity`
-alone, for the reason the stepper has: a transparent element still catches
-clicks and still takes a tab stop. It grows and settles rather than sliding in
-from an edge, because a disc in a corner has no edge to slide from.
-
-`bottom-2 end-2`, so it mirrors in Arabic the way the heart above it does —
-checked by measuring the gap to each side of the image in both directions, not
-by reading the class.
 
 **Anything that goes to another page is an anchor.** The popup's picture and its
 "Full product details" were `<button>`s calling `window.location.assign`, which
@@ -649,21 +587,31 @@ The in-stock line was `#28a745` on pearl — 3.13:1, the same failure the orange
 has. It is `#2f5d33` at 7.68:1, a darkening rather than a new hue. The refusal
 red beside it computes 4.58:1 and was left alone.
 
-**A shelf's arrows scroll it, or are not drawn.** They were white chevrons on
-the light `.glass` disc — blank circles on the navy shelves — and pressing them
-toasted "more controls soon". They scroll a screenful at a time, appear only
-when there is something off-screen, and wear `.glass-on-dark` on navy.
+**A shelf's arrows scroll it, or are not drawn.** Pressing them once toasted
+"more controls soon". They scroll a screenful at a time and appear only when
+there is something off-screen.
 
-**Home carries two shelves, and a shelf below four products is not drawn.**
-There were five — Deals, Popular right now, Bestsellers, Most popular, Newest —
-and on a dozen-product catalog they were the same dozen five times. `shelvesFor`
-in `client/src/content/homeLayout.ts` decides: Deals is what is actually
-discounted, deepest first; Newest is the most recent, leaving out anything Deals
-already shows; what a hidden shelf did not show is free for the next. Anything
-that points at a shelf asks whether it is drawn — "Explore deals" in the hero
-scrolled to a Deals shelf that had hidden itself. The promise block, the
-Categories section (the chips and the tile row already name every department)
-and the deals surface went with them.
+**Home opens on the departments, as big cards.** It opened on a navy hero that
+said "Small upgrades. A brighter everyday." over blurred colour blobs: a slogan
+where a shopper looks for something to tap. `DepartmentCards` is six tiles —
+the five departments and "All departments" — three to a row on a phone and six
+on a wide screen, each a link. **The art is a file per department**,
+`client/public/departments/<slug>.webp`, so a real photograph replaces one by
+dropping a file of the same name. Until then each pairs two objects from
+Microsoft's Fluent 3D emoji (MIT, licence beside the files), composited and
+saved as WebP at about 16 KB each; they are the first paint, so they load
+eagerly. The page's `h1` is the shop's name, for a screen reader's outline; the
+banner used to carry it.
+
+Then a Deals shelf that scrolls sideways, the new arrivals as a grid to browse,
+four lines on what shopping here involves (delivery, cash on delivery, returns,
+help), and the footer. **A shelf below four products is not drawn**:
+`shelvesFor` in `client/src/content/homeLayout.ts` decides — Deals is what is
+actually discounted, deepest first; New arrivals is the most recent, leaving
+out anything Deals already shows; what a hidden shelf did not show is free for
+the next. Anything that points at a shelf asks whether it is drawn. There were
+five shelves once, and on a dozen-product catalog they were the same dozen
+five times.
 
 **Copy a shopper reads is never a status report.** "Live catalog", "Persistent
 cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
@@ -673,6 +621,16 @@ now, and the four card logos are gone — brands drawn beside an order nobody ca
 pay with them. When a card service is integrated they come back as choices in
 the payment fieldset, not as pictures. Staff pages may still speak plainly about
 configuration; a shopper's may not.
+
+**Nor is it a slogan, and a heading is a name.** "Ready when you are." over the
+bag, "Your good finds." over the order summary, "That page has moved on." on a
+404, "Your account, your way.", a footer line about "a considered
+marketplace": each is the voice of a template, and a shopper reads a heading to
+find out where they are. They say "Your cart", "Order summary", "Page not
+found", "Your account" now. Headings are sentence case without a full stop, and
+there are no uppercase eyebrows over them — a 10px tracked-out label restating
+the heading below it is the most recognisable mark of generated design there
+is, and it does nothing at all in Arabic, which has no capitals.
 
 **`SiteFooter` is the one footer** — Home, departments and search, the product
 page and Saved; checkout has none, for the bare-header reason. Every entry is an
@@ -684,9 +642,22 @@ exist, since the browser's own jump happens before the session has loaded.
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three.
 
+**A new page starts at its top, and Back returns to where the shopper was.**
+`ScrollMemory` in `App.tsx`. Moving between pages without a reload means the
+browser no longer manages the scroll, and its own restoration runs at
+`popstate` — before React has drawn the page it is restoring — so Back from a
+product landed at the top of a long list. Positions are kept per address
+(query string included) and put back once the page is tall enough. A push
+scrolls to the top; a replace on the same path does not, so ticking a filter
+half-way down a grid leaves the grid where it is. **Back is told apart a task
+later**: wouter re-renders in a microtask inside its own `popstate` listener,
+which is before any listener of ours runs, in either phase — capture was tried
+and measured. And every jump is `behavior: "instant"`, because `<html>` carries
+`scroll-behavior: smooth` and Back would otherwise glide down the page.
+
 `.tap-target` grows a small control's hit area to 44px through a pseudo-element,
 without changing how it looks. **Never on a `.glass` element**: the glass rim
-is an `::after` too, later in the file at the same specificity, so it won —
+was an `::after` too, later in the file at the same specificity, so it won —
 its `inset: 0` and `pointer-events: none` replaced the hit area, and the heart
 and share on every product card had 32px targets while looking fixed. It was
 found as a 1px sideways scroll on the Arabic account page. `DiscButton` is the
@@ -1603,7 +1574,8 @@ seller who files, the company that answers and NetLet that decides.
 
 ## Fast checkout
 
-**Buy now is one hook, `useBuyNow`.** Four pages had a copy and the copies
+**Buy now is one hook, `useBuyNow`**, used by the product page and the preview —
+the cards no longer carry it. Four pages had a copy and the copies
 shared three faults: each opened the bag drawer on the way past, each then
 reloaded the whole app with `window.location.assign` — on the press that exists
 to be fast — and each took `variants[0]` even when that one was sold out and the
@@ -2474,12 +2446,11 @@ appeared once there was something on the shelf; the badge only appeared once
 something on the shelf had a compare-at price, which took one audit longer than
 it should have.
 
-What remains is all one violation: **white on `#f2683a` is 3.08:1**. It is on
-the home page's orange hero card, and on the discount badge of every card in
-every grid and rail. That is the brand decision this file already flags under
-Buttons — reaching AA needs a darker orange than the brand's, and that is a
-call for the brand rather than something to fix by quietly changing the colour.
-Everything around it has been taken as far as it goes without touching the hue.
+**White on `#f2683a` (3.08:1) is gone from the storefront.** It was the one
+violation left: the home page's orange hero card and the discount badge on
+every card. The hero went with the banner, and the badge and `.glass-accent`
+carry navy on the orange (4.65:1) — the brand keeps its colour as a fill and
+the words on it pass.
 
 ## Browsing
 
@@ -2686,6 +2657,31 @@ Everything kept there is a per-viewer convenience: the language in use, the
 delivery area, the guest cart's id, a referral code. Losing one costs a shopper
 a preference they can set again, and that trade is only available because
 anything NetLet actually needs is on the server.
+
+## The first visit
+
+**What every shopper downloads first is the home page and nothing it does not
+draw.** The main bundle was 759 KB (229 KB gzipped) and is 640 KB (191 KB):
+
+- **Overlays load when opened.** The sign-in dialog, Home's preview and the
+  voice and photo sheets are `lazy`. The header is on every page and most
+  visits never open any of them; the voice and photo sheets load only when a
+  shop has switched one on or `?searchTest=` asks for one.
+- **The demo's fixtures load only in the demo.** `main.tsx` imported
+  `demoLink` at the top, so every real deployment shipped an invented
+  catalogue it never answers from. `lazyDemoLink` fetches it on the first
+  request, and outside a demo build the import is dead code and is dropped.
+- **No tooltip library.** `TooltipProvider` wrapped the whole app and nothing
+  rendered a tooltip; it pulled in Radix, Floating UI and `tailwind-merge`.
+- **One font file.** Inter as one variable file for 400 to 700, not eight
+  static styles with italics nothing used. 800 was never requested, so
+  `font-extrabold` has always rendered at 700 and still does.
+
+**The dictionary is deliberately still one module.** Both languages are about
+a fifth of what is left, and splitting them would put a second request in
+front of the first paint for whichever language is not bundled — on a phone,
+that round trip costs more than the bytes save. Kuwait-first means the Arabic
+visitor is not the one to make wait.
 
 ## Deploys
 

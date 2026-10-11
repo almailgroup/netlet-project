@@ -51,7 +51,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4"
       onClick={onClose}
     >
       <div

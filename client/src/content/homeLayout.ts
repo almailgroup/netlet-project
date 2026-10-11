@@ -42,9 +42,9 @@ export const categoryRail: readonly { key: MessageKey; query: string; color: str
  * Deals shelf above already shows.
  */
 export const homeRailDefinitions = [
-  { id: "deals", title: "rail.deals.title", description: "rail.deals.description", treatment: "light", select: "offers" },
-  { id: "newest", title: "rail.newest.title", description: "rail.newest.description", treatment: "navy", select: "newest" },
-] as const satisfies readonly { id: string; title: MessageKey; description: MessageKey; treatment: string; select: "offers" | "newest" }[];
+  { id: "deals", title: "rail.deals.title", select: "offers", layout: "rail" },
+  { id: "newest", title: "rail.newest.title", select: "newest", layout: "grid" },
+] as const satisfies readonly { id: string; title: MessageKey; select: "offers" | "newest"; layout: "rail" | "grid" }[];
 
 /** Fewer than this and a shelf is not drawn: one or two products under a heading read as a broken page. */
 export const MIN_SHELF_PRODUCTS = 4;

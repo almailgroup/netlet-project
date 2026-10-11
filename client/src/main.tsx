@@ -1,10 +1,11 @@
 import { loadAnalytics } from "@/lib/analytics";
 import { DEMO_MODE } from "@/lib/demoMode";
-import { demoLink } from "@/lib/demoLink";
 import { trpc } from "@/lib/trpc";
 import { COOKIE_NAME, UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, httpBatchStreamLink, splitLink, TRPCClientError } from "@trpc/client";
+import { httpBatchLink, httpBatchStreamLink, splitLink, TRPCClientError, type TRPCLink } from "@trpc/client";
+import { observable } from "@trpc/server/observable";
+import type { AppRouter } from "../../server/routers";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -86,6 +87,26 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+/**
+ * The demo build's fixtures, fetched on the first request rather than shipped
+ * in every build. They were imported at the top of this file, so a real
+ * deployment — which never answers from fixtures — carried the invented
+ * catalogue in the bundle every shopper downloads first.
+ */
+const lazyDemoLink: TRPCLink<AppRouter> = runtime => {
+  const link = import("@/lib/demoLink").then(module => module.demoLink(runtime));
+  return ({ op, next }) => observable(observer => {
+    let stop: (() => void) | undefined;
+    let cancelled = false;
+    void link.then(operation => {
+      if (cancelled) return;
+      const subscription = operation({ op, next }).subscribe(observer);
+      stop = () => subscription.unsubscribe();
+    });
+    return () => { cancelled = true; stop?.(); };
+  });
+};
+
 const trpcClient = trpc.createClient({
   links: [
     // The static demo build has no `/api/trpc` to talk to, so a local link
@@ -99,7 +120,7 @@ const trpcClient = trpc.createClient({
     // because signing in sets a cookie, and a header cannot be set once a
     // stream has started.
     DEMO_MODE
-      ? demoLink
+      ? lazyDemoLink
       : splitLink({
           condition: op => op.type === "query",
           true: httpBatchStreamLink({ url: "/api/trpc", transformer: superjson, fetch: fetchWithCredentials, maxItems: 20 }),

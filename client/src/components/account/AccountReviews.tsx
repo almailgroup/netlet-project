@@ -151,7 +151,7 @@ function ReviewForm({ line, editing, onDone }: { line: Line; editing: boolean; o
   return (
     <form className="mt-4 border-t border-[#e7edf5] pt-4" onSubmit={submit}>
       <fieldset>
-        <legend className="text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("review.yourRating")}</legend>
+        <legend className="text-[12px] font-semibold ink-muted">{t("review.yourRating")}</legend>
         {/*
           Radio inputs rather than buttons, because five stars are one choice
           from a set — which is what a radio group *is*, and what gives arrow
@@ -181,7 +181,7 @@ function ReviewForm({ line, editing, onDone }: { line: Line; editing: boolean; o
       </fieldset>
 
       <label className="mt-4 block">
-        <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("review.titleLabel")}</span>
+        <span className="block text-[12px] font-semibold ink-muted">{t("review.titleLabel")}</span>
         <input
           value={title}
           onChange={event => setTitle(event.target.value)}
@@ -193,7 +193,7 @@ function ReviewForm({ line, editing, onDone }: { line: Line; editing: boolean; o
       </label>
 
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("review.bodyLabel")}</span>
+        <span className="block text-[12px] font-semibold ink-muted">{t("review.bodyLabel")}</span>
         <textarea
           value={body}
           onChange={event => setBody(event.target.value)}

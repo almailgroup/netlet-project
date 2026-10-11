@@ -12,7 +12,6 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { appPath } from "@/lib/basePath";
 import { privatePageMeta } from "@shared/seo";
 import { ArrowRight, Compass, Search } from "lucide-react";
 import { useLocation } from "wouter";
@@ -36,8 +35,8 @@ export default function NotFound() {
           <span className="inline-grid size-14 place-items-center rounded-2xl bg-[#e7edf5] ink-accent">
             <Compass className="size-7" />
           </span>
-          <p className="mt-6 text-[10px] font-extrabold tracking-[.16em] text-[#a44a2b] uppercase">404</p>
-          <h1 className="display-face mt-2 text-4xl leading-[.95] sm:text-5xl">{t("notFound.title")}</h1>
+          <p className="mt-6 text-[12px] font-semibold text-[#a44a2b]">404</p>
+          <h1 className="font-extrabold mt-2 text-2xl sm:text-3xl">{t("notFound.title")}</h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-[#536b8c]">{t("notFound.note")}</p>
           {/* The path is shown so a mistyped URL is obvious, and escaped by
               React rather than interpolated into markup. */}
@@ -55,14 +54,14 @@ export default function NotFound() {
 
         {suggestions.length ? (
           <section className="mt-14 border-t border-[#d5dfeb] pt-10">
-            <h2 className="text-center text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">
+            <h2 className="text-center text-[12px] font-semibold text-[#a44a2b]">
               {t("notFound.suggestions")}
             </h2>
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {suggestions.map((product) => (
                 <button
                   key={product.id}
-                  onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))}
+                  onClick={() => navigate(`/products/${encodeURIComponent(product.handle)}`)}
                   className="group overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 text-start"
                 >
                   <div className="overflow-hidden rounded-xl bg-[#e7edf5]">

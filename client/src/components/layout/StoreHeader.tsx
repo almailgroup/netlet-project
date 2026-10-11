@@ -15,9 +15,17 @@
  * the navigation — home, browse, saved, account, cart — so the top carries
  * what the bottom does not: the logo, where the order goes, and the language.
  * Search keeps a whole row, because it is how most people move through a
- * catalogue on a small screen, and once the page scrolls the top row folds
- * away and the search row is the header. A page with nothing to search keeps
- * its top row, or it would have no header at all.
+ * catalogue on a small screen, and it is the row that stays: the top row
+ * scrolls away with the page like anything else. A page with nothing to
+ * search keeps its top row pinned instead, or it would have no header at all.
+ *
+ * **Nothing here moves on its own.** The bar used to collapse on scroll and
+ * expand on hover, animating heights while a scroll listener and a settle
+ * timer kept the two from feeding each other; it is a white bar of fixed
+ * height now, `position: sticky` and nothing else. What is not pinned — the
+ * phone's top row, the departments row — simply scrolls, which needs no
+ * script, cannot oscillate, and never shifts the page under a reader. No blur
+ * either: a solid white bar costs nothing to scroll under.
  *
  * **On a wide screen the search field takes the room.** The controls beside it
  * are plain — an icon and a word, no pill of their own — so the only filled
@@ -27,8 +35,7 @@
  * "Saved" for xl, hidden from the eye and never from the name.
  *
  * The departments row is a row of links, it marks the department the shopper
- * is in, and it folds away on scroll and comes back on hover or focus
- * (`useCompactHeader`). It ends on **Deals**, drawn by the rule that draws the
+ * is in, and it scrolls away under the pinned bar. It ends on **Deals**, drawn by the rule that draws the
  * home page's Deals shelf (`shelvesFor`): offers had no standing place in the
  * navigation, and a link to a shelf of one or two would be the half-empty
  * shelf the home page already refuses to draw.
@@ -44,7 +51,6 @@ import { LiveSearch } from "@/components/search/LiveSearch";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { useCompactHeader } from "@/hooks/useCompactHeader";
 import { useTranslation } from "@/hooks/useTranslation";
 import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
@@ -88,7 +94,6 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
-  const { compact, handlers } = useCompactHeader();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
@@ -97,8 +102,6 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   // A page with nothing to search (an invoice, the sell page) passes no handler
   // and gets the header without the field rather than a field that does nothing.
   const searchable = Boolean(onSearch && onSelectProduct);
-  /* The phone's top row folds only while a search row is there to stay. */
-  const phoneTopFolded = compact && searchable;
   const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
   /* The language a press would give you, spoken in that language. */
   const otherLanguage = isArabic ? "en" : "ar";
@@ -140,36 +143,33 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
     </button>
   );
 
+  /* Phone: the logo, where it goes, the language. */
+  const phoneTop = (
+    <div className="container flex items-center gap-1 py-1.5 lg:hidden">
+      <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
+        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-8 w-auto max-w-[104px] object-contain" />
+      </Link>
+      {area("phone")}
+      {language}
+    </div>
+  );
+
   return (
     <>
-      <header
-        {...handlers}
-        data-compact={compact}
-        className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl transition-shadow duration-300 data-[compact=true]:shadow-[0_6px_20px_rgba(10,40,90,.09)]"
+      <a
+        href="#main"
+        className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-50"
       >
-        <a
-          href="#main"
-          className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:absolute focus:start-4 focus:top-3 focus:z-50"
-        >
-          {t("nav.skipToContent")}
-        </a>
-
-        {/* Phone: the logo, where it goes, the language. */}
-        <div
-          className={`container flex items-center gap-1 overflow-hidden transition-all duration-300 ease-out lg:hidden ${phoneTopFolded ? "max-h-0 opacity-0" : "max-h-16 py-1.5 opacity-100"}`}
-          aria-hidden={phoneTopFolded}
-          inert={phoneTopFolded}
-        >
-          <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-8 w-auto max-w-[104px] object-contain" />
-          </Link>
-          {area("phone")}
-          {language}
-        </div>
-        {field ? <div className={`container lg:hidden ${phoneTopFolded ? "py-2" : "pb-3"}`}>{field}</div> : null}
+        {t("nav.skipToContent")}
+      </a>
+      {/* Above the pinned bar, so it scrolls away; inside it when there is no search row to pin. */}
+      {searchable ? <div className="bg-white lg:hidden">{phoneTop}</div> : null}
+      <header className="sticky top-0 z-40 border-b border-[#e6e9ef] bg-white">
+        {searchable ? null : phoneTop}
+        {field ? <div className="container pb-2.5 pt-1 lg:hidden">{field}</div> : null}
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
-        <div className={`container hidden items-center gap-4 transition-[height] duration-300 ease-out lg:flex ${compact ? "h-[62px]" : "h-[72px]"}`}>
+        <div className="container hidden h-[72px] items-center gap-4 lg:flex">
           <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[128px] object-contain" />
           </Link>
@@ -203,12 +203,9 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
           </div>
         </div>
 
-        <nav
-          aria-label={t("nav.primary")}
-          aria-hidden={compact}
-          inert={compact}
-          className={`container hidden items-center gap-1.5 overflow-hidden transition-all duration-300 ease-out lg:flex ${compact ? "h-0 -translate-y-1 opacity-0" : "h-12 translate-y-0 opacity-100"}`}
-        >
+      </header>
+      <nav aria-label={t("nav.primary")} className="hidden border-b border-[#e6e9ef] bg-white lg:block">
+        <div className="container flex h-12 items-center gap-1.5">
           {categoryRail.map(department => {
             const current = !onDeals && activeDepartment === department.query;
             const lead = department.query === ALL_DEPARTMENTS.query;
@@ -234,8 +231,8 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
               {t("rail.deals.title")}
             </Link>
           ) : null}
-        </nav>
-      </header>
+        </div>
+      </nav>
       <DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
     </>
   );

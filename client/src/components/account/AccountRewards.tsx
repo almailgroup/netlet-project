@@ -67,7 +67,7 @@ export function AccountRewards() {
               <p className="mt-2 max-w-prose text-sm leading-6 text-[#536b8c]">{t("rewards.codeHelp")}</p>
 
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <p className="type-label ink-muted uppercase">{t("rewards.codeLabel")}</p>
+                <p className="type-label ink-muted">{t("rewards.codeLabel")}</p>
                 {/* Latin characters inside an Arabic line: `bdi` keeps the code
                     reading left to right without throwing the line to the far
                     edge, which is what `dir` on the block around it would do. */}
@@ -122,7 +122,7 @@ export function AccountRewards() {
             </div>
 
             <div>
-              <h3 className="type-label ink-muted uppercase">{t("rewards.ledger")}</h3>
+              <h3 className="type-label ink-muted">{t("rewards.ledger")}</h3>
               {view.entries.length === 0 ? (
                 <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("rewards.empty")}</p>
               ) : (

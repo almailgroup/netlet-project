@@ -68,8 +68,7 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
           <Link href="/" className="flex w-fit items-center" aria-label={t("header.home")}>
             <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-12 w-auto max-w-[165px] object-contain" />
           </Link>
-          <p className="mt-4 max-w-xs text-sm leading-6 text-[#b9cce5]">{t("home.footerNote")}</p>
-          <button onClick={toggleLocale} className="glass glass-on-dark pressable mt-6 rounded-full px-3 py-2 text-[10px] font-extrabold tracking-[.08em] uppercase">{t("header.language")}</button>
+          <button onClick={toggleLocale} className="glass glass-on-dark pressable mt-5 rounded-full px-3 py-2 text-[12px] font-semibold">{t("header.language")}</button>
         </div>
         <div>
           <p className="text-xs font-extrabold text-white">{t("footer.categories")}</p>

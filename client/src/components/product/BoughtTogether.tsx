@@ -34,15 +34,11 @@ type Complement = {
   crossVendor: boolean;
 };
 
-export function BoughtTogether({ productId, saved, onSave, onDetails, onQuickView, onAdd, onBuyNow, isAdding }: {
+export function BoughtTogether({ productId, saved, onSave, onQuickView }: {
   productId: string;
   saved: string[];
   onSave: (id: string, title: string) => void;
-  onDetails: (product: Product) => void;
   onQuickView: (product: Product) => void;
-  onAdd: (product: Product, quantity: number) => void;
-  onBuyNow: (product: Product, quantity: number) => void;
-  isAdding: boolean;
 }) {
   const { t, locale } = useTranslation();
   const query = trpc.together.forProduct.useQuery({ productId, limit: 4, locale });
@@ -51,9 +47,8 @@ export function BoughtTogether({ productId, saved, onSave, onDetails, onQuickVie
   if (items.length === 0) return null;
 
   return (
-    <section className="mt-14 border-t border-[#d5dfeb] pt-10">
-      <p className="type-label ink-accent uppercase">{t("home.netletSelection")}</p>
-      <h2 className="display-face mt-1 text-3xl text-[#0a285a] sm:text-4xl">{t("together.heading")}</h2>
+    <section className="mt-14 border-t border-[#e6e9ef] pt-10">
+      <h2 className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">{t("together.heading")}</h2>
       <p className="mt-2 max-w-prose text-sm ink-muted">{t("together.note")}</p>
 
       <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
@@ -65,11 +60,7 @@ export function BoughtTogether({ productId, saved, onSave, onDetails, onQuickVie
               note={<Note item={item} />}
               saved={saved.includes(item.product.id)}
               onSave={() => onSave(item.product.id, item.product.title)}
-              onDetails={() => onDetails(item.product)}
               onQuickView={() => onQuickView(item.product)}
-              onAdd={quantity => onAdd(item.product, quantity)}
-              onBuyNow={quantity => onBuyNow(item.product, quantity)}
-              isAdding={isAdding}
             />
           </div>
         ))}

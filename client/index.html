@@ -35,19 +35,24 @@
          fonts.googleapis.com left the page blank rather than merely unstyled —
          measured: readyState stuck at "interactive" with an empty #root and no
          error anywhere. The <noscript> keeps the webfont for the rare visitor
-         with JavaScript off, where nothing is blocked anyway. -->
+         with JavaScript off, where nothing is blocked anyway.
+
+         One variable file for weights 400 to 700, rather than eight static
+         styles. Nothing on the site is italic, and 700 is the heaviest weight
+         that has ever been drawn: 800 was never requested, so `font-extrabold`
+         has always rendered at 700 and still does. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap"
       />
     </noscript>
   </head>

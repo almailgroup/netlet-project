@@ -146,7 +146,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
 
   return (
     <div
-      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#061b3b]/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#061b3b]/50 p-4"
       onClick={onClose}
     >
       <div
@@ -170,7 +170,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
 
           <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-8 w-auto lg:hidden" />
 
-          <h2 id={titleId} className="display-face mt-4 text-[28px] leading-tight text-[#0a285a] lg:mt-0">
+          <h2 id={titleId} className="font-extrabold mt-4 text-2xl leading-tight text-[#0a285a] lg:mt-0">
             {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
           </h2>
           <p className="type-label mt-1 text-[#536b8c]">
@@ -344,7 +344,7 @@ function Field({ label, value, problem, valid, children }: {
              wherever the build happens to put them. */
           className={`pointer-events-none absolute px-3.5 ink-muted transition-all duration-150 ${
             lifted
-              ? "top-2 translate-y-0 text-[10px] font-extrabold tracking-[.06em] text-[#536b8c] uppercase"
+              ? "top-2 translate-y-0 text-[11px] font-semibold text-[#536b8c]"
               : "top-1/2 -translate-y-1/2 text-[13px]"
           }`}
         >
@@ -399,7 +399,7 @@ function StrengthMeter({ verdict }: { verdict: ReturnType<typeof checkPassword> 
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <span className="type-label text-[10px] font-extrabold tracking-[.08em] ink-muted uppercase">
+        <span className="type-label text-[12px] font-semibold ink-muted">
           {t("auth.strength")}
         </span>
         <span className="type-label text-[11px] font-extrabold" style={{ color: tone }}>
@@ -451,14 +451,9 @@ function ShowcasePanel() {
 
   return (
     <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0a285a] p-8 text-white lg:flex">
-      {/* Shades toward the text, so it flips with the script. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_0%_0%,rgba(242,104,58,.38),transparent_60%)] rtl:-scale-x-100"
-      />
       <div className="relative">
         <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-9 w-auto brightness-0 invert" />
-        <p className="display-face mt-6 text-[30px] leading-[1.15]">{t("auth.panelTitle")}</p>
+        <p className="font-extrabold mt-6 text-2xl leading-[1.15]">{t("auth.panelTitle")}</p>
       </div>
 
       <ul className="relative mt-8 space-y-5">

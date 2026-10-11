@@ -142,7 +142,7 @@ function PhoneCard({ current, onSaved }: { current: string | null; onSaved: () =
           onSubmit={event => { event.preventDefault(); if (valid) submit(typed); }}
         >
           <label className="min-w-0 flex-1">
-            <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("wish.phoneLabel")}</span>
+            <span className="block text-[12px] font-semibold ink-muted">{t("wish.phoneLabel")}</span>
             <input
               value={value}
               onChange={event => setValue(event.target.value)}
@@ -303,7 +303,7 @@ function NewList({ onCreated }: { onCreated: () => void }) {
       }}
     >
       <label className="min-w-0 flex-1">
-        <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("wish.newListName")}</span>
+        <span className="block text-[12px] font-semibold ink-muted">{t("wish.newListName")}</span>
         <input
           value={title}
           onChange={event => setTitle(event.target.value)}
@@ -494,7 +494,7 @@ function ShownAs({ listId, current, onSaved }: { listId: number; current: string
       }}
     >
       <label className="min-w-0 flex-1">
-        <span className="block text-[11px] font-extrabold tracking-[.1em] ink-muted uppercase">{t("wish.shownAs")}</span>
+        <span className="block text-[12px] font-semibold ink-muted">{t("wish.shownAs")}</span>
         <input
           value={value}
           onChange={event => setValue(event.target.value)}

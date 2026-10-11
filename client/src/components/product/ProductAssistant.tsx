@@ -108,7 +108,7 @@ export function ProductAssistant({ handle }: { handle: string }) {
                   <p dir="auto" className="text-[13px] leading-6 text-[#404553]">{turn.answer}</p>
                   {/* Said on every answer, not once at the top: a shopper
                       scrolling the log reads the sentence, not the header. */}
-                  <p className="mt-1.5 text-[10px] font-bold tracking-[.04em] ink-muted uppercase">{t("assistant.generated")}</p>
+                  <p className="mt-1.5 text-[12px] font-bold ink-muted">{t("assistant.generated")}</p>
                 </div>
               )}
             </div>

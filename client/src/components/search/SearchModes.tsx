@@ -98,7 +98,7 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 backdrop-blur-[2px] sm:items-center sm:justify-center"
+      className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center"
       onClick={onClose}
     >
       <section
@@ -110,8 +110,8 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-extrabold tracking-[.14em] ink-accent uppercase">{t(eyebrow)}</p>
-            <h2 id={`${id}-title`} className="display-face mt-1 text-2xl leading-tight text-[#0a285a] sm:text-3xl">{t(title)}</h2>
+            <p className="text-[12px] font-semibold ink-accent">{t(eyebrow)}</p>
+            <h2 id={`${id}-title`} className="font-extrabold mt-1 text-2xl leading-tight text-[#0a285a] sm:text-3xl">{t(title)}</h2>
             {note ? <p className="mt-2 text-sm leading-6 ink-muted">{t(note)}</p> : null}
           </div>
           <button
@@ -359,7 +359,7 @@ export function VoiceSearchPanel({ open, onClose, onUse }: {
           {/* dir="auto" because what somebody said is their own language, not
               the interface's — an Arabic phrase inside an English session has
               to keep its own direction and punctuation. */}
-          <p dir="auto" className="display-face mt-2 text-2xl leading-snug text-[#0a285a]">“{transcript}”</p>
+          <p dir="auto" className="font-extrabold mt-2 text-2xl leading-snug text-[#0a285a]">“{transcript}”</p>
           <p className="mt-3 text-xs leading-5 ink-muted">{t("search.voiceConfirmNote")}</p>
         </div>
       ) : state === "nothing" ? (

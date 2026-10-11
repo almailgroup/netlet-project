@@ -71,7 +71,7 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
           <h2 className="truncate text-xl font-extrabold text-[#0a285a]">
             <bdi>{user.name?.trim() || t("account.noName")}</bdi>
           </h2>
-          <p className="mt-0.5 text-[11px] font-extrabold tracking-[.06em] ink-muted uppercase">
+          <p className="mt-0.5 text-[12px] font-semibold ink-muted">
             {t("account.identityEmail")}
           </p>
           <p className="truncate text-[13px] font-bold text-[#536b8c]">

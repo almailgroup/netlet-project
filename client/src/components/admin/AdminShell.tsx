@@ -160,7 +160,7 @@ export function AdminShell({ need, children }: {
 
   return (
     <main className="min-h-screen bg-background text-[#0a285a]">
-      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
+      <header className="sticky top-0 z-40 border-b border-[#d5dfeb] bg-background/95">
         <div className="container flex h-[64px] items-center gap-4">
           {/* The label hides below `sm`, leaving an arrow with no accessible
               name at all — on every admin page, on a phone. The `aria-label`

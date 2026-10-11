@@ -179,25 +179,12 @@
     background-size: 5px 5px;
     mix-blend-mode: multiply;
   }
+  /* A card answers a hover with its edge, not by jumping 5px toward you. */
   .product-card {
-    transition:
-      transform 200ms var(--ease-out),
-      box-shadow 200ms var(--ease-out);
+    transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
   }
   .product-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 18px 36px rgba(10, 40, 90, 0.13);
-  }
-  @media (min-width: 1024px) {
-    header > .container:first-child > div:nth-of-type(3) {
-      margin-inline-start: auto;
-      flex-shrink: 0;
-    }
-    /* The bag pill. Matched on .glass-navy since the old bg-[#0a285a] utility
-       it used to key off was replaced by the glass classes. */
-    header > .container:first-child > button.glass-navy {
-      flex-shrink: 0;
-    }
+    box-shadow: 0 6px 18px rgba(10, 40, 90, 0.08);
   }
   .pressable {
     transition:
@@ -266,127 +253,33 @@
     }
   }
 
-  /* ----------------------------------------------------------- liquid glass ---
-     Read as a lens, not a frosted card. Four layers do the work:
+  /* ---------------------------------------------------------------- surfaces ---
+     Solid and flat. These were "liquid glass" — a backdrop filter bending
+     whatever sat behind some 370 controls, a rim with a warm/cool colour split,
+     a sheen that swept across on hover — and it was the single thing that made
+     the shop look like a generated template: the marketplaces shoppers here use
+     every day are white surfaces under real product photos. The bending only
+     ever ran in Chromium (Safari, a large share of Kuwaiti phones, got a plain
+     blur), text over a see-through surface has no fixed contrast, and a live
+     blur is re-sampled on every frame of a scroll.
 
-       1. the backdrop is refracted, blurred and brightened, so what sits behind
-          a control is visibly bent rather than merely fogged;
-       2. a thin tint carries the control's colour without hiding the backdrop;
-       3. inset shadows model the glass body — a bright top bevel, an inner
-          glow standing in for thickness, and a shaded far wall at the bottom;
-       4. a gradient rim with a warm/cool split hints at chromatic dispersion.
-
-     The cast shadow is deliberately slight; glass this thin should sit on the
-     page, not float above it.
-
-     Painting order: the sheen sits at z-index -1 under `isolation: isolate`, so
-     it lands above the element's own background but below its text. A
-     positioned pseudo-element at z-index 0 would cover the label.
-
-     Do NOT hand-write -webkit-backdrop-filter here. Lightning CSS deduplicates
-     an identical prefixed copy that follows the standard property and keeps only
-     the last one, which leaves browsers with a declaration they ignore and no
-     blur at all. Write the standard property; the compiler emits both. */
+     The class names are kept, so every control changed in one place rather than
+     at 370 call sites; read `.glass` as "plain control" and the tints as fills.
+     One border, one hover tint, no pseudo-elements, no filters. */
   .glass {
     position: relative;
-    isolation: isolate;
-    border: 0;
+    border: 1px solid #dfe5ee;
+    background-color: #fff;
     color: #0a285a;
-    /* A faint navy wash rather than a white one, and no brightness lift. Over
-       the old warm pearl ground the white tint separated the controls; over the
-       near-white #FAFAFA it composited to #fefefe against #fafafa — a 1.035:1
-       edge, which is a shape you cannot see. Tinting down instead of up settles
-       them onto the page at about 1.08:1: still glass, now legibly a control. */
-    background-color: rgba(10, 40, 90, 0.055);
-    background-image: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.42),
-      rgba(255, 255, 255, 0.04) 42%,
-      rgba(255, 255, 255, 0.16)
-    );
-    backdrop-filter: blur(3px) saturate(190%);
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.95),
-      inset 0 0 14px rgba(255, 255, 255, 0.5),
-      inset 0 -2px 5px rgba(10, 40, 90, 0.09),
-      0 1px 3px rgba(10, 40, 90, 0.05);
     transition:
-      background-color 200ms var(--ease-out),
-      box-shadow 200ms var(--ease-out),
-      transform 160ms var(--ease-out);
-  }
-
-  /* Dispersion rim: a gradient ring painted only in the border band, warm on one
-     shoulder and cool on the other so the edge splits light like real glass. */
-  .glass::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(
-      140deg,
-      rgba(255, 255, 255, 0.98),
-      rgba(255, 231, 214, 0.55) 22%,
-      rgba(255, 255, 255, 0.1) 46%,
-      rgba(214, 232, 255, 0.45) 74%,
-      rgba(255, 255, 255, 0.9)
-    );
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  .glass::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background: linear-gradient(
-      105deg,
-      transparent 28%,
-      rgba(255, 255, 255, 0.55) 47%,
-      transparent 66%
-    );
-    opacity: 0;
-    transition: opacity 260ms var(--ease-out);
-    pointer-events: none;
-  }
-  .glass:hover::before,
-  .glass:focus-visible::before,
-  .glass:focus-within::before {
-    opacity: 1;
+      background-color 120ms var(--ease-out),
+      border-color 120ms var(--ease-out);
   }
   .glass:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+    border-color: #b9c6d8;
+    background-color: #f7f9fc;
   }
 
-  /* Refraction proper. Chromium resolves an SVG filter inside backdrop-filter;
-     Safari and Firefox do not, and correctly fail the @supports test, keeping
-     the plain blur above. The filter itself lives in LiquidGlassFilters.tsx. */
-  @supports (backdrop-filter: url("#netlet-liquid-glass")) {
-    .glass,
-    .glass-field {
-      backdrop-filter: url("#netlet-liquid-glass") blur(2px) saturate(190%)
-        brightness(1.07);
-    }
-    .glass-on-dark {
-      backdrop-filter: url("#netlet-liquid-glass") blur(4px) saturate(170%);
-    }
-  }
-
-  /* The three filled tints below share one construction, which is what makes
-     the controls read as a set: a solid fill, a single hairline along the top
-     edge, a soft inner shade at the bottom, and a restrained rim. No diagonal
-     wash and no hover sweep — over a filled surface both read as glare rather
-     than as glass. The clear tint above keeps them, because on a near
-     transparent surface they are what makes the glass legible at all. */
-
-  /* Navy tint, at full brand strength. White on #0a285a measures about 12.6:1,
-     so the primary controls are comfortably past WCAG AA. */
   /*
    * Text colours that actually pass AA.
    *
@@ -441,231 +334,100 @@
     --info-text: #234b7d;
   }
 
+  /* Navy: white on #0a285a is 12.6:1; the hover is a step of navy (11.9:1),
+     never the orange, which put white text at 2.5:1 under a resting cursor. */
   .glass-navy {
-    color: #fffdf9;
-    /* Opaque brand navy. The tint was translucent so the backdrop could show
-       through, but over a pale page that reads as a haze across the fill rather
-       than as glass, and it dulled the brand colour. */
+    border-color: transparent;
     background-color: #0a285a;
-    background-image: none;
-    box-shadow:
-      /* A single hairline along the top edge is enough to seat the button
-         without the diagonal wash that read as glare. */
-      inset 0 1px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -2px 6px rgba(0, 0, 0, 0.24),
-      0 1px 3px rgba(10, 40, 90, 0.16);
+    color: #fff;
   }
-  .glass-navy::after {
-    background: linear-gradient(
-      140deg,
-      rgba(255, 255, 255, 0.26),
-      rgba(255, 255, 255, 0.06) 45%,
-      rgba(255, 255, 255, 0.2)
-    );
-  }
-  /* No sheen on the navy tint: the sweep is the same glare, animated. */
-  .glass-navy::before {
-    display: none;
-  }
-  /* A step of navy, not the brand orange. It turned orange here, which put
-     white text on #f2683a at 82% — about 2.5:1 — on every primary button in
-     the shop for as long as the cursor rested on it, the exact pairing the
-     dialogs were moved off. axe only saw it once a test left the mouse on a
-     button it had just pressed; ConfirmDialog already used this step. */
   .glass-navy:hover {
+    border-color: transparent;
     background-color: #0d3372;
   }
 
-  /* White tint. The fourth filled one, built the same way as the other three —
-     solid fill, one hairline along the top edge, a soft inner shade at the
-     bottom, a restrained rim, no diagonal wash and no hover sweep.
-
-     It exists for a control that sits *on a photograph* rather than on the
-     page, where navy disappears into a dark picture and the clear tint
-     disappears into a pale one. The rim is navy rather than white, because on
-     white the rim is the only edge there is: it is what separates the disc
-     from an overexposed background, and it carries the whole job the fill
-     cannot do. */
+  /* The one control that sits on a photograph rather than on the page. A navy
+     edge and a slight shadow keep it visible on a pale picture as well as a
+     dark one. */
   .glass-white {
+    border-color: rgba(10, 40, 90, 0.16);
+    background-color: #fff;
     color: #0a285a;
-    background-color: #ffffff;
-    background-image: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.9),
-      inset 0 -2px 6px rgba(10, 40, 90, 0.08),
-      0 2px 8px rgba(10, 40, 90, 0.28);
+    box-shadow: 0 1px 3px rgba(10, 40, 90, 0.16);
   }
-  .glass-white::after {
-    background: linear-gradient(
-      140deg,
-      rgba(10, 40, 90, 0.22),
-      rgba(10, 40, 90, 0.1) 45%,
-      rgba(10, 40, 90, 0.2)
-    );
-  }
-  /* No sheen, for the same reason the navy tint has none. */
-  .glass-white::before {
-    display: none;
+  .glass-white:hover {
+    background-color: #fff;
+    border-color: rgba(10, 40, 90, 0.32);
   }
 
-  /* Accent tint. The most opaque of the four, with the lightest specular: white
-     on NetLet orange is only ~3.1:1 even fully solid, so any extra whitening
-     here comes straight out of legibility. Reaching AA would need a darker
-     orange than the brand's — a call for the brand, not for this effect. */
+  /* The brand orange stays the fill and the words are navy: white on #f2683a
+     is 3.08:1 and these labels are 12–14px, so 4.5:1 is the bar; navy on the
+     same orange is 4.65:1. Darkening the orange instead would change the brand. */
   .glass-accent {
-    color: #fff;
-    /* Solid brand orange. Thinning it also cost contrast, which this pairing
-       has none to spare of — see the note above the tint definitions. */
+    border-color: transparent;
     background-color: #f2683a;
-    background-image: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.3),
-      inset 0 -2px 6px rgba(120, 40, 15, 0.26),
-      0 1px 3px rgba(214, 85, 44, 0.18);
-  }
-  .glass-accent::after {
-    background: linear-gradient(
-      140deg,
-      rgba(255, 255, 255, 0.34),
-      rgba(255, 255, 255, 0.08) 45%,
-      rgba(255, 255, 255, 0.26)
-    );
-  }
-  .glass-accent::before {
-    display: none;
+    color: #0a285a;
   }
   .glass-accent:hover {
-    background-color: rgba(223, 91, 48, 0.97);
+    border-color: transparent;
+    background-color: #f47b52;
   }
 
-  /* On the navy footer and dark rails the glass has to lighten, not tint. */
+  /* On navy. */
   .glass-on-dark {
-    color: #fffdf9;
-    background-color: rgba(255, 255, 255, 0.14);
-    background-image: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.28),
-      inset 0 -2px 6px rgba(0, 0, 0, 0.26),
-      0 1px 3px rgba(0, 0, 0, 0.18);
-  }
-  .glass-on-dark::before {
-    display: none;
-  }
-  .glass-on-dark::after {
-    background: linear-gradient(
-      140deg,
-      rgba(255, 255, 255, 0.7),
-      rgba(255, 214, 190, 0.28) 22%,
-      rgba(255, 255, 255, 0.06) 46%,
-      rgba(190, 218, 255, 0.3) 74%,
-      rgba(255, 255, 255, 0.5)
-    );
+    border-color: rgba(255, 255, 255, 0.24);
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
   }
   .glass-on-dark:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.18);
   }
 
-  /* Search field: the largest pane, so it gets the most visible refraction. */
+  /* An input. White with an edge, and a navy ring when focused. */
   .glass-field {
-    position: relative;
-    isolation: isolate;
-    border: 0;
-    background-color: rgba(10, 40, 90, 0.045);
-    background-image: linear-gradient(
-      152deg,
-      rgba(255, 255, 255, 0.46),
-      rgba(255, 255, 255, 0.05) 44%,
-      rgba(255, 255, 255, 0.2)
-    );
-    backdrop-filter: blur(3px) saturate(195%);
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.95),
-      inset 0 0 18px rgba(255, 255, 255, 0.55),
-      inset 0 -2px 5px rgba(10, 40, 90, 0.08),
-      0 1px 3px rgba(10, 40, 90, 0.05);
+    border: 1px solid #d5dfeb;
+    background-color: #fff;
+    color: #0a285a;
     transition:
-      box-shadow 220ms var(--ease-out),
-      background-color 220ms var(--ease-out);
+      border-color 120ms var(--ease-out),
+      box-shadow 120ms var(--ease-out);
   }
   .glass-field:focus-within {
-    background-color: rgba(255, 255, 255, 0.34);
-    box-shadow:
-      inset 0 1px 1px rgba(255, 255, 255, 0.95),
-      inset 0 0 18px rgba(255, 255, 255, 0.6),
-      0 1px 3px rgba(10, 40, 90, 0.06),
-      0 0 0 4px rgba(242, 104, 58, 0.16);
-  }
-
-  @supports not (backdrop-filter: blur(1px)) {
-    .glass {
-      background-color: rgba(255, 255, 255, 0.95);
-    }
-    .glass-navy {
-      background-color: #0a285a;
-    }
-    .glass-accent {
-      background-color: #f2683a;
-    }
-    .glass-on-dark {
-      background-color: rgba(255, 255, 255, 0.2);
-    }
-    .glass-field {
-      background-color: #fff;
-    }
-  }
-
-  @media (prefers-reduced-transparency: reduce) {
-    .glass,
-    .glass-navy,
-    .glass-accent,
-    .glass-on-dark,
-    .glass-field {
-      backdrop-filter: none;
-    }
-    .glass {
-      background-color: rgba(255, 255, 255, 0.97);
-    }
-    .glass-navy {
-      background-color: #0a285a;
-    }
-    .glass-accent {
-      background-color: #f2683a;
-    }
-    .glass-on-dark {
-      background-color: #1b3a6b;
-    }
-    .glass-field {
-      background-color: #fff;
-    }
-    .glass::before {
-      display: none;
-    }
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .reveal-up {
-      animation: rise-in 650ms var(--ease-out) both;
-    }
-    .reveal-delay-1 {
-      animation-delay: 70ms;
-    }
-    .reveal-delay-2 {
-      animation-delay: 140ms;
-    }
-    .reveal-delay-3 {
-      animation-delay: 210ms;
-    }
+    border-color: #0a285a;
+    box-shadow: 0 0 0 3px rgba(10, 40, 90, 0.12);
   }
 }
 
-@keyframes rise-in {
-  from {
+/*
+ * A control that appears on hover, and only where there is a hover.
+ *
+ * The product card's preview disc. Under a mouse it comes out when the card is
+ * hovered or holds keyboard focus; on a touch screen it is not drawn at all —
+ * the card is one tap from the product anyway, and a disc on every photo in a
+ * grid is clutter that offers nothing the tap does not.
+ *
+ * `visibility` rather than opacity alone: a transparent disc lying over a
+ * photo still catches the click meant for the photo, and still takes a tab
+ * stop. A plain fade, no movement.
+ */
+.reveal-control {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reveal-control {
+    display: grid;
+    visibility: hidden;
     opacity: 0;
-    transform: translateY(24px);
+    transition:
+      opacity 120ms var(--ease-out),
+      visibility 120ms var(--ease-out);
   }
-  to {
+  .group:hover .reveal-control,
+  .group:focus-within .reveal-control {
+    visibility: visible;
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -679,88 +441,6 @@
  * `scaleY` rather than `height` so it runs on the compositor: seven elements
  * animating height would lay out the flex row seven times a frame.
  */
-/*
- * The quantity control lives *inside* the action button.
- *
- * At rest the pill is one label. Hovering it slides a minus out of its leading
- * end and a plus out of its trailing end, and the label keeps the middle. The
- * three are separate `<button>`s sharing one styled wrapper, because a button
- * cannot contain a button — nesting them is invalid markup and browsers make
- * their own decision about what the click meant.
- *
- * Hovered *or* focused, and unconditionally present where there is no hover to
- * do the revealing, which is every phone this shop sells to. A hover-only
- * control on a Kuwait-first storefront is one most shoppers never see, and it
- * is unreachable from a keyboard besides.
- *
- * `width` carries the animation and `visibility` carries the hit testing. At
- * zero width an element is still clickable and still takes a tab stop, so
- * without the second a hidden minus would swallow presses aimed at the label
- * and the keyboard would stop on a control nobody can see.
- *
- * The pill's own width never changes — only how the three split it — so
- * nothing moves out from under the cursor that revealed it.
- */
-/*
- * A control that appears on hover, and is simply there where there is no hover.
- *
- * The same rule `.qty-step` follows and for the same reason: a control that
- * only exists under a mouse pointer is one most of this shop's shoppers never
- * meet. `:focus-within` on the card brings it out for a keyboard, and under
- * `(hover: none)` it never hides.
- *
- * `visibility` rather than opacity alone, again: a transparent disc lying over
- * a product photo still catches the tap that was meant for the photo, and
- * still takes a tab stop.
- *
- * It grows and settles rather than sliding in from an edge — a disc sitting in
- * a corner has no edge to slide from, and a 6px rise reads as the thing
- * arriving where the pointer already is.
- */
-.reveal-control {
-  transition:
-    opacity 180ms var(--ease-out),
-    visibility 180ms var(--ease-out),
-    transform 180ms var(--ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .reveal-control {
-    visibility: hidden;
-    opacity: 0;
-    transform: translateY(0.375rem) scale(0.85);
-  }
-  .group:hover .reveal-control,
-  .group:focus-within .reveal-control {
-    visibility: visible;
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.qty-step {
-  width: var(--qty-step-w, 2.25rem);
-  overflow: hidden;
-  transition:
-    width 180ms var(--ease-out),
-    opacity 140ms var(--ease-out),
-    visibility 180ms var(--ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .qty-step {
-    width: 0;
-    opacity: 0;
-    visibility: hidden;
-  }
-  .qty-inline:hover .qty-step,
-  .qty-inline:focus-within .qty-step {
-    width: var(--qty-step-w, 2.25rem);
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
 @keyframes voice-level {
   0%,
   100% {

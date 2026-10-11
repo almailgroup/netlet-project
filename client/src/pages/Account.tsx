@@ -143,7 +143,7 @@ export default function Account() {
         }}
       />
 
-      <header className="border-b border-[#d5dfeb] bg-background/95 backdrop-blur-xl">
+      <header className="border-b border-[#d5dfeb] bg-background/95">
         <div className="container flex h-[76px] items-center justify-between gap-4">
           <a href={appPath("/")} className="flex items-center" aria-label={t("account.backHome")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-11 w-auto max-w-[140px] object-contain" />
@@ -155,11 +155,10 @@ export default function Account() {
       </header>
 
       <div className="container max-w-5xl py-8 sm:py-12">
-        <p className="type-label ink-accent uppercase">{t("account.eyebrow")}</p>
         {loading ? (
           <div className="mt-3 h-10 w-64 animate-pulse rounded-xl bg-[#dce5e9]" />
         ) : (
-          <h1 className="type-display mt-2 text-3xl text-[#0a285a] sm:text-4xl">
+          <h1 className="text-2xl font-extrabold text-[#0a285a] sm:text-3xl">
             {isAuthenticated
               ? (user?.name ? t("account.welcomeBackName", { name: user.name }) : t("account.welcomeBack"))
               : t("account.yourWay")}
@@ -304,7 +303,7 @@ function SectionNav({ hidden }: { hidden: ReadonlySet<string> }) {
   const { t } = useTranslation();
   return (
     <nav aria-label={t("account.jumpTo")} className="sticky top-6 hidden lg:block">
-      <p className="text-[10px] font-extrabold tracking-[.12em] ink-muted uppercase">{t("account.jumpTo")}</p>
+      <p className="text-[12px] font-semibold ink-muted">{t("account.jumpTo")}</p>
       <ul className="mt-3 space-y-1">
         {/* An anchor is dropped along with its section: a nav entry that
             jumps to nothing is the same dead control as the section being
@@ -329,7 +328,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
     /* scroll-mt keeps the heading clear of the sticky header when an anchor
        lands on it. */
     <section id={id} className="scroll-mt-6">
-      <h2 className="text-[11px] font-extrabold tracking-[.12em] ink-muted uppercase">{title}</h2>
+      <h2 className="text-[12px] font-semibold ink-muted">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   );

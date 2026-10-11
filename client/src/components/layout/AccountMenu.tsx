@@ -19,7 +19,6 @@
  * would be simpler and is what a phone gets — the bottom bar's Account tab
  * goes straight to the page.
  */
-import AuthDialog from "@/components/auth/AuthDialog";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -27,10 +26,14 @@ import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, LayoutDashboard, LifeBuoy, MessageCircle, Package, UserRound } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Link } from "wouter";
+
+/* Fetched when somebody asks to sign in: the header is on every page, and most
+   visits never open the dialog. */
+const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
 
 /** The first word of a display name, or null when there is nothing to show. */
 export function firstName(name: string | null | undefined): string | null {
@@ -93,7 +96,7 @@ export function AccountMenu() {
         </button>
         {/* To `<body>`: the header's `backdrop-filter` would otherwise be the
             containing block for the dialog's `position: fixed`. */}
-        {createPortal(<AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />, document.body)}
+        {authOpen ? createPortal(<Suspense fallback={null}><AuthDialog open onClose={() => setAuthOpen(false)} /></Suspense>, document.body) : null}
       </>
     );
   }

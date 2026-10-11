@@ -126,7 +126,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
 
           <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
             <div>
-              <label htmlFor="offer-price" className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
+              <label htmlFor="offer-price" className="text-[12px] font-semibold ink-muted">
                 {t("offers.yourPrice")}
               </label>
               {/*
@@ -148,7 +148,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
               <p className="mt-1 text-[11px] ink-muted">{t("offers.listPrice", { price: amount(listPrice) })}</p>
             </div>
             <div>
-              <label htmlFor="offer-qty" className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
+              <label htmlFor="offer-qty" className="text-[12px] font-semibold ink-muted">
                 {t("offers.quantity")}
               </label>
               <input
@@ -162,7 +162,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
             </div>
 
             <div className="sm:col-span-2">
-              <label htmlFor="offer-note" className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
+              <label htmlFor="offer-note" className="text-[12px] font-semibold ink-muted">
                 {t("offers.messageLabel")}
               </label>
               <textarea

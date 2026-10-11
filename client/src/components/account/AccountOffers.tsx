@@ -60,7 +60,7 @@ export function AccountOffers() {
                     ) : (
                       <span dir="auto" className="font-bold text-[#0a285a]">{row.productTitle}</span>
                     )}
-                    <span className="text-[11px] font-extrabold tracking-[.05em] ink-muted uppercase">
+                    <span className="text-[12px] font-semibold ink-muted">
                       {row.state === "offered" && row.offeredPrice
                         ? t("offers.statusOffered", { price: amount(row.offeredPrice) })
                         : t(STATE_LABEL[row.state])}

@@ -15,7 +15,6 @@ import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
-import { appPath } from "@/lib/basePath";
 import { useOverlay } from "@/hooks/useOverlay";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
@@ -40,7 +39,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
-import { shareProduct } from "@/components/product/ProductCard";
+import { ProductCard, shareProduct } from "@/components/product/ProductCard";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
@@ -75,24 +74,6 @@ const WARRANTY_POLICY = [
   { icon: ShieldCheck, title: "shipping.protection.title", body: "shipping.protection.body" },
   { icon: Wrench, title: "warranty.claim.title", body: "warranty.claim.body" },
 ] as const satisfies readonly PolicyRow[];
-
-function RelatedCard({ product }: { product: Product }) {
-  const { t } = useTranslation();
-  const money = useMoney();
-  const image = product.images[0];
-  return (
-    <article className="group min-w-[190px] overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 sm:min-w-0">
-      <button onClick={() => window.location.assign(appPath(`/products/${encodeURIComponent(product.handle)}`))} className="block w-full text-start">
-        <div className="relative overflow-hidden rounded-xl bg-[#e7edf5]">
-          <Thumb src={image?.url} alt={image?.altText ?? product.title} className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        </div>
-        <p className="mt-3 text-[9px] font-extrabold tracking-[.12em] text-[#a44a2b] uppercase">{product.productType || t("product.netletEdit")}</p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-extrabold tracking-[-.025em] text-[#0a285a] group-hover:text-[#a44a2b]">{product.title}</h3>
-        <p className="mt-2 text-base font-extrabold tracking-[-.04em] text-[#0a285a]">{money(product.priceRange.min)}</p>
-      </button>
-    </article>
-  );
-}
 
 /**
  * How many thumbnails the rail shows before collapsing into "View all".
@@ -893,7 +874,7 @@ export default function ProductDetail() {
      pays for what they did not ask for and did not notice. */
   const [chosenAddons, setChosenAddons] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const openRelated = (item: Product) => window.location.assign(appPath(`/products/${encodeURIComponent(item.handle)}`));
+  const openRelated = (item: Product) => navigate(`/products/${encodeURIComponent(item.handle)}`);
 
   // Built before the loading and error returns below, because a hook cannot be
   // called conditionally. While the product is in flight the page describes
@@ -909,7 +890,6 @@ export default function ProductDetail() {
     setZoomOpen(false);
     setTab("specifications");
     setQuantity(1);
-    window.scrollTo({ top: 0, behavior: "instant" });
   }, [product?.id]);
 
   useEffect(() => {
@@ -979,7 +959,7 @@ export default function ProductDetail() {
 
   if (isLoading) return <main className="min-h-screen bg-background px-4 py-8"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-10 w-32 rounded-full bg-[#e7edf5]" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><div className="aspect-square rounded-[1.5rem] bg-[#e7edf5]" /><div className="space-y-5 pt-7"><div className="h-5 w-24 rounded bg-[#dce5e9]" /><div className="h-16 w-4/5 rounded bg-[#dce5e9]" /><div className="h-20 rounded bg-[#e7edf5]" /></div></div></div></main>;
 
-  if (!product || error) return <main className="min-h-screen bg-background px-4 py-16"><div className="mx-auto max-w-lg rounded-[2rem] border border-[#d5dfeb] bg-[#fffdf9] p-9 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]"><PackageOpen className="size-7" /></div><h1 className="display-face mt-5 text-4xl text-[#0a285a]">{t("product.notFound")}</h1><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("product.notFoundNote")}</p><Link href="/" className="glass glass-navy pressable mt-7 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("product.backToNetlet")}</Link></div></main>;
+  if (!product || error) return <main className="min-h-screen bg-background px-4 py-16"><div className="mx-auto max-w-lg rounded-[2rem] border border-[#d5dfeb] bg-[#fffdf9] p-9 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]"><PackageOpen className="size-7" /></div><h1 className="font-extrabold mt-5 text-3xl text-[#0a285a]">{t("product.notFound")}</h1><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("product.notFoundNote")}</p><Link href="/" className="glass glass-navy pressable mt-7 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("product.backToNetlet")}</Link></div></main>;
 
   const rating = productRating(product.attributes);
   const express = isExpressEligible(product);
@@ -1020,7 +1000,7 @@ export default function ProductDetail() {
           <div className="min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? (
               <div className="flex flex-wrap items-center gap-2">
-                <p dir="auto" className="text-xs font-bold tracking-[.5px] ink-muted uppercase">{product.vendor}</p>
+                <p dir="auto" className="text-xs font-bold ink-muted">{product.vendor}</p>
                 <VendorBadges badges={product.vendorBadges} />
               </div>
             ) : null}
@@ -1123,7 +1103,7 @@ export default function ProductDetail() {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold tracking-[.02em] uppercase disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
+              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
             {/* Under the bag button rather than beside it: the bag stays the
@@ -1168,18 +1148,28 @@ export default function ProductDetail() {
           productId={product.id}
           saved={savedIds}
           onSave={id => toggleSaved(id)}
-          onDetails={item => navigate(`/products/${encodeURIComponent(item.handle)}`)}
           onQuickView={setQuickProduct}
-          onAdd={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity); }}
-          onBuyNow={(item, quantity) => { const variant = item.variants.find(v => v.availableForSale); if (variant) void addItem(variant.id, quantity, false).then(() => navigate("/checkout")); }}
-          isAdding={cartLoading}
         />
 
         <div className="mt-14">
           <ProductReviews productId={product.id} productTitle={product.title} />
         </div>
 
-        <section className="mt-14 border-t border-[#d5dfeb] pt-10"><div className="flex items-end justify-between gap-5"><div><p className="text-[10px] font-extrabold tracking-[.15em] text-[#a44a2b] uppercase">{t("product.keepDiscovering")}</p><h2 className="display-face mt-2 text-3xl text-[#0a285a] sm:text-4xl">{t("product.relatedTitle")}</h2><p className="mt-2 text-sm text-[#536b8c]">{t("product.relatedNote")}</p></div><Link href="/" className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></Link></div>{related.length ? <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible">{related.map(item => <RelatedCard key={item.id} product={item} />)}</div> : <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-10 text-center"><p className="text-sm font-bold text-[#0a285a]">{t("product.relatedEmpty")}</p><Link href="/" className="mt-3 inline-block text-xs font-extrabold ink-accent underline underline-offset-4">{t("product.browseCatalog")}</Link></div>}</section>
+        {/* The same card every shelf uses, and nothing at all when there is
+            nothing related: a placeholder promising products "as more arrive"
+            is the shop describing itself rather than selling anything. */}
+        {related.length ? (
+          <section aria-labelledby="related-title" className="mt-14 border-t border-[#e6e9ef] pt-10">
+            <h2 id="related-title" className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">{t("product.relatedTitle")}</h2>
+            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {related.map(item => (
+                <li key={item.id} className="min-w-0">
+                  <ProductCard compact product={item} saved={savedIds.includes(item.id)} onSave={() => toggleSaved(item.id)} onQuickView={() => setQuickProduct(item)} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </div>
       <MobileTabBar />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />

@@ -54,7 +54,7 @@ export function ProductReviews({ productId, productTitle }: { productId: string;
 
   return (
     <section id="reviews" className="scroll-mt-24 border-t border-[#d5dfeb] pt-8">
-      <h2 className="display-face text-2xl text-[#0a285a] sm:text-3xl">{t("review.heading")}</h2>
+      <h2 className="font-extrabold text-2xl text-[#0a285a] sm:text-3xl">{t("review.heading")}</h2>
 
       <QueryGate queries={[query]}>
         {() => {
@@ -97,7 +97,7 @@ export function ProductReviews({ productId, productTitle }: { productId: string;
 
                     {review.vendorReply ? (
                       <div className="mt-3 rounded-2xl bg-[#f3f2ed] p-4">
-                        <p className="text-[10px] font-extrabold tracking-[.1em] ink-accent uppercase">
+                        <p className="text-[12px] font-semibold ink-accent">
                           {t("review.vendorReply")}
                         </p>
                         <p dir="auto" className="mt-1 max-w-prose text-sm leading-6 text-[#1f2229]">{review.vendorReply}</p>
@@ -122,7 +122,7 @@ function Summary({ summary }: { summary: ReviewSummary }) {
     <div className="mt-4 flex flex-col gap-6 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:flex-row sm:items-center">
       <div className="shrink-0 text-center sm:text-start">
         {/* The number is Latin whichever language the page is in. */}
-        <bdi dir="ltr" className="display-face block text-4xl text-[#0a285a]">{summary.average.toFixed(1)}</bdi>
+        <bdi dir="ltr" className="font-extrabold block text-3xl text-[#0a285a]">{summary.average.toFixed(1)}</bdi>
         <div className="mt-1 flex justify-center sm:justify-start"><StarRow value={summary.average} size="lg" /></div>
         <p className="mt-1 text-xs ink-muted">
           {summary.count === 1 ? t("review.countOne") : t("review.count", { count: summary.count })}

@@ -98,7 +98,7 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
   const canChoose = answer && (answer.kind === "fits" || answer.kind === "closest") && availableSizes.some(size => size.toLowerCase() === answer.size.toLowerCase());
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"

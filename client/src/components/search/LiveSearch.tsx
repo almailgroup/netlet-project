@@ -1,10 +1,9 @@
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
-import { PhotoSearchPanel, VoiceSearchPanel } from "@/components/search/SearchModes";
 import { useFeature } from "@/hooks/useFeature";
 import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
 import { matchesSearch, searchPath } from "@shared/commerce/browse";
@@ -13,6 +12,15 @@ import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";
 import { clearRecentSearches, readRecentSearches, rememberSearch } from "@/lib/recentSearches";
 import type { MessageKey } from "@shared/i18n/dictionary";
+
+/*
+ * The voice and photo sheets are fetched when a shop has switched them on, or
+ * when one is opened for review — not in the bundle every shopper downloads
+ * first. Both switches start off, so for most visitors they never load.
+ */
+const VoiceSearchPanel = lazy(() => import("@/components/search/SearchModes").then(module => ({ default: module.VoiceSearchPanel })));
+const PhotoSearchPanel = lazy(() => import("@/components/search/SearchModes").then(module => ({ default: module.PhotoSearchPanel })));
+const reviewingSearchModes = () => /^(voice|photo)-/.test(new URLSearchParams(window.location.search).get("searchTest") ?? "");
 
 /**
  * What the placeholder suggests searching for, taken from the shelf.
@@ -312,18 +320,22 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct }: LiveSe
           )}
         </div>
       )}
-      <VoiceSearchPanel
-        open={voiceOpen}
-        onClose={() => setVoiceOpen(false)}
-        onUse={(query) => { setVoiceOpen(false); searchFor(query); }}
-      />
-      {/* What the photo was read as goes into the field like anything typed,
-          so the shopper sees the words and can change them. */}
-      <PhotoSearchPanel
-        open={photoOpen}
-        onClose={() => setPhotoOpen(false)}
-        onUse={(query) => { setPhotoOpen(false); searchFor(query); }}
-      />
+      {voiceOn || photoOn || voiceOpen || photoOpen || reviewingSearchModes() ? (
+        <Suspense fallback={null}>
+          <VoiceSearchPanel
+            open={voiceOpen}
+            onClose={() => setVoiceOpen(false)}
+            onUse={(query) => { setVoiceOpen(false); searchFor(query); }}
+          />
+          {/* What the photo was read as goes into the field like anything typed,
+              so the shopper sees the words and can change them. */}
+          <PhotoSearchPanel
+            open={photoOpen}
+            onClose={() => setPhotoOpen(false)}
+            onUse={(query) => { setPhotoOpen(false); searchFor(query); }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
