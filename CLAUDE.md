@@ -2419,7 +2419,11 @@ at any level, or an owner could promote themselves.
 Two moves are refused outright on `/admin/people`: revoking your own
 administrator, and removing the last one. Both leave an installation that
 needs a database client to recover, and neither is worth allowing to save a
-click — there is always another administrator who can do it if it is meant.
+click — there is always another administrator who can do it if it is meant. **The count is taken under a lock on the
+administrators' rows**: counted without one, two administrators revoking each
+other at the same moment each saw two and each went ahead, leaving none. Run
+against the scratch Postgres three times, exactly one revocation lands each
+time.
 
 **Every admin list is paged, and always says how many there are.** The lists
 stopped at a fixed ceiling — 500 products, 100 vendors, 100 people, 50 low-stock

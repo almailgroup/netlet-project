@@ -1592,16 +1592,20 @@ export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolea
   const target = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
   if (!target) throw new Error("NOT_FOUND");
 
-  if (!isAdmin) {
-    if (target.id === actor.userId) throw new Error("CANNOT_DEMOTE_SELF");
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(users)
-      .where(eq(users.role, "admin"));
-    if (count <= 1) throw new Error("LAST_ADMIN");
-  }
+  if (!isAdmin && target.id === actor.userId) throw new Error("CANNOT_DEMOTE_SELF");
 
-  await db.update(users).set({ role: isAdmin ? "admin" : "user" }).where(eq(users.id, userId));
+  await db.transaction(async tx => {
+    if (!isAdmin) {
+      /* The administrators' rows are locked before they are counted. Counted
+         without, two administrators revoking each other at the same moment
+         each saw two and each went ahead, leaving none — the one state this
+         rule exists to make impossible. Locked, the second waits, then finds
+         one. */
+      const admins = await tx.select({ id: users.id }).from(users).where(eq(users.role, "admin")).for("update");
+      if (admins.length <= 1 && admins.some(row => row.id === userId)) throw new Error("LAST_ADMIN");
+    }
+    await tx.update(users).set({ role: isAdmin ? "admin" : "user" }).where(eq(users.id, userId));
+  });
 
   await recordAudit(await auditActor(actor), {
     action: "user.setAdmin",
