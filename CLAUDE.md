@@ -813,6 +813,13 @@ the router alone: a second caller added later would skip a router-level check
 silently. `assertCan` throws `FORBIDDEN:<capability>`, which the router
 translates into a 403.
 
+**An edit is checked against the row as it stands, never only the request.**
+`saveBundle` checked the store the request named and then updated whatever id
+it was sent, so a seller who sent another store's bundle id — or one of
+NetLet's own — with their own store on it rewrote that bundle into theirs.
+Every update by id reads the row's owner first and asks `assertCan` about
+*that*; `tenancy.test.ts` holds the bundle case.
+
 There is one router for admins and vendors, not two. Two would mean the same
 procedures twice with a different guard at the top of each, which is the
 arrangement where a guard eventually goes missing from one copy. Every

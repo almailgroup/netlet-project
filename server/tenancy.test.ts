@@ -12,6 +12,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
+import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -206,6 +207,26 @@ describe("bundles", () => {
     await expect(bundles.saveBundle(acmeActor(), {
       name: "Theirs", vendorId: ids.bolt, bundlePrice: "15.000", members,
     })).rejects.toThrow("FORBIDDEN");
+  });
+
+  /* Checked against the request alone, a seller sending another store's
+     bundle id with their own store on it rewrote that bundle into theirs. */
+  it("refuses a seller rewriting another store's bundle under their own name", async () => {
+    const [product] = await db.insert(products).values({ vendorId: ids.acme, handle: "acme-second", title: "acme-second", status: "published" }).returning();
+    const [second] = await db.insert(productVariants).values({ productId: product.id, title: "Default", sku: "ACME-2", price: "10.000", stock: 5 }).returning();
+    const own = [{ variantId: ids.acmeVariant, quantity: 1 }, { variantId: second.id, quantity: 1 }];
+
+    await expect(bundles.saveBundle(acmeActor(), {
+      id: ids.boltBundle, name: "Mine now", vendorId: ids.acme, bundlePrice: "15.000", members: own,
+    })).rejects.toThrow("FORBIDDEN");
+    const [still] = await db.select().from(bundlesTable).where(eq(bundlesTable.id, ids.boltBundle));
+    expect(still.vendorId).toBe(ids.bolt);
+    expect(still.name).not.toBe("Mine now");
+
+    /* Their own bundle they may edit. */
+    await expect(bundles.saveBundle(acmeActor(), {
+      id: ids.acmeBundle, name: "Acme pair", vendorId: ids.acme, bundlePrice: "15.000", members: own,
+    })).resolves.toEqual({ id: ids.acmeBundle });
   });
 
   it("gives a shopper no list at all rather than an error", async () => {

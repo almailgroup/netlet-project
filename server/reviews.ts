@@ -20,6 +20,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { orderItems, orders, reviews } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
+import { violatesUnique } from "./_core/describeError.js";
 import { contactFindings } from "../shared/commerce/contactFilter.js";
 import {
   eligibilityFor,
@@ -131,21 +132,27 @@ export async function writeReview(
   });
   if (!verdict.allowed) throw new ReviewRefused(verdict.reason);
 
-  const [row] = await database
-    .insert(reviews)
-    .values({
-      orderItemId: line.id,
-      userId,
-      productId: line.productId,
-      vendorId: line.vendorId,
-      productTitle: line.productTitle,
-      rating: input.rating,
-      title: input.title?.trim() || null,
-      body: input.body?.trim() || null,
-    })
-    .returning({ id: reviews.id });
-
-  return row.id;
+  try {
+    const [row] = await database
+      .insert(reviews)
+      .values({
+        orderItemId: line.id,
+        userId,
+        productId: line.productId,
+        vendorId: line.vendorId,
+        productTitle: line.productTitle,
+        rating: input.rating,
+        title: input.title?.trim() || null,
+        body: input.body?.trim() || null,
+      })
+      .returning({ id: reviews.id });
+    return row.id;
+  } catch (error) {
+    /* A double press, or two tabs: both read "not reviewed" and the index
+       refuses the second, which is the same answer the read gives late. */
+    if (violatesUnique(error, "reviews_order_item_unique")) throw new ReviewRefused("alreadyReviewed");
+    throw error;
+  }
 }
 
 /**

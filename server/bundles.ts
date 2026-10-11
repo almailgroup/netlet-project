@@ -293,6 +293,20 @@ export async function saveBundle(
   if (input.vendorId === null) assertCan(actor, "platform.viewAll");
   else assertCan(actor, "product.edit", input.vendorId);
 
+  /*
+   * An edit is checked against the bundle as it stands, not only against the
+   * store the request names. It was checked against the request alone, so a
+   * seller who sent another store's bundle id — or one of NetLet's own — with
+   * their own store on it rewrote that bundle into theirs: its name, its price
+   * and every item in it.
+   */
+  if (input.id) {
+    const [current] = await db.select({ vendorId: bundles.vendorId }).from(bundles).where(eq(bundles.id, input.id)).limit(1);
+    if (!current) throw new BundleError("bundle.unknown");
+    if (current.vendorId === null) assertCan(actor, "platform.viewAll");
+    else assertCan(actor, "product.edit", current.vendorId);
+  }
+
   if (input.members.length < 2) throw new BundleError("bundle.tooFew");
 
   /* Where every member actually comes from, read rather than trusted. */
@@ -331,24 +345,28 @@ export async function saveBundle(
     active: input.active ?? true,
   };
 
-  const id = input.id
-    ? (await db.update(bundles).set(values).where(eq(bundles.id, input.id)).returning({ id: bundles.id }))[0]?.id
-    : (await db.insert(bundles).values(values).returning({ id: bundles.id }))[0].id;
-  if (!id) throw new BundleError("bundle.unknown");
+  /* One transaction: the items are replaced by a delete and an insert, and a
+     failure between them left a bundle selling at its set price with nothing
+     in it. */
+  return db.transaction(async tx => {
+    const id = input.id
+      ? (await tx.update(bundles).set(values).where(eq(bundles.id, input.id)).returning({ id: bundles.id }))[0]?.id
+      : (await tx.insert(bundles).values(values).returning({ id: bundles.id }))[0].id;
+    if (!id) throw new BundleError("bundle.unknown");
 
-  /* The whole list at once, like the product images: a bundle is read as a set
-     and a per-row endpoint turns reordering two of them into four calls. */
-  await db.delete(bundleItems).where(eq(bundleItems.bundleId, id));
-  await db.insert(bundleItems).values(
-    input.members.map((member, position) => ({
-      bundleId: id,
-      variantId: member.variantId,
-      quantity: Math.max(1, Math.trunc(member.quantity)),
-      position,
-    })),
-  );
-
-  return { id };
+    /* The whole list at once, like the product images: a bundle is read as a set
+       and a per-row endpoint turns reordering two of them into four calls. */
+    await tx.delete(bundleItems).where(eq(bundleItems.bundleId, id));
+    await tx.insert(bundleItems).values(
+      input.members.map((member, position) => ({
+        bundleId: id,
+        variantId: member.variantId,
+        quantity: Math.max(1, Math.trunc(member.quantity)),
+        position,
+      })),
+    );
+    return { id };
+  });
 }
 
 /** Every bundle the caller may see, for the portal's list. */
