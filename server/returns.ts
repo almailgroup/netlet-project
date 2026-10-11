@@ -14,7 +14,7 @@
  * shopper withdrawing at the moment the driver collects loses cleanly to the
  * collection rather than half-cancelling a parcel already in a van.
  */
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql, notInArray } from "drizzle-orm";
 import { categories, orderItems, orders, productVariants, products, returnRequests, vendors } from "../drizzle/schema.js";
 import {
   automaticDecision,
@@ -424,12 +424,16 @@ export async function receiveReturn(
 
   const refundAmount = refundFor(line);
   /* The line leaves the sale — which finance and payouts already count as a
-     refund — only from `delivered`, so a line moved by anybody else meanwhile
-     is not overwritten. */
+     refund. From any state it can still be in rather than only `delivered`:
+     the item is in the seller's hands, and a seller who moved the line back
+     to "shipped" while the return was open (a correction the warehouse board
+     allows) left the request refunded over a line that still read as sold,
+     so finance counted the money twice. Never over a line already cancelled
+     or returned, which have their own outcome. */
   await db
     .update(orderItems)
     .set({ fulfilment: "returned" })
-    .where(and(eq(orderItems.id, line.id), eq(orderItems.fulfilment, "delivered")));
+    .where(and(eq(orderItems.id, line.id), notInArray(orderItems.fulfilment, ["cancelled", "returned"])));
   await db
     .update(returnRequests)
     .set({ status: "refunded", refundAmount, declineReason: row.kind === "exchange" ? "returns.exchangeOutOfStock" : null })

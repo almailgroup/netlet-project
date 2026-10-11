@@ -1020,6 +1020,12 @@ Three rules that were each found by doing it rather than reading it:
   item arrived, so the cash owed to a shopper fell off the only page that asks
   somebody to pay it.
 
+**A received refund marks the line returned from wherever it stands**, not
+only from `delivered`. The warehouse board lets a seller move a delivered line
+back to "shipped" as a correction, and a return open on it then refunded the
+request while the line still read as a sale, so finance counted it as both.
+Only a line already cancelled or returned is left alone.
+
 Restocking is a question for whoever is holding the item, asked beside the
 button rather than inside the confirmation, and it hands the units back to the
 pool they came from with `returnUnits`.

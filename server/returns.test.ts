@@ -237,6 +237,16 @@ describe("receiving", () => {
     await db.update(productVariants).set({ price: "240.000" }).where(eq(productVariants.id, ids.sofaVariant));
   });
 
+  /* Moved back to "shipped" while the return was open, the line stayed a sale
+     beside a refunded request, and finance counted the money twice. */
+  it("marks the line returned even if it was moved off delivered meanwhile", async () => {
+    const order = await collectedRefund();
+    await db.update(orderItems).set({ fulfilment: "shipped", deliveredAt: null }).where(eq(orderItems.id, order.sofa.id));
+    await as("manager").returns.receive({ requestId: order.id, restock: false });
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.id, order.sofa.id));
+    expect(line.fulfilment).toBe("returned");
+  });
+
   /* Two presses cannot refund one line twice. */
   it("refunds once when received twice at once", async () => {
     const order = await collectedRefund();
