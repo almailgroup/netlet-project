@@ -44,6 +44,7 @@ import { FULFILMENT_STATES } from "../../shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { trackOrder, TrackingError } from "../tracking.js";
+import { checkVoucherAllowed, recordVoucherMiss } from "../rateLimit.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../shared/commerce/returns.js";
 
 export const ordersRouter = router({
@@ -273,7 +274,19 @@ export const ordersRouter = router({
    */
   quoteVoucher: publicProcedure
     .input(z.object({ cartId: z.string().min(1).max(64), code: z.string().trim().min(1).max(40) }))
-    .query(({ ctx, input }) => quoteVoucherForCart(input.cartId, input.code, ctx.user?.id ?? null)),
+    .query(async ({ ctx, input }) => {
+      /* A ceiling on guesses (`MAX_VOUCHER_MISSES_PER_ADDRESS`). Past it every
+         code is refused alike, the right one included — answering it would make
+         the ceiling the oracle it is there to close. */
+      const address = ctx.req.ip ?? null;
+      const verdict = await checkVoucherAllowed(address);
+      if (!verdict.allowed) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "voucher.tooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
+      }
+      const quote = await quoteVoucherForCart(input.cartId, input.code, ctx.user?.id ?? null);
+      if (!quote.ok && quote.reason === "voucher.unknown") await recordVoucherMiss(address);
+      return quote;
+    }),
 
   /* ----------------------------------------------------------- minting --- */
 

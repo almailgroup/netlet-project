@@ -257,6 +257,14 @@ every failure: the reply is identical for an address with no account, on
 purpose, so there is no failure to count. The abuse being stopped is using
 NetLet to post mail into somebody else's inbox.
 
+**Checkout's code box is throttled by address, on misses.** A discount code is a
+word somebody chose, and `orders.quoteVoucher` is open to a signed-out browser,
+so a code meant for one list of people was a dictionary away from everybody.
+Only a code naming nothing counts (`MAX_VOUCHER_MISSES_PER_ADDRESS`), the
+sign-in rule; past the ceiling every code is refused alike, the real one
+included, or the throttle would say which guess was right. The quote is not
+refetched on window focus, since asking again about a wrong code counts again.
+
 **There is no social sign-in, on purpose.** It needs a provider configured in
 the provider's console and a redirect the server has to trust; a button that
 looks like Google sign-in and does nothing is worse than no button. The

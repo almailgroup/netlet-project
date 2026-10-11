@@ -218,3 +218,34 @@ describe("the other ceilings in the same table", () => {
     ]);
   });
 });
+
+/*
+ * A discount code is a word somebody chose, and checkout's quote answered any
+ * number of guesses from a signed-out browser. Only codes naming nothing
+ * count, and past the ceiling the right one is refused too — or the ceiling
+ * would itself say which guess was right.
+ */
+describe("guessing at codes", () => {
+  it("refuses an address after enough codes that named nothing, the real one included", async () => {
+    const { discountCodes, carts } = await import("../../drizzle/schema.js");
+    const { MAX_VOUCHER_MISSES_PER_ADDRESS } = await import("../../shared/auth/rateLimit.js");
+    await db.delete(discountCodes);
+    await db.insert(discountCodes).values({ code: "REALONE", kind: "fixed", value: "1.000" });
+    const [cart] = await db.insert(carts).values({ id: `cart-guess-${Date.now()}` }).returning();
+    const caller = appRouter.createCaller(contextFrom("203.0.113.40"));
+
+    /* A real code answers and counts nothing, however often it is asked. */
+    for (let i = 0; i < MAX_VOUCHER_MISSES_PER_ADDRESS + 2; i += 1) {
+      expect((await caller.orders.quoteVoucher({ cartId: cart.id, code: "REALONE" })).ok).toBe(true);
+    }
+    for (let i = 0; i < MAX_VOUCHER_MISSES_PER_ADDRESS; i += 1) {
+      expect(await caller.orders.quoteVoucher({ cartId: cart.id, code: `GUESS${i}` })).toMatchObject({ ok: false, reason: "voucher.unknown" });
+    }
+    await expect(caller.orders.quoteVoucher({ cartId: cart.id, code: "REALONE" }))
+      .rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", message: "voucher.tooMany" });
+
+    /* Somebody else, at another address, is not held to it. */
+    const other = appRouter.createCaller(contextFrom("203.0.113.41"));
+    expect((await other.orders.quoteVoucher({ cartId: cart.id, code: "REALONE" })).ok).toBe(true);
+  });
+});

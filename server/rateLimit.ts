@@ -26,6 +26,8 @@ import {
   MAX_SEARCH_REFINE_PER_ADDRESS,
   RECOMMEND_MODEL_WINDOW_MS,
   SEARCH_REFINE_WINDOW_MS,
+  MAX_VOUCHER_MISSES_PER_ADDRESS,
+  VOUCHER_MISS_WINDOW_MS,
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
@@ -40,7 +42,7 @@ import {
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel";
+export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -281,6 +283,31 @@ export async function recordSearchRefine(address: string | null | undefined): Pr
   await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "searchRefine" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "searchRefine"), lt(authAttempts.createdAt, new Date(Date.now() - SEARCH_REFINE_WINDOW_MS))),
+  );
+}
+
+/** Whether this address may have another code quoted. Only misses count. */
+export async function checkVoucherAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, addressBucket(address)),
+      eq(authAttempts.kind, "voucherMiss"),
+      gt(authAttempts.createdAt, new Date(Date.now() - VOUCHER_MISS_WINDOW_MS)),
+    ));
+  return limitVerdict(rows.map(row => row.at), MAX_VOUCHER_MISSES_PER_ADDRESS, new Date(), VOUCHER_MISS_WINDOW_MS);
+}
+
+/** Count a code that named nothing. */
+export async function recordVoucherMiss(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "voucherMiss" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "voucherMiss"), lt(authAttempts.createdAt, new Date(Date.now() - VOUCHER_MISS_WINDOW_MS))),
   );
 }
 

@@ -91,6 +91,18 @@ export const MAX_SEARCH_REFINE_PER_ADDRESS = 60;
 export const SEARCH_REFINE_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * Codes typed into checkout's box that turned out to be nobody's. A discount
+ * code is a word somebody chose — "TENOFF", "STAFF50" — and the quote answered
+ * any number of guesses a second from a signed-out browser, so a code meant for
+ * one list of people was a dictionary away from everybody. Only misses count,
+ * the sign-in rule: a shopper typing the code they were given never comes
+ * near it, and somebody who mistypes one twenty times in an hour is not
+ * somebody this is for.
+ */
+export const MAX_VOUCHER_MISSES_PER_ADDRESS = 20;
+export const VOUCHER_MISS_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * How often one account's "Picked for you" rail may be reordered by the model.
  * The rail is read on every visit to the saved page, so it is drawn far more
  * often than it changes; past the ceiling it is the ranking it already had,

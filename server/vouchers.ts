@@ -135,13 +135,6 @@ export async function recordGiftCardUse(db: Db, code: string, orderId: number, a
 }
 
 /**
- * Record that a code was used.
- *
- * The row *is* the count, so this is also what makes "all used up" true for
- * the next shopper. `onConflictDoNothing` on the (code, order) index, because
- * a retry must not count twice.
- */
-/**
  * Take one use of a code, or refuse.
  *
  * `quoteVoucher` counts the redemptions and compares them with the ceiling,
@@ -218,7 +211,7 @@ export async function returnRedemption(db: Db, claimId: number): Promise<void> {
  * I, 1 or L, no S or 5 — because a gift card gets read down a phone more often
  * than an order number does.
  */
-const ALPHABET = "ABCDEFGHJKMNPQRTUVWXYZ23456789";
+const ALPHABET = "ABCDEFGHJKMNPQRTUVWXYZ2346789";
 
 function randomCode(length: number): string {
   const bytes = randomBytes(length);
@@ -236,7 +229,7 @@ export async function createGiftCard(
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
-  /* Sixteen characters from a thirty-letter alphabet: the code is the whole
+  /* Sixteen characters from a twenty-nine-letter alphabet: the code is the whole
      credential, so it has to be worth more to be given than to be guessed. */
   const code = `NL${randomCode(16)}`;
   await db.insert(giftCards).values({
