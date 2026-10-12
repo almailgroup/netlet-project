@@ -453,12 +453,28 @@ turned into a name, which shifted the bar and told a signed-in shopper they
 were not. "On the way" is a line shipped and not yet delivered, on an order not
 cancelled or refunded.
 
-**The area starts from the address book.** A signed-in shopper who never chose
-one gets the governorate of the address checkout would pick — the one used last
-on this device, else the first — and the dialog lists their addresses above the
-governorates, picking one making it checkout's starting address too
-(`lib/lastAddress.ts`, one key and one rule for both). Only while nothing is
-chosen: a guess never overwrites a choice.
+**The delivery button opens the address book, not a list of governorates.**
+It asked "choose your governorate" — six tiles — and nobody thinks of home as a
+governorate; they think "Home" or "the office", and they had already told the
+shop exactly where those are. `DeliveryZoneDialog` lists the shopper's saved
+addresses: pick one and the shop delivers there (its governorate prices each
+seller's delivery, and checkout starts from it — `lib/lastAddress`, one key and
+one rule for both), change one with its pencil, or add a new one, which is then
+the one delivered to. With nothing saved the dialog *is* the new-address form,
+since making one is the only useful thing to do there. The form is
+`AddressForm`, the account page's own, so the two cannot ask for different
+things — though here it insists on a governorate, because an address chosen for
+delivery is chosen for exactly that, and one without it opens for editing rather
+than being chosen. **The button names the address** ("Home") while it is the one
+in use — `addressInUse`: the one used last here if it is in the area, else the
+area's first, checkout's fallback — and the area itself otherwise;
+`useLastAddressId` makes the stored id observable, because picking another
+address in the same governorate changes no other state. **Signed out there is
+no book**, so the dialog offers to sign in (over itself, returning as the book
+once the session exists) and keeps the governorate tiles beneath only so a
+guest can see what delivery costs. A signed-in shopper who never chose an area
+still gets the governorate of the address checkout would pick; a guess never
+overwrites a choice.
 
 **The empty search box offers what is true.** It listed the first four products
 under "Popular searches", and nothing counts what anybody searches. It offers

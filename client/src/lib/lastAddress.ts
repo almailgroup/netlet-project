@@ -17,8 +17,19 @@ export function readLastAddressId(): number | null {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+/* Who to tell when it changes. The header names the chosen address, and
+   picking another one in the same governorate changes no other state, so
+   nothing else would make it redraw. */
+const listeners = new Set<() => void>();
+
 export function rememberAddress(id: number): void {
   writeStored(KEY, String(id));
+  listeners.forEach(listener => listener());
+}
+
+export function onLastAddressChange(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 /** The address checkout would choose: the one used last here, else the first in the book. */
@@ -35,4 +46,21 @@ export function zoneFromAddressBook(book: readonly { id: number; governorate?: s
   const chosen = addressToUse(book, lastUsed);
   if (chosen?.governorate) return chosen.governorate;
   return book.find(address => address.governorate)?.governorate ?? null;
+}
+
+/**
+ * The saved address the shop is delivering to, if one is: the one used last
+ * here when it is still in the area in use, else the first in that area —
+ * checkout's own fallback. Null when the area was chosen some other way, so
+ * the header names the area itself rather than an address that is not it.
+ */
+export function addressInUse<A extends { id: number; governorate?: string | null }>(
+  book: readonly A[],
+  lastUsed: number | null,
+  zoneId: string | null | undefined,
+): A | null {
+  if (!zoneId) return null;
+  return book.find(address => address.id === lastUsed && address.governorate === zoneId)
+    ?? book.find(address => address.governorate === zoneId)
+    ?? null;
 }

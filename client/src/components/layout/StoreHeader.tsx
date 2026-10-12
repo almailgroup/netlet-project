@@ -46,6 +46,9 @@
  */
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { useLastAddressId } from "@/hooks/useLastAddressId";
+import { addressInUse } from "@/lib/lastAddress";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
@@ -103,6 +106,17 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   // and gets the header without the field rather than a field that does nothing.
   const searchable = Boolean(onSearch && onSelectProduct);
   const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
+  /*
+   * The address being delivered to, by the name the shopper gave it — "Home"
+   * says more than "Hawalli" to the person who lives there. Only while it is
+   * in the area in use (`addressInUse`): an area with no saved address in it
+   * is named as itself.
+   */
+  const { isAuthenticated } = useAuth();
+  const book = trpc.customer.addresses.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 5 * 60 * 1000 });
+  const lastAddressId = useLastAddressId();
+  const deliveringTo = isAuthenticated ? addressInUse(book.data ?? [], lastAddressId, deliveryZone?.id) : null;
+  const areaName = deliveringTo ? deliveringTo.label : zoneName;
   /* The language a press would give you, spoken in that language. */
   const otherLanguage = isArabic ? "en" : "ar";
 
@@ -146,14 +160,14 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const field = searchable ? <LiveSearch catalog={catalog} value={search} onChange={onSearch!} onSelectProduct={onSelectProduct!} department={activeDepartment} /> : null;
 
   const area = (where: "bar" | "phone") => (
-    <button onClick={() => setDeliveryOpen(true)} title={t("delivery.chooseGovernorate")} className={`${plain} ${where === "phone" ? "min-w-0 px-2.5" : ""}`}>
+    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={`${plain} ${where === "phone" ? "min-w-0 px-2.5" : ""}`}>
       <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
       {/* "Deliver to" is in the name and not drawn: the pin and the area say it,
           and the width it took is the search field's now. The name still
           starts with what is seen (WCAG 2.5.3), and the trailing space keeps
           it "Deliver to Hawalli" rather than one word. */}
       <span className="sr-only">{t("home.deliverTo")} </span>
-      <span dir="auto" className={`truncate ${where === "phone" ? "max-w-[118px]" : "max-w-[130px]"}`}>{zoneName}</span>
+      <span dir="auto" className={`truncate ${where === "phone" ? "max-w-[118px]" : "max-w-[130px]"}`}>{areaName}</span>
       {where === "phone" ? <ChevronDown className="size-3.5 shrink-0 text-[#536b8c]" aria-hidden /> : null}
     </button>
   );
