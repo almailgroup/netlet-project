@@ -195,7 +195,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const phoneTop = (
     <div className="container flex items-center gap-1 py-1.5 lg:hidden">
       <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
-        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-8 w-auto max-w-[104px] object-contain" />
+        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain" />
       </Link>
       {area("phone")}
       {language}
@@ -226,7 +226,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
         {/* Wide: logo, a field that takes the room, then the controls. */}
         <div className="container hidden h-[76px] items-center gap-5 lg:flex">
           <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[128px] object-contain" />
+            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[156px] object-contain" />
           </Link>
           <div className="min-w-0 flex-1">{field}</div>
           {/* Where it goes, then saved, language, account, cart — the order
