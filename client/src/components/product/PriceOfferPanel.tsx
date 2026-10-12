@@ -14,13 +14,19 @@
  * page they asked from needs to know where it stands and when it runs out, and
  * a coloured pill says neither.
  *
+ * **It is one line until it is pressed.** The whole form — price, quantity, a
+ * note, Send — sat open under Buy now on every product that takes requests,
+ * and on a phone it pushed the description and the specifications a screen
+ * further down for the few who ask. A request already standing is shown open,
+ * because that is something the shopper is waiting on.
+ *
  * **The agreed price is never drawn as a struck-through discount.** The
  * strikethrough and the `−27%` badge are the machinery of an advertised
  * saving, which Kuwaiti law requires a Ministry of Commerce permit for. This
  * is a private answer to one shopper who asked, and it is shown as what it is.
  */
-import { useState } from "react";
-import { Handshake, LoaderCircle } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { ChevronDown, Handshake, LoaderCircle } from "lucide-react";
 import { ASK_WINDOW_DAYS, daysLeft, MAX_NOTE } from "@shared/commerce/priceOffers";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useAuth } from "@/hooks/useAuth";
@@ -57,6 +63,15 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const bodyId = useId();
+  const priceRef = useRef<HTMLInputElement>(null);
+  /* Opening it is asking to type a price, so the box takes the keyboard. */
+  const opened = useRef(false);
+  useEffect(() => {
+    if (expanded && opened.current) priceRef.current?.focus();
+    opened.current = false;
+  }, [expanded]);
 
   const refresh = () => {
     void utils.offers.mine.invalidate({ variantId: numericId });
@@ -93,20 +108,43 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
     request.mutate({ variantId: numericId, askedPrice: price.trim(), quantity, note: note.trim() || null });
   };
 
+  const standing = Boolean(isAuthenticated && held && !settled);
+  const icon = (
+    <span className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]">
+      <Handshake className="size-4" aria-hidden />
+    </span>
+  );
+
   return (
-    <section className="mt-6 rounded-[1.25rem] border border-[#d5dfeb] bg-white/60 p-5">
-      <div className="flex items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]">
-          <Handshake className="size-4" aria-hidden />
-        </span>
-        <div>
+    <section className="mt-6 rounded-[1.25rem] border border-[#d5dfeb] bg-white/60 p-2">
+      {standing ? (
+        <div className="flex items-center gap-2 p-3">
+          {icon}
           <h2 className="text-sm font-extrabold text-[#0a285a]">{t("offers.heading")}</h2>
-          <p className="text-[12px] leading-5 ink-muted">{t("offers.note")}</p>
         </div>
-      </div>
+      ) : (
+        <h2>
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={bodyId}
+            onClick={() => { opened.current = !expanded; setExpanded(open => !open); }}
+            className="flex w-full items-center gap-2 rounded-2xl p-3 text-start"
+          >
+            {icon}
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-extrabold text-[#0a285a]">{t("offers.heading")}</span>
+              <span className="block text-[12px] font-normal leading-5 ink-muted">{t("offers.note")}</span>
+            </span>
+            <ChevronDown className={`size-5 shrink-0 ink-muted transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+        </h2>
+      )}
+
+      <div id={bodyId} hidden={!standing && !expanded} className="px-3 pb-3">
 
       {!isAuthenticated ? (
-        <p className="mt-4 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#404553]">
+        <p className="mt-1 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#404553]">
           <strong className="font-extrabold text-[#0a285a]">{t("offers.signInFirst")}</strong>
           <br />
           {t("offers.signInWhy")}
@@ -116,7 +154,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
       ) : (
         <>
           {held ? (
-            <p className="mt-4 text-[13px] font-bold text-[#404553]">
+            <p className="mt-1 text-[13px] font-bold text-[#404553]">
               {t(STATE_HEADING[held.state])}
               {held.vendorNote ? (
                 <span dir="auto" className="block font-medium ink-muted">{t("offers.sellerSaid", { note: held.vendorNote })}</span>
@@ -124,7 +162,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
             </p>
           ) : null}
 
-          <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <form onSubmit={submit} className={`${held ? "mt-4" : "mt-1"} grid gap-3 sm:grid-cols-[1fr_auto]`}>
             <div>
               <label htmlFor="offer-price" className="text-[12px] font-semibold ink-muted">
                 {t("offers.yourPrice")}
@@ -138,6 +176,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
                 */}
               <input
                 id="offer-price"
+                ref={priceRef}
                 dir="ltr"
                 inputMode="decimal"
                 value={price}
@@ -188,6 +227,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
           </form>
         </>
       )}
+      </div>
     </section>
   );
 }
@@ -205,7 +245,7 @@ function Standing({ offer, onWithdraw, pending }: {
   const left = daysLeft({ status: "offered", offeredPrice: offer.offeredPrice, expiresAt: offer.expiresAt, usedOnOrderId: null });
 
   return (
-    <div className="mt-4 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3.5">
+    <div className="mt-1 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3.5">
       <p className="text-[13px] font-extrabold text-[#0a285a]">
         {offer.state === "offered" && offer.offeredPrice
           ? t("offers.statusOffered", { price: amount(offer.offeredPrice) })

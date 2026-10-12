@@ -28,8 +28,9 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, FileText, PackageSearch, RotateCcw } from "lucide-react";
+import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Truck, type LucideIcon } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useState } from "react";
 import { TrackParcels } from "@/components/account/TrackParcels";
@@ -57,8 +58,67 @@ export const FULFILMENT: Record<string, { label: MessageKey; className: string }
   returned: { label: "orders.lineReturned", className: "bg-[#e7edf5] text-[#536b8c]" },
 };
 
-export function Pill({ label, className }: { label: string; className: string }) {
-  return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
+export function Pill({ label, className, icon: Icon }: { label: string; className: string; icon?: LucideIcon }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${className}`}>
+      {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Where the order is, which is what the list leads with.
+ *
+ * Payment used to be the badge, and for a cash order that read "awaiting
+ * payment" on every row until a driver had been to the door — true, and not
+ * the question. The colours are the line states' own, so an order and its
+ * lines say "on the way" in one colour.
+ */
+const PROGRESS: Record<OrderProgress["kind"], { icon: LucideIcon; className: string }> = {
+  received: { icon: Clock, className: FULFILMENT.pending.className },
+  preparing: { icon: Package, className: FULFILMENT.preparing.className },
+  onTheWay: { icon: Truck, className: FULFILMENT.shipped.className },
+  partlyDelivered: { icon: Truck, className: FULFILMENT.shipped.className },
+  delivered: { icon: CircleCheck, className: FULFILMENT.delivered.className },
+  cancelled: { icon: CircleX, className: FULFILMENT.cancelled.className },
+  returned: { icon: RotateCcw, className: FULFILMENT.returned.className },
+};
+
+function ProgressPill({ progress }: { progress: OrderProgress }) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
+  const label = (() => {
+    switch (progress.kind) {
+      case "received": return t(progress.preordered ? "orders.progressPreordered" : "orders.progressReceived");
+      case "preparing": return t("orders.progressPreparing");
+      case "onTheWay": return t("orders.progressOnTheWay");
+      case "partlyDelivered": return t("orders.progressPartly", { delivered: progress.delivered, of: progress.of });
+      case "delivered": return progress.at ? t("orders.progressDeliveredOn", { date: formatDate(progress.at) }) : t("orders.progressDelivered");
+      case "cancelled": return t("orders.progressCancelled");
+      case "returned": return t("orders.progressReturned");
+    }
+  })();
+  const look = PROGRESS[progress.kind];
+  return <Pill label={label} className={look.className} icon={look.icon} />;
+}
+
+/**
+ * The picture an order is recognised by: its first product's photograph, with
+ * how many more things are in it. Decorative to a screen reader, which hears
+ * the names beside it.
+ */
+function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
+  return (
+    <span className="relative shrink-0" aria-hidden>
+      <Thumb src={photo} alt="" className="size-16 rounded-2xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-6" />} />
+      {more > 0 ? (
+        <span className="absolute -bottom-1.5 -end-1.5 rounded-full bg-[#0a285a] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white ring-2 ring-white">
+          +{more}
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 export function AccountOrders() {
@@ -88,6 +148,7 @@ export function AccountOrders() {
               {data.rows.map(order => {
                 const payment = PAYMENT[order.status] ?? PAYMENT.pending_payment;
                 const open = openRef === order.reference;
+                const summary = order.summary;
                 return (
                   <li key={order.id} className="rounded-[1.35rem] border border-[#d5dfeb] bg-white">
                     <h3 className="sr-only">
@@ -98,42 +159,36 @@ export function AccountOrders() {
                       onClick={() => setOpenRef(open ? null : order.reference)}
                       aria-expanded={open}
                       aria-controls={`order-${order.id}-lines`}
-                      className="pressable flex w-full items-start justify-between gap-4 rounded-[1.35rem] p-5 text-start"
+                      className="pressable flex w-full items-start gap-4 rounded-[1.35rem] p-4 text-start sm:p-5"
                     >
-                      <span className="min-w-0">
-                        <span className="type-label block ink-muted">{t("orders.reference")}</span>
-                        {/*
-                          The reference is Latin on an Arabic page — NL-20260915-QRTVW
-                          reads left to right while the line it sits on does not. `bdi`
-                          isolates the run without throwing the whole line to the far
-                          edge, which is what `dir` on the block would do and what
-                          `markup.test.ts` refuses.
-                        */}
-                        {/* On one line: the number is read down a phone, and
-                            "NL-20261012-" over "3NJA9" is two numbers. */}
-                        <span className="type-product mt-0.5 block whitespace-nowrap text-[15px] text-[#0a285a] sm:text-base">
-                          <bdi dir="ltr">{order.reference}</bdi>
-                        </span>
-                        <span className="mt-1 block text-xs ink-muted">{formatDate(order.placedAt)}</span>
-                        {/* Under the number on a phone, so the number has the room. */}
-                        <span className="mt-2 block sm:hidden"><Pill label={t(payment.label)} className={payment.className} /></span>
-                      </span>
-                      <span className="flex shrink-0 items-center gap-3">
-                        <span className="flex flex-col items-end gap-2">
-                          <span className="hidden sm:inline-flex"><Pill label={t(payment.label)} className={payment.className} /></span>
-                          {/* What it owes now — the figure the driver asks for — and
-                              a plain sentence when that differs from what was placed.
-                              Not a strikethrough: that is how this shop advertises a
-                              permitted saving, and a cancelled sofa is not one. */}
-                          <span className="text-sm font-extrabold text-[#0a285a]">
-                            {formatMoney(order.owed?.owed ?? order.grandTotal, { currencyCode: order.currency, locale })}
+                      <OrderPhoto photo={summary?.photos[0] ?? null} more={Math.max(0, (summary?.lineCount ?? 1) - 1)} />
+                      <span className="min-w-0 flex-1">
+                        {summary ? <ProgressPill progress={summary.progress} /> : <Pill label={t(payment.label)} className={payment.className} />}
+                        {/* What it is, by the first thing in it — nobody knows
+                            their own order by its number. The title is the
+                            seller's words, isolated so a Latin name sits
+                            right on the Arabic page. */}
+                        {summary?.first ? (
+                          <span className="mt-2 block truncate text-[15px] font-bold text-[#0a285a]">
+                            <bdi>{summary.first.title}</bdi>
+                            {summary.lineCount > 1 ? <span className="font-semibold text-[#3d5170]"> {t("orders.andMore", { count: summary.lineCount - 1 })}</span> : null}
                           </span>
-                          {order.owed?.reduced ? (
-                            <span className="text-[11px] font-semibold ink-muted">{t("orders.cancelledNotCharged")}</span>
-                          ) : null}
+                        ) : null}
+                        {/* The reference stays on one line: it is read down a
+                            phone, and "NL-20261012-" over "3NJA9" is two numbers. */}
+                        <span className="mt-1 flex flex-col text-[12px] ink-muted sm:flex-row sm:items-center sm:gap-x-2">
+                          <span className="whitespace-nowrap"><span className="sr-only">{t("orders.reference")} </span><bdi dir="ltr">{order.reference}</bdi></span>
+                          <span className="hidden sm:inline" aria-hidden>·</span>
+                          <span>{formatDate(order.placedAt)}</span>
                         </span>
-                        <ChevronDown className={`size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+                        <span className="mt-2 flex flex-wrap items-baseline gap-x-2 sm:hidden">
+                          <OrderTotal order={order} />
+                        </span>
                       </span>
+                      <span className="hidden shrink-0 flex-col items-end gap-1 pt-0.5 sm:flex">
+                        <OrderTotal order={order} />
+                      </span>
+                      <ChevronDown className={`mt-1 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
                     </button>
 
                     <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-5 py-4">
@@ -149,6 +204,36 @@ export function AccountOrders() {
         );
       }}
     </QueryGate>
+  );
+}
+
+/**
+ * What the order costs now — the figure the driver asks for — and how it is
+ * paid. "Pay on delivery" rather than "awaiting payment": the second is the
+ * shop's bookkeeping, the first is what the shopper does. A sentence when it
+ * differs from what was placed, never a strikethrough: that is how this shop
+ * advertises a permitted saving, and a cancelled sofa is not one.
+ */
+function OrderTotal({ order }: {
+  order: { status: string; currency: string; grandTotal: string; owed?: { owed: string; reduced: boolean } | null };
+}) {
+  const { t, locale } = useTranslation();
+  /* An order that is over — refunded or cancelled — shows what it came to,
+     beside the word for what became of it. What it "owes" then is nothing,
+     and "KWD 0" over a refund reads as an order that cost nothing. */
+  const over = order.status === "refunded" || order.status === "cancelled";
+  const owes = over ? order.grandTotal : order.owed?.owed ?? order.grandTotal;
+  const how: { label: MessageKey; className: string } | null =
+    order.status === "paid" ? { label: "orders.statusPaid", className: "text-[#2f5d33]" }
+    : order.status === "refunded" ? { label: "orders.statusRefunded", className: "ink-muted" }
+    : order.status === "pending_payment" && Number(owes) > 0 ? { label: "orders.payOnDelivery", className: "ink-muted" }
+    : null;
+  return (
+    <>
+      <span className="text-[15px] font-extrabold text-[#0a285a]">{formatMoney(owes, { currencyCode: order.currency, locale })}</span>
+      {how ? <span className={`text-[12px] font-semibold ${how.className}`}>{t(how.label)}</span> : null}
+      {!over && order.owed?.reduced ? <span className="text-[11px] font-semibold ink-muted">{t("orders.cancelledNotCharged")}</span> : null}
+    </>
   );
 }
 
@@ -178,7 +263,7 @@ function OrderLines({ reference }: { reference: string }) {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
               return (
                 <li key={line.id} className="flex gap-3">
-                  <Thumb src={null} alt="" className="size-14 shrink-0 rounded-xl" icon={<PackageSearch className="size-5" />} />
+                  <Thumb src={line.photo ?? null} alt="" className="size-14 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-5" />} />
                   <div className="min-w-0 flex-1">
                     <p dir="auto" className="type-product truncate text-sm text-[#0a285a]">{line.productTitle}</p>
                     {line.variantTitle ? <p dir="auto" className="truncate text-xs ink-muted">{line.variantTitle}</p> : null}

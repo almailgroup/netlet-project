@@ -16,6 +16,8 @@
  * forces the reader's eye to change direction mid-line, and the bidi algorithm
  * puts adjacent punctuation on the wrong side of it.
  */
+import { pluralForm } from "./plurals.js";
+
 export const LOCALES = ["en", "ar"] as const;
 export type LocaleCode = (typeof LOCALES)[number];
 
@@ -801,6 +803,17 @@ export const en = {
   "orders.lineMoved": "Somebody changed this line a moment ago. Reload and try again.",
   "orders.noStockToRestore": "There is not enough stock left to restore this line.",
   "orders.cancelledNotCharged": "Cancelled items are not charged",
+  "orders.payOnDelivery": "Pay on delivery",
+  "orders.andMore": "and {count} more",
+  "orders.progressReturned": "Returned",
+  "orders.progressCancelled": "Cancelled",
+  "orders.progressDeliveredOn": "Delivered {date}",
+  "orders.progressDelivered": "Delivered",
+  "orders.progressPartly": "{delivered} of {of} delivered",
+  "orders.progressOnTheWay": "On the way",
+  "orders.progressPreparing": "Being prepared",
+  "orders.progressPreordered": "Pre-ordered",
+  "orders.progressReceived": "Order received",
   "auth.skipToForm": "Skip to the form",
   "auth.benefitListsNote": "Save products for later and share a gift list with family.",
   "auth.benefitLists": "Keep what you like",
@@ -3777,6 +3790,17 @@ export const ar: Record<MessageKey, string> = {
   "orders.lineMoved": "قام شخص آخر بتغيير هذا البند للتو. أعد التحميل وحاول مرة أخرى.",
   "orders.noStockToRestore": "لا يوجد مخزون كافٍ لاستعادة هذا البند.",
   "orders.cancelledNotCharged": "لا تُحتسب البنود الملغاة",
+  "orders.payOnDelivery": "الدفع عند الاستلام",
+  "orders.andMore": "و{count} منتج آخر",
+  "orders.progressReturned": "تم الإرجاع",
+  "orders.progressCancelled": "ملغى",
+  "orders.progressDeliveredOn": "تم التوصيل في {date}",
+  "orders.progressDelivered": "تم التوصيل",
+  "orders.progressPartly": "وصل {delivered} من {of}",
+  "orders.progressOnTheWay": "في الطريق",
+  "orders.progressPreparing": "قيد التجهيز",
+  "orders.progressPreordered": "طلب مسبق",
+  "orders.progressReceived": "تم استلام الطلب",
   "auth.skipToForm": "تخطَّ إلى النموذج",
   "auth.benefitListsNote": "احفظ المنتجات لوقت لاحق وشارك قائمة هدايا مع عائلتك.",
   "auth.benefitLists": "احتفظ بما يعجبك",
@@ -5971,7 +5995,9 @@ export function translate(
   key: MessageKey,
   values?: Record<string, string | number>,
 ): string {
-  const template = messages[locale]?.[key] ?? en[key] ?? key;
+  /* A counted sentence takes the form its number needs — six bands in Arabic
+     (`plurals.ts`) — and the dictionary's own string otherwise. */
+  const template = pluralForm(locale, key, values) ?? messages[locale]?.[key] ?? en[key] ?? key;
   if (!values) return template;
   return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
     name in values ? String(values[name]) : whole,

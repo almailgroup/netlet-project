@@ -2,15 +2,15 @@
  * NetLet design reminder: public marketplace storefront in pearl white, luxury navy,
  * and NetLet Orange — with shopping state provided by NetLet’s own cart.
  */
-import { BagDrawer } from "@/components/cart/BagDrawer";
 import { Toaster } from "@/components/ui/sonner";
 import { useTranslation } from "@/hooks/useTranslation";
-import { CartProvider } from "@/contexts/CartContext";
+import { CartProvider, useCart } from "@/contexts/CartContext";
+import { whenIdle } from "@/lib/idle";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { captureAffiliate } from "@/lib/affiliate";
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Route, Router as WouterRouter, Switch, useLocation, useSearch } from "wouter";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -24,6 +24,8 @@ import Home from "./pages/Home";
  * stays eager because it is the page nearly every visit starts on, and making
  * it lazy would only add a round trip to the critical path.
  */
+const loadBagDrawer = () => import("@/components/cart/BagDrawer");
+const BagDrawer = lazy(() => loadBagDrawer().then(module => ({ default: module.BagDrawer })));
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
@@ -89,6 +91,24 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
  * when it lands. A product page, a department grid and anything else get
  * their own outline.
  */
+/**
+ * The bag drawer, out of the first download.
+ *
+ * It is on every page and opened on few visits, so it is fetched once the
+ * first page has drawn — the browser is idle by then, and the first press
+ * still opens it at once — and mounted from the first time it is opened, so
+ * it keeps its `useOverlay` across later opens.
+ */
+function BagDrawerWhenWanted() {
+  const { isOpen } = useCart();
+  const [wanted, setWanted] = useState(false);
+  useEffect(() => {
+    if (isOpen) setWanted(true);
+  }, [isOpen]);
+  useEffect(() => whenIdle(() => void loadBagDrawer()), []);
+  return wanted || isOpen ? <Suspense fallback={null}><BagDrawer /></Suspense> : null;
+}
+
 function RouteFallback() {
   const [location] = useLocation();
   const block = "animate-pulse rounded-2xl bg-[#e9edf3]";
@@ -351,7 +371,7 @@ function App() {
           <CartProvider>
             <StorefrontToaster />
             {/* One drawer for the whole app: the cart button is on every page. */}
-            <BagDrawer />
+            <BagDrawerWhenWanted />
             <Router />
           </CartProvider>
         </CustomerProvider>

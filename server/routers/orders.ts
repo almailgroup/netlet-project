@@ -59,7 +59,7 @@ export const ordersRouter = router({
     .input(z.object({ page: z.number().int().min(1).optional(), pageSize: z.number().int().min(1).max(100).optional() }).optional())
     .query(async ({ ctx, input }) => {
       const page = await listOrdersForUser(ctx.user.id, input ?? {});
-      return { ...page, rows: page.rows.map(row => ({ ...orderForShopper(row), owed: row.owed })) };
+      return { ...page, rows: page.rows.map(row => ({ ...orderForShopper(row), owed: row.owed, summary: row.summary })) };
     }),
 
   /** The header's "on its way": how many orders have a parcel on the road, and the latest reference. */

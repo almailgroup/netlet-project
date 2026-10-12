@@ -23,6 +23,12 @@
  * `refinedByModel` is false on every fallback — no key, a timeout, a refusal —
  * so the badge cannot appear over a plain sort.
  *
+ * **On the home page it is a shelf, and held to a shelf's floor.** Below
+ * `MIN_SHELF_PRODUCTS` it is not drawn there — two cards in a row built for
+ * four read as a broken shelf, the reason the strips above it have the floor.
+ * On `/saved` it is drawn from one, where it sits under the hearts it learns
+ * from and is the page's own answer rather than one shelf among several.
+ *
  * Three states, never two: `QueryGate` is the same gate the portal uses, so a
  * failed query says so instead of rendering as an empty shelf.
  */
@@ -34,6 +40,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
+import { MIN_SHELF_PRODUCTS } from "@/content/homeLayout";
 
 export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
   saved: string[];
@@ -60,6 +67,7 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
       {() => {
         const data = query.data;
         if (!data || !data.personalised || data.items.length === 0) return null;
+        if (quiet && data.items.length < MIN_SHELF_PRODUCTS) return null;
 
         return (
           <section id="for-you" className="container py-9 sm:py-12">

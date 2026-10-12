@@ -842,7 +842,10 @@ a shelf asks whether it is drawn. There were five shelves once, and on a
 dozen-product catalog they were the same dozen five times — Bestsellers came
 back when there were orders to count, because then it is a different list
 rather than the same one reordered. **Picked for you is drawn only when it is
-personal** (the rule under Recommendations) and draws nothing while it loads.
+personal** (the rule under Recommendations), draws nothing while it loads, and
+on the home page is held to the strips' floor — two cards in a row built for
+four read as a broken shelf; on `/saved` it is drawn from one. New arrivals is
+the one shelf exempt from the floor, on purpose (`homeLayout.ts` says why).
 **Shop by brand is the Brand rows sellers wrote** (`commerce.brands`, counted
 by the `brandOf` the Brand filter uses, so a tile reading "3 products" opens a
 page of three), from three brands up, an initial on each tile because NetLet
@@ -961,10 +964,26 @@ are the ones they always were; only the page around them changed. `ENTRIES` in
 
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
-rather than drawing an empty page. Signed out, every account address shows the
-sign-in panel. On a section page the visible title is an `h2` under an
+rather than drawing an empty page. Signed out, every account address is the
+sign-in form itself (see Signing in). On a section page the visible title is an `h2` under an
 `sr-only` "Your account" `h1`, which is what the page is, and which keeps the
 cards' own `h3`s one level below a heading.
+
+**An order is listed by what is in it and where it is.** The row showed a
+reference, a date, a total and a payment badge, and the badge read "awaiting
+payment" on every cash order until a driver had been to the door — the same
+yellow on every row, answering a question nobody was asking. Each row now leads
+with `orderProgress` (`shared/commerce/orderProgress.ts`, pure): received,
+being prepared, on the way, "2 of 3 delivered", delivered on a date, returned,
+cancelled — read off the lines, the furthest-behind line still coming deciding,
+so an order is not "delivered" while a parcel is in a van and a cancelled line
+holds nothing back. Under it the first line's name and "and 2 more", the first
+product's photograph with a "+2", and the total with how it is paid ("Pay on
+delivery", "Paid", "Refunded"). An order that is over shows what it came to;
+"KWD 0" over a refund read as an order that cost nothing. The photograph is
+today's (`firstPhotos`), read live rather than frozen: a picture is how a thing
+is recognised, not a fact anybody is held to, and the opened order's lines
+carry one too.
 
 Signing out is a plain button at the foot of the home and of the menu, still
 asking first. It sat in a red "danger zone" box, which dressed the most
@@ -3326,6 +3345,19 @@ reads "Memory: 12 GB", and "الذاكرة" on the Arabic page. A description is
 as blocks (`descriptionBlocks`): lines starting with -, • or * are a list, the
 rest paragraphs — sellers paste bullets and a wall of text read as one.
 
+**Asking for a better price is one line until it is pressed.** The form —
+price, quantity, a note, Send — sat open under Buy now on every product that
+takes requests, and on a phone pushed the description a screen down for the
+few who ask. It opens on the press with the price box focused; a request
+already standing is drawn open, being something the shopper is waiting on.
+
+**On a phone the information is four sections, not four tabs**
+(`ProductInfo`). The tab strip scrolled sideways inside itself and cut
+"Returns" at the edge of a 390px screen, with nothing saying there was a
+fourth. Below `sm` each opens and closes, the specifications open to start;
+from `sm` up they are tabs. One structure at a time (`useMediaQuery`), never
+both with one hidden, which would put every panel and its id on the page twice.
+
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
 
@@ -3399,6 +3431,20 @@ Two rules keep the RTL layout honest:
 - **Arrows and chevrons that mean "onward" carry `rtl:-scale-x-100`.** So do
   the gradients and masks that shade toward the text, or the Arabic headline
   ends up sitting on the bright side of the hero.
+
+**A counted sentence takes the form its number needs** (`shared/i18n/plurals.ts`).
+Arabic counts a noun in the plural from three to ten, in the accusative singular
+from eleven to ninety-nine, in the genitive singular from a hundred, in the dual
+for two — and one string per key wrote every count in one of those, so a
+department read "3 منتج" and a return window "بقي 3 يوماً". `PLURAL_FORMS` gives,
+per key whose number moves, the whole sentence for each band the dictionary's
+string is wrong in, and `translate` picks the band with `Intl.PluralRules` from
+the value the entry names — call sites pass the number and nothing else
+changes. Whole sentences, never a noun swapped in, because the dual's case
+follows the sentence ("بقي يومان", "منذ يومين"). English gets a `one` the same
+way where it had no `…One` key. A sentence written for a constant — the
+fourteen-day return window — is right for its constant, and `plurals.test.ts`
+fails when a constant moves into another band.
 
 **A stored language is `null` until the shopper picks one, and that is load
 bearing.** `customer_preferences.locale` is nullable rather than defaulting to
@@ -3574,7 +3620,18 @@ anything NetLet actually needs is on the server.
 ## The first visit
 
 **What every shopper downloads first is the home page and nothing it does not
-draw.** The main bundle was 759 KB (229 KB gzipped) and is 640 KB (191 KB):
+draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
+features since took it back to 799 KB (236 KB), and it is 583 KB (170 KB) now,
+with the whole first download 35 KB smaller:
+
+- **React's renderer is in the `react` chunk.** `manualChunks` named
+  `react-dom`, which matched only the package's small entry, so
+  `react-dom/client` — the largest thing any page downloads — sat in the main
+  chunk and was fetched again after every deploy. It is named now, and its
+  scheduler follows it in.
+- **The address book and the bag drawer load after the first paint.** Both are
+  on every page and opened on few visits; each is fetched when the browser is
+  idle (`lib/idle.ts`), so the first press still opens it at once.
 
 - **Overlays load when opened.** The sign-in dialog, Home's preview and the
   voice and photo sheets are `lazy`. The header is on every page and most

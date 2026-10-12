@@ -6,6 +6,7 @@ import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
 import { ProductAssistant } from "@/components/product/ProductAssistant";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
+import { ProductInfo } from "@/components/product/ProductInfo";
 import { AskSeller } from "@/components/product/AskSeller";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
@@ -891,7 +892,6 @@ export default function ProductDetail() {
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
-  const [tab, setTab] = useState<"specifications" | "shipping" | "warranty" | "returns">("specifications");
   const [quantity, setQuantity] = useState(1);
   /* Nothing ticked by default (3.1.2): a pre-ticked warranty is how somebody
      pays for what they did not ask for and did not notice. */
@@ -911,7 +911,6 @@ export default function ProductDetail() {
     setSelectedVariantId(product?.variants[0]?.id ?? "");
     setSelectedImageIndex(0);
     setZoomOpen(false);
-    setTab("specifications");
     setQuantity(1);
   }, [product?.id]);
 
@@ -992,10 +991,6 @@ export default function ProductDetail() {
   const inBag = selectedVariant ? (cart?.items ?? []).filter(item => item.variantId === selectedVariant.id).reduce((total, item) => total + item.quantity, 0) : 0;
   const inStock = Boolean(selectedVariant?.availableForSale);
 
-  // The selected tab keeps its navy on hover. `.glass-navy:hover` shifts to
-  // orange, which is right for a button you are about to press but wrong for a
-  // tab that is already selected — it reads as a second, different control.
-  const tabClass = (active: boolean) => `pressable inline-flex items-center gap-1.5 rounded-[9px] px-3.5 py-2 text-[13px] font-bold whitespace-nowrap transition-colors ${active ? "glass glass-navy hover:!bg-[#0a285a]" : "ink-muted hover:text-[#0a285a]"}`;
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
@@ -1018,9 +1013,11 @@ export default function ProductDetail() {
           <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           {/* `min-w-0`, because a grid item's minimum is its content's: the
-              tab strip below scrolls sideways inside itself, but its full
-              width still propped this column open, and every product page
-              scrolled sideways on a phone — 120px in Arabic, 176px in English. */}
+              tab strip below, when it scrolled sideways inside itself on a
+              phone, still propped this column open by its full width, and
+              every product page scrolled sideways — 120px in Arabic, 176px
+              in English. A phone draws sections there now; the rule stays
+              for whatever is next to be wider than its column. */}
           <div className="min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? (
               <div className="flex flex-wrap items-center gap-2">
@@ -1151,24 +1148,16 @@ export default function ProductDetail() {
                 the assistant sat between the price and the buttons, which put
                 Quantity, Add to cart and Buy now below the fold on a laptop. */}
             <hr className="my-6 border-[#0a285a]/8" />
-            <div className="flex flex-wrap items-center gap-3">
-              <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
-                {/* Four tabs will not divide a phone's width into anything
-                    readable, so below `sm` the row scrolls instead of each tab
-                    taking a quarter and clipping its own label. */}
-                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={tabClass(tab === "specifications")}><ListTree className="size-3.5 shrink-0" />{t("product.specifications")}</button>
-                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={tabClass(tab === "shipping")}><Truck className="size-3.5 shrink-0" />{t("product.shippingPolicy")}</button>
-                <button role="tab" id="tab-warranty" aria-selected={tab === "warranty"} aria-controls="panel-warranty" onClick={() => setTab("warranty")} className={tabClass(tab === "warranty")}><ShieldCheck className="size-3.5 shrink-0" />{t("product.warrantyPolicy")}</button>
-                <button role="tab" id="tab-returns" aria-selected={tab === "returns"} aria-controls="panel-returns" onClick={() => setTab("returns")} className={tabClass(tab === "returns")}><RotateCcw className="size-3.5 shrink-0" />{t("product.returnsPolicy")}</button>
-              </div>
-            </div>
-
-            <div className="mt-5 min-h-[120px]">
-              <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} t={t} arabic={isArabicPage} /></div>
-              <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
-              <div role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden={tab !== "warranty"}><WarrantyPanel product={product} t={t} /></div>
-              <div role="tabpanel" id="panel-returns" aria-labelledby="tab-returns" hidden={tab !== "returns"}><ReturnsPanel t={t} /></div>
-            </div>
+            <ProductInfo
+              label={t("product.information")}
+              resetKey={product.id}
+              sections={[
+                { id: "specifications", icon: ListTree, label: t("product.specifications"), panel: <SpecificationsPanel product={product} t={t} arabic={isArabicPage} /> },
+                { id: "shipping", icon: Truck, label: t("product.shippingPolicy"), panel: <ShippingPolicyPanel express={express} t={t} /> },
+                { id: "warranty", icon: ShieldCheck, label: t("product.warrantyPolicy"), panel: <WarrantyPanel product={product} t={t} /> },
+                { id: "returns", icon: RotateCcw, label: t("product.returnsPolicy"), panel: <ReturnsPanel t={t} /> },
+              ]}
+            />
 
             {/* Under the tabs, because it answers what the tabs did not: a
                 spec block is written for somebody who already knows the

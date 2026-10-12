@@ -34,8 +34,12 @@ export default defineConfig({
         // React and the data layer change far less often than the storefront
         // does, so they are split into their own chunks: a deploy that only
         // touches NetLet code leaves them cached in every returning browser.
+        // `react-dom/client` is named too: the package name alone matched only
+        // `react-dom`'s small entry, so the renderer — the largest thing any
+        // page downloads — sat in the main chunk and was fetched again after
+        // every deploy. Its scheduler follows it in.
         manualChunks: {
-          react: ["react", "react-dom"],
+          react: ["react", "react-dom", "react-dom/client"],
           data: ["@tanstack/react-query", "@trpc/client", "@trpc/react-query", "superjson"],
         },
       },

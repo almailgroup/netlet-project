@@ -28,6 +28,7 @@ import {
   giftCardUses,
   pointEntries,
   productAddons,
+  productImages,
   productVariants,
   products,
   users,
@@ -371,6 +372,49 @@ describe("reading orders back", () => {
     const mine = await ordersModule.listOrdersForUser(ids.shopper);
     expect(mine.total).toBe(1);
     expect(mine.rows[0].userId).toBe(ids.shopper);
+  });
+
+  /* The list a shopper scans leads with what is in an order and where it is,
+     not whether a cash order has been paid yet. */
+  it("says what each order holds and how far it has got", async () => {
+    const placed = await twoVendorOrder();
+    const [photo] = await db.insert(productImages).values([
+      { productId: ids.lamp, url: "https://example.test/lamp-second.jpg", position: 1 },
+      { productId: ids.lamp, url: "https://example.test/lamp-first.jpg", position: 0 },
+      { productId: ids.lamp, url: "https://example.test/lamp.mp4", position: -1, kind: "video" },
+    ]).returning();
+
+    try {
+      const [row] = (await ordersModule.listOrdersForUser(ids.shopper)).rows;
+      /* Named after its first line, as the lines were written. */
+      const [firstLine] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id)).orderBy(orderItems.id).limit(1);
+      expect(row.summary).toMatchObject({
+        lineCount: 2,
+        first: { title: firstLine.productTitle },
+        photos: ["https://example.test/lamp-first.jpg"],
+        progress: { kind: "received", preordered: false },
+      });
+
+      /* A line on the road moves the order on; one still with its seller holds it there. */
+      const [lampLine] = await db.select().from(orderItems).where(and(eq(orderItems.orderId, placed.order.id), eq(orderItems.productId, ids.lamp)));
+      await db.update(orderItems).set({ fulfilment: "shipped" }).where(eq(orderItems.id, lampLine.id));
+      expect((await ordersModule.listOrdersForUser(ids.shopper)).rows[0].summary?.progress).toEqual({ kind: "onTheWay" });
+
+      /* Cancelled, the lamp no longer names the order or holds it back. */
+      await db.update(orderItems).set({ fulfilment: "cancelled" }).where(eq(orderItems.id, lampLine.id));
+      await db.update(orderItems).set({ fulfilment: "delivered", deliveredAt: new Date("2026-10-04T09:00:00Z") })
+        .where(and(eq(orderItems.orderId, placed.order.id), eq(orderItems.productId, ids.kettle)));
+      const after = (await ordersModule.listOrdersForUser(ids.shopper)).rows[0].summary;
+      expect(after?.first?.title).toBe("Copper Kettle");
+      expect(after?.progress).toEqual({ kind: "delivered", at: "2026-10-04T09:00:00.000Z" });
+
+      /* The opened order carries each line's picture too. */
+      const detail = await ordersModule.getOrderForUser(ids.shopper, placed.order.reference);
+      expect(detail?.lines.find(line => line.productId === ids.lamp)?.photo).toBe("https://example.test/lamp-first.jpg");
+      expect(detail?.lines.find(line => line.productId === ids.kettle)?.photo).toBeNull();
+    } finally {
+      await db.delete(productImages).where(eq(productImages.productId, photo.productId));
+    }
   });
 
   it("shows an admin every order", async () => {

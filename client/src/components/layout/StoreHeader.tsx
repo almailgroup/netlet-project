@@ -46,7 +46,6 @@
  */
 import { useCatalog } from "@/hooks/useCatalog";
 import { AccountMenu } from "@/components/layout/AccountMenu";
-import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useLastAddressId } from "@/hooks/useLastAddressId";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
@@ -63,8 +62,19 @@ import { categorySlug } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
 import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { whenIdle } from "@/lib/idle";
 import { Link, useLocation, useSearch } from "wouter";
+
+/*
+ * The address book, with its form and its map picker, loads when the delivery
+ * button is first pressed. It was in the first download of every page for a
+ * dialog most visits never open — the sign-in dialog's reason for being lazy.
+ * It is fetched once the page is idle, so the first press still opens it at
+ * once; the bytes come after the first paint rather than before it.
+ */
+const loadDeliveryDialog = () => import("@/components/layout/DeliveryZoneDialog");
+const DeliveryZoneDialog = lazy(() => loadDeliveryDialog().then(module => ({ default: module.DeliveryZoneDialog })));
 
 /** A plain bar control: an icon and a word, a tint on hover, no fill of its own. */
 const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";
@@ -99,6 +109,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  useEffect(() => whenIdle(() => void loadDeliveryDialog()), []);
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
@@ -288,7 +299,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
           ) : null}
         </div>
       </nav>
-      <DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} />
+      {deliveryOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setDeliveryOpen(false)} /></Suspense> : null}
     </>
   );
 }

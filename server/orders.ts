@@ -25,6 +25,7 @@ import {
   pointEntries,
   priceOffers,
   productAddons,
+  productImages,
   productVariants,
   products,
   vendors,
@@ -39,6 +40,7 @@ import {
 } from "../shared/commerce/order.js";
 import type { Pool } from "../shared/commerce/preorder.js";
 import { nextStates } from "../shared/commerce/fulfilment.js";
+import { orderProgress, type OrderProgress } from "../shared/commerce/orderProgress.js";
 import { mayMoveLine } from "../shared/commerce/netletFulfilment.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
@@ -861,7 +863,81 @@ const emptyPage = <T>(pageSize?: number): Page<T> => ({
 export type OrderRow = typeof orders.$inferSelect & {
   /** What it owes now, once cancelled lines are taken off. Null without a database read. */
   owed?: StillOwed | null;
+  /** What it holds and how far it has got, for the list a shopper scans. */
+  summary?: OrderSummary;
 };
+
+/**
+ * An order as a row in its shopper's list: what is in it and where it is.
+ *
+ * The list showed a reference, a date, a total and whether the order was paid
+ * — and nobody recognises their own order by its reference. They know it as
+ * "the watch and two other things", and what they want to know is whether it
+ * is on its way.
+ */
+export type OrderSummary = {
+  lineCount: number;
+  /** The first line as it read on the day of sale. */
+  first: { title: string; variant: string | null } | null;
+  /** Today's first photograph of the first few products, in line order. */
+  photos: string[];
+  progress: OrderProgress;
+};
+
+/**
+ * Each product's first photograph today.
+ *
+ * Read live rather than frozen with the line: a picture is how somebody
+ * recognises a thing, not a fact anybody is held to, and a product deleted
+ * since simply has none — `Thumb` draws its fallback.
+ */
+export async function firstPhotos(db: Db, productIds: (number | null)[]): Promise<Map<number, string>> {
+  const ids = [...new Set(productIds.filter((id): id is number => id !== null))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .selectDistinctOn([productImages.productId], { productId: productImages.productId, url: productImages.url })
+    .from(productImages)
+    .where(and(inArray(productImages.productId, ids), eq(productImages.kind, "image")))
+    .orderBy(productImages.productId, productImages.position, productImages.id);
+  return new Map(rows.map(row => [row.productId, row.url]));
+}
+
+const PREVIEW_PHOTOS = 3;
+
+async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promise<Map<number, OrderSummary>> {
+  if (rows.length === 0) return new Map();
+  const lines = await db
+    .select({
+      orderId: orderItems.orderId,
+      productId: orderItems.productId,
+      productTitle: orderItems.productTitle,
+      variantTitle: orderItems.variantTitle,
+      fulfilment: orderItems.fulfilment,
+      deliveredAt: orderItems.deliveredAt,
+      preordered: orderItems.preordered,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, rows.map(row => row.id)))
+    .orderBy(orderItems.orderId, orderItems.id);
+  const photos = await firstPhotos(db, lines.map(line => line.productId));
+
+  const byOrder = new Map<number, typeof lines>();
+  for (const line of lines) byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
+
+  return new Map(rows.map(row => {
+    const own = byOrder.get(row.id) ?? [];
+    /* Lead with something still coming: a cancelled line first in the list
+       would name the order after the one thing that is not in it. */
+    const lead = own.find(line => line.fulfilment !== "cancelled") ?? own[0];
+    const pictured = [...own].sort((a, b) => Number(a.fulfilment === "cancelled") - Number(b.fulfilment === "cancelled"));
+    return [row.id, {
+      lineCount: own.length,
+      first: lead ? { title: lead.productTitle, variant: lead.variantTitle } : null,
+      photos: [...new Set(pictured.map(line => (line.productId === null ? undefined : photos.get(line.productId))).filter((url): url is string => Boolean(url)))].slice(0, PREVIEW_PHOTOS),
+      progress: orderProgress(row, own),
+    }];
+  }));
+}
 
 /**
  * How many of this shopper's orders have a parcel on the road, and the most
@@ -925,7 +1001,8 @@ export async function listOrdersForUser(
   /* What each one owes now — the figure the driver will ask for — rather than
      only what it was placed for. See `shared/commerce/collection.ts`. */
   const owed = await stillOwedFor(db, rows);
-  return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null })), total, page, pageSize };
+  const summaries = await summariesFor(db, rows);
+  return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null, summary: summaries.get(row.id) })), total, page, pageSize };
 }
 
 /**
@@ -964,7 +1041,9 @@ export async function getOrderForUser(userId: number, reference: string) {
     .limit(1);
   if (!order) return null;
 
-  const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  const rows = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(orderItems.id);
+  const photos = await firstPhotos(db, rows.map(line => line.productId));
+  const lines = rows.map(line => ({ ...line, photo: line.productId === null ? null : photos.get(line.productId) ?? null }));
   const owed = (await stillOwedFor(db, [order])).get(order.id) ?? null;
   return { order, lines, owed };
 }
