@@ -38,6 +38,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 const MISSING_LABEL: Record<MissingField, MessageKey> = {
   contactEmail: "sell.fieldEmail",
@@ -230,7 +231,7 @@ export default function Sell() {
                     <input dir="ltr" inputMode="tel" placeholder="+965" value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={field} />
                   </Labelled>
                   <Labelled label={t("sell.fieldGovernorate")}>
-                    <select
+                    <Select
                       aria-label={t("sell.fieldGovernorate")}
                       value={form.governorate}
                       onChange={e => set("governorate", e.target.value)}
@@ -238,7 +239,7 @@ export default function Sell() {
                     >
                       <option value="">{t("sell.choose")}</option>
                       {GOVERNORATES.map(name => <option key={name} value={name}>{name}</option>)}
-                    </select>
+                    </Select>
                   </Labelled>
                   <Labelled label={t("sell.fieldAddress")}>
                     <input dir="auto" value={form.addressLine} onChange={e => set("addressLine", e.target.value)} className={field} />

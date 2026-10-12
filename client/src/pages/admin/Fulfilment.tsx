@@ -28,6 +28,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { Governorate } from "@shared/inventory/storeProfile";
 import { privatePageMeta } from "@shared/seo";
+import { Select } from "@/components/ui/Select";
 
 const field = `${fieldClass} mt-1.5`;
 const card = "rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[#0a285a] sm:p-5";
@@ -111,9 +112,9 @@ function Announce({ actor }: { actor: Actor }) {
 
       <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
         {t("fulfilment.centre")}
-        <select value={chosenCentre ?? ""} onChange={event => setCentreId(Number(event.target.value))} className={field}>
+        <Select value={chosenCentre ?? ""} onChange={event => setCentreId(Number(event.target.value))} className={field}>
           {(centres.data ?? []).map(centre => <option key={centre.id} value={centre.id}>{centre.name}</option>)}
-        </select>
+        </Select>
       </label>
 
       <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
@@ -261,9 +262,9 @@ function Centres() {
         <label className="text-[13px] font-semibold text-[#0a285a]">{t("fulfilment.centreName")}<input dir="auto" value={draft.name} maxLength={120} onChange={event => setDraft({ ...draft, name: event.target.value })} className={field} /></label>
         <label className="text-[13px] font-semibold text-[#0a285a]">
           {t("admin.governorate")}
-          <select value={draft.governorate} onChange={event => setDraft({ ...draft, governorate: event.target.value })} className={field}>
+          <Select value={draft.governorate} onChange={event => setDraft({ ...draft, governorate: event.target.value })} className={field}>
             {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{isArabic ? zone.labelAr : zone.label}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-[13px] font-semibold text-[#0a285a]">{t("admin.addressLine")}<input dir="auto" value={draft.addressLine} maxLength={300} onChange={event => setDraft({ ...draft, addressLine: event.target.value })} className={field} /></label>
         <div className="sm:col-span-3">

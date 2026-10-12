@@ -18,6 +18,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "@shared/commerce/membership";
 import { privatePageMeta } from "@shared/seo";
+import { Select } from "@/components/ui/Select";
 
 const AMOUNT = /^\d{1,9}(\.\d{1,3})?$/;
 
@@ -116,9 +117,9 @@ function Grant() {
             <input dir="ltr" type="email" autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} className={fieldClass} />
           </Field>
           <Field label={t("membership.months")}>
-            <select value={months} onChange={event => setMonths(Number(event.target.value))} className={fieldClass}>
+            <Select value={months} onChange={event => setMonths(Number(event.target.value))} className={fieldClass}>
               {Array.from({ length: MAX_GRANT_MONTHS }, (_, index) => index + 1).map(count => <option key={count} value={count}>{count}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label={t("membership.why")} optional className="sm:col-span-2">
             <input dir="auto" maxLength={MAX_GRANT_NOTE} value={note} onChange={event => setNote(event.target.value)} className={fieldClass} />

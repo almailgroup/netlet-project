@@ -30,6 +30,7 @@ import { Download, LoaderCircle, Sparkles, Upload } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminImport() {
   usePageMeta(privatePageMeta("Import"));
@@ -133,12 +134,12 @@ function Import({ actor }: { actor: Actor }) {
               <Notice tone="warning">{t("admin.needVendorFirst")}</Notice>
             ) : (
               <Field label={t("admin.newStore")} hint={t("admin.newStoreHint")}>
-                <select value={chosenVendor} onChange={event => setChosenVendor(event.target.value)} className={`${fieldClass} sm:max-w-md`}>
+                <Select value={chosenVendor} onChange={event => setChosenVendor(event.target.value)} className={`${fieldClass} sm:max-w-md`}>
                   <option value="" disabled>{t("admin.chooseStore")}</option>
                   {storeRows.map(vendor => (
                     <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
                   ))}
-                </select>
+                </Select>
               </Field>
             )}
           </Card>

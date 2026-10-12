@@ -29,6 +29,7 @@ import { addDays, kuwaitToday } from "@shared/commerce/adBookings";
 import { MAX_FIRST_RUN_DAYS, MAX_SUBSCRIPTION_QUANTITY, SUBSCRIPTION_INTERVALS, subscriberPrice } from "@shared/commerce/subscriptions";
 import type { Product, ProductVariant } from "@shared/commerce/types";
 import { multiplyMoney } from "@shared/money";
+import { Select } from "@/components/ui/Select";
 
 const field = "glass-field mt-1 h-10 w-full rounded-full px-4 text-sm";
 
@@ -97,11 +98,11 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
         >
           <label className="block">
             <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.every")}</span>
-            <select aria-label={t("subscribe.every")} value={intervalWeeks} onChange={event => setIntervalWeeks(Number(event.target.value))} className={field}>
+            <Select aria-label={t("subscribe.every")} value={intervalWeeks} onChange={event => setIntervalWeeks(Number(event.target.value))} className={field}>
               {SUBSCRIPTION_INTERVALS.map(weeks => (
                 <option key={weeks} value={weeks}>{t(weeks === 1 ? "subscribe.weekly" : "subscribe.weeks", { count: String(weeks) })}</option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="block">
             <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.firstDelivery")}</span>
@@ -116,9 +117,9 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
             ) : (
               <label className="block">
                 <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.deliverTo")}</span>
-                <select aria-label={t("subscribe.deliverTo")} value={chosen ?? ""} onChange={event => setAddressId(Number(event.target.value))} className={field}>
+                <Select aria-label={t("subscribe.deliverTo")} value={chosen ?? ""} onChange={event => setAddressId(Number(event.target.value))} className={field}>
                   {(book.data ?? []).map(address => <option key={address.id} value={address.id}>{address.label}</option>)}
-                </select>
+                </Select>
               </label>
             )}
           </div>

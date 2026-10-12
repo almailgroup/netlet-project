@@ -35,6 +35,7 @@ import { ArrowLeft, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, 
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { PinPicker } from "@/components/map/PinPicker";
 import type { Pin } from "@shared/commerce/geo";
+import { Select } from "@/components/ui/Select";
 
 
 const fieldClass = "type-body mt-2 h-11 w-full rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-3 outline-none transition-shadow focus:shadow-[0_0_0_4px_rgba(20,52,203,.10)]";
@@ -62,7 +63,7 @@ function CheckoutDeliveryZone() {
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const { isArabic, t } = useTranslation();
   const zoneName = (zone: { label: string; labelAr: string }) => (isArabic ? zone.labelAr : zone.label);
-  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")}</p></div></div></div>;
+  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><Select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</Select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")}</p></div></div></div>;
 }
 
 

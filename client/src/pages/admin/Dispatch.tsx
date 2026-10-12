@@ -40,6 +40,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { PinLink } from "@/components/map/PinLink";
 import { ShareLocation } from "@/components/admin/ShareLocation";
+import { Select } from "@/components/ui/Select";
 
 const VEHICLE_LABEL = {
   bike: "vehicle.bike",
@@ -209,7 +210,7 @@ function Dispatch({ actor }: { actor: Actor }) {
                         {moves.length > 0 || mayAssign ? (
                           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-3 sm:px-5">
                             {mayAssign ? (
-                              <select
+                              <Select
                                 aria-label={t("dispatch.assign", { parcel: parcel.reference })}
                                 disabled={assigning === id}
                                 value={parcel.courierId ?? ""}
@@ -228,7 +229,7 @@ function Dispatch({ actor }: { actor: Actor }) {
                                   .map(company => (
                                     <option key={company.id} value={company.id}>{company.name}</option>
                                   ))}
-                              </select>
+                              </Select>
                             ) : null}
                             {/* The same pure function the server refuses on, so the
                                 board cannot offer a step the API would reject. */}

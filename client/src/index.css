@@ -469,6 +469,19 @@
   }
 }
 
+/* The shop's dropdown list (`components/ui/Select.tsx`) opens with a short
+   fade and settle from the edge it hangs off; the global motion guard makes it
+   instant for anybody who asked for less motion. */
+.select-menu {
+  animation: select-menu-in 140ms var(--ease-out);
+}
+@keyframes select-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /*
  * The minus and plus inside a product card's Add to cart and Buy now (both
  * share one quantity). They appear while a pointer is over the button or the

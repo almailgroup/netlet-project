@@ -29,6 +29,7 @@ import { privatePageMeta } from "@shared/seo";
 import { Gift, LoaderCircle, Ticket } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 /** "10.000" is how a numeric column stores ten percent; "10%" is how it reads. */
 function trimZeros(value: string): string {
@@ -108,11 +109,11 @@ function Promotions() {
                 <input dir="ltr" value={code.code} maxLength={40} readOnly={editing !== null} onChange={e => set({ code: e.target.value.toUpperCase() })} className={`${fieldClass} font-mono uppercase`} />
               </Field>
               <Field label={t("admin.codeKind")}>
-                <select value={code.kind} onChange={e => set({ kind: e.target.value as VoucherKind })} className={fieldClass}>
+                <Select value={code.kind} onChange={e => set({ kind: e.target.value as VoucherKind })} className={fieldClass}>
                   {VOUCHER_KINDS.map(kind => (
                     <option key={kind} value={kind}>{t(kind === "percent" ? "admin.codePercent" : "admin.codeFixed")}</option>
                   ))}
-                </select>
+                </Select>
               </Field>
               <Field label={t("admin.codeValue")}>
                 <input dir="ltr" inputMode="decimal" placeholder={code.kind === "percent" ? "10" : "0.000"} value={code.value} onChange={e => set({ value: e.target.value })} className={fieldClass} />

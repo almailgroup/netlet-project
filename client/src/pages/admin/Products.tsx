@@ -35,6 +35,7 @@ import { privatePageMeta } from "@shared/seo";
 import { ImageOff, PackagePlus, Search, Trash2, Upload } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminProducts() {
   usePageMeta(privatePageMeta("Admin"));
@@ -120,7 +121,7 @@ function ProductTable({ actor }: { actor: Actor }) {
           />
         </div>
         {actor.kind === "admin" && (stores.data?.rows.length ?? 0) > 1 ? (
-          <select
+          <Select
             value={storeFilter}
             onChange={event => chooseStore(event.target.value)}
             aria-label={t("admin.filterStore")}
@@ -128,7 +129,7 @@ function ProductTable({ actor }: { actor: Actor }) {
           >
             <option value="">{t("admin.statusAllStores")}</option>
             {(stores.data?.rows ?? []).map(store => <option key={store.id} value={store.id}>{store.name}</option>)}
-          </select>
+          </Select>
         ) : null}
         {/* A segmented control rather than a dropdown: five states read at a
             glance, and the one in force is visible without opening anything. */}

@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
+import { Select } from "@/components/ui/Select";
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
@@ -156,17 +157,17 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             {product.variants.length > 1 ? (
               <label className="mt-4 block text-[11px] font-extrabold text-[#0a285a]">
                 {t("product.chooseOption")}
-                <select
+                <Select
                   value={variant?.id ?? ""}
                   onChange={event => setVariantId(event.target.value)}
-                  className="mt-1.5 block w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]"
+                  className="mt-1.5 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[13px] font-semibold text-[#0a285a] outline-none focus:border-[#f2683a]"
                 >
                   {product.variants.map(entry => (
                     <option key={entry.id} value={entry.id} disabled={!entry.availableForSale}>
                       {entry.title} — {money(entry.price)}{entry.availableForSale ? "" : t("product.variantUnavailable")}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             ) : null}
 
@@ -185,7 +186,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               <button
                 onClick={() => void add(false)}
                 disabled={!inStock || loading}
-                className={`${PURCHASE_TONE.add} pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed disabled:opacity-50`}
+                className={`${PURCHASE_TONE.add} pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed sm:flex-1 disabled:opacity-50`}
               >
                 {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}
                 {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
@@ -193,7 +194,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               <button
                 onClick={() => void add(true)}
                 disabled={!inStock || loading}
-                className={`${PURCHASE_TONE.buy} pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed disabled:opacity-50`}
+                className={`${PURCHASE_TONE.buy} pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed sm:flex-1 disabled:opacity-50`}
               >
                 <Zap className="size-4 fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}
               </button>

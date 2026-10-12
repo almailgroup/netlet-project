@@ -49,6 +49,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminVendorDetail() {
   usePageMeta(privatePageMeta("Store"));
@@ -289,10 +290,10 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                 <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={fieldClass} />
               </Field>
               <Field label={t("admin.governorate")}>
-                <select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
+                <Select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
                   <option value="">{t("admin.notSet")}</option>
                   {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
-                </select>
+                </Select>
               </Field>
               <Field label={t("admin.addressLine")}>
                 <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={fieldClass} />
@@ -359,10 +360,10 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("admin.fieldDeliverySpeed")} className="sm:col-span-2">
-                <select value={draft.deliverySpeed} onChange={e => set("deliverySpeed", e.target.value)} className={fieldClass}>
+                <Select value={draft.deliverySpeed} onChange={e => set("deliverySpeed", e.target.value)} className={fieldClass}>
                   <option value="">{t("admin.speedUnset")}</option>
                   {DELIVERY_SPEEDS.map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
-                </select>
+                </Select>
               </Field>
               <Field label={t("admin.fieldDeliveryFlat")} hint={t("admin.fieldDeliveryFlatHint")}>
                 <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.deliveryFlat} onChange={e => set("deliveryFlat", e.target.value)} className={fieldClass} />
@@ -428,14 +429,14 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("admin.vendorStatus")} hint={t("admin.statusHint")}>
-                <select
+                <Select
                   value={row.status}
                   disabled={setStatus.isPending}
                   onChange={e => setStatus.mutate({ vendorId, status: e.target.value as (typeof STATUSES)[number] })}
                   className={fieldClass}
                 >
                   {STATUSES.map(status => <option key={status} value={status}>{t(`vendorStatus.${status}` as MessageKey)}</option>)}
-                </select>
+                </Select>
               </Field>
               <Toggle
                 checked={row.autoPublish}
@@ -582,14 +583,14 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
                 <p className="truncate text-[14px] font-semibold text-[#0a285a]"><bdi dir="ltr">{member.email}</bdi></p>
                 <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t(ROLE_WHAT[member.role as VendorRole])}</p>
               </div>
-              <select
+              <Select
                 aria-label={t("admin.memberRole")}
                 value={member.role}
                 onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
                 className={`${fieldClass} w-auto`}
               >
                 {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
-              </select>
+              </Select>
               <button type="button" onClick={() => sendReset.mutate({ userId: member.userId, locale })} disabled={sendReset.isPending} className={buttonClass.secondary}>
                 <KeyRound className="size-4" aria-hidden />{t("admin.sendReset")}
               </button>
@@ -617,9 +618,9 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
             <input dir="ltr" type="password" autoComplete="new-password" value={fresh.password} onChange={e => setFresh({ ...fresh, password: e.target.value })} className={fieldClass} />
           </Field>
           <Field label={t("admin.memberRole")}>
-            <select value={fresh.role} onChange={e => setFresh({ ...fresh, role: e.target.value as VendorRole })} className={fieldClass}>
+            <Select value={fresh.role} onChange={e => setFresh({ ...fresh, role: e.target.value as VendorRole })} className={fieldClass}>
               {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])} — {t(ROLE_WHAT[role])}</option>)}
-            </select>
+            </Select>
           </Field>
           <button type="submit" disabled={addNew.isPending || fresh.email.trim() === "" || fresh.password.length < 10} className={buttonClass.primary}>
             {addNew.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <UserPlus className="size-4" aria-hidden />}
@@ -636,9 +637,9 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
             <input dir="ltr" type="email" value={existing.email} onChange={e => setExisting({ ...existing, email: e.target.value })} className={fieldClass} />
           </Field>
           <Field label={t("admin.memberRole")}>
-            <select value={existing.role} onChange={e => setExisting({ ...existing, role: e.target.value as VendorRole })} className={fieldClass}>
+            <Select value={existing.role} onChange={e => setExisting({ ...existing, role: e.target.value as VendorRole })} className={fieldClass}>
               {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])} — {t(ROLE_WHAT[role])}</option>)}
-            </select>
+            </Select>
           </Field>
           <button type="submit" disabled={addExisting.isPending || existing.email.trim() === ""} className={buttonClass.secondary}>
             {addExisting.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <UserPlus className="size-4" aria-hidden />}

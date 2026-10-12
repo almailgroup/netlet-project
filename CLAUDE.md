@@ -64,6 +64,24 @@ anywhere in the storefront.
 **`.glass-accent` carries navy text, not white**: white on `#f2683a` is 3.08:1
 and navy is 4.65:1, so the orange stays the brand's while the words on it pass.
 
+**Every dropdown is the shop's own.** A native `<select>` opened the operating
+system's list — grey, square, in the system font, different in every browser —
+under fields that were otherwise NetLet's, and the owner asked for all of them
+to be designed. `components/ui/Select.tsx` draws the list: a white sheet, rows
+a thumb can hit, the header's tint under the pointer and a navy tick by the
+choice. It takes `<option>` children and hands `onChange` `{ target: { value } }`,
+so forty-nine selects moved across by changing the tag, and `markup.test.ts`
+fails on a native one. It is the WAI-ARIA select-only combobox — focus stays
+on the button, arrows, Home/End and typed letters move, Enter chooses, and
+Escape closes the list *without* closing the dialog it sits in. Opening never
+changes the value, because several of these save the moment they change.
+
+The open list is portalled into the nearest dialog or landmark, not `<body>`:
+outside an `aria-modal` dialog it is outside what a screen reader reads while
+the dialog is open, and outside every landmark axe calls it stray content. It
+is `position: fixed` against the button, so `fixedOrigin` measures from a
+transformed or contained ancestor when the target sits inside one.
+
 **`.pressable` sets the type, with `!important`**: 14px at weight 500, whatever
 the element's own `text-xs font-extrabold` says. That is old and load bearing —
 removing it would change every button on the site at once — so a control that
@@ -351,11 +369,10 @@ picker at its start (`sm` up — a phone's field needs its width for the words)
 searches one department: the department's own page with `q` on it, and the
 suggestions narrowed by `productsInCategory`, the rule that page uses. On a
 department page it starts as that department, the way a shop's own search box
-does. It is a transparent `<select>` lying over its visible label, because a
-native select is as wide as its longest option and "All" sat in the room
-"Home & kitchen" needs. The box is a `<div>`, not a `<label>`: a label names
-the first control inside it, which became the picker, so a click anywhere in
-the field opened a dropdown. The microphone is drawn only in a browser that
+does. It is the shop's own `Select` (see Buttons), sized to what it shows,
+so "All" no longer sits in the room "Home & kitchen" needs. The box is a
+`<div>`, not a `<label>`: a label names the first control inside it, which
+became the picker, so a click anywhere in the field opened a dropdown. The microphone is drawn only in a browser that
 can listen, and the camera only while `search.photoAvailable` says a model can
 read the photo — so both are on by default without either ever being a button
 that can only apologise. A small "/" says the shortcut where there is a
@@ -667,7 +684,9 @@ about the ceiling.
 
 **Quick View is on every page that draws a card**, opened by the disc and by
 "Choose an option", and mounted once per page beside the other overlays. On
-Home it is fetched on first use rather than with the page.
+Home it is fetched on first use rather than with the page. On a phone its Add
+and Buy stack, and a stacked button is never `flex-1`: a zero basis in a column
+of no fixed height shrank both to the height of their words.
 
 **No hook below a `return`.** `QuickView` renders with no product first and
 called `useBuyNow()` after `if (!product) return null`, so opening the preview

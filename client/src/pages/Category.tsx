@@ -53,6 +53,7 @@ import { ChevronRight, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 const SORT_LABELS: Record<BrowseSort, MessageKey> = {
   relevance: "browse.sort.relevance",
@@ -243,17 +244,17 @@ export default function Category() {
                 </p>
               </div>
 
-              <label className="flex items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2 text-[12px] font-bold text-[#536b8c]">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2 text-[12px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
                 <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
                 {t("browse.sortBy")}
-                <select
+                <Select
                   aria-label={t("browse.sortBy")}
                   value={filters.sort}
                   onChange={event => setFilters({ sort: event.target.value as BrowseSort })}
                   className="bg-transparent font-extrabold text-[#0a285a] outline-none"
                 >
                   {BROWSE_SORTS.map(sort => <option key={sort} value={sort}>{t(SORT_LABELS[sort])}</option>)}
-                </select>
+                </Select>
               </label>
             </div>
 

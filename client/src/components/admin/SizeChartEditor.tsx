@@ -19,6 +19,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { chartProblem, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "@shared/commerce/sizeGuide";
 import { MEASURE_LABEL } from "@/lib/sizeGuideLabels";
+import { Select } from "@/components/ui/Select";
 
 
 /** Ranges are edited as text so a half-typed "9" is not coerced on every key. */
@@ -109,14 +110,14 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
             {axes.length > 1 ? (
               <label className="block">
                 <span className="block text-[13px] font-semibold text-[#0a285a]">{t("sizeGuide.axis")}</span>
-                <select
+                <Select
                   value={draft.axis}
                   disabled={!mayEdit}
                   onChange={event => setDraft({ ...draft, axis: event.target.value })}
                   className="type-body mt-1 h-10 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a]"
                 >
                   {axes.map(axis => <option key={axis} value={axis}>{axis}</option>)}
-                </select>
+                </Select>
               </label>
             ) : null}
             <fieldset>

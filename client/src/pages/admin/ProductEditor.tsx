@@ -38,6 +38,7 @@ import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
 import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { StoreAvatar } from "@/components/admin/StoreAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Select } from "@/components/ui/Select";
 
 const REASONS = STOCK_REASONS;
 
@@ -327,12 +328,12 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 <input dir="rtl" lang="ar" value={draft.titleAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, titleAr: e.target.value })} className={inputClass} />
               </Labelled>
               <Labelled label={t("admin.fieldCategory")} className="sm:col-span-2">
-                <select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={inputClass}>
+                <Select value={draft.categoryId} disabled={!mayEdit} onChange={e => setDraft({ ...draft, categoryId: e.target.value })} className={inputClass}>
                   <option value="">{t("admin.fieldNoCategory")}</option>
                   {(categories.data ?? []).map(category => (
                     <option key={category.id} value={category.id}>{locale === "ar" ? category.nameAr || category.name : category.name}</option>
                   ))}
-                </select>
+                </Select>
               </Labelled>
               <Labelled label={t("admin.fieldDescription")} className="sm:col-span-2">
                 <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} rows={6} className={`${inputClass} h-auto min-h-36 py-2.5 leading-6`} />
@@ -414,7 +415,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                           onChange={e => setImages(images.map((entry, i) => i === index ? { ...entry, altText: e.target.value } : entry))}
                           className={inputClass}
                         />
-                        <select
+                        <Select
                           value={image.kind}
                           disabled={!mayEdit}
                           aria-label={t("admin.mediaKind")}
@@ -423,7 +424,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                         >
                           <option value="image">{t("admin.mediaImage")}</option>
                           <option value="video">{t("admin.mediaVideo")}</option>
-                        </select>
+                        </Select>
                       </div>
                       {image.kind === "video" ? (
                         <>
@@ -507,7 +508,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   built to order and a cable off the shelf leave the same
                   warehouse. */}
               <Labelled label={t("admin.fieldDeliverySpeedProduct")}>
-                <select
+                <Select
                   value={row.deliverySpeed ?? ""}
                   disabled={!mayEdit || setSpeed.isPending}
                   onChange={e => setSpeed.mutate({ productId: row.id, speed: e.target.value === "" ? null : (e.target.value as DeliverySpeed) })}
@@ -517,13 +518,13 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   {DELIVERY_SPEEDS.map(speed => (
                     <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>
                   ))}
-                </select>
+                </Select>
               </Labelled>
               {/* How big it is, and what that means for dispatch (3.4.14). The
                   vehicle is derived rather than a second dropdown: two fields
                   that must agree eventually do not. */}
               <Labelled label={t("admin.fieldSizeClass")} hint={needsVehicle ? t("admin.needsVehicle", { vehicle: t(`vehicle.${needsVehicle}` as MessageKey) }) : undefined}>
-                <select
+                <Select
                   value={row.sizeClass ?? ""}
                   disabled={!mayEdit || setSize.isPending}
                   onChange={e => setSize.mutate({ productId: row.id, sizeClass: e.target.value === "" ? null : (e.target.value as SizeClass) })}
@@ -533,10 +534,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   {SIZE_CLASSES.map(size => (
                     <option key={size} value={size}>{t(`size.${size}` as MessageKey)}</option>
                   ))}
-                </select>
+                </Select>
               </Labelled>
               <Labelled label={t("admin.offersProductOpen")} className="sm:col-span-2">
-                <select
+                <Select
                   value={row.acceptsOffers === null || row.acceptsOffers === undefined ? "" : String(row.acceptsOffers)}
                   disabled={!mayEdit || setOffers.isPending}
                   onChange={e => setOffers.mutate({
@@ -548,7 +549,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   <option value="">{t("admin.offersProductInherit")}</option>
                   <option value="true">{t("admin.offersProductYes")}</option>
                   <option value="false">{t("admin.offersProductNo")}</option>
-                </select>
+                </Select>
               </Labelled>
             </div>
 
@@ -568,7 +569,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                       hint={spec.unit ?? undefined}
                     >
                       {spec.options ? (
-                        <select
+                        <Select
                           value={specs[spec.key] ?? ""}
                           disabled={!mayEdit}
                           onChange={e => setSpecs(map => ({ ...map, [spec.key]: e.target.value }))}
@@ -576,7 +577,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                         >
                           <option value="">{t("admin.sizeUnset")}</option>
                           {spec.options.map(option => <option key={option} value={option}>{option}</option>)}
-                        </select>
+                        </Select>
                       ) : (
                         <input
                           dir="auto"
@@ -660,7 +661,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                         onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))}
                         className={inputClass}
                       />
-                      <select
+                      <Select
                         value={addon.kind}
                         disabled={!mayEdit}
                         aria-label={t("admin.addonKind")}
@@ -672,7 +673,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                             {t(kind === "installation" ? "product.addonInstallation" : kind === "warranty" ? "product.addonWarranty" : "product.addonOther")}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       <input
                         dir="ltr"
                         inputMode="decimal"
@@ -734,14 +735,14 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                   <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-[#eef1f5] pt-4">
                     <label className="block min-w-0 flex-1 basis-60">
                       <span className="block text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.moveTo")}</span>
-                      <select value={moveTo} onChange={event => setMoveTo(event.target.value)} className={`${inputClass} mt-1.5`}>
+                      <Select value={moveTo} onChange={event => setMoveTo(event.target.value)} className={`${inputClass} mt-1.5`}>
                         <option value="">—</option>
                         {others.map(store => (
                           <option key={store.id} value={store.id}>
                             {store.name}{store.status !== "approved" ? ` — ${t(`vendorStatus.${store.status}` as MessageKey)}` : ""}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <button type="button" onClick={() => setConfirmMove(true)} disabled={!target || move.isPending} className={buttonClass.secondary}>
                       <ArrowLeftRight className="size-4" aria-hidden />{t("admin.moveButton")}
@@ -944,14 +945,14 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       */}
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <Labelled label={t("admin.variantUnit")} hint={t("admin.variantUnitHint")}>
-          <select
+          <Select
             value={values.unit}
             disabled={!mayEdit}
             onChange={e => setValues({ ...values, unit: e.target.value as SellUnit, stepAmount: e.target.value === "each" ? "1" : values.stepAmount })}
             className={inputClass}
           >
             {SELL_UNITS.map(unit => <option key={unit} value={unit}>{t(`unit.${unit}` as MessageKey)}</option>)}
-          </select>
+          </Select>
         </Labelled>
         <Labelled label={t("admin.variantStep")} hint={t("admin.variantStepHint")}>
           <input
@@ -1043,9 +1044,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
             </div>
           </div>
           <Labelled label={t("admin.reason")}>
-            <select value={reason} onChange={e => setReason(e.target.value as (typeof REASONS)[number])} className={inputClass}>
+            <Select value={reason} onChange={e => setReason(e.target.value as (typeof REASONS)[number])} className={inputClass}>
               {REASONS.map(entry => <option key={entry} value={entry}>{t(`reason.${entry}` as MessageKey)}</option>)}
-            </select>
+            </Select>
           </Labelled>
           <button
             onClick={() => onAdjust(delta, reason)}

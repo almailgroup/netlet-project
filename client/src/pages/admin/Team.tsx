@@ -23,6 +23,7 @@ import { privatePageMeta } from "@shared/seo";
 import { can, VENDOR_ROLES, type Actor, type VendorRole } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Link } from "wouter";
+import { Select } from "@/components/ui/Select";
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
   staff: "admin.roleStaff",
@@ -104,7 +105,7 @@ function Team({ actor }: { actor: Actor }) {
                     </div>
                     {mayManage ? (
                       <div className="flex items-center gap-2">
-                        <select
+                        <Select
                           value={member.role}
                           onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
                           aria-label={t("admin.memberRole")}
@@ -112,7 +113,7 @@ function Team({ actor }: { actor: Actor }) {
                           className={`${fieldClass} h-9 w-auto text-[13px]`}
                         >
                           {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
-                        </select>
+                        </Select>
                         <button
                           type="button"
                           onClick={() => setRemoving({ userId: member.userId, name: member.name || member.email })}

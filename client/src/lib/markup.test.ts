@@ -32,6 +32,14 @@
  * phone. The rule is that the attribute is present, not what it says: the
  * picture of the product on its own page should be `eager`, and the answer is
  * a judgement about the page rather than something a test can make.
+ *
+ * --- 3. There is one dropdown, and it is the shop's.
+ *
+ * A native `<select>` opens the operating system's list — grey, square, in
+ * the system font — under fields that are otherwise NetLet's own, and the
+ * owner asked for every one of them to be designed. `components/ui/Select.tsx`
+ * takes the same `<option>` children and the same `onChange`, so a new one
+ * written the old way is a one-letter fix; this is what notices it.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -169,5 +177,14 @@ describe("image loading", () => {
     // A line comment goes; a URL that merely looks like one does not.
     expect(withoutComments(`  // <img src="x">\nconst u = "https://a.test/b";`))
       .toContain("https://a.test/b");
+  });
+});
+
+describe("dropdowns", () => {
+  it("draws every select with the shop's own", () => {
+    const native = clientSources()
+      .filter(([, source]) => /<select[\s>]/.test(source))
+      .map(([file]) => file);
+    expect(native).toEqual([]);
   });
 });

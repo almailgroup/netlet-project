@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
-import { ArrowRight, Camera, ChevronDown, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
+import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -13,6 +13,7 @@ import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";
 import { clearRecentSearches, readRecentSearches, rememberSearch } from "@/lib/recentSearches";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { Select } from "@/components/ui/Select";
 
 /*
  * The voice and photo sheets are fetched when a shop has switched them on, or
@@ -240,27 +241,23 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           search there.
         */}
         {/*
-          The picker is as wide as what it says. A native <select> is as wide
-          as its longest option, so "All" sat in the room "Home & kitchen"
-          needs; the visible label is drawn beside the select instead, and
-          the select lies over it, transparent, so it is still the control a
-          press, a keyboard and a screen reader reach.
+          The picker is as wide as what it says: the shop's own dropdown sizes
+          its button to the choice, where a native <select> was as wide as its
+          longest option and had to be laid, transparent, over a drawn label.
         */}
-        <span className="relative hidden h-8 shrink-0 items-center gap-1.5 rounded-full border-e border-[#d5dfeb] pe-3 ps-3 text-[13px] font-semibold text-[#0a285a] hover:bg-[#f3f6fa] has-[select:focus-visible]:outline has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-[#f2683a] sm:flex">
-          <span aria-hidden className="max-w-[140px] truncate">{scoped ? t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) : t("search.scopeAll")}</span>
-          <ChevronDown className="size-3.5 shrink-0 text-[#536b8c]" aria-hidden />
-          <select
+        <span className="hidden shrink-0 sm:flex">
+          <Select
             value={scope}
             onChange={(event) => { setScope(event.target.value); setActiveIndex(-1); field.current?.focus(); }}
             onBlur={leave}
             aria-label={t("search.scope")}
             title={t("search.scope")}
-            className="absolute inset-0 size-full cursor-pointer appearance-none opacity-0"
+            className="h-8 max-w-[180px] rounded-full border-e border-[#d5dfeb] px-3 text-[13px] font-semibold text-[#0a285a] hover:bg-[#f3f6fa]"
           >
             {categoryRail.map(entry => (
               <option key={entry.query} value={entry.query}>{entry.query === ALL_DEPARTMENTS.query ? t("search.scopeAll") : t(entry.key)}</option>
             ))}
-          </select>
+          </Select>
         </span>
         <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => { setFocused(true); setRecent(readRecentSearches()); }} onBlur={leave} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} aria-keyshortcuts="/" role="combobox" aria-autocomplete="list" aria-expanded={showPanel && optionCount > 0} aria-controls={showPanel && optionCount > 0 ? "netlet-search-suggestions" : undefined} className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={scoped ? t("search.placeholderIn", { department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
         {/* The shortcut, said where it applies. Only on a wide screen, which is

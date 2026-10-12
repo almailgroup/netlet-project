@@ -48,6 +48,7 @@ import { ArrowLeft, Check, Circle, ImageOff, LoaderCircle, Star, X } from "lucid
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminNewProduct() {
   usePageMeta(privatePageMeta("New product"));
@@ -252,13 +253,13 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   offered once there are two is one nobody knows they made. */}
               {actor.kind === "admin" && vendorRows.length > 0 ? (
                 <Field label={t("admin.newStore")} hint={t("admin.newStoreHint")} className="sm:col-span-2">
-                  <select value={vendorId ?? ""} onChange={event => setChosenVendor(event.target.value)} className={fieldClass}>
+                  <Select value={vendorId ?? ""} onChange={event => setChosenVendor(event.target.value)} className={fieldClass}>
                     {vendorRows.map(vendor => (
                       <option key={vendor.id} value={vendor.id}>
                         {vendor.name}{vendor.status !== "approved" ? ` — ${t(`vendorStatus.${vendor.status}` as MessageKey)}` : ""}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </Field>
               ) : null}
               <Field label={t("admin.newTitle")} hint={t("admin.newTitleHint")} error={shown("title") && t(shown("title")!)} className="sm:col-span-2">
@@ -278,12 +279,12 @@ function NewProductForm({ actor }: { actor: Actor }) {
                 <input id={idFor("titleAr")} dir="rtl" lang="ar" value={draft.titleAr} onChange={event => edit("titleAr")(event.target.value)} onBlur={leave("titleAr")} autoComplete="off" className={fieldClass} />
               </Field>
               <Field label={t("admin.fieldCategory")}>
-                <select value={categoryId} onChange={event => setCategoryId(event.target.value)} className={fieldClass}>
+                <Select value={categoryId} onChange={event => setCategoryId(event.target.value)} className={fieldClass}>
                   <option value="">{t("admin.fieldNoCategory")}</option>
                   {(categories.data ?? []).map(category => (
                     <option key={category.id} value={category.id}>{categoryName(category)}</option>
                   ))}
-                </select>
+                </Select>
               </Field>
             </div>
           </Card>

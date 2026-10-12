@@ -19,6 +19,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { SUPPORT_TOPICS, MAX_SUPPORT_MESSAGE, messageProblem, phoneLink, whatsappLink, type SupportStatus, type SupportTopic } from "@shared/commerce/support";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { Select } from "@/components/ui/Select";
 
 export const TOPIC_LABEL: Record<SupportTopic, MessageKey> = {
   order: "support.topicOrder",
@@ -72,16 +73,16 @@ export function AccountSupport() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="text-[12px] font-bold text-[#536b8c]">
             {t("support.about")}
-            <select aria-label={t("support.about")} value={topic} onChange={event => setTopic(event.target.value as SupportTopic)} className={field}>
+            <Select aria-label={t("support.about")} value={topic} onChange={event => setTopic(event.target.value as SupportTopic)} className={field}>
               {SUPPORT_TOPICS.map(option => <option key={option} value={option}>{t(TOPIC_LABEL[option])}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="text-[12px] font-bold text-[#536b8c]">
             {t("support.whichOrder")}
-            <select aria-label={t("support.whichOrder")} value={reference} onChange={event => setReference(event.target.value)} className={field}>
+            <Select aria-label={t("support.whichOrder")} value={reference} onChange={event => setReference(event.target.value)} className={field}>
               <option value="">{t("support.noOrder")}</option>
               {(orders.data?.rows ?? []).map(order => <option key={order.id} value={order.reference}>{order.reference}</option>)}
-            </select>
+            </Select>
           </label>
           <label className="text-[12px] font-bold text-[#536b8c] sm:col-span-2">
             {t("support.message")}

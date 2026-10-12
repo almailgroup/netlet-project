@@ -32,6 +32,7 @@ import { PinPicker } from "@/components/map/PinPicker";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DiscButton } from "@/components/ui/DiscButton";
+import { Select } from "@/components/ui/Select";
 
 const field =
   "glass-field w-full rounded-xl px-4 py-3 text-[14px] outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30";
@@ -221,7 +222,7 @@ export function AddressBook() {
                   otherwise be called "Governorate—Capital (Al Asimah)Hawalli…".
                   The same defect the portal's own selects already carry a
                   comment about. */}
-              <select
+              <Select
                 aria-label={t("address.governorate")}
                 value={draft.governorate ?? ""}
                 onChange={event => setDraft(d => ({ ...d, governorate: event.target.value }))}
@@ -233,7 +234,7 @@ export function AddressBook() {
                     {isArabic ? zone.labelAr : zone.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="text-[12px] font-bold text-[#536b8c] sm:col-span-2">
               {t("address.line")}

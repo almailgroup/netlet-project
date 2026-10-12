@@ -32,6 +32,7 @@ import type { Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
 import type { AppRouter } from "../../../../server/routers";
 import type { inferRouterOutputs } from "@trpc/server";
+import { Select } from "@/components/ui/Select";
 
 type Booking = inferRouterOutputs<AppRouter>["ads"]["list"]["rows"][number];
 
@@ -154,10 +155,10 @@ function BookForm() {
             <input type="search" dir="auto" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} className={fieldClass} />
           </Field>
           <Field label={t("ads.product")} className="sm:col-span-2">
-            <select value={productId ?? ""} onChange={event => setProductId(event.target.value ? Number(event.target.value) : null)} className={fieldClass}>
+            <Select value={productId ?? ""} onChange={event => setProductId(event.target.value ? Number(event.target.value) : null)} className={fieldClass}>
               <option value="">—</option>
               {(products.data?.rows ?? []).map(product => <option key={product.id} value={product.id}>{product.title}</option>)}
-            </select>
+            </Select>
           </Field>
           <fieldset className="sm:col-span-2">
             <legend className="text-[13px] font-semibold text-[#0a285a]">{t("ads.place")}</legend>

@@ -28,6 +28,7 @@ import { ArrowLeft, LoaderCircle, Store } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminVendorNew() {
   usePageMeta(privatePageMeta("New store"));
@@ -176,10 +177,10 @@ function NewStore() {
               <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={fieldClass} />
             </Field>
             <Field label={t("admin.governorate")}>
-              <select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
+              <Select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
                 <option value="">{t("admin.notSet")}</option>
                 {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={t("admin.addressLine")}>
               <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={fieldClass} />
@@ -205,9 +206,9 @@ function NewStore() {
               <input dir="auto" value={draft.ownerName} onChange={e => set("ownerName", e.target.value)} className={fieldClass} />
             </Field>
             <Field label={t("admin.ownerRole")}>
-              <select value={draft.ownerRole} onChange={e => set("ownerRole", e.target.value as VendorRole)} className={fieldClass}>
+              <Select value={draft.ownerRole} onChange={e => set("ownerRole", e.target.value as VendorRole)} className={fieldClass}>
                 {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label={t("admin.ownerEmail")}>
               <input dir="ltr" type="email" value={draft.ownerEmail} onChange={e => set("ownerEmail", e.target.value)} className={fieldClass} />
@@ -221,9 +222,9 @@ function NewStore() {
         <Card step={3} title={t("admin.commercialTerms")}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("admin.vendorStatus")} hint={t("admin.statusHint")}>
-              <select value={draft.status} onChange={e => set("status", e.target.value as Draft["status"])} className={fieldClass}>
+              <Select value={draft.status} onChange={e => set("status", e.target.value as Draft["status"])} className={fieldClass}>
                 {STATUSES.map(status => <option key={status} value={status}>{t(`vendorStatus.${status}` as MessageKey)}</option>)}
-              </select>
+              </Select>
             </Field>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
               <input

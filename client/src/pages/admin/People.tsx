@@ -27,6 +27,7 @@ import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
 import { Search, ShieldCheck, ShieldOff, UserMinus, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 export default function AdminPeople() {
   usePageMeta(privatePageMeta("People"));
@@ -277,15 +278,15 @@ function AddToVendor({ vendors, pending, onAdd }: {
             <input dir="ltr" type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder={t("admin.emailPlaceholder")} className={fieldClass} />
           </Field>
           <Field label={t("admin.newStore")}>
-            <select value={vendorId} onChange={event => setVendorId(event.target.value)} className={fieldClass}>
+            <Select value={vendorId} onChange={event => setVendorId(event.target.value)} className={fieldClass}>
               <option value="" disabled>{t("admin.chooseStore")}</option>
               {vendors.map(vendor => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}
-            </select>
+            </Select>
           </Field>
           <Field label={t("admin.memberRole")}>
-            <select value={role} onChange={event => setRole(event.target.value as VendorRole)} className={fieldClass}>
+            <Select value={role} onChange={event => setRole(event.target.value as VendorRole)} className={fieldClass}>
               {VENDOR_ROLES.map(entry => <option key={entry} value={entry}>{t(ROLE_LABEL[entry])}</option>)}
-            </select>
+            </Select>
           </Field>
         </div>
       </Card>

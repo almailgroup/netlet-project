@@ -19,6 +19,7 @@
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { MapPin } from "lucide-react";
+import { Select } from "@/components/ui/Select";
 
 export function ItemDestinations() {
   const { cart, setDestination, loading } = useCart();
@@ -65,7 +66,7 @@ export function ItemDestinations() {
                 a <label> containing one pulls every option's text into the
                 accessible name, so a screen reader reads the whole list as the
                 field's name. */}
-            <select
+            <Select
               aria-label={t("address.forLine", { name: item.productTitle })}
               disabled={loading}
               value={item.destination?.id ?? ""}
@@ -80,7 +81,7 @@ export function ItemDestinations() {
                   {address.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </li>
         ))}
       </ul>

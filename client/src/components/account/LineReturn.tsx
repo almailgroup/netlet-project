@@ -24,6 +24,7 @@ import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { isOpenReturn, MAX_RETURN_NOTE, RETURN_REASONS, type ReturnKind, type ReturnReason } from "@shared/commerce/returnRequests";
 import type { AppRouter } from "../../../../server/routers";
 import type { inferRouterOutputs } from "@trpc/server";
+import { Select } from "@/components/ui/Select";
 
 type Detail = NonNullable<inferRouterOutputs<AppRouter>["orders"]["get"]>;
 type Line = Detail["lines"][number];
@@ -153,13 +154,13 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
       </fieldset>
       <label className="mt-3 block">
         <span className="block text-[11px] font-extrabold ink-muted">{t("returns.why")}</span>
-        <select
+        <Select
           value={reason}
           onChange={event => setReason(event.target.value as ReturnReason)}
           className="mt-1 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a]"
         >
           {RETURN_REASONS.map(option => <option key={option} value={option}>{t(REASON_LABEL[option])}</option>)}
-        </select>
+        </Select>
       </label>
       <label className="mt-3 block">
         <span className="block text-[11px] font-extrabold ink-muted">{t(reason === "other" ? "returns.noteRequired" : "returns.noteOptional")}</span>

@@ -20,6 +20,7 @@ import {
 import { SettingPanel } from "@/components/ui/SettingPanel";
 import { Bell, Globe, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { Select } from "@/components/ui/Select";
 
 export function AccountPreferences() {
   const { t, isArabic, locale } = useTranslation();
@@ -67,7 +68,7 @@ export function AccountPreferences() {
           <span className="text-[11px] font-extrabold text-[#0a285a]">{t("delivery.governorate")}</span>
           {/* The wrapping <label> would otherwise give this a name made of
               every governorate in the list. */}
-          <select
+          <Select
             aria-label={t("delivery.governorate")}
             value={deliveryZoneId ?? ""}
             onChange={event => setDeliveryZoneId(event.target.value)}
@@ -77,7 +78,7 @@ export function AccountPreferences() {
             {kuwaitDeliveryZones.map(zone => (
               <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>
             ))}
-          </select>
+          </Select>
         </label>
       </SettingPanel>
 
