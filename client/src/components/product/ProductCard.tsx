@@ -332,7 +332,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   const image = product.images[0];
 
   return (
-    <article className={`product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white ${compact ? "p-2" : "p-2.5"}`}>
+    <article className={`product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20 ${compact ? "p-2" : "p-2.5"}`}>
       <div className="relative">
         {/*
           The photo and the title both open the product, and only the title is
@@ -342,7 +342,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         */}
         <Link href={href} tabIndex={-1} aria-hidden="true" className="block overflow-hidden rounded-xl bg-[#f4f6f9]">
           {image
-            ? <Thumb src={image.url} alt="" className="aspect-square w-full object-cover" />
+            ? <Thumb src={image.url} alt="" className="product-card-photo aspect-square w-full object-cover" />
             : <div className="grid aspect-square place-items-center px-3 text-center text-[12px] font-semibold ink-muted">{t("product.imageProcessing")}</div>}
         </Link>
 

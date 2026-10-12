@@ -578,6 +578,16 @@ The owner asked for the pair back, each showing a minus and a plus on hover,
 and what made it moving was the shift, not the pair — so the pair came back
 without it.
 
+**A hovered card rises three pixels**, its shadow deepens, its edge darkens
+and the photograph eases 5% closer inside its frame. Transform only, so nothing
+else in the grid moves. The lift and zoom are behind `(hover: hover) and
+(pointer: fine)` and `prefers-reduced-motion: no-preference` — the global motion
+guard only shortens transitions, which would still snap a card up and down for
+somebody who asked for less motion, and a phone never hovers. An invisible
+`::after` reaches below the card by the height it rises, so a pointer resting on
+its bottom edge keeps the hover instead of setting it bouncing (measured: the
+transform holds still with the pointer one pixel from the edge).
+
 **One quantity, drawn in both.** Before the item is in the bag it is the card's
 own pick; once it is, it is the bag's line. Choose three on Add and Buy now
 reads "Buy 3 now"; the bag's stepper and Buy now's minus change the same line;

@@ -179,12 +179,50 @@
     background-size: 5px 5px;
     mix-blend-mode: multiply;
   }
-  /* A card answers a hover with its edge, not by jumping 5px toward you. */
+  /*
+   * A card answers a pointer: it rises a little, its shadow deepens and its
+   * edge darkens (the border is a utility on the card, so that tint is
+   * `hover:border-…` there), and the photograph eases slightly closer inside
+   * its frame. Transform only — nothing in the grid moves, the next card stays
+   * where it was. Three pixels and a slow ease, because a card that leaps at
+   * the cursor is the template look this shop moved away from.
+   *
+   * The movement is for a mouse, and only for somebody whose system has not
+   * asked for less motion: the global guard above shortens transitions but
+   * would still snap a card up and down, so the lift and the zoom sit behind
+   * `prefers-reduced-motion: no-preference`. A phone never hovers, and a tap
+   * should not leave a card stuck in mid-air.
+   *
+   * The `::after` reaches below the card by the height it rises, so a pointer
+   * resting on the bottom edge does not lose the card as it lifts away and set
+   * it bouncing.
+   */
   .product-card {
-    transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    transition:
+      border-color 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out),
+      transform 220ms var(--ease-out);
   }
   .product-card:hover {
-    box-shadow: 0 6px 18px rgba(10, 40, 90, 0.08);
+    box-shadow: 0 14px 30px -12px rgba(10, 40, 90, 0.22);
+  }
+  .product-card-photo {
+    transition: transform 500ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .product-card::after {
+      content: "";
+      position: absolute;
+      inset-inline: 0;
+      top: 100%;
+      height: 4px;
+    }
+    .product-card:hover {
+      transform: translateY(-3px);
+    }
+    .product-card:hover .product-card-photo {
+      transform: scale(1.05);
+    }
   }
   .pressable {
     transition:
