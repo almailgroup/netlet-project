@@ -28,6 +28,8 @@ const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
+const Cart = lazy(() => import("@/pages/Cart"));
+const Returns = lazy(() => import("@/pages/Returns"));
 const GiftList = lazy(() => import("@/pages/GiftList"));
 const Invoice = lazy(() => import("@/pages/Invoice"));
 const InvoiceVerify = lazy(() => import("@/pages/InvoiceVerify"));
@@ -254,6 +256,8 @@ function Router() {
         <Route path="/account" component={Account} />
         <Route path="/account/:section" component={Account} />
         <Route path="/saved" component={Saved} />
+        <Route path="/cart" component={Cart} />
+        <Route path="/returns" component={Returns} />
         <Route path="/gifts/:token" component={GiftList} />
         <Route path="/gifts" component={GiftList} />
         <Route path="/invoices/verify/:number" component={InvoiceVerify} />

@@ -16,6 +16,7 @@ import { Globe } from "lucide-react";
 import { Link } from "wouter";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { footerLogoImage } from "@/lib/brandAssets";
 import { categorySlug } from "@shared/commerce/browse";
 import { DEPARTMENTS } from "@shared/commerce/departments";
@@ -32,7 +33,7 @@ const SHOPPING: FooterLink[] = [
 
 const SERVICE: FooterLink[] = [
   { key: "footer.yourOrders", href: "/account/orders" },
-  { key: "footer.returns", href: "/account/orders" },
+  { key: "footer.returns", href: "/returns" },
   { key: "footer.contact", href: "/account/help" },
 ];
 
@@ -73,7 +74,10 @@ function Group({ title, links }: { title: MessageKey; links: FooterLink[] }) {
 export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall" }) {
   const { t, isArabic } = useTranslation();
   const { toggleLocale } = useCustomer();
-  const departments: FooterLink[] = DEPARTMENTS.map(department => ({ key: department.label, href: `/category/${categorySlug(department.name)}` }));
+  /* The navigation's rule: a department with nothing on sale is not linked. */
+  const inStock = useDepartmentsInStock();
+  const departments: FooterLink[] = DEPARTMENTS.filter(department => inStock(department.name))
+    .map(department => ({ key: department.label, href: `/category/${categorySlug(department.name)}` }));
   return (
     <footer className={`mt-auto bg-[#0a285a] pt-10 text-white sm:pt-12 lg:pb-8 ${clearance === "tall" ? "pb-44" : "pb-24"}`}>
       <div className="container">

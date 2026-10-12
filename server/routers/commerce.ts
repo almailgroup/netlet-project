@@ -10,6 +10,7 @@
  * account — NetLet asks for one at checkout, not at the door.
  */
 
+import { listBestsellers, listBrands } from "../homeShelves.js";
 import { z } from "zod";
 import { rowId, rowIdText } from "../_core/schemas.js";
 import {
@@ -78,6 +79,12 @@ export const commerceRouter = router({
   }),
   /** Products on sale per department, so the navigation can leave out an empty one. */
   departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
+  /** The home page's Bestsellers: units sold over the last ninety days. */
+  bestsellers: publicProcedure
+    .input(z.object({ locale: localeSchema }).optional())
+    .query(({ input }) => listBestsellers(input?.locale ?? "en")),
+  /** The home page's Shop by brand: the Brand rows of the live catalogue, counted. */
+  brands: publicProcedure.query(() => listBrands()),
   collections: router({
     list: publicProcedure
       .input(z.object({ first: z.number().int().min(1).max(50).optional(), locale: localeSchema }).optional())

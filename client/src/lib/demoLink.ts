@@ -185,6 +185,18 @@ function resolve(path: string, rawInput: unknown): unknown {
       }
       return counts;
     }
+    /* The invented catalogue has sold nothing, so the demo draws no
+       Bestsellers shelf rather than inventing a ranking. */
+    case "commerce.bestsellers":
+      return [];
+    case "commerce.brands": {
+      const counts = new Map<string, number>();
+      for (const product of demoCatalog) {
+        const brand = product.attributes.find(attribute => attribute.key === "brand")?.value.trim();
+        if (brand) counts.set(brand, (counts.get(brand) ?? 0) + 1);
+      }
+      return Array.from(counts, ([name, count]) => ({ name, count }));
+    }
     case "commerce.collections.list":
       return [];
     case "commerce.collections.byHandle":

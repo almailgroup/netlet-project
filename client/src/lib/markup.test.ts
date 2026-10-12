@@ -159,6 +159,41 @@ function imageTags(source: string): string[] {
   return tags;
 }
 
+/**
+ * The element whose only child is a merchant's product title, and whether it
+ * takes the title's own direction. A title is merchant text in whatever
+ * language was typed; inside the Arabic page an English one took the page's
+ * direction, so a clamped or truncated title put its "…" at the wrong end —
+ * "…EXYNOS 2600, 12GB RAM".
+ */
+const TITLE = /<([A-Za-z][\w.]*)((?:[^<>]|=>)*)>\s*\{(product\.title|item\.product\.title|lineTitle\([^)]*\)|line\.productTitle)\}\s*<\//g;
+
+function titlesWithoutDirection(source: string): string[] {
+  const found: string[] = [];
+  for (const match of source.matchAll(TITLE)) {
+    const [, tag, attributes, expression] = match;
+    if (tag === "bdi" || /\bdir="auto"/.test(attributes) || /\bdir=\{/.test(attributes)) continue;
+    /* Not drawn as text: an option of the shop's own dropdown is named by it. */
+    if (tag === "option") continue;
+    found.push(`<${tag}>{${expression}}`);
+  }
+  return found;
+}
+
+describe("product titles", () => {
+  it("take their own direction wherever they are drawn", () => {
+    const offenders = clientSources().flatMap(([file, source]) =>
+      titlesWithoutDirection(source).map(entry => `${file}: ${entry}`));
+    expect(offenders).toEqual([]);
+  });
+
+  it("reads a title on a tag with an arrow function among its attributes", () => {
+    expect(titlesWithoutDirection(`<Link href={href} onClick={() => go()} className="x">{product.title}</Link>`)).toEqual(["<Link>{product.title}"]);
+    expect(titlesWithoutDirection(`<p dir="auto" className="x">{product.title}</p>`)).toEqual([]);
+    expect(titlesWithoutDirection(`<bdi>{product.title}</bdi>`)).toEqual([]);
+  });
+});
+
 describe("image loading", () => {
   it("gives every image an explicit loading strategy", () => {
     const offenders = clientSources().flatMap(([file, source]) =>

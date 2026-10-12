@@ -336,6 +336,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
          line rather than being looked up again per group. */
       vendorId: vendors.id,
       vendorName: vendors.name,
+      vendorNameAr: vendors.nameAr,
       deliveryFlat: vendors.deliveryFlat,
       deliveryFreeOver: vendors.deliveryFreeOver,
       /* Cash on delivery is decided per seller (3.2.2). */
@@ -520,6 +521,9 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       perVendor: quote.perVendor.map(row => ({
         vendorId: row.vendorId,
         vendorName: row.vendorName,
+        /* Both names, for the reason a line carries both titles: the bag has
+           no language, and the page picks. */
+        vendorNameAr: rows.find(line => line.vendorId === row.vendorId)?.vendorNameAr?.trim() || null,
         destinationLabel: row.destinationLabel ?? null,
         goods: money(row.goods),
         fee: money(row.fee),

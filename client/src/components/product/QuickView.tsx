@@ -120,7 +120,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
 
           <div className="min-w-0">
             {product.vendor ? <p className="type-label text-[12px] font-bold ink-muted">{product.vendor}</p> : null}
-            <h2 className="type-product mt-1 text-lg font-extrabold tracking-[-.025em] text-[#0a285a]">{product.title}</h2>
+            <h2 dir="auto" className="type-product mt-1 text-lg font-extrabold tracking-[-.025em] text-[#0a285a]">{product.title}</h2>
 
             {rating ? (
               <div className="mt-2 flex items-center gap-1.5 text-[13px]">

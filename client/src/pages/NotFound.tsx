@@ -14,7 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";
-import { ArrowRight, Compass, Search } from "lucide-react";
+import { ArrowRight, Compass, Heart } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function NotFound() {
@@ -48,7 +48,7 @@ export default function NotFound() {
               {t("notFound.back")} <ArrowRight className="size-4 rtl:-scale-x-100" />
             </button>
             <button onClick={() => navigate("/saved")} className="glass pressable inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-xs font-extrabold">
-              <Search className="size-4" />{t("notFound.saved")}
+              <Heart className="size-4" aria-hidden />{t("notFound.saved")}
             </button>
           </div>
         </div>
@@ -74,7 +74,7 @@ export default function NotFound() {
                       />
                     ) : <div className="aspect-square" />}
                   </div>
-                  <h3 className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:text-[#a44a2b]">
+                  <h3 dir="auto" className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:text-[#a44a2b]">
                     {product.title}
                   </h3>
                   <p className="mt-1 text-sm font-extrabold tracking-[-.04em]">{money(product.priceRange.min)}</p>

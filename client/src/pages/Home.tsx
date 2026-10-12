@@ -1,6 +1,8 @@
 /**
- * The home page: the departments as cards, a Deals shelf, the new arrivals as
- * a grid, what shopping with NetLet involves, and the footer.
+ * The home page: the departments as cards, the paid placements, Deals,
+ * Bestsellers, the shopper's own picks, the brands, the new arrivals as a
+ * grid, what shopping with NetLet involves, and the footer. Every shelf after
+ * the departments is drawn only when it has something true to show.
  */
 import { useCatalog } from "@/hooks/useCatalog";
 import { editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
@@ -9,7 +11,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { Product } from "@shared/commerce/types";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   ChevronLeft,
@@ -22,6 +24,8 @@ import {
 import { ProductCard } from "@/components/product/ProductCard";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
+import { BrandShelf } from "@/components/home/BrandShelf";
+import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { Link, useLocation } from "wouter";
 
 /* Fetched on the first preview, not with the page: most visits open none. */
@@ -49,7 +53,8 @@ type RailProps = {
   saved: string[];
   onSave: (id: string, title: string) => void;
   onQuickView: (product: Product) => void;
-  onViewAll: () => void;
+  /** Absent where the shelf is the whole list — Bestsellers has no page of its own. */
+  onViewAll?: () => void;
 };
 
 /**
@@ -58,16 +63,18 @@ type RailProps = {
  * description under it and an uppercase pill, which is three ways of saying
  * the title.
  */
-function ShelfHeading({ id, title, onViewAll, children }: { id: string; title: string; onViewAll: () => void; children?: React.ReactNode }) {
+function ShelfHeading({ id, title, onViewAll, children }: { id: string; title: string; onViewAll?: () => void; children?: React.ReactNode }) {
   const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between gap-4">
       <h2 id={`${id}-title`} className="text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{title}</h2>
       <div className="flex items-center gap-2">
         {children}
-        <button onClick={onViewAll} className="pressable inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm font-bold ink-accent hover:underline">
-          {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
-        </button>
+        {onViewAll ? (
+          <button onClick={onViewAll} className="pressable inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm font-bold ink-accent hover:underline">
+            {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -198,13 +205,14 @@ export default function Home() {
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [search, setSearch] = useState("");
   const { savedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError } = useCatalog(24);
+  const bestsellers = trpc.commerce.bestsellers.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
-  const shelves = useMemo(() => shelvesFor(catalog), [catalog]);
+  const shelves = useMemo(() => shelvesFor(catalog, bestsellers.data ?? []), [catalog, bestsellers.data]);
   const articlesOn = useFeature("articles");
   const appBannerOn = useFeature("appBanner");
 
@@ -240,13 +248,28 @@ export default function Home() {
         first draws its skeleton, so the page does not jump. */}
     {homeRailDefinitions.map((rail, index) => {
       const products = shelves[rail.id];
-      if (!catalogLoading && !catalogError && products.length === 0) return null;
-      if ((catalogLoading || catalogError) && index > 0) return null;
-      const viewAll = () => navigate(rail.select === "offers" ? "/category/all?offer=1&sort=discount" : "/category/all?sort=newest");
+      const viewAll = rail.select === "offers" ? () => navigate("/category/all?offer=1&sort=discount")
+        : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
+        : undefined;
       const shared = { id: rail.id, title: rail.title, products, catalogLoading, catalogError: Boolean(catalogError), saved, onSave: toggleSaved, onQuickView: setQuickProduct, onViewAll: viewAll };
+      /* What is about this shopper, and the brands, sit between what sold
+         and what is new — drawn only when each has something true to show. */
+      const before = rail.id === "newest" ? (
+        <>
+          <RecommendedRail quiet saved={saved} onSave={toggleSaved} onQuickView={setQuickProduct} />
+          <BrandShelf />
+        </>
+      ) : null;
+      if ((catalogLoading || catalogError) && index > 0) return <Fragment key={rail.id}>{before}</Fragment>;
+      if (!catalogLoading && !catalogError && products.length === 0) return <Fragment key={rail.id}>{before}</Fragment>;
       /* A shelf scrolls sideways; the new arrivals are a grid, so the page
          ends on products laid out to browse rather than on a second strip. */
-      return rail.layout === "grid" ? <ProductGrid key={rail.id} {...shared} /> : <ProductRail key={rail.id} {...shared} />;
+      return (
+        <Fragment key={rail.id}>
+          {before}
+          {rail.layout === "grid" ? <ProductGrid {...shared} /> : <ProductRail {...shared} />}
+        </Fragment>
+      );
     })}
 
     {articlesOn ? (

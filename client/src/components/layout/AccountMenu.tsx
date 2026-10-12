@@ -6,12 +6,16 @@
  * one more step between them and the bag they were filling.
  *
  * Signed in it carries the shopper's first name and opens a short menu: where
- * their orders are, their messages, the account page, and — only for somebody
- * who also runs a store or the shop — the portal. Those are the places people
- * open an account control to reach; everything else is on the account page.
- * **Signing out is deliberately not here.** It lives on `/account` behind its
- * confirmation, so the most destructive thing the bar can do never sits one
- * click from the friendliest label on it.
+ * their orders are, their messages, their wishlists and addresses, the account
+ * page, the portal for somebody who also runs a store or the shop, and signing
+ * out. Those are the places people open an account control to reach;
+ * everything else is on the account page.
+ *
+ * **Signing out is here again, and it still asks.** It left the bar because
+ * Home's header signed out on one click, under the friendliest label on it. A
+ * website review asked for it back in the menu, where every shop keeps it; it
+ * is the last item, apart from the rest, and opens the same confirmation the
+ * account page uses, with Cancel focused — so it is never one press.
  *
  * It is the WAI-ARIA menu button: `aria-haspopup`, `aria-expanded`, focus moves
  * to the first item on open, the arrow keys move between items, Escape and Tab
@@ -25,7 +29,8 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, LayoutDashboard, LifeBuoy, MessageCircle, Package, UserRound } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, MessageCircle, Package, UserRound } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -45,9 +50,11 @@ const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 t
 
 export function AccountMenu() {
   const { t } = useTranslation();
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -174,6 +181,8 @@ export function AccountMenu() {
           {/* Only while NetLet has answered and the shopper has not read it:
               a standing link to support is on the account page and the footer. */}
           {signals.unreadSupport ? entry("/account/help", <LifeBuoy className="size-4" />, "support.section", t("header.unreadCount", { count: signals.unreadSupport })) : null}
+          {entry("/account/wishlists", <Gift className="size-4" />, "account.sectionWishlists")}
+          {entry("/account/addresses", <MapPin className="size-4" />, "address.book")}
           {entry("/account", <UserRound className="size-4" />, "header.menuAccount")}
           {portal ? (
             <>
@@ -181,8 +190,43 @@ export function AccountMenu() {
               {entry("/admin", <LayoutDashboard className="size-4" />, portal)}
             </>
           ) : null}
+          <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
+          <button
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => { close(false); setSignOutOpen(true); }}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start text-[13px] font-bold text-[#0a285a] hover:bg-[#0a285a]/[.06] focus-visible:bg-[#0a285a]/[.06]"
+          >
+            <span className="grid size-5 shrink-0 place-items-center text-[#536b8c]" aria-hidden><LogOut className="size-4" /></span>
+            <span className="min-w-0 flex-1">{t("header.signOut")}</span>
+          </button>
         </div>
       ) : null}
+      {/* To `<body>`, like everything the bar opens. */}
+      {createPortal(
+        <ConfirmDialog
+          open={signOutOpen}
+          tone="danger"
+          icon={<LogOut className="size-5" />}
+          title={t("account.signOutTitle")}
+          body={t("account.signOutBody")}
+          confirmLabel={t("header.signOut")}
+          pending={signingOut}
+          onClose={() => { setSignOutOpen(false); button.current?.focus(); }}
+          onConfirm={async () => {
+            setSigningOut(true);
+            try {
+              await logout();
+              toast.success(t("header.signedOut"));
+              setSignOutOpen(false);
+            } finally {
+              setSigningOut(false);
+            }
+          }}
+        />,
+        document.body,
+      )}
     </div>
   );
 }

@@ -392,7 +392,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
       <div className="flex flex-1 flex-col px-1 pt-2">
         {note ?? (product.vendor ? <p className="truncate text-[12px] ink-muted"><bdi>{product.vendor}</bdi></p> : null)}
         <h3 className="mt-0.5 min-h-[2.5em] text-[14px] font-semibold leading-[1.25] text-[#0a285a]">
-          <Link href={href} className="line-clamp-2 hover:underline">{product.title}</Link>
+          <Link href={href} dir="auto" className="line-clamp-2 hover:underline">{product.title}</Link>
         </h3>
 
         {rating ? (

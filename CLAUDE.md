@@ -257,14 +257,15 @@ the API cannot accept what the form refuses. Sign-in is deliberately not held
 to it — an account made before a rule existed must still be able to get in and
 change it.
 
-**The header opens the profile; it does not sign you out.** Home's own header
-used to sign out on one click, which put the most destructive thing available
-there under the friendliest label on the bar, beside the cart and the language
-switch where nothing else costs anything. The header's account menu reaches
-orders, messages and the account page; signing out lives on that page behind
-its confirmation, next to everything else about the account.
+**The header never signs you out on one press.** Home's own header used to
+sign out on one click, which put the most destructive thing available there
+under the friendliest label on the bar. Signing out left the header for the
+account page for that reason, and a website review asked for it back in the
+account menu, where every shop keeps it — so it is there again as the menu's
+last item, apart from the rest, and it opens the same confirmation the account
+page uses. Two presses and a dialog, never one.
 
-**Signing out asks first**, on the account page. `ConfirmDialog` is what asks, and its confirm button
+**Signing out asks first**, from the menu and from the account page. `ConfirmDialog` is what asks, and its confirm button
 carries the verb rather than "OK" — somebody who opened it by accident reads
 the button, not the paragraph. Cancel takes focus on open, so a stray Enter
 gives the safe answer.
@@ -407,10 +408,11 @@ silently dropped from the production stylesheet by the minifier — check the
 built CSS for any rule newer than the toolchain, not only the page in dev.
 
 **The account control names the shopper and opens a short menu** —
-`AccountMenu`: orders, messages, the account page, and the portal for somebody
-who also runs a store or the shop. It is the WAI-ARIA menu button (arrows,
-Home/End, Escape back to the button, Tab out). **Signing out is not in it**, for
-the reason it left the header in the first place. The name is the first word of
+`AccountMenu`: orders, messages, wishlists, addresses, the account page, the
+portal for somebody who also runs a store or the shop, and signing out —
+behind its confirmation, for the reason it left the header once (see Signing
+in). It is the WAI-ARIA menu button (arrows, Home/End, Escape back to the
+button, Tab out). The name is the first word of
 the display name as typed, so an account named "Admin Panel" reads "Admin".
 Signed out it opens the sign-in dialog where the shopper is. Anything the bar
 opens is portalled to `<body>` — `AuthDialog`, `DeliveryZoneDialog`,
@@ -497,8 +499,12 @@ hamburger and a cart, and every other page's had saved, account and cart —
 all of it already in `MobileTabBar`, a thumb's reach below. The top row carries
 what the bottom does not: the logo, the area and the language, and the search
 field has a whole row under it. The top row scrolls away with the page and the
-search row stays — somebody four screens in knows they are on NetLet. A page
-with nothing to search keeps its top row, or it would have no header. The
+search row stays — somebody four screens in knows they are on NetLet. **Every
+page that wears the header has the search field** — the sell page, a 404, an
+invoice and the returns page used to get the header without it, so the one way
+to look for something vanished exactly where a shopper was lost. A page with no
+search of its own passes no handler and the header keeps the words itself,
+suggests from the catalogue it already holds and opens the product chosen. The
 hamburger's department list
 is `DepartmentSheet` now, behind the bottom bar's Browse on every page — Browse
 used to open it on Home and go to the whole catalogue everywhere else, one tab
@@ -622,6 +628,12 @@ which is the wrong way round: it carries the most header of any page — a bar,
 a search row and a department rail — so it is where tabbing past costs the
 most. It lands on `#main`, which is the department cards, the same id every
 other page gives its first content.
+
+**A product title takes its own direction wherever it is drawn** —
+`dir="auto"` on the element that clamps or truncates it, or a `<bdi>` inline.
+An English title on the Arabic page took the page's direction and put its "…"
+at the wrong end ("…EXYNOS 2600, 12GB RAM"); `markup.test.ts` fails on a title
+drawn without it.
 
 **A product card is a photograph, a name, a price, and Add to cart over Buy
 now.** It had been cut to one button: the photographs cycled on their own, a
@@ -761,15 +773,27 @@ redone as separate images: cutting the grid apart clipped a sneaker and left a
 sliver of it beside the grocery basket. The page's `h1` is the shop's name, for a screen reader's outline; the
 banner used to carry it.
 
-Then a Deals shelf that scrolls sideways, the new arrivals as a grid to browse,
+Then the paid placements, Deals and Bestsellers as strips that scroll
+sideways, Picked for you, Shop by brand, the new arrivals as a grid to browse,
 four lines on what shopping here involves (delivery, cash on delivery, returns,
-help), and the footer. **A shelf below four products is not drawn**:
+help), and the footer. **A strip below four products is not drawn**:
 `shelvesFor` in `client/src/content/homeLayout.ts` decides — Deals is what is
-actually discounted, deepest first; New arrivals is the most recent, leaving
-out anything Deals already shows; what a hidden shelf did not show is free for
-the next. Anything that points at a shelf asks whether it is drawn. There were
-five shelves once, and on a dozen-product catalog they were the same dozen
-five times.
+actually discounted, deepest first; Bestsellers is what sold, by units over
+ninety days (`server/homeShelves.ts`: never a cancelled or returned line, nor
+an exchange's zero-priced replacement, which is the same item counted twice);
+New arrivals is the most recent; each leaves out what a shelf above shows, and
+what a hidden shelf did not show is free for the next. Anything that points at
+a shelf asks whether it is drawn. There were five shelves once, and on a
+dozen-product catalog they were the same dozen five times — Bestsellers came
+back when there were orders to count, because then it is a different list
+rather than the same one reordered. **Picked for you is drawn only when it is
+personal** (the rule under Recommendations) and draws nothing while it loads.
+**Shop by brand is the Brand rows sellers wrote** (`commerce.brands`, counted
+by the `brandOf` the Brand filter uses, so a tile reading "3 products" opens a
+page of three), from three brands up, an initial on each tile because NetLet
+holds no logos. The review also asked for a banner carousel tied to paid
+placements; a banner is an image and a link a seller books, which is a table,
+so it waits on a migration.
 
 **Copy a shopper reads is never a status report.** "Live catalog", "Persistent
 cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
@@ -795,7 +819,26 @@ page and Saved; checkout has none, for the bare-header reason. Every entry is an
 anchor that goes somewhere: "Returns", "Contact" and "Our story" used to toast
 "coming soon". Links into the account go to its section pages
 (`/account/orders`, `/account/help`); an old `/account#orders` is answered with
-the section page, so a bookmark or an old email is not a dead end.
+the section page, so a bookmark or an old email is not a dead end. **"Returns"
+goes to `/returns`**, which says what the server does with a return —
+`RETURN_WINDOW_DAYS`, approved at once for a fault, a change of mind too except
+on a perishable department, a person for anything else, an exchange falling
+back to a refund — and sends the shopper to their orders to start one; it used
+to open the orders page, which tells somebody deciding whether to buy nothing.
+**"New arrivals" and "On offer" name their view**: they always filtered, and the
+heading read "All products" over both, which is what made them look broken.
+The departments listed are the ones with something on sale, the navigation's
+rule.
+
+**The bag has a page.** `/cart` answered 404 because the bag was only a
+drawer, so nothing could link to it and Back on a phone left the shop. The page
+and the drawer draw the same parts (`BagLines`, `BagSummary` in
+`BagDrawer.tsx`); the phone's Cart tab opens the page and the wide header's cart
+button keeps the drawer. **Checkout from the bag moves in-app** — it reloaded
+the whole app with `window.location.assign`, the fault Buy now had; the cart's
+provider wraps the router, so it navigates the browser's history with the base
+path on. **A delivery row names the store in the page's language**
+(`storeName`), from both names the bag carries, as a line carries both titles.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
@@ -2403,7 +2446,8 @@ current catalog, which is the honest answer rather than a bug.
 **"Picked for you" is a claim, and `personalised` is what earns it.** Below
 `TASTE_FLOOR` the rail is not drawn at all. It used to fall back to "Popular
 right now" on the home page, where it was one more shelf of the same products;
-it lives on `/saved` now, under the hearts it learns from. One saved product is
+it lives on `/saved`, under the hearts it learns from, and on the home page
+again only when it is personal (`quiet`, drawing nothing while it loads). One saved product is
 a data point, not a taste, and a rail claiming otherwise is checked once and
 never trusted again.
 

@@ -1,5 +1,6 @@
 import { readStored, removeStored, writeStored } from "@/lib/browserStore";
 import { appPath } from "@/lib/basePath";
+import { navigate as navigateBrowser } from "wouter/use-browser-location";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import type { Cart } from "@shared/commerce/types";
@@ -287,10 +288,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Checkout is a NetLet page now, not an external host, so this navigates
   // in place rather than opening a tab. The drawer closes first: coming back
   // from checkout to a drawer still hanging open is disorienting.
+  /*
+   * In-app, not a reload: `window.location.assign` threw the whole app away
+   * and fetched it again on the press that leads to paying — the fault Buy now
+   * had. This provider sits outside the router (it wraps it), so it navigates
+   * the browser's own history with the base path on, which the router then
+   * reads like any other move.
+   */
   const proceedToCheckout = useCallback(() => {
     if (!cart?.items.length) return;
     setIsOpen(false);
-    window.location.assign(appPath(cart.checkoutUrl));
+    navigateBrowser(appPath(cart.checkoutUrl));
   }, [cart]);
 
   const settling = hydrating || (loading && !cart?.items.length);

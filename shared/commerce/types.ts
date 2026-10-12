@@ -281,6 +281,8 @@ export type CartItem = {
 export type CartDeliveryLine = {
   vendorId: number | null;
   vendorName: string;
+  /** The store's Arabic name, when it has one; the page picks (`storeName`). */
+  vendorNameAr?: string | null;
   /**
    * Which door this parcel is for, when the basket is going to more than one.
    *

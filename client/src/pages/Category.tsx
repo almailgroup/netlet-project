@@ -151,9 +151,18 @@ export default function Category() {
     : translatedName ? t(translatedName) : category;
   /* A search reads as what was searched for, in the department it was searched in. */
   const searched = search.trim();
+  /* The footer's "New arrivals" and "On offer" land here with a sort or a
+     filter, and the heading read "All products" for both — the list was
+     right and the page said it was something else. Named when the view is
+     exactly that and nothing more. */
+  const viewName = category === "all" && !searched
+    ? filters.onOffer && activeFilterCount(filters) === 1 ? t("footer.onOffer")
+      : filters.sort === "newest" && activeFilterCount(filters) === 0 ? t("footer.newArrivals")
+      : null
+    : null;
   const title = searched
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
-    : departmentName;
+    : viewName ?? departmentName;
 
   /* A department page is a page to be found; a search or a filtered view is not. */
   const knownDepartment = DEPARTMENTS.find(entry => entry.slug === slug);

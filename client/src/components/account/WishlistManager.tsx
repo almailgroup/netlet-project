@@ -409,7 +409,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                           icon={<ShoppingBag className="size-4" />}
                         />
                       </div>
-                      <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-[#0a285a]">{product.title}</p>
+                      <p dir="auto" className="min-w-0 flex-1 truncate text-sm font-extrabold text-[#0a285a]">{product.title}</p>
                       <button
                         onClick={() => add.mutate({ listId, productId: product.id }, {
                           onSuccess: () => { void detail.refetch(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },

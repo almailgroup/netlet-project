@@ -21,7 +21,7 @@ import { useLocation } from "wouter";
 export function MobileTabBar() {
   const { t } = useTranslation();
   const [location, navigate] = useLocation();
-  const { itemCount, openCart } = useCart();
+  const { itemCount } = useCart();
   const { savedIds } = useCustomer();
   const [browsing, setBrowsing] = useState(false);
   /* The same counts the header's account menu reads, so the two agree. */
@@ -68,9 +68,11 @@ export function MobileTabBar() {
       key: "cart",
       label: t("nav.cart"),
       icon: <ShoppingBag className="size-5" />,
-      active: false,
+      active: location === "/cart",
       badge: itemCount,
-      action: openCart,
+      /* The page, not the drawer: on a phone a drawer is the whole screen
+         anyway, and the page has an address Back returns from. */
+      action: () => navigate("/cart"),
     },
   ];
 

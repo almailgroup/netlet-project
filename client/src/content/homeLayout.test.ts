@@ -21,8 +21,8 @@ const plain = (count: number, from = 0) => Array.from({ length: count }, (_, i) 
 const offers = (count: number) => Array.from({ length: count }, (_, i) => product(`d${i}`, "20.000"));
 
 describe("NetLet home layout content", () => {
-  it("keeps two shelves, each with its own reason to exist", () => {
-    expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Deals", "New arrivals"]);
+  it("keeps three shelves, each with its own reason to exist", () => {
+    expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Deals", "Bestsellers", "New arrivals"]);
   });
 
   it("keeps category and editorial sections available", () => {
@@ -68,6 +68,15 @@ describe("what each shelf shows", () => {
     expect(shelves.newest).toHaveLength(6);
     expect(shelvesFor([...offers(12), ...plain(3)]).newest).toHaveLength(3);
     expect(shelvesFor(offers(12)).newest).toEqual([]);
+  });
+
+  it("draws Bestsellers from what sold, after Deals and never twice", () => {
+    const sold = [product("d0", "20.000"), ...plain(5, 100)];
+    const shelves = shelvesFor([...offers(5), ...plain(3)], sold);
+    /* d0 is on Deals, so Bestsellers is the five others. */
+    expect(shelves.bestsellers.map(p => p.id)).toEqual(["p100", "p101", "p102", "p103", "p104"]);
+    expect(shelvesFor(plain(3), plain(3, 100)).bestsellers).toEqual([]);
+    expect(shelvesFor(plain(3)).bestsellers).toEqual([]);
   });
 
   /* A shop with three products live opened on its departments and nothing

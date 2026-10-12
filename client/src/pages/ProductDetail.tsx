@@ -1011,7 +1011,7 @@ export default function ProductDetail() {
             </Link>
           </> : null}
           <span aria-hidden>/</span>
-          <span className="text-[#404553]">{product.title}</span>
+          <bdi className="text-[#404553]">{product.title}</bdi>
         </nav>
 
         <section id="main" className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
@@ -1031,7 +1031,7 @@ export default function ProductDetail() {
             {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium ink-muted">{t("product.sku")}: <span dir="ltr" className="ink-muted">{selectedVariant.sku}</span></p> : null}
             {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="ink-muted">{categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType}</span></p> : null}
 
-            <h1 className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
+            <h1 dir="auto" className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 
             {rating ? <StarRating value={rating.value} scaleMax={rating.scaleMax} count={rating.count} /> : null}
 

@@ -35,10 +35,13 @@ import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
 
-export function RecommendedRail({ saved, onSave, onQuickView }: {
+export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
   saved: string[];
   onSave: (id: string, title: string) => void;
   onQuickView: (product: Product) => void;
+  /** Draw nothing while it loads or if it fails: on the home page it is one
+      shelf among several, and a loading line or an error there is noise. */
+  quiet?: boolean;
 }) {
   const { t, locale, isArabic } = useTranslation();
   const { cart } = useCart();
@@ -51,6 +54,7 @@ export function RecommendedRail({ saved, onSave, onQuickView }: {
    */
   const query = trpc.recommendations.forMe.useQuery({ cartId: cart?.id ?? null, limit: 8, locale });
 
+  if (quiet && !query.data) return null;
   return (
     <QueryGate queries={[query]}>
       {() => {

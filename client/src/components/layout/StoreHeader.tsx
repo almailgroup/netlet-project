@@ -105,9 +105,20 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 
-  // A page with nothing to search (an invoice, the sell page) passes no handler
-  // and gets the header without the field rather than a field that does nothing.
-  const searchable = Boolean(onSearch && onSelectProduct);
+  /*
+   * The field is on every page that wears this header. A page with no search
+   * of its own — the sell page, a 404, an invoice — used to get the header
+   * without it, so the one way to look for something vanished exactly where a
+   * shopper is lost; such a page passes no handler and the header keeps the
+   * words itself, suggests from the catalogue it already holds, and opens the
+   * product chosen.
+   */
+  const [ownSearch, setOwnSearch] = useState("");
+  const handled = Boolean(onSearch && onSelectProduct);
+  const searchValue = handled ? search : ownSearch;
+  const changeSearch = handled ? onSearch! : setOwnSearch;
+  const selectProduct = onSelectProduct ?? ((product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`));
+  const searchCatalog = catalog.length ? catalog : shelf.data ?? [];
   const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
   /*
    * The address being delivered to, by the name the shopper gave it — "Home"
@@ -144,7 +155,6 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   }, []);
 
   useEffect(() => {
-    if (!searchable) return;
     const toSearch = (event: KeyboardEvent) => {
       /* The key, or the key in its place on an Arabic layout, where it types a letter. */
       if ((event.key !== "/" && event.code !== "Slash") || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey || event.defaultPrevented) return;
@@ -158,9 +168,9 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
     };
     window.addEventListener("keydown", toSearch);
     return () => window.removeEventListener("keydown", toSearch);
-  }, [searchable]);
+  }, []);
 
-  const field = searchable ? <LiveSearch catalog={catalog} value={search} onChange={onSearch!} onSelectProduct={onSelectProduct!} department={activeDepartment} /> : null;
+  const field = <LiveSearch catalog={searchCatalog} value={searchValue} onChange={changeSearch} onSelectProduct={selectProduct} department={activeDepartment} />;
 
   const area = (where: "bar" | "phone") => (
     <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={`${plain} ${where === "phone" ? "min-w-0 px-2.5" : ""}`}>
@@ -200,8 +210,8 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       >
         {t("nav.skipToContent")}
       </a>
-      {/* Above the pinned bar, so it scrolls away; inside it when there is no search row to pin. */}
-      {searchable ? <div className="bg-white lg:hidden">{phoneTop}</div> : null}
+      {/* Above the pinned bar, so it scrolls away and the search row stays. */}
+      <div className="bg-white lg:hidden">{phoneTop}</div>
       {/*
         No line under the bar on a wide screen: the department row sits right
         below it, and a rule between the two cut one header into two strips.
@@ -211,15 +221,14 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       */}
       <div ref={markerRef} aria-hidden className="pointer-events-none -mb-px h-px" />
       <header ref={headerRef} className="sticky-header sticky top-0 z-40 border-b border-[#e6e9ef] bg-white lg:border-b-0">
-        {searchable ? null : phoneTop}
-        {field ? <div className="container pb-2.5 pt-1 lg:hidden">{field}</div> : null}
+        <div className="container pb-2.5 pt-1 lg:hidden">{field}</div>
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
         <div className="container hidden h-[76px] items-center gap-5 lg:flex">
           <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[128px] object-contain" />
           </Link>
-          {field ? <div className="min-w-0 flex-1">{field}</div> : <div className="flex-1" />}
+          <div className="min-w-0 flex-1">{field}</div>
           {/* Where it goes, then saved, language, account, cart — the order
               both old headers had settled on, kept so nothing moves for
               somebody who knew it. */}
