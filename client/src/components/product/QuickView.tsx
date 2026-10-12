@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
+import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
@@ -184,7 +185,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               <button
                 onClick={() => void add(false)}
                 disabled={!inStock || loading}
-                className="glass pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#0a285a]/15 text-xs font-extrabold text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${PURCHASE_TONE.add} pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}
                 {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
@@ -192,9 +193,9 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               <button
                 onClick={() => void add(true)}
                 disabled={!inStock || loading}
-                className="glass glass-accent pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50"
+                className={`${PURCHASE_TONE.buy} pressable flex h-11 flex-1 items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed disabled:opacity-50`}
               >
-                <Zap className="size-4 fill-current" />{t("product.buyNow")}
+                <Zap className="size-4 fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}
               </button>
             </div>
 

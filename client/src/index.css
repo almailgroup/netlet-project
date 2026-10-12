@@ -432,6 +432,42 @@
 }
 
 /*
+ * The minus and plus inside a product card's Add to cart and Buy now (both
+ * share one quantity). They appear while a pointer is over the button or the
+ * keyboard is in it, and take no room away when they do: they are always laid
+ * out, only invisible, so the label never moves and the grid never shifts. A
+ * touch screen has no hover, so there they are left out altogether and the
+ * quantity is set on the bag's own stepper once the item is in, which both
+ * buttons then follow. `visibility`, not opacity alone, so an invisible
+ * minus cannot catch the click meant for the label.
+ */
+.pill-step {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pill-step {
+    display: grid;
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity 120ms var(--ease-out),
+      visibility 120ms var(--ease-out);
+  }
+  .buy-pill:hover .pill-step,
+  .buy-pill:focus-within .pill-step {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill-step {
+    transition: none;
+  }
+}
+
+/*
  * The voice panel's level meter. It is not reading a real signal — nothing is
  * listening yet — but it is what the meter has to do when something is: the
  * bars have to move independently, or a row that rises and falls as one block

@@ -15,6 +15,7 @@ import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
+import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 import { useOverlay } from "@/hooks/useOverlay";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
@@ -1102,13 +1103,13 @@ export default function ProductDetail() {
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className="glass glass-navy pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50">{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
+              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.add} pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}>{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
-            {/* Under the bag button rather than beside it: the bag stays the
-                ordinary act, and a second filled button the same size would
-                leave the shopper guessing which one buys. */}
-            <button onClick={() => void buyNow()} disabled={!inStock || cartLoading} className="glass pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border border-[#0a285a]/20 px-5 py-3.5 text-[14px] font-bold text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-50"><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
+            {/* Under the bag button, in the shop's one Buy now: the orange the
+                card and the preview use, so "which button buys" has the same
+                answer everywhere (`PURCHASE_TONE`). */}
+            <button onClick={() => void buyNow()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.buy} pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
 
             {selectedVariant?.preorder
               ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>

@@ -67,7 +67,8 @@ and navy is 4.65:1, so the orange stays the brand's while the words on it pass.
 **`.pressable` sets the type, with `!important`**: 14px at weight 500, whatever
 the element's own `text-xs font-extrabold` says. That is old and load bearing —
 removing it would change every button on the site at once — so a control that
-needs its own size or weight leaves `.pressable` off, as the product card does.
+needs its own size or weight leaves `.pressable` off. The product card's two
+buttons wear it, so they read like the header's.
 
 ## Accounts
 
@@ -569,18 +570,36 @@ a search row and a department rail — so it is where tabbing past costs the
 most. It lands on `#main`, which is the department cards, the same id every
 other page gives its first content.
 
-**A product card is a photograph, a name, a price and one button.** It was
-more, and every extra had its reason written down here: the photographs cycled
-on their own every 4.5 seconds and faster under a mouse, a share disc and a
-preview disc slid out on hover, and two pills — Add and Buy now — each grew a
-minus and a plus when a pointer came near, with three container-query
-thresholds measured so the labels fitted in Arabic. Each piece was defensible;
-together they made a grid that moved while somebody was reading it, and a card
-that asked three questions before it would sell anything.
+**A product card is a photograph, a name, a price, and Add to cart over Buy
+now.** It had been cut to one button: the photographs cycled on their own, a
+share disc slid out, and two pills grew a minus and a plus that *pushed the
+label aside* as a pointer came near, so the grid moved while somebody read it.
+The owner asked for the pair back, each showing a minus and a plus on hover,
+and what made it moving was the shift, not the pair — so the pair came back
+without it.
+
+**One quantity, drawn in both.** Before the item is in the bag it is the card's
+own pick; once it is, it is the bag's line. Choose three on Add and Buy now
+reads "Buy 3 now"; the bag's stepper and Buy now's minus change the same line;
+Buy now on an item already in the bag goes straight to checkout rather than
+adding it again. **The minus and plus never move anything**: they are
+`.pill-step`, always laid out inside the pill and only made visible while a
+fine pointer hovers it or the keyboard is in it, so the label stays where it is
+and the card keeps its height (measured: 454px before and after adding). A
+touch screen has no hover, so they are left out there, and the quantity is set
+on the bag's own stepper once the item is in — which Buy now then follows.
+
+`BuyPill` is the pill: a coloured surface holding minus, press and plus side by
+side, because a button inside a button is not something HTML allows. Its focus
+ring is drawn inside, white on navy and navy on orange, since the shop's orange
+ring vanishes on an orange button. Each press's accessible name *starts* with
+the words drawn ("Buy 2 now: Smart watch"), so somebody driving the page by
+voice can say what they see.
 
 **Add becomes the quantity once the line is in the bag** — minus (a bin at
 one), the count, plus — the way the delivery apps people here use every day
-work. `CardAction` reads the *plain* line for that variant, no extras and no
+work, and that stepper is drawn always, because "how many have I got" is a state
+rather than an offer. `CardAction` reads the *plain* line for that variant, no extras and no
 bundle, because that is the only line a card makes, so a card's minus never
 takes apart something built on the product page. It keeps its own `busy` rather
 than the bag's `loading`: one bag-wide flag put a spinner on every card in the
@@ -589,11 +608,18 @@ the header's count is the receipt, a live region says it, and focus moves to the
 plus, because the button pressed is gone by the next frame and the keyboard
 would otherwise land on `<body>`.
 
-**A product with more than one variant asks which.** Its button reads "Choose
-an option" and opens the preview. The pages used to add the first variant in
-stock, which is how a shopper who pressed Add on a shirt found a medium in the
-bag. Buy now lives on the product page and in the preview, where somebody has
-chosen; on a card it was a second primary beside the first.
+**A product with more than one variant asks which.** Its first button reads
+"Choose an option", and both it and Buy now open the preview, with no quantity
+of their own — a size has to be chosen before a number means anything. The
+pages used to add the first variant in stock, which is how a shopper who
+pressed Add on a shirt found a medium in the bag.
+
+**One Add to cart and one Buy now, everywhere they appear.** The card, the
+preview and the product page each had their own pair and no two agreed — a white
+Add, a white Add beside an orange Buy, a navy Add over a white Buy. `PURCHASE_TONE`
+in `lib/purchaseStyle.ts` is the pair now: Add to cart is navy, the header's own
+cart button, with the bag icon; Buy now is the brand orange with navy text
+(4.65:1) and the bolt. The bundle's "add the set" takes the Add tone too.
 
 **The photo and the title both open the product, and only the title is a link
 anybody hears.** The photo's link is `tabIndex={-1}` and `aria-hidden`: two
@@ -1747,8 +1773,8 @@ seller who files, the company that answers and NetLet that decides.
 
 ## Fast checkout
 
-**Buy now is one hook, `useBuyNow`**, used by the product page and the preview —
-the cards no longer carry it. Four pages had a copy and the copies
+**Buy now is one hook, `useBuyNow`**, used by the product page, the preview
+and the card. Four pages had a copy and the copies
 shared three faults: each opened the bag drawer on the way past, each then
 reloaded the whole app with `window.location.assign` — on the press that exists
 to be fast — and each took `variants[0]` even when that one was sold out and the

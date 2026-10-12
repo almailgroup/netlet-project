@@ -5,13 +5,9 @@
  * the card they saved from, rather than a second, subtly different one that
  * drifts every time the first is touched.
  *
- * **A card is a photograph, a name, a price and one button.** It used to be
- * more: the photographs cycled on their own, a share disc and a preview disc
- * slid out on hover, and two pills — Add and Buy now — each grew a minus and a
- * plus when a pointer came near. Every one of those had a reason written down
- * beside it, and together they made a grid that moved while somebody was
- * trying to read it and a card that asked three questions before it would sell
- * anything. Buy now lives on the product page, where somebody has decided.
+ * **A card is a photograph, a name, a price, and Add to cart over Buy now**,
+ * sharing one quantity whose minus and plus appear inside either button under
+ * a pointer — without moving anything, which is what the old pair got wrong.
  *
  * **Add turns into the quantity once the item is in the bag**, the way the
  * delivery apps people here use every day do it: the card answers "is this in
@@ -29,13 +25,15 @@ import { Thumb } from "@/components/product/Thumb";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
-import { Eye, Heart, LoaderCircle, Minus, Plus, Star, Trash2, Zap } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Eye, Heart, LoaderCircle, Minus, Plus, ShoppingBag, Star, Trash2, Zap } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { toast } from "sonner";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { useCart } from "@/contexts/CartContext";
 import { DiscButton } from "@/components/ui/DiscButton";
+import { useBuyNow } from "@/hooks/useBuyNow";
+import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 export async function shareProduct(product: Product, t: Translate) {
   const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
@@ -58,26 +56,103 @@ export async function shareProduct(product: Product, t: Translate) {
 }
 
 /**
- * Add, or the quantity already in the bag.
+ * One of the card's two buttons, with the shared quantity inside it.
+ *
+ * The pill is the coloured surface and holds three buttons side by side —
+ * minus, the press itself, plus — because a button inside a button is not a
+ * thing HTML allows. The minus and plus are `pill-step`: there for a pointer
+ * that hovers and for a keyboard inside the pill, laid out but invisible
+ * otherwise, so the label never moves when they appear, and absent on a touch
+ * screen, which has no hover to reveal them. `always` draws them regardless,
+ * which is the bag's own stepper once the item is in it.
+ *
+ * The focus ring is drawn inside the pill in the colour that shows on it:
+ * the shop's orange ring vanishes on the orange Buy now.
+ */
+function BuyPill({ tone, label, children, onPress, href, busy = false, step, always = false, pressRef, plusRef }: {
+  tone: "add" | "buy";
+  /** The press's accessible name. It starts with the words drawn, so somebody driving the page by voice can say what they see. */
+  label: string;
+  children: ReactNode;
+  onPress?: () => void;
+  /** A press that goes to another page is a link. */
+  href?: string;
+  busy?: boolean;
+  step?: { name: string; less: () => void; more: () => void; canLess: boolean; canMore: boolean; lessIsRemove?: boolean };
+  always?: boolean;
+  pressRef?: Ref<HTMLButtonElement>;
+  plusRef?: Ref<HTMLButtonElement>;
+}) {
+  const { t } = useTranslation();
+  const ring = `focus-visible:outline-offset-[-2px] ${tone === "add" ? "focus-visible:outline-white" : "focus-visible:outline-[#0a285a]"}`;
+  /* Drawn always (the bag's stepper, which a phone uses too) it is a full
+     40px square; revealed by a pointer it can be smaller. */
+  const stepClass = `${always ? "grid h-full w-10" : "pill-step size-8"} shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${tone === "add" ? "hover:bg-white/15" : "hover:bg-[#0a285a]/10"} ${ring}`;
+  /* `pressable` is the header's own button lettering, so the card's two
+     buttons read like every other button on the site. */
+  const press = `pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1 whitespace-nowrap disabled:cursor-wait ${ring}`;
+
+  /* Nothing to press in the middle: it is the bag's count, and the pill is a
+     group named by it rather than a button that does nothing. */
+  const display = !onPress && !href;
+
+  return (
+    <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-10 w-full items-center rounded-xl ${always ? "" : "px-1"}`}>
+      {step ? (
+        <button type="button" onClick={step.less} disabled={busy || !step.canLess} aria-label={t(step.lessIsRemove ? "cart.remove" : "cart.decrease", { name: step.name })} className={stepClass}>
+          {step.lessIsRemove ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}
+        </button>
+      ) : null}
+      {display ? (
+        <span className={press}>{children}</span>
+      ) : href ? (
+        <Link href={href} aria-label={label} className={press}>{children}</Link>
+      ) : (
+        <button ref={pressRef} type="button" onClick={onPress} disabled={busy} aria-label={label} className={press}>
+          {children}
+        </button>
+      )}
+      {step ? (
+        <button ref={plusRef} type="button" onClick={step.more} disabled={busy || !step.canMore} aria-label={t("cart.increase", { name: step.name })} className={stepClass}>
+          <Plus className="size-4" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Add to cart and Buy now, sharing one quantity.
+ *
+ * **One number, drawn in both.** Before the item is in the bag it is the
+ * card's own pick, set by the minus and plus that appear on either button; once
+ * it is in, it is the bag's line, so the two buttons can never disagree about
+ * how many — choose three on Add and Buy now reads "Buy 3 now", and the bag's
+ * stepper and Buy now's minus change the same line. Buy now with the item
+ * already in the bag goes straight to checkout rather than adding it again.
  *
  * The line it reads is the plain one for this variant — no extras, no bundle —
- * because that is the line an Add from a card makes. A line carrying a fitting
- * or priced as part of a set is something the shopper built on the product
- * page, and a card's minus should not quietly take it apart.
+ * because that is the line a card makes. A line carrying a fitting or priced as
+ * part of a set is something the shopper built on the product page, and a
+ * card's minus should not quietly take it apart.
  *
  * Its own `busy` rather than the bag's `loading`: the bag's flag is one for the
  * whole page, and a spinner on every card in the grid while one of them adds
  * says the wrong thing about the other thirty.
  *
- * Focus follows the press. Add is replaced by the stepper and the stepper's
- * minus by Add, so the button somebody just pressed is gone by the next frame,
- * and without this the keyboard lands on `<body>`.
+ * Focus follows the press. Add is replaced by the bag's stepper and the
+ * stepper's bin by Add, so the button somebody just pressed is gone by the next
+ * frame, and without this the keyboard lands on `<body>`.
  */
 function CardAction({ product, onChoose }: { product: Product; onChoose?: () => void }) {
   const { t } = useTranslation();
   const { cart, addItem, updateQuantity, removeItem } = useCart();
+  const buyNow = useBuyNow();
+  const [, navigate] = useLocation();
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState("");
+  /** How many, before the item is in the bag. */
+  const [pick, setPick] = useState(1);
   const addRef = useRef<HTMLButtonElement>(null);
   const plusRef = useRef<HTMLButtonElement>(null);
   const focusNext = useRef<"add" | "plus" | null>(null);
@@ -87,6 +162,9 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     ? cart?.items.find(item => item.variantId === variant.id && !item.addons?.length && !item.bundleName)
     : undefined;
   const choosing = product.variants.length > 1;
+  const quantity = line ? line.quantity : pick;
+  const count = String(quantity);
+  const name = product.title;
 
   useEffect(() => {
     const target = focusNext.current === "add" ? addRef.current : focusNext.current === "plus" ? plusRef.current : null;
@@ -108,84 +186,109 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     }
   };
 
-  const base = "flex h-10 w-full items-center justify-center gap-1.5 rounded-xl text-[13px] font-bold disabled:cursor-not-allowed";
+  /* The one place the shared number changes: the card's pick, or the bag's line. */
+  const setQuantity = (next: number) => {
+    const clamped = Math.max(1, Math.min(MAX_QUANTITY, next));
+    if (clamped === quantity) return;
+    if (line) {
+      void run(() => updateQuantity(line.lineId, clamped), t("cart.quantityShort", { count: String(clamped) }), null);
+    } else {
+      setPick(clamped);
+      setSaid(t("cart.quantityShort", { count: String(clamped) }));
+    }
+  };
+  const shared = {
+    name,
+    less: () => setQuantity(quantity - 1),
+    more: () => setQuantity(quantity + 1),
+    canLess: quantity > 1,
+    canMore: quantity < MAX_QUANTITY,
+  };
 
   let control: ReactNode;
   if (!variant?.availableForSale) {
     control = (
-      <button type="button" disabled aria-label={t("product.unavailableName", { name: product.title })} className={`${base} border border-[#e6e9ef] bg-[#f4f6f9] ink-muted`}>
+      <button type="button" disabled aria-label={t("product.unavailableName", { name })} className="pressable flex h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#e6e9ef] bg-[#f4f6f9] ink-muted">
         {t("product.soldOut")}
       </button>
     );
   } else if (choosing) {
-    /* Without a preview to open, the product page is where the choice is made. */
-    control = onChoose ? (
-      <button type="button" onClick={onChoose} className={`${base} border border-[#0a285a]/20 bg-white text-[#0a285a] hover:bg-[#f3f6fa]`}>
-        {t("product.chooseOption")}
-      </button>
-    ) : (
-      <Link href={`/products/${encodeURIComponent(product.handle)}`} className={`${base} border border-[#0a285a]/20 bg-white text-[#0a285a] hover:bg-[#f3f6fa]`}>
-        {t("product.chooseOption")}
-      </Link>
-    );
-  } else if (line) {
-    const last = line.quantity <= 1;
+    /* Both open the choice: the preview where there is one, the product page
+       where there is not. Neither picks a quantity, because the preview has
+       its own and a size has to be chosen before a number means anything. */
+    const href = onChoose ? undefined : `/products/${encodeURIComponent(product.handle)}`;
     control = (
-      <div role="group" aria-label={t("cart.quantityShort", { count: String(line.quantity) })} className="flex h-10 w-full items-center justify-between rounded-xl bg-[#0a285a] text-white">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void run(
-            () => last ? removeItem(line.lineId) : updateQuantity(line.lineId, line.quantity - 1),
-            last ? t("cart.removedName", { name: product.title }) : t("cart.quantityShort", { count: String(line.quantity - 1) }),
-            last ? "add" : null,
-          )}
-          aria-label={t(last ? "cart.remove" : "cart.decrease", { name: product.title })}
-          className="grid h-full w-10 shrink-0 place-items-center rounded-s-xl hover:bg-white/10 disabled:opacity-50"
-        >
-          {last ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}
-        </button>
-        <span className="min-w-0 text-[14px] font-bold tabular-nums">
-          {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : line.quantity}
-        </span>
-        <button
-          ref={plusRef}
-          type="button"
-          disabled={busy || line.quantity >= MAX_QUANTITY}
-          onClick={() => void run(
-            () => updateQuantity(line.lineId, line.quantity + 1),
-            t("cart.quantityShort", { count: String(line.quantity + 1) }),
-            null,
-          )}
-          aria-label={t("cart.increase", { name: product.title })}
-          className="grid h-full w-10 shrink-0 place-items-center rounded-e-xl hover:bg-white/10 disabled:opacity-50"
-        >
-          <Plus className="size-4" aria-hidden />
-        </button>
-      </div>
+      <>
+        <BuyPill tone="add" label={t("card.chooseName", { name })} onPress={onChoose} href={href}>
+          <span className="truncate">{t("product.chooseOption")}</span>
+        </BuyPill>
+        <BuyPill tone="buy" label={t("card.buyName", { name })} onPress={onChoose} href={href}>
+          <Zap className="size-4 shrink-0 fill-current" aria-hidden />
+          <span className="truncate">{t("product.buyNow")}</span>
+        </BuyPill>
+      </>
     );
   } else {
-    control = (
-      <button
-        ref={addRef}
-        type="button"
-        disabled={busy}
-        onClick={() => void run(
-          () => addItem(variant.id, 1, false),
-          t("cart.added", { name: product.title }),
+    const preorder = Boolean(variant.preorder);
+    const add = line ? (
+      /* In the bag: the bag's own stepper, always drawn — it is the answer to
+         "how many have I got", which is a state rather than an offer. */
+      <BuyPill
+        tone="add"
+        always
+        busy={busy}
+        label={t("cart.quantityShort", { count })}
+        plusRef={plusRef}
+        step={{
+          ...shared,
+          canLess: true,
+          lessIsRemove: quantity <= 1,
+          less: () => quantity <= 1
+            ? void run(() => removeItem(line.lineId), t("cart.removedName", { name }), "add")
+            : setQuantity(quantity - 1),
+        }}
+      >
+        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <span className="truncate tabular-nums">{t("card.inCart", { count })}</span>}
+      </BuyPill>
+    ) : (
+      <BuyPill
+        tone="add"
+        busy={busy}
+        pressRef={addRef}
+        label={t(preorder ? (quantity > 1 ? "card.preorderCountName" : "card.preorderName") : (quantity > 1 ? "card.addCountName" : "card.addName"), { count, name })}
+        onPress={() => void run(
+          async () => { await addItem(variant.id, pick, false); setPick(1); },
+          t("cart.added", { name }),
           "plus",
         )}
-        aria-label={t("product.addToCartName", { name: product.title })}
-        className={`${base} border border-[#0a285a]/20 bg-white text-[#0a285a] hover:bg-[#f3f6fa]`}
+        step={shared}
       >
-        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Plus className="size-4" aria-hidden />}
-        {t(variant.preorder ? "product.preorder" : "product.addShort")}
-      </button>
+        {busy ? <LoaderCircle className="size-4 shrink-0 animate-spin" aria-hidden /> : <ShoppingBag className="size-4 shrink-0" aria-hidden />}
+        <span className="truncate">{t(preorder ? (quantity > 1 ? "product.preorderCount" : "product.preorder") : (quantity > 1 ? "product.addToCartCount" : "product.addToCart"), { count })}</span>
+      </BuyPill>
+    );
+    control = (
+      <>
+        {add}
+        <BuyPill
+          tone="buy"
+          busy={busy}
+          label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
+          /* Already in the bag at this number: checkout is the whole of what is left. */
+          onPress={() => line
+            ? navigate("/checkout")
+            : void run(() => buyNow(product, pick, variant.id), t("cart.added", { name }), null)}
+          step={shared}
+        >
+          <Zap className="size-4 shrink-0 fill-current" aria-hidden />
+          <span className="truncate">{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count })}</span>
+        </BuyPill>
+      </>
     );
   }
 
   return (
-    <div className="mt-auto pt-2.5">
+    <div className="mt-auto flex flex-col gap-1.5 pt-2.5">
       {control}
       <span aria-live="polite" className="sr-only">{said}</span>
     </div>

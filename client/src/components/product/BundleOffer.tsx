@@ -21,6 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { LoaderCircle, PackagePlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 export function BundleOffer({ variantId }: { variantId: string | undefined }) {
   const { t } = useTranslation();
@@ -88,7 +89,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
                 setAdding(null);
               }
             }}
-            className="glass-navy type-control pressable mt-3 inline-flex items-center gap-2 rounded-full px-5 py-3 disabled:opacity-60"
+            className={`${PURCHASE_TONE.add} pressable mt-3 inline-flex h-11 items-center gap-2 rounded-xl px-5 disabled:opacity-60`}
           >
             {adding === bundle.id ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <PackagePlus className="size-4" aria-hidden />}
             {t("bundle.add")}

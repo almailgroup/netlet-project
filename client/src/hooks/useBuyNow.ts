@@ -1,5 +1,6 @@
 /**
- * Buy now (3.2.9): put the item in the basket and go straight to checkout.
+ * Buy now (3.2.9): put the item in the basket and go straight to checkout —
+ * from the product page, the preview and the card alike.
  *
  * One function because four pages had a copy, and the copies shared three
  * faults: each opened the bag drawer on the way past, each then reloaded the
