@@ -200,6 +200,21 @@ describe("auth with Supabase Auth as the password store", () => {
     expect(set.map(entry => entry.name)).toContain(COOKIE_NAME);
   });
 
+  /* The ten-character floor is for setting a password. An account whose
+     password predates it, or was set by hand in the Supabase dashboard, must
+     still get in — it was refused as malformed input before the password was
+     even checked, on the live site. */
+  it("signs in with a password shorter than the floor for new ones", async () => {
+    stubStore({ signIn: async (_email: string, password: string) => (password === "Short-9ch" ? supabaseUser : null) });
+    const { ctx, set } = createContext(null);
+    const api = await caller(ctx);
+
+    const user = await api.auth.login({ email: "supa@example.com", password: "Short-9ch" });
+    expect(user.email).toBe("supa@example.com");
+    expect(set.map(entry => entry.name)).toContain(COOKIE_NAME);
+    await expect(api.auth.login({ email: "supa@example.com", password: "" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
   /* Whatever the service said, the shopper is told one thing, as a message key. */
   it("refuses a wrong password as UNAUTHORIZED with a message key", async () => {
     stubStore();

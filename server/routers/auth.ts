@@ -45,11 +45,18 @@ import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type Attempt
 import { recordReferral } from "../referral.js";
 import type { User } from "../../drizzle/schema.js";
 
+/*
+ * What signing in takes. **No length floor on the password**, only a cap:
+ * the ten-character rule is for a password being *set* (`newPassword` below),
+ * and holding sign-in to it refused every account whose password predates the
+ * rule or was set by hand in the Supabase dashboard — before the password was
+ * even checked, as "not in the shape we expected". Capped because scrypt
+ * hashes whatever it is given, and an unbounded password is a
+ * denial-of-service vector.
+ */
 const credentials = z.object({
   email: z.string().trim().email().max(320),
-  // Long enough to matter, and capped because scrypt hashes whatever it is
-  // given — an unbounded password is a denial-of-service vector.
-  password: z.string().min(10).max(200),
+  password: z.string().min(1).max(200),
 });
 
 /**
