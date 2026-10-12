@@ -2,12 +2,14 @@ import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
-import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, Tag, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useTranslation } from "@/hooks/useTranslation";
-import { EMPTY_FILTERS, correctionFor, productsInCategory, rankBySearch, searchPath, searchWithTerm } from "@shared/commerce/browse";
-import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { EMPTY_FILTERS, searchPath, searchWithTerm } from "@shared/commerce/browse";
+import { brandsMatching, departmentsMatching, highlightParts } from "@shared/commerce/search";
+import { ALL_DEPARTMENTS, type Department } from "@shared/commerce/departments";
+import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { categoryMessageKey, categoryRail } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";
@@ -69,8 +71,24 @@ type LiveSearchProps = {
 /** Whether this browser can listen at all. Firefox and the iOS app's WebView cannot. */
 const canListen = () => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
+/** One thing the dropdown offers: a recent search, a department, a brand, or a product. */
+type Entry =
+  | { kind: "recent"; key: string; term: string }
+  | { kind: "department"; key: string; department: Department }
+  | { kind: "brand"; key: string; brand: string }
+  | { kind: "product"; key: string; product: Product };
+
+/** How long typing must pause before the server is asked: one request per word, not per letter. */
+const SETTLE_MS = 120;
+/** How many products the dropdown shows; the results page has the rest. */
+const SUGGESTED_PRODUCTS = 5;
+
 export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null }: LiveSearchProps) {
-  const { t, isArabic } = useTranslation();
+  const { t, isArabic, locale } = useTranslation();
+  const money = useMoney();
+  const uid = useId();
+  const listboxId = `${uid}-suggestions`;
+  const optionId = (index: number) => `${uid}-option-${index}`;
   /*
    * Where to search: everywhere, or one department. On a department page it
    * starts as that department, the way a shop's own search box does — somebody
@@ -81,12 +99,16 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   useEffect(() => setScope(department ?? ALL_DEPARTMENTS.query), [department]);
   const scoped = scope !== ALL_DEPARTMENTS.query;
   const mobilePreview = import.meta.env.DEV && new URLSearchParams(window.location.search).get("searchTest") === "mobile";
+  /* Focus and the panel are two things: Escape closes the panel and leaves the
+     keyboard in the field, where the next thing somebody does is type. */
   const [focused, setFocused] = useState(false);
+  const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [refineMessage, setRefineMessage] = useState("");
   const [voiceOpen, setVoiceOpen] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const inStock = useDepartmentsInStock();
   /* Read again on every focus, so the phone field and the wide one agree. */
   const [recent, setRecent] = useState<string[]>(() => readRecentSearches());
   /*
@@ -112,48 +134,93 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const photoSwitch = useFeature("photoSearch");
   const photoReady = trpc.search.photoAvailable.useQuery(undefined, { enabled: photoSwitch, staleTime: 10 * 60 * 1000, retry: false });
   const photoOn = photoSwitch && photoReady.data?.available === true;
-  const searchTerm = value.trim().toLowerCase();
+  const typed = value.trim();
   const example = useMemo(() => catalogExample(catalog, t, isArabic), [catalog, t, isArabic]);
 
   useEffect(() => {
     if (mobilePreview && !value) {
       onChange("espresso");
       setFocused(true);
+      setOpen(true);
     }
   }, [mobilePreview, onChange, value]);
 
   /*
-   * With nothing typed, the choices are what this device searched for lately;
-   * with something typed, the products that match it. One list for the arrow
-   * keys either way.
+   * The products come from the server, over the whole catalogue
+   * (`server/productSearch.ts`), ranked by the rules the results page uses — so
+   * a suggestion is never something "See all" then leaves out, and the shelf
+   * past the first page can be found from here. It was the 24 newest products,
+   * searched in the browser. Asked once typing pauses; the last answer stays
+   * on screen while the next arrives, so the list does not blink per letter.
    */
-  const emptyField = !searchTerm;
-  const suggestions = useMemo(() => {
-    /* The results page's own rule, so a suggestion is never something "See all" then leaves out. */
-    const shelf = scoped ? productsInCategory(catalog, scope) : catalog;
-    if (!searchTerm) return [];
-    /* Ranked the way the results page ranks, and through the same correction
-       when the words as typed find nothing, so "samsng" still offers the phone. */
-    const found = rankBySearch(shelf, searchTerm);
-    if (found.length) return found.slice(0, 4);
-    const correction = correctionFor(searchTerm, catalog);
-    return correction ? rankBySearch(shelf, correction).slice(0, 4) : [];
-  }, [catalog, searchTerm, scope, scoped]);
-  const optionCount = emptyField ? recent.length : suggestions.length;
+  const [settled, setSettled] = useState(typed);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(typed), SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [typed]);
+  const answer = trpc.search.products.useQuery(
+    { q: settled, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS },
+    { enabled: open && settled.length > 0, placeholderData: previous => previous, staleTime: 60_000, retry: false },
+  );
+  const brands = trpc.commerce.brands.useQuery(undefined, { enabled: open, staleTime: 10 * 60 * 1000 });
+
+  /*
+   * With nothing typed, the choices are what this device searched for lately.
+   * With something typed: a department it names (in either language, and only
+   * one with something on sale), a brand the shop sells, then the products. One
+   * list for the arrow keys either way.
+   */
+  const emptyField = !typed;
+  const entries = useMemo<Entry[]>(() => {
+    if (emptyField) return recent.map(term => ({ kind: "recent" as const, key: `recent:${term}`, term }));
+    const departments = scoped ? [] : departmentsMatching(typed).filter(entry => inStock(entry.name)).slice(0, 2);
+    const brandNames = brandsMatching(typed, (brands.data ?? []).map(brand => brand.name)).slice(0, 2);
+    const products = settled ? answer.data?.products ?? [] : [];
+    return [
+      ...departments.map(entry => ({ kind: "department" as const, key: `department:${entry.slug}`, department: entry })),
+      ...brandNames.map(brand => ({ kind: "brand" as const, key: `brand:${brand}`, brand })),
+      ...products.map(product => ({ kind: "product" as const, key: `product:${product.id}`, product })),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emptyField, recent, typed, scoped, brands.data, settled, answer.data]);
+  const waiting = !emptyField && (settled !== typed || (answer.isFetching && !answer.data));
+  const total = answer.data?.total ?? 0;
+  useEffect(() => setActiveIndex(-1), [entries.length, emptyField]);
 
   const applySearch = (query: string) => {
     onChange(query);
     setActiveIndex(-1);
     setRefineMessage("");
+    setOpen(true);
   };
 
-  const selectSuggestion = (product: Product) => {
-    applySearch(product.title);
-    onSelectProduct(product);
-    setFocused(false);
+  const close = () => {
+    setOpen(false);
+    setActiveIndex(-1);
   };
 
   const [, navigate] = useLocation();
+
+  const selectSuggestion = (product: Product) => {
+    if (typed) setRecent(rememberSearch(typed));
+    applySearch(product.title);
+    onSelectProduct(product);
+    close();
+  };
+
+  const goTo = (path: string) => {
+    if (typed) setRecent(rememberSearch(typed));
+    close();
+    field.current?.blur();
+    navigate(path);
+  };
+
+  const activate = (entry: Entry) => {
+    if (entry.kind === "recent") openRecent(entry.term);
+    else if (entry.kind === "product") selectSuggestion(entry.product);
+    else if (entry.kind === "department") goTo(`/category/${entry.department.slug}`);
+    else goTo(`/category/all?brand=${encodeURIComponent(entry.brand)}`);
+  };
 
   /**
    * Enter opens the ordinary results page — the department layout, with its
@@ -166,7 +233,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     const term = query.trim();
     if (!term) return;
     setRecent(rememberSearch(term));
-    setFocused(false);
+    close();
     field.current?.blur();
     /* A department search is that department's page with the words on it. */
     navigate(scoped ? `/category/${categorySlug(scope)}${searchWithTerm(EMPTY_FILTERS, term)}` : searchPath(term));
@@ -179,13 +246,13 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
    * typed, rather than left in the dropdown with nothing.
    */
   const refineQuery = async () => {
-    if (value.trim().length < 2 || refine.isPending) return;
+    if (typed.length < 2 || refine.isPending) return;
     try {
       if (import.meta.env.DEV && new URLSearchParams(window.location.search).get("searchTest") === "offline") {
         throw new Error("Development-only AI search outage simulation");
       }
-      const result = await refine.mutateAsync({ query: value.trim(), catalogTitles: catalog.map(product => product.title).slice(0, 24) });
-      const refined = result.query.trim() || value.trim();
+      const result = await refine.mutateAsync({ query: typed, catalogTitles: catalog.map(product => product.title).slice(0, 24) });
+      const refined = result.query.trim() || typed;
       applySearch(refined);
       openResults(refined);
     } catch {
@@ -195,14 +262,14 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
 
   // Same behaviour as pressing Enter, so the button and the keyboard agree.
   const submitSearch = () => {
-    if (emptyField && activeIndex >= 0 && recent[activeIndex]) openRecent(recent[activeIndex]);
-    else if (activeIndex >= 0 && suggestions[activeIndex]) selectSuggestion(suggestions[activeIndex]);
+    const entry = open && activeIndex >= 0 ? entries[activeIndex] : undefined;
+    if (entry) activate(entry);
     else openResults(value);
   };
 
   /* A recent search runs again exactly as it was typed. */
   const openRecent = (term: string) => {
-    applySearch(term);
+    onChange(term);
     openResults(term);
   };
 
@@ -214,21 +281,51 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
    */
   const leave = (event: React.FocusEvent) => {
     if (box.current?.contains(event.relatedTarget as Node | null)) return;
-    window.setTimeout(() => setFocused(false), 140);
+    window.setTimeout(() => { setFocused(false); close(); }, 140);
   };
 
+  /*
+   * The WAI-ARIA combobox: focus stays in the field and the highlighted option
+   * is named to a screen reader through `aria-activedescendant` — before, the
+   * arrows moved a highlight nobody using one could hear. Escape closes the
+   * list and keeps the field focused (it used to drop the keyboard on
+   * `<body>`); a second Escape empties the field.
+   */
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown" && optionCount) { event.preventDefault(); setActiveIndex(current => Math.min(current + 1, optionCount - 1)); }
-    if (event.key === "ArrowUp" && optionCount) { event.preventDefault(); setActiveIndex(current => Math.max(current - 1, 0)); }
-    if (event.key === "Escape") { setFocused(false); event.currentTarget.blur(); }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!open) { setOpen(true); return; }
+      if (entries.length) setActiveIndex(current => (current + 1) % entries.length);
+    }
+    if (event.key === "ArrowUp" && entries.length) {
+      event.preventDefault();
+      setActiveIndex(current => (current <= 0 ? entries.length - 1 : current - 1));
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (open) close();
+      else if (value) applySearch("");
+    }
     if (event.key === "Enter") {
       event.preventDefault();
       submitSearch();
     }
   };
 
-  /* The departments are always there to offer, so a focused field always has a panel. */
-  const showPanel = focused;
+  const optionClass = (index: number) =>
+    `type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`;
+  const departmentLabel = (product: Product) => {
+    const key = product.productType ? categoryMessageKey(product.productType) : null;
+    return key ? t(key) : product.productType;
+  };
+  const priceOf = (product: Product) => {
+    const { min, max } = product.priceRange;
+    return Number(min.amount) < Number(max.amount) ? t("browse.priceFrom", { min: money(min) }) : money(min);
+  };
+
+  /* The departments are always there to offer, so an open field always has a panel. */
+  const showPanel = open;
+  const listed = showPanel && entries.length > 0;
   return (
     <div ref={box} className="relative ms-auto w-full min-w-0 flex-1 lg:ms-0">
       {/*
@@ -265,7 +362,25 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
             ))}
           </Select>
         </span>
-        <input ref={field} value={value} onChange={(event) => applySearch(event.target.value)} onFocus={() => { setFocused(true); setRecent(readRecentSearches()); }} onBlur={leave} onKeyDown={onKeyDown} aria-label={t("header.searchAria")} aria-keyshortcuts="/" role="combobox" aria-autocomplete="list" aria-expanded={showPanel && optionCount > 0} aria-controls={showPanel && optionCount > 0 ? "netlet-search-suggestions" : undefined} className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]" placeholder={scoped ? t("search.placeholderIn", { department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")} />
+        <input
+          ref={field}
+          value={value}
+          onChange={(event) => applySearch(event.target.value)}
+          onFocus={() => { setFocused(true); setOpen(true); setRecent(readRecentSearches()); }}
+          onClick={() => setOpen(true)}
+          onBlur={leave}
+          onKeyDown={onKeyDown}
+          aria-label={t("header.searchAria")}
+          aria-keyshortcuts="/"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={listed}
+          aria-controls={listed ? listboxId : undefined}
+          aria-activedescendant={listed && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+          enterKeyHint="search"
+          className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]"
+          placeholder={scoped ? t("search.placeholderIn", { department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")}
+        />
         {/* The shortcut, said where it applies. Only on a wide screen, which is
             where there is a keyboard to press it on. */}
         {!value && !focused ? <kbd aria-hidden className="me-2 hidden h-6 min-w-6 shrink-0 place-items-center rounded-md border border-[#d5dfeb] px-1.5 font-sans text-[12px] font-semibold text-[#536b8c] lg:grid">/</kbd> : null}
@@ -310,8 +425,15 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
         through the 82% white, so the suggestions shared their background with a
         row of other links. Above the header's own layers, under the overlays.
       */}
+      {/* What the list holds, said to a screen reader once typing settles — the
+          list itself is silent until somebody arrows into it. */}
+      <p role="status" className="sr-only">
+        {showPanel && !emptyField && !waiting
+          ? entries.length === 1 ? t("search.suggestionOne") : entries.length ? t("search.suggestionCount", { count: entries.length }) : t("search.noSuggestions")
+          : ""}
+      </p>
       {showPanel && (
-        <div onBlur={leave} className="absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] w-full overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-2 shadow-[0_18px_45px_rgba(10,40,90,.18)]">
+        <div onBlur={leave} className="absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] max-h-[min(34rem,calc(100dvh-9rem))] w-full overflow-y-auto overscroll-contain rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-2 shadow-[0_18px_45px_rgba(10,40,90,.18)]">
           {emptyField ? (
             <>
               {recent.length ? (
@@ -328,66 +450,118 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                       {t("header.clearRecent")}
                     </button>
                   </div>
-                  <div id="netlet-search-suggestions" role="listbox" aria-label={t("header.recentSearches")}>
-                    {recent.map((term, index) => (
-                      <button key={term} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => openRecent(term)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`}>
+                  <div id={listboxId} role="listbox" aria-label={t("header.recentSearches")}>
+                    {entries.map((entry, index) => entry.kind === "recent" ? (
+                      <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
                         <Clock className="size-4 shrink-0 text-[#536b8c]" aria-hidden />
-                        <span dir="auto" className="min-w-0 flex-1 truncate text-sm">{term}</span>
+                        <span dir="auto" className="min-w-0 flex-1 truncate text-sm">{entry.term}</span>
                         <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
                       </button>
-                    ))}
+                    ) : null)}
                   </div>
                 </>
               ) : null}
               <p className={`type-label px-3 pb-2 text-[#536b8c] ${recent.length ? "mt-2 border-t border-[#e6e9ef] pt-3" : "pt-1"}`}>{t("header.shopByDepartment")}</p>
+              {/* Only departments with something on sale — the navigation's rule. */}
               <div className="flex flex-wrap gap-1.5 px-2 pb-1">
-                {categoryRail.map(department => (
+                {categoryRail.filter(entry => inStock(entry.query)).map(entry => (
                   <Link
-                    key={department.query}
-                    href={`/category/${categorySlug(department.query)}`}
+                    key={entry.query}
+                    href={`/category/${categorySlug(entry.query)}`}
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => setFocused(false)}
+                    onClick={close}
                     className="flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-2 text-xs font-bold text-[#0a285a] hover:border-[#0a285a]/40 hover:bg-[#f0f2f5]"
                   >
-                    <DepartmentIcon query={department.query} className="size-3.5 shrink-0 text-[#536b8c]" />
-                    {t(department.key)}
+                    <DepartmentIcon query={entry.query} className="size-3.5 shrink-0 text-[#536b8c]" />
+                    {t(entry.key)}
                   </Link>
                 ))}
               </div>
             </>
           ) : (
-          <>
-          <div className="type-label flex items-center justify-between px-3 pb-2 pt-1 text-[#536b8c]">
-            <span>{t("header.matchingCatalog")}</span>
-          </div>
-          {refineMessage && <div role="status" className="type-label mx-1 mb-2 rounded-xl bg-[#fff7e3] px-3 py-2 text-[#705523]">{refineMessage}</div>}
-          {suggestions.length ? (
-            <div id="netlet-search-suggestions" role="listbox" aria-label={t("header.matchingCatalog")}>
-              {suggestions.map((product, index) => (
-                <button key={product.id} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`}>
-                  <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
-                  <span className="min-w-0 flex-1"><span dir="auto" className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType ? (categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType) : t("header.netletFind")}</span></span>
-                  <CornerDownLeft className="size-4 ink-muted" />
+            <>
+              {refineMessage && <div role="status" className="type-label mx-1 mb-2 rounded-xl bg-[#fff7e3] px-3 py-2 text-[#705523]">{refineMessage}</div>}
+              {/* The words as typed found nothing and the catalogue's own spelling did: said, never silently swapped. */}
+              {answer.data?.correctedTo && !waiting ? (
+                <p className="type-label px-3 pb-1 pt-1 text-[#536b8c]">{t("search.showingFor", { term: answer.data.correctedTo })}</p>
+              ) : null}
+              {entries.length ? (
+                <div id={listboxId} role="listbox" aria-label={t("header.matchingCatalog")} aria-busy={waiting || undefined}>
+                  {entries.map((entry, index) => {
+                    if (entry.kind === "department") {
+                      return (
+                        <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
+                          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#eef1f5]"><DepartmentIcon query={entry.department.name} className="size-4 text-[#0a285a]" /></span>
+                          <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold">{t(entry.department.label)}</span><span className="type-label block truncate text-[#536b8c]">{t("search.kindDepartment")}</span></span>
+                          <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+                        </button>
+                      );
+                    }
+                    if (entry.kind === "brand") {
+                      return (
+                        <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
+                          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#eef1f5]"><Tag className="size-4 text-[#0a285a]" aria-hidden /></span>
+                          <span className="min-w-0 flex-1"><bdi dir="auto" className="block truncate text-sm font-bold">{entry.brand}</bdi><span className="type-label block truncate text-[#536b8c]">{t("search.kindBrand")}</span></span>
+                          <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+                        </button>
+                      );
+                    }
+                    if (entry.kind !== "product") return null;
+                    const product = entry.product;
+                    const department = departmentLabel(product);
+                    return (
+                      <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
+                        <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
+                        <span className="min-w-0 flex-1">
+                          {/* The words searched for in bold, matched as the search matches them. */}
+                          {/* Not `.type-product`: its 18px bold, forced, left nothing for the match to be bolder than. */}
+                          <span dir="auto" className="block truncate text-[14px] font-medium leading-5 text-[#0a285a]">
+                            {highlightParts(product.title, answer.data?.correctedTo ?? settled).map((part, partIndex) => (
+                              part.hit ? <strong key={partIndex} className="font-extrabold">{part.text}</strong> : <span key={partIndex}>{part.text}</span>
+                            ))}
+                          </span>
+                          <span className="type-label block truncate text-[#536b8c]">
+                            {department ? <>{department} · </> : null}
+                            <span className="font-bold text-[#0a285a]">{priceOf(product)}</span>
+                          </span>
+                        </span>
+                        <CornerDownLeft className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : waiting ? (
+                <div aria-hidden className="space-y-1 px-1 py-1">
+                  {[0, 1, 2].map(row => (
+                    <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2">
+                      <span className="size-9 shrink-0 animate-pulse rounded-lg bg-[#eef1f5]" />
+                      <span className="h-3 flex-1 animate-pulse rounded bg-[#eef1f5]" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="type-body px-3 py-4 text-center text-[#536b8c]">{t("header.noMatchYet")}</div>
+              )}
+              <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#0a285a]/[.06]">
+                <span className="min-w-0 truncate">
+                  {total > SUGGESTED_PRODUCTS && !waiting
+                    ? scoped
+                      ? t("header.seeAllCountIn", { count: total, query: typed, department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) })
+                      : t("header.seeAllCount", { count: total, query: typed })
+                    : scoped
+                      ? t("header.seeAllResultsIn", { query: typed, department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) })
+                      : t("header.seeAllResults", { query: typed })}
+                </span>
+                <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
+              </button>
+              {/* Optional, and quieter than the results it sits under. */}
+              {typed.length >= 2 && (
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-60">
+                  {refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 ink-accent" />}
+                  {t(refine.isPending ? "header.refining" : "header.refineWithAi")}
                 </button>
-              ))}
-            </div>
-          ) : (
-            <div className="type-body px-3 py-4 text-center text-[#536b8c]">{t("header.noMatchYet")}</div>
-          )}
-          {value.trim() ? (
-            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#0a285a]/[.06]">
-              <span className="min-w-0 truncate">{scoped ? t("header.seeAllResultsIn", { query: value.trim(), department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : t("header.seeAllResults", { query: value.trim() })}</span>
-              <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
-            </button>
-          ) : null}
-          {/* Optional, and quieter than the results it sits under. */}
-          {value.trim().length >= 2 && (
-            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-60">
-              {refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 ink-accent" />}
-              {t(refine.isPending ? "header.refining" : "header.refineWithAi")}
-            </button>
-          )}
-          </>
+              )}
+            </>
           )}
         </div>
       )}

@@ -6,6 +6,7 @@ import { publicProcedure, router } from "../_core/trpc.js";
 import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../shared/commerce/photoSearch.js";
 import { describePhoto, photoSearchAvailable } from "../photoSearch.js";
 import { checkPhotoSearchAllowed, checkSearchRefineAllowed, recordPhotoSearch, recordSearchRefine } from "../rateLimit.js";
+import { MAX_RESULTS, searchCatalogue } from "../productSearch.js";
 
 const refinementSchema = z.object({
   query: z.string().trim().min(2).max(120),
@@ -29,6 +30,20 @@ export function parseRefinedSearch(content: unknown, fallback: string) {
 }
 
 export const searchRouter = router({
+  /**
+   * The search itself, over the whole catalogue (`server/productSearch.ts`):
+   * the header's suggestions ask for a few, the results page for a page.
+   * Public, because the shelf is.
+   */
+  products: publicProcedure
+    .input(z.object({
+      q: z.string().trim().min(1).max(120),
+      department: z.string().trim().max(120).nullish(),
+      locale: z.enum(["en", "ar"]).optional(),
+      limit: z.number().int().min(1).max(MAX_RESULTS).optional(),
+    }))
+    .query(({ input }) => searchCatalogue(input)),
+
   /**
    * Whether a photo can be read (3.1.6). The photo panel is drawn either way —
    * it is a designed surface — and this decides whether it searches or says

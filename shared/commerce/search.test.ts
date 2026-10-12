@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { correctionFor, editDistance, matchesSearch, rankBySearch, searchScore, tokensOf } from "./search.js";
+import {
+  brandsMatching,
+  correctionFor,
+  departmentsMatching,
+  editDistance,
+  foldText,
+  highlightParts,
+  matchesSearch,
+  queryWords,
+  rankBySearch,
+  rankDocs,
+  searchScore,
+  searchWords,
+  stemWord,
+  tokensOf,
+  type SearchDoc,
+} from "./search.js";
 import type { Product } from "./types.js";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
@@ -79,5 +95,80 @@ describe("a misspelling", () => {
     expect(correctionFor("zzqx", [phone])).toBeNull();
     /* Too short to guess at: "tv" is one edit from far too much. */
     expect(correctionFor("ty", [phone])).toBeNull();
+  });
+});
+
+describe("words compared as people mean them", () => {
+  it("folds the Arabic letter forms keyboards and spellers disagree on, and the marks", () => {
+    expect(foldText("أإآٱ")).toBe("اااا");
+    expect(foldText("ساعة")).toBe("ساعه");
+    expect(foldText("مستشفى")).toBe("مستشفي");
+    expect(foldText("مُكيّف")).toBe("مكيف");
+    expect(foldText("مـــكيف")).toBe("مكيف");
+    expect(foldText("S٢٦ ۱۲")).toBe("s26 12");
+  });
+
+  it("takes the article and the sound plural off an Arabic word, and the plural off an English one", () => {
+    expect(searchWords("الساعة")).toEqual(["ساعه"]);
+    expect(searchWords("والهواتف للبيع")).toEqual(["هواتف", "بيع"]);
+    expect(stemWord("ساعات")).toBe("ساع");
+    /* A short word is not eaten: "ال" alone, "الة". */
+    expect(stemWord("ال")).toBe("ال");
+    expect(searchWords("watches batteries battery cookies cookie phones glasses")).toEqual(["watch", "batteri", "batteri", "cooki", "cooki", "phon", "glass"]);
+    expect(searchWords("bus 65W S26")).toEqual(["bus", "65w", "s26"]);
+  });
+
+  it("finds a product whichever way the shopper spells it", () => {
+    const watch = product("watch", { title: "ساعة ذكية", productType: "Electronics" });
+    for (const term of ["ساعه", "الساعة", "ساعات", "الساعات"]) expect(matchesSearch(watch, term)).toBe(true);
+    const sofa = product("sofa", { title: "Three-seat sofas" });
+    expect(matchesSearch(sofa, "sofa")).toBe(true);
+    expect(matchesSearch(lamp, "lamps")).toBe(true);
+  });
+});
+
+describe("the shopper's own word", () => {
+  it("finds the seller's word through a synonym, in either language", () => {
+    expect(matchesSearch(phone, "جوال")).toBe(true);
+    expect(matchesSearch(phone, "mobile")).toBe(true);
+    expect(matchesSearch(product("sofa", { title: "Three-seat sofa" }), "قنفة")).toBe(true);
+    expect(matchesSearch(product("rice", { title: "Basmati rice 5kg" }), "عيش")).toBe(true);
+  });
+
+  it("ranks the word typed above a synonym of it", () => {
+    const named = product("named", { title: "Mobile holder" });
+    const synonym = product("synonym", { title: "Phone holder" });
+    expect(rankBySearch([synonym, named], "mobile holder").map(p => p.id)).toEqual(["named", "synonym"]);
+  });
+
+  it("expands only a whole word, never a fragment", () => {
+    expect(queryWords("ph")[0].synonyms).toEqual([]);
+    expect(queryWords("phone")[0].synonyms).toContain("جوال");
+  });
+});
+
+describe("a document from the server", () => {
+  it("is found by its title in the other language", () => {
+    const doc: SearchDoc = { title: "Smart watch", alternateTitle: "ساعة ذكية", tags: [], variants: [] };
+    /* "ذكية" is no synonym of anything, so only the Arabic title can answer it. */
+    expect(rankDocs([doc], item => item, "ذكية")).toEqual([doc]);
+    expect(rankDocs([{ ...doc, alternateTitle: null }], item => item, "ذكية")).toEqual([]);
+  });
+});
+
+describe("what the dropdown draws", () => {
+  it("marks the words searched for, matched as the search matches", () => {
+    expect(highlightParts("Smart watch", "watches")).toEqual([
+      { text: "Smart", hit: false }, { text: " ", hit: false }, { text: "watch", hit: true },
+    ]);
+    expect(highlightParts("ساعة ذكية", "الساعات").filter(part => part.hit).map(part => part.text)).toEqual(["ساعة"]);
+    expect(highlightParts("Smart watch", "")).toEqual([{ text: "Smart watch", hit: false }]);
+  });
+
+  it("names a department from either language, and a brand the shop sells", () => {
+    expect(departmentsMatching("elec").map(d => d.slug)).toEqual(["electronics"]);
+    expect(departmentsMatching("بقالة").map(d => d.slug)).toEqual(["grocery"]);
+    expect(departmentsMatching("zzz")).toEqual([]);
+    expect(brandsMatching("sams", ["Samsung", "Philips"])).toEqual(["Samsung"]);
   });
 });

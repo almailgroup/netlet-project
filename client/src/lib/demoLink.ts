@@ -11,6 +11,7 @@
  * returned here are handed straight to React Query.
  */
 import { DEPARTMENTS } from "@shared/commerce/departments";
+import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
 import { readStored, writeStored } from "@/lib/browserStore";
 import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
@@ -262,6 +263,24 @@ function resolve(path: string, rawInput: unknown): unknown {
      */
     case "commerce.cart.setDestination":
       return requireCart(String(input.cartId));
+
+    /* The live search ranks the whole catalogue on the server with the rules in
+       `shared/commerce/search.ts`; here the same rules rank the fixtures. */
+    case "search.products": {
+      const term = String(input.q ?? "").trim();
+      const department = typeof input.department === "string" && input.department ? input.department : null;
+      const shelf = department ? productsInCategory(demoCatalog, department) : demoCatalog;
+      let found = rankBySearch(shelf, term);
+      let correctedTo: string | null = null;
+      if (!found.length) {
+        const correction = correctionFor(term, demoCatalog);
+        const corrected = correction ? rankBySearch(shelf, correction) : [];
+        if (corrected.length) { found = corrected; correctedTo = correction; }
+      }
+      const elsewhere = !found.length && department ? rankBySearch(demoCatalog, correctedTo ?? term).length : 0;
+      const limit = typeof input.limit === "number" ? input.limit : 24;
+      return { products: found.slice(0, limit), total: found.length, correctedTo, elsewhere, capped: false };
+    }
 
     /* The live version asks Mistral to rewrite the query against the catalog.
        There is no API key in a static build, so fall back to the shopper's own

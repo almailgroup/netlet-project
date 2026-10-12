@@ -253,9 +253,26 @@ living there cannot be tested against a real database.
 
 The password floor is the *same* function on both sides:
 `newPassword` in the auth router refines on `checkPassword().acceptable`, so
-the API cannot accept what the form refuses. Sign-in is deliberately not held
-to it — an account made before a rule existed must still be able to get in and
-change it.
+the API cannot accept what the form refuses. **Sign-in is not held to it, and
+that has to be true of the schema, not only of this paragraph.** The sign-in
+input was the same `credentials` object registration extends, carrying a
+ten-character minimum, so an account whose password predates the rule — or was
+set by hand in the Supabase dashboard — was refused as "not in the shape we
+expected" before its password was ever checked. That was found on the live
+site with a nine-character password; `auth.test.ts` signs in with one now.
+
+**The dialog is the whole screen on a phone** and a card from `sm` up: the
+keyboard takes half of a 390px screen, and a card with a margin round it left
+the password box under the keyboard. "Forgot your password?" sits under the
+password box, where somebody whose password was refused is already looking;
+Caps Lock is said there while it is on, the commonest reason a right password
+is refused; and the button says what it is doing ("Signing in…"). The panel
+beside it on a wide screen keeps its content together — it was split to the two
+ends, leaving a navy gap the height of the form — and wears the light logo,
+whose chevron stays orange; the dark one inverted turned it white. The email
+and password boxes type left to right on either page, so on the Arabic page
+their tick and eye sit at the page's end, the left, with the room made on that
+side (`rtl:ps-*`), or they covered the first characters.
 
 **The header never signs you out on one press.** Home's own header used to
 sign out on one click, which put the most destructive thing available there
@@ -482,7 +499,7 @@ overwrites a choice.
 **The empty search box offers what is true.** It listed the first four products
 under "Popular searches", and nothing counts what anybody searches. It offers
 this device's recent searches (`lib/recentSearches.ts`, never sent anywhere,
-with Clear) and the departments. The panel stays open while focus is anywhere
+with Clear) and the departments with something on sale. The panel stays open while focus is anywhere
 inside the search, so a keyboard can Tab to Clear and the departments — it
 closed on the field's own blur, which left everything below the suggestions to
 the mouse. **"/" goes to the field** (`aria-keyshortcuts`), never from inside
@@ -792,9 +809,8 @@ personal** (the rule under Recommendations) and draws nothing while it loads.
 **Shop by brand is the Brand rows sellers wrote** (`commerce.brands`, counted
 by the `brandOf` the Brand filter uses, so a tile reading "3 products" opens a
 page of three), from three brands up, an initial on each tile because NetLet
-holds no logos. The review also asked for a banner carousel tied to paid
-placements; a banner is an image and a link a seller books, which is a table,
-so it waits on a migration.
+holds no logos. The paid home banners sit under the department cards (see
+Paid placements) and are absent when none is approved and running.
 
 **Copy a shopper reads is never a status report.** "Live catalog", "Persistent
 cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
@@ -3165,14 +3181,58 @@ seller's name is not searched**: "Phone store Hawally" sells a Philips food
 processor, and every word of a store's name matched its whole shelf, so
 "phone" found the processor. A chosen sort still wins over the ranking.
 
+**Search runs on the server, over the whole catalogue.** It ran in the
+browser over what the page had fetched — the 24 newest products for the
+header's suggestions, the 100 newest on the results page — so the 101st
+product could not be found by any search, and a shop that grew past a hundred
+quietly stopped answering for most of itself. `search.products`
+(`server/productSearch.ts`) narrows in SQL to the products whose text holds
+every word, reading only text columns, then ranks those with the same pure
+rules and loads only the winners as storefront products. **The prefilter may
+let through what the ranking drops and must never drop what it would find**,
+which is why it folds Arabic in SQL with the same table `foldText` uses
+(`FOLD_FROM`, `FOLD_TO`, `FOLD_MARKS`, held equal by a test that runs both) and
+matches `containedPart` — a stem less the final i that stood for a y — rather
+than the stem. At most `CANDIDATE_CEILING` are ranked, and the answer says when
+it hit it. The results page searches the term in the address, not each
+keystroke in the field, so a results link is the same page for whoever opens
+it; its facets are what the search found. A search of symbols alone answers
+nothing: `%` and `_` never reach `LIKE`, because a word is letters and digits.
+
+**Words are compared as people mean them.** `foldText` reads Arabic-Indic
+digits as digits and folds the forms keyboards and spellers disagree on — أ إ آ
+to ا, ة to ه, ى to ي, ؤ to و, ئ to ي — and drops the vowel marks and the
+tatweel; `stemWord` takes the article (ال, وال بال فال كال, لل) and the sound
+plural ات off an Arabic word and the plural off an English one. So "ساعه",
+"الساعة" and "ساعات" find "ساعة ذكية", and "watches" finds "Smart watch".
+**Both titles are searched on both pages**, so an Arabic search finds a product
+titled in English. **`SYNONYM_GROUPS` carries the shopper's own word** —
+"جوال" for a phone, "قنفة" for a sofa, "عيش" for rice, "جوتي" for trainers —
+curated and short, each group one *product* rather than "related", because a
+synonym widens every search that uses it; it is expanded only for a whole word
+typed, and counts a little less than the word itself.
+
 **A misspelling gets the catalogue's own spelling.** When nothing matches,
-`correctionFor` looks each unknown word up among the words the catalogue
-actually uses — title, brand, department, tags — at an edit distance that
-counts a swap as one ("samsng", "smasung" → "Samsung"), and the page searches
-for that and says so above the grid. Only the catalogue's words, because an
-English dictionary would correct a brand into something nobody sells; and no
-`pg_trgm`, which would be a database extension for a catalogue the page
-already holds. The header's suggestions go through the same correction.
+`correctionFromTexts` looks each unknown word up among the words the catalogue
+actually uses — title in both languages, brand, department, tags — at an edit
+distance that counts a swap as one ("samsng", "smasung" → "Samsung"), and the
+page searches for that and says so above the grid and in the dropdown. Only the
+catalogue's words, because an English dictionary would correct a brand into
+something nobody sells; and no `pg_trgm`, which would be a database extension
+for what a word list does.
+
+**The dropdown is the WAI-ARIA combobox.** It offers a department the words
+name (either language, only one with something on sale), a brand the shop
+sells, then up to five products with their department and price and the words
+searched for in bold (`highlightParts`, matched as the search matches). Focus
+stays in the field and the highlighted option is named through
+`aria-activedescendant` — before, the arrows moved a highlight nobody using a
+screen reader could hear; a polite status says how many there are once typing
+settles. **Escape closes the list and keeps the field focused** (it dropped the
+keyboard on `<body>`); a second Escape empties it. The server is asked once
+typing pauses for 120ms, and the last answer stays on screen while the next
+arrives. A suggestion's title is not `.type-product`: that class forces 18px
+bold, which left nothing for the match to be bolder than.
 **A department search that finds nothing offers the whole shop**, with the
 count: on the Beauty page "no phone" is not "NetLet sells no phones".
 

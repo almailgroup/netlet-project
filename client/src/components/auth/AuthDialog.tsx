@@ -23,17 +23,25 @@
  * The showcase panel carries what NetLet does, not invented numbers. A sign-in
  * wall claiming "12,000 happy sellers" on a marketplace that is still being
  * filled is the kind of thing a shopper checks once and never trusts again.
+ *
+ * **On a phone it is the whole screen**, not a card floating over the shop:
+ * the keyboard takes half of a 390px screen, and a card with a margin round
+ * it left the password box under the keyboard. From `sm` up it is a card.
+ * "Forgot your password?" sits under the password box, where somebody whose
+ * password was refused is already looking, and Caps Lock is said beside the
+ * box while it is on — the commonest reason a right password is refused.
  */
 import { trpc } from "@/lib/trpc";
 import {
-  ArrowLeft, BellRing, Check, Eye, EyeOff, LoaderCircle,
-  LogIn, Lock, Mail, ShoppingBag, Store, UserPlus, X,
+  ArrowLeft, BellRing, Check, CircleAlert, Eye, EyeOff, LoaderCircle,
+  LogIn, Lock, Mail, RotateCcw, ShoppingBag, Store, Truck, UserPlus, Wallet, X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
-import { logoImage } from "@/lib/brandAssets";
+import { footerLogoImage, logoImage } from "@/lib/brandAssets";
+import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { clearReferral, storedReferral } from "@/lib/referral";
@@ -73,6 +81,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [reveal, setReveal] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState("");
   const utils = trpc.useUtils();
@@ -144,9 +153,14 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
 
   if (!open) return null;
 
+  /* What the button says while it works, so a slow service reads as working rather than stuck. */
+  const busyLabel: MessageKey = isReset ? "auth.sending" : isRegister ? "auth.creating" : "auth.signingIn";
+  /* Caps Lock, read from the key events the box already gets; nothing is asked of the browser. */
+  const readCapsLock = (event: React.KeyboardEvent<HTMLInputElement>) => setCapsLock(event.getModifierState?.("CapsLock") ?? false);
+
   return (
     <div
-      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-[#061b3b]/50 p-4"
+      className="fixed inset-0 z-[80] grid overflow-y-auto bg-[#061b3b]/55 sm:place-items-center sm:p-4"
       onClick={onClose}
     >
       <div
@@ -154,161 +168,178 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="grid w-full max-w-[860px] overflow-hidden rounded-3xl bg-[#fffdf9] shadow-[0_28px_70px_rgba(10,40,90,.3)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]"
+        className="grid min-h-[100dvh] w-full overflow-hidden bg-white sm:min-h-0 sm:max-w-[880px] sm:rounded-3xl sm:shadow-[0_28px_70px_rgba(10,40,90,.3)] lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]"
       >
         <ShowcasePanel />
 
-        <div className="relative p-6 sm:p-8">
-          <DiscButton
-            onClick={onClose}
-            aria-label={t("auth.close")}
-            className="absolute top-4 end-4"
-            discClassName="size-9"
-          >
-            <X className="size-4" />
-          </DiscButton>
+        <div className="relative flex flex-col px-5 pb-8 pt-5 sm:px-10 sm:pb-10 sm:pt-9">
+          <div className="flex items-center justify-between gap-3 lg:justify-end">
+            <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-10 w-auto lg:hidden" />
+            <DiscButton
+              onClick={onClose}
+              aria-label={t("auth.close")}
+              discClassName="size-9"
+            >
+              <X className="size-4" />
+            </DiscButton>
+          </div>
 
-          <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-8 w-auto lg:hidden" />
-
-          <h2 id={titleId} className="font-extrabold mt-4 text-2xl leading-tight text-[#0a285a] lg:mt-0">
-            {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
-          </h2>
-          <p className="type-label mt-1 text-[#536b8c]">
-            {t(isReset ? "auth.resetNote" : isRegister ? "auth.createNote" : "auth.signInNote")}
-          </p>
-
-          {/* Somebody who followed a friend's link is told what it gets them,
-              on the pane where they are deciding whether to register at all
-              (3.1.14). Absent when there is no invitation, rather than a line
-              explaining a scheme they are not in. */}
-          {isRegister && invited ? (
-            <p className="mt-3 rounded-xl bg-[#f3f2ed] px-4 py-3 text-xs leading-5 text-[#536b8c]">
-              {t("auth.referralInvited")}
+          <div className="mx-auto mt-6 w-full max-w-[380px] lg:mt-2">
+            <h2 id={titleId} className="text-[26px] font-extrabold leading-tight text-[#0a285a]">
+              {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
+            </h2>
+            <p className="mt-1.5 text-[14px] leading-6 text-[#536b8c]">
+              {t(isReset ? "auth.resetNote" : isRegister ? "auth.createNote" : "auth.signInNote")}
             </p>
-          ) : null}
 
-          {!isReset && (
-            <ModeTabs mode={mode} onChange={next => { setMode(next); setError(""); }} />
-          )}
+            {/* Somebody who followed a friend's link is told what it gets them,
+                on the pane where they are deciding whether to register at all
+                (3.1.14). Absent when there is no invitation, rather than a line
+                explaining a scheme they are not in. */}
+            {isRegister && invited ? (
+              <p className="mt-3 rounded-xl bg-[#f3f2ed] px-4 py-3 text-xs leading-5 text-[#536b8c]">
+                {t("auth.referralInvited")}
+              </p>
+            ) : null}
 
-          <form onSubmit={submit} className="mt-5 space-y-3.5" noValidate>
-            {isRegister && (
-              <Field label={`${t("auth.name")} ${t("auth.optional")}`} value={name}>
+            {!isReset && (
+              <ModeTabs mode={mode} onChange={next => { setMode(next); setError(""); }} />
+            )}
+
+            <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
+              {isRegister && (
+                <Field label={`${t("auth.name")} ${t("auth.optional")}`} value={name}>
+                  {id => (
+                    <input
+                      id={id}
+                      value={name}
+                      onChange={event => setName(event.target.value)}
+                      autoComplete="name"
+                      dir="auto"
+                      className={inputClass}
+                    />
+                  )}
+                </Field>
+              )}
+
+              <Field
+                label={t("auth.email")}
+                value={email}
+                problem={emailProblem ? t("auth.emailInvalid") : undefined}
+                valid={touched.email && emailLooksRight}
+              >
                 {id => (
                   <input
                     id={id}
-                    value={name}
-                    onChange={event => setName(event.target.value)}
-                    autoComplete="name"
-                    dir="auto"
-                    className={inputClass}
+                    ref={emailRef}
+                    type="email"
+                    inputMode="email"
+                    dir="ltr"
+                    value={email}
+                    onChange={event => setEmail(event.target.value)}
+                    onBlur={() => setTouched(was => ({ ...was, email: true }))}
+                    autoComplete="email"
+                    aria-invalid={emailProblem || undefined}
+                    /* Room for the tick. The box types left to right on either
+                       page, so its own "end" is the right; on the Arabic page
+                       the tick sits at the page's end, the left. */
+                    className={`${inputClass} pe-10 rtl:pe-3.5 rtl:ps-10`}
                   />
                 )}
               </Field>
-            )}
 
-            <Field
-              label={t("auth.email")}
-              value={email}
-              problem={emailProblem ? t("auth.emailInvalid") : undefined}
-              valid={touched.email && emailLooksRight}
-            >
-              {id => (
-                <input
-                  id={id}
-                  ref={emailRef}
-                  type="email"
-                  inputMode="email"
-                  dir="ltr"
-                  value={email}
-                  onChange={event => setEmail(event.target.value)}
-                  onBlur={() => setTouched(was => ({ ...was, email: true }))}
-                  autoComplete="email"
-                  aria-invalid={emailProblem || undefined}
-                  className={inputClass}
-                />
-              )}
-            </Field>
-
-            {!isReset && (
-              <>
-                <Field label={t("auth.password")} value={password}>
-                  {id => (
-                    <>
-                      <input
-                        id={id}
-                        type={reveal ? "text" : "password"}
-                        dir="ltr"
-                        value={password}
-                        onChange={event => setPassword(event.target.value)}
-                        onBlur={() => setTouched(was => ({ ...was, password: true }))}
-                        autoComplete={isRegister ? "new-password" : "current-password"}
-                        // Room for the eye, so a long password never runs under it.
-                        className={`${inputClass} pe-12`}
-                      />
+              {!isReset && (
+                <div>
+                  <Field label={t("auth.password")} value={password}>
+                    {id => (
+                      <>
+                        <input
+                          id={id}
+                          type={reveal ? "text" : "password"}
+                          dir="ltr"
+                          value={password}
+                          onChange={event => setPassword(event.target.value)}
+                          onKeyDown={readCapsLock}
+                          onKeyUp={readCapsLock}
+                          onBlur={() => { setTouched(was => ({ ...was, password: true })); setCapsLock(false); }}
+                          autoComplete={isRegister ? "new-password" : "current-password"}
+                          aria-describedby={capsLock ? `${titleId}-caps` : undefined}
+                          // Room for the eye, so a long password never runs under it — on the
+                          // Arabic page that is the left, for the reason the email box gives.
+                          className={`${inputClass} pe-12 rtl:pe-3.5 rtl:ps-12`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setReveal(shown => !shown)}
+                          aria-pressed={reveal}
+                          aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
+                          title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
+                          className="pressable tap-target absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] transition hover:bg-[#0a285a]/[.06] hover:text-[#0a285a] end-2"
+                        >
+                          {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                        </button>
+                      </>
+                    )}
+                  </Field>
+                  <div className="mt-1.5 flex min-h-5 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <span id={`${titleId}-caps`} aria-live="polite" className="text-[12px] font-semibold text-[#8c5a12]">
+                      {capsLock ? t("auth.capsLock") : ""}
+                    </span>
+                    {!isRegister ? (
                       <button
                         type="button"
-                        onClick={() => setReveal(shown => !shown)}
-                        aria-pressed={reveal}
-                        aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-                        title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-                        className="pressable tap-target absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] transition hover:bg-[#0a285a]/[.06] hover:text-[#0a285a] end-2"
+                        onClick={() => { setMode("reset"); setError(""); }}
+                        className="ms-auto rounded text-[13px] font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
                       >
-                        {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+                        {t("auth.forgot")}
                       </button>
-                    </>
-                  )}
-                </Field>
+                    ) : null}
+                  </div>
 
-                {isRegister && password.length > 0 && <StrengthMeter verdict={verdict} />}
-              </>
-            )}
+                  {isRegister && password.length > 0 && <div className="mt-2"><StrengthMeter verdict={verdict} /></div>}
+                </div>
+              )}
 
-            {/* aria-live so the failure is announced, not just drawn. */}
-            {error && (
-              <p role="alert" aria-live="polite" className="type-label rounded-xl bg-[#fdeceb] px-3 py-2 text-[#8c2f22]">
-                {tError(error)}
+              {/* aria-live so the failure is announced, not just drawn. */}
+              {error && (
+                <p role="alert" aria-live="polite" className="flex items-start gap-2 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-3.5 py-3 text-[13px] leading-5 text-[#8c2f22]">
+                  <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <span>{tError(error)}</span>
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={pending || !canSubmit}
+                className="glass glass-navy pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition disabled:opacity-50"
+              >
+                {pending
+                  ? <LoaderCircle className="size-4 animate-spin" />
+                  : isReset ? <Mail className="size-4" />
+                  : isRegister ? <UserPlus className="size-4" />
+                  : <LogIn className="size-4 rtl:-scale-x-100" />}
+                {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "account.createAccount" : "header.signIn")}
+              </button>
+            </form>
+
+            <div className="mt-5 space-y-3">
+              {isReset ? (
+                <button
+                  onClick={() => { setMode("signin"); setError(""); }}
+                  className="inline-flex items-center gap-1.5 rounded text-[13px] font-semibold text-[#0a285a] hover:underline"
+                >
+                  <ArrowLeft className="size-3.5 rtl:-scale-x-100" />{t("auth.resetBack")}
+                </button>
+              ) : null}
+
+              <p className="flex items-start gap-2 border-t border-[#eef1f5] pt-4 text-[12px] leading-5 ink-muted">
+                <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                {t("auth.secureNote")}
               </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={pending || !canSubmit}
-              className="glass glass-navy pressable flex h-12 w-full items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition disabled:opacity-50"
-            >
-              {pending
-                ? <LoaderCircle className="size-4 animate-spin" />
-                : isReset ? <Mail className="size-4" />
-                : isRegister ? <UserPlus className="size-4" />
-                : <LogIn className="size-4" />}
-              {t(isReset ? "auth.resetSend" : isRegister ? "account.createAccount" : "header.signIn")}
-            </button>
-          </form>
-
-          <div className="mt-4 space-y-3">
-            {isReset ? (
-              <button
-                onClick={() => { setMode("signin"); setError(""); }}
-                className="type-label inline-flex items-center gap-1.5 font-extrabold text-[#536b8c] hover:text-[#0a285a]"
-              >
-                <ArrowLeft className="size-3.5 rtl:-scale-x-100" />{t("auth.resetBack")}
-              </button>
-            ) : !isRegister ? (
-              <button
-                onClick={() => { setMode("reset"); setError(""); }}
-                className="type-label font-extrabold text-[#536b8c] underline underline-offset-4 hover:text-[#0a285a]"
-              >
-                {t("auth.forgot")}
-              </button>
-            ) : null}
-
-            <p className="type-label flex items-start gap-2 text-[11px] leading-4 ink-muted">
-              <Lock className="mt-px size-3.5 shrink-0" aria-hidden />
-              {t("auth.secureNote")}
-            </p>
-            {isRegister && (
-              <p className="type-label text-[11px] leading-4 ink-muted">{t("auth.terms")}</p>
-            )}
+              {isRegister && (
+                <p className="text-[12px] leading-5 ink-muted">{t("auth.terms")}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -316,8 +347,10 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
   );
 }
 
+/* Navy on focus, as every field in the shop and the portal is: the orange ring
+   this had was the one field on the site that took the brand colour as ink. */
 const inputClass =
-  "type-body h-12 w-full rounded-xl border border-[#d5dfeb] bg-white px-3.5 pt-4 text-[14px] text-[#0a285a] outline-none transition focus:border-[#f2683a] focus:ring-2 focus:ring-[#f2683a]/25";
+  "type-body h-[52px] w-full rounded-xl border border-[#cfd9e6] bg-white px-3.5 pt-4 text-[15px] text-[#0a285a] outline-none transition focus:border-[#0a285a] focus:ring-2 focus:ring-[#0a285a]/15";
 
 /**
  * A label that sits inside the box and lifts when there is something to lift
@@ -370,7 +403,7 @@ function ModeTabs({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => vo
     { id: "register", label: "auth.tabRegister" },
   ];
   return (
-    <div role="tablist" className="mt-5 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef1f6] p-1">
+    <div role="tablist" className="mt-6 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef1f6] p-1">
       {tabs.map(tab => {
         const active = mode === tab.id;
         return (
@@ -438,8 +471,15 @@ function StrengthMeter({ verdict }: { verdict: ReturnType<typeof checkPassword> 
  *
  * Three things the account does, rather than testimonials or seller counts:
  * everything here is checkable against the site itself, which is the only
- * kind of claim worth putting next to a password box. Hidden below `lg`,
+ * kind of claim worth putting next to a password box. Under them, the three
+ * facts every order carries — delivery to every governorate, cash on delivery,
+ * the return window from the constant the API refuses on. Hidden below `lg`,
  * where the form should have the whole screen.
+ *
+ * The content sits together in the middle rather than split to the two ends
+ * of the panel, which left a navy gap the height of the form between a
+ * heading and the list it heads. The logo is the light version, chevron
+ * still orange; it was the dark one inverted, which turned the chevron white.
  */
 function ShowcasePanel() {
   const { t } = useTranslation();
@@ -448,28 +488,41 @@ function ShowcasePanel() {
     { icon: BellRing, title: "auth.panelPointTwo", note: "auth.panelPointTwoNote" },
     { icon: Store, title: "auth.panelPointThree", note: "auth.panelPointThreeNote" },
   ] as const;
+  const facts = [
+    { icon: Truck, label: t("checkout.builtForKuwait") },
+    { icon: Wallet, label: t("home.payOnDelivery") },
+    { icon: RotateCcw, label: t("home.returnsWithin", { days: RETURN_WINDOW_DAYS }) },
+  ];
 
   return (
-    <div className="relative hidden flex-col justify-between overflow-hidden bg-[#0a285a] p-8 text-white lg:flex">
-      <div className="relative">
-        <img src={logoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-9 w-auto brightness-0 invert" />
-        <p className="font-extrabold mt-6 text-2xl leading-[1.15]">{t("auth.panelTitle")}</p>
+    <div className="relative hidden flex-col justify-center gap-9 overflow-hidden bg-[#0a285a] px-10 py-12 text-white lg:flex">
+      <div>
+        <img src={footerLogoImage} alt="" aria-hidden loading="eager" decoding="async" className="h-11 w-auto object-contain" />
+        <p className="mt-6 text-[28px] font-extrabold leading-[1.15]">{t("auth.panelTitle")}</p>
       </div>
 
-      <ul className="relative mt-8 space-y-5">
+      <ul className="space-y-5">
         {points.map(point => (
-          <li key={point.title} className="flex gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/12">
-              <point.icon className="size-[18px]" aria-hidden />
+          <li key={point.title} className="flex gap-3.5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10">
+              <point.icon className="size-[18px] ink-accent-on-dark" aria-hidden />
             </span>
             <span>
-              <span className="block text-[13px] font-extrabold">{t(point.title)}</span>
-              <span className="block text-[12px] leading-5 text-white/70">{t(point.note)}</span>
+              <span className="block text-[14px] font-bold">{t(point.title)}</span>
+              <span className="mt-0.5 block text-[13px] leading-5 text-white/75">{t(point.note)}</span>
             </span>
           </li>
         ))}
       </ul>
 
+      <ul className="flex flex-wrap gap-2 border-t border-white/12 pt-6">
+        {facts.map(fact => (
+          <li key={fact.label} className="flex items-center gap-1.5 rounded-full bg-white/8 px-3 py-1.5 text-[12px] font-semibold text-white/90">
+            <fact.icon className="size-3.5 shrink-0" aria-hidden />
+            {fact.label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

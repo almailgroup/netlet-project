@@ -34,9 +34,8 @@ import {
   categoryFromSlug,
   categorySlug,
   knownCategories,
-  matchesSearch,
-  rankBySearch,
-  correctionFor,
+  applyFilters,
+  sortProducts,
   searchPath,
   searchTermFrom,
   searchWithTerm,
@@ -72,9 +71,10 @@ export default function Category() {
   const [, params] = useRoute("/category/:slug");
   const [onSearchPage] = useRoute("/search");
   const [location, navigate] = useLocation();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
-  const { data: catalog = [], isLoading, error, refetch } = useCatalog(100);
+  const shelf = useCatalog(100);
+  const catalog = shelf.data ?? [];
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -104,44 +104,47 @@ export default function Category() {
     [queryString, category],
   );
 
+  /*
+   * A search is answered by the server, over the whole catalogue
+   * (`server/productSearch.ts`). It used to run here, over the hundred newest
+   * products this page had fetched, so the hundred-and-first could not be
+   * found by any search. The page searches what the address says — the term
+   * Enter wrote — not every keystroke in the header field, so a results page
+   * is the same page for anybody holding the link.
+   */
+  const typed = term.trim();
+  const searching = typed.length > 0;
+  const answer = trpc.search.products.useQuery(
+    { q: typed, department: category === "all" ? null : category, locale, limit: 200 },
+    { enabled: searching, placeholderData: previous => previous },
+  );
+  const matched = useMemo(() => (searching ? answer.data?.products ?? [] : []), [searching, answer.data]);
+  const isLoading = searching ? answer.isLoading : shelf.isLoading;
+  const error = searching ? answer.error : shelf.error;
+  const refetch = searching ? answer.refetch : shelf.refetch;
+
   // Facets describe what is in the department, before the sidebar narrows it —
   // otherwise ticking "Sony" would remove every other brand from the list you
-  // used to tick it.
+  // used to tick it. On a search, what is in it is what the search found.
   const inCategory = useMemo(() => productsInCategory(catalog, category), [catalog, category]);
-  const facets = useMemo(() => facetsFor(inCategory), [inCategory]);
+  const facets = useMemo(() => facetsFor(searching ? matched : inCategory), [searching, matched, inCategory]);
 
   /*
-   * The search, in three steps. The words as typed, ranked by where they are
-   * found when the order is the default one (a chosen order wins, as
-   * everywhere). Nothing found: the catalogue's own spelling of what was
-   * probably meant, said so above the grid rather than silently swapped. Still
-   * nothing inside a department: how many the whole shop has, offered as one
-   * press, because a search on the Beauty page that finds no phone has not
-   * found that NetLet sells no phones.
+   * The server has already ranked the matches, corrected a misspelling when the
+   * words as typed found nothing (said above the grid rather than silently
+   * swapped), and counted what the whole shop has when a department had
+   * nothing — "no phone" on the Beauty page is not "NetLet sells no phones".
+   * The sidebar narrows what it found; a chosen order wins over the ranking.
    */
-  const searchFor = (words: string, within: BrowseFilters) => {
-    const matched = browse(catalog, within);
-    if (!words) return matched;
-    return within.sort === "relevance" ? rankBySearch(matched, words) : matched.filter(product => matchesSearch(product, words));
-  };
-  const typed = search.trim();
-  const { results, correctedTo } = useMemo(() => {
-    const exact = searchFor(typed, filters);
-    if (!typed || exact.length) return { results: exact, correctedTo: null };
-    const correction = correctionFor(typed, catalog);
-    const corrected = correction ? searchFor(correction, filters) : [];
-    return corrected.length ? { results: corrected, correctedTo: correction } : { results: exact, correctedTo: null };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, filters, typed]);
-  const elsewhere = useMemo(() => {
-    if (!typed || results.length || category === "all") return 0;
-    const everywhere = { ...EMPTY_FILTERS, sort: filters.sort };
-    const found = searchFor(typed, everywhere).length;
-    if (found) return found;
-    const correction = correctionFor(typed, catalog);
-    return correction ? searchFor(correction, everywhere).length : 0;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog, category, filters.sort, typed, results.length]);
+  const results = useMemo(() => {
+    if (!searching) return browse(catalog, filters);
+    const narrowed = applyFilters(matched, filters);
+    return filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
+  }, [searching, catalog, matched, filters]);
+  const correctedTo = searching ? answer.data?.correctedTo ?? null : null;
+  const elsewhere = searching && category !== "all" && !results.length ? answer.data?.elsewhere ?? 0 : 0;
+  /* More matched than one page holds: the best of them are here, and the page says how many there were. */
+  const moreThanShown = searching && answer.data && answer.data.total > matched.length ? answer.data.total : 0;
 
   // Translated where NetLet knows the department, shown as the merchant typed
   // it otherwise — a product type is their words, not ours.
@@ -150,7 +153,7 @@ export default function Category() {
     ? t("browse.allProducts")
     : translatedName ? t(translatedName) : category;
   /* A search reads as what was searched for, in the department it was searched in. */
-  const searched = search.trim();
+  const searched = typed;
   /* The footer's "New arrivals" and "On offer" land here with a sort or a
      filter, and the heading read "All products" for both — the list was
      right and the page said it was something else. Named when the view is
@@ -296,7 +299,9 @@ export default function Category() {
                     ? t("browse.countNone")
                     : results.length === 1
                       ? t("browse.countOne")
-                      : t("browse.countMany", { count: results.length })}
+                      : moreThanShown
+                        ? t("browse.countBestOf", { count: results.length, total: moreThanShown })
+                        : t("browse.countMany", { count: results.length })}
                 </p>
               </div>
 
