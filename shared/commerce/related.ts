@@ -20,8 +20,14 @@ export function relatedProducts(product: Product, catalog: Product[], limit = 4)
       const sharedTags = Array.from(tags).filter(tag => candidateTags.has(tag)).length;
       const sharedType = type && candidate.productType?.trim().toLowerCase() === type ? 3 : 0;
       const sharedVendor = vendor && candidate.vendor?.trim().toLowerCase() === vendor ? 1 : 0;
-      return { candidate, score: sharedType + sharedTags * 2 + sharedVendor };
+      /* Related means the same department or something in common the seller
+         tagged; the same seller only breaks a tie. Counted on its own, the
+         seller put a store's food processor on its phone's page, and anything
+         scoring nothing was still drawn to fill four places. */
+      const relevant = sharedType > 0 || sharedTags > 0;
+      return { candidate, score: relevant ? sharedType + sharedTags * 2 + sharedVendor : 0 };
     })
+    .filter(entry => entry.score > 0)
     .sort((left, right) => right.score - left.score || left.candidate.title.localeCompare(right.candidate.title))
     .slice(0, limit)
     .map(({ candidate }) => candidate);

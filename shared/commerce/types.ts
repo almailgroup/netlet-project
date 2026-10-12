@@ -221,6 +221,8 @@ export type CartItem = {
   variantId: string;
   productHandle: string;
   productTitle: string;
+  /** The seller's Arabic title, when they wrote one; the page picks (`lineTitle`). */
+  productTitleAr?: string | null;
   variantTitle: string;
   image: Image | null;
   unitPrice: Money;

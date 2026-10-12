@@ -29,6 +29,15 @@ describe("relatedProducts", () => {
       product("grinder", "Coffee Grinder", "Home & Kitchen", ["coffee", "kitchen"]),
     ];
 
-    expect(relatedProducts(active, catalog).map(item => item.id)).toEqual(["grinder", "kettle", "headphones"]);
+    /* The headphones share nothing but the shop, and are not related. */
+    expect(relatedProducts(active, catalog).map(item => item.id)).toEqual(["grinder", "kettle"]);
+  });
+
+  it("never suggests something only because the same store sells it", () => {
+    const phone = product("phone", "Galaxy S26", "Electronics", ["phone"], "Phone store Hawally");
+    const processor = product("processor", "Food processor", "Home & Kitchen", [], "Phone store Hawally");
+    const caseFor = product("case", "Galaxy S26 case", "Electronics", ["phone"], "Another shop");
+    expect(relatedProducts(phone, [phone, processor, caseFor]).map(item => item.id)).toEqual(["case"]);
+    expect(relatedProducts(phone, [phone, processor])).toEqual([]);
   });
 });

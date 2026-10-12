@@ -8,6 +8,8 @@
  * Every helper degrades to "absent" so a sparsely configured product renders
  * without holes.
  */
+import { DEPARTMENTS } from "./departments.js";
+import { fieldFor } from "./attributeSchema.js";
 import type { Money, Product, ProductAttribute } from "./types.js";
 
 /** Attributes that describe the product rather than the review score. */
@@ -115,14 +117,83 @@ export function isExpressEligible(product: Pick<Product, "tags">): boolean {
 
 /** Specification content: structured metafields first, then the description. */
 export function specifications(
-  product: Pick<Product, "attributes" | "description">,
+  product: Pick<Product, "attributes" | "description"> & { productType?: string | null },
+  options: { arabic?: boolean } = {},
 ): Specifications {
+  const department = DEPARTMENTS.find(entry => entry.name === product.productType)?.slug ?? null;
   return {
     rows: product.attributes
       .filter((attribute) => attribute.namespace !== REVIEW_NAMESPACE)
-      .map((attribute) => ({ label: attribute.label, value: attribute.value })),
+      .map((attribute) => {
+        /* A row the department's schema knows takes the schema's label in the
+           page's language and the field's own unit: "Memory: 12" was the
+           seller typing the number into a field whose unit is GB. */
+        const field = fieldFor(department, attribute.key);
+        const label = field ? (options.arabic ? field.labelAr : field.label) : attribute.label;
+        return { label, value: withUnit(attribute.value, field?.unit ?? null) };
+      }),
     text: product.description.trim(),
   };
+}
+
+/**
+ * A value with its field's unit after it, unless the seller already wrote one
+ * — "12" becomes "12 GB", and "12 GB", "12GB" and "1 TB" stay as they are.
+ */
+export function withUnit(value: string, unit: string | null): string {
+  const trimmed = value.trim();
+  if (!unit || !trimmed) return trimmed;
+  /* Only a bare number takes the unit; anything with a letter in it already says what it is. */
+  return /^[\d٠-٩.,\s]+$/.test(trimmed) ? `${trimmed} ${unit}` : trimmed;
+}
+
+export type DescriptionBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "list"; items: { label: string | null; text: string }[] };
+
+const BULLET = /^\s*(?:--+|[-–—•*·▪])\s+/;
+
+/**
+ * A seller's description as paragraphs and lists.
+ *
+ * Sellers write bullets the way a keyboard allows — "-- Display: 6.8 inch",
+ * "• 120 Hz", "- Two-year warranty" — and the page printed the dashes. A run of
+ * such lines is a list; a "Label: value" line in one is drawn with its label
+ * bold, the way a specification sheet reads; everything else is a paragraph,
+ * one per blank-line-separated block, as typed.
+ */
+export function descriptionBlocks(text: string): DescriptionBlock[] {
+  const blocks: DescriptionBlock[] = [];
+  let paragraph: string[] = [];
+  let list: { label: string | null; text: string }[] = [];
+  const flushParagraph = () => {
+    if (paragraph.length) blocks.push({ kind: "paragraph", text: paragraph.join("\n") });
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (list.length) blocks.push({ kind: "list", items: list });
+    list = [];
+  };
+  for (const raw of text.replace(/\r\n?/g, "\n").split("\n")) {
+    const line = raw.trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+    if (BULLET.test(raw)) {
+      flushParagraph();
+      const body = raw.replace(BULLET, "").trim();
+      const labelled = /^([^:：]{1,40})[:：]\s+(.+)$/.exec(body);
+      list.push(labelled ? { label: labelled[1].trim(), text: labelled[2].trim() } : { label: null, text: body });
+      continue;
+    }
+    flushList();
+    paragraph.push(line);
+  }
+  flushParagraph();
+  flushList();
+  return blocks;
 }
 
 /**

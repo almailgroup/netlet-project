@@ -44,6 +44,7 @@
  * to press it on — never while somebody is typing somewhere else, and never
  * past an open dialog.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,7 +101,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
-  const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { staleTime: 5 * 60 * 1000 });
+  const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 

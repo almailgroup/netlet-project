@@ -13,6 +13,7 @@
  *
  * Portalled to `<body>` for the reason every overlay opened from a bar is.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
@@ -26,7 +27,7 @@ import { Link } from "wouter";
 
 export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { enabled: open, staleTime: 5 * 60 * 1000 });
+  const shelf = useCatalog(24, { enabled: open, staleTime: 5 * 60 * 1000 });
   const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
   const inStock = useDepartmentsInStock();
   useOverlay(open, onClose);

@@ -47,6 +47,9 @@ describe("dictionary completeness", () => {
       // A bank's bulk-payment portal asks for these by their format names, so
       // the buttons and the note name them as the portal does — the CSV reason.
       "admin.payoutFilesNote", "admin.payoutDownloadCsv", "admin.payoutDownloadXml",
+      // Names the variable an administrator sets in the deployment's settings,
+      // which is spelled the same in every language — the `https` reason.
+      "features.why.noAiKey",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

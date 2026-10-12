@@ -25,7 +25,7 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
-import { Card, Field, PageHeader, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
+import { Card, Field, PageHeader, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -38,13 +38,14 @@ import {
   SEARCH_SNIPPET_FITS,
   SEARCH_TITLE_FITS,
   draftProblems,
+  warrantyRequired,
   handleBase,
   photoUrlProblem,
   type DraftField,
   type ProductDraft,
 } from "@shared/inventory/productDraft";
 import { privatePageMeta, toPreviewText } from "@shared/seo";
-import { ArrowLeft, Check, Circle, ImageOff, LoaderCircle, Star, X } from "lucide-react";
+import { ArrowLeft, Check, Circle, ImageOff, LoaderCircle, Sparkles, Star, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
@@ -55,10 +56,10 @@ export default function AdminNewProduct() {
   return <AdminShell need="product.create">{actor => <NewProductForm actor={actor} />}</AdminShell>;
 }
 
-const EMPTY: ProductDraft = { title: "", titleAr: "", price: "", compareAtPrice: "", sku: "", stock: "", description: "" };
+const EMPTY: ProductDraft = { title: "", titleAr: "", price: "", compareAtPrice: "", sku: "", stock: "", description: "", warranty: "" };
 
 /** The order fields are visited in, so the first problem is the one focused. */
-const FIELD_ORDER: DraftField[] = ["title", "titleAr", "price", "compareAtPrice", "sku", "stock", "description"];
+const FIELD_ORDER: DraftField[] = ["title", "titleAr", "warranty", "price", "compareAtPrice", "sku", "stock", "description"];
 const idFor = (field: DraftField) => `new-product-${field}`;
 
 function NewProductForm({ actor }: { actor: Actor }) {
@@ -101,7 +102,18 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const mayPublish = vendorId !== null && can(actor, "product.publish", vendorId);
   const publishGoesToReview = actor.kind === "vendor" && store.data ? !store.data.autoPublish : false;
 
-  const problems = useMemo(() => ({ ...draftProblems(draft), ...serverErrors }), [draft, serverErrors]);
+  /* The chosen department decides whether a warranty must be stated. */
+  const departmentSlug = (categories.data ?? []).find(category => String(category.id) === categoryId)?.slug ?? null;
+  const needsWarranty = warrantyRequired(departmentSlug);
+  const problems = useMemo(() => ({ ...draftProblems(draft, { departmentSlug }), ...serverErrors }), [draft, serverErrors, departmentSlug]);
+  const arabicDraftOn = trpc.inventory.products.arabicDraftAvailable.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const draftArabic = trpc.inventory.products.draftArabicTitle.useMutation({
+    onSuccess: reply => {
+      if (reply.kind === "draft") edit("titleAr")(reply.text);
+      else toast(t("admin.arabicDraftUnavailable"));
+    },
+    onError: () => toast(t("admin.arabicDraftUnavailable")),
+  });
   const shown = (field: DraftField): MessageKey | undefined =>
     touched[field] || attempted || serverErrors[field] ? problems[field] : undefined;
 
@@ -150,6 +162,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
         vendorId,
         title,
         titleAr: draft.titleAr.trim() || null,
+        warranty: (draft.warranty ?? "").trim() || null,
         description: draft.description.trim() || null,
         categoryId: categoryId ? Number(categoryId) : null,
         tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
@@ -208,6 +221,8 @@ function NewProductForm({ actor }: { actor: Actor }) {
 
   const checklist: { key: MessageKey; done: boolean; required: boolean }[] = [
     { key: "admin.newCheckTitle", done: !problems.title, required: true },
+    { key: "admin.newCheckTitleAr", done: !problems.titleAr, required: true },
+    ...(needsWarranty ? [{ key: "admin.newCheckWarranty" as MessageKey, done: !problems.warranty, required: true }] : []),
     { key: "admin.newCheckPrice", done: !problems.price, required: true },
     { key: "admin.newCheckPhoto", done: photos.length > 0, required: false },
     { key: "admin.newCheckDescription", done: draft.description.trim().length > 0, required: false },
@@ -275,9 +290,24 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   className={fieldClass}
                 />
               </Field>
-              <Field label={t("admin.newTitleAr")} optional error={shown("titleAr") && t(shown("titleAr")!)}>
-                <input id={idFor("titleAr")} dir="rtl" lang="ar" value={draft.titleAr} onChange={event => edit("titleAr")(event.target.value)} onBlur={leave("titleAr")} autoComplete="off" className={fieldClass} />
+              <Field label={t("admin.newTitleAr")} error={shown("titleAr") && t(shown("titleAr")!)}>
+                <input id={idFor("titleAr")} dir="rtl" lang="ar" value={draft.titleAr} onChange={event => edit("titleAr")(event.target.value)} onBlur={leave("titleAr")} autoComplete="off" required className={fieldClass} />
               </Field>
+              {/* A draft for the seller to read, never a name saved unseen. */}
+              {arabicDraftOn.data && vendorId ? (
+                <div className="-mt-2 sm:col-span-2">
+                  <button
+                    type="button"
+                    disabled={!draft.title.trim() || draftArabic.isPending}
+                    onClick={() => draftArabic.mutate({ vendorId, title: draft.title.trim() })}
+                    className={`${smallButtonClass.secondary}`}
+                  >
+                    {draftArabic.isPending ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />}
+                    {t("admin.arabicDraft")}
+                  </button>
+                  <p className="mt-1.5 text-[12px] ink-muted">{t("admin.arabicDraftNote")}</p>
+                </div>
+              ) : null}
               <Field label={t("admin.fieldCategory")}>
                 <Select value={categoryId} onChange={event => setCategoryId(event.target.value)} className={fieldClass}>
                   <option value="">{t("admin.fieldNoCategory")}</option>
@@ -286,6 +316,11 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   ))}
                 </Select>
               </Field>
+              {needsWarranty ? (
+                <Field label={t("admin.newWarranty")} hint={t("admin.newWarrantyHint")} error={shown("warranty") && t(shown("warranty")!)}>
+                  <input id={idFor("warranty")} dir="auto" value={draft.warranty ?? ""} onChange={event => edit("warranty")(event.target.value)} onBlur={leave("warranty")} maxLength={200} placeholder={t("admin.newWarrantyPlaceholder")} autoComplete="off" required className={fieldClass} />
+                </Field>
+              ) : null}
             </div>
           </Card>
 

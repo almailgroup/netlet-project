@@ -15,6 +15,7 @@
  * Enter in the header lands on the layout every department already has —
  * filters, sort, the empty state — rather than on a model's answer.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -73,7 +74,7 @@ export default function Category() {
   const [location, navigate] = useLocation();
   const { t } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
-  const { data: catalog = [], isLoading, error, refetch } = trpc.commerce.products.list.useQuery({ first: 100 });
+  const { data: catalog = [], isLoading, error, refetch } = useCatalog(100);
 
   const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);

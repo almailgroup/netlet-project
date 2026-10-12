@@ -9,6 +9,7 @@
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
@@ -33,7 +34,7 @@ export default function Saved() {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  const { data: catalog = [], isLoading } = trpc.commerce.products.list.useQuery({ first: 60 });
+  const { data: catalog = [], isLoading } = useCatalog(60);
 
   // Ordered by the saved list rather than by catalog order, so the most
   // recently saved item is where the shopper left it.

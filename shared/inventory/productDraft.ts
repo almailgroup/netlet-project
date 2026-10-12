@@ -34,17 +34,25 @@ export type ProductDraft = {
   sku: string;
   stock: string;
   description: string;
+  /** The seller's warranty, asked for where the department requires one. */
+  warranty?: string;
 };
 
 export type DraftField = keyof ProductDraft;
 
 /** Which fields are wrong, and what each needs. Absent means fine. */
-export function draftProblems(draft: ProductDraft): Partial<Record<DraftField, MessageKey>> {
+export function draftProblems(draft: ProductDraft, options: { departmentSlug?: string | null } = {}): Partial<Record<DraftField, MessageKey>> {
   const problems: Partial<Record<DraftField, MessageKey>> = {};
   const title = draft.title.trim();
   if (!title) problems.title = "admin.newTitleRequired";
   else if (title.length > MAX_TITLE) problems.title = "admin.newTooLong";
-  if (draft.titleAr.trim().length > MAX_TITLE) problems.titleAr = "admin.newTooLong";
+  /* Required: the Arabic page showed the English name for every product whose
+     seller skipped this box, which was every product. */
+  if (!draft.titleAr.trim()) problems.titleAr = "admin.newTitleArRequired";
+  else if (draft.titleAr.trim().length > MAX_TITLE) problems.titleAr = "admin.newTooLong";
+
+  if (warrantyRequired(options.departmentSlug) && !(draft.warranty ?? "").trim()) problems.warranty = "admin.newWarrantyRequired";
+  else if ((draft.warranty ?? "").trim().length > 200) problems.warranty = "admin.newTooLong";
 
   const price = draft.price.trim();
   if (!price) problems.price = "admin.newPriceRequired";
@@ -86,4 +94,19 @@ export function photoUrlProblem(url: string): MessageKey | null {
  */
 export function handleBase(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 150) || "product";
+}
+
+/**
+ * Departments where a listing must say what warranty the seller gives.
+ *
+ * A KWD 320 phone read "This seller has not recorded a warranty", which is the
+ * honest answer and the wrong state for an electronics listing to go live in:
+ * it is the first thing somebody buying a phone asks. The seller's own words,
+ * whatever they are — "12 months", "سنتان", "No warranty" — satisfy it; the
+ * rule is that the question was answered, not what the answer is.
+ */
+export const WARRANTY_REQUIRED_DEPARTMENTS: readonly string[] = ["electronics"];
+
+export function warrantyRequired(departmentSlug: string | null | undefined): boolean {
+  return Boolean(departmentSlug && WARRANTY_REQUIRED_DEPARTMENTS.includes(departmentSlug));
 }

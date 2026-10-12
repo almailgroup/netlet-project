@@ -39,6 +39,7 @@ import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components
 import { StoreAvatar } from "@/components/admin/StoreAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
+import { OPTION_NAME_MAX, OPTION_VALUE_MAX, optionPairs, optionPairsProblem, optionsDistinguish, optionsRecord, varyingOptionNames, type OptionPair } from "@shared/inventory/variantOptions";
 
 const REASONS = STOCK_REASONS;
 
@@ -212,6 +213,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      how to enable it. */
   const mayPrice = can(actor, "vendor.setCommission");
   const mayDelete = can(actor, "product.delete", row.vendorId);
+  const variantRecords = row.variants.map(variant => variant.options ?? {});
+  const knownOptionNames = Array.from(new Set(variantRecords.flatMap(options => Object.keys(options))));
 
   /* The sections, in the order a listing is finished: what it is, what it
      looks like, what it costs, then the rest. The jump list is drawn from the
@@ -479,11 +482,22 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               </button>
             ) : null}
           >
+            {/* Whether the options tell the variants apart is the rule the
+                product page draws by, so this says what the shopper will see. */}
+            {row.variants.length > 1 ? (
+              <p className="mb-4 flex items-start gap-2 rounded-xl bg-[#f3f6fa] px-3 py-2.5 text-[13px] leading-5 text-[#0a285a]">
+                <Info className="mt-0.5 size-4 shrink-0 ink-muted" aria-hidden />
+                {optionsDistinguish(variantRecords)
+                  ? t("admin.variantsByOptions", { names: varyingOptionNames(variantRecords).join(locale === "ar" ? "، " : ", ") })
+                  : t("admin.variantsByName")}
+              </p>
+            ) : null}
             <div className="space-y-4">
               {row.variants.map(variant => (
                 <VariantRow
                   key={variant.id}
                   variant={variant}
+                  knownNames={knownOptionNames}
                   mayEdit={mayEdit}
                   /* NetLet's shelf is counted by NetLet (4.2); the server refuses a
                      seller's adjustment there, so the control is not offered. */
@@ -869,11 +883,13 @@ function Labelled({ label, hint, className = "", children }: { label: string; hi
   );
 }
 
-function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
-  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null; centreId?: number | null; memberPrice?: string | null };
+function VariantRow({ variant, knownNames, mayEdit, mayStock, onSave, onAdjust, pending }: {
+  variant: { id: number; title: string; sku: string | null; price: string; compareAtPrice: string | null; stock: number; unit?: string | null; stepAmount?: string | number | null; preorderStock?: number | null; preorderReleaseAt?: string | Date | null; centreId?: number | null; memberPrice?: string | null; options?: Record<string, string> | null };
+  /** Option names any variant of this product uses, so a new row starts on one. */
+  knownNames: string[];
   mayEdit: boolean;
   mayStock: boolean;
-  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null; memberPrice: string | null }) => void;
+  onSave: (values: { title: string; sku: string | null; price: string; compareAtPrice: string | null; unit: SellUnit; stepAmount: number; preorderStock: number; preorderReleaseAt: Date | null; memberPrice: string | null; options: Record<string, string> }) => void;
   onAdjust: (delta: number, reason: (typeof REASONS)[number]) => void;
   pending: boolean;
 }) {
@@ -912,6 +928,16 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
   const memberTyped = values.memberPrice.trim();
   const memberProblem = memberTyped === "" ? null : /^\d{1,9}(\.\d{1,3})?$/.test(memberTyped) && /^\d{1,9}(\.\d{1,3})?$/.test(values.price) ? memberPriceProblem(values.price, memberTyped) : "membership.priceInvalid";
   const perUnit = measureOk ? unitPrice(values.price || "0", measure) : null;
+  /* Colour: Black, Storage: 256 GB — the rows the product page draws as choices. */
+  const [pairs, setPairs] = useState<OptionPair[]>(() => optionPairs(variant.options));
+  const optionProblem = optionPairsProblem(pairs);
+  const setPair = (index: number, change: Partial<OptionPair>) =>
+    setPairs(current => current.map((pair, at) => (at === index ? { ...pair, ...change } : pair)));
+  const addPair = () => setPairs(current => {
+    const used = new Set(current.map(pair => pair.name.trim().toLocaleLowerCase()));
+    const next = knownNames.find(name => !used.has(name.toLocaleLowerCase())) ?? "";
+    return [...current, { name: next, value: "" }];
+  });
   const [delta, setDelta] = useState(1);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("received");
   /* The server's own rule, asked before the press. */
@@ -975,6 +1001,56 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
       </div>
       {!measureOk ? <p className="mt-1.5 text-[12px] font-semibold text-[#8c2f22]">{t("admin.variantStepInvalid")}</p> : null}
 
+      <fieldset className="mt-4" aria-describedby={`options-hint-${variant.id}`}>
+        <legend className="text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.variantOptions")}</legend>
+        <p id={`options-hint-${variant.id}`} className="mt-0.5 text-[12px] leading-5 ink-muted">{t("admin.variantOptionsHint")} {t("admin.variantPhotoHint")}</p>
+        {pairs.length ? (
+          <ul className="mt-2 space-y-2">
+            {pairs.map((pair, index) => (
+              <li key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2">
+                <input
+                  dir="auto"
+                  value={pair.name}
+                  maxLength={OPTION_NAME_MAX}
+                  disabled={!mayEdit}
+                  onChange={event => setPair(index, { name: event.target.value })}
+                  aria-label={t("admin.optionName")}
+                  placeholder={t("admin.optionName")}
+                  className={inputClass}
+                />
+                <input
+                  dir="auto"
+                  value={pair.value}
+                  maxLength={OPTION_VALUE_MAX}
+                  disabled={!mayEdit}
+                  onChange={event => setPair(index, { value: event.target.value })}
+                  aria-label={pair.name.trim() ? `${t("admin.optionValue")}: ${pair.name.trim()}` : t("admin.optionValue")}
+                  placeholder={t("admin.optionValue")}
+                  className={inputClass}
+                />
+                {mayEdit ? (
+                  <button
+                    type="button"
+                    onClick={() => setPairs(current => current.filter((_, at) => at !== index))}
+                    aria-label={t("admin.removeOption")}
+                    title={t("admin.removeOption")}
+                    className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {mayEdit ? (
+          <button type="button" onClick={addPair} className={`${buttonClass.secondary} mt-2`}>
+            <Plus className="size-4" aria-hidden />{t("admin.addOption")}
+          </button>
+        ) : null}
+        {optionProblem ? <p role="alert" className="mt-1.5 text-[12px] font-semibold text-[#8c2f22]">{t(optionProblem)}</p> : null}
+      </fieldset>
+
       {/* Pre-order: a second, bounded pool the vendor chooses the size of.
           Beside the stock figure rather than in a panel of its own, because the
           question it answers — how many may I sell — is the same question. */}
@@ -1020,8 +1096,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
               preorderStock: preorderAllowance,
               preorderReleaseAt: values.preorderReleaseAt ? new Date(values.preorderReleaseAt) : null,
               memberPrice: memberTyped || null,
+              options: optionsRecord(pairs),
             })}
-            disabled={pending || !measureOk || !preorderOk || Boolean(memberProblem)}
+            disabled={pending || !measureOk || !preorderOk || Boolean(memberProblem) || optionProblem !== null}
             className={buttonClass.secondary}
           >
             <Save className="size-4" aria-hidden />{t("admin.save")}

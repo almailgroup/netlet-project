@@ -106,6 +106,11 @@ describe("a product's journey from the admin portal to the shop", () => {
       images: [{ url: "https://img/headphones.jpg", altText: "Headphones" }],
     });
     await caller.inventory.variants.adjustStock({ variantId: product.variants[0].id, delta: 6, reason: "received" });
+    /* An electronics listing publishes only with its warranty stated. */
+    await caller.inventory.products.setAttributes({
+      id: product.id,
+      attributes: [{ namespace: "specs", key: "warranty", label: "Warranty", value: "12 months" }],
+    });
     await caller.inventory.products.setStatus({ id: product.id, status: "published" });
 
     const listed = await shopper.commerce.products.byHandle({ handle });
@@ -122,7 +127,10 @@ describe("a product's journey from the admin portal to the shop", () => {
   it("reads back in Arabic when the shop asks in Arabic", async () => {
     const listed = await shopper.commerce.products.byHandle({ handle, locale: "ar" });
     expect(listed.title).toBe("سماعات لاسلكية");
-    expect(listed.productType).toBe("إلكترونيات");
+    /* The department stays its canonical name: it is the key the pages filter
+       and link on, and the Arabic label is the dictionary's. Translated here,
+       the Arabic page's department links matched nothing. */
+    expect(listed.productType).toBe("Electronics");
   });
 
   it("can be put in a bag and totals correctly", async () => {

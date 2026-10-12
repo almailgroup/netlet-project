@@ -12,6 +12,7 @@
  * A switch is `role="switch"` with `aria-checked`, so a screen reader says
  * "on" or "off" rather than "button".
  */
+import { AlertTriangle, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -158,6 +159,13 @@ function Features() {
                             <div className="min-w-0 flex-1">
                               <p id={labelId} className="text-[14px] font-bold text-[#0a285a]">{t(NAME[key])}</p>
                               <p className="mt-0.5 text-[13px] leading-5 text-[#536b8c]">{t(WHEN_OFF[key])}</p>
+                              {/* On, and still drawing nothing: say what it waits for. */}
+                              {row.enabled && row.why ? (
+                                <p className={`mt-1.5 flex items-start gap-1.5 text-[12px] leading-5 ${row.why.kind === "blocked" ? "font-semibold text-[#7a4a10]" : "ink-muted"}`}>
+                                  {row.why.kind === "blocked" ? <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden /> : <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />}
+                                  {t(row.why.reason)}
+                                </p>
+                              ) : null}
                               {row.updatedAt ? (
                                 <p className="mt-1 text-[12px] ink-muted">
                                   {t("features.changedBy", { date: formatDate(row.updatedAt) })}{" "}

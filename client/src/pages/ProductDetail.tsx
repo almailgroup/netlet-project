@@ -1,4 +1,5 @@
 import { useCart } from "@/contexts/CartContext";
+import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
 import { SizeGuide } from "@/components/product/SizeGuide";
 import { SubscribePanel } from "@/components/product/SubscribePanel";
 import { ProductReviews } from "@/components/product/ProductReviews";
@@ -30,6 +31,7 @@ import {
 } from "@shared/commerce/productDetail";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { relatedProducts } from "@shared/commerce/related";
+import { descriptionBlocks } from "@shared/commerce/productDetail";
 import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
@@ -728,8 +730,30 @@ function StarRating({ value, scaleMax, count }: { value: number; scaleMax: numbe
   );
 }
 
-function SpecificationsPanel({ product, t }: { product: Product; t: Translate }) {
-  const { rows, text } = specifications(product);
+/** A seller's description, with their dashed lines drawn as a list (`descriptionBlocks`). */
+function DescriptionText({ text }: { text: string }) {
+  return (
+    <div dir="auto" className="space-y-3 text-sm leading-7 text-[#404553]">
+      {descriptionBlocks(text).map((block, index) =>
+        block.kind === "paragraph" ? (
+          <p key={index} className="whitespace-pre-line">{block.text}</p>
+        ) : (
+          <ul key={index} className="list-disc space-y-1 ps-5 marker:text-[#0a285a]/40">
+            {block.items.map((item, itemIndex) => (
+              <li key={itemIndex}>
+                {item.label ? <strong className="font-semibold text-[#1f2229]">{item.label}: </strong> : null}
+                {item.text}
+              </li>
+            ))}
+          </ul>
+        ),
+      )}
+    </div>
+  );
+}
+
+function SpecificationsPanel({ product, t, arabic }: { product: Product; t: Translate; arabic: boolean }) {
+  const { rows, text } = specifications(product, { arabic });
   if (!rows.length && !text) return <p className="text-sm leading-7 ink-muted">{t("product.noSpecs")}</p>;
   return (
     <div className="space-y-3">
@@ -743,9 +767,7 @@ function SpecificationsPanel({ product, t }: { product: Product; t: Translate })
           ))}
         </dl>
       ) : null}
-      {/* Pre-wrapped: a spec block written into the description keeps one line
-          per specification, which is how it reads in the admin. */}
-      {text ? <p dir="auto" className="text-sm leading-7 whitespace-pre-wrap text-[#404553]">{text}</p> : null}
+      {text ? <DescriptionText text={text} /> : null}
     </div>
   );
 }
@@ -856,11 +878,12 @@ export default function ProductDetail() {
   const [, params] = useRoute("/products/:handle");
   const [, navigate] = useLocation();
   const handle = params?.handle ?? "";
-  const { data: product, isLoading, error } = trpc.commerce.products.byHandle.useQuery({ handle }, { enabled: Boolean(handle) });
-  const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 24 });
-  const { addItem, loading: cartLoading } = useCart();
-  const { savedIds, toggleSaved } = useCustomer();
-  const { direction, t } = useTranslation();
+  const { data: product, isLoading, error } = useProductByHandle(handle);
+  const { data: catalog = [] } = useCatalog(24);
+  const { addItem, loading: cartLoading, cart, openCart } = useCart();
+  const { savedIds, toggleSaved, deliveryZone } = useCustomer();
+  const { direction, t, isArabic: isArabicPage } = useTranslation();
+  const deliveryArea = deliveryZone ? (isArabicPage ? deliveryZone.labelAr : deliveryZone.label) : null;
   /* Both are switchable (2.3); the server refuses either way, this only stops offering it. */
   const offersOn = useFeature("priceOffers");
   const chatOn = useFeature("chat");
@@ -966,6 +989,7 @@ export default function ProductDetail() {
   const price = selectedVariant?.price ?? product.priceRange.min;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
   const savings = savingsPercent(price, compareAtPrice);
+  const inBag = selectedVariant ? (cart?.items ?? []).filter(item => item.variantId === selectedVariant.id).reduce((total, item) => total + item.quantity, 0) : 0;
   const inStock = Boolean(selectedVariant?.availableForSale);
 
   // The selected tab keeps its navy on hover. `.glass-navy:hover` shifts to
@@ -1047,29 +1071,8 @@ export default function ProductDetail() {
                   a pre-order, where the release date is the promise. */}
               {selectedVariant?.preorder
                 ? null
-                : <DeliverySpeedLine speed={product.deliverySpeed} provider={product.deliveryProvider} className="mt-1.5 text-[13px]" />}
-              <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
-                {/* Four tabs will not divide a phone's width into anything
-                    readable, so below `sm` the row scrolls instead of each tab
-                    taking a quarter and clipping its own label. */}
-                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={tabClass(tab === "specifications")}><ListTree className="size-3.5 shrink-0" />{t("product.specifications")}</button>
-                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={tabClass(tab === "shipping")}><Truck className="size-3.5 shrink-0" />{t("product.shippingPolicy")}</button>
-                <button role="tab" id="tab-warranty" aria-selected={tab === "warranty"} aria-controls="panel-warranty" onClick={() => setTab("warranty")} className={tabClass(tab === "warranty")}><ShieldCheck className="size-3.5 shrink-0" />{t("product.warrantyPolicy")}</button>
-                <button role="tab" id="tab-returns" aria-selected={tab === "returns"} aria-controls="panel-returns" onClick={() => setTab("returns")} className={tabClass(tab === "returns")}><RotateCcw className="size-3.5 shrink-0" />{t("product.returnsPolicy")}</button>
-              </div>
+                : <DeliverySpeedLine speed={product.deliverySpeed} provider={product.deliveryProvider} area={deliveryArea} className="mt-1.5 text-[13px]" />}
             </div>
-
-            <div className="mt-5 min-h-[120px]">
-              <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} t={t} /></div>
-              <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
-              <div role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden={tab !== "warranty"}><WarrantyPanel product={product} t={t} /></div>
-              <div role="tabpanel" id="panel-returns" aria-labelledby="tab-returns" hidden={tab !== "returns"}><ReturnsPanel t={t} /></div>
-            </div>
-
-            {/* Under the tabs, because it answers what the tabs did not: a
-                spec block is written for somebody who already knows the
-                category. */}
-            <ProductAssistant handle={product.handle} />
 
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
             {/* Beside the picker it answers (3.1.20): which size is a question
@@ -1100,6 +1103,14 @@ export default function ProductDetail() {
               {/* The shared control: the card grew the same thing, and two
                   copies is how one clamps at 1 and the other at 0. */}
               <QuantityStepper value={quantity} onChange={setQuantity} disabled={cartLoading} />
+              {/* What the bag already holds of this option, in every line of it
+                  (plain, with extras, in a set): the stepper is "how many more",
+                  and showing 1 beside a bag of 5 read as the bag being wrong. */}
+              {inBag > 0 ? (
+                <button type="button" onClick={openCart} className="text-[13px] font-semibold text-[#0a285a] underline underline-offset-4">
+                  {t(inBag === 1 ? "product.inYourCartOne" : "product.inYourCartMany", { count: inBag })}
+                </button>
+              ) : null}
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -1135,6 +1146,34 @@ export default function ProductDetail() {
 
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
+
+            {/* The details come after the decision, not before it. The tabs and
+                the assistant sat between the price and the buttons, which put
+                Quantity, Add to cart and Buy now below the fold on a laptop. */}
+            <hr className="my-6 border-[#0a285a]/8" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div role="tablist" aria-label={t("product.information")} className="hide-scrollbar inline-flex gap-1 overflow-x-auto rounded-xl border border-[#0a285a]/8 bg-white/50 p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,.7)] max-sm:w-full">
+                {/* Four tabs will not divide a phone's width into anything
+                    readable, so below `sm` the row scrolls instead of each tab
+                    taking a quarter and clipping its own label. */}
+                <button role="tab" id="tab-specifications" aria-selected={tab === "specifications"} aria-controls="panel-specifications" onClick={() => setTab("specifications")} className={tabClass(tab === "specifications")}><ListTree className="size-3.5 shrink-0" />{t("product.specifications")}</button>
+                <button role="tab" id="tab-shipping" aria-selected={tab === "shipping"} aria-controls="panel-shipping" onClick={() => setTab("shipping")} className={tabClass(tab === "shipping")}><Truck className="size-3.5 shrink-0" />{t("product.shippingPolicy")}</button>
+                <button role="tab" id="tab-warranty" aria-selected={tab === "warranty"} aria-controls="panel-warranty" onClick={() => setTab("warranty")} className={tabClass(tab === "warranty")}><ShieldCheck className="size-3.5 shrink-0" />{t("product.warrantyPolicy")}</button>
+                <button role="tab" id="tab-returns" aria-selected={tab === "returns"} aria-controls="panel-returns" onClick={() => setTab("returns")} className={tabClass(tab === "returns")}><RotateCcw className="size-3.5 shrink-0" />{t("product.returnsPolicy")}</button>
+              </div>
+            </div>
+
+            <div className="mt-5 min-h-[120px]">
+              <div role="tabpanel" id="panel-specifications" aria-labelledby="tab-specifications" hidden={tab !== "specifications"}><SpecificationsPanel product={product} t={t} arabic={isArabicPage} /></div>
+              <div role="tabpanel" id="panel-shipping" aria-labelledby="tab-shipping" hidden={tab !== "shipping"}><ShippingPolicyPanel express={express} t={t} /></div>
+              <div role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden={tab !== "warranty"}><WarrantyPanel product={product} t={t} /></div>
+              <div role="tabpanel" id="panel-returns" aria-labelledby="tab-returns" hidden={tab !== "returns"}><ReturnsPanel t={t} /></div>
+            </div>
+
+            {/* Under the tabs, because it answers what the tabs did not: a
+                spec block is written for somebody who already knows the
+                category. */}
+            <ProductAssistant handle={product.handle} />
           </div>
         </section>
 

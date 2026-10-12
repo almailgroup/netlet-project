@@ -128,11 +128,12 @@ describe("the shelf", () => {
     expect(lamp?.vendor).toBe("Acme");
   });
 
-  it("answers in Arabic when asked, product and vendor and category alike", async () => {
+  it("answers in Arabic when asked, product and vendor alike", async () => {
     const lamp = await catalog.getProductByHandle("desk-lamp", "ar");
     expect(lamp?.title).toBe("مصباح مكتب");
-    expect(lamp?.productType).toBe("المنزل والمطبخ");
     expect(lamp?.vendor).toBe("أكمي");
+    /* The department stays the key the pages match on; its label is the dictionary's. */
+    expect(lamp?.productType).toBe("Home & Kitchen");
   });
 
   it("keeps the third decimal, because the dinar has one", async () => {

@@ -22,6 +22,7 @@
  * The old in-page addresses still land: `/account#orders` is answered with
  * `/account/orders`, so a link in an old email or a bookmark is not a dead end.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -147,7 +148,7 @@ export default function Account() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const [onSection, params] = useRoute("/account/:section");
-  const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 24 });
+  const { data: catalog = [] } = useCatalog(24);
   const signals = useAccountSignals();
 
   /*

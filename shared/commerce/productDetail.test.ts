@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isExpressEligible, productRating, savingsPercent, specifications } from "./productDetail.js";
+import { descriptionBlocks, isExpressEligible, productRating, savingsPercent, specifications, withUnit } from "./productDetail.js";
 import type { ProductAttribute } from "./types.js";
 
 const kwd = (amount: string) => ({ amount, currencyCode: "KWD" });
@@ -108,5 +108,43 @@ describe("specifications", () => {
 
   it("reports nothing to show when neither half is configured", () => {
     expect(specifications({ attributes: [], description: "   " })).toEqual({ rows: [], text: "" });
+  });
+});
+
+describe("what the specifications and description read as", () => {
+  it("puts the field's unit after a bare number, and leaves a written one alone", () => {
+    expect(withUnit("12", "GB")).toBe("12 GB");
+    expect(withUnit("12 GB", "GB")).toBe("12 GB");
+    expect(withUnit("1TB", "GB")).toBe("1TB");
+    expect(withUnit("12", null)).toBe("12");
+  });
+
+  it("labels a known row the schema's way, in the page's language", () => {
+    const product = {
+      productType: "Electronics",
+      description: "",
+      attributes: [
+        { namespace: "specs", key: "ram", label: "ram", value: "12" },
+        { namespace: "specs", key: "colour-name", label: "Colour name", value: "Titanium" },
+      ],
+    };
+    expect(specifications(product).rows).toEqual([
+      { label: "Memory", value: "12 GB" },
+      { label: "Colour name", value: "Titanium" },
+    ]);
+    expect(specifications(product, { arabic: true }).rows[0]).toEqual({ label: "الذاكرة", value: "12 GB" });
+  });
+
+  it("draws dashed lines as a list, with a label bold", () => {
+    const blocks = descriptionBlocks("The latest Galaxy.\n\n-- Display: 6.9 inch\n-- 200 MP camera\n• Battery: 5000 mAh\n\nIn the box: phone and cable.");
+    expect(blocks).toEqual([
+      { kind: "paragraph", text: "The latest Galaxy." },
+      { kind: "list", items: [
+        { label: "Display", text: "6.9 inch" },
+        { label: null, text: "200 MP camera" },
+        { label: "Battery", text: "5000 mAh" },
+      ] },
+      { kind: "paragraph", text: "In the box: phone and cable." },
+    ]);
   });
 });

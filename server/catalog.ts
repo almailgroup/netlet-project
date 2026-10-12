@@ -359,7 +359,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         .select({ productId: productImages.productId, url: productImages.url, altText: productImages.altText, kind: productImages.kind, posterUrl: productImages.posterUrl })
         .from(productImages)
         .where(inArray(productImages.productId, productIds))
-        .orderBy(productImages.position)
+        .orderBy(productImages.position, productImages.id)
     : [];
   const imageFor = new Map<number, { url: string; altText: string | null }>();
   for (const image of images) if (!imageFor.has(image.productId)) imageFor.set(image.productId, image);
@@ -400,7 +400,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         .from(cartItemAddons)
         .innerJoin(productAddons, eq(productAddons.id, cartItemAddons.addonId))
         .where(inArray(cartItemAddons.cartItemId, lineIds))
-        .orderBy(productAddons.position)
+        .orderBy(productAddons.position, productAddons.id)
     : [];
 
   /*
@@ -445,6 +445,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     variantId: String(row.variantId),
     productHandle: row.productHandle,
     productTitle: row.productTitle,
+    productTitleAr: row.productTitleAr?.trim() || null,
     variantTitle: row.variantTitle,
     image: imageFor.get(row.productId) ?? null,
     unitPrice: money(row.charged),

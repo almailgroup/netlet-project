@@ -287,7 +287,11 @@ export function toStorefrontProduct(
     title,
     description,
     descriptionHtml: toHtml(description),
-    productType: pick(locale, context.categoryName, context.categoryNameAr) || null,
+    /* The department's own name in every language: it is the key the pages
+       filter on, build links from and look labels up by, not a label. Asked in
+       Arabic it came back Arabic, so a department page read in Arabic matched
+       nothing. The label is the dictionary's (`categoryMessageKey`). */
+    productType: context.categoryName || null,
     vendor: pick(locale, context.vendorName, context.vendorNameAr) || null,
     vendorBadges: visibleBadges(context.vendorBadges),
     /* Resolved here, once, so no page has to know the override rule — the

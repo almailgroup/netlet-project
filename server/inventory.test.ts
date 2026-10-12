@@ -1540,3 +1540,29 @@ describe("a variant's stock", () => {
     expect(movement).toMatchObject({ delta: -3, resulting: 0, reason: "damaged" });
   });
 });
+
+describe("a variant's options", () => {
+  it("survive a save that does not mention them, and are cleaned when it does", async () => {
+    const id = await inv.saveVariant(ownerActor(), {
+      productId: ids.acmeProduct, title: "Black, 256 GB", price: "4.000", options: { " Colour ": " Black ", Storage: "256 GB" },
+    });
+    const read = async () => (await db.select({ options: productVariants.options }).from(productVariants).where(eq(productVariants.id, id)))[0].options;
+    expect(await read()).toEqual({ Colour: "Black", Storage: "256 GB" });
+
+    /* The editor saved a price without options for a long time, and every such save emptied them. */
+    await inv.saveVariant(ownerActor(), { id, productId: ids.acmeProduct, title: "Black, 256 GB", price: "4.500" });
+    expect(await read()).toEqual({ Colour: "Black", Storage: "256 GB" });
+
+    await inv.saveVariant(ownerActor(), { id, productId: ids.acmeProduct, title: "Black", price: "4.500", options: { Colour: "Black" } });
+    expect(await read()).toEqual({ Colour: "Black" });
+  });
+
+  it("refuses half an option and one name twice", async () => {
+    await expect(inv.saveVariant(ownerActor(), {
+      productId: ids.acmeProduct, title: "Half", price: "4.000", options: { Colour: " " },
+    })).rejects.toThrow("admin.optionHalf");
+    await expect(inv.saveVariant(ownerActor(), {
+      productId: ids.acmeProduct, title: "Twice", price: "4.000", options: { Colour: "Black", colour: "Red" },
+    })).rejects.toThrow("admin.optionDuplicate");
+  });
+});

@@ -16,6 +16,7 @@
  * for two, because explaining the charge to somebody who is not paying it is
  * explaining a rule that has not applied to them.
  */
+import { lineTitle } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { MapPin } from "lucide-react";
@@ -23,7 +24,7 @@ import { Select } from "@/components/ui/Select";
 
 export function ItemDestinations() {
   const { cart, setDestination, loading } = useCart();
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
 
   const book = cart?.addresses ?? [];
   const items = cart?.items ?? [];
@@ -60,14 +61,14 @@ export function ItemDestinations() {
         {items.map(item => (
           <li key={item.lineId} className="flex flex-wrap items-center justify-between gap-3">
             <span className="type-body min-w-0 flex-1 text-[13px] text-[#0a285a]" dir="auto">
-              {item.productTitle}
+              {lineTitle(item, isArabic)}
             </span>
             {/* The label is explicit rather than wrapped around the select:
                 a <label> containing one pulls every option's text into the
                 accessible name, so a screen reader reads the whole list as the
                 field's name. */}
             <Select
-              aria-label={t("address.forLine", { name: item.productTitle })}
+              aria-label={t("address.forLine", { name: lineTitle(item, isArabic) })}
               disabled={loading}
               value={item.destination?.id ?? ""}
               onChange={event =>

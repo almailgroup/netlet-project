@@ -259,7 +259,7 @@ async function priceableLines(
     .innerJoin(cartItems, eq(cartItems.id, cartItemAddons.cartItemId))
     .innerJoin(productAddons, eq(productAddons.id, cartItemAddons.addonId))
     .where(eq(cartItems.cartId, cartId))
-    .orderBy(productAddons.position);
+    .orderBy(productAddons.position, productAddons.id);
 
   /* Membership is asked once, of the account placing the order, at the last moment (4.1). */
   const member = await isMemberNow(db, userId ?? null);

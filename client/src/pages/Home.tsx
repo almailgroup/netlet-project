@@ -2,6 +2,7 @@
  * The home page: the departments as cards, a Deals shelf, the new arrivals as
  * a grid, what shopping with NetLet involves, and the footer.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -200,7 +201,7 @@ export default function Home() {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const { savedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
-  const { data: catalog = [], isLoading: catalogLoading, error: catalogError } = trpc.commerce.products.list.useQuery({ first: 24 });
+  const { data: catalog = [], isLoading: catalogLoading, error: catalogError } = useCatalog(24);
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
   const shelves = useMemo(() => shelvesFor(catalog), [catalog]);

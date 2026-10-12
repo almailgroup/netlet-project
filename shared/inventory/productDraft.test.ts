@@ -2,16 +2,26 @@ import { describe, expect, it } from "vitest";
 import { draftProblems, handleBase, photoUrlProblem, type ProductDraft } from "./productDraft.js";
 
 const draft = (patch: Partial<ProductDraft> = {}): ProductDraft => ({
-  title: "Walnut tray", titleAr: "", price: "9.750", compareAtPrice: "", sku: "", stock: "", description: "", ...patch,
+  title: "Walnut tray", titleAr: "صينية جوز", price: "9.750", compareAtPrice: "", sku: "", stock: "", description: "", ...patch,
 });
 
 describe("the add-a-product form's rules", () => {
-  it("passes a named, priced product and nothing else is required", () => {
+  it("passes a product named in both languages and priced, and nothing else is required", () => {
     expect(draftProblems(draft())).toEqual({});
   });
 
   it("asks for a name and a price, and says which", () => {
     expect(draftProblems(draft({ title: "  ", price: "" }))).toEqual({ title: "admin.newTitleRequired", price: "admin.newPriceRequired" });
+  });
+
+  it("needs the Arabic name, which the Arabic shop shows", () => {
+    expect(draftProblems(draft({ titleAr: " " })).titleAr).toBe("admin.newTitleArRequired");
+  });
+
+  it("needs a warranty stated for electronics, in the seller's own words", () => {
+    expect(draftProblems(draft(), { departmentSlug: "electronics" }).warranty).toBe("admin.newWarrantyRequired");
+    expect(draftProblems(draft({ warranty: "No warranty" }), { departmentSlug: "electronics" }).warranty).toBeUndefined();
+    expect(draftProblems(draft(), { departmentSlug: "home-and-kitchen" }).warranty).toBeUndefined();
   });
 
   it("holds the price to the router's shape: three decimals, no sign, more than zero", () => {

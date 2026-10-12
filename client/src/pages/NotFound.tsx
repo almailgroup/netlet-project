@@ -6,6 +6,7 @@
  * leave. It now looks like NetLet and, more usefully, offers a way onward:
  * a mistyped or dead product link is a dead end otherwise.
  */
+import { useCatalog } from "@/hooks/useCatalog";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { Thumb } from "@/components/product/Thumb";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
@@ -23,7 +24,7 @@ export default function NotFound() {
   const money = useMoney();
   // A handful of real products beats a dead end, and the catalog is already
   // cached from wherever the shopper came in.
-  const { data: catalog = [] } = trpc.commerce.products.list.useQuery({ first: 8 });
+  const { data: catalog = [] } = useCatalog(8);
   const suggestions = catalog.slice(0, 4);
 
   return (

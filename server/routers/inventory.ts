@@ -9,6 +9,7 @@
  * admin and a vendor calling `products.list` get different rows from the same
  * code path.
  */
+import { arabicTitleAvailable, draftArabicTitle } from "../arabicTitle.js";
 import { STOCK_REASONS } from "../../shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
@@ -138,6 +139,10 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "UNPRICED") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.unpriced" });
     }
+    /* An electronics listing with no warranty stated: one specification row away. */
+    if (message === "NO_WARRANTY") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.needsWarranty" });
+    }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
     }
@@ -158,7 +163,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
-    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.")) {
+    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.") || message.startsWith("admin.option")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
@@ -399,6 +404,15 @@ export const inventoryRouter = router({
         return guard(() => getProduct(actor, input.id));
       }),
 
+    /** Whether "Draft with AI" can be offered beside the Arabic name. */
+    arabicDraftAvailable: protectedProcedure.query(() => arabicTitleAvailable()),
+    /** A draft of the Arabic name for the seller to read and keep or change. */
+    draftArabicTitle: protectedProcedure
+      .input(z.object({ vendorId: rowId, title: z.string().trim().min(1).max(255) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user, input.vendorId);
+        return guard(() => draftArabicTitle(actor, input.vendorId, input.title));
+      }),
     create: protectedProcedure
       .input(z.object({
         vendorId: rowId,
@@ -407,6 +421,8 @@ export const inventoryRouter = router({
         description: z.string().max(20000).nullable().optional(),
         categoryId: rowId.nullable().optional(),
         tags: z.array(z.string().max(60)).max(40).optional(),
+        /* The seller's warranty, as they word it — a specification row. */
+        warranty: z.string().trim().max(200).nullable().optional(),
         /* The guided form's first variant and pictures. The editor's blank
            draft sends neither and gets the "Default" at 0.000 it always did. */
         variant: z.object({

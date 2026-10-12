@@ -3011,6 +3011,82 @@ and failed to "AI search is temporarily unavailable" with no results at all.
 "Refine with NetLet AI" is the quieter button under the results now, lands on
 the same page, and when it fails says so and leaves the standard results.
 
+## The product page
+
+**What decides the purchase sits above the fold on a wide screen.** The tabs
+and the assistant came between the price and Add to cart, so at 1366×768 the
+buttons were below the first screen; they follow the buy box now, after the
+express note. On a phone the photo comes first and the buy box directly after
+it — a square photo is most of a 390px screen, so "above the fold" is a
+wide-screen promise there and not one a phone can keep.
+
+**The delivery line names a day and a place** — "Get it by Tue 13 Oct to
+Capital" — from the seller's band (`DeliverySpeedLine`'s `area`), counted in
+business days across the Kuwaiti weekend. No band, no date: the rule under
+Delivery that NetLet does not promise for a seller.
+
+**A specification row is the field's, not the seller's spelling.**
+`specifications()` takes the label and the unit from `fieldFor`, so "Ram Size: 12"
+reads "Memory: 12 GB", and "الذاكرة" on the Arabic page. A description is read
+as blocks (`descriptionBlocks`): lines starting with -, • or * are a list, the
+rest paragraphs — sellers paste bullets and a wall of text read as one.
+
+**The page says what is already in the bag.** "2 already in your cart" beside
+the stepper opens the bag, so Add is not pressed again to find out.
+
+**Related means the same department or a shared tag** (`shared/commerce/related.ts`).
+The same seller counted on its own, so a store's food processor sat on its
+phone's page, and anything scoring nothing was still drawn to fill four places.
+The seller only breaks a tie now, and the rail shows fewer, or none.
+
+**An electronics listing publishes only with its warranty stated.**
+`WARRANTY_REQUIRED_DEPARTMENTS` in `shared/inventory/productDraft.ts` is the rule,
+asked by the new-product form and by both doors onto the shelf
+(`setProductStatus`, the review queue), as `admin.needsWarranty`. The warranty
+is a specification row (`warranty`), shown as the seller typed it, for the
+reason under Warranty and returns.
+
+**The catalogue is read in the page's language.** `useCatalog` and
+`useProductByHandle` are the one way a page asks for products, and they send
+the locale — nothing did, so a seller's Arabic title was shown in English on
+the Arabic page. The department (`productType`) stays its canonical name in
+both languages: it is the key the pages filter and link on, and translating it
+broke every department link on the Arabic page. A bag line's title follows the
+page too (`lineTitle`).
+
+**A new product needs its Arabic name**, and "Draft with AI" offers one
+(`server/arabicTitle.ts`): the English name and nothing else goes to the model,
+the answer lands in the box for the seller to keep or change and is never
+saved by itself, and with no key or with `ai` off the button is absent.
+
+**A variant's options are edited where the variant is.** Each row takes
+Colour: Black, Storage: 256 GB; `shared/inventory/variantOptions.ts` is the
+rule, and `choiceMode` asks the same `optionsDistinguish` the editor's notice
+does, so "shoppers will choose these by name" and the product page drawing
+names rather than chips cannot disagree. **Saving a variant without its options
+used to empty them** — `saveVariant` wrote `input.options ?? {}`, and the editor
+never sent any — which is how a shirt's M lost its size and the page fell back
+to names. Absent now leaves them.
+
+**Picking a colour shows its photo**, by the photo's description: the first
+photo whose words name the colour ("Smart watch in black", "باللون الأسود"). It
+matched substrings of every option, so choosing size S jumped to any photo
+whose description held an s; it is whole words now, Arabic's article taken off,
+and only the colour when the variant has one. The editor says so under the
+options. A photo chosen per variant by id would need a column, and this needs
+none.
+
+**An ordering by `position` ends on the id.** Every variant, photo and extra
+sits at position 0, and Postgres handed back the row it had just updated last,
+so editing M put a shirt's sizes in the order S, L, XL, M. PGlite answers the
+same query through the index and keeps the order either way, so
+`server/orderTies.test.ts` reads the source instead.
+
+**A feature switched on and not showing says why.** `/admin/features` carries a
+line per switch from `readinessOf` — no model key, `ai` off, no orders yet to
+pair products from, a browser that cannot listen — rather than a switch that
+reads on over a page that shows nothing.
+
 ## Languages
 
 The storefront ships in English and Arabic, from one dictionary in

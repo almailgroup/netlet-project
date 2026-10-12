@@ -109,7 +109,7 @@ export async function loadBundles(
     .innerJoin(products, eq(products.id, productVariants.productId))
     .innerJoin(vendors, eq(vendors.id, products.vendorId))
     .where(inArray(bundleItems.bundleId, rows.map(row => row.bundle.id)))
-    .orderBy(asc(bundleItems.position));
+    .orderBy(asc(bundleItems.position), asc(bundleItems.id));
 
   const views: BundleView[] = [];
   for (const row of rows) {

@@ -838,6 +838,12 @@ function resolve(path: string, rawInput: unknown): unknown {
      */
     case "inventory.products.create":
       return { ...demoInventoryProducts[0], title: (input as { title?: string })?.title ?? "New product", status: "draft" };
+    /* No model behind the demo, so the Arabic draft button is not drawn —
+       the branch a deployment with no key takes. */
+    case "inventory.products.arabicDraftAvailable":
+      return false;
+    case "inventory.products.draftArabicTitle":
+      return { kind: "unavailable" };
     case "inventory.products.update":
     case "inventory.products.setImages":
     case "inventory.products.setStatus":

@@ -141,6 +141,11 @@ export function mergeAttributes(
   return [...reviews, ...filled, ...rest];
 }
 
+/** The department's field for a key, if its schema has one. */
+export function fieldFor(departmentSlug: string | null | undefined, key: string): AttributeField | null {
+  return fieldsFor(departmentSlug).find(field => field.key === key) ?? null;
+}
+
 /** The unit to print after a value, if the field declares one. */
 export function unitFor(departmentSlug: string | null | undefined, key: string): string | null {
   return fieldsFor(departmentSlug).find(field => field.key === key)?.unit ?? null;

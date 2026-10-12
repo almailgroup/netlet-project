@@ -51,6 +51,23 @@ describe("imageIndexForVariant", () => {
     expect(imageIndexForVariant(product([null, null], [v]), v)).toBeNull();
   });
 
+  it("matches whole words, so a size of S is not every photo with an s in it", () => {
+    const small = variant("v1", [["Size", "S"]]);
+    expect(imageIndexForVariant(product(["Linen shirt, sand"], [small]), small)).toBeNull();
+    const red = variant("v2", [["Colour", "Red"]]);
+    expect(imageIndexForVariant(product(["Redwood finish", "In red"], [red]), red)).toBe(1);
+  });
+
+  it("looks for the colour when there is one, never the size beside it", () => {
+    const v = variant("v1", [["Size", "M"], ["Colour", "Navy"]]);
+    expect(imageIndexForVariant(product(["Shirt M size chart", "Shirt in navy"], [v]), v)).toBe(1);
+  });
+
+  it("finds an Arabic colour behind the article", () => {
+    const v = variant("v1", [["اللون", "أسود"]]);
+    expect(imageIndexForVariant(product(["ساعة ذكية", "ساعة ذكية باللون الأسود"], [v]), v)).toBe(1);
+  });
+
   it("answers null for a product with no real options", () => {
     const v = variant("v1", []);
     expect(imageIndexForVariant(product(["anything"], [v]), v)).toBeNull();

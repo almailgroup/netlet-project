@@ -9,7 +9,10 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
+import { warrantyRequired } from "../shared/inventory/productDraft.js";
+import { merchantWarranty } from "../shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../shared/inventory/stockMoves.js";
+import { optionPairs, optionPairsProblem, optionsRecord } from "../shared/inventory/variantOptions.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
@@ -226,11 +229,11 @@ async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows:
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
   const [variants, images, addons] = await Promise.all([
-    db.select().from(productVariants).where(inArray(productVariants.productId, ids)).orderBy(asc(productVariants.position)),
-    db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.position)),
+    db.select().from(productVariants).where(inArray(productVariants.productId, ids)).orderBy(asc(productVariants.position), asc(productVariants.id)),
+    db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.position), asc(productImages.id)),
     /* The optional extras (3.1.2). One query for the page rather than one per
        product, the way the images already are. */
-    db.select().from(productAddons).where(inArray(productAddons.productId, ids)).orderBy(asc(productAddons.position)),
+    db.select().from(productAddons).where(inArray(productAddons.productId, ids)).orderBy(asc(productAddons.position), asc(productAddons.id)),
   ]);
   return rows.map(row => ({
     ...row,
@@ -494,6 +497,8 @@ export async function createProduct(actor: Actor, input: {
   description?: string | null;
   categoryId?: number | null;
   tags?: string[];
+  /** The seller's warranty as they word it, stored as the Warranty specification row. */
+  warranty?: string | null;
   /**
    * The first variant's terms. Absent, the product starts with a "Default" at
    * 0.000, as it always did — the editor's own "New product" path. The guided
@@ -532,6 +537,9 @@ export async function createProduct(actor: Actor, input: {
         titleAr: input.titleAr ?? null,
         description: input.description ?? null,
         tags: input.tags ?? [],
+        attributes: input.warranty?.trim()
+          ? [{ namespace: "specs", key: "warranty", label: "Warranty", value: input.warranty.trim() }]
+          : [],
         status: "draft",
       }).returning();
 
@@ -857,6 +865,21 @@ export async function setProductImages(
  * blocks it, not merely all of them — an unpriced variant is buyable at zero
  * the moment the product is live, whatever its siblings cost.
  */
+/**
+ * An electronics listing goes on the shelf with its warranty stated
+ * (`warrantyRequired`). Checked at the same two doors as the price, for the
+ * same reason: a refusal at one door and not the other is no refusal.
+ */
+async function assertWarrantyStated(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, productId: number) {
+  const [row] = await db
+    .select({ attributes: products.attributes, slug: categories.slug })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(eq(products.id, productId))
+    .limit(1);
+  if (row && warrantyRequired(row.slug) && !merchantWarranty(row.attributes ?? [])) throw new Error("NO_WARRANTY");
+}
+
 async function assertPriced(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, productId: number) {
   const rows = await db
     .select({ id: productVariants.id, price: productVariants.price })
@@ -973,7 +996,10 @@ export async function setProductStatus(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.publish", row.vendorId);
 
-  if (target === "published") await assertPriced(db, productId);
+  if (target === "published") {
+    await assertPriced(db, productId);
+    await assertWarrantyStated(db, productId);
+  }
 
   let status: typeof row.status = target;
   if (target === "published" && actor.kind === "vendor") {
@@ -1010,7 +1036,10 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
   // against an unpriced product too — an admin approving is publishing. A
   // missing discount permit does not shut it: the read hides the saving
   // (`offerHiddenFor`), and the product sells at its price.
-  if (approve) await assertPriced(db, productId);
+  if (approve) {
+    await assertPriced(db, productId);
+    await assertWarrantyStated(db, productId);
+  }
 
   await db
     .update(products)
@@ -1161,6 +1190,11 @@ export async function saveVariant(actor: Actor, input: {
     if (problem) throw new Error(problem);
   }
 
+  if (input.options !== undefined) {
+    const problem = optionPairsProblem(optionPairs(input.options));
+    if (problem) throw new Error(problem);
+  }
+
   const sku = input.sku?.trim() || null;
   await assertSkuFree(db, product.vendorId, sku, input.id);
 
@@ -1170,7 +1204,9 @@ export async function saveVariant(actor: Actor, input: {
     sku,
     price: input.price,
     compareAtPrice: input.compareAtPrice ?? null,
-    options: input.options ?? {},
+    /* Absent leaves them as they are: the editor saved a price without its
+       options for a long time, and every such save emptied them. */
+    ...(input.options !== undefined ? { options: optionsRecord(optionPairs(input.options)) } : {}),
     unit: measure.unit,
     stepAmount: String(measure.stepAmount),
     preorderStock,
@@ -1208,7 +1244,7 @@ export async function saveVariant(actor: Actor, input: {
     }
     return input.id;
   }
-  const [row] = await skuAware(() => db.insert(productVariants).values({ ...values, stock: input.stock ?? 0 }).returning());
+  const [row] = await skuAware(() => db.insert(productVariants).values({ options: {}, ...values, stock: input.stock ?? 0 }).returning());
   return row.id;
 }
 

@@ -14,6 +14,7 @@
  */
 import { useTranslation } from "@/hooks/useTranslation";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
+import { optionsDistinguish } from "@shared/inventory/variantOptions";
 import type { Product, ProductVariant } from "@shared/commerce/types";
 
 /**
@@ -50,14 +51,11 @@ const COLOUR_OPTION = /colou?r|لون/i;
  * - `none`: one variant called "Default", which is no choice at all.
  */
 export function choiceMode(product: Product): "options" | "titles" | "single" | "none" {
-  const options = product.options.filter(option => option.values.length > 1);
   if (product.variants.length >= 2) {
-    const complete = options.length > 0 && product.variants.every(variant =>
-      options.every(option => variant.selectedOptions.some(chosen => chosen.name === option.name)));
-    const combos = new Set(product.variants.map(variant => options
-      .map(option => variant.selectedOptions.find(chosen => chosen.name === option.name)?.value ?? "")
-      .join("\u001f")));
-    return complete && combos.size === product.variants.length ? "options" : "titles";
+    /* The editor's own rule, so its warning and this page agree. */
+    const records = product.variants.map(variant =>
+      Object.fromEntries(variant.selectedOptions.map(chosen => [chosen.name, chosen.value])));
+    return optionsDistinguish(records) ? "options" : "titles";
   }
   const only = product.variants[0];
   return only && !isDefaultVariantTitle(only.title) ? "single" : "none";
@@ -177,22 +175,53 @@ export function VariantPicker({ product, selected, onSelect }: {
 }
 
 /**
+ * A description as words: lower-cased, split on anything that is not a letter
+ * or a digit, and with Arabic's article taken off ("الأسود", "بالأسود"), so a
+ * value matches the word it is rather than any word containing it.
+ */
+function wordsOf(text: string): string[] {
+  return text
+    .toLocaleLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .map(word => word.replace(/^[وفبكل]?ال(?=\p{L}{2})/u, ""));
+}
+
+function mentions(description: string[], value: string[]): boolean {
+  if (!value.length) return false;
+  for (let at = 0; at + value.length <= description.length; at++) {
+    if (value.every((word, offset) => description[at + offset] === word)) return true;
+  }
+  return false;
+}
+
+/**
  * The image that belongs to a variant.
  *
- * The normalized `Product` has no per-variant image, so the
- * variant's own option values are matched against the image alt text the
- * merchant wrote — which is where "Aurora Desk Lamp – Charcoal" lives. No
- * match means no change, which is better than jumping to an unrelated photo.
+ * The normalized `Product` has no per-variant image, so the variant's own
+ * values are matched against the photo descriptions the merchant wrote —
+ * which is where "Aurora Desk Lamp – Charcoal" lives, and which is also good
+ * alt text. No match means no change, which is better than jumping to an
+ * unrelated photo.
+ *
+ * **Whole words, and the colour first.** It matched substrings of every
+ * option, so choosing size "S" jumped to the first photo whose description
+ * held the letter s. A colour is what a photo shows; when the variant has one,
+ * only the colour is looked for, and a size is never the reason the picture
+ * changes.
  */
 export function imageIndexForVariant(product: Product, variant: ProductVariant | undefined): number | null {
   if (!variant) return null;
-  /* A variant named in the editor has no option values; its name is what the alt text would carry. */
+  const colours = variant.selectedOptions.filter(option => COLOUR_OPTION.test(option.name));
+  const chosen = colours.length ? colours : variant.selectedOptions;
+  /* A variant named in the editor has no option values; its name is what the description would carry. */
   const named = variant.selectedOptions.length ? [] : isDefaultVariantTitle(variant.title) ? [] : [variant.title];
-  const values = [...variant.selectedOptions.map(option => option.value), ...named].map(value => value.toLowerCase()).filter(Boolean);
+  const values = [...chosen.map(option => option.value), ...named].map(wordsOf).filter(words => words.length);
   if (!values.length) return null;
   const index = product.images.findIndex(image => {
-    const alt = image.altText?.toLowerCase();
-    return alt ? values.some(value => alt.includes(value)) : false;
+    if (!image.altText) return false;
+    const description = wordsOf(image.altText);
+    return values.some(value => mentions(description, value));
   });
   return index === -1 ? null : index;
 }
