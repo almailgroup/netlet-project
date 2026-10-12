@@ -153,7 +153,9 @@ export default function Checkout() {
          does not reach. */
       void utils.commerce.cart.get.invalidate();
       void refreshCart();
-      navigate("/account");
+      /* To the order just placed, open — not the account's front page, where
+         the shopper had to find what they had just bought. */
+      navigate(`/account/orders?order=${encodeURIComponent(reply.reference)}`);
     },
     onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("checkout.placeFailed")),
   });

@@ -1923,6 +1923,15 @@ it leaves somebody scrolling a form for what it wants. The driver's number is
 required at checkout for that reason, though the API still takes an order
 without one.
 
+**Placing an order lands on it.** Checkout went to the account's front page,
+where the shopper had to find what they had just bought; it goes to
+`/account/orders?order=<reference>` now, which opens that order. On a phone the
+payment pill sits under the order number, so the number stays on one line —
+"NL-20261012-" over "3NJA9" read as two numbers to somebody saying it down a
+phone. Found by walking one order from a 375px checkout through the seller,
+the driver, the cash, a return and the payout schedule, every page at 375 and
+414 in both languages (`.scratch/walk-e2e.mjs`).
+
 **The address book fills checkout.** Saved addresses are one-tap choices, the
 one used last on this device is chosen already (`browserStore`), and picking
 one sets the governorate as well, which is what prices delivery. Edits after

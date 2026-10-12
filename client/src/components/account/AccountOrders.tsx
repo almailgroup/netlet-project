@@ -30,7 +30,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, FileText, PackageSearch, RotateCcw } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useState } from "react";
 import { TrackParcels } from "@/components/account/TrackParcels";
 
@@ -64,7 +64,9 @@ export function Pill({ label, className }: { label: string; className: string })
 export function AccountOrders() {
   const { t, locale } = useTranslation();
   const [page, setPage] = useState(1);
-  const [openRef, setOpenRef] = useState<string | null>(null);
+  /* Checkout lands here with `?order=` on the order it just placed, open. */
+  const search = useSearch();
+  const [openRef, setOpenRef] = useState<string | null>(() => new URLSearchParams(search).get("order"));
   const formatDate = useDateFormat();
 
   const list = trpc.orders.list.useQuery({ page });
@@ -107,14 +109,18 @@ export function AccountOrders() {
                           edge, which is what `dir` on the block would do and what
                           `markup.test.ts` refuses.
                         */}
-                        <span className="type-product mt-0.5 block text-base text-[#0a285a]">
+                        {/* On one line: the number is read down a phone, and
+                            "NL-20261012-" over "3NJA9" is two numbers. */}
+                        <span className="type-product mt-0.5 block whitespace-nowrap text-[15px] text-[#0a285a] sm:text-base">
                           <bdi dir="ltr">{order.reference}</bdi>
                         </span>
                         <span className="mt-1 block text-xs ink-muted">{formatDate(order.placedAt)}</span>
+                        {/* Under the number on a phone, so the number has the room. */}
+                        <span className="mt-2 block sm:hidden"><Pill label={t(payment.label)} className={payment.className} /></span>
                       </span>
                       <span className="flex shrink-0 items-center gap-3">
                         <span className="flex flex-col items-end gap-2">
-                          <Pill label={t(payment.label)} className={payment.className} />
+                          <span className="hidden sm:inline-flex"><Pill label={t(payment.label)} className={payment.className} /></span>
                           {/* What it owes now — the figure the driver asks for — and
                               a plain sentence when that differs from what was placed.
                               Not a strikethrough: that is how this shop advertises a
