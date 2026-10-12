@@ -252,7 +252,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
             onBlur={leave}
             aria-label={t("search.scope")}
             title={t("search.scope")}
-            className="h-8 max-w-[180px] rounded-full border-e border-[#d5dfeb] px-3 text-[13px] font-semibold text-[#0a285a] hover:bg-[#f3f6fa]"
+            className="h-8 max-w-[180px] rounded-full border-e border-[#d5dfeb] px-3 text-[13px] font-semibold text-[#0a285a] hover:bg-[#0a285a]/[.06]"
           >
             {categoryRail.map(entry => (
               <option key={entry.query} value={entry.query}>{entry.query === ALL_DEPARTMENTS.query ? t("search.scopeAll") : t(entry.key)}</option>
@@ -290,8 +290,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
             a wide field has room for both. */}
         {voiceOn || photoOn ? (
           <span className={`${value ? "hidden lg:flex" : "flex"} shrink-0 items-center`}>
-            {voiceOn ? <button type="button" onClick={() => setVoiceOpen(true)} aria-label={t("search.voice")} title={t("search.voice")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Mic className="size-[18px]" /></button> : null}
-            {photoOn ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t("search.photo")} title={t("search.photo")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#e7edf5] hover:text-[#0a285a]"><Camera className="size-[18px]" /></button> : null}
+            {voiceOn ? <button type="button" onClick={() => setVoiceOpen(true)} aria-label={t("search.voice")} title={t("search.voice")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"><Mic className="size-[18px]" /></button> : null}
+            {photoOn ? <button type="button" onClick={() => setPhotoOpen(true)} aria-label={t("search.photo")} title={t("search.photo")} className="pressable grid size-9 shrink-0 place-items-center rounded-full ink-muted hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"><Camera className="size-[18px]" /></button> : null}
             {/* A hairline, so the pair reads as other ways *in* rather than as
                 two more things the submit button might mean. */}
             <span aria-hidden className="mx-0.5 h-5 w-px shrink-0 bg-[#c9d6e6]" />
@@ -317,14 +317,14 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => { clearRecentSearches(); setRecent([]); setActiveIndex(-1); }}
                       aria-label={t("header.clearRecentAria")}
-                      className="rounded-lg px-2 py-1 font-extrabold ink-accent hover:bg-[#f3f2ed]"
+                      className="rounded-lg px-2 py-1 font-extrabold ink-accent hover:bg-[#0a285a]/[.06]"
                     >
                       {t("header.clearRecent")}
                     </button>
                   </div>
                   <div id="netlet-search-suggestions" role="listbox" aria-label={t("header.recentSearches")}>
                     {recent.map((term, index) => (
-                      <button key={term} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => openRecent(term)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#e7edf5]" : "hover:bg-[#f3f2ed]"}`}>
+                      <button key={term} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => openRecent(term)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`}>
                         <Clock className="size-4 shrink-0 text-[#536b8c]" aria-hidden />
                         <span dir="auto" className="min-w-0 flex-1 truncate text-sm">{term}</span>
                         <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
@@ -341,7 +341,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                     href={`/category/${categorySlug(department.query)}`}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => setFocused(false)}
-                    className="flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-2 text-xs font-bold text-[#0a285a] hover:border-[#0a285a]/40"
+                    className="flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-2 text-xs font-bold text-[#0a285a] hover:border-[#0a285a]/40 hover:bg-[#f0f2f5]"
                   >
                     <DepartmentIcon query={department.query} className="size-3.5 shrink-0 text-[#536b8c]" />
                     {t(department.key)}
@@ -358,7 +358,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           {suggestions.length ? (
             <div id="netlet-search-suggestions" role="listbox" aria-label={t("header.matchingCatalog")}>
               {suggestions.map((product, index) => (
-                <button key={product.id} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#e7edf5]" : "hover:bg-[#f3f2ed]"}`}>
+                <button key={product.id} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`}>
                   <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
                   <span className="min-w-0 flex-1"><span className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType || t("header.netletFind")}</span></span>
                   <CornerDownLeft className="size-4 ink-muted" />
@@ -369,14 +369,14 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
             <div className="type-body px-3 py-4 text-center text-[#536b8c]">{t("header.noMatchYet")}</div>
           )}
           {value.trim() ? (
-            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#f3f2ed]">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => openResults(value)} className="type-control mt-1 flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-start font-extrabold text-[#0a285a] hover:bg-[#0a285a]/[.06]">
               <span className="min-w-0 truncate">{scoped ? t("header.seeAllResultsIn", { query: value.trim(), department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : t("header.seeAllResults", { query: value.trim() })}</span>
               <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
             </button>
           ) : null}
           {/* Optional, and quieter than the results it sits under. */}
           {value.trim().length >= 2 && (
-            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f3f2ed] disabled:opacity-60">
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-60">
               {refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 ink-accent" />}
               {t(refine.isPending ? "header.refining" : "header.refineWithAi")}
             </button>

@@ -40,6 +40,18 @@
  * owner asked for every one of them to be designed. `components/ui/Select.tsx`
  * takes the same `<option>` children and the same `onChange`, so a new one
  * written the old way is a one-letter fix; this is what notices it.
+ *
+ * --- 4. One hover tint.
+ *
+ * The header's controls shade navy at 6% under a pointer, and the owner asked
+ * for everything on the site to answer a pointer that way. Before, nine greys
+ * a shade apart did the job on different pages — #f7f9fc, #f2f5f9, #e7edf5,
+ * pearl — which read as nine designers. A bare control gets the tint from the
+ * stylesheet with no class at all; one with its own fill takes the tint
+ * (`hover:bg-[#0a285a]/[.06]`) or, on white, the same colour solid
+ * (`hover:bg-[#f0f2f5]`). The rest of the allowed list is a state's own
+ * colour: a darker step of a filled navy or red button, a pale red under red
+ * words, a white tint on navy.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -186,5 +198,30 @@ describe("dropdowns", () => {
       .filter(([, source]) => /<select[\s>]/.test(source))
       .map(([file]) => file);
     expect(native).toEqual([]);
+  });
+});
+
+describe("hover", () => {
+  const ALLOWED = new Set([
+    "hover:bg-[#0a285a]/[.06]", // the header's tint
+    "hover:bg-[#f0f2f5]", // the same, solid, on a white fill
+    "hover:bg-[#0d3372]", // a step of navy on a navy button
+    "hover:bg-[#7a2a1e]", // a step of red on a red button
+    "hover:bg-[#fdeceb]", // under red words
+    "hover:bg-[#fdf5f3]",
+    "hover:bg-[#fff5f3]",
+    "hover:bg-white/[.12]", // the tint on navy
+    "hover:bg-transparent", // a part of a control that shades as a whole
+    "disabled:hover:bg-white",
+  ]);
+
+  it("shades every control with the one tint", () => {
+    const strays = clientSources().flatMap(([file, source]) =>
+      [...source.matchAll(/(?:[\w-]+:)*hover:bg-[^\s"'`}]+/g)]
+        .map(match => match[0].replace(/^(?:(?!disabled:)[\w-]+:)*(?=(?:disabled:)?hover:)/, ""))
+        .filter(cls => !ALLOWED.has(cls))
+        .map(cls => `${file}: ${cls}`),
+    );
+    expect(strays).toEqual([]);
   });
 });

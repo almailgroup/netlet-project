@@ -254,7 +254,7 @@ export default function Sell() {
                     same reason. Said here rather than discovered. */}
                 <p className="mt-1 max-w-prose text-[12px] leading-5 ink-muted">{t("sell.papersNote")}</p>
 
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
+                <label className="tint-on-hover mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
                   <input
                     type="checkbox"
                     checked={form.underPlatformLicence}
@@ -297,7 +297,7 @@ export default function Sell() {
                 <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">
                   {t("sell.commissionStandard", { rate: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
                 </p>
-                <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
+                <label className="tint-on-hover mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
                   <input
                     type="checkbox"
                     checked={form.proposing}

@@ -60,7 +60,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
                 <button
                   key={address.id}
                   onClick={() => { setDeliveryZoneId(address.governorate!); rememberAddress(address.id); onClose(); }}
-                  className="pressable flex items-center gap-3 rounded-2xl border border-[#d5dfeb] bg-white p-4 text-start hover:border-[#aac0da]"
+                  className="pressable flex items-center gap-3 rounded-2xl border border-[#d5dfeb] bg-white p-4 text-start hover:border-[#aac0da] hover:bg-[#f0f2f5]"
                 >
                   <House className="size-4 shrink-0 ink-accent" aria-hidden />
                   <span className="min-w-0 flex-1">
@@ -79,7 +79,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
               key={zone.id}
               onClick={() => { setDeliveryZoneId(zone.id); onClose(); }}
               aria-pressed={deliveryZoneId === zone.id}
-              className={`pressable rounded-2xl border p-4 text-start ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da]"}`}
+              className={`pressable rounded-2xl border p-4 text-start ${deliveryZoneId === zone.id ? "border-[#f2683a] bg-[#fff7e3]" : "border-[#d5dfeb] bg-white hover:border-[#aac0da] hover:bg-[#f0f2f5]"}`}
             >
               <span className="block text-sm font-extrabold text-[#0a285a]">{isArabic ? zone.labelAr : zone.label}</span>
             </button>

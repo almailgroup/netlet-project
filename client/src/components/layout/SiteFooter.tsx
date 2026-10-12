@@ -94,7 +94,7 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
             type="button"
             onClick={toggleLocale}
             title={t("header.changeLanguage")}
-            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-2 text-[14px] font-semibold text-white hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-4 py-2 text-[14px] font-semibold text-white hover:bg-white/[.12]"
           >
             <Globe className="size-4" aria-hidden />
             <span lang={isArabic ? "en" : "ar"}>{t("header.language")}</span>

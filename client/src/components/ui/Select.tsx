@@ -328,7 +328,9 @@ export function Select({
           hide();
           onBlur?.(event);
         }}
-        className={`${className} inline-flex min-w-0 cursor-pointer items-center justify-between gap-2 text-start disabled:cursor-not-allowed disabled:opacity-60`}
+        /* The header's hover, as the solid fill a white field takes; a caller
+           that drew its own hover keeps it. */
+        className={`${className} ${className.includes("hover:bg-") ? "" : "enabled:hover:bg-[#f0f2f5]"} inline-flex min-w-0 cursor-pointer items-center justify-between gap-2 text-start disabled:cursor-not-allowed disabled:opacity-60`}
       >
         <span className={`min-w-0 truncate ${muted ? "ink-muted" : ""}`}>
           {shown ? shown.label : placeholder?.label}

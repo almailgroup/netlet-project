@@ -10,7 +10,7 @@
  * The two keys stay separate so the pair can be told apart again by changing
  * this file alone.
  */
-const WHITE = "border border-[#0a285a]/20 bg-white text-[#0a285a] transition-colors hover:bg-[#f3f6fa]";
+const WHITE = "border border-[#0a285a]/20 bg-white text-[#0a285a] transition-colors hover:bg-[#f0f2f5]";
 
 export const PURCHASE_TONE = {
   add: WHITE,

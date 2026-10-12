@@ -49,7 +49,7 @@ export function AddonPicker({
       <ul className="space-y-1">
         {addons.map(addon => (
           <li key={addon.id}>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-[#f3f2ed]">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl px-2 py-2 hover:bg-[#0a285a]/[.06]">
               <input
                 type="checkbox"
                 checked={chosen.includes(addon.id)}

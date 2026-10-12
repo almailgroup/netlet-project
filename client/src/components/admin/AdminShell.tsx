@@ -201,7 +201,7 @@ export function AdminShell({ need, children }: {
                     href={link.href}
                     aria-current={active ? "page" : undefined}
                     onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-semibold transition ${active ? "bg-[#0a285a] text-white" : "text-[#3d5376] hover:bg-[#e7edf5] hover:text-[#0a285a]"}`}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-semibold transition ${active ? "bg-[#0a285a] text-white" : "text-[#3d5376] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"}`}
                   >
                     <span aria-hidden className="shrink-0">{link.icon}</span>{t(link.label)}
                   </Link>
@@ -249,7 +249,7 @@ export function AdminShell({ need, children }: {
             onClick={() => setMenuOpen(open => !open)}
             aria-expanded={menuOpen}
             aria-controls="admin-menu"
-            className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-[#cfd9e6] bg-white px-4 text-[14px] font-semibold lg:hidden"
+            className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-[#cfd9e6] bg-white px-4 text-[14px] font-semibold hover:bg-[#f0f2f5] lg:hidden"
           >
             <span className="flex min-w-0 items-center gap-2.5">
               <Menu className="size-4 shrink-0" aria-hidden />

@@ -252,7 +252,7 @@ export default function AuthDialog({ open, onClose }: { open: boolean; onClose: 
                         aria-pressed={reveal}
                         aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
                         title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-                        className="pressable tap-target absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] transition hover:bg-[#eef1f6] hover:text-[#0a285a] end-2"
+                        className="pressable tap-target absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] transition hover:bg-[#0a285a]/[.06] hover:text-[#0a285a] end-2"
                       >
                         {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
                       </button>

@@ -245,7 +245,7 @@ export default function Checkout() {
 	                      type="button"
 	                      aria-pressed={picked === address.id}
 	                      onClick={() => pickAddress(address)}
-	                      className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === address.id ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a]"}`}
+	                      className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === address.id ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
 	                    >
 	                      <bdi>{address.label}</bdi>
 	                    </button>
@@ -254,7 +254,7 @@ export default function Checkout() {
 	                    type="button"
 	                    aria-pressed={picked === "new"}
 	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "", pin: null }); }}
-	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a]"}`}
+	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
 	                  >
 	                    {t("checkout.newAddress")}
 	                  </button>
@@ -290,7 +290,7 @@ export default function Checkout() {
                       : t("checkout.codUnavailableCeiling", { name: cart.cod.because.vendorName, amount: money({ amount: cart.cod.because.ceiling, currencyCode: "KWD" }) })}
                   </p>
                 ) : (
-                  <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#0a285a]/20 bg-[#f3f2ed] p-4">
+                  <label className="tint-on-hover mt-3 flex items-start gap-3 rounded-xl border border-[#0a285a]/20 bg-[#f3f2ed] p-4">
                     <input type="radio" name="pay" checked readOnly className="mt-0.5 size-4" />
                     <span>
                       <span className="type-heading block text-sm">{t("checkout.payCod")}</span>
@@ -308,7 +308,7 @@ export default function Checkout() {
                     reading the total, and nowhere else. The control is absent
                     rather than disabled for a balance of nothing — a checkbox
                     that can only be ticked to no effect is the dead control
-                    rule again. */}{balance > 0 ? (<label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{/* One field for a discount code or a gift card. The refusal names the
+                    rule again. */}{balance > 0 ? (<label className="tint-on-hover flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{/* One field for a discount code or a gift card. The refusal names the
                     one fixable thing rather than shrugging, which is what makes
                     somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : applied && quote.error ? (<p className="type-label mt-2 text-[#ffcc64]">{tError(quote.error.message)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.parcelsNote")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already

@@ -29,7 +29,7 @@ const buttonBase =
 
 export const buttonClass = {
   primary: `${buttonBase} bg-[#0a285a] text-white hover:bg-[#0d3372]`,
-  secondary: `${buttonBase} border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]`,
+  secondary: `${buttonBase} border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]`,
   danger: `${buttonBase} bg-[#8c2f22] text-white hover:bg-[#7a2a1e]`,
   /* For a destructive act that is not the page's main one: red words, no fill. */
   quietDanger: `${buttonBase} border border-[#efc6bd] bg-white text-[#8c2f22] hover:bg-[#fdeceb]`,
@@ -41,7 +41,7 @@ const smallBase =
 
 export const smallButtonClass = {
   primary: `${smallBase} bg-[#0a285a] text-white hover:bg-[#0d3372]`,
-  secondary: `${smallBase} border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]`,
+  secondary: `${smallBase} border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]`,
   danger: `${smallBase} bg-[#8c2f22] text-white hover:bg-[#7a2a1e]`,
   quietDanger: `${smallBase} border border-[#efc6bd] bg-white text-[#8c2f22] hover:bg-[#fdeceb]`,
 } as const;
@@ -188,7 +188,7 @@ export function Toggle({ checked, onChange, label, hint, disabled, className = "
   className?: string;
 }) {
   return (
-    <label className={`flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5 ${disabled ? "cursor-not-allowed opacity-60" : ""} ${className}`}>
+    <label className={`tint-on-hover flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5 ${disabled ? "cursor-not-allowed opacity-60" : ""} ${className}`}>
       <input
         type="checkbox"
         role="switch"

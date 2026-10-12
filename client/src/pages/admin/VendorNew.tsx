@@ -226,7 +226,7 @@ function NewStore() {
                 {STATUSES.map(status => <option key={status} value={status}>{t(`vendorStatus.${status}` as MessageKey)}</option>)}
               </Select>
             </Field>
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
+            <label className="tint-on-hover flex cursor-pointer items-start gap-3 rounded-xl border border-[#e1e7ef] bg-[#fafbfd] p-3.5">
               <input
                 type="checkbox"
                 role="switch"

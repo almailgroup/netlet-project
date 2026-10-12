@@ -196,7 +196,7 @@ function OrderRow({ row, risk, open, onToggle }: { row: Row; risk?: OrderRisk; o
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 text-start transition hover:bg-[#f7f9fc] sm:px-5"
+        className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 text-start transition hover:bg-[#0a285a]/[.06] sm:px-5"
       >
         {/* A reference is one unbreakable word; the pills and the total wrap
             under it on a phone rather than squeezing it a letter to a line. */}

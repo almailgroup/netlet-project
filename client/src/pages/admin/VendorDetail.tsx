@@ -226,7 +226,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
           <ul className="hide-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 xl:mx-0 xl:mt-2 xl:flex-col xl:overflow-visible xl:px-0">
             {sections.map(section => (
               <li key={section.id} className="shrink-0">
-                <a href={`#${section.id}`} className="block rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap text-[#536b8c] transition hover:bg-[#e7edf5] hover:text-[#0a285a]">
+                <a href={`#${section.id}`} className="block rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap text-[#536b8c] transition hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]">
                   {t(section.label)}
                 </a>
               </li>
@@ -480,7 +480,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                     disabled={setBadges.isPending}
                     onClick={() => setBadges.mutate({ vendorId, badges: on ? held.filter(one => one !== badge) : [...held, badge] })}
                     className={`inline-flex h-10 items-center rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-60 ${
-                      on ? "bg-[#0a285a] text-white" : "border border-[#cfd9e6] bg-white text-[#536b8c] hover:border-[#0a285a] hover:text-[#0a285a]"
+                      on ? "bg-[#0a285a] text-white" : "border border-[#cfd9e6] bg-white text-[#536b8c] hover:border-[#0a285a] hover:bg-[#f0f2f5] hover:text-[#0a285a]"
                     }`}
                   >
                     {t(`badge.${badge}` as MessageKey)}

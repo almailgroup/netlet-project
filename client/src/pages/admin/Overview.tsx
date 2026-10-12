@@ -277,7 +277,7 @@ function Tile({ tile }: { tile: Tile }) {
   return (
     <Link
       href={tile.href}
-      className={`group block rounded-2xl border border-[#e1e7ef] bg-white p-4 transition hover:border-[#0a285a]/30 hover:shadow-sm ${urgent ? "border-s-4 border-s-[#d9622b]" : ""}`}
+      className={`group block rounded-2xl border border-[#e1e7ef] bg-white p-4 transition hover:border-[#0a285a]/30 hover:bg-[#f0f2f5] hover:shadow-sm ${urgent ? "border-s-4 border-s-[#d9622b]" : ""}`}
     >
       {/* The number is read as a number, so it stays LTR even in Arabic. */}
       <p className="text-[28px] leading-9 font-extrabold text-[#0a285a] tabular-nums">

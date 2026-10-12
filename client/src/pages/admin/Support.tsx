@@ -70,7 +70,7 @@ function Inbox() {
                               type="button"
                               aria-pressed={current}
                               onClick={() => setSelected(row.id)}
-                              className={`w-full border-s-[3px] px-4 py-3 text-start text-[#0a285a] transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#f7f9fc]"}`}
+                              className={`w-full border-s-[3px] px-4 py-3 text-start text-[#0a285a] transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#0a285a]/[.06]"}`}
                             >
                               <span className="flex flex-wrap items-center justify-between gap-2">
                                 <span className={`text-[14px] ${row.unread ? "font-bold" : "font-semibold"}`}>

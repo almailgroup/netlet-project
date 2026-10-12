@@ -89,7 +89,7 @@ export function AccountPreferences() {
             return (
               <label
                 key={kind}
-                className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-4 py-3 text-sm font-bold text-[#0a285a]"
+                className="tint-on-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-4 py-3 text-sm font-bold text-[#0a285a]"
               >
                 <span>{t(notificationLabelKeys[kind])}</span>
                 <input

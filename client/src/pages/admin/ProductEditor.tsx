@@ -298,7 +298,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               <li key={section.id} className="shrink-0">
                 <a
                   href={`#${section.id}`}
-                  className={`block rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-[#e7edf5] hover:text-[#0a285a] ${section.id === "delete" ? "text-[#8c2f22]" : "text-[#536b8c]"}`}
+                  className={`block rounded-lg px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition hover:bg-[#0a285a]/[.06] hover:text-[#0a285a] ${section.id === "delete" ? "text-[#8c2f22]" : "text-[#536b8c]"}`}
                 >
                   {t(section.label)}
                 </a>
@@ -1038,9 +1038,9 @@ function VariantRow({ variant, mayEdit, mayStock, onSave, onAdjust, pending }: {
           <div role="group" aria-labelledby={`adjust-${variant.id}`}>
             <span id={`adjust-${variant.id}`} className="block text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.adjustBy")}</span>
             <div className="mt-1.5 inline-flex items-center gap-1">
-              <button type="button" onClick={() => setDelta(d => d - 1)} aria-label={t("product.decreaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"><Minus className="size-4" aria-hidden /></button>
+              <button type="button" onClick={() => setDelta(d => d - 1)} aria-label={t("product.decreaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"><Minus className="size-4" aria-hidden /></button>
               <input dir="ltr" inputMode="numeric" value={delta} onChange={e => setDelta(Number(e.target.value) || 0)} className={`${inputClass} w-20 text-center`} aria-label={t("admin.adjustBy")} />
-              <button type="button" onClick={() => setDelta(d => d + 1)} aria-label={t("product.increaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"><Plus className="size-4" aria-hidden /></button>
+              <button type="button" onClick={() => setDelta(d => d + 1)} aria-label={t("product.increaseQuantity")} className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"><Plus className="size-4" aria-hidden /></button>
             </div>
           </div>
           <Labelled label={t("admin.reason")}>

@@ -100,7 +100,7 @@ function Stock() {
                 </thead>
                 <tbody>
                   {lowRows.map(row => (
-                    <tr key={row.variantId} className={`${tableClass.row} hover:bg-[#f7f9fc]`}>
+                    <tr key={row.variantId} className={`${tableClass.row} hover:bg-[#0a285a]/[.06]`}>
                       <td className={tableClass.td}>
                         <Link href={`/admin/products/${row.productId}`} dir="auto" className="font-bold text-[#0a285a] hover:underline">{row.productTitle}</Link>
                         {!isDefaultVariantTitle(row.variantTitle) ? <p dir="auto" className="mt-0.5 text-[13px] ink-muted">{row.variantTitle}</p> : null}

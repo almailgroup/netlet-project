@@ -82,6 +82,26 @@ the dialog is open, and outside every landmark axe calls it stray content. It
 is `position: fixed` against the button, so `fixedOrigin` measures from a
 transformed or contained ancestor when the target sits inside one.
 
+**One hover, and it is the header's.** The bar's controls shade navy at 6%
+under the pointer, and the owner asked for everything on the site to answer a
+pointer that way. Most controls had no hover at all — footer links, menu rows,
+filter ticks, tabs, the account tiles — and the rest had drifted across nine
+greys a shade apart. A rule in the stylesheet's *base* layer gives the tint
+(`--hover-tint`) to any link, button, tab, menu row, option or tick-box label
+under a pointer that can hover; being in the base layer, it loses to every
+utility and every component class, so a control with its own fill keeps it and
+only a bare one falls through. A fill of its own takes the tint by hand —
+`hover:bg-[#0a285a]/[.06]`, or on white the same colour solid,
+`hover:bg-[#f0f2f5]` (`--hover-fill`), which is what `.glass` now does — and a
+pearl or navy one takes `.tint-on-hover`, an inset shadow of the tint over the
+fill. On navy the tint turns white. A bare link has no padding, so its tint
+reaches four pixels past the words as a shadow ring that takes no room, and
+gains soft corners only while hovered — never on something with a border or a
+fill, where an underlined tab's rule would bend at the ends. The card's Add
+pill shades once, as a whole; its minus and plus shade again, being the parts
+that change something. `markup.test.ts` allows only the tint, the fill and a
+state's own colour (a darker navy or red step, pale red under red words).
+
 **`.pressable` sets the type, with `!important`**: 14px at weight 500, whatever
 the element's own `text-xs font-extrabold` says. That is old and load bearing —
 removing it would change every button on the site at once — so a control that

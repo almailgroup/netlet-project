@@ -320,7 +320,7 @@ function Tile({ entry, badge }: { entry: Entry; badge: string | null }) {
   return (
     <Link
       href={entry.href ?? `/account/${entry.id}`}
-      className="group flex h-full items-center gap-3.5 rounded-2xl border border-[#e6e9ef] bg-white p-4 transition-colors hover:border-[#c9d6e6] hover:bg-[#fbfcfe]"
+      className="group flex h-full items-center gap-3.5 rounded-2xl border border-[#e6e9ef] bg-white p-4 transition-colors hover:border-[#c9d6e6] hover:bg-[#f0f2f5]"
     >
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#eef2f8] text-[#0a285a]">
         <Icon className="size-5" aria-hidden />
@@ -351,7 +351,7 @@ function SideMenu({ user, entries, current, badge, onSignOut }: {
   const { t } = useTranslation();
   return (
     <aside className="sticky top-[100px] hidden lg:block">
-      <Link href="/account" className="flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-3 hover:border-[#c9d6e6]">
+      <Link href="/account" className="flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-3 hover:border-[#c9d6e6] hover:bg-[#f0f2f5]">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a285a] text-[14px] font-bold text-white">{initialsFor(user)}</span>
         <span className="min-w-0">
           <span className="block truncate text-[14px] font-bold"><bdi>{user.name?.trim() || t("account.noName")}</bdi></span>
@@ -375,7 +375,7 @@ function SideMenu({ user, entries, current, badge, onSignOut }: {
                       <Link
                         href={entry.href ?? `/account/${entry.id}`}
                         aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] transition-colors ${active ? "bg-[#0a285a] font-semibold text-white" : "font-medium text-[#3d5170] hover:bg-white hover:text-[#0a285a]"}`}
+                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] transition-colors ${active ? "bg-[#0a285a] font-semibold text-white" : "font-medium text-[#3d5170] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"}`}
                       >
                         <Icon className="size-4 shrink-0" aria-hidden />
                         <span className="min-w-0 flex-1 truncate">{t(entry.label)}</span>

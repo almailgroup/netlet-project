@@ -175,7 +175,7 @@ function VendorList() {
                         if ((event.target as HTMLElement).closest("a, button")) return;
                         navigate(`/admin/vendors/${vendor.id}`);
                       }}
-                      className="cursor-pointer border-b border-[#f0f2f6] last:border-b-0 hover:bg-[#f7f9fc]"
+                      className="cursor-pointer border-b border-[#f0f2f6] last:border-b-0 hover:bg-[#0a285a]/[.06]"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">

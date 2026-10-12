@@ -53,7 +53,7 @@ export function Pager({ page, onPage }: { page: Page<unknown>; onPage: (next: nu
                 className={`grid h-9 min-w-9 place-items-center rounded-lg px-2 text-[13px] font-semibold transition ${
                   number === page.page
                     ? "bg-[#0a285a] text-white"
-                    : "border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f2f5f9]"
+                    : "border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"
                 }`}
               >
                 <bdi dir="ltr">{number}</bdi>
@@ -86,7 +86,7 @@ function Step({ label, disabled, onClick, children }: {
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="grid size-9 place-items-center rounded-lg border border-[#cfd9e6] bg-white text-[#0a285a] transition hover:bg-[#f2f5f9] disabled:opacity-40 disabled:hover:bg-white"
+      className="grid size-9 place-items-center rounded-lg border border-[#cfd9e6] bg-white text-[#0a285a] transition hover:bg-[#f0f2f5] disabled:opacity-40 disabled:hover:bg-white"
     >
       {children}
     </button>

@@ -244,7 +244,7 @@ export default function Category() {
                 </p>
               </div>
 
-              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2 text-[12px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white transition-colors hover:bg-[#f0f2f5] px-3 py-2 text-[12px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
                 <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
                 {t("browse.sortBy")}
                 <Select
@@ -265,7 +265,7 @@ export default function Category() {
                     key={chip.key}
                     onClick={chip.clear}
                     aria-label={t("browse.remove", { name: chip.label })}
-                    className="pressable inline-flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0a285a] hover:border-[#f2683a]"
+                    className="pressable inline-flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0a285a] hover:border-[#f2683a] hover:bg-[#f0f2f5]"
                   >
                     <span dir="auto">{chip.label}</span>
                     <X className="size-3 ink-muted" aria-hidden />

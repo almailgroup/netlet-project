@@ -164,7 +164,7 @@ function BookForm() {
             <legend className="text-[13px] font-semibold text-[#0a285a]">{t("ads.place")}</legend>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {(["home", "department"] as const).map(option => (
-                <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-[14px] font-semibold text-[#0a285a] ${slot === option ? "border-[#0a285a] bg-[#f4f7fb]" : "border-[#cfd9e6] bg-white"}`}>
+                <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-[14px] font-semibold text-[#0a285a] ${slot === option ? "border-[#0a285a] bg-[#f4f7fb]" : "border-[#cfd9e6] bg-white hover:bg-[#f0f2f5]"}`}>
                   <input type="radio" name="ads-slot" value={option} checked={slot === option} onChange={() => setSlot(option)} className="accent-[#0a285a]" />
                   {t(SLOT_LABEL[option], { department: t("ads.yourDepartment") })}
                 </label>

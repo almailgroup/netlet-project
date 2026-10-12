@@ -67,7 +67,7 @@ function Messages({ actor }: { actor: Actor }) {
                           type="button"
                           onClick={() => setOpenId(row.id)}
                           aria-current={current ? "true" : undefined}
-                          className={`w-full border-s-[3px] px-4 py-3 text-start transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#f7f9fc]"}`}
+                          className={`w-full border-s-[3px] px-4 py-3 text-start transition ${current ? "border-s-[#0a285a] bg-[#f4f7fb]" : "border-s-transparent hover:bg-[#0a285a]/[.06]"}`}
                         >
                           <span className="flex items-center justify-between gap-2">
                             <span dir="auto" className={`truncate text-[14px] text-[#0a285a] ${row.unread > 0 ? "font-bold" : "font-semibold"}`}>{row.counterpart || t("chat.aShopper")}</span>

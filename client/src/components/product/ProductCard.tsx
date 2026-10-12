@@ -91,7 +91,10 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   const stepClass = `${always ? "grid h-full w-10" : "pill-step size-8"} shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[#0a285a]/[.06] ${ring}`;
   /* `pressable` is the header's own button lettering, so the card's two
      buttons read like every other button on the site. */
-  const press = `pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1 whitespace-nowrap disabled:cursor-wait ${ring}`;
+  /* The pill is what shades under a pointer; the press inside it is the pill,
+     so it does not shade a second time. The minus and plus do, being the
+     parts of it that change something else. */
+  const press = `pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1 whitespace-nowrap hover:bg-transparent disabled:cursor-wait ${ring}`;
 
   /* Nothing to press in the middle: it is the bag's count, and the pill is a
      group named by it rather than a button that does nothing. */

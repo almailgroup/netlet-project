@@ -40,7 +40,7 @@ export function DepartmentCards() {
           <li key={card.slug}>
             <Link
               href={`/category/${categorySlug(card.query)}`}
-              className="group flex h-full flex-col items-center rounded-2xl border border-transparent bg-white px-2 pb-3 pt-2 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] sm:rounded-[1.375rem] sm:px-3 sm:pb-4 sm:pt-3"
+              className="group flex h-full flex-col items-center rounded-2xl border border-transparent bg-white px-2 pb-3 pt-2 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:rounded-[1.375rem] sm:px-3 sm:pb-4 sm:pt-3"
             >
               <img
                 src={appPath(`/departments/${card.slug}.webp`)}

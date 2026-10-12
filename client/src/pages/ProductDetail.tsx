@@ -269,7 +269,7 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
         <div>
           <h2 className="border-b-2 border-[#0a285a] pb-2 text-lg font-extrabold text-[#0a285a]">{t("product.images")}</h2>
         </div>
-        <button ref={closeButton} onClick={onClose} aria-label={t("product.closeViewer")} className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#f1f1f3]"><X className="size-6" /></button>
+        <button ref={closeButton} onClick={onClose} aria-label={t("product.closeViewer")} className="pressable grid size-10 place-items-center rounded-full text-[#404553] hover:bg-[#0a285a]/[.06]"><X className="size-6" /></button>
       </div>
 
       {/* On a phone the grid used to sit above the image, so opening the viewer
@@ -345,8 +345,8 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
             )}
           </div>
           <div className="absolute end-2 top-2 flex flex-col gap-2">
-            <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 3 || isVideo} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
-            <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1 || isVideo} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+            <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 3 || isVideo} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
+            <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1 || isVideo} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
           </div>
           {/* Said once, and only while it applies: a hint that is always on
               screen is one nobody reads by the third product. */}
@@ -356,8 +356,8 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
             </p>
           ) : null}
           {hasMultipleImages ? <>
-            <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
-            <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
+            <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] hover:bg-[#f0f2f5]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
+            <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] hover:bg-[#f0f2f5]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
             <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {media.length}</span></span>
           </> : null}
         </div>
@@ -653,9 +653,9 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           </div>
 
           <div className="absolute end-3 top-3 flex flex-col gap-2">
-            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
-            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
-            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
+            <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
+            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
+            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
           {hasMultipleImages ? <>
