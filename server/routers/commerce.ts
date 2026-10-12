@@ -26,6 +26,7 @@ import {
 import { publicProcedure, router } from "../_core/trpc.js";
 import { MAX_LINE_QUANTITY } from "../../shared/commerce/types.js";
 import { bundlesForVariant } from "../bundles.js";
+import { publishedDepartmentCounts } from "../inventory.js";
 import { AddressError, setLineDestination } from "../addresses.js";
 import { TRPCError } from "@trpc/server";
 
@@ -75,6 +76,8 @@ export const commerceRouter = router({
         return getProductByHandle(input.handle, input.locale ?? "en");
       }),
   }),
+  /** Products on sale per department, so the navigation can leave out an empty one. */
+  departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
   collections: router({
     list: publicProcedure
       .input(z.object({ first: z.number().int().min(1).max(50).optional(), locale: localeSchema }).optional())

@@ -16,6 +16,12 @@
 import { isExpressEligible, productRating } from "./productDetail.js";
 import type { Product } from "./types.js";
 import { withPlacement } from "./placement.js";
+import { DELIVERY_SPEEDS, type DeliverySpeed } from "./deliverySpeed.js";
+import { brandOf } from "./search.js";
+
+/* The search itself lives in `search.ts`; re-exported for the callers that
+   have always taken it from here. */
+export { matchesSearch, rankBySearch, correctionFor } from "./search.js";
 
 export type BrowseSort = "relevance" | "price-low" | "price-high" | "discount" | "rating" | "newest";
 
@@ -24,7 +30,12 @@ export const BROWSE_SORTS: BrowseSort[] = ["relevance", "price-low", "price-high
 export type BrowseFilters = {
   /** Merchant product type, or "all". */
   category: string;
+  /** The maker, from the product's own Brand row. */
   brands: string[];
+  /** The store selling it. "Brand" used to mean this, which is not what a shopper ticking "Samsung" means. */
+  sellers: string[];
+  /** How soon it ships, by the seller's own band. */
+  speeds: DeliverySpeed[];
   /** Selected values per product option, e.g. { Colour: ["Charcoal"] }. */
   options: Record<string, string[]>;
   minPrice: number | null;
@@ -40,6 +51,8 @@ export type BrowseFilters = {
 export const EMPTY_FILTERS: BrowseFilters = {
   category: "all",
   brands: [],
+  sellers: [],
+  speeds: [],
   options: {},
   minPrice: null,
   maxPrice: null,
@@ -118,26 +131,6 @@ export function searchWithTerm(filters: BrowseFilters, term: string): string {
   return query ? `${query}&${param}` : `?${param}`;
 }
 
-/**
- * Whether a product answers a search. Every word must appear somewhere in what
- * the shopper can see about it — title, description, type,
- * seller, tags, a variant's name — so "brass lamp" does not match every brass
- * thing and every lamp.
- */
-export function matchesSearch(product: Product, term: string): boolean {
-  const words = term.toLowerCase().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return true;
-  const haystack = [
-    product.title,
-    product.description,
-    product.productType,
-    product.vendor,
-    ...product.tags,
-    ...product.variants.map((variant) => variant.title),
-  ].join(" ").toLowerCase();
-  return words.every((word) => haystack.includes(word));
-}
-
 /* -------------------------------------------------------------- helpers --- */
 
 function priceOf(product: Product): number {
@@ -179,12 +172,24 @@ function optionPairs(product: Product): [string, string][] {
 
 /* --------------------------------------------------------------- facets --- */
 
+/**
+ * Whether a facet's values can change what is shown: two or more, or one that
+ * not every product carries — "Samsung (2)" on a page of five narrows to two.
+ */
+export function facetNarrows(values: FacetValue[], total: number): boolean {
+  return values.length > 1 || (values.length === 1 && values[0].count < total);
+}
+
 export type FacetValue = { value: string; count: number };
 export type OptionFacet = { name: string; values: FacetValue[] };
 
 export type Facets = {
+  /** How many products the facets were counted over, so a page can tell whether one value narrows anything. */
+  total: number;
   categories: FacetValue[];
   brands: FacetValue[];
+  sellers: FacetValue[];
+  speeds: FacetValue[];
   options: OptionFacet[];
   /** Absent when nothing is priced, so the page can hide the control. */
   priceBounds: { min: number; max: number } | null;
@@ -226,8 +231,13 @@ export function facetsFor(products: Product[]): Facets {
   const prices = products.map(priceOf).filter((price) => Number.isFinite(price));
 
   return {
+    total: products.length,
     categories: tally(products.map((p) => p.productType).filter((t): t is string => Boolean(t))),
-    brands: tally(products.map((p) => p.vendor).filter((v): v is string => Boolean(v))),
+    brands: tally(products.map(brandOf).filter((b): b is string => Boolean(b))),
+    sellers: tally(products.map((p) => p.vendor).filter((v): v is string => Boolean(v))),
+    /* In the bands' own order, fastest first, rather than by count. */
+    speeds: tally(products.map((p) => p.deliverySpeed).filter((v): v is DeliverySpeed => Boolean(v)))
+      .sort((left, right) => DELIVERY_SPEEDS.indexOf(left.value as DeliverySpeed) - DELIVERY_SPEEDS.indexOf(right.value as DeliverySpeed)),
     options: Array.from(optionValues.entries())
       .map(([name, values]) => ({ name, values: tally(values) }))
       .filter((facet) => facet.values.length > 1)
@@ -264,7 +274,12 @@ export function productsInCategory(products: Product[], category: string): Produ
  */
 export function applyFilters(products: Product[], filters: BrowseFilters): Product[] {
   return products.filter((product) => {
-    if (filters.brands.length && !(product.vendor && filters.brands.includes(product.vendor))) return false;
+    if (filters.brands.length) {
+      const brand = brandOf(product);
+      if (!(brand && filters.brands.includes(brand))) return false;
+    }
+    if (filters.sellers.length && !(product.vendor && filters.sellers.includes(product.vendor))) return false;
+    if (filters.speeds.length && !(product.deliverySpeed && filters.speeds.includes(product.deliverySpeed))) return false;
 
     for (const [name, wanted] of Object.entries(filters.options)) {
       if (!wanted.length) continue;
@@ -327,6 +342,8 @@ export function browse(products: Product[], filters: BrowseFilters): Product[] {
 export function activeFilterCount(filters: BrowseFilters): number {
   return (
     filters.brands.length +
+    filters.sellers.length +
+    filters.speeds.length +
     Object.values(filters.options).reduce((total, values) => total + values.length, 0) +
     (filters.minPrice !== null || filters.maxPrice !== null ? 1 : 0) +
     (filters.minRating !== null ? 1 : 0) +
@@ -374,6 +391,8 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
   return {
     category,
     brands: list("brand"),
+    sellers: list("seller"),
+    speeds: list("speed").filter((value): value is DeliverySpeed => (DELIVERY_SPEEDS as readonly string[]).includes(value)),
     options,
     minPrice: positiveNumber(params.get("min")),
     maxPrice: positiveNumber(params.get("max")),
@@ -394,6 +413,8 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
 export function searchFromFilters(filters: BrowseFilters): string {
   const params = new URLSearchParams();
   if (filters.brands.length) params.set("brand", filters.brands.join(","));
+  if (filters.sellers.length) params.set("seller", filters.sellers.join(","));
+  if (filters.speeds.length) params.set("speed", filters.speeds.join(","));
   for (const [name, values] of Object.entries(filters.options)) {
     if (values.length) params.set(`${OPTION_PREFIX}${name}`, values.join(","));
   }

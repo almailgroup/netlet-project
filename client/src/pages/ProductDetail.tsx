@@ -1005,7 +1005,7 @@ export default function ProductDetail() {
               </div>
             ) : null}
             {selectedVariant?.sku ? <p className="mt-3 text-sm font-medium ink-muted">{t("product.sku")}: <span dir="ltr" className="ink-muted">{selectedVariant.sku}</span></p> : null}
-            {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="ink-muted">{product.productType}</span></p> : null}
+            {product.productType ? <p className="mt-2 text-sm font-medium ink-muted">{t("product.category")}: <span className="ink-muted">{categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType}</span></p> : null}
 
             <h1 className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 

@@ -6,7 +6,7 @@ import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, S
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
-import { EMPTY_FILTERS, matchesSearch, productsInCategory, searchPath, searchWithTerm } from "@shared/commerce/browse";
+import { EMPTY_FILTERS, correctionFor, productsInCategory, rankBySearch, searchPath, searchWithTerm } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey, categoryRail } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
@@ -131,7 +131,13 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const suggestions = useMemo(() => {
     /* The results page's own rule, so a suggestion is never something "See all" then leaves out. */
     const shelf = scoped ? productsInCategory(catalog, scope) : catalog;
-    return searchTerm ? shelf.filter(product => matchesSearch(product, searchTerm)).slice(0, 4) : [];
+    if (!searchTerm) return [];
+    /* Ranked the way the results page ranks, and through the same correction
+       when the words as typed find nothing, so "samsng" still offers the phone. */
+    const found = rankBySearch(shelf, searchTerm);
+    if (found.length) return found.slice(0, 4);
+    const correction = correctionFor(searchTerm, catalog);
+    return correction ? rankBySearch(shelf, correction).slice(0, 4) : [];
   }, [catalog, searchTerm, scope, scoped]);
   const optionCount = emptyField ? recent.length : suggestions.length;
 
@@ -360,7 +366,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
               {suggestions.map((product, index) => (
                 <button key={product.id} type="button" role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(product)} className={`type-control flex w-full items-center gap-3 rounded-xl px-3 py-2 text-start text-[#0a285a] ${activeIndex === index ? "bg-[#0a285a]/[.06]" : "hover:bg-[#0a285a]/[.06]"}`}>
                   <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
-                  <span className="min-w-0 flex-1"><span className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType || t("header.netletFind")}</span></span>
+                  <span className="min-w-0 flex-1"><span className="type-product block truncate text-sm">{product.title}</span><span className="type-label block truncate text-[#536b8c]">{product.productType ? (categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType) : t("header.netletFind")}</span></span>
                   <CornerDownLeft className="size-4 ink-muted" />
                 </button>
               ))}

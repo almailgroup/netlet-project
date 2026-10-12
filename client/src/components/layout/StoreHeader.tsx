@@ -48,6 +48,7 @@ import { AccountMenu } from "@/components/layout/AccountMenu";
 import { DeliveryZoneDialog } from "@/components/layout/DeliveryZoneDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useLastAddressId } from "@/hooks/useLastAddressId";
+import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { addressInUse } from "@/lib/lastAddress";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
@@ -97,6 +98,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
@@ -249,7 +251,7 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       </header>
       <nav aria-label={t("nav.primary")} className="hidden border-b border-[#e6e9ef] bg-white lg:block">
         <div className="container flex h-12 items-center gap-1.5">
-          {categoryRail.map(department => {
+          {categoryRail.filter(department => inStock(department.query) || activeDepartment === department.query).map(department => {
             const current = !onDeals && activeDepartment === department.query;
             const lead = department.query === ALL_DEPARTMENTS.query;
             return (

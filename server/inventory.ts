@@ -276,6 +276,28 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
   return hydrate(db, rows.map(row => row.p));
 }
 
+/**
+ * How many products are on sale in each department, by the department's slug.
+ *
+ * The header, the phone's department sheet and the home tiles all listed every
+ * department NetLet knows, so Beauty, Style and Grocery sat in the main
+ * navigation leading to empty pages. The same rule as `publishedCatalog` — a
+ * published product of an approved store — counted per department, so a link
+ * appears exactly when the page behind it has something to show.
+ */
+export async function publishedDepartmentCounts(): Promise<Record<string, number>> {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db
+    .select({ slug: categories.slug, count: sql<number>`count(*)::int` })
+    .from(products)
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved")))
+    .groupBy(categories.slug);
+  return Object.fromEntries(rows.map(row => [row.slug, Number(row.count)]));
+}
+
 /** One published product by its slug, for the product page. */
 export async function publishedProduct(handle: string) {
   const db = await getDb();

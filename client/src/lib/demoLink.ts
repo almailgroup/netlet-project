@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { DEPARTMENTS } from "@shared/commerce/departments";
 import { readStored, writeStored } from "@/lib/browserStore";
 import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
@@ -175,6 +176,15 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "commerce.products.byHandle":
       return demoProductByHandle(String(input.handle ?? ""));
 
+    case "commerce.departmentCounts": {
+      /* Counted from the invented catalogue the same way the server counts its own. */
+      const counts: Record<string, number> = {};
+      for (const product of demoCatalog) {
+        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        if (department) counts[department.slug] = (counts[department.slug] ?? 0) + 1;
+      }
+      return counts;
+    }
     case "commerce.collections.list":
       return [];
     case "commerce.collections.byHandle":

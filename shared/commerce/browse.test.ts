@@ -109,7 +109,9 @@ describe("category membership", () => {
 describe("facets", () => {
   it("counts over the products given, not the whole catalog", () => {
     const facets = facetsFor(productsInCategory(catalog, "Home & Kitchen"));
-    expect(facets.brands).toEqual([
+    /* The store is the seller; a brand comes only from the product's own Brand row. */
+    expect(facets.brands).toEqual([]);
+    expect(facets.sellers).toEqual([
       { value: "Brew", count: 1 },
       { value: "Lumen", count: 1 },
     ]);
@@ -161,7 +163,7 @@ describe("filtering", () => {
 
   it("ORs values inside a facet and ANDs across facets", () => {
     // Either brand, but only the one that is in stock.
-    const filters = withFilters({ brands: ["Lumen", "Horizon"], inStock: true });
+    const filters = withFilters({ sellers: ["Lumen", "Horizon"], inStock: true });
     expect(applyFilters(catalog, filters).map(p => p.id)).toEqual(["lamp"]);
   });
 
@@ -231,7 +233,9 @@ describe("filters in the URL", () => {
   it("round-trips every filter", () => {
     const filters: BrowseFilters = {
       category: "Electronics",
-      brands: ["Lumen", "Brew"],
+      brands: ["Samsung"],
+      sellers: ["Lumen", "Brew"],
+      speeds: ["same_day", "next_day"],
       options: { Colour: ["Silver", "Black"], "Ram Size": ["16 GB"] },
       minPrice: 10,
       maxPrice: 250,
@@ -302,5 +306,33 @@ describe("discount placement", () => {
       { ...EMPTY_FILTERS, sort: "price-low" },
     );
     expect(page.map(p => p.id)).toEqual(["cheap", "cut"]);
+  });
+});
+
+describe("brand, seller and delivery speed", () => {
+  const branded = (id: string, brand: string, vendor: string, speed: Product["deliverySpeed"]) =>
+    product({ id, vendor, deliverySpeed: speed, attributes: [{ namespace: "specs", key: "brand", label: "Brand", value: brand }] });
+  const shelf = [
+    branded("s26", "Samsung", "Phone store Hawally", "next_day"),
+    branded("a56", "Samsung", "Gadget House", "two_to_four"),
+    branded("pixel", "Google", "Gadget House", "same_day"),
+  ];
+
+  it("are three facets, not one", () => {
+    const facets = facetsFor(shelf);
+    expect(facets.brands).toEqual([{ value: "Samsung", count: 2 }, { value: "Google", count: 1 }]);
+    expect(facets.sellers).toEqual([{ value: "Gadget House", count: 2 }, { value: "Phone store Hawally", count: 1 }]);
+    /* Fastest first, whatever the counts. */
+    expect(facets.speeds.map(entry => entry.value)).toEqual(["same_day", "next_day", "two_to_four"]);
+  });
+
+  it("each narrows by its own field", () => {
+    expect(applyFilters(shelf, { ...EMPTY_FILTERS, brands: ["Samsung"] }).map(p => p.id)).toEqual(["s26", "a56"]);
+    expect(applyFilters(shelf, { ...EMPTY_FILTERS, sellers: ["Gadget House"] }).map(p => p.id)).toEqual(["a56", "pixel"]);
+    expect(applyFilters(shelf, { ...EMPTY_FILTERS, speeds: ["same_day", "next_day"] }).map(p => p.id)).toEqual(["s26", "pixel"]);
+  });
+
+  it("drops a speed a hand-edited URL invented", () => {
+    expect(filtersFromSearch("?speed=same_day,teleport").speeds).toEqual(["same_day"]);
   });
 });

@@ -15,6 +15,7 @@
  */
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
+import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { categorySlug } from "@shared/commerce/browse";
@@ -27,6 +28,7 @@ export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () 
   const { t } = useTranslation();
   const shelf = trpc.commerce.products.list.useQuery({ first: 24 }, { enabled: open, staleTime: 5 * 60 * 1000 });
   const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
+  const inStock = useDepartmentsInStock();
   useOverlay(open, onClose);
   if (!open) return null;
   return createPortal(
@@ -45,7 +47,7 @@ export function DepartmentSheet({ open, onClose }: { open: boolean; onClose: () 
           </button>
         </div>
         <ul className="mt-6 space-y-1.5">
-          {categoryRail.map(category => (
+          {categoryRail.filter(category => inStock(category.query)).map(category => (
             <li key={category.query}>
               <Link
                 href={`/category/${categorySlug(category.query)}`}

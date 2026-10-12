@@ -2962,6 +2962,45 @@ own name and an empty state. A slug matching neither still falls back to the
 whole catalog. The heading is the department's name with the count under it —
 "No results for Beauty" read as a failed search.
 
+**Search ranks by where the words are, never by who sells it.**
+`shared/commerce/search.ts` weighs a word found in the title above the brand row,
+the brand above the department (in both languages), tags, a variant's name and
+the description last, and a whole word above a word it only starts. **The
+seller's name is not searched**: "Phone store Hawally" sells a Philips food
+processor, and every word of a store's name matched its whole shelf, so
+"phone" found the processor. A chosen sort still wins over the ranking.
+
+**A misspelling gets the catalogue's own spelling.** When nothing matches,
+`correctionFor` looks each unknown word up among the words the catalogue
+actually uses — title, brand, department, tags — at an edit distance that
+counts a swap as one ("samsng", "smasung" → "Samsung"), and the page searches
+for that and says so above the grid. Only the catalogue's words, because an
+English dictionary would correct a brand into something nobody sells; and no
+`pg_trgm`, which would be a database extension for a catalogue the page
+already holds. The header's suggestions go through the same correction.
+**A department search that finds nothing offers the whole shop**, with the
+count: on the Beauty page "no phone" is not "NetLet sells no phones".
+
+**Brand, seller and delivery speed are three filters.** The "Brand" facet was
+the store's name, which is not what somebody ticking "Samsung" means; brand
+now comes from the product's Brand specification row (`brandOf`), the store is
+"Seller", and the seller's shipping band is a third group, fastest first. A
+group is drawn when ticking it could change something (`facetNarrows`): two
+values, or one that not every product carries. Department names in the
+sidebar, the suggestions and the product page come from the dictionary, so
+"Home & kitchen" is spelled one way everywhere and in Arabic on the Arabic
+page; a merchant's own type stays as typed.
+
+**An empty department is not in the navigation.** The header row, the phone's
+department sheet and the home tiles list only departments with something on
+sale (`commerce.departmentCounts`, the `publishedCatalog` rule counted per
+department); everything shows until the counts arrive, and the department a
+shopper is standing on is always shown. Its page still answers its address
+with its name and an empty state, since a link already shared must not 404, and
+the "Offers and delivery" box is not drawn over nothing. A department page with
+no search or filter is indexable (`departmentMeta`); a search or a filtered view
+is not.
+
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
 `matchesSearch` — every word somewhere in what the shopper can see — is the one

@@ -19,6 +19,8 @@
  * comes last, where a shopper who did not find theirs looks next.
  */
 import { useTranslation } from "@/hooks/useTranslation";
+import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
+import type { CSSProperties } from "react";
 import { appPath } from "@/lib/basePath";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
@@ -32,11 +34,18 @@ const CARDS: { slug: string; query: string; label: MessageKey }[] = [
 
 export function DepartmentCards() {
   const { t } = useTranslation();
+  const inStock = useDepartmentsInStock();
+  const cards = CARDS.filter(card => inStock(card.query));
   return (
     <section id="main" aria-labelledby="departments-title" className="container pt-4 sm:pt-6">
       <h2 id="departments-title" className="sr-only">{t("home.shopByCategory")}</h2>
-      <ul className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-6">
-        {CARDS.map(card => (
+      {/* As many columns as tiles on a wide screen, so three departments are
+          three wide tiles rather than half an empty row. */}
+      <ul
+        className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-[repeat(var(--tiles),minmax(0,1fr))]"
+        style={{ "--tiles": Math.min(cards.length, 6) } as CSSProperties}
+      >
+        {cards.map(card => (
           <li key={card.slug}>
             <Link
               href={`/category/${categorySlug(card.query)}`}

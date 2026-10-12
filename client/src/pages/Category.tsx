@@ -24,7 +24,7 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
-import { usePageMeta } from "@/hooks/usePageMeta";
+import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import {
@@ -34,6 +34,9 @@ import {
   categorySlug,
   knownCategories,
   matchesSearch,
+  rankBySearch,
+  correctionFor,
+  searchPath,
   searchTermFrom,
   searchWithTerm,
   EMPTY_FILTERS,
@@ -47,7 +50,7 @@ import {
 import type { Product } from "@shared/commerce/types";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
-import { privatePageMeta } from "@shared/seo";
+import { departmentMeta, privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronRight, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -106,11 +109,38 @@ export default function Category() {
   const inCategory = useMemo(() => productsInCategory(catalog, category), [catalog, category]);
   const facets = useMemo(() => facetsFor(inCategory), [inCategory]);
 
-  const results = useMemo(() => {
-    const matched = browse(catalog, filters);
-    const words = search.trim();
-    return words ? matched.filter(product => matchesSearch(product, words)) : matched;
-  }, [catalog, filters, search]);
+  /*
+   * The search, in three steps. The words as typed, ranked by where they are
+   * found when the order is the default one (a chosen order wins, as
+   * everywhere). Nothing found: the catalogue's own spelling of what was
+   * probably meant, said so above the grid rather than silently swapped. Still
+   * nothing inside a department: how many the whole shop has, offered as one
+   * press, because a search on the Beauty page that finds no phone has not
+   * found that NetLet sells no phones.
+   */
+  const searchFor = (words: string, within: BrowseFilters) => {
+    const matched = browse(catalog, within);
+    if (!words) return matched;
+    return within.sort === "relevance" ? rankBySearch(matched, words) : matched.filter(product => matchesSearch(product, words));
+  };
+  const typed = search.trim();
+  const { results, correctedTo } = useMemo(() => {
+    const exact = searchFor(typed, filters);
+    if (!typed || exact.length) return { results: exact, correctedTo: null };
+    const correction = correctionFor(typed, catalog);
+    const corrected = correction ? searchFor(correction, filters) : [];
+    return corrected.length ? { results: corrected, correctedTo: correction } : { results: exact, correctedTo: null };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, filters, typed]);
+  const elsewhere = useMemo(() => {
+    if (!typed || results.length || category === "all") return 0;
+    const everywhere = { ...EMPTY_FILTERS, sort: filters.sort };
+    const found = searchFor(typed, everywhere).length;
+    if (found) return found;
+    const correction = correctionFor(typed, catalog);
+    return correction ? searchFor(correction, everywhere).length : 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, category, filters.sort, typed, results.length]);
 
   // Translated where NetLet knows the department, shown as the merchant typed
   // it otherwise — a product type is their words, not ours.
@@ -124,7 +154,13 @@ export default function Category() {
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
     : departmentName;
 
-  usePageMeta(privatePageMeta(title));
+  /* A department page is a page to be found; a search or a filtered view is not. */
+  const knownDepartment = DEPARTMENTS.find(entry => entry.slug === slug);
+  usePageMeta(
+    !onSearchPage && !searched && !activeFilterCount(filters) && knownDepartment
+      ? departmentMeta(knownDepartment.name, knownDepartment.slug, SITE_URL)
+      : privatePageMeta(title),
+  );
 
   const activeCount = activeFilterCount(filters);
   const currency = catalog[0]?.priceRange.min.currencyCode ?? "KWD";
@@ -167,6 +203,16 @@ export default function Category() {
       key: `brand-${brand}`,
       label: brand,
       clear: () => setFilters({ brands: filters.brands.filter(entry => entry !== brand) }),
+    })),
+    ...filters.sellers.map(seller => ({
+      key: `seller-${seller}`,
+      label: t("browse.soldBy", { name: seller }),
+      clear: () => setFilters({ sellers: filters.sellers.filter(entry => entry !== seller) }),
+    })),
+    ...filters.speeds.map(speed => ({
+      key: `speed-${speed}`,
+      label: t(`speed.${speed}` as MessageKey),
+      clear: () => setFilters({ speeds: filters.speeds.filter(entry => entry !== speed) }),
     })),
     ...Object.entries(filters.options).flatMap(([name, values]) => values.map(value => ({
       key: `opt-${name}-${value}`,
@@ -311,6 +357,12 @@ export default function Category() {
               </div>
             ) : results.length ? (
               <>
+                {correctedTo ? (
+                  <p className="mt-4 rounded-xl border border-[#e1e7ef] bg-white px-4 py-3 text-[14px] text-[#0a285a]" role="status">
+                    {t("browse.showingFor", { term: correctedTo })}{" "}
+                    <span className="ink-muted">{t("browse.noneFor", { term: typed })}</span>
+                  </p>
+                ) : null}
                 {/* The cards are h3s, and the page heading is the result count,
                     so without this the outline skips a level. Hidden because
                     the region is already visibly obvious; it is the screen
@@ -337,12 +389,19 @@ export default function Category() {
               <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
                 <PackageOpen className="mx-auto size-7 ink-muted" aria-hidden />
                 <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">
-                  {activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
+                  {elsewhere ? t("browse.emptyHere", { name: departmentName }) : activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
                 </h2>
                 <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">
                   {activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
                 </p>
-                {activeCount ? (
+                {elsewhere ? (
+                  <Link
+                    href={searchPath(typed)}
+                    className="glass glass-navy pressable mt-5 inline-flex rounded-full px-5 py-3 text-xs font-extrabold"
+                  >
+                    {t(elsewhere === 1 ? "browse.searchAllOne" : "browse.searchAllMany", { count: elsewhere })}
+                  </Link>
+                ) : activeCount ? (
                   <button onClick={clearAll} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
                     {t("browse.clearAll")}
                   </button>

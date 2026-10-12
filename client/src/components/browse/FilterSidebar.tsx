@@ -11,7 +11,10 @@
  */
 import { FilterCheckbox, FilterGroup, CollapsibleList } from "./FilterGroup";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { categorySlug, type BrowseFilters, type Facets } from "@shared/commerce/browse";
+import { categorySlug, facetNarrows, type BrowseFilters, type Facets, type FacetValue } from "@shared/commerce/browse";
+import { categoryMessageKey } from "@/content/homeLayout";
+import type { DeliverySpeed } from "@shared/commerce/deliverySpeed";
+import type { MessageKey } from "@shared/i18n/dictionary";
 import { useEffect, useState } from "react";
 
 export function FilterSidebar({ facets, filters, currency, onChange, onSelectCategory }: {
@@ -48,6 +51,33 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter(entry => entry !== value) : [...list, value];
 
+  /* A department NetLet knows is named as the header names it — "Home & kitchen",
+     in the page's language — and a merchant's own type as they typed it. The
+     filter read "Home & Kitchen" from the catalogue beside a header that said
+     "Home & kitchen". */
+  const departmentLabel = (value: string) => {
+    const key = categoryMessageKey(value);
+    return key ? t(key) : value;
+  };
+
+  /** One checkbox group of plain values, drawn only when ticking one would change something. */
+  const valueGroup = (title: string, values: FacetValue[], selected: string[], set: (next: string[]) => void, label: (value: string) => string = value => value) =>
+    facetNarrows(values, facets.total) ? (
+      <FilterGroup title={title}>
+        <CollapsibleList moreLabel={count => t("browse.showAll", { count })} fewerLabel={t("browse.showFewer")}>
+          {values.map(entry => (
+            <FilterCheckbox
+              key={entry.value}
+              label={label(entry.value)}
+              count={entry.count}
+              checked={selected.includes(entry.value)}
+              onChange={() => set(toggle(selected, entry.value))}
+            />
+          ))}
+        </CollapsibleList>
+      </FilterGroup>
+    ) : null;
+
   const priceField = "type-body h-9 w-full min-w-0 rounded-lg border border-[#d5dfeb] bg-white px-2.5 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]";
 
   return (
@@ -61,7 +91,7 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
             {facets.categories.map(category => (
               <FilterCheckbox
                 key={category.value}
-                label={category.value}
+                label={departmentLabel(category.value)}
                 count={category.count}
                 checked={filters.category === category.value}
                 onChange={checked => onSelectCategory(checked ? category.value : "all")}
@@ -71,6 +101,9 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
         </FilterGroup>
       ) : null}
 
+      {/* Drawn only with something in it: an empty department showed an
+          "Offers and delivery" heading over nothing. */}
+      {facets.inStock > 0 || facets.onOffer > 0 || facets.express > 0 ? (
       <FilterGroup title={t("browse.offers")}>
         {facets.inStock > 0 ? (
           <FilterCheckbox label={t("browse.inStock")} count={facets.inStock} checked={filters.inStock} onChange={inStock => onChange({ inStock })} />
@@ -82,25 +115,17 @@ export function FilterSidebar({ facets, filters, currency, onChange, onSelectCat
           <FilterCheckbox label={t("browse.expressOnly")} count={facets.express} checked={filters.express} onChange={express => onChange({ express })} />
         ) : null}
       </FilterGroup>
-
-      {facets.brands.length > 1 ? (
-        <FilterGroup title={t("browse.brand")}>
-          <CollapsibleList
-            moreLabel={count => t("browse.showAll", { count })}
-            fewerLabel={t("browse.showFewer")}
-          >
-            {facets.brands.map(brand => (
-              <FilterCheckbox
-                key={brand.value}
-                label={brand.value}
-                count={brand.count}
-                checked={filters.brands.includes(brand.value)}
-                onChange={() => onChange({ brands: toggle(filters.brands, brand.value) })}
-              />
-            ))}
-          </CollapsibleList>
-        </FilterGroup>
       ) : null}
+
+      {valueGroup(t("browse.brand"), facets.brands, filters.brands, brands => onChange({ brands }))}
+      {valueGroup(t("browse.seller"), facets.sellers, filters.sellers, sellers => onChange({ sellers }))}
+      {valueGroup(
+        t("browse.deliverySpeed"),
+        facets.speeds,
+        filters.speeds,
+        speeds => onChange({ speeds: speeds as DeliverySpeed[] }),
+        value => t(`speed.${value}` as MessageKey),
+      )}
 
       {facets.priceBounds ? (
         <FilterGroup title={t("browse.price")}>

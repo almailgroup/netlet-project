@@ -357,3 +357,18 @@ describe("a forgotten basket", () => {
     expect((await catalog.getCart(cart.id))?.recovery).toEqual({ remind: false });
   });
 });
+
+describe("which departments have something on sale", () => {
+  it("counts published products of approved stores, and leaves out drafts and suspended stores", async () => {
+    const inventory = await import("./inventory");
+    const [electronics] = await db.select().from(categories).where(eq(categories.slug, "electronics"));
+    /* Two products in Electronics that a shopper cannot see: a draft, and a
+       published one from the suspended store. Neither may light the link. */
+    await db.insert(products).values([
+      { vendorId: ids.acme, categoryId: electronics.id, handle: "draft-radio", title: "Draft radio", status: "draft" },
+      { vendorId: ids.suspended, categoryId: electronics.id, handle: "gone-radio", title: "Gone radio", status: "published" },
+    ]);
+    const counts = await inventory.publishedDepartmentCounts();
+    expect(counts).toEqual({ "home-and-kitchen": 1 });
+  });
+});
