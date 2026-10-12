@@ -19,6 +19,7 @@ import { SettingPanel } from "@/components/ui/SettingPanel";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword } from "@shared/auth/passwordStrength";
+import { PasswordChecklist } from "@/components/auth/AuthForm";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { AtSign, Check, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -186,6 +187,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   // The same rules the sign-up meter applies, so the floor cannot differ
   // between creating a password and replacing one.
   const verdict = checkPassword(next);
+  const rulesId = useId();
 
   return (
     <SettingPanel
@@ -213,6 +215,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
               value={next}
               placeholder={t("account.newPassword")}
               aria-label={t("account.newPassword")}
+              aria-describedby={rulesId}
               onChange={event => setNext(event.target.value)}
               className={`${field} pe-12`}
             />
@@ -226,15 +229,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
               {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
             </button>
           </div>
-          {next.length > 0 && verdict.unmet.length > 0 && (
-            <ul className="space-y-0.5">
-              {verdict.unmet.map(rule => (
-                <li key={rule} className="text-[11px] leading-4 ink-muted">
-                  • {t(`auth.rule${rule[0].toUpperCase()}${rule.slice(1)}` as "auth.ruleLength")}
-                </li>
-              ))}
-            </ul>
-          )}
+          <PasswordChecklist id={rulesId} verdict={verdict} typed={next.length > 0} />
           <p className="text-[11px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
             <button

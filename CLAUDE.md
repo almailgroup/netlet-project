@@ -220,26 +220,65 @@ database while reporting success.
 
 ## Signing in
 
-`AuthDialog` is sign in, create account and reset in one overlay, switched by
-a real `tablist` rather than a link at the foot. Three things there are
-deliberate:
+**One form, three places.** `AuthForm` is sign in, create account and reset;
+`AuthDialog` draws it where the shopper is (the header, checkout, the delivery
+dialog, Subscribe & Save, `/sell`), `/signin` and `/signup` draw it as a page a
+link can point at, and a signed-out `/account` *is* the form — it was a panel
+whose "Create account" button opened the dialog on signing in. Three copies is
+how a rule gets fixed in one and not the others. The page takes `?next=`,
+through `shared/auth/returnPath.ts`, which keeps it a path on this site: a
+sign-in page that went wherever its address said would be a NetLet-branded door
+onto somebody's phishing page. `/login` and `/register` answer too and are
+replaced by the real two. The page's header is checkout's bare one, because the
+search field is what somebody leaves a sign-in page for half-way through a
+password.
 
-- **The password can be shown.** Typing a long password blind is how people
-  end up choosing a short one.
-- **The strength meter names what is missing.** `shared/auth/passwordStrength.ts`
-  returns the unmet rules, not just a score, because a bar that goes red tells
-  somebody they failed without telling them how to stop. Only length and a
-  common-shape check actually block: composition rules that refuse a long
-  passphrase in favour of `P@ss1` make passwords worse.
-- **Reset sends a real email.** Supabase composes and sends it through
-  `/auth/v1/recover`, so there is no mail provider to configure — which is the
-  only reason the link can be real rather than decorative. The reply is identical
-  for an address with no account, like sign-in, so it cannot be used to ask who
-  is registered. Both services are asked when both are configured, for that same
-  reason: looking up which one holds the address would make the reply vary by
-  address. The project's default mailer is rate-limited and meant for
-  development; a real deployment points Supabase at its own SMTP, which is a
-  dashboard setting rather than code.
+**The dialog is one column, the form alone.** It had a navy panel of selling
+points beside the form, which drew the eye from the form on a wide screen and
+was hidden on a phone anyway. The pages keep that content, beside the card on a
+wide screen and under it on a phone — three things the account does, the
+department art, and the three facts every order carries — because a page has
+the room and somebody deciding whether to register is reading it.
+
+What the form does, each for a reason:
+
+- **Labels sit above the boxes.** A label inside the box that lifts as you type
+  is a template's flourish, and two of them had to be fought into place.
+- **Errors arrive with Submit and leave with the fix**, under the box that is
+  wrong, and Submit focuses the first. The button is never greyed out with no
+  sentence beside it.
+- **Nothing appears because a box lost focus.** The Caps Lock line, the email
+  hint and the field errors all used to, and a line arriving above a button as
+  the pointer went down on it moved the button before the pointer came up — on
+  a phone, after Caps Lock had been said, "Create an account" took two taps.
+  Found by a probe whose click did nothing, not by looking.
+- **A mistyped email domain is offered back** once typing pauses —
+  `shared/auth/emailTypo.ts`, "Did you mean …@gmail.com?" — because an account
+  made at `gmial.com` has no way back in once its password is forgotten. It
+  offers and never corrects: `mail.com`, `outlook.sa` and `.om` (Oman, next
+  door) are somebody's real address.
+- **The password can be shown, and its rules are a checklist from the start.**
+  `shared/auth/passwordStrength.ts` returns the unmet rules, not just a score.
+  Only length and a common-shape check block, and are ticks; case, a number and
+  a symbol are a row labelled optional, because composition rules that refuse a
+  long passphrase in favour of `P@ss1` make passwords worse. `ProfileManager`'s
+  new password draws the same `PasswordChecklist`.
+- **A refusal offers the next step**: a wrong password offers the reset (and
+  selects the password for retyping), a taken address offers signing in with
+  it, keeping the address.
+- **"Keep me signed in"**, on by default. Off, `auth.login` sets a cookie with no
+  expiry, which the browser drops on closing, round a token that lapses in a day
+  (`SHORT_SESSION_MS`) for a browser that restores its session cookies.
+- **Reset ends on a page saying what happened**, naming the address, with "Send
+  it again" after thirty seconds and "Use a different email". It used to be a
+  toast and a jump back to sign-in, which left somebody unsure whether anything
+  had gone. Supabase composes and sends the mail through `/auth/v1/recover`, so
+  there is no mail provider to configure. The reply is identical for an address
+  with no account, like sign-in, so it cannot be used to ask who is registered;
+  only the throttle is said, since it counts every request whoever's address it
+  is. Both services are asked when both are configured, for that same reason.
+  The project's default mailer is rate-limited and meant for development; a
+  real deployment points Supabase at its own SMTP, a dashboard setting.
 
 `ProfileManager` on `/account` is the other half: display name, sign-in email
 and password, each its own small form with its own Save. One Save across all
@@ -266,13 +305,11 @@ keyboard takes half of a 390px screen, and a card with a margin round it left
 the password box under the keyboard. "Forgot your password?" sits under the
 password box, where somebody whose password was refused is already looking;
 Caps Lock is said there while it is on, the commonest reason a right password
-is refused; and the button says what it is doing ("Signing in…"). The panel
-beside it on a wide screen keeps its content together — it was split to the two
-ends, leaving a navy gap the height of the form — and wears the light logo,
-whose chevron stays orange; the dark one inverted turned it white. The email
-and password boxes type left to right on either page, so on the Arabic page
-their tick and eye sit at the page's end, the left, with the room made on that
-side (`rtl:ps-*`), or they covered the first characters.
+is refused, read from any key pressed in the form; and the button says what it
+is doing ("Signing in…"). The email and password boxes type left to right on
+either page, so on the Arabic page the eye sits at the page's end, the left,
+with the room made on that side (`rtl:ps-*`), or it covered the first
+characters.
 
 **The header never signs you out on one press.** Home's own header used to
 sign out on one click, which put the most destructive thing available there
@@ -330,7 +367,7 @@ refetched on window focus, since asking again about a wrong code counts again.
 **There is no social sign-in, on purpose.** It needs a provider configured in
 the provider's console and a redirect the server has to trust; a button that
 looks like Google sign-in and does nothing is worse than no button. The
-showcase panel carries what the account does, never seller counts or
+sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never
 trusted again.
 

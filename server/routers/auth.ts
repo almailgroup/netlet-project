@@ -24,7 +24,7 @@ import { COOKIE_NAME } from "../../shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { checkPassword } from "../../shared/auth/passwordStrength.js";
-import { SESSION_MAX_AGE_MS, signSession } from "../_core/auth.js";
+import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signSession } from "../_core/auth.js";
 import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
@@ -73,6 +73,12 @@ const newPassword = z
   .min(10)
   .max(200)
   .refine(value => checkPassword(value).acceptable, "auth.passwordTooWeak");
+
+/*
+ * Sign-in also says whether to remember the device. Absent means yes, which is
+ * what every caller before the box existed expected.
+ */
+const signInInput = credentials.extend({ remember: z.boolean().optional() });
 
 const registration = credentials.extend({
   password: newPassword,
@@ -301,7 +307,7 @@ export const authRouter = router({
       return { sent: true } as const;
     }),
 
-  login: publicProcedure.input(credentials).mutation(async ({ ctx, input }) => {
+  login: publicProcedure.input(signInInput).mutation(async ({ ctx, input }) => {
     assertConfigured();
 
     const caller = callerOf(ctx, input.email);
@@ -319,8 +325,13 @@ export const authRouter = router({
     // failure from a lockout for the next quarter of an hour.
     await clearAccountFailures(input.email);
     await touchLastSignedIn(user.id);
-    const token = await signSession(user.id);
-    ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+    /* Not remembered: a cookie with no expiry, which the browser drops when it
+       closes, round a token that lapses in a day for a browser that keeps it. */
+    if (input.remember === false) {
+      ctx.res.cookie(COOKIE_NAME, await signSession(user.id, SHORT_SESSION_MS), getSessionCookieOptions(ctx.req));
+    } else {
+      ctx.res.cookie(COOKIE_NAME, await signSession(user.id), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+    }
     return toPublicUser(user);
   }),
 

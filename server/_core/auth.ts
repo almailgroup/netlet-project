@@ -20,6 +20,13 @@ import { ENV } from "./env.js";
 const ISSUER = "netlet";
 const AUDIENCE = "netlet-web";
 export const SESSION_MAX_AGE_MS = ONE_YEAR_MS;
+/**
+ * The longest a session lasts when somebody signs in without "Keep me signed
+ * in" — on a shared or borrowed device. Its cookie has no expiry, so it ends
+ * when the browser closes; this is the ceiling for a browser that restores its
+ * session cookies on restart, which several do.
+ */
+export const SHORT_SESSION_MS = 24 * 60 * 60 * 1000;
 
 function secretKey(): Uint8Array {
   if (!ENV.cookieSecret) {
@@ -28,13 +35,13 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode(ENV.cookieSecret);
 }
 
-export async function signSession(userId: number): Promise<string> {
+export async function signSession(userId: number, lifetimeMs: number = SESSION_MAX_AGE_MS): Promise<string> {
   return new SignJWT({ sub: String(userId) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
     .setAudience(AUDIENCE)
-    .setExpirationTime(new Date(Date.now() + SESSION_MAX_AGE_MS))
+    .setExpirationTime(new Date(Date.now() + lifetimeMs))
     .sign(secretKey());
 }
 

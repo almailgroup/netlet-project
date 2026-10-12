@@ -27,6 +27,7 @@ import Home from "./pages/Home";
 const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
 const Checkout = lazy(() => import("@/pages/Checkout"));
 const Account = lazy(() => import("@/pages/Account"));
+const SignIn = lazy(() => import("@/pages/SignIn"));
 const Saved = lazy(() => import("@/pages/Saved"));
 const Cart = lazy(() => import("@/pages/Cart"));
 const Returns = lazy(() => import("@/pages/Returns"));
@@ -104,6 +105,8 @@ function RouteFallback() {
           </div>
         </div>
       )
+    : /^\/(signin|signup|login|register)$/.test(location)
+      ? <div className={`mx-auto h-[560px] max-w-[480px] lg:mx-0 ${block}`} />
     : location.startsWith("/category/") || location.startsWith("/search") || location === "/saved"
       ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -254,6 +257,10 @@ function Router() {
       <Suspense fallback={<RouteFallback />}>
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/signin" component={SignIn} />
+        <Route path="/signup" component={SignIn} />
+        <Route path="/login" component={SignIn} />
+        <Route path="/register" component={SignIn} />
         <Route path="/account" component={Account} />
         <Route path="/account/:section" component={Account} />
         <Route path="/saved" component={Saved} />

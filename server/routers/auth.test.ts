@@ -200,6 +200,24 @@ describe("auth with Supabase Auth as the password store", () => {
     expect(set.map(entry => entry.name)).toContain(COOKIE_NAME);
   });
 
+  /* "Keep me signed in" unticked, on a shared device: the cookie carries no
+     expiry, so the browser drops it on closing, and the token inside lapses in
+     a day for a browser that restores its session cookies. */
+  it("signs in for the browser session only when not remembered", async () => {
+    stubStore();
+    const { ctx, set } = createContext(null);
+    const api = await caller(ctx);
+
+    await api.auth.login({ email: "supa@example.com", password: "Harbour-Falcon-2026", remember: false });
+    const [cookie] = set.filter(entry => entry.name === COOKIE_NAME);
+    expect(cookie.options).not.toHaveProperty("maxAge");
+    expect(cookie.options).not.toHaveProperty("expires");
+    expect(cookie.options).toMatchObject({ httpOnly: true });
+
+    await api.auth.login({ email: "supa@example.com", password: "Harbour-Falcon-2026" });
+    expect(set.at(-1)!.options).toHaveProperty("maxAge");
+  });
+
   /* The ten-character floor is for setting a password. An account whose
      password predates it, or was set by hand in the Supabase dashboard, must
      still get in — it was refused as malformed input before the password was

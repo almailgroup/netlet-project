@@ -45,7 +45,8 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import AuthDialog from "@/components/auth/AuthDialog";
+import { AuthScreen } from "@/components/auth/AuthScreen";
+import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -60,7 +61,6 @@ import {
   Gift,
   Heart,
   LifeBuoy,
-  LogIn,
   LogOut,
   MapPin,
   Megaphone,
@@ -71,7 +71,6 @@ import {
   Star,
   Store,
   Tag,
-  UserPlus,
   UserRound,
   Users,
 } from "lucide-react";
@@ -140,7 +139,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
 
 export default function Account() {
   usePageMeta(privatePageMeta("Your account"));
-  const [authOpen, setAuthOpen] = useState(false);
+  const [guestMode, setGuestMode] = useState<AuthMode>("signin");
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [search, setSearch] = useState("");
@@ -200,15 +199,11 @@ export default function Account() {
     if (onSection && settled && isAuthenticated && !section) navigate("/account", { replace: true });
   }, [onSection, settled, isAuthenticated, section, navigate]);
 
-  const openAuth = () => DEMO_MODE
-    ? toast(t("header.signInDisabled"), { description: t("header.signInDisabledNote") })
-    : setAuthOpen(true);
   const openProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
 
   return (
     <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
       <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
-      <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
       {/* Signing out costs a password to undo, so it asks — the same
           treatment anything with a real cost gets. */}
       <ConfirmDialog
@@ -240,9 +235,17 @@ export default function Account() {
             <div className="h-28 animate-pulse rounded-2xl bg-[#e7edf5]" />
           </div>
         ) : !isAuthenticated || !user ? (
+          /* Signed out, the account page is the form itself rather than a
+             panel with two buttons opening it — one press fewer, and the
+             "Create account" button that opened on signing in has gone with it. */
           <>
-            <h1 className="text-2xl font-extrabold sm:text-3xl">{t("account.yourWay")}</h1>
-            <GuestPanel onOpen={openAuth} />
+            <h1 className="sr-only">{t("account.yourWay")}</h1>
+            {DEMO_MODE ? (
+              <p role="note" className="mx-auto mb-6 max-w-[1080px] rounded-xl border border-[#e3e1d9] bg-white px-4 py-3 text-[14px] text-[#3d5170]">
+                <strong className="text-[#0a285a]">{t("header.signInDisabled")}</strong> {t("header.signInDisabledNote")}
+              </p>
+            ) : null}
+            <AuthScreen mode={guestMode} onModeChange={setGuestMode} heading="h2" />
           </>
         ) : section ? (
           <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-10">
@@ -398,23 +401,3 @@ function SideMenu({ user, entries, current, badge, onSignOut }: {
   );
 }
 
-function GuestPanel({ onOpen }: { onOpen: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <section className="mt-6 max-w-2xl rounded-2xl border border-[#e6e9ef] bg-white p-6 sm:p-8">
-      <div className="grid size-12 place-items-center rounded-xl bg-[#eef2f8]">
-        <UserRound className="size-6 text-[#0a285a]" aria-hidden />
-      </div>
-      <h2 className="mt-5 text-xl font-bold text-[#0a285a]">{t("account.signInOrCreate")}</h2>
-      <p className="mt-2 max-w-lg text-[14px] leading-6 ink-muted">{t("account.guestNote")}</p>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button id="netlet-auth-login" onClick={onOpen} className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3">
-          <LogIn className="size-4" aria-hidden /> {t("header.signIn")}
-        </button>
-        <button id="netlet-auth-signup" onClick={onOpen} className="glass pressable inline-flex items-center gap-2 rounded-full px-5 py-3">
-          <UserPlus className="size-4" aria-hidden /> {t("account.createAccount")}
-        </button>
-      </div>
-    </section>
-  );
-}
