@@ -17,6 +17,14 @@
       "destination": "/api"
     },
     {
+      "source": "/products/:handle",
+      "destination": "/api?__page=/products/:handle"
+    },
+    {
+      "source": "/category/:slug",
+      "destination": "/api?__page=/category/:slug"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

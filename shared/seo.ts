@@ -61,7 +61,25 @@ export function homeMeta(siteUrl: string): PageMeta {
  * is what a locally generated placeholder produces, renders as no image at all.
  */
 function shareableImage(url: string | undefined, siteUrl: string): string {
-  return url && /^https?:\/\//i.test(url) ? url : absoluteUrl(siteUrl, "/brand/og-cover.png");
+  /* WhatsApp, Instagram and most preview cards draw no SVG, and an SVG here is
+     the placeholder art a product without a photo carries. */
+  if (url && /\.svg(?:[?#]|$)/i.test(url)) return absoluteUrl(siteUrl, "/brand/og-cover.png");
+  if (url && /^https?:\/\//i.test(url)) return url;
+  /* A photo uploaded to NetLet is served from its own origin as `/media/…`;
+     a preview needs the whole address. */
+  if (url && url.startsWith("/media/")) return absoluteUrl(siteUrl, url);
+  return absoluteUrl(siteUrl, "/brand/og-cover.png");
+}
+
+/** A department's page, by NetLet's own name for it. */
+export function departmentMeta(name: string, slug: string, siteUrl: string): PageMeta {
+  return {
+    title: `${name} — ${SITE_NAME}`,
+    description: `Shop ${name.toLowerCase()} in Kuwait on NetLet, with delivery across all six governorates and cash on delivery.`,
+    canonical: absoluteUrl(siteUrl, `/category/${encodeURIComponent(slug)}`),
+    image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+    type: "website",
+  };
 }
 
 export function productMeta(product: Product, siteUrl: string): PageMeta {

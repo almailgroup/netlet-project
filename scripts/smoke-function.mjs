@@ -125,6 +125,19 @@ try {
   const rewritten = await fetch(`${BASE}/trpc/commerce.products.list`);
   record("a /trpc path is normalised to /api/trpc", rewritten.ok, `HTTP ${rewritten.status}`);
 
+  /*
+   * A product page the way vercel.json rewrites it onto the function. With no
+   * database there is no product to describe, so the answer is the shop's own
+   * shell — but it must be the shell, as HTML, rather than a 404 or an error.
+   */
+  const page = await fetch(`${BASE}/api?__page=/products/anything`);
+  const pageBody = await page.text();
+  record(
+    "a product page is served the page shell",
+    page.ok && /text\/html/.test(page.headers.get("content-type") ?? "") && pageBody.includes("<!-- netlet:head -->"),
+    `HTTP ${page.status}`,
+  );
+
   // With no DATABASE_URL the verdict is "not configured", never a crash.
   const ready = await fetch(`${BASE}/readyz`);
   const readyBody = await ready.json();

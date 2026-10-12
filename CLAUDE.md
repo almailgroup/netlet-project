@@ -1851,6 +1851,19 @@ next was not. The product page had no Buy now at all, which was the one page
 where a shopper has actually decided. The bag is skipped, not the basket: the
 item goes in like any other, so leaving checkout finds it waiting.
 
+**Checkout never says "empty" before it knows, and Place order says what it
+needs.** The summary drew "Add products to see your order summary" and a KWD 0
+total for the second the bag took to load — to somebody who had just pressed
+Buy now — so it draws `settling`'s skeleton until the bag is read. The button
+was `glass-navy` on the navy summary, navy on navy, and read as a faint line of
+text; it is the brand orange with navy words (4.65:1), 56px and full width, with
+the total in it. Disabled, it says why underneath, first reason first — no
+items, cash on delivery refused, no governorate, no street, no number, a number
+`normalisePhone` cannot read — because a greyed button with no sentence beside
+it leaves somebody scrolling a form for what it wants. The driver's number is
+required at checkout for that reason, though the API still takes an order
+without one.
+
 **The address book fills checkout.** Saved addresses are one-tap choices, the
 one used last on this device is chosen already (`browserStore`), and picking
 one sets the governorate as well, which is what prices delivery. Edits after
@@ -3246,6 +3259,38 @@ server's CSP allows scripts from this origin only, and deferred so it costs
 the first paint nothing while still running before the app's module script.
 `.scratch/skew-server.mjs` reproduced the blank page with the old rule and no
 recovery, and showed it recovering with both.
+
+### A shared link carries the page's own head
+
+The storefront renders in the browser, so the HTML a crawler or a chat app
+fetches was one 3 KB shell — the home page's title and picture under every
+product pasted into WhatsApp, and no name or price for anything that does not
+run the script. **Product and department pages are now answered by the
+function**: `vercel.json` rewrites `/products/:handle` and `/category/:slug`
+onto `/api?__page=…`, and `server/pageShell.ts` writes the page's title,
+description, canonical, share picture, Open Graph price and Product and
+breadcrumb JSON-LD into the marked region of `index.html`
+(`<!-- netlet:head -->`), using the same `shared/seo.ts` builders
+`usePageMeta` uses, so the first response and the loaded page agree. The JSON-LD
+script carries `usePageMeta`'s id, so the page replaces it rather than adding a
+second. The function is deployed apart from the static output, so
+`build-function.mjs` writes the built shell into the bundle
+(`__NETLET_SHELL__`); the query parameter names the page because what the
+function is handed as its path is not something to rely on. A failed read sends
+the plain shell, never an error, and the answer is cached at the edge for five
+minutes. Locally `vite.ts` does the same for dev and for the static fallback.
+
+It is the head and not the page: the body is still drawn by the script. That is
+what previews and structured data read; full server rendering would be a
+second renderer to keep in step. **An SVG is never a share image** — no preview
+card draws one, and it is what a product without a photo carries — so those
+fall back to the shop's PNG cover. `pnpm smoke` checks the function answers a
+product page with the shell.
+
+Between pages, while a page's code arrives, `RouteFallback` draws that page's
+outline — a header strip and grey blocks shaped like a product page, a grid or
+a list — rather than a spinner in an empty screen, which read as the whole
+shop reloading.
 
 ### robots.txt and sitemap.xml
 

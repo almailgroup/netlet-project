@@ -42,7 +42,7 @@ import { resolveActor } from "../inventory.js";
  * `trust proxy` to exactly one hop, so it is the tunnel or the platform
  * speaking, not the client.
  */
-function siteOrigin(req: { protocol: string; get(name: string): string | undefined }): string {
+export function siteOrigin(req: { protocol: string; get(name: string): string | undefined }): string {
   const configured = process.env.SITE_URL?.trim();
   if (configured) return configured.replace(/\/+$/, "");
   return `${req.protocol}://${req.get("host") ?? "localhost"}`;

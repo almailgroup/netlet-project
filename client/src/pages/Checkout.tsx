@@ -18,7 +18,8 @@ import { appPath } from "@/lib/basePath";
 import { logoImage } from "@/lib/brandAssets";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { isMessageKey } from "@shared/i18n/dictionary";
+import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
+import { normalisePhone } from "@shared/commerce/wishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, settle } from "@shared/commerce/vouchers";
@@ -31,7 +32,7 @@ import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddr
 import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
+import { ArrowLeft, Info, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { PinPicker } from "@/components/map/PinPicker";
 import type { Pin } from "@shared/commerce/geo";
@@ -69,12 +70,12 @@ function CheckoutDeliveryZone() {
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
-  const { cart, refreshCart } = useCart();
+  const { cart, refreshCart, settling } = useCart();
   const { t, tError, isArabic } = useTranslation();
   const money = useMoney();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading: sessionLoading } = useAuth();
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const [, navigate] = useLocation();
   const [form, setForm] = useState<{ contactName: string; contactPhone: string; addressLine: string; addressNotes: string; pin: Pin | null }>({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "", pin: null });
@@ -157,8 +158,25 @@ export default function Checkout() {
   });
   const utils = trpc.useUtils();
 
+  /*
+   * Why Place order cannot be pressed yet, first reason first, said under the
+   * button. A greyed button with no sentence beside it leaves somebody
+   * scrolling a form looking for what it wants; the driver needs a governorate,
+   * a street and a number that rings.
+   */
+  const phoneTyped = form.contactPhone.trim();
+  const blocker: MessageKey | null = !isAuthenticated
+    ? null /* said by the sign-in offer below the button */
+    : settling ? null
+    : !items.length ? "checkout.needItems"
+    : cart?.cod.available === false ? "checkout.needCod"
+    : !deliveryZoneId ? "checkout.needGovernorate"
+    : !form.addressLine.trim() ? "checkout.needAddress"
+    : !phoneTyped ? "checkout.needPhone"
+    : !normalisePhone(phoneTyped) ? "checkout.badPhone"
+    : null;
   const canPlace = Boolean(
-    isAuthenticated && cart?.id && items.length && cart?.cod.available && form.addressLine.trim(),
+    isAuthenticated && !settling && !blocker && cart?.id && items.length && cart?.cod.available && form.addressLine.trim(),
   );
 
   /*
@@ -302,15 +320,26 @@ export default function Checkout() {
               </div>
           </section>
 
-          <aside className="h-fit min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-[#0a285a] p-5 text-white shadow-[0_18px_50px_rgba(10,40,90,.13)] sm:p-6"><h2 className="text-xl font-extrabold">{t("checkout.orderSummary")}</h2><div className="mt-6 space-y-4 border-y border-[#49658d] py-5">{items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? item.productTitle} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p className="type-product">{item.productTitle}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
-                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}`} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: row.vendorName, label: row.destinationLabel }) : t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div>{/* A member's free delivery (4.1), said with what it saved. */}{cart?.delivery.memberWaived ? <p className="text-[11px] font-bold text-[#d9e7f7]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}{/* Points are offered where the money is, not in a panel of their own:
+          <aside className="h-fit min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-[#0a285a] p-5 text-white shadow-[0_18px_50px_rgba(10,40,90,.13)] sm:p-6"><h2 className="text-xl font-extrabold">{t("checkout.orderSummary")}</h2><div className="mt-6 space-y-4 border-y border-[#49658d] py-5" aria-busy={settling}>{settling ? (
+                /* The bag is still being read. Saying "add products" here told
+                   somebody who had just pressed Buy now that their cart was
+                   empty, for the second it took to load. */
+                [0, 1].map(index => (
+                  <div key={index} className="flex gap-3" aria-hidden>
+                    <div className="size-14 shrink-0 animate-pulse rounded-xl bg-white/15" />
+                    <div className="flex-1 space-y-2 pt-1"><div className="h-3.5 w-3/4 animate-pulse rounded bg-white/15" /><div className="h-3 w-1/3 animate-pulse rounded bg-white/10" /></div>
+                    <div className="h-3.5 w-16 animate-pulse rounded bg-white/15" />
+                  </div>
+                ))
+              ) : items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? item.productTitle} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p className="type-product">{item.productTitle}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{settling ? <span className="inline-block h-3.5 w-20 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
+                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}`} className="flex justify-between text-[11px] text-[#b9cce5]"><span dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: row.vendorName, label: row.destinationLabel }) : t("cart.deliveryFrom", { name: row.vendorName })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{settling ? <span className="inline-block h-3.5 w-16 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div>{/* A member's free delivery (4.1), said with what it saved. */}{cart?.delivery.memberWaived ? <p className="text-[11px] font-bold text-[#d9e7f7]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}{/* Points are offered where the money is, not in a panel of their own:
                     the question "do I spend them" is one somebody asks while
                     reading the total, and nowhere else. The control is absent
                     rather than disabled for a balance of nothing — a checkbox
                     that can only be ticked to no effect is the dead control
                     rule again. */}{balance > 0 ? (<label className="tint-on-hover flex cursor-pointer items-start gap-3 rounded-xl bg-white/10 p-3"><input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#ffcc64]" /><span className="type-label text-[#d9e7f7]">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span></label>) : null}{/* One field for a discount code or a gift card. The refusal names the
                     one fixable thing rather than shrugging, which is what makes
-                    somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : applied && quote.error ? (<p className="type-label mt-2 text-[#ffcc64]">{tError(quote.error.message)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.parcelsNote")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
+                    somebody type it four more times. */}<div className="rounded-xl bg-white/10 p-3"><label className="type-label block text-[#d9e7f7]" htmlFor="voucher-code">{t("checkout.voucherLabel")}</label><div className="mt-2 flex gap-2"><input id="voucher-code" dir="ltr" value={codeInput} onChange={event => setCodeInput(event.target.value)} placeholder={t("checkout.voucherPlaceholder")} className="type-body h-10 min-w-0 flex-1 rounded-xl border border-[#49658d] bg-white/10 px-3 text-[13px] text-white outline-none placeholder:text-[#b9cce5] focus:border-[#ffcc64]" /><button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="glass type-control pressable shrink-0 rounded-xl px-4 disabled:opacity-60">{t("checkout.voucherApply")}</button></div>{applied && quote.data && !quote.data.ok ? (<p className="type-label mt-2 text-[#ffcc64]">{t(quote.data.reason)}</p>) : applied && quote.error ? (<p className="type-label mt-2 text-[#ffcc64]">{tError(quote.error.message)}</p>) : null}</div>{voucher?.kind === "discount" && Number(discountOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.discountRow")}</span><span>−{money({ amount: discountOff, currencyCode: "KWD" })}</span></div>) : null}{pointsApplied > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.pointsRow")}</span><span>−{money({ amount: pointsOff, currencyCode: "KWD" })}</span></div>) : null}{voucher?.kind === "gift" && Number(giftOff) > 0 ? (<div className="flex justify-between text-[#d9e7f7]"><span>{t("checkout.giftCardRow")}</span><span>−{money({ amount: giftOff, currencyCode: "KWD" })}</span></div>) : null}<div className="type-price-lg flex justify-between border-t border-[#49658d] pt-4"><span>{t("cart.total")}</span><span>{settling ? <span className="inline-block h-5 w-28 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : money({ amount: payable, currencyCode: "KWD" })}</span></div></div><div className="type-label mt-6 flex items-center gap-2 rounded-xl bg-white/10 p-3 text-[#d9e7f7]"><Truck className="size-4 shrink-0 text-[#ffcc64]" />{t("checkout.parcelsNote")}</div>{/* Navy rather than the brand orange: white on #f2683a is 3.08:1 and
                 this label is small, which is the rule the dialogs already
                 follow. */}
             {via.data ? <p className="type-label mt-4 text-[#d9e7f7]">{t("affiliate.viaDisclosure", { name: via.data.displayName })}</p> : null}
@@ -329,14 +358,17 @@ export default function Checkout() {
                 affiliateCode: via.data ? affiliateCode : null,
               })}
               disabled={!canPlace || place.isPending}
-              className="glass glass-navy type-control pressable mt-5 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-describedby={blocker ? "place-blocker" : undefined}
+              className="glass-accent mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-55"
             >
-              {place.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />}
+              {place.isPending ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <PackageCheck className="size-5" aria-hidden />}
               {t(place.isPending ? "checkout.placing" : "checkout.placeOrder")}
+              {canPlace && !place.isPending ? <span className="font-semibold">· {money({ amount: payable, currencyCode: "KWD" })}</span> : null}
             </button>
+            {blocker ? <p id="place-blocker" className="type-label mt-2.5 flex items-start gap-1.5 text-[#ffcc64]"><Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t(blocker)}</p> : null}
             {/* Signing in here keeps the basket: the bag filled as a guest is
                 the one the account adopts. */}
-            {!isAuthenticated ? (
+            {!isAuthenticated && !sessionLoading ? (
               <>
                 <p className="type-label mt-3 text-[#d9e7f7]">{t("checkout.signInToOrder")}</p>
                 <button type="button" onClick={() => setAuthOpen(true)} className="glass glass-on-dark type-control pressable mt-3 w-full rounded-full px-5 py-3">

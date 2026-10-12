@@ -9,6 +9,7 @@
  * sharply `jwks-rsa` doing `require('jose')` when jose 6 is ESM-only.
  */
 import { build } from "esbuild";
+import { existsSync, readFileSync } from "node:fs";
 
 /*
  * CommonJS packages call `require()` and use `__dirname` even once bundled
@@ -25,7 +26,17 @@ const banner = [
   `const __dirname = __netletDirname(__filename);`,
 ].join("\n");
 
+/*
+ * The built page shell, for the product and department pages the function
+ * answers with their own head (server/pageShell.ts). The function is deployed
+ * apart from the static output, so it carries its own copy.
+ */
+const shellPath = "dist/public/index.html";
+const shell = existsSync(shellPath) ? readFileSync(shellPath, "utf8") : null;
+if (!shell) console.warn(`[build-function] ${shellPath} is missing — product pages will be served the static shell.`);
+
 await build({
+  define: { __NETLET_SHELL__: JSON.stringify(shell) },
   entryPoints: ["server/_core/vercel.ts"],
   outfile: "api/app.generated.js",
   bundle: true,

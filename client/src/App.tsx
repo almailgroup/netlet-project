@@ -76,11 +76,49 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
  * connection this is on screen for a few frames, and a white flash between two
  * off-white pages reads as a fault.
  */
+/**
+ * What shows while a page's code arrives: the page's shape, not a spinner.
+ *
+ * A spinner in the middle of an empty screen on every first visit to a page
+ * read as the whole shop reloading; a header-height strip and grey blocks
+ * where the content will be say "this page, nearly here" and do not jump
+ * when it lands. A product page, a department grid and anything else get
+ * their own outline.
+ */
 function RouteFallback() {
+  const [location] = useLocation();
+  const block = "animate-pulse rounded-2xl bg-[#e9edf3]";
+  const shape = location.startsWith("/products/")
+    ? (
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div className={`aspect-square ${block}`} />
+          <div className="space-y-4 pt-4">
+            <div className={`h-4 w-28 ${block}`} />
+            <div className={`h-9 w-4/5 ${block}`} />
+            <div className={`h-7 w-32 ${block}`} />
+            <div className={`h-12 ${block}`} />
+            <div className={`h-12 ${block}`} />
+          </div>
+        </div>
+      )
+    : location.startsWith("/category/") || location.startsWith("/search") || location === "/saved"
+      ? (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {Array.from({ length: 8 }, (_, index) => <div key={index} className={`h-72 ${block}`} />)}
+          </div>
+        )
+      : (
+          <div className="space-y-4">
+            <div className={`h-8 w-1/3 ${block}`} />
+            <div className={`h-40 ${block}`} />
+            <div className={`h-40 ${block}`} />
+          </div>
+        );
   return (
-    <div className="grid min-h-screen place-items-center bg-background" role="status" aria-live="polite">
+    <div className="min-h-screen bg-background" role="status" aria-live="polite">
       <span className="sr-only">Loading…</span>
-      <span className="size-8 animate-spin rounded-full border-2 border-[#d5dfeb] border-t-[#f2683a]" aria-hidden />
+      <div className="h-[72px] border-b border-[#e6e9ef] bg-white lg:h-[124px]" aria-hidden />
+      <div className="container py-8" aria-hidden>{shape}</div>
     </div>
   );
 }
