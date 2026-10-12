@@ -90,3 +90,19 @@ export const lastDay = z.preprocess(
   value => (typeof value === "string" && DAY_ONLY.test(value) ? endOfKuwaitDay(value) : value),
   z.coerce.date(),
 );
+
+/**
+ * An address as its parts (`shared/commerce/kuwaitAddress.ts`), each bounded by
+ * its column so a long one is refused here rather than by the driver. Which
+ * are required, and what a PACI number looks like, is the shared rule's to say.
+ */
+export const addressPartsInput = z.object({
+  area: z.string().max(60).nullish(),
+  block: z.string().max(10).nullish(),
+  street: z.string().max(120).nullish(),
+  avenue: z.string().max(60).nullish(),
+  building: z.string().max(60).nullish(),
+  floor: z.string().max(10).nullish(),
+  apartment: z.string().max(20).nullish(),
+  paciNumber: z.string().max(12).nullish(),
+}).nullish();

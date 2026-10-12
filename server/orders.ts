@@ -11,6 +11,7 @@
  * inside `db.ts` call its module-local `getDb`, which nothing outside can
  * redirect, so they cannot be tested against a real database.
  */
+import { cleanParts, composeAddressLine, missingParts, partsProblems, type AddressParts } from "../shared/commerce/kuwaitAddress.js";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   cartItemAddons,
@@ -79,6 +80,11 @@ export type PlaceOrderDetails = {
   addressNotes?: string | null;
   /** Exactly where, if a pin was dropped (3.2.7). */
   pin?: Pin | null;
+  /**
+   * Area, block, street, house… (`kuwaitAddress.ts`). When given, the line is
+   * composed from them and they are frozen on the order beside it.
+   */
+  addressParts?: AddressParts | null;
   /**
    * The standing order placing this (3.1.19): which one, and the saving on its
    * variant. Set only by the subscription run, never from a request — the
@@ -521,6 +527,14 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     db, cartId, details.userId,
     details.subscription ? { variantId: details.subscription.variantId, percent: details.subscription.percent } : undefined,
   );
+  /* Given as parts, the line is theirs, and a part a driver needs is refused
+     like a missing line — before anything is taken. */
+  const parts = cleanParts(details.addressParts);
+  if (parts) {
+    const partIssue = missingParts(parts).length ? "address.needsParts" as const : partsProblems(parts)[0] as "address.partTooLong" | "address.badPaci" | undefined;
+    if (partIssue) throw new OrderRefused(partIssue);
+    details = { ...details, addressLine: composeAddressLine(parts) };
+  }
   const refusal = refusalFor(lines, details);
   if (refusal) throw new OrderRefused(refusal);
   /* A pin somewhere else is a parcel sent somewhere else: refused, never
@@ -702,6 +716,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           addressLine: details.addressLine ?? null,
           addressNotes: details.addressNotes ?? null,
           deliveryPin: storedPin(details.pin),
+          deliveryAddressParts: parts,
           subscriptionId: details.subscription?.id ?? null,
         })
         .returning();

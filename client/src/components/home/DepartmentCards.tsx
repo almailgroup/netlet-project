@@ -17,9 +17,14 @@
  *
  * Every card is a link, so it can be opened in a new tab. "All departments"
  * comes last, where a shopper who did not find theirs looks next.
+ *
+ * **All six, always.** The header row, the phone's sheet and the footer leave
+ * out a department with nothing on sale; these cards did too for a while, and
+ * the home page opened on three tiles. The owner asked for the six back: they
+ * are the shop's shape, and a department with nothing yet still answers its
+ * page with its name and an empty state.
  */
 import { useTranslation } from "@/hooks/useTranslation";
-import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import type { CSSProperties } from "react";
 import { appPath } from "@/lib/basePath";
 import { categorySlug } from "@shared/commerce/browse";
@@ -34,13 +39,11 @@ const CARDS: { slug: string; query: string; label: MessageKey }[] = [
 
 export function DepartmentCards() {
   const { t } = useTranslation();
-  const inStock = useDepartmentsInStock();
-  const cards = CARDS.filter(card => inStock(card.query));
+  const cards = CARDS;
   return (
     <section id="main" aria-labelledby="departments-title" className="container pt-4 sm:pt-6">
       <h2 id="departments-title" className="sr-only">{t("home.shopByCategory")}</h2>
-      {/* As many columns as tiles on a wide screen, so three departments are
-          three wide tiles rather than half an empty row. */}
+      {/* Six to a row on a wide screen, three on a phone. */}
       <ul
         className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-[repeat(var(--tiles),minmax(0,1fr))]"
         style={{ "--tiles": Math.min(cards.length, 6) } as CSSProperties}

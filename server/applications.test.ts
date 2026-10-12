@@ -13,12 +13,13 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { auditLog, users, vendorApplications, vendorMembers, vendors } from "../drizzle/schema.js";
+import { applicationDocuments, auditLog, users, vendorApplications, vendorMembers, vendors } from "../drizzle/schema.js";
 import { AGREEMENT_VERSION } from "../shared/inventory/sellerApplication.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let apps: typeof import("./applications.js");
+let docs: typeof import("./applicationDocuments.js");
 
 const ids = { admin: 0, applicant: 0, other: 0 };
 
@@ -48,6 +49,7 @@ beforeAll(async () => {
     getDb: async () => db,
   }));
   apps = await import("./applications.js");
+  docs = await import("./applicationDocuments.js");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [applicant] = await db.insert(users).values({ email: "seller@harbour.test" }).returning();
@@ -233,5 +235,87 @@ describe("reviewing", () => {
   it("drops a reason when there is no proposal", async () => {
     const row = await apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "", commissionNote: "please" });
     expect(row).toMatchObject({ proposedCommissionPercent: null, commissionNote: null });
+  });
+});
+
+describe("uploaded documents", () => {
+  const pdf = (text = "licence") => new Uint8Array([...`%PDF-1.7\n${text}`].map(c => c.charCodeAt(0)));
+  const upload = (userId: number, kind: "trade_licence" | "signatory_id" = "trade_licence", text = "licence") =>
+    docs.uploadDocument(userId, { kind, fileName: `${kind}.pdf`, declaredType: "application/pdf", bytes: pdf(text) });
+
+  it("needs a saved application, and refuses a file that is not what it says", async () => {
+    await expect(upload(ids.applicant)).rejects.toMatchObject({ reason: "documents.saveFirst" });
+    await apps.saveApplication(ids.applicant, complete);
+    await expect(docs.uploadDocument(ids.applicant, { kind: "trade_licence", fileName: "a.png", declaredType: "image/png", bytes: pdf() }))
+      .rejects.toMatchObject({ reason: "documents.wrongType" });
+    await expect(docs.uploadDocument(ids.applicant, { kind: "trade_licence", fileName: "a.html", declaredType: "application/pdf", bytes: new Uint8Array([60, 104, 116, 109, 108, 62]) }))
+      .rejects.toMatchObject({ reason: "documents.notAccepted" });
+  });
+
+  it("is stored with its hash, listed without its bytes, and readable only by its applicant and NetLet", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const saved = await upload(ids.applicant);
+    expect(saved).toMatchObject({ kind: "trade_licence", fileName: "trade_licence.pdf", contentType: "application/pdf", status: "pending" });
+    expect(saved).not.toHaveProperty("bytes");
+    const [row] = await db.select().from(applicationDocuments).where(eq(applicationDocuments.id, saved.id));
+    expect(row.sha256).toMatch(/^[0-9a-f]{64}$/);
+
+    const mine = (await docs.myDocuments(ids.applicant))[0];
+    expect(mine).not.toHaveProperty("bytes");
+    expect((await docs.readDocument({ kind: "customer", userId: ids.applicant }, saved.id))?.contentType).toBe("application/pdf");
+    expect(await docs.readDocument(adminActor(), saved.id)).not.toBeNull();
+    /* Anybody else, and a store owner too: the same answer as a number that does not exist. */
+    expect(await docs.readDocument(shopperActor(), saved.id)).toBeNull();
+    expect(await docs.readDocument(adminActor(), 999_999)).toBeNull();
+    expect(await docs.myDocuments(ids.other)).toEqual([]);
+    await expect(docs.documentsFor(shopperActor(), 1)).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("holds approval until each is decided, and a rejection says why", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const saved = await upload(ids.applicant);
+    await apps.submitApplication(ids.applicant);
+    const [application] = await db.select().from(vendorApplications).where(eq(vendorApplications.userId, ids.applicant));
+    expect((await apps.listApplications(adminActor(), { status: "submitted" })).rows[0].documentsWaiting).toBe(1);
+    await expect(apps.approveApplication(adminActor(), application.id)).rejects.toThrow("application.documentsPending");
+
+    /* Submitted: the applicant cannot change what is in front of the reviewer. */
+    await expect(upload(ids.applicant, "signatory_id")).rejects.toMatchObject({ reason: "documents.locked" });
+    await expect(docs.deleteDocument(ids.applicant, saved.id)).rejects.toMatchObject({ reason: "documents.locked" });
+
+    await expect(docs.reviewDocument(adminActor(), { id: saved.id, decision: "reject", note: "  " })).rejects.toMatchObject({ reason: "documents.needsNote" });
+    await expect(docs.reviewDocument(shopperActor(), { id: saved.id, decision: "accept" })).rejects.toThrow("FORBIDDEN");
+    expect(await docs.reviewDocument(adminActor(), { id: saved.id, decision: "reject", note: "The scan is cut off." })).toBe("rejected");
+    await expect(docs.reviewDocument(adminActor(), { id: saved.id, decision: "accept" })).rejects.toMatchObject({ reason: "documents.notWaiting" });
+    expect((await docs.myDocuments(ids.applicant))[0]).toMatchObject({ status: "rejected", reviewNote: "The scan is cut off." });
+
+    const { vendorId } = await apps.approveApplication(adminActor(), application.id);
+    expect(vendorId).toBeGreaterThan(0);
+  });
+
+  it("keeps an accepted file until its replacement is accepted, then lets the old one go", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const first = await upload(ids.applicant, "trade_licence", "first");
+    await docs.reviewDocument(adminActor(), { id: first.id, decision: "accept" });
+    const second = await upload(ids.applicant, "trade_licence", "second");
+
+    /* Accepted files are replaced, never removed by the applicant; a waiting one can be taken back. */
+    await expect(docs.deleteDocument(ids.applicant, first.id)).rejects.toMatchObject({ reason: "documents.notFound" });
+    expect((await docs.myDocuments(ids.applicant)).map(d => d.id)).toEqual([second.id, first.id]);
+
+    await docs.reviewDocument(adminActor(), { id: second.id, decision: "accept" });
+    expect((await docs.myDocuments(ids.applicant)).map(d => d.id)).toEqual([second.id]);
+
+    const third = await upload(ids.applicant, "trade_licence", "third");
+    await docs.deleteDocument(ids.applicant, third.id);
+    await expect(docs.deleteDocument(ids.other, second.id)).rejects.toMatchObject({ reason: "documents.notFound" });
+    expect((await docs.myDocuments(ids.applicant)).map(d => d.id)).toEqual([second.id]);
+  });
+
+  it("goes with the application", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    await upload(ids.applicant);
+    await db.delete(vendorApplications);
+    expect(await db.select().from(applicationDocuments)).toEqual([]);
   });
 });

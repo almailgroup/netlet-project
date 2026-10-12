@@ -33,7 +33,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { addressInUse, rememberAddress } from "@/lib/lastAddress";
 import { trpc } from "@/lib/trpc";
-import { MAX_ADDRESSES } from "@shared/commerce/addresses";
+import { MAX_ADDRESSES, addressLineIn } from "@shared/commerce/addresses";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { Check, MapPin, Pencil, Plus, X } from "lucide-react";
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
@@ -218,7 +218,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
                         {zone ? (
                           <span className="block truncate text-xs ink-muted">
                             <bdi>{zone}</bdi>
-                            {row.addressLine ? <> · <bdi dir="auto">{row.addressLine}</bdi></> : null}
+                            {addressLineIn(row, isArabic) ? <> · <bdi dir="auto">{addressLineIn(row, isArabic)}</bdi></> : null}
                           </span>
                         ) : (
                           <span className="block truncate text-xs font-semibold ink-accent">{t("delivery.needsGovernorate")}</span>

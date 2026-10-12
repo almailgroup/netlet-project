@@ -1658,6 +1658,66 @@ CREATE INDEX IF NOT EXISTS "payout_runs_status_idx" ON "payout_runs" USING btree
 -- ===== 0056_moaning_hemingway.sql =====
 ALTER TABLE "media_files" ADD COLUMN IF NOT EXISTS "source_url" varchar(2048);
 
+-- ===== 0057_structured_address.sql =====
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "area" varchar(60);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "block" varchar(10);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "street" varchar(120);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "avenue" varchar(60);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "building" varchar(60);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "floor" varchar(10);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "apartment" varchar(20);
+ALTER TABLE "customer_addresses" ADD COLUMN IF NOT EXISTS "paci_number" varchar(12);
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_address_parts" jsonb;
+
+-- ===== 0058_home_banners.sql =====
+ALTER TYPE "public"."ad_slot" ADD VALUE IF NOT EXISTS 'home_banner';
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_media_id" varchar(64);
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_headline" varchar(80);
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_headline_ar" varchar(80);
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_status" varchar(12);
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_note" varchar(400);
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_reviewed_by" integer;
+ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_reviewed_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_banner_media_id_media_files_id_fk" FOREIGN KEY ("banner_media_id") REFERENCES "public"."media_files"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "ad_bookings" ADD CONSTRAINT "ad_bookings_banner_reviewed_by_users_id_fk" FOREIGN KEY ("banner_reviewed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ===== 0059_application_documents.sql =====
+CREATE TABLE IF NOT EXISTS "application_documents" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"application_id" integer NOT NULL,
+	"kind" varchar(24) NOT NULL,
+	"file_name" varchar(200) NOT NULL,
+	"content_type" varchar(40) NOT NULL,
+	"byte_size" integer NOT NULL,
+	"sha256" char(64) NOT NULL,
+	"bytes" "bytea" NOT NULL,
+	"status" varchar(12) DEFAULT 'pending' NOT NULL,
+	"review_note" varchar(400),
+	"reviewed_by" integer,
+	"reviewed_at" timestamp with time zone,
+	"uploaded_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "application_documents" ADD CONSTRAINT "application_documents_application_id_vendor_applications_id_fk" FOREIGN KEY ("application_id") REFERENCES "public"."vendor_applications"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "application_documents" ADD CONSTRAINT "application_documents_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "application_documents" ADD CONSTRAINT "application_documents_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "application_documents_application_idx" ON "application_documents" USING btree ("application_id","kind","created_at");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1701,6 +1761,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  57 AS migrations_in_this_file,
+  60 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

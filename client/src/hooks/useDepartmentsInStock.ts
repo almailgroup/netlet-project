@@ -3,9 +3,10 @@
  * the ones that do not.
  *
  * Beauty, Style and Grocery sat in the header, the phone's department sheet and
- * the home tiles with nothing behind them — a link that leads to "nothing here
+ * the footer with nothing behind them — a link that leads to "nothing here
  * yet" is a dead end that looks like an open shop. A department with no
- * products is dropped from all three; its page still answers its address with
+ * products is dropped from those (the home page's six cards stay, on the
+ * owner's word); its page still answers its address with
  * its own name and an empty state, because a link already shared must not 404.
  *
  * Until the counts arrive every department is shown, so the bar does not start

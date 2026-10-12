@@ -66,6 +66,7 @@ describe("freezing a destination", () => {
       addressLine: "Block 4, Street 12, House 7",
       addressNotes: null,
       pin: null,
+      parts: null,
     });
   });
 

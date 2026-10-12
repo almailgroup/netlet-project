@@ -26,6 +26,8 @@ import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../subscriptions.js";
 import { MediaError, readMedia, saveUpload } from "../media.js";
+import { DocumentRefused, readDocument, uploadDocument } from "../applicationDocuments.js";
+import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../manufacturerImages.js";
 import { authenticateRequest } from "./auth.js";
 import { resolveActor } from "../inventory.js";
@@ -192,6 +194,67 @@ export function createApp(): Express {
       }
       console.error(`[media] remote fetch failed: ${describeError(error)}`);
       res.status(502).json({ error: "manufacturer.unreachable" });
+    }
+  });
+
+  /**
+   * A seller application document (3.3.1): a licence, a civil ID, a bank
+   * letter. The body is the file; its kind and name ride in headers, the name
+   * URI-encoded. The same reasons the photo upload above is safe from another
+   * site hold — no HTML form can send a PDF or image body type, and the
+   * cookie is Lax — and the bytes, not the header, decide what it is.
+   */
+  const documentBody = express.raw({ type: [...DOCUMENT_TYPES], limit: "4100kb" });
+  app.post("/api/applications/documents", (req, res, next) => documentBody(req, res, error => {
+    /* An oversized body is refused by the parser before the handler runs; said as a key, not a bare 413. */
+    if (error) { res.status(413).json({ error: "documents.tooLarge" }); return; }
+    next();
+  }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "documents.notFound" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "documents.notAccepted" }); return; }
+      const kind = String(req.headers["x-netlet-document-kind"] ?? "");
+      if (!(DOCUMENT_KINDS as readonly string[]).includes(kind)) { res.status(400).json({ error: "documents.notAccepted" }); return; }
+      let fileName: string | null = null;
+      try { fileName = decodeURIComponent(String(req.headers["x-netlet-file-name"] ?? "")) || null; } catch { fileName = null; }
+      const saved = await uploadDocument(user.id, { kind: kind as DocumentKind, fileName, declaredType: req.headers["content-type"] ?? "", bytes: new Uint8Array(req.body) });
+      res.status(201).json(saved);
+    } catch (error) {
+      if (error instanceof DocumentRefused) {
+        res.status(error.reason === "documents.tooMany" ? 429 : error.reason === "documents.locked" ? 409 : 400).json({ error: error.reason });
+        return;
+      }
+      console.error(`[documents] upload failed: ${describeError(error)}`);
+      res.status(500).json({ error: "documents.failed" });
+    }
+  });
+
+  /**
+   * One application document, to the applicant or an administrator only, and
+   * always as a download: `attachment`, `nosniff` and a sandbox, so even a
+   * file that got past the checks cannot run as a page on NetLet's origin.
+   * Never cached anywhere but the reader's own browser session.
+   */
+  app.get("/api/applications/documents/:id", async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      const id = Number(req.params.id);
+      const found = user && /^\d{1,9}$/.test(req.params.id) ? await readDocument(await resolveActor(user), id) : null;
+      if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
+      const ascii = found.fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+      res.set({
+        "Content-Type": found.contentType,
+        "Content-Length": String(found.bytes.length),
+        "Content-Disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(found.fileName)}`,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "private, no-store",
+      });
+      res.end(Buffer.from(found.bytes));
+    } catch (error) {
+      console.error(`[documents] read failed: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("Unavailable");
     }
   });
 

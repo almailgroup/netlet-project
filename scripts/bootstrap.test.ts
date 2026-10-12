@@ -152,7 +152,23 @@ describe("the bootstrap is atomic", () => {
    * generated, rather than letting it break the paste in somebody's dashboard.
    */
   it("holds no statement that cannot run inside a transaction", () => {
-    expect(file).not.toMatch(/CONCURRENTLY|ALTER TYPE .*ADD VALUE|^\s*VACUUM/im);
+    expect(file).not.toMatch(/CONCURRENTLY|^\s*VACUUM/im);
+  });
+
+  /*
+   * A new enum value can be *added* inside a transaction (Postgres 12 on; the
+   * home banner's `ad_slot` was the first), but not *used* in the one that
+   * added it. So nothing after an ADD VALUE may name the value — a default, a
+   * check, a seed row — or the paste fails on its last stretch, which the
+   * transaction would then throw away whole.
+   */
+  it("never uses an enum value in the transaction that adds it", () => {
+    const added = [...file.matchAll(/ALTER TYPE \S+ ADD VALUE IF NOT EXISTS '([^']+)'/g)];
+    expect(added.length).toBeGreaterThan(0);
+    for (const match of added) {
+      const after = file.slice(match.index! + match[0].length);
+      expect(after.includes(`'${match[1]}'`), match[1]).toBe(false);
+    }
   });
 });
 

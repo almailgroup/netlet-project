@@ -309,6 +309,11 @@ export type OrderRefusal =
   /* The pin dropped at checkout is outside Kuwait, or not a place (3.2.7). */
   | "address.pinOutsideKuwait"
   | "address.badPin"
+  /* Given as parts, the address lacks what a driver finds the door by, or a
+     part is wrong (`kuwaitAddress.ts`). */
+  | "address.needsParts"
+  | "address.partTooLong"
+  | "address.badPaci"
   | "order.zeroPriced";
 
 export function refusalFor(

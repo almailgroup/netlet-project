@@ -39,6 +39,7 @@ import { CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react"
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
+import { DocumentUploads } from "@/components/account/DocumentUploads";
 
 const MISSING_LABEL: Record<MissingField, MessageKey> = {
   contactEmail: "sell.fieldEmail",
@@ -134,6 +135,7 @@ export default function Sell() {
   }, [mine.data?.id, mine.data?.updatedAt]);
 
   const state = mine.data?.status ?? "none";
+  const linkedEarlier = { licence: Boolean(mine.data?.licenceDocUrl), identity: Boolean(mine.data?.identityDocUrl) };
   const editable = state === "none" || state === "draft" || state === "rejected";
 
   const missing = missingFromApplication({
@@ -249,10 +251,6 @@ export default function Sell() {
 
               <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
                 <h2 className="text-sm font-extrabold">{t("sell.papers")}</h2>
-                {/* Links rather than a file picker, because NetLet has no upload
-                    pipeline — a vendor types an image URL for a product for the
-                    same reason. Said here rather than discovered. */}
-                <p className="mt-1 max-w-prose text-[12px] leading-5 ink-muted">{t("sell.papersNote")}</p>
 
                 <label className="tint-on-hover mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
                   <input
@@ -276,15 +274,31 @@ export default function Sell() {
                   <Labelled label={t("sell.fieldIban")}>
                     <input dir="ltr" value={form.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
                   </Labelled>
-                  <Labelled label={t("sell.fieldLicenceDoc")}>
-                    <input dir="ltr" type="url" placeholder="https://" value={form.licenceDocUrl} aria-invalid={badLink(form.licenceDocUrl) || undefined} aria-describedby={badLink(form.licenceDocUrl) ? "licence-doc-error" : undefined} onChange={e => set("licenceDocUrl", e.target.value)} className={field} />
-                    {badLink(form.licenceDocUrl) ? <span id="licence-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
-                  </Labelled>
-                  <Labelled label={t("sell.fieldIdentityDoc")}>
-                    <input dir="ltr" type="url" placeholder="https://" value={form.identityDocUrl} aria-invalid={badLink(form.identityDocUrl) || undefined} aria-describedby={badLink(form.identityDocUrl) ? "identity-doc-error" : undefined} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
-                    {badLink(form.identityDocUrl) ? <span id="identity-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
-                  </Labelled>
+                  {/* Links were how documents arrived before uploads existed.
+                      An application that carries one keeps it and can still
+                      correct it; a new one is never asked for one. */}
+                  {linkedEarlier.licence ? (
+                    <Labelled label={t("sell.fieldLicenceDoc")}>
+                      <input dir="ltr" type="url" placeholder="https://" value={form.licenceDocUrl} aria-invalid={badLink(form.licenceDocUrl) || undefined} aria-describedby={badLink(form.licenceDocUrl) ? "licence-doc-error" : undefined} onChange={e => set("licenceDocUrl", e.target.value)} className={field} />
+                      {badLink(form.licenceDocUrl) ? <span id="licence-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
+                    </Labelled>
+                  ) : null}
+                  {linkedEarlier.identity ? (
+                    <Labelled label={t("sell.fieldIdentityDoc")}>
+                      <input dir="ltr" type="url" placeholder="https://" value={form.identityDocUrl} aria-invalid={badLink(form.identityDocUrl) || undefined} aria-describedby={badLink(form.identityDocUrl) ? "identity-doc-error" : undefined} onChange={e => set("identityDocUrl", e.target.value)} className={field} />
+                      {badLink(form.identityDocUrl) ? <span id="identity-doc-error" className="mt-1 block text-[12px] font-semibold text-[#8c2f22]">{t("sell.badLink")}</span> : null}
+                    </Labelled>
+                  ) : null}
                 </div>
+              </section>
+
+              {/* Uploaded, not linked (3.3.1): each kind its own file and its
+                  own decision. Once submitted the fieldset disables the
+                  buttons, and the files, being links, can still be opened. */}
+              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6" aria-labelledby="sell-documents">
+                <h2 id="sell-documents" className="text-sm font-extrabold">{t("documents.title")}</h2>
+                <p className="mt-1 max-w-prose text-[12px] leading-5 ink-muted">{t("documents.note")}</p>
+                <DocumentUploads saved={Boolean(mine.data)} editable={editable} />
               </section>
 
               {/* What selling here costs, before anybody applies (3.3.2). The

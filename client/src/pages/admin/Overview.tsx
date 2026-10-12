@@ -84,6 +84,8 @@ function Overview({ actor }: { actor: Actor }) {
   });
   /* Affiliate applications waiting on NetLet (3.7). */
   const waitingAffiliates = trpc.affiliates.waiting.useQuery(undefined, { enabled: can(actor, "affiliate.manage") });
+  /* Home banners a store has paid for, waiting on NetLet before they can run. */
+  const waitingBanners = trpc.ads.bannersWaiting.useQuery(undefined, { enabled: can(actor, "product.review") });
   /* Shoppers waiting on NetLet itself (3.5.1). */
   const waitingSupport = trpc.support.waiting.useQuery(undefined, { enabled: can(actor, "support.answer") });
   const atCentres = trpc.fulfilment.waiting.useQuery(undefined, { enabled: can(actor, "fulfilment.operate") });
@@ -152,6 +154,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.messagesWaiting" as const, value: unreadMessages.data ?? 0, href: "/admin/messages", tone: "urgent" as const },
     { label: "admin.returnsWaiting" as const, value: waitingReturns.data ?? 0, href: "/admin/returns", tone: "urgent" as const },
     { label: "admin.affiliatesWaiting" as const, value: waitingAffiliates.data ?? 0, href: "/admin/affiliates", tone: "urgent" as const },
+    { label: "admin.bannersWaiting" as const, value: waitingBanners.data ?? 0, href: "/admin/ads", tone: "urgent" as const },
     { label: "support.waitingTile" as const, value: waitingSupport.data ?? 0, href: "/admin/support", tone: "urgent" as const },
     { label: "fulfilment.toReceiveTile" as const, value: atCentres.data?.toReceive ?? 0, href: "/admin/fulfilment" },
     { label: "fulfilment.toPickTile" as const, value: atCentres.data?.toPick ?? 0, href: "/admin/fulfilment", tone: "urgent" as const },

@@ -125,6 +125,8 @@ async function feesFor(db: Db | Tx, vendorId: number | undefined, now: Date) {
       endsOn: adBookings.endsOn,
       dailyRate: adBookings.dailyRate,
       cancelledOn: adBookings.cancelledOn,
+      /* A banner is charged only once approved (`feeAccrued`). */
+      bannerStatus: adBookings.bannerStatus,
     })
     .from(adBookings)
     .where(vendorId === undefined ? undefined : eq(adBookings.vendorId, vendorId));
@@ -143,7 +145,7 @@ async function feesFor(db: Db | Tx, vendorId: number | undefined, now: Date) {
       reference: feeReference(booking.id),
       accruedFils: feeAccrued(booking, today),
       deductedFils: deducted.get(booking.id) ?? 0n,
-      ceilingFils: feeCeiling(booking),
+      ceilingFils: feeCeiling(booking, today),
     });
     bySeller.set(booking.vendorId, held);
   }

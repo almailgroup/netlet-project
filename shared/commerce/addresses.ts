@@ -40,6 +40,7 @@ import { normalisePhone } from "./wishlist.js";
 import { kuwaitDeliveryZones } from "../customer.js";
 import type { MessageKey } from "../i18n/dictionary.js";
 import { pinProblem, storedPin, type Pin } from "./geo.js";
+import { cleanParts, composeAddressLine, hasParts, missingParts, partsProblems, type AddressParts } from "./kuwaitAddress.js";
 
 /**
  * A ceiling, so the book stays a book.
@@ -66,7 +67,23 @@ export type ShippingAddress = {
   addressNotes?: string | null;
   /** Exactly where, if the shopper dropped a pin (3.2.7). Optional, always. */
   pin?: Pin | null;
+  /**
+   * Area, block, street, house and the rest (`kuwaitAddress.ts`). When given,
+   * the line is composed from them; an address with only a line — every one
+   * saved before parts existed — is still an address.
+   */
+  parts?: AddressParts | null;
 };
+
+/** The line drawn for a reader: the parts in their language when there are parts, else the stored line. */
+export function addressLineIn(address: Pick<ShippingAddress, "addressLine" | "parts">, arabic: boolean): string {
+  return hasParts(address.parts) ? composeAddressLine(address.parts, arabic) : (address.addressLine ?? "").trim();
+}
+
+/** The line an address carries: composed from its parts when it has them, else as typed. */
+export function addressLineOf(address: Pick<ShippingAddress, "addressLine" | "parts">): string {
+  return hasParts(address.parts) ? composeAddressLine(address.parts) : (address.addressLine ?? "").trim();
+}
 
 /**
  * What is *actively wrong*, as message keys.
@@ -87,8 +104,15 @@ export function addressProblems(address: ShippingAddress): MessageKey[] {
   if (!address.label?.trim()) problems.push("address.needsLabel");
   else if (address.label.trim().length > MAX_LABEL) problems.push("address.labelTooLong");
 
-  if (!address.addressLine?.trim()) problems.push("address.needsLine");
-  else if (address.addressLine.trim().length > MAX_LINE) problems.push("address.lineTooLong");
+  const line = addressLineOf(address);
+  if (!line) problems.push("address.needsLine");
+  else if (line.length > MAX_LINE) problems.push("address.lineTooLong");
+
+  /* Given as parts, a driver needs the area, block, street and house of it. */
+  if (hasParts(address.parts)) {
+    if (missingParts(address.parts).length) problems.push("address.needsParts");
+    problems.push(...partsProblems(address.parts));
+  }
 
   if ((address.addressNotes ?? "").trim().length > MAX_NOTES) problems.push("address.notesTooLong");
 
@@ -217,6 +241,8 @@ export type FrozenDestination = {
    * before pins existed has none, and reads as "no pin" rather than missing.
    */
   pin?: Pin | null;
+  /** The parts, for the same reason: absent on everything frozen before them. */
+  parts?: AddressParts | null;
 };
 
 /** An address, reduced to what an order needs to remember about it. */
@@ -226,8 +252,9 @@ export function freezeDestination(address: ShippingAddress): FrozenDestination {
     contactName: address.contactName?.trim() || null,
     contactPhone: address.contactPhone?.trim() || null,
     governorate: address.governorate?.trim() || null,
-    addressLine: address.addressLine?.trim() || null,
+    addressLine: addressLineOf(address) || null,
     addressNotes: address.addressNotes?.trim() || null,
     pin: storedPin(address.pin),
+    parts: cleanParts(address.parts),
   };
 }

@@ -21,6 +21,7 @@ import {
   categories,
   invoiceCounters,
   invoices,
+  mediaFiles,
   orderItems,
   orders,
   payoutRunItems,
@@ -45,6 +46,8 @@ let ordersModule: typeof import("./orders.js");
 
 const people = {} as Record<"shopper" | "owner" | "manager" | "rival" | "admin", User>;
 const ids = { acme: 0, beta: 0, lamp: 0, lampVariant: 0, rug: 0, betaVase: 0, home: 0 };
+/* Uploads: a banner-shaped one each for Acme and Beta, and a square one for Acme. */
+const media = { acme: "acmeBanner000000000001", beta: "betaBanner000000000001", square: "acmeSquare000000000001" };
 
 const today = kuwaitToday(new Date());
 /** Mid-morning in Kuwait on the day `offset` days from today. */
@@ -102,6 +105,14 @@ beforeAll(async () => {
   ids.lamp = lamp.id; ids.lampVariant = lamp.variant;
   ids.rug = (await product(acme.id, "rug", "50.000", null)).id;
   ids.betaVase = (await product(beta.id, "vase", "30.000", home.id)).id;
+
+  const upload = (id: string, vendorId: number, width: number, height: number) =>
+    ({ id, vendorId, contentType: "image/webp", bytes: new Uint8Array([1, 2, 3]), width, height, byteSize: 3 });
+  await db.insert(mediaFiles).values([
+    upload(media.acme, acme.id, 1500, 500),
+    upload(media.beta, beta.id, 1500, 500),
+    upload(media.square, acme.id, 1000, 1000),
+  ]);
 }, 60_000);
 
 beforeEach(async () => {
@@ -258,5 +269,102 @@ describe("the fee comes off the payout, once", () => {
 
     const [row] = (await ads.listPlacements(owner(), {}, on(3))).rows;
     expect(row).toMatchObject({ accrued: "30.000", deducted: "20.000" });
+  });
+});
+
+describe("home banners", () => {
+  const banner = (startOffset: number, days: number, extra: Partial<{ mediaId: string; headline: string; headlineAr: string | null }> = {}) => ({
+    ...home(startOffset, days),
+    slot: "home_banner" as const,
+    banner: { mediaId: media.acme, headline: "Lamps for the long evenings", headlineAr: null, ...extra },
+  });
+
+  it("needs this store's own banner-shaped picture and a headline with no contact details", async () => {
+    await earned();
+    await expect(ads.bookPlacement(owner(), { ...banner(1, 3), banner: null })).rejects.toMatchObject({ reason: "ads.bannerNeedsImage" });
+    await expect(ads.bookPlacement(owner(), banner(1, 3, { mediaId: media.beta }))).rejects.toMatchObject({ reason: "ads.bannerNeedsImage" });
+    await expect(ads.bookPlacement(owner(), banner(1, 3, { mediaId: media.square }))).rejects.toMatchObject({ reason: "ads.bannerShape" });
+    await expect(ads.bookPlacement(owner(), banner(1, 3, { headline: "  " }))).rejects.toMatchObject({ reason: "ads.bannerNeedsHeadline" });
+    await expect(ads.bookPlacement(owner(), banner(1, 3, { headline: "Call 99887766 for lamps" }))).rejects.toMatchObject({ reason: "ads.bannerContact" });
+    await expect(ads.bookPlacement(owner(), banner(1, 3, { headlineAr: "تواصل معنا على انستغرام: @acme.kw" }))).rejects.toMatchObject({ reason: "ads.bannerContact" });
+  });
+
+  it("waits for NetLet: not shown, not charged, but holding its place and its price", async () => {
+    const net = await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 5));
+    const [row] = (await ads.listPlacements(owner(), {}, on(2))).rows;
+    expect(row).toMatchObject({ state: "inReview", accrued: "0.000", banner: { status: "pending", headline: "Lamps for the long evenings" } });
+    expect(row.banner?.imageUrl).toBe(`/media/${media.acme}.webp`);
+    expect(await ads.bannersToday({}, on(2))).toEqual([]);
+
+    /* Its full price is still committed against the store's earnings. */
+    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(2))).room)).toBeCloseTo(net - 125, 3);
+    /* And the payout run takes nothing for it. */
+    const [batch] = await runs.readyBatches(admin(), on(3));
+    expect(batch.lines.filter((line: { kind: string }) => line.kind === "fee")).toEqual([]);
+    expect(await ads.countWaitingBanners(admin(), on(2))).toBe(1);
+    expect((await ads.listPlacements(admin(), { waiting: true }, on(2))).rows.map(r => r.id)).toEqual([id]);
+  });
+
+  it("approved after its first day, runs from the day of approval and charges only those days", async () => {
+    await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 5));
+    const approved = await ads.reviewBanner(admin(), { id, decision: "approve" }, on(3));
+    expect(approved).toEqual({ startsOn: addDays(today, 3), status: "approved" });
+
+    const shown = await ads.bannersToday({}, on(3));
+    expect(shown).toEqual([{ id, imageUrl: `/media/${media.acme}.webp`, headline: "Lamps for the long evenings", productHandle: "lamp", storeName: "Acme" }]);
+    const [row] = (await ads.listPlacements(owner(), {}, on(4))).rows;
+    expect(row).toMatchObject({ state: "running", startsOn: addDays(today, 3), total: "75.000", accrued: "50.000" });
+
+    const [batch] = await runs.readyBatches(admin(), on(4));
+    expect(batch.lines).toContainEqual({ orderId: null, reference: `AD-${id}`, amount: "-50.000", kind: "fee" });
+    await expect(ads.reviewBanner(admin(), { id, decision: "reject", note: "late" }, on(4))).rejects.toMatchObject({ reason: "ads.bannerNotWaiting" });
+  });
+
+  it("speaks the reader's language when the store wrote it, and leaves with its product", async () => {
+    await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 2, { headlineAr: "مصابيح للأمسيات الطويلة" }));
+    await ads.reviewBanner(admin(), { id, decision: "approve" }, on(0));
+    expect((await ads.bannersToday({ locale: "ar" }, on(1)))[0].headline).toBe("مصابيح للأمسيات الطويلة");
+    expect((await ads.bannersToday({ locale: "en" }, on(1)))[0].headline).toBe("Lamps for the long evenings");
+    await db.update(products).set({ status: "draft" }).where(eq(products.id, ids.lamp));
+    expect(await ads.bannersToday({}, on(1))).toEqual([]);
+  });
+
+  it("turned down says why, costs nothing and gives back its place and its price", async () => {
+    const net = await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 5));
+    await expect(ads.reviewBanner(admin(), { id, decision: "reject", note: " " }, on(0))).rejects.toMatchObject({ reason: "ads.bannerNeedsNote" });
+    await ads.reviewBanner(admin(), { id, decision: "reject", note: "The picture is mostly text." }, on(2));
+    const [row] = (await ads.listPlacements(owner(), {}, on(3))).rows;
+    expect(row).toMatchObject({ state: "rejected", accrued: "0.000", cancellable: false, banner: { status: "rejected", note: "The picture is mostly text." } });
+    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(3))).room)).toBeCloseTo(net, 3);
+    await expect(ads.reviewBanner(admin(), { id, decision: "approve" }, on(3))).rejects.toMatchObject({ reason: "ads.bannerNotWaiting" });
+  });
+
+  it("past its last day unanswered can only be turned down, and stops holding the store's money", async () => {
+    const net = await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 2));
+    await expect(ads.reviewBanner(admin(), { id, decision: "approve" }, on(4))).rejects.toMatchObject({ reason: "ads.bannerLapsed" });
+    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(4))).room)).toBeCloseTo(net, 3);
+    expect(await ads.countWaitingBanners(admin(), on(4))).toBe(0);
+  });
+
+  it("is NetLet's to answer, not a store's", async () => {
+    await earned();
+    const { id } = await ads.bookPlacement(owner(), banner(1, 2));
+    await expect(appRouter.createCaller(contextFor(people.owner)).ads.reviewBanner({ id, decision: "approve" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(appRouter.createCaller(contextFor(people.owner)).ads.bannersWaiting()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("holds three a day, waiting ones included", async () => {
+    await earned();
+    for (let i = 0; i < 3; i++) await ads.bookPlacement(owner(), banner(1, 1));
+    await expect(ads.bookPlacement(owner(), banner(1, 1))).rejects.toMatchObject({ reason: "ads.full" });
+  });
+
+  it("is never offered to the product shelves' read", async () => {
+    await expect(appRouter.createCaller(contextFor(people.shopper)).ads.sponsored({ slot: "home_banner" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });

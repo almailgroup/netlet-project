@@ -24,6 +24,7 @@ import {
 import { ProductCard } from "@/components/product/ProductCard";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
+import { HomeBanners } from "@/components/home/HomeBanners";
 import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { Link, useLocation } from "wouter";
@@ -233,6 +234,9 @@ export default function Home() {
 
     {/* The departments, as big cards, where a slogan used to be. */}
     <DepartmentCards />
+
+    {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
+    <HomeBanners />
 
     {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
     <SponsoredShelf

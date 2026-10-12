@@ -104,6 +104,15 @@ function idempotent(statement) {
     ].join("\n");
   }
 
+  /*
+   * A new enum value. Postgres has IF NOT EXISTS for this one, so a second
+   * run is a no-op. Inside the file's one transaction the value cannot be
+   * *used* until it commits, which is fine: the seed's departments and house
+   * vendor name no value added this way, and a migration that ever needs to
+   * write one belongs after a COMMIT of its own.
+   */
+  if (/^ALTER TYPE .+ ADD VALUE '/.test(sql)) return sql.replace(/ ADD VALUE '/, " ADD VALUE IF NOT EXISTS '");
+
   // Postgres has no IF NOT EXISTS for either of these, so swallow the
   // "already there" error and let every other error still fail the run.
   if (/^CREATE TYPE /.test(sql) || /^ALTER TABLE .+ ADD CONSTRAINT /.test(sql)) {

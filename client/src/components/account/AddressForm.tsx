@@ -6,6 +6,11 @@
  * different things or refuse different things. Saving refuses only what
  * `addressProblems` refuses, the same pure function the API refines on.
  *
+ * The address is asked for as its parts — area, block, street, house and the
+ * rest (`AddressPartsFields`) — and the line is composed from them. An address
+ * saved before the parts existed keeps its line, said under the boxes, until
+ * somebody fills them in.
+ *
  * `requireGovernorate` is the dialog's: an address chosen there is chosen *for*
  * its governorate, which is what prices each seller's delivery, so one saved
  * without it would answer nothing. The book still allows the gap, the way the
@@ -16,7 +21,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { MAX_LABEL, MAX_LINE, MAX_NOTES, addressProblems, type ShippingAddress } from "@shared/commerce/addresses";
+import { MAX_LABEL, MAX_NOTES, addressProblems, type ShippingAddress } from "@shared/commerce/addresses";
+import { cleanParts, hasParts } from "@shared/commerce/kuwaitAddress";
+import { AddressPartsFields } from "@/components/account/AddressPartsFields";
 import { PinPicker } from "@/components/map/PinPicker";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
@@ -32,6 +39,7 @@ const BLANK: ShippingAddress = {
   addressLine: "",
   addressNotes: "",
   pin: null,
+  parts: {},
 };
 
 type Saved = { id: number; governorate?: string | null; label: string };
@@ -98,9 +106,12 @@ export function AddressForm({
       contactName: draft.contactName?.trim() || null,
       contactPhone: draft.contactPhone?.trim() || null,
       governorate: draft.governorate?.trim() || null,
-      addressLine: (draft.addressLine ?? "").trim(),
+      /* The line is composed on the server when there are parts; an older
+         address with none keeps the one it had. */
+      addressLine: hasParts(draft.parts) ? undefined : (draft.addressLine ?? "").trim(),
       addressNotes: draft.addressNotes?.trim() || null,
       pin: draft.pin ?? null,
+      parts: cleanParts(draft.parts),
     };
     if (address) update.mutate({ id: address.id, ...payload });
     else add.mutate(payload);
@@ -148,15 +159,20 @@ export function AddressForm({
             ))}
           </Select>
         </label>
-        <label className="text-[12px] font-bold text-[#536b8c] sm:col-span-2">
-          {t("address.line")}
-          <input
-            value={draft.addressLine ?? ""}
-            maxLength={MAX_LINE}
-            onChange={event => setDraft(d => ({ ...d, addressLine: event.target.value }))}
-            className={`${field} mt-1 font-normal`}
-          />
-        </label>
+        <AddressPartsFields
+          parts={draft.parts ?? {}}
+          governorate={draft.governorate}
+          onChange={parts => setDraft(d => ({ ...d, parts }))}
+          onGovernorate={governorate => setDraft(d => ({ ...d, governorate }))}
+          fieldClass={field}
+          labelClass="text-[12px] font-bold text-[#536b8c]"
+        />
+        {/* Saved as one line before the parts existed: kept until replaced. */}
+        {!hasParts(draft.parts) && draft.addressLine?.trim() ? (
+          <p className="text-[12px] leading-5 ink-muted sm:col-span-2">
+            {t("address.legacyLine")} <bdi className="font-semibold text-[#0a285a]">{draft.addressLine}</bdi>
+          </p>
+        ) : null}
         <label className="text-[12px] font-bold text-[#536b8c]">
           {t("address.contactName")}
           <input
@@ -196,7 +212,7 @@ export function AddressForm({
 
       {/* What is wrong, named. A form that only greys the button leaves
           somebody guessing which field it meant. */}
-      {problems.length > 0 && (draft.label || draft.addressLine) ? (
+      {problems.length > 0 && (draft.label || draft.addressLine || hasParts(draft.parts)) ? (
         <ul className="mt-3 space-y-1 text-[11px] text-[#8c2f22]">
           {problems.map(key => (
             <li key={key}>{t(key)}</li>

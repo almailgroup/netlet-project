@@ -9,15 +9,16 @@
 -- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
 -- "bootstrap complete" row at the end.
 --
--- Expected: 637 columns across 62 tables.
+-- Expected: 667 columns across 63 tables.
 
 WITH expected AS (
   SELECT
     packed.table_name,
     unnest(string_to_array(packed.columns, ',')) AS column_name
   FROM (VALUES
-    ('ad_bookings', 'booked_by,cancelled_by,cancelled_on,category_id,created_at,daily_rate,ends_on,id,product_id,product_title,slot,starts_on,total,vendor_id'),
+    ('ad_bookings', 'banner_headline,banner_headline_ar,banner_media_id,banner_note,banner_reviewed_at,banner_reviewed_by,banner_status,booked_by,cancelled_by,cancelled_on,category_id,created_at,daily_rate,ends_on,id,product_id,product_title,slot,starts_on,total,vendor_id'),
     ('affiliates', 'channel,created_at,decided_at,decided_by,disclosure_accepted_at,display_name,id,rate_percent,status,user_id'),
+    ('application_documents', 'application_id,byte_size,bytes,content_type,created_at,file_name,id,kind,review_note,reviewed_at,reviewed_by,sha256,status,uploaded_by'),
     ('audit_log', 'action,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
     ('auth_attempts', 'bucket,created_at,id,kind'),
     ('bundle_items', 'bundle_id,id,position,quantity,variant_id'),
@@ -30,7 +31,7 @@ WITH expected AS (
     ('conversations', 'created_at,id,last_message_at,shopper_read_at,user_id,vendor_id,vendor_read_at'),
     ('courier_members', 'courier_id,created_at,id,user_id'),
     ('couriers', 'contact_email,contact_phone,created_at,id,name,name_ar,status,updated_at'),
-    ('customer_addresses', 'address_line,address_notes,contact_name,contact_phone,created_at,governorate,id,label,pin,updated_at,user_id'),
+    ('customer_addresses', 'address_line,address_notes,apartment,area,avenue,block,building,contact_name,contact_phone,created_at,floor,governorate,id,label,paci_number,pin,street,updated_at,user_id'),
     ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
     ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
     ('damage_claims', 'awarded_amount,claimed_amount,courier_id,courier_responded_at,courier_response,created_at,decided_at,decided_by,decision_note,description,evidence_url,filed_as,filed_by,id,line_ids,order_id,parcel_key,status,updated_at,vendor_id,vendor_name'),
@@ -54,7 +55,7 @@ WITH expected AS (
     ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
     ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
     ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
+    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
     ('payout_files', 'created_at,created_by,id'),
     ('payout_run_items', 'amount,booking_id,charge_id,id,order_id,order_reference,run_id,vendor_id'),
     ('payout_runs', 'bank_reference,file_id,iban_used,id,paid_at,paid_by,prepared_at,prepared_by,status,total,vendor_id,vendor_name'),

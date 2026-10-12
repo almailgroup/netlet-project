@@ -15,9 +15,11 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import {
   MAX_ADDRESSES,
+  addressLineOf,
   addressProblems,
   type ShippingAddress,
 } from "../shared/commerce/addresses.js";
+import { cleanParts, type AddressParts } from "../shared/commerce/kuwaitAddress.js";
 import { storedPin } from "../shared/commerce/geo.js";
 import { cartItems, carts, customerAddresses } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
@@ -44,16 +46,55 @@ const COLUMNS = {
   addressLine: customerAddresses.addressLine,
   addressNotes: customerAddresses.addressNotes,
   pin: customerAddresses.pin,
+  area: customerAddresses.area,
+  block: customerAddresses.block,
+  street: customerAddresses.street,
+  avenue: customerAddresses.avenue,
+  building: customerAddresses.building,
+  floor: customerAddresses.floor,
+  apartment: customerAddresses.apartment,
+  paciNumber: customerAddresses.paciNumber,
 };
+
+type Row = { [K in keyof typeof COLUMNS]: (typeof COLUMNS)[K]["_"]["data"] | null } & { id: number; label: string; addressLine: string };
+
+/** A row as the book's shape: the eight part columns folded into `parts`. */
+function shaped(row: Row): SavedAddress {
+  const { area, block, street, avenue, building, floor, apartment, paciNumber, ...rest } = row;
+  return { ...rest, parts: cleanParts({ area, block, street, avenue, building, floor, apartment, paciNumber }) };
+}
+
+/** What is written: the parts in their columns, and the line composed from them when given. */
+function written(address: ShippingAddress) {
+  const parts: AddressParts = cleanParts(address.parts) ?? {};
+  return {
+    label: address.label.trim(),
+    contactName: address.contactName?.trim() || null,
+    contactPhone: address.contactPhone?.trim() || null,
+    governorate: address.governorate?.trim() || null,
+    addressLine: addressLineOf(address),
+    addressNotes: address.addressNotes?.trim() || null,
+    pin: storedPin(address.pin),
+    area: parts.area ?? null,
+    block: parts.block ?? null,
+    street: parts.street ?? null,
+    avenue: parts.avenue ?? null,
+    building: parts.building ?? null,
+    floor: parts.floor ?? null,
+    apartment: parts.apartment ?? null,
+    paciNumber: parts.paciNumber ?? null,
+  };
+}
 
 /** Oldest first, so the list does not reorder itself under somebody editing it. */
 export async function listAddresses(userId: number): Promise<SavedAddress[]> {
   const db = await handle();
-  return db
+  const rows = await db
     .select(COLUMNS)
     .from(customerAddresses)
     .where(eq(customerAddresses.userId, userId))
     .orderBy(asc(customerAddresses.id));
+  return rows.map(shaped);
 }
 
 function checked(address: ShippingAddress): void {
@@ -82,18 +123,9 @@ export async function addAddress(userId: number, address: ShippingAddress): Prom
 
   const [row] = await db
     .insert(customerAddresses)
-    .values({
-      userId,
-      label: address.label.trim(),
-      contactName: address.contactName?.trim() || null,
-      contactPhone: address.contactPhone?.trim() || null,
-      governorate: address.governorate?.trim() || null,
-      addressLine: (address.addressLine ?? "").trim(),
-      addressNotes: address.addressNotes?.trim() || null,
-      pin: storedPin(address.pin),
-    })
+    .values({ userId, ...written(address) })
     .returning(COLUMNS);
-  return row;
+  return shaped(row);
 }
 
 /** Change one. The `userId` in the predicate is the whole access control. */
@@ -107,20 +139,12 @@ export async function updateAddress(
 
   const [row] = await db
     .update(customerAddresses)
-    .set({
-      label: address.label.trim(),
-      contactName: address.contactName?.trim() || null,
-      contactPhone: address.contactPhone?.trim() || null,
-      governorate: address.governorate?.trim() || null,
-      addressLine: (address.addressLine ?? "").trim(),
-      addressNotes: address.addressNotes?.trim() || null,
-      pin: storedPin(address.pin),
-    })
+    .set(written(address))
     .where(and(eq(customerAddresses.id, id), eq(customerAddresses.userId, userId)))
     .returning(COLUMNS);
 
   if (!row) throw new AddressError("address.unknown");
-  return row;
+  return shaped(row);
 }
 
 /**
@@ -201,5 +225,5 @@ export async function destinationsForCart(db: Db, cartId: string): Promise<Map<n
     .from(customerAddresses)
     .where(and(eq(customerAddresses.userId, cart.userId), inArray(customerAddresses.id, wanted)));
 
-  return new Map(rows.map(row => [row.id, row]));
+  return new Map(rows.map(row => [row.id, shaped(row)]));
 }

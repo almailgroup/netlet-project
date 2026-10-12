@@ -29,13 +29,14 @@
  * account that does not exist, and the applicant is the one person who can fix
  * it while they are still looking at it.
  *
- * ## Documents are links, and that is honest rather than ideal
+ * ## Documents are uploads now; the links stay for the applications that have them
  *
- * NetLet has no upload pipeline — a vendor types an image URL for a product
- * for the same reason — so an applicant gives a link to their licence rather
- * than a file. Pretending otherwise would be a file picker that drops what it
- * is given. What this does refuse is a link that is not `https`: a document
- * fetched over plain http on somebody's phone is a document read in transit.
+ * An applicant uploads each paper as a file (`applicationDocuments.ts`), and
+ * an administrator decides on each one. Before that there was nowhere to put
+ * a file, so an applicant gave a link to one; an application that carries a
+ * link keeps it, and what this still refuses is a link that is not `https`: a
+ * document fetched over plain http on somebody's phone is a document read in
+ * transit.
  *
  * ## The agreement is recorded with its version
  *
@@ -69,7 +70,7 @@ export type SellerApplication = {
   addressLine?: string | null;
   licenceNumber?: string | null;
   licenceExpiresAt?: Date | string | null;
-  /** Links, because there is no upload pipeline. See the note above. */
+  /** Links from before uploads existed. See the note above. */
   licenceDocUrl?: string | null;
   identityDocUrl?: string | null;
   payoutIban?: string | null;

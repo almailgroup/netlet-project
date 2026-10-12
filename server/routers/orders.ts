@@ -13,7 +13,7 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { lastDay, pinInput, rowId } from "../_core/schemas.js";
+import { addressPartsInput, lastDay, pinInput, rowId } from "../_core/schemas.js";
 import {
   FulfilmentRefused,
   getOrderFor,
@@ -213,10 +213,14 @@ export const ordersRouter = router({
       contactName: z.string().trim().max(255).nullish(),
       contactPhone: z.string().trim().max(40).nullish(),
       deliveryZoneId: z.string().trim().max(64).nullish(),
-      addressLine: z.string().trim().min(1).max(500),
+      /* Composed from the parts when they are given; one or the other is
+         required, which `refusalFor` and the parts' own rule decide. */
+      addressLine: z.string().trim().max(500).optional(),
       addressNotes: z.string().trim().max(500).nullish(),
       /* Where exactly, if a pin was dropped (3.2.7). Optional, always. */
       pin: pinInput,
+      /* Area, block, street, house… frozen on the order beside the line. */
+      addressParts: addressPartsInput,
       /* Whether to spend the balance (3.1.15). How much it covers is the
          server's arithmetic — a figure sent from a browser is a figure to
          check against the one read here anyway. */
@@ -237,9 +241,10 @@ export const ordersRouter = router({
           contactName: input.contactName ?? ctx.user.name ?? null,
           contactPhone: input.contactPhone ?? null,
           deliveryZoneId: input.deliveryZoneId ?? null,
-          addressLine: input.addressLine,
+          addressLine: input.addressLine ?? null,
           addressNotes: input.addressNotes ?? null,
           pin: input.pin ?? null,
+          addressParts: input.addressParts ?? null,
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
           affiliateCode: input.affiliateCode ?? null,

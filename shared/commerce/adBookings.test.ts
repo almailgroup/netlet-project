@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { toFils } from "../money.js";
 import {
   AD_RATES,
   MAX_AD_DAYS,
   addDays,
+  approvalStart,
+  bannerShapeOk,
   bookingProblem,
   bookingRoom,
   bookingState,
@@ -12,6 +15,7 @@ import {
   feeAccrued,
   feeCeiling,
   fullDays,
+  headlineProblem,
   isDate,
   kuwaitToday,
   quoteFor,
@@ -127,5 +131,51 @@ describe("booking against what was earned", () => {
   it("does not count twice a fee already taken off a payout", () => {
     /* After the run: the order is paid (owed 0) and the fee is taken (−30). */
     expect(bookingRoom(0n, [{ ceilingFils: 30_000n, deductedFils: -30_000n }])).toBe(0n);
+  });
+});
+
+describe("home banners", () => {
+  const waiting: BookingFacts = { ...week, bannerStatus: "pending" };
+
+  it("charges nothing while it waits, and holds its price until it can no longer run", () => {
+    expect(feeAccrued(waiting, "2026-10-08")).toBe(0n);
+    expect(bookingState(waiting, "2026-10-08")).toBe("inReview");
+    expect(feeCeiling(waiting, "2026-10-08")).toBe(70_000n);
+    /* Past its last day unanswered, or withdrawn while it waited: it never will. */
+    expect(feeCeiling(waiting, "2026-10-11")).toBe(0n);
+    expect(bookingState(waiting, "2026-10-11")).toBe("ended");
+    expect(feeCeiling({ ...waiting, cancelledOn: "2026-10-05" }, "2026-10-05")).toBe(0n);
+    expect(bookingState({ ...waiting, cancelledOn: "2026-10-05" }, "2026-10-05")).toBe("cancelled");
+  });
+
+  it("is charged like any placement once approved, and not at all once turned down", () => {
+    expect(feeAccrued({ ...week, bannerStatus: "approved" }, "2026-10-06")).toBe(3n * toFils(AD_RATES.home));
+    const rejected: BookingFacts = { ...week, bannerStatus: "rejected", cancelledOn: "2026-10-03" };
+    expect(feeAccrued(rejected, "2026-10-20")).toBe(0n);
+    expect(feeCeiling(rejected)).toBe(0n);
+    expect(bookingState(rejected, "2026-10-05")).toBe("rejected");
+  });
+
+  it("starts on the day of approval when that is after the booked start", () => {
+    expect(approvalStart("2026-10-04", "2026-10-02")).toBe("2026-10-04");
+    expect(approvalStart("2026-10-04", "2026-10-06")).toBe("2026-10-06");
+  });
+
+  it("is three times as wide as it is tall, and wide enough for a laptop", () => {
+    expect(bannerShapeOk(2400, 800)).toBe(true);
+    expect(bannerShapeOk(1201, 400)).toBe(true);
+    expect(bannerShapeOk(1200, 600)).toBe(false);
+    expect(bannerShapeOk(600, 200)).toBe(false);
+    expect(bannerShapeOk(Number.NaN, 200)).toBe(false);
+  });
+
+  it("reads the headline with the chat's contact filter", () => {
+    const none = () => [];
+    const found = (text: string) => (/\d{8}/.test(text) ? ["phone"] : []);
+    expect(headlineProblem("", true, none)).toBe("ads.bannerNeedsHeadline");
+    expect(headlineProblem("", false, none)).toBeNull();
+    expect(headlineProblem("x".repeat(81), true, none)).toBe("ads.bannerTooLong");
+    expect(headlineProblem("Ring 99887766", true, found)).toBe("ads.bannerContact");
+    expect(headlineProblem("  Lamps   for evenings ", true, found)).toBeNull();
   });
 });

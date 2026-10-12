@@ -1474,3 +1474,35 @@ describe("orders on their way", () => {
     expect((await ordersModule.ordersOnTheWay(ids.shopper)).count).toBe(0);
   });
 });
+
+describe("an address as its parts", () => {
+  const parts = { area: "Salmiya", block: "٤", street: "Baghdad St", building: "15", floor: "2", apartment: "5", paciNumber: "12345678" };
+
+  it("is kept in the book as parts, with the line composed from them", async () => {
+    const addresses = await import("./addresses.js");
+    const saved = await addresses.addAddress(ids.shopper, { label: "Flat", governorate: "hawalli", parts });
+    expect(saved.addressLine).toBe("Salmiya, Block 4, Street Baghdad St, House 15, Floor 2, Apartment 5, PACI 12345678");
+    expect(saved.parts).toEqual({ ...parts, block: "4" });
+    /* An address from before the parts keeps its line when edited without them. */
+    const older = await addresses.addAddress(ids.shopper, { label: "Old", addressLine: "Near the co-op" });
+    const edited = await addresses.updateAddress(ids.shopper, older.id, { label: "Old place", addressLine: "Near the co-op" });
+    expect(edited).toMatchObject({ addressLine: "Near the co-op", parts: null });
+    await addresses.removeAddress(ids.shopper, saved.id);
+    await addresses.removeAddress(ids.shopper, older.id);
+  });
+
+  it("is frozen on the order beside the line it composes", async () => {
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, addressLine: null, addressParts: parts, userId: ids.shopper });
+    expect(placed.order.addressLine).toBe("Salmiya, Block 4, Street Baghdad St, House 15, Floor 2, Apartment 5, PACI 12345678");
+    expect(placed.order.deliveryAddressParts).toEqual({ ...parts, block: "4" });
+  });
+
+  it("refuses parts a driver could not find the door by, before anything is taken", async () => {
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    await expect(ordersModule.placeOrder(cartId, { ...DETAILS, addressLine: null, addressParts: { area: "Salmiya" }, userId: ids.shopper }))
+      .rejects.toThrow("address.needsParts");
+    await expect(ordersModule.placeOrder(cartId, { ...DETAILS, addressLine: null, addressParts: { ...parts, paciNumber: "12" }, userId: ids.shopper }))
+      .rejects.toThrow("address.badPaci");
+  });
+});

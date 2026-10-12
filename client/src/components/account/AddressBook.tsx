@@ -17,7 +17,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { MAX_ADDRESSES, missingFromAddress } from "@shared/commerce/addresses";
+import { MAX_ADDRESSES, addressLineIn, missingFromAddress } from "@shared/commerce/addresses";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PinLink } from "@/components/map/PinLink";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
@@ -87,7 +87,7 @@ export function AddressBook() {
                   </div>
                 </div>
                 <p className="mt-2 text-[12px] leading-5 text-[#536b8c]" dir="auto">
-                  {row.addressLine}
+                  {addressLineIn(row, isArabic)}
                 </p>
                 <p className="mt-1 text-[11px] text-[#536b8c]">
                   {[

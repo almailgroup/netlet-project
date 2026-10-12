@@ -444,10 +444,15 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "inventory.applications.waiting":
       return 0;
+    case "inventory.applications.myDocuments":
+    case "inventory.applications.documents":
+      return [];
     case "inventory.applications.save":
     case "inventory.applications.submit":
     case "inventory.applications.approve":
     case "inventory.applications.reject":
+    case "inventory.applications.removeDocument":
+    case "inventory.applications.reviewDocument":
       throw new Error("admin.saveFailed");
 
     /* No codes and no cards in the fixtures, and inventing one would be a
@@ -599,7 +604,12 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Placements (3.3.15): nobody has paid for one in the demo, so the
        shelves are absent; booking is an owner's and the demo is a manager. */
     case "ads.sponsored":
+    case "ads.banners":
       return [];
+    case "ads.bannersWaiting":
+      return 0;
+    case "ads.reviewBanner":
+      throw new Error("ads.notFound");
     case "ads.list":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "ads.quote":

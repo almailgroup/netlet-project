@@ -21,11 +21,11 @@
 import { ProductCard } from "@/components/product/ProductCard";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import type { AdSlot } from "@shared/commerce/adBookings";
+import type { SHELF_SLOTS } from "@shared/commerce/adBookings";
 import type { Product } from "@shared/commerce/types";
 
 export function SponsoredShelf({ slot, departmentSlug, layout, saved, onSave, onQuickView }: {
-  slot: AdSlot;
+  slot: (typeof SHELF_SLOTS)[number];
   departmentSlug?: string;
   /** A home-page rail, or a strip above a department's grid. */
   layout: "rail" | "strip";

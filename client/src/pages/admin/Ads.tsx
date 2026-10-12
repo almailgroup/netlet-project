@@ -14,19 +14,42 @@
  *
  * Booking and stopping both ask first: one commits money, the other ends a
  * placement somebody paid for.
+ *
+ * A home banner is booked here too, with its picture and headline, and waits
+ * for NetLet: an administrator sees the waiting ones first, and approves or
+ * turns each down with a reason. Days it waited are never charged.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
-import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, Notice, PageHeader, Pill, SectionHeading, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, Notice, PageHeader, Pill, SectionHeading, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import { AD_CAPACITY, AD_RATES, MAX_AD_DAYS, MAX_AD_LEAD_DAYS, addDays, kuwaitToday, type AdSlot, type BookingState } from "@shared/commerce/adBookings";
+import {
+  AD_CAPACITY,
+  AD_RATES,
+  AD_SLOTS,
+  BANNER_HEADLINE_MAX,
+  BANNER_NOTE_MAX,
+  MAX_AD_DAYS,
+  MAX_AD_LEAD_DAYS,
+  addDays,
+  approvalStart,
+  headlineProblem,
+  kuwaitToday,
+  type AdSlot,
+  type BookingState,
+} from "@shared/commerce/adBookings";
+import { contactFindings } from "@shared/commerce/contactFilter";
+import { prepareBanner } from "@/lib/prepareBanner";
+import { DEMO_MODE } from "@/lib/demoMode";
+import { can } from "@shared/inventory/permissions";
+import { ImagePlus, LoaderCircle } from "lucide-react";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import type { Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
@@ -41,9 +64,13 @@ const STATE_LABEL: Record<BookingState, MessageKey> = {
   running: "ads.stateRunning",
   ended: "ads.stateEnded",
   cancelled: "ads.stateCancelled",
+  inReview: "ads.stateInReview",
+  rejected: "ads.stateRejected",
 };
 
-const SLOT_LABEL: Record<AdSlot, MessageKey> = { home: "ads.slotHome", department: "ads.slotDepartment" };
+const SLOT_LABEL: Record<AdSlot, MessageKey> = { home: "ads.slotHome", department: "ads.slotDepartment", home_banner: "ads.slotBanner" };
+
+const PERMIT_LABEL = { valid: "ads.permitValid", missing: "ads.permitMissing", expired: "ads.permitExpired" } as const satisfies Record<string, MessageKey>;
 
 export default function AdminAds() {
   usePageMeta(privatePageMeta("Placements"));
@@ -73,16 +100,18 @@ function Ads({ actor }: { actor: Actor }) {
   return (
     <>
       <PageHeader title={t("admin.ads")} description={t(actor.kind === "admin" ? "ads.noteAdmin" : "ads.noteStore")} />
-      <ul className="mb-6 grid max-w-3xl gap-3 sm:grid-cols-2">
-        {(["home", "department"] as const).map(slot => (
+      <ul className="mb-6 grid max-w-4xl gap-3 sm:grid-cols-3">
+        {AD_SLOTS.map(slot => (
           <li key={slot} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
             <p className="text-[14px] font-bold text-[#0a285a]">{t(SLOT_LABEL[slot], { department: t("ads.yourDepartment") })}</p>
             <p className="mt-1 text-[13px] text-[#536b8c]">{t("ads.rateLine", { rate: money({ amount: AD_RATES[slot], currencyCode: "KWD" }), places: AD_CAPACITY[slot] })}</p>
+            {slot === "home_banner" ? <p className="mt-1 text-[13px] text-[#536b8c]">{t("ads.bannerRateNote")}</p> : null}
           </li>
         ))}
       </ul>
 
       {actor.kind === "vendor" ? <BookForm /> : null}
+      {can(actor, "product.review") ? <BannerQueue /> : null}
 
       <section className="mt-8" aria-labelledby="ads-bookings">
         <SectionHeading><span id="ads-bookings">{t("ads.bookings")}</span></SectionHeading>
@@ -122,6 +151,13 @@ function BookForm() {
   const [startsOn, setStartsOn] = useState(addDays(today, 1));
   const [days, setDays] = useState(7);
   const [confirming, setConfirming] = useState(false);
+  const [banner, setBanner] = useState<BannerDraft>({ mediaId: null, preview: null, headline: "", headlineAr: "" });
+  const isBanner = slot === "home_banner";
+  const bannerProblem = isBanner
+    ? (banner.mediaId ? null : "ads.bannerNeedsImage")
+      ?? headlineProblem(banner.headline, true, contactFindings)
+      ?? headlineProblem(banner.headlineAr, false, contactFindings)
+    : null;
 
   /* Searched on the server, for the reason every portal list is: a filter over
      the first page fetched reports "no matches" for a product on the second. */
@@ -133,7 +169,8 @@ function BookForm() {
   const book = trpc.ads.book.useMutation({
     onSuccess: reply => {
       setConfirming(false);
-      toast.success(t("ads.booked", { total: money({ amount: reply.total, currencyCode: "KWD" }) }));
+      toast.success(t(isBanner ? "ads.bannerBooked" : "ads.booked", { total: money({ amount: reply.total, currencyCode: "KWD" }) }));
+      if (isBanner) setBanner({ mediaId: null, preview: null, headline: "", headlineAr: "" });
       void utils.ads.list.invalidate();
       void utils.ads.quote.invalidate();
     },
@@ -141,7 +178,7 @@ function BookForm() {
   });
 
   const answer = quote.data;
-  const ready = Boolean(request && answer && answer.problem === null);
+  const ready = Boolean(request && answer && answer.problem === null) && bannerProblem === null;
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
   return (
@@ -163,7 +200,7 @@ function BookForm() {
           <fieldset className="sm:col-span-2">
             <legend className="text-[13px] font-semibold text-[#0a285a]">{t("ads.place")}</legend>
             <div className="mt-1.5 flex flex-wrap gap-2">
-              {(["home", "department"] as const).map(option => (
+              {AD_SLOTS.map(option => (
                 <label key={option} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2.5 text-[14px] font-semibold text-[#0a285a] ${slot === option ? "border-[#0a285a] bg-[#f4f7fb]" : "border-[#cfd9e6] bg-white hover:bg-[#f0f2f5]"}`}>
                   <input type="radio" name="ads-slot" value={option} checked={slot === option} onChange={() => setSlot(option)} className="accent-[#0a285a]" />
                   {t(SLOT_LABEL[option], { department: t("ads.yourDepartment") })}
@@ -171,6 +208,7 @@ function BookForm() {
               ))}
             </div>
           </fieldset>
+          {isBanner ? <BannerFields draft={banner} onChange={setBanner} /> : null}
           <Field label={t("ads.startsOn")}>
             <input type="date" value={startsOn} min={today} max={addDays(today, MAX_AD_LEAD_DAYS)} onChange={event => setStartsOn(event.target.value)} required className={fieldClass} />
           </Field>
@@ -193,6 +231,8 @@ function BookForm() {
                     {isMessageKey(answer.problem) ? t(answer.problem) : answer.problem}
                     {answer.fullDays.length ? <> {answer.fullDays.map(day).join(" · ")}</> : null}
                   </Notice>
+                ) : isBanner && bannerProblem ? (
+                  <p className="mt-1 font-semibold">{t(bannerProblem)}</p>
                 ) : null}
               </div>
             ) : null}
@@ -203,11 +243,13 @@ function BookForm() {
       <ConfirmDialog
         open={confirming}
         title={t("ads.confirmTitle", { total: answer ? amount(answer.cost) : "" })}
-        body={t("ads.confirmBody")}
+        body={t(isBanner ? "ads.confirmBannerBody" : "ads.confirmBody")}
         confirmLabel={t("ads.book")}
         pending={book.isPending}
         onClose={() => setConfirming(false)}
-        onConfirm={() => request && book.mutate(request)}
+        onConfirm={() => request && book.mutate(isBanner && banner.mediaId
+          ? { ...request, banner: { mediaId: banner.mediaId, headline: banner.headline, headlineAr: banner.headlineAr || null } }
+          : request)}
       />
     </form>
   );
@@ -238,7 +280,7 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
             : <bdi>{booking.productTitle}</bdi>}
           {showStore ? <span className="text-[13px] font-semibold ink-muted"> · <bdi>{booking.vendorName}</bdi></span> : null}
         </p>
-        <Pill tone={booking.state === "running" ? "good" : booking.state === "upcoming" ? "navy" : "neutral"}>{t(STATE_LABEL[booking.state])}</Pill>
+        <Pill tone={booking.state === "running" ? "good" : booking.state === "upcoming" ? "navy" : booking.state === "inReview" ? "warning" : booking.state === "rejected" ? "danger" : "neutral"}>{t(STATE_LABEL[booking.state])}</Pill>
       </div>
       <p className="mt-1 text-[#3d5376]">
         {t(SLOT_LABEL[booking.slot], { department: (isArabic ? booking.departmentNameAr : null) ?? booking.departmentName ?? t("ads.yourDepartment") })}
@@ -249,6 +291,7 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
       <p className="mt-1 ink-muted">
         {t("ads.costLine", { accrued: amount(booking.accrued), total: amount(booking.total), deducted: amount(booking.deducted) })}
       </p>
+      {booking.banner ? <BannerSummary banner={booking.banner} /> : null}
       {booking.cancellable ? (
         <div className="mt-3 border-t border-[#eef1f5] pt-3">
           <button type="button" onClick={() => setConfirming(true)} className={smallButtonClass.quietDanger}>
@@ -260,12 +303,185 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
         open={confirming}
         tone="danger"
         title={t(showStore ? "ads.takeDownTitle" : "ads.cancelTitle", { product: isolate(booking.productTitle) })}
-        body={t(booking.state === "upcoming" ? "ads.cancelFree" : "ads.cancelToday")}
+        body={t(booking.state === "upcoming" || booking.state === "inReview" ? "ads.cancelFree" : "ads.cancelToday")}
         confirmLabel={t(showStore ? "ads.takeDown" : "ads.cancel")}
         pending={cancel.isPending}
         onClose={() => setConfirming(false)}
         onConfirm={() => cancel.mutate({ id: booking.id })}
       />
+    </li>
+  );
+}
+
+type BannerDraft = { mediaId: string | null; preview: string | null; headline: string; headlineAr: string };
+
+/**
+ * A banner's picture and words. The picture is cropped to 3:1 in the browser
+ * and stored the moment it is chosen, so what is previewed is exactly what
+ * the home page would draw; the headlines are checked as they are typed by
+ * the rule the server refuses on.
+ */
+function BannerFields({ draft, onChange }: { draft: BannerDraft; onChange: (draft: BannerDraft) => void }) {
+  const { t, tError } = useTranslation();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const english = headlineProblem(draft.headline, false, contactFindings);
+  const arabic = headlineProblem(draft.headlineAr, false, contactFindings);
+
+  const chosen = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const prepared = await prepareBanner(file);
+      if (typeof prepared === "string") throw new Error(prepared);
+      const response = await fetch("/api/media", { method: "POST", headers: { "Content-Type": prepared.type }, body: prepared.blob, credentials: "same-origin" });
+      const body = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
+      const id = body.url?.match(/^\/media\/([A-Za-z0-9_-]+)\./)?.[1];
+      if (!response.ok || !body.url || !id) throw new Error(body.error ?? "media.failed");
+      onChange({ ...draft, mediaId: id, preview: body.url });
+    } catch (error) {
+      toast.error(tError(error instanceof Error ? error.message : "media.failed"));
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-4 sm:col-span-2">
+      <Notice tone="info">{t("ads.bannerReviewNote")}</Notice>
+      <div>
+        <p className="text-[13px] font-semibold text-[#0a285a]">{t("ads.bannerPicture")}</p>
+        <p id="banner-picture-hint" className="mt-0.5 text-[12px] ink-muted">{t("ads.bannerPictureHint")}</p>
+        {draft.preview ? (
+          <img src={draft.preview} alt={t("ads.bannerPreview")} loading="lazy" decoding="async" className="mt-2 aspect-[3/1] w-full rounded-xl border border-[#e1e7ef] object-cover" />
+        ) : null}
+        {DEMO_MODE ? null : (
+          <>
+            <input ref={input} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden onChange={event => void chosen(event.target.files?.[0])} />
+            <button type="button" onClick={() => input.current?.click()} disabled={busy} aria-describedby="banner-picture-hint" className={`${smallButtonClass.secondary} mt-2`}>
+              {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ImagePlus className="size-4" aria-hidden />}
+              {t(draft.preview ? "ads.bannerReplace" : "ads.bannerChoose")}
+            </button>
+          </>
+        )}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={t("ads.bannerHeadline")} hint={t("ads.bannerHeadlineHint", { max: BANNER_HEADLINE_MAX })} error={english ? t(english) : undefined}>
+          <input dir="auto" value={draft.headline} maxLength={BANNER_HEADLINE_MAX} onChange={event => onChange({ ...draft, headline: event.target.value })} required className={fieldClass} />
+        </Field>
+        <Field label={t("ads.bannerHeadlineAr")} optional hint={t("ads.bannerHeadlineArHint")} error={arabic ? t(arabic) : undefined}>
+          <input dir="rtl" lang="ar" value={draft.headlineAr} maxLength={BANNER_HEADLINE_MAX} onChange={event => onChange({ ...draft, headlineAr: event.target.value })} className={fieldClass} />
+        </Field>
+      </div>
+    </div>
+  );
+}
+
+/** A banner booking's picture, words and NetLet's answer, as the store and NetLet read it. */
+function BannerSummary({ banner }: { banner: NonNullable<Booking["banner"]> }) {
+  const { t } = useTranslation();
+  return (
+    <div className="mt-3 space-y-2">
+      {banner.imageUrl ? (
+        <img src={banner.imageUrl} alt="" loading="lazy" decoding="async" className="aspect-[3/1] w-full max-w-xl rounded-xl border border-[#e1e7ef] object-cover" />
+      ) : null}
+      <p className="font-semibold"><bdi dir="auto">{banner.headline}</bdi></p>
+      {banner.headlineAr ? <p className="font-semibold" lang="ar" dir="rtl">{banner.headlineAr}</p> : null}
+      {banner.note ? <p className="ink-muted">{t("ads.bannerNoteLine", { note: banner.note })}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Banners waiting on NetLet, first booked first, for whoever reviews them.
+ * The store's discount permit is said beside each, because a headline
+ * promising a saving needs one, and only a person can read whether it does.
+ */
+function BannerQueue() {
+  const { t } = useTranslation();
+  const [page, setPage] = useState(1);
+  const waiting = trpc.ads.list.useQuery({ page, waiting: true }, { placeholderData: previous => previous });
+  const rows = waiting.data?.rows ?? [];
+  if (!waiting.isLoading && rows.length === 0 && page === 1) return null;
+  return (
+    <section className="mt-8" aria-labelledby="ads-banners-waiting">
+      <SectionHeading><span id="ads-banners-waiting">{t("ads.bannersWaiting")}</span></SectionHeading>
+      {waiting.isLoading ? (
+        <SkeletonRows rows={2} label={t("admin.loading")} />
+      ) : (
+        <QueryGate queries={[waiting]}>
+          {() => (
+            <>
+              <ul className="space-y-3">{rows.map(row => <BannerReview key={row.id} booking={row} />)}</ul>
+              {waiting.data ? <Pager page={waiting.data} onPage={setPage} /> : null}
+            </>
+          )}
+        </QueryGate>
+      )}
+    </section>
+  );
+}
+
+function BannerReview({ booking }: { booking: Booking }) {
+  const { t, tError } = useTranslation();
+  const money = useMoney();
+  const run = useRun();
+  const utils = trpc.useUtils();
+  const today = kuwaitToday(new Date());
+  const [asking, setAsking] = useState<"approve" | "reject" | null>(null);
+  const [note, setNote] = useState("");
+  const review = trpc.ads.reviewBanner.useMutation({
+    onSuccess: reply => {
+      setAsking(null);
+      setNote("");
+      toast.success(t(reply.status === "approved" ? "ads.bannerApproved" : "ads.bannerRejected"));
+      void utils.ads.list.invalidate();
+      void utils.ads.bannersWaiting.invalidate();
+    },
+    onError: error => { setAsking(null); toast.error(tError(error.message)); },
+  });
+  const banner = booking.banner!;
+  const starts = approvalStart(booking.startsOn, today);
+  return (
+    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+      <p className="text-[15px] font-bold">
+        {booking.productHandle
+          ? <a href={`/products/${booking.productHandle}`} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
+          : <bdi>{booking.productTitle}</bdi>}
+        <span className="text-[13px] font-semibold ink-muted"> · <bdi>{booking.vendorName}</bdi></span>
+      </p>
+      <p className="mt-1 text-[#3d5376]">{run(booking.startsOn, booking.endsOn)} · {money({ amount: booking.dailyRate, currencyCode: "KWD" })}</p>
+      <BannerSummary banner={banner} />
+      <p className={`mt-2 ${banner.permit === "valid" ? "ink-muted" : "font-semibold text-[#8c2f22]"}`}>{t(PERMIT_LABEL[banner.permit])}</p>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-[#eef1f5] pt-3">
+        <button type="button" onClick={() => setAsking("approve")} className={smallButtonClass.primary}>{t("ads.bannerApprove")}</button>
+        <button type="button" onClick={() => setAsking("reject")} className={smallButtonClass.quietDanger}>{t("ads.bannerReject")}</button>
+      </div>
+      <ConfirmDialog
+        open={asking === "approve"}
+        title={t("ads.bannerApproveTitle")}
+        body={t(starts === booking.startsOn ? "ads.bannerApproveBody" : "ads.bannerApproveLate", { run: run(starts, booking.endsOn) })}
+        confirmLabel={t("ads.bannerApprove")}
+        pending={review.isPending}
+        onClose={() => setAsking(null)}
+        onConfirm={() => review.mutate({ id: booking.id, decision: "approve" })}
+      />
+      <ConfirmDialog
+        open={asking === "reject"}
+        tone="danger"
+        title={t("ads.bannerRejectTitle")}
+        body={t("ads.bannerRejectBody")}
+        confirmLabel={t("ads.bannerReject")}
+        confirmDisabled={!note.trim()}
+        pending={review.isPending}
+        onClose={() => setAsking(null)}
+        onConfirm={() => review.mutate({ id: booking.id, decision: "reject", note })}
+      >
+        <Field label={t("ads.bannerRejectReason")} className="mt-3">
+          <textarea dir="auto" value={note} maxLength={BANNER_NOTE_MAX} onChange={event => setNote(event.target.value)} rows={3} className={textareaClass} />
+        </Field>
+      </ConfirmDialog>
     </li>
   );
 }

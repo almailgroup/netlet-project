@@ -10,8 +10,18 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { AD_SLOTS, MAX_AD_DAYS } from "../../shared/commerce/adBookings.js";
-import { AdRefused, bookPlacement, cancelPlacement, listPlacements, quotePlacement, sponsoredToday } from "../adBookings.js";
+import { AD_SLOTS, BANNER_HEADLINE_MAX, BANNER_NOTE_MAX, MAX_AD_DAYS, SHELF_SLOTS } from "../../shared/commerce/adBookings.js";
+import {
+  AdRefused,
+  bannersToday,
+  bookPlacement,
+  cancelPlacement,
+  countWaitingBanners,
+  listPlacements,
+  quotePlacement,
+  reviewBanner,
+  sponsoredToday,
+} from "../adBookings.js";
 import { resolveActor } from "../inventory.js";
 import { rowId } from "../_core/schemas.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
@@ -23,7 +33,11 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
   } catch (error) {
     if (error instanceof AdRefused) {
       throw new TRPCError({
-        code: error.reason === "ads.notFound" ? "NOT_FOUND" : error.reason === "ads.full" || error.reason === "ads.notCancellable" ? "CONFLICT" : "BAD_REQUEST",
+        code: error.reason === "ads.notFound"
+          ? "NOT_FOUND"
+          : error.reason === "ads.full" || error.reason === "ads.notCancellable" || error.reason === "ads.bannerNotWaiting"
+            ? "CONFLICT"
+            : "BAD_REQUEST",
         message: error.reason,
         cause: error.days.length ? { days: error.days } : undefined,
       });
@@ -45,13 +59,21 @@ const request = z.object({
   days: z.number().int().min(1).max(MAX_AD_DAYS),
 });
 
+/* A banner's upload id and words. Lengths are the columns'; what the words
+   may say is `headlineProblem`'s answer, so it arrives as a key. */
+const banner = z.object({
+  mediaId: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/),
+  headline: z.string().max(BANNER_HEADLINE_MAX * 2),
+  headlineAr: z.string().max(BANNER_HEADLINE_MAX * 2).nullish(),
+});
+
 export const adsRouter = router({
   quote: protectedProcedure
     .input(request)
     .query(async ({ ctx, input }) => guard(async () => quotePlacement(await resolveActor(ctx.user), input))),
 
   book: protectedProcedure
-    .input(request)
+    .input(request.extend({ banner: banner.nullish() }))
     .mutation(async ({ ctx, input }) => guard(async () => bookPlacement(await resolveActor(ctx.user), input))),
 
   cancel: protectedProcedure
@@ -59,8 +81,27 @@ export const adsRouter = router({
     .mutation(async ({ ctx, input }) => guard(async () => cancelPlacement(await resolveActor(ctx.user), input.id))),
 
   list: protectedProcedure
-    .input(z.object({ page: z.number().int().min(1).max(10_000).optional(), pageSize: z.number().int().min(1).max(100).optional() }).optional())
+    .input(z.object({
+      page: z.number().int().min(1).max(10_000).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      waiting: z.boolean().optional(),
+    }).optional())
     .query(async ({ ctx, input }) => guard(async () => listPlacements(await resolveActor(ctx.user), input ?? {}))),
+
+  /**
+   * NetLet's answer on a home banner. Not a feature-switch entry: the booking
+   * already exists and is an obligation either way.
+   */
+  reviewBanner: protectedProcedure
+    .input(z.object({ id: rowId, decision: z.enum(["approve", "reject"]), note: z.string().max(BANNER_NOTE_MAX * 2).nullish() }))
+    .mutation(async ({ ctx, input }) => guard(async () => reviewBanner(await resolveActor(ctx.user), input))),
+
+  bannersWaiting: protectedProcedure.query(async ({ ctx }) => guard(async () => countWaitingBanners(await resolveActor(ctx.user)))),
+
+  /** The home page's banners today. Public and not gated, for `sponsored`'s reason below. */
+  banners: publicProcedure
+    .input(z.object({ locale: z.enum(["en", "ar"]).optional() }).optional())
+    .query(async ({ input }) => bannersToday({ locale: input?.locale })),
 
   /**
    * What a place shows today. Public, because the shelf is.
@@ -72,7 +113,7 @@ export const adsRouter = router({
    */
   sponsored: publicProcedure
     .input(z.object({
-      slot: z.enum(AD_SLOTS),
+      slot: z.enum(SHELF_SLOTS),
       departmentSlug: z.string().trim().min(1).max(120).optional(),
       locale: z.enum(["en", "ar"]).optional(),
     }))

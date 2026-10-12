@@ -6,9 +6,10 @@
  * `pending` after an approval is a state somebody has to clear later, and that
  * is the arrangement where a seller is told they are open and is not.
  *
- * The page shows what the applicant wrote, what is still missing, and their
- * documents as links — NetLet has no upload pipeline, so a link is what they
- * could give.
+ * The page shows what the applicant wrote, what is still missing, and the
+ * documents they uploaded, each to be accepted or turned down with a reason
+ * before the application can be — a store approved on a file nobody opened
+ * was not approved on it. Links an older application gave are still shown.
  *
  * Rejecting takes a reason and the reason is not optional: a rejection nobody
  * can act on is an application that comes back unchanged.
@@ -29,7 +30,9 @@ import {
 } from "@shared/inventory/sellerApplication";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Check, ExternalLink, LoaderCircle, X } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, Paperclip, X } from "lucide-react";
+import { KIND_LABEL, STATUS_LABEL as DOCUMENT_STATUS_LABEL, STATUS_TONE, documentHref, useFileSize } from "@/components/account/DocumentUploads";
+import { DOCUMENT_KINDS, DOCUMENT_NOTE_MAX, currentByKind } from "@shared/inventory/applicationDocuments";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -158,6 +161,8 @@ function Applications() {
                             </p>
                           ) : null}
 
+                          <DocumentReview applicationId={row.id} />
+
                           {row.agreementVersion ? (
                             <p className="mt-3 text-[13px] ink-muted">
                               {t("admin.applicationAgreed", { version: row.agreementVersion })}
@@ -207,6 +212,9 @@ function Applications() {
                               {t("admin.applicationMissing", { fields: missing.map(item => t(MISSING_LABEL[item])).join(", ") })}
                             </Notice>
                           ) : null}
+                          {row.documentsWaiting > 0 ? (
+                            <Notice tone="warning" className="mt-4">{t("admin.applicationDocsWaiting", { count: row.documentsWaiting })}</Notice>
+                          ) : null}
                         </div>
 
                         <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5">
@@ -231,7 +239,7 @@ function Applications() {
                             <button
                               type="button"
                               onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null })}
-                              disabled={missing.length > 0 || deciding !== undefined}
+                              disabled={missing.length > 0 || row.documentsWaiting > 0 || deciding !== undefined}
                               className={buttonClass.primary}
                             >
                               {deciding === row.id && approve.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
@@ -250,6 +258,90 @@ function Applications() {
         </QueryGate>
       )}
     </>
+  );
+}
+
+/**
+ * One application's uploaded documents, each kind's newest file with its
+ * decision. A file waiting is accepted, or turned down with a reason the
+ * applicant reads. Opening one downloads it: a civil ID never renders as a
+ * page on NetLet's origin.
+ */
+function DocumentReview({ applicationId }: { applicationId: number }) {
+  const { t, tError } = useTranslation();
+  const size = useFileSize();
+  const utils = trpc.useUtils();
+  const documents = trpc.inventory.applications.documents.useQuery({ applicationId });
+  const [rejecting, setRejecting] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const review = trpc.inventory.applications.reviewDocument.useMutation({
+    onSuccess: status => {
+      toast.success(t(status === "accepted" ? "documents.accepted" : "documents.rejected"));
+      setRejecting(null);
+      setNote("");
+      void utils.inventory.applications.documents.invalidate({ applicationId });
+      void utils.inventory.applications.list.invalidate();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const current = currentByKind(documents.data ?? []);
+  if (documents.isLoading) return null;
+  return (
+    <section className="mt-4" aria-label={t("documents.title")}>
+      <p className="text-[13px] font-semibold text-[#536b8c]">{t("documents.title")}</p>
+      {current.size === 0 ? (
+        <p className="mt-1 text-[13px] ink-muted">{t("documents.noneUploaded")}</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-[#eef1f5] rounded-xl border border-[#e1e7ef]">
+          {DOCUMENT_KINDS.filter(kind => current.has(kind)).map(kind => {
+            const { latest, replacing } = current.get(kind)!;
+            const noteId = `document-note-${latest.id}`;
+            return (
+              <li key={kind} className="p-3 text-[13px] text-[#0a285a]">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-bold">{t(KIND_LABEL[kind])}</p>
+                  <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold ${STATUS_TONE[latest.status]}`}>{t(DOCUMENT_STATUS_LABEL[latest.status])}</span>
+                </div>
+                <a href={documentHref(latest.id)} download className="mt-1 inline-flex max-w-full items-center gap-1.5 font-semibold hover:underline">
+                  <Paperclip className="size-3.5 shrink-0" aria-hidden /><bdi className="truncate">{latest.fileName}</bdi>
+                </a>
+                <span className="ink-muted"> · {size(latest.byteSize)}</span>
+                {latest.reviewNote ? <p dir="auto" className="mt-1 ink-muted">{t("documents.reviewerNote", { note: latest.reviewNote })}</p> : null}
+                {replacing ? (
+                  <p className="mt-1 ink-muted">
+                    {t("documents.replacingAdmin")}{" "}
+                    <a href={documentHref(replacing.id)} download className="font-semibold hover:underline"><bdi>{replacing.fileName}</bdi></a>
+                  </p>
+                ) : null}
+                {latest.status === "pending" ? (
+                  rejecting === latest.id ? (
+                    <div className="mt-2">
+                      <label htmlFor={noteId} className="block text-[13px] font-semibold">{t("documents.rejectReason")}</label>
+                      <input id={noteId} dir="auto" value={note} maxLength={DOCUMENT_NOTE_MAX} onChange={event => setNote(event.target.value)} className={`${fieldClass} mt-1.5`} />
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => review.mutate({ id: latest.id, decision: "reject", note })} disabled={!note.trim() || review.isPending} className={smallButtonClass.quietDanger}>
+                          {t("documents.reject")}
+                        </button>
+                        <button type="button" onClick={() => { setRejecting(null); setNote(""); }} className={smallButtonClass.secondary}>{t("documents.keep")}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button type="button" onClick={() => review.mutate({ id: latest.id, decision: "accept" })} disabled={review.isPending} aria-label={`${t("documents.accept")}: ${t(KIND_LABEL[kind])}`} className={smallButtonClass.primary}>
+                        <Check className="size-4" aria-hidden />{t("documents.accept")}
+                      </button>
+                      <button type="button" onClick={() => { setRejecting(latest.id); setNote(""); }} disabled={review.isPending} aria-label={`${t("documents.reject")}: ${t(KIND_LABEL[kind])}`} className={smallButtonClass.quietDanger}>
+                        <X className="size-4" aria-hidden />{t("documents.reject")}
+                      </button>
+                    </div>
+                  )
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

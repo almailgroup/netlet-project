@@ -17,10 +17,12 @@
  * require them, but a declared width documents the field and keeps the schema
  * portable.
  */
+import type { AddressParts } from "../shared/commerce/kuwaitAddress.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  char,
   customType,
   date,
   index,
@@ -39,7 +41,8 @@ import { notificationKinds } from "../shared/customer.js";
 import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
 import type { SizeChart } from "../shared/commerce/sizeGuide.js";
-import { AD_SLOTS } from "../shared/commerce/adBookings.js";
+import { AD_SLOTS, type BannerStatus } from "../shared/commerce/adBookings.js";
+import type { DocumentKind, DocumentStatus, DocumentType } from "../shared/inventory/applicationDocuments.js";
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../shared/commerce/support.js";
 import { INBOUND_STATUSES } from "../shared/commerce/netletFulfilment.js";
 
@@ -1309,6 +1312,20 @@ export const customerAddresses = pgTable(
     governorate: varchar("governorate", { length: 32 }),
     addressLine: varchar("address_line", { length: 300 }).notNull(),
     addressNotes: varchar("address_notes", { length: 300 }),
+    /*
+     * The address as its parts (`shared/commerce/kuwaitAddress.ts`): what a
+     * driver finds a door by. Nullable, because every address saved before
+     * them has only its line; when they are given, `address_line` is composed
+     * from them, so every reader of the line keeps working.
+     */
+    area: varchar("area", { length: 60 }),
+    block: varchar("block", { length: 10 }),
+    street: varchar("street", { length: 120 }),
+    avenue: varchar("avenue", { length: 60 }),
+    building: varchar("building", { length: 60 }),
+    floor: varchar("floor", { length: 10 }),
+    apartment: varchar("apartment", { length: 20 }),
+    paciNumber: varchar("paci_number", { length: 12 }),
     /**
      * Exactly where, if the shopper dropped a pin (3.2.7) — `{ lat, lng }` as
      * one value, because half a coordinate is not a place. Null is ordinary:
@@ -2026,6 +2043,12 @@ export const orders = pgTable(
     addressNotes: text("address_notes"),
     /** The pin the shopper dropped at checkout (3.2.7), copied like the rest. */
     deliveryPin: jsonb("delivery_pin").$type<{ lat: number; lng: number } | null>(),
+    /**
+     * The address's parts as given at checkout, frozen like the line beside
+     * it — one document rather than eight columns, because an order keeps a
+     * copy and never edits it. Null on every order placed before parts.
+     */
+    deliveryAddressParts: jsonb("delivery_address_parts").$type<AddressParts | null>(),
 
     placedAt: timestamp("placed_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
@@ -2326,6 +2349,41 @@ export const vendorApplications = pgTable(
       .where(sql`${table.status} in ('draft', 'submitted')`),
     index("vendor_applications_status_idx").on(table.status, table.createdAt),
   ]
+);
+
+/**
+ * A document an applicant uploaded with their application (3.3.1) — the trade
+ * licence, the signatory's civil ID, the bank's IBAN letter — each decided on
+ * by an administrator. `shared/inventory/applicationDocuments.ts` is the rule.
+ *
+ * **Its own table, never `/media`.** Everything under `/media` is public under
+ * a random id and is a JPEG or a WebP by design; a civil ID must not be public
+ * at any address, and a licence is usually a PDF. These are served only to the
+ * applicant and to administrators, through an authenticated route, as an
+ * attachment and never inline.
+ *
+ * Every upload is a row; a kind's newest one is the one being decided on, and
+ * an older accepted one stays until its replacement is accepted.
+ */
+export const applicationDocuments = pgTable(
+  "application_documents",
+  {
+    id: serial("id").primaryKey(),
+    applicationId: integer("application_id").notNull().references(() => vendorApplications.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 24 }).notNull().$type<DocumentKind>(),
+    fileName: varchar("file_name", { length: 200 }).notNull(),
+    contentType: varchar("content_type", { length: 40 }).notNull().$type<DocumentType>(),
+    byteSize: integer("byte_size").notNull(),
+    sha256: char("sha256", { length: 64 }).notNull(),
+    bytes: bytea("bytes").notNull(),
+    status: varchar("status", { length: 12 }).notNull().default("pending").$type<DocumentStatus>(),
+    reviewNote: varchar("review_note", { length: 400 }),
+    reviewedBy: integer("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    uploadedBy: integer("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("application_documents_application_idx").on(table.applicationId, table.kind, table.createdAt)],
 );
 
 /* -------------------------------------------------------------- vouchers --- */
@@ -2710,6 +2768,19 @@ export const adBookings = pgTable(
     cancelledBy: integer("cancelled_by").references(() => users.id, { onDelete: "set null" }),
     bookedBy: integer("booked_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /*
+     * A `home_banner` booking's picture and words, and NetLet's review of them
+     * (`shared/commerce/adBookings.ts`). Null on a shelf placement. The status
+     * is varchar rather than an enum because only a banner has one, and
+     * `pending → approved | rejected` is the whole of it.
+     */
+    bannerMediaId: varchar("banner_media_id", { length: 64 }).references(() => mediaFiles.id, { onDelete: "set null" }),
+    bannerHeadline: varchar("banner_headline", { length: 80 }),
+    bannerHeadlineAr: varchar("banner_headline_ar", { length: 80 }),
+    bannerStatus: varchar("banner_status", { length: 12 }).$type<BannerStatus>(),
+    bannerNote: varchar("banner_note", { length: 400 }),
+    bannerReviewedBy: integer("banner_reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    bannerReviewedAt: timestamp("banner_reviewed_at", { withTimezone: true }),
   },
   table => [
     index("ad_bookings_slot_idx").on(table.slot, table.startsOn, table.endsOn),

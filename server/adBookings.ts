@@ -22,12 +22,18 @@
  * exists.
  */
 import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
-import { adBookings, categories, payoutRunItems, products, vendors } from "../drizzle/schema.js";
+import { adBookings, categories, mediaFiles, payoutRunItems, products, vendors } from "../drizzle/schema.js";
 import {
   AD_CAPACITY,
   AD_RATES,
   addDays,
+  approvalStart,
+  bannerShapeOk,
   bookingProblem,
+  daysInclusive,
+  headlineProblem,
+  type BannerProblem,
+  type BannerStatus,
   bookingState,
   cancellable,
   feeAccrued,
@@ -38,6 +44,9 @@ import {
   type BookingProblem,
   type BookingState,
 } from "../shared/commerce/adBookings.js";
+import { contactFindings } from "../shared/commerce/contactFilter.js";
+import { mediaPath, type StoredType } from "../shared/commerce/media.js";
+import { discountAllowed } from "../shared/inventory/discountLicence.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
 import { fromFils, toFils } from "../shared/money.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
@@ -63,7 +72,13 @@ export type AdRefusal =
   | "ads.full"
   | "ads.notEnoughEarned"
   | "ads.notFound"
-  | "ads.notCancellable";
+  | "ads.notCancellable"
+  | BannerProblem
+  | "ads.bannerNeedsImage"
+  | "ads.bannerShape"
+  | "ads.bannerNotWaiting"
+  | "ads.bannerLapsed"
+  | "ads.bannerNeedsNote";
 
 export class AdRefused extends Error {
   constructor(readonly reason: AdRefusal, readonly days: string[] = []) {
@@ -85,7 +100,37 @@ function storeOf(actor: Actor): number {
   return actor.vendorId;
 }
 
-export type PlacementRequest = { productId: number; slot: AdSlot; startsOn: string; days: number };
+/** A banner's picture — an upload of the store's own, by its id — and its words. */
+export type BannerRequest = { mediaId: string; headline: string; headlineAr?: string | null };
+
+export type PlacementRequest = { productId: number; slot: AdSlot; startsOn: string; days: number; banner?: BannerRequest | null };
+
+const flat = (text: string | null | undefined) => (text ?? "").replace(/\s+/g, " ").trim();
+
+/**
+ * A banner's picture and words, checked: the picture is one this store
+ * uploaded and is a banner's shape, the English headline is there, and
+ * neither headline carries contact details. Answered as the columns to write.
+ */
+async function bannerColumns(db: Db, vendorId: number, banner: BannerRequest | null | undefined) {
+  if (!banner?.mediaId) throw new AdRefused("ads.bannerNeedsImage");
+  const [media] = await db
+    .select({ id: mediaFiles.id, width: mediaFiles.width, height: mediaFiles.height })
+    .from(mediaFiles)
+    .where(and(eq(mediaFiles.id, banner.mediaId), eq(mediaFiles.vendorId, vendorId)))
+    .limit(1);
+  /* Another store's upload is "no picture", for the reason another store's booking is "not found". */
+  if (!media) throw new AdRefused("ads.bannerNeedsImage");
+  if (!bannerShapeOk(media.width, media.height)) throw new AdRefused("ads.bannerShape");
+  const problem = headlineProblem(banner.headline, true, contactFindings) ?? headlineProblem(banner.headlineAr, false, contactFindings);
+  if (problem) throw new AdRefused(problem);
+  return {
+    bannerMediaId: media.id,
+    bannerHeadline: flat(banner.headline),
+    bannerHeadlineAr: flat(banner.headlineAr) || null,
+    bannerStatus: "pending" as const,
+  };
+}
 
 /** The product a booking is for: this store's, on the shelf now. */
 async function productFor(db: Db | Tx, vendorId: number, productId: number) {
@@ -161,6 +206,7 @@ export async function bookPlacement(actor: Actor, request: PlacementRequest, now
   if (problem) throw new AdRefused(problem);
   const endsOn = addDays(request.startsOn, request.days - 1);
   const total = quoteFor(request.slot, request.days);
+  const banner = request.slot === "home_banner" ? await bannerColumns(db, vendorId, request.banner) : {};
 
   const booked = await db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(${BOOKING_LOCK})`);
@@ -187,6 +233,7 @@ export async function bookPlacement(actor: Actor, request: PlacementRequest, now
         dailyRate: AD_RATES[request.slot],
         total,
         bookedBy: actor.userId,
+        ...banner,
       })
       .returning({ id: adBookings.id, total: adBookings.total, title: adBookings.productTitle });
     return row;
@@ -198,7 +245,7 @@ export async function bookPlacement(actor: Actor, request: PlacementRequest, now
     subjectId: booked.id,
     subjectLabel: booked.title,
     vendorId,
-    after: { slot: request.slot, startsOn: request.startsOn, endsOn, total: booked.total },
+    after: { slot: request.slot, startsOn: request.startsOn, endsOn, total: booked.total, ...("bannerHeadline" in banner ? { headline: banner.bannerHeadline } : {}) },
   });
   return { id: booked.id, total: booked.total };
 }
@@ -246,6 +293,109 @@ export async function cancelPlacement(actor: Actor, bookingId: number, now = new
   });
 }
 
+/**
+ * NetLet's answer on a banner waiting for review.
+ *
+ * **Approving never charges for a day it waited**: a banner approved after its
+ * first day starts on the day of approval, and its recorded total shrinks to
+ * match. One already past its last day cannot be approved — it was never
+ * shown and never will be — so the answer to it is a rejection. **Rejecting
+ * says why** and cancels the run before its first day, so it costs nothing
+ * and gives its place back.
+ *
+ * The row is read first and written with what was read in the predicate —
+ * still waiting, not withdrawn, the same start — so two administrators
+ * answering at once, or a store withdrawing it while it is approved, cannot
+ * both land.
+ */
+export async function reviewBanner(
+  actor: Actor,
+  request: { id: number; decision: "approve" | "reject"; note?: string | null },
+  now = new Date(),
+): Promise<{ startsOn: string; status: BannerStatus }> {
+  assertCan(actor, "product.review");
+  const db = await handle();
+  const today = kuwaitToday(now);
+  const note = flat(request.note).slice(0, 400) || null;
+  if (request.decision === "reject" && !note) throw new AdRefused("ads.bannerNeedsNote");
+
+  const [found] = await db
+    .select({
+      id: adBookings.id,
+      vendorId: adBookings.vendorId,
+      title: adBookings.productTitle,
+      slot: adBookings.slot,
+      status: adBookings.bannerStatus,
+      startsOn: adBookings.startsOn,
+      endsOn: adBookings.endsOn,
+      dailyRate: adBookings.dailyRate,
+      cancelledOn: adBookings.cancelledOn,
+    })
+    .from(adBookings)
+    .where(eq(adBookings.id, request.id))
+    .limit(1);
+  if (!found || found.slot !== "home_banner") throw new AdRefused("ads.notFound");
+  if (found.status !== "pending" || found.cancelledOn !== null) throw new AdRefused("ads.bannerNotWaiting");
+
+  const waiting = and(eq(adBookings.id, found.id), eq(adBookings.bannerStatus, "pending"), isNull(adBookings.cancelledOn), eq(adBookings.startsOn, found.startsOn));
+  let startsOn = found.startsOn;
+  let status: BannerStatus;
+  if (request.decision === "approve") {
+    if (found.endsOn < today) throw new AdRefused("ads.bannerLapsed");
+    startsOn = approvalStart(found.startsOn, today);
+    const total = fromFils(toFils(found.dailyRate) * BigInt(daysInclusive(startsOn, found.endsOn)));
+    const [done] = await db
+      .update(adBookings)
+      .set({ bannerStatus: "approved", bannerNote: note, bannerReviewedBy: actor.userId, bannerReviewedAt: now, startsOn, total })
+      .where(waiting)
+      .returning({ id: adBookings.id });
+    if (!done) throw new AdRefused("ads.bannerNotWaiting");
+    status = "approved";
+  } else {
+    const [done] = await db
+      .update(adBookings)
+      /* The day before it starts: a run with no days, so no fee and no place held. */
+      .set({ bannerStatus: "rejected", bannerNote: note, bannerReviewedBy: actor.userId, bannerReviewedAt: now, cancelledOn: addDays(found.startsOn, -1), cancelledBy: actor.userId })
+      .where(waiting)
+      .returning({ id: adBookings.id });
+    if (!done) throw new AdRefused("ads.bannerNotWaiting");
+    status = "rejected";
+  }
+
+  await recordAudit(await auditActor(actor), {
+    action: status === "approved" ? "ads.bannerApprove" : "ads.bannerReject",
+    subjectType: "placement",
+    subjectId: found.id,
+    subjectLabel: found.title,
+    vendorId: found.vendorId,
+    before: { status: "pending", startsOn: found.startsOn },
+    after: { status, startsOn, note },
+  });
+  return { startsOn, status };
+}
+
+/** Banners waiting on NetLet that can still run, for the overview's count. */
+export async function countWaitingBanners(actor: Actor, now = new Date()): Promise<number> {
+  assertCan(actor, "product.review");
+  const db = await getDb();
+  if (!db) return 0;
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(adBookings)
+    .where(and(eq(adBookings.slot, "home_banner"), eq(adBookings.bannerStatus, "pending"), isNull(adBookings.cancelledOn), gte(adBookings.endsOn, kuwaitToday(now))));
+  return row?.n ?? 0;
+}
+
+export type BannerView = {
+  status: BannerStatus;
+  imageUrl: string | null;
+  headline: string;
+  headlineAr: string | null;
+  note: string | null;
+  /** The store's discount permit now, for a reviewer reading a headline that promises a saving. */
+  permit: "valid" | "missing" | "expired";
+};
+
 export type PlacementView = {
   id: number;
   vendorId: number;
@@ -266,10 +416,16 @@ export type PlacementView = {
   /** What payouts have already taken for it. */
   deducted: string;
   cancellable: boolean;
+  /** A `home_banner` booking's picture, words and review; null for a shelf placement. */
+  banner: BannerView | null;
 };
 
-/** Bookings, newest first: one store's, or every store's for an administrator. */
-export async function listPlacements(actor: Actor, request: { page?: number; pageSize?: number } = {}, now = new Date()): Promise<Page<PlacementView>> {
+/**
+ * Bookings, newest first: one store's, or every store's for an administrator.
+ * `waiting` narrows to banners waiting on NetLet that can still run — the
+ * review queue, filtered on the server for the reason every portal filter is.
+ */
+export async function listPlacements(actor: Actor, request: { page?: number; pageSize?: number; waiting?: boolean } = {}, now = new Date()): Promise<Page<PlacementView>> {
   let scope: number | undefined;
   if (actor.kind === "vendor") {
     assertCan(actor, "ads.book", actor.vendorId);
@@ -280,7 +436,12 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
   const db = await handle();
   const today = kuwaitToday(now);
   const pageSize = clampPageSize(request.pageSize ?? 20);
-  const filter = scope === undefined ? undefined : eq(adBookings.vendorId, scope);
+  const filter = and(
+    scope === undefined ? undefined : eq(adBookings.vendorId, scope),
+    request.waiting
+      ? and(eq(adBookings.slot, "home_banner"), eq(adBookings.bannerStatus, "pending"), isNull(adBookings.cancelledOn), gte(adBookings.endsOn, today))
+      : undefined,
+  );
   const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(adBookings).where(filter);
   const total = counted?.n ?? 0;
   const page = clampPage(request.page ?? 1, total, pageSize);
@@ -293,11 +454,15 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
       departmentName: categories.name,
       departmentNameAr: categories.nameAr,
       deducted: sql<string | null>`(select sum(${payoutRunItems.amount}) from ${payoutRunItems} where ${payoutRunItems.bookingId} = ${adBookings.id})`,
+      mediaType: mediaFiles.contentType,
+      permitNumber: vendors.discountLicenceNumber,
+      permitExpires: vendors.discountLicenceExpiresAt,
     })
     .from(adBookings)
     .innerJoin(vendors, eq(adBookings.vendorId, vendors.id))
     .leftJoin(products, eq(adBookings.productId, products.id))
     .leftJoin(categories, eq(adBookings.categoryId, categories.id))
+    .leftJoin(mediaFiles, eq(adBookings.bannerMediaId, mediaFiles.id))
     .where(filter)
     /* Ends on the id, which is unique, for the reason every paged list here does. */
     .orderBy(desc(adBookings.id))
@@ -305,7 +470,7 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
     .offset(offsetFor(page, pageSize));
 
   return {
-    rows: rows.map(({ booking, vendorName, productHandle, departmentName, departmentNameAr, deducted }) => ({
+    rows: rows.map(({ booking, vendorName, productHandle, departmentName, departmentNameAr, deducted, mediaType, permitNumber, permitExpires }) => ({
       id: booking.id,
       vendorId: booking.vendorId,
       vendorName,
@@ -324,11 +489,85 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
       /* Stored negative; shown as what was taken. */
       deducted: fromFils(-toFils(deducted ?? "0")),
       cancellable: cancellable(booking, today),
+      banner: booking.slot === "home_banner" && booking.bannerStatus
+        ? {
+            status: booking.bannerStatus,
+            imageUrl: booking.bannerMediaId && mediaType ? mediaPath(booking.bannerMediaId, mediaType as StoredType) : null,
+            headline: booking.bannerHeadline ?? "",
+            headlineAr: booking.bannerHeadlineAr,
+            note: booking.bannerNote,
+            permit: permitState(permitNumber, permitExpires, now),
+          }
+        : null,
     })),
     total,
     page,
     pageSize,
   };
+}
+
+function permitState(number: string | null, expiresAt: Date | null, now: Date): BannerView["permit"] {
+  const verdict = discountAllowed({ number, expiresAt }, now);
+  return verdict.allowed ? "valid" : verdict.reason;
+}
+
+export type HomeBanner = {
+  id: number;
+  imageUrl: string;
+  /** In the reader's language when the store wrote one, else the English. */
+  headline: string;
+  productHandle: string;
+  storeName: string;
+};
+
+/**
+ * The home page's banners today: approved, running, first booked first, and
+ * only while the product they link to is in the shop — drawn through
+ * `listProductsByIds`, so a banner for an unpublished product or a suspended
+ * store is absent for the reason the product is. Nothing here is a house
+ * banner: with nothing approved, the carousel is not drawn.
+ */
+export async function bannersToday(options: { locale?: LocalePick } = {}, now = new Date()): Promise<HomeBanner[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const today = kuwaitToday(now);
+  const running = await db
+    .select({
+      id: adBookings.id,
+      productId: adBookings.productId,
+      mediaId: adBookings.bannerMediaId,
+      mediaType: mediaFiles.contentType,
+      headline: adBookings.bannerHeadline,
+      headlineAr: adBookings.bannerHeadlineAr,
+    })
+    .from(adBookings)
+    .innerJoin(mediaFiles, eq(adBookings.bannerMediaId, mediaFiles.id))
+    .where(and(
+      eq(adBookings.slot, "home_banner"),
+      eq(adBookings.bannerStatus, "approved"),
+      lte(adBookings.startsOn, today),
+      gte(adBookings.endsOn, today),
+      sql`(${adBookings.cancelledOn} is null or ${adBookings.cancelledOn} >= ${today})`,
+    ))
+    .orderBy(asc(adBookings.id))
+    .limit(AD_CAPACITY.home_banner);
+  if (running.length === 0) return [];
+
+  const locale = options.locale ?? "en";
+  const shown = await listProductsByIds([...new Set(running.flatMap(row => (row.productId === null ? [] : [row.productId])))], locale);
+  const byId = new Map(shown.map(product => [Number(product.id), product]));
+  return running.flatMap(row => {
+    const product = row.productId === null ? undefined : byId.get(row.productId);
+    if (!product || !row.mediaId || !row.mediaType) return [];
+    const arabic = locale === "ar" && Boolean(row.headlineAr);
+    return [{
+      id: row.id,
+      imageUrl: mediaPath(row.mediaId, row.mediaType as StoredType),
+      headline: (arabic ? row.headlineAr : row.headline) ?? "",
+      productHandle: product.handle,
+      storeName: product.vendor ?? "",
+    }];
+  });
 }
 
 /**
@@ -340,7 +579,7 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
  * product is still in that department.
  */
 export async function sponsoredToday(
-  slot: AdSlot,
+  slot: Exclude<AdSlot, "home_banner">,
   options: { departmentSlug?: string; locale?: LocalePick } = {},
   now = new Date(),
 ): Promise<Product[]> {

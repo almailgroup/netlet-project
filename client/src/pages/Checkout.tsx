@@ -9,6 +9,9 @@
  * with. When a card service is integrated (3.2.1) the methods come back as
  * real choices in the payment fieldset, not as logos.
  */
+import { AddressPartsFields } from "@/components/account/AddressPartsFields";
+import { addressLineOf } from "@shared/commerce/addresses";
+import { cleanParts, hasParts, missingParts, partsProblems, type AddressParts } from "@shared/commerce/kuwaitAddress";
 import { lineTitle, storeName } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -79,7 +82,9 @@ export default function Checkout() {
   const { isAuthenticated, user, loading: sessionLoading } = useAuth();
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const [, navigate] = useLocation();
-  const [form, setForm] = useState<{ contactName: string; contactPhone: string; addressLine: string; addressNotes: string; pin: Pin | null }>({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "", pin: null });
+  /* The address as its parts (`AddressPartsFields`); `addressLine` is kept for
+     a saved address from before the parts, which has only that. */
+  const [form, setForm] = useState<{ contactName: string; contactPhone: string; addressLine: string; addressNotes: string; pin: Pin | null; parts: AddressParts }>({ contactName: "", contactPhone: "", addressLine: "", addressNotes: "", pin: null, parts: {} });
   const [authOpen, setAuthOpen] = useState(false);
   const zoneLabel = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : null;
 
@@ -104,6 +109,7 @@ export default function Checkout() {
       addressLine: address.addressLine ?? "",
       addressNotes: address.addressNotes ?? "",
       pin: address.pin ?? null,
+      parts: address.parts ?? {},
     });
     if (address.governorate) setDeliveryZoneId(address.governorate);
     rememberAddress(address.id);
@@ -132,16 +138,17 @@ export default function Checkout() {
       toast.success(t("checkout.placed", { reference: reply.reference }));
       /* Saved after the order, never instead of it: a refusal here (an address
          the book's own rules reject) costs the shopper nothing they asked for. */
-      if (isAuthenticated && picked === "new" && saveForNext && form.addressLine.trim()) {
+      if (isAuthenticated && picked === "new" && saveForNext && addressLineOf(form)) {
         try {
           await addAddress.mutateAsync({
             label: zoneLabel ?? t("checkout.savedAddressLabel"),
             contactName: form.contactName.trim() || null,
             contactPhone: form.contactPhone.trim() || null,
             governorate: deliveryZoneId ?? null,
-            addressLine: form.addressLine.trim(),
+            addressLine: hasParts(form.parts) ? undefined : form.addressLine.trim(),
             addressNotes: form.addressNotes.trim() || null,
             pin: form.pin,
+            parts: cleanParts(form.parts),
           });
           void utils.customer.addresses.list.invalidate();
         } catch {
@@ -174,12 +181,14 @@ export default function Checkout() {
     : !items.length ? "checkout.needItems"
     : cart?.cod.available === false ? "checkout.needCod"
     : !deliveryZoneId ? "checkout.needGovernorate"
-    : !form.addressLine.trim() ? "checkout.needAddress"
+    : !addressLineOf(form) ? "checkout.needAddress"
+    : hasParts(form.parts) && missingParts(form.parts).length ? "address.needsParts"
+    : hasParts(form.parts) && partsProblems(form.parts).length ? partsProblems(form.parts)[0]
     : !phoneTyped ? "checkout.needPhone"
     : !normalisePhone(phoneTyped) ? "checkout.badPhone"
     : null;
   const canPlace = Boolean(
-    isAuthenticated && !settling && !blocker && cart?.id && items.length && cart?.cod.available && form.addressLine.trim(),
+    isAuthenticated && !settling && !blocker && cart?.id && items.length && cart?.cod.available && addressLineOf(form),
   );
 
   /*
@@ -274,7 +283,7 @@ export default function Checkout() {
 	                  <button
 	                    type="button"
 	                    aria-pressed={picked === "new"}
-	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "", pin: null }); }}
+	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "", pin: null, parts: {} }); }}
 	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
 	                  >
 	                    {t("checkout.newAddress")}
@@ -284,7 +293,15 @@ export default function Checkout() {
 	              </fieldset>
 	            ) : null}
 	            <CheckoutDeliveryZone />
-	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.address")} className="sm:col-span-2"><input value={form.addressLine} onChange={e => setForm(f => ({ ...f, addressLine: e.target.value }))} placeholder={t("checkout.addressPlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
+	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><AddressPartsFields
+                parts={form.parts}
+                governorate={deliveryZoneId}
+                onChange={parts => setForm(f => ({ ...f, parts }))}
+                onGovernorate={setDeliveryZoneId}
+                fieldClass={fieldClass}
+                labelClass="type-label text-[#0a285a]"
+                idPrefix="checkout-address"
+              />{/* A saved address from before the parts: kept until they are filled in. */}{!hasParts(form.parts) && form.addressLine.trim() ? <p className="text-[12px] leading-5 ink-muted sm:col-span-2">{t("address.legacyLine")} <bdi className="font-semibold text-[#0a285a]">{form.addressLine}</bdi></p> : null}<CheckoutField label={t("checkout.notes")} className="sm:col-span-2"><textarea value={form.addressNotes} onChange={e => setForm(f => ({ ...f, addressNotes: e.target.value }))} placeholder={t("checkout.notesPlaceholder")} className={`${fieldClass} min-h-22 py-3`} /></CheckoutField></div>
 	            {/* The pin (3.2.7): optional, and the typed address above is
 	                what the order needs. A saved address brings its pin with it. */}
 	            <div className="mt-4">
@@ -353,9 +370,10 @@ export default function Checkout() {
                 contactName: form.contactName.trim() || null,
                 contactPhone: form.contactPhone.trim() || null,
                 deliveryZoneId: deliveryZoneId ?? null,
-                addressLine: form.addressLine.trim(),
+                addressLine: hasParts(form.parts) ? undefined : form.addressLine.trim(),
                 addressNotes: form.addressNotes.trim() || null,
                 pin: form.pin,
+                addressParts: cleanParts(form.parts),
                 usePoints,
                 voucherCode: applied || undefined,
                 affiliateCode: via.data ? affiliateCode : null,

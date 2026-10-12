@@ -343,8 +343,9 @@ no `onChange` and options carrying no `value` attribute — five hard-coded name
 out of the dozens Kuwait has, beside a list that is honest. A shopper picked
 Salmiya and it went nowhere, and nothing downstream could have taken it either,
 since an order stores `delivery_zone_id`, `address_line` and `address_notes` and
-a saved address has the same three. The street and the district go in the
-address line, which is what the account page's own address form does.
+a saved address had the same three. The area came back later as a real field —
+see "A Kuwaiti address is its parts" — chosen from the
+governorate's own list, which is the honest version of that dropdown.
 
 **The bar carries area, saved, language, account and cart, in that order.**
 The two old headers drifted into that order at different times, which is what
@@ -1940,6 +1941,34 @@ succeeds, never instead of it, so a refusal from the book's own rules costs the
 shopper nothing they asked for. Signing in happens on the page and keeps the
 basket, because `CartContext` already adopts the guest bag on sign-in.
 
+## A Kuwaiti address is its parts
+
+`shared/commerce/kuwaitAddress.ts` is the rule, pure and shared;
+`AddressPartsFields` is the one set of boxes, drawn by the address book, the
+delivery dialog and checkout so the three cannot ask different things. Area,
+block, street, avenue, house, floor, apartment and the PACI number, in the
+order a driver reads them — one free-text line left every shopper to remember
+that order and spell it their own way. **Area, block, street and house are
+required** (`REQUIRED_PARTS`), being what a driver cannot find the door
+without; the PACI number is eight digits when given, and Arabic-Indic digits
+are folded on save.
+
+**The area is the governorate's own list** (`AREAS`, kept in code like the
+departments because it changes about once a decade), in the page's language;
+choosing one with no governorate chosen chooses its governorate too, since
+that is what prices delivery. An area not on the list is "Another area",
+typed. The stored value is the English name, a stable key; `areaLabel` draws
+it in Arabic.
+
+**`address_line` stays, composed from the parts** (`composeAddressLine`), so
+every page, export, dispatch sheet and order placed before the parts existed
+reads one line as it always did. The order freezes the parts beside it
+(`orders.delivery_address_parts`), because an order copies the address as it
+was given and never reads the book again. An address saved as a line before
+the parts existed keeps its line and says so in the form until it is
+re-entered. Placing the pin from a PACI number needs PACI's own lookup
+service — a provider account, not a column.
+
 ## The map pin
 
 `shared/commerce/geo.ts` is the rule, pure and shared. **A pin is optional and
@@ -2078,6 +2107,38 @@ what the shop would not. **The `ads` switch stops new bookings and nothing
 else** — unlike every other rail, the sponsored shelf is not gated on it,
 because hiding a placement that is still being charged for would strand an
 obligation.
+
+**The home banner is a third place, and the one that waits for NetLet.** A
+store books a 3:1 picture and a headline in each language, linked to one of
+its products (`slot = 'home_banner'`, three a day). It is NetLet's own front
+page in the store's words, so an administrator approves each one on
+`/admin/ads` — the store's discount permit is said beside it, since a headline
+promising a saving needs one and only a person can read whether it does — and
+the chat's contact filter reads the headline, a phone number on the front page
+being the off-platform sale at its biggest audience. **A day it did not run is
+never charged**: `feeAccrued` is zero while it waits, approving it after its
+booked start moves the start to the day of approval (`approvalStart`, and the
+total shrinks to match), and turning it down — which must say why — cancels it
+the day before it starts, so it costs nothing and frees its place. While it
+waits it holds its place and its full price against the store's earnings, so
+an approval is never refused for room spent elsewhere; once it can no longer be
+approved (`feeCeiling` with `today`) it stops holding either.
+
+The picture is cropped to 3:1 from the centre **in the seller's browser**
+(`prepareBanner`) and stored as an ordinary upload, so the preview is exactly
+what the home page draws; the server checks the shape again and that the
+upload is the store's own. The carousel (`HomeBanners`) **never moves on its
+own** — arrows and a swipe, a counter, for the reason the header and the cards
+stopped moving — says Sponsored and the store under every slide, and is
+absent when nothing approved runs today: there is no house banner standing in.
+`ads.sponsored` refuses `home_banner`; banners have their own read,
+`ads.banners`, drawn through `listProductsByIds` so one for a product the shop
+would not show is absent too.
+
+**Adding an enum value is the bootstrap's first `ALTER TYPE … ADD VALUE`.**
+`build-bootstrap.mjs` writes it `IF NOT EXISTS`. Postgres runs that inside the
+file's one transaction but refuses to *use* the value before the commit, so
+`bootstrap.test.ts` now fails on any later statement naming an added value.
 
 ## Payout runs
 
@@ -2403,6 +2464,42 @@ path or a model call, never while browsing. The client's `useFeature` answers
 the default while loading, because hiding every optional control from everybody for
 the length of a request, to spare the rare shop that turned one off, is the
 wrong way round — and the server refuses regardless.
+
+## Seller documents
+
+`shared/inventory/applicationDocuments.ts` is the rule, pure;
+`server/applicationDocuments.ts` the database half; the upload
+(`POST /api/applications/documents`) and the download
+(`GET /api/applications/documents/:id`) are plain routes in `app.ts`, because
+a file is not JSON. An applicant uploads each paper on `/sell` — trade
+licence, signatory's civil ID, IBAN letter, authorisation to sign, anything
+else — and an administrator accepts or turns down each on
+`/admin/applications`, with a reason the applicant reads.
+
+**Never `/media`.** Everything there is public under a random id and is a JPEG
+or WebP by design; a civil ID must not be public at any address and a licence
+is usually a PDF. `application_documents` holds the bytes, and the download
+answers only the applicant whose application it is and an administrator —
+anybody else, and a number that does not exist, get the same 404. It is always
+an attachment, with `nosniff` and a sandboxing CSP, so even a file that got
+past the checks cannot render as a page on NetLet's origin. **What a file is
+comes from its first bytes** (`sniffDocument`: `%PDF-`, JPEG, PNG, WebP) and
+must match the declared type; the name is reduced to letters, digits and
+`._-()` and given the extension its bytes earned, so `licence.pdf.exe` sent
+as a PDF downloads as a `.pdf`. At most 4 MB, because a Vercel function refuses
+a body much over 4.5, and an oversized body is answered with a key rather than
+the parser's bare 413.
+
+**Approval waits on every document.** `approveApplication` refuses while any
+kind's newest upload is undecided (`documentsPending`) — a store approved on a
+file nobody opened was not approved on it. **A replacement does not throw the
+old one away**: an accepted file stands until its replacement is accepted,
+and then the older ones of that kind are deleted in the same transaction,
+because a civil ID nobody needs is one more copy to lose. An applicant can
+remove a file nobody has accepted, and only while the application is still
+theirs to edit; once submitted, nothing under the reviewer changes. An
+application that gave links before uploads existed keeps them, and the form
+shows the link boxes only to it.
 
 ## Selling and shopping are one account
 
@@ -3090,10 +3187,13 @@ sidebar, the suggestions and the product page come from the dictionary, so
 page; a merchant's own type stays as typed.
 
 **An empty department is not in the navigation.** The header row, the phone's
-department sheet and the home tiles list only departments with something on
+department sheet and the footer list only departments with something on
 sale (`commerce.departmentCounts`, the `publishedCatalog` rule counted per
 department); everything shows until the counts arrive, and the department a
-shopper is standing on is always shown. Its page still answers its address
+shopper is standing on is always shown. **The home page's six cards are the
+exception, on the owner's word**: they followed the same rule for a while and
+the page opened on three tiles, and the cards are the shop's shape rather than
+a menu. Its page still answers its address
 with its name and an empty state, since a link already shared must not 404, and
 the "Offers and delivery" box is not drawn over nothing. A department page with
 no search or filter is indexable (`departmentMeta`); a search or a filtered view

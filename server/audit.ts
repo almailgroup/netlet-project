@@ -60,6 +60,9 @@ export const AUDIT_ACTIONS = [
   /* A placement booked, or stopped (3.3.15): money the store commits to spend. */
   "ads.book",
   "ads.cancel",
+  /* NetLet's answer on a home banner: what runs on its own front page. */
+  "ads.bannerApprove",
+  "ads.bannerReject",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

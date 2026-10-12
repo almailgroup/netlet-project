@@ -1,10 +1,14 @@
-# Proposed migrations — website review, October 2026
+# Migrations from the website review, October 2026
 
-**Not applied.** None of this is in `drizzle/`, so no test, bootstrap or deploy runs it. Each part
-waits on the owner's approval. Once one is approved it becomes a numbered file in
-`drizzle/`, `node scripts/build-bootstrap.mjs` regenerates `docs/supabase-bootstrap.sql`, and
-the bootstrap file has to be **run again in the Supabase SQL editor** before the deploy that
-needs it.
+**Approved and applied.** The owner approved all three on 12 October 2026. They are
+`drizzle/0057_structured_address.sql`, `drizzle/0058_home_banners.sql` and
+`drizzle/0059_application_documents.sql`, and `docs/supabase-bootstrap.sql` carries them.
+**Run `docs/supabase-bootstrap.sql` again in the Supabase SQL editor before deploying the code
+that uses them**, and check for its "bootstrap complete" row at the end; `docs/schema-audit.sql`
+then returns no rows when nothing is missing.
+
+This file keeps the proposal as it was shown, for the record; where what was built differs, a
+note under each part says so. `CLAUDE.md` describes the result.
 
 All three are additive: new nullable columns, a new table, a new enum value. Nothing existing
 is renamed, dropped or rewritten, so each one is safe to run before the code that uses it ships.
@@ -48,6 +52,9 @@ ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "delivery_address_parts" jsonb;
 **Not included:** placing the map pin from a PACI number. That needs PACI's (Kuwait Finder)
 lookup service — a provider account, not a column. Until then the pin stays the shopper's own.
 
+**As built:** exactly this SQL. Area, block, street and house are required when an address is
+given as parts; an address saved as one line before keeps its line.
+
 ---
 
 ## B. Paid home-page banners (review item 20)
@@ -65,8 +72,8 @@ offer.
 
 ```sql
 -- 0058_home_banners.sql
--- A new enum value cannot be used in the transaction that adds it; the bootstrap
--- generator wraps this one in its own DO block for that reason.
+-- A new enum value cannot be used in the transaction that adds it; nothing in
+-- the bootstrap uses it, and a test now fails if anything ever does.
 ALTER TYPE "ad_slot" ADD VALUE IF NOT EXISTS 'home_banner';
 
 ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_media_id" varchar(64)
@@ -85,6 +92,12 @@ ALTER TABLE "ad_bookings" ADD COLUMN IF NOT EXISTS "banner_reviewed_at" timestam
 reason the header and the cards stopped moving: motion in the corner of the eye while somebody
 reads. With no approved banner booked, nothing is drawn; there is no house banner pretending to
 be one.
+
+**As built:** three banners a day at KWD 25 a day. A day a banner did not run is never charged:
+waiting accrues nothing, approval after the booked start moves the start to the approval day,
+and a rejection (which must say why) cancels it before its first day. The permit is shown to the
+reviewer beside the headline rather than decided by code, since only a person can read whether
+a headline promises a saving; the chat's contact filter reads the headline too.
 
 ---
 
@@ -130,6 +143,9 @@ CREATE INDEX IF NOT EXISTS "application_documents_application_idx"
 ```
 
 The existing `licence_doc_url` and `identity_doc_url` stay, so applications already submitted
-with links keep them. **An alternative** to `bytea` is a private Supabase Storage bucket: the
+with links keep them.
+
+**As built:** exactly this table. An application cannot be approved while any document is
+undecided, and accepting a replacement deletes the older files of its kind. **An alternative** to `bytea` is a private Supabase Storage bucket: the
 database stays small, at the cost of a second service to configure and a signed-URL step. For
 the volume of seller applications, Postgres is the simpler first step.

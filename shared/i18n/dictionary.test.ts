@@ -39,7 +39,7 @@ describe("dictionary completeness", () => {
       // These name the `https` scheme, which is what a seller has to type
       // into the box — a literal, like the CSV above, rather than English
       // prose somebody forgot to translate.
-      "sell.papersNote", "application.insecureDocument", "claims.badEvidence",
+      "application.insecureDocument", "claims.badEvidence",
       // This one names the route `/admin/people`, which is a URL an
       // administrator types into the address bar. A translated path would point
       // at a page that does not exist — the same reason `https` is left alone.
@@ -53,6 +53,9 @@ describe("dictionary completeness", () => {
       // An example order number, in the format the confirmation prints and
       // the lookup box expects — a literal, like `https`.
       "help.lookupNote",
+      // The file formats an application document may be — PDF, JPEG, PNG,
+      // WebP — named as the phone's file picker names them: the CSV reason.
+      "documents.note", "documents.notAccepted", "documents.tooLarge", "documents.wrongType",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

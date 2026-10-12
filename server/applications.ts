@@ -29,6 +29,8 @@ import { getDb } from "./db.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../shared/inventory/commission.js";
+import { documentsPending } from "../shared/inventory/applicationDocuments.js";
+import { documentFactsFor, pendingCounts } from "./applicationDocuments.js";
 
 /** Every refusal is a key the router turns into a message, never a sentence. */
 export class ApplicationError extends Error {
@@ -153,7 +155,12 @@ export async function submitApplication(userId: number): Promise<Row> {
 
 /* --------------------------------------------------------------- review --- */
 
-export type ApplicationRow = Row & { applicantEmail: string; applicantName: string | null };
+export type ApplicationRow = Row & {
+  applicantEmail: string;
+  applicantName: string | null;
+  /** Uploaded documents still waiting on a decision, which approving waits on too. */
+  documentsWaiting: number;
+};
 
 /** The queue. Admin-only, and the guard is beside the query. */
 export async function listApplications(
@@ -190,8 +197,14 @@ export async function listApplications(
     .limit(pageSize)
     .offset(offsetFor(page, pageSize));
 
+  const waiting = await pendingCounts(actor, rows.map(row => row.application.id));
   return {
-    rows: rows.map(row => ({ ...row.application, applicantEmail: row.applicantEmail, applicantName: row.applicantName })),
+    rows: rows.map(row => ({
+      ...row.application,
+      applicantEmail: row.applicantEmail,
+      applicantName: row.applicantName,
+      documentsWaiting: waiting.get(row.application.id) ?? 0,
+    })),
     total,
     page,
     pageSize,
@@ -236,6 +249,8 @@ export async function approveApplication(
 
   const verdict = readyToApprove(toShared(row));
   if (!verdict.ok) throw new ApplicationError("application.incomplete");
+  /* A document nobody has looked at is not a document the store was approved on. */
+  if (documentsPending(await documentFactsFor(applicationId))) throw new ApplicationError("application.documentsPending");
 
   /*
    * One transaction, and the application is claimed first — the update whose

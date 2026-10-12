@@ -82,6 +82,8 @@ import {
   saveApplication,
   submitApplication,
 } from "../applications.js";
+import { DocumentRefused, deleteDocument, documentsFor, myDocuments, reviewDocument } from "../applicationDocuments.js";
+import { DOCUMENT_NOTE_MAX } from "../../shared/inventory/applicationDocuments.js";
 import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { deleteProduct, deletionCheck } from "../productDeletion.js";
@@ -254,6 +256,12 @@ async function applicationGuard<T>(work: () => Promise<T>): Promise<T> {
     if (error instanceof ApplicationError) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
     }
+    if (error instanceof DocumentRefused) {
+      throw new TRPCError({
+        code: error.reason === "documents.notFound" ? "NOT_FOUND" : error.reason === "documents.notWaiting" || error.reason === "documents.locked" ? "CONFLICT" : "BAD_REQUEST",
+        message: error.reason,
+      });
+    }
     throw error;
   }
 }
@@ -355,6 +363,28 @@ export const inventoryRouter = router({
       .mutation(({ ctx, input }) => applicationGuard(() => saveApplication(ctx.user.id, input))),
 
     submit: protectedProcedure.mutation(({ ctx }) => applicationGuard(() => submitApplication(ctx.user.id))),
+
+    /*
+     * Uploaded documents (3.3.1). The upload and the download are plain
+     * routes in `_core/app.ts`, because a file is not JSON; what is here is
+     * everything about them that is: the lists, the decision, the removal.
+     */
+    myDocuments: protectedProcedure.query(({ ctx }) => myDocuments(ctx.user.id)),
+
+    removeDocument: protectedProcedure
+      .input(z.object({ id: rowId }))
+      .mutation(({ ctx, input }) => applicationGuard(() => deleteDocument(ctx.user.id, input.id))),
+
+    documents: protectedProcedure
+      .input(z.object({ applicationId: rowId }))
+      .query(async ({ ctx, input }) => guard(async () => documentsFor(await resolveActor(ctx.user), input.applicationId))),
+
+    reviewDocument: protectedProcedure
+      .input(z.object({ id: rowId, decision: z.enum(["accept", "reject"]), note: z.string().max(DOCUMENT_NOTE_MAX * 2).nullish() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => applicationGuard(() => reviewDocument(actor, input)));
+      }),
 
     /* ------------------------------------------------------------ review --- */
 

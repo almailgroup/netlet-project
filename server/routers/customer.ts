@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pinInput, rowId } from "../_core/schemas.js";
+import { addressPartsInput, pinInput, rowId } from "../_core/schemas.js";
 import { getCustomerProfile, upsertCustomerProfile } from "../profile.js";
 import { claimCart } from "../catalog.js";
 import {
@@ -40,11 +40,14 @@ const addressInput = z.object({
   contactName: z.string().max(160).nullable().optional(),
   contactPhone: z.string().max(40).nullable().optional(),
   governorate: zoneIdSchema.nullable().optional(),
-  addressLine: z.string().min(1).max(MAX_LINE),
+  /* Optional when the parts are given: the line is then composed from them.
+     Whether there is a line at all is `addressProblems`'s answer. */
+  addressLine: z.string().max(MAX_LINE).optional(),
   addressNotes: z.string().max(MAX_NOTES).nullable().optional(),
   /* Whether it is in Kuwait is `addressProblems`'s answer, so the form and the
      API refuse the same pin. */
   pin: pinInput,
+  parts: addressPartsInput,
 });
 
 export const customerRouter = router({
