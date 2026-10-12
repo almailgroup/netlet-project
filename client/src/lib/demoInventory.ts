@@ -88,6 +88,7 @@ export const demoOverview = {
   lowStock: 0,
   vendorsPending: 0,
   vendorsApproved: 0,
+  zeroCommission: [] as { id: number; name: string }[],
 };
 
 export const demoLowStock = demoInventoryProducts

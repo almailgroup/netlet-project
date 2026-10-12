@@ -41,14 +41,14 @@ import { TrackParcels } from "@/components/account/TrackParcels";
  * tells somebody with any degree of colour blindness nothing at all, and tells
  * a screen reader less than that. Every pill below carries its own label.
  */
-const PAYMENT: Record<string, { label: MessageKey; className: string }> = {
+export const PAYMENT: Record<string, { label: MessageKey; className: string }> = {
   pending_payment: { label: "orders.statusPendingPayment", className: "bg-[#fff0ab] text-[#705523]" },
   paid: { label: "orders.statusPaid", className: "bg-[#d8ead8] text-[#2f5d33]" },
   cancelled: { label: "orders.statusCancelled", className: "bg-[#e7edf5] text-[#536b8c]" },
   refunded: { label: "orders.statusRefunded", className: "bg-[#e7edf5] text-[#536b8c]" },
 };
 
-const FULFILMENT: Record<string, { label: MessageKey; className: string }> = {
+export const FULFILMENT: Record<string, { label: MessageKey; className: string }> = {
   pending: { label: "orders.linePending", className: "bg-[#e7edf5] text-[#536b8c]" },
   preparing: { label: "orders.linePreparing", className: "bg-[#fff0ab] text-[#705523]" },
   shipped: { label: "orders.lineShipped", className: "bg-[#dbe7fb] text-[#274b86]" },
@@ -57,7 +57,7 @@ const FULFILMENT: Record<string, { label: MessageKey; className: string }> = {
   returned: { label: "orders.lineReturned", className: "bg-[#e7edf5] text-[#536b8c]" },
 };
 
-function Pill({ label, className }: { label: string; className: string }) {
+export function Pill({ label, className }: { label: string; className: string }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-extrabold ${className}`}>{label}</span>;
 }
 

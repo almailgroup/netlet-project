@@ -1835,6 +1835,22 @@ button shows only on an empty box, so a draft never overwrites what somebody
 typed, and `StaffThread` is keyed by conversation — it was not, so text typed
 for one shopper stayed in the box when the next was opened.
 
+**`/help` is the public front of all of it.** Help was a message form inside
+the account, so somebody signed out — or who only wanted to know how paying
+works — had nowhere to go. It finds an order by its number and the email it was
+placed with (`help.lookupOrder`): whoever holds both holds the confirmation, so
+they get the order's state and each line's and nothing else — no address,
+phone, name or seller terms — and a miss is "not found" whichever half was
+wrong, throttled by address on misses with the voucher box's rule. The answers
+are `HELP_GROUPS` in `shared/commerce/helpArticles.ts`, message keys whose
+facts are the shop's own rules. **The help assistant knows what the page
+knows**: it is handed those answers (`helpBrief`) and the question, never an
+account or an order, every question counts against a per-address ceiling
+before the call, and a question carrying a phone number, email or link is not
+sent at all — `contactFindings` decides, on the page and on the server — because
+the shopper's details have no business at a third party. Absent with no key or
+with `ai` off, like the product assistant.
+
 ## After the door: ratings and damage
 
 `server/parcelCare.ts` is both, because both start from the same thing — a
@@ -2689,6 +2705,35 @@ The server's own message is shown deliberately: "column contact_email does not
 exist" tells an administrator to run the migration, and "something went wrong"
 does not.
 
+**The overview's business numbers are the frozen lines**
+(`shared/commerce/salesSummary.ts`, `server/salesSummary.ts`): sales, orders,
+average order and returns requested for today, seven days and thirty, a bar
+for each Kuwaiti day of the last thirty, and what sold most. A cancelled line,
+a cancelled order and an exchange's zero-priced replacement are not sales;
+returns are counted beside the sales, never netted in, because the finance
+panel is where gross, refunded and net are three figures. Scoped like payouts
+and gated on `payouts.view` — the whole shop for an administrator, a store's
+own lines for its manager or owner, nothing for staff. The chart runs in the
+page's direction, is one image to a screen reader named by its total and best
+day, with the days in a table only a screen reader is given. **A live store
+charging 0% commission is a tile in "Waiting on you"**: zero is a real
+instruction, but far more often a rate nobody set, and it costs every sale
+until somebody looks.
+
+**The products list filters on the server and acts in bulk.** Store,
+department and stock level (sold out; at or under its own threshold) are query
+parameters like the search, for the reason the search is. Tick boxes select
+what is on screen — a new page or filter clears them — and `products.bulk`
+publishes, archives, drafts, reprices by a percentage or receives stock across
+them by running the single-product operation on each, so every guard still
+applies and the answer names each product refused and why. **Bulk repricing
+writes the price and nothing else** (`repriceProduct`): `saveVariant` writes a
+variant whole and takes an absent pre-order allowance or unit as its default,
+so a price change through it would have emptied every pre-order and turned
+every bag of tomatoes back into "each". The dialog is `ConfirmDialog`, which
+now takes a field under its sentence and `confirmDisabled` while that field
+holds what the server would refuse.
+
 `/admin` opens on counts rather than lists, because the first question on
 arriving is "is anything waiting for me". "Waiting on you" carries only what
 somebody must act on and hides a zero; standing totals sit below it. Every
@@ -3205,6 +3250,13 @@ photo is not stuck showing the fallback for a picture that is fine. The
 fallback's surface is the caller's to choose — the department tiles carry a
 colour each, and a neutral box painted over it costs them the only thing that
 distinguishes them.
+
+**A product photo is named after the product.** The card's photo sits inside a
+link hidden from a screen reader (the title is the one link it hears), so its
+empty `alt` was deliberate — but an empty alt is what a checker counts as
+missing and what image search reads as nothing, so it carries the photo's own
+description or the product's name now. The department art stays `alt=""`:
+decoration beside its own label.
 
 **Every `<img>` says how it loads**, and `markup.test.ts` fails on one that does
 not. There was a single `loading="lazy"` in the whole storefront, so a category

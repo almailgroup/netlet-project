@@ -18,6 +18,15 @@
  * Below `md` the same rows are a list of cards. Seven columns do not fit a
  * phone, and a table that scrolls sideways hides the price and the delete
  * behind a drag that nobody discovers.
+ *
+ * **Filters are the server's**: department and stock level go in the query,
+ * like the search, because a filter over one page reports a quiet shelf for a
+ * store whose empty products are on page four. **A tick box beside each row
+ * selects it for a bulk action** — publish, archive, back to draft, a price
+ * change by percentage, stock received — and each product is then changed by
+ * its own single-product rule, so the answer lists the ones refused and why
+ * (`products.bulk`). The selection is the page in view, cleared when the page
+ * or a filter changes, so nothing is acted on that is not on screen.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
@@ -32,8 +41,14 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { ImageOff, PackagePlus, Search, Trash2, Upload } from "lucide-react";
-import { useState } from "react";
+import { Archive, FilePen, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Trash2, Upload, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Notice } from "@/components/admin/ui";
+import { categoryMessageKey } from "@/content/homeLayout";
+import { isMessageKey } from "@shared/i18n/dictionary";
+import { percentProblem, restockProblem, scalePrice, type BulkAction } from "@shared/inventory/productBulk";
 import { Link, useLocation, useSearch } from "wouter";
 import { Select } from "@/components/ui/Select";
 
@@ -54,6 +69,14 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const [deleting, setDeleting] = useState<{ id: number; title: string } | null>(null);
+  const [department, setDepartment] = useState("");
+  const [stockFilter, setStockFilter] = useState<"" | "out" | "low">("");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulk, setBulk] = useState<BulkAction | null>(null);
+  const [percent, setPercent] = useState("10");
+  const [amount, setAmount] = useState("1");
+  const [refused, setRefused] = useState<{ id: number; title: string; reason: string }[]>([]);
+  const categories = trpc.inventory.categories.useQuery();
 
   /*
    * The search term goes to the server, so stepping to page three and typing
@@ -71,9 +94,31 @@ function ProductTable({ actor }: { actor: Actor }) {
   const stores = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: actor.kind === "admin" });
   const storeId = Number(storeFilter) || undefined;
   const products = trpc.inventory.products.list.useQuery(
-    { page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId },
+    {
+      page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId,
+      categoryId: Number(department) || undefined, stock: stockFilter || undefined,
+    },
     { placeholderData: previous => previous },
   );
+  /* What is selected is what is on screen: a new page or filter starts again. */
+  useEffect(() => setSelected(new Set()), [page, term, filter, storeId, department, stockFilter]);
+  const utils = trpc.useUtils();
+  const runBulk = trpc.inventory.products.bulk.useMutation({
+    onSuccess: (result, input) => {
+      const titles = new Map((products.data?.rows ?? []).map(row => [row.id, row.title]));
+      setRefused(result.refused.map(entry => ({
+        id: entry.id,
+        title: titles.get(entry.id) ?? `#${entry.id}`,
+        reason: isMessageKey(entry.reason) ? t(entry.reason) : t("admin.bulkRefused"),
+      })));
+      if (result.done) toast.success(t("admin.bulkDone", { count: result.done }));
+      setSelected(new Set(result.refused.map(entry => entry.id).filter(id => input.ids.includes(id))));
+      setBulk(null);
+      void utils.inventory.products.list.invalidate();
+      void utils.inventory.overview.invalidate();
+    },
+    onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : error.message),
+  });
   const chooseStore = (value: string) => {
     setPage(1);
     navigate(value ? `/admin/products?vendor=${value}` : "/admin/products", { replace: true });
@@ -81,7 +126,29 @@ function ProductTable({ actor }: { actor: Actor }) {
 
   const rows = products.data?.rows ?? [];
   const ownVendor = actor.kind === "vendor" ? actor.vendorId : undefined;
-  const showVendor = new Set(rows.map(row => row.vendorId)).size > 1;
+  /* Always for an administrator, who reads every store's shelf; a seller's list is all theirs. */
+  const showVendor = actor.kind === "admin" || new Set(rows.map(row => row.vendorId)).size > 1;
+  const mayBulk = can(actor, "product.edit", ownVendor);
+  const departmentName = (name: string | null) => {
+    if (!name) return "—";
+    const key = categoryMessageKey(name);
+    return key ? t(key) : name;
+  };
+  const toggle = (id: number) => setSelected(current => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allOnPage = rows.length > 0 && rows.every(row => selected.has(row.id));
+  const percentValue = Number(percent.replace("−", "-"));
+  const amountValue = Number(amount);
+  const fieldProblem = bulk === "reprice" ? percentProblem(percentValue) : bulk === "restock" ? restockProblem(amountValue) : null;
+  const confirmBulk = () => runBulk.mutate({
+    ids: Array.from(selected),
+    action: bulk!,
+    ...(bulk === "reprice" ? { percent: percentValue } : {}),
+    ...(bulk === "restock" ? { amount: amountValue } : {}),
+  });
   const mayCreate = can(actor, "product.create", ownVendor);
 
   const summarise = (row: (typeof rows)[number]) => {
@@ -131,6 +198,25 @@ function ProductTable({ actor }: { actor: Actor }) {
             {(stores.data?.rows ?? []).map(store => <option key={store.id} value={store.id}>{store.name}</option>)}
           </Select>
         ) : null}
+        <Select
+          value={department}
+          onChange={event => { setDepartment(event.target.value); setPage(1); }}
+          aria-label={t("admin.filterDepartment")}
+          className={`${fieldClass} lg:w-48`}
+        >
+          <option value="">{t("nav.allDepartments")}</option>
+          {(categories.data ?? []).map(category => <option key={category.id} value={category.id}>{departmentName(category.name)}</option>)}
+        </Select>
+        <Select
+          value={stockFilter}
+          onChange={event => { setStockFilter(event.target.value as "" | "out" | "low"); setPage(1); }}
+          aria-label={t("admin.filterStock")}
+          className={`${fieldClass} lg:w-40`}
+        >
+          <option value="">{t("admin.stockAny")}</option>
+          <option value="low">{t("admin.stockLow")}</option>
+          <option value="out">{t("admin.stockOut")}</option>
+        </Select>
         {/* A segmented control rather than a dropdown: five states read at a
             glance, and the one in force is visible without opening anything. */}
         <div role="group" aria-label={t("admin.filterStatus")} className="hide-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1">
@@ -147,6 +233,29 @@ function ProductTable({ actor }: { actor: Actor }) {
           ))}
         </div>
       </div>
+
+      {mayBulk && selected.size > 0 ? (
+        <div role="region" aria-label={t("admin.bulkActions")} className="sticky top-2 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-[#cfd9e6] bg-white p-3 shadow-sm">
+          <p className="me-auto text-[14px] font-bold text-[#0a285a]">{t("admin.selectedCount", { count: selected.size })}</p>
+          <button type="button" onClick={() => setBulk("publish")} className={buttonClass.secondary}><Send className="size-4" aria-hidden />{t("admin.publish")}</button>
+          <button type="button" onClick={() => setBulk("archive")} className={buttonClass.secondary}><Archive className="size-4" aria-hidden />{t("admin.bulkArchive")}</button>
+          <button type="button" onClick={() => setBulk("draft")} className={buttonClass.secondary}><FilePen className="size-4" aria-hidden />{t("admin.bulkDraft")}</button>
+          <button type="button" onClick={() => setBulk("reprice")} className={buttonClass.secondary}><Percent className="size-4" aria-hidden />{t("admin.bulkReprice")}</button>
+          {can(actor, "stock.adjust", ownVendor) ? (
+            <button type="button" onClick={() => setBulk("restock")} className={buttonClass.secondary}><PackageCheck className="size-4" aria-hidden />{t("admin.bulkRestock")}</button>
+          ) : null}
+          <button type="button" onClick={() => setSelected(new Set())} aria-label={t("admin.bulkClear")} title={t("admin.bulkClear")} className="grid size-10 place-items-center rounded-lg text-[#536b8c] hover:bg-[#f0f2f5]"><X className="size-4" aria-hidden /></button>
+        </div>
+      ) : null}
+
+      {refused.length ? (
+        <Notice tone="warning" className="mt-4" action={<button type="button" onClick={() => setRefused([])} aria-label={t("admin.bulkClear")} className="grid size-8 place-items-center rounded-lg hover:bg-[#0a285a]/[.06]"><X className="size-4" aria-hidden /></button>}>
+          <p className="font-bold">{t("admin.bulkRefusedTitle", { count: refused.length })}</p>
+          <ul className="mt-1 space-y-0.5">
+            {refused.map(entry => <li key={entry.id}><bdi className="font-semibold">{entry.title}</bdi>: {entry.reason}</li>)}
+          </ul>
+        </Notice>
+      ) : null}
 
       <div className="mt-4">
         {products.isLoading ? (
@@ -175,6 +284,7 @@ function ProductTable({ actor }: { actor: Actor }) {
                 const { stock, cheapest, cover, mayDelete } = summarise(row);
                 return (
                   <li key={row.id} className="flex items-center gap-3 rounded-2xl border border-[#e1e7ef] bg-white p-3">
+                    {mayBulk ? <PickBox checked={selected.has(row.id)} onChange={() => toggle(row.id)} label={t("admin.selectProduct", { title: row.title })} /> : null}
                     <div className="size-14 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
                       <Thumb src={cover} alt="" className="size-full object-cover" icon={<ImageOff className="size-4 text-[#536b8c]" />} />
                     </div>
@@ -189,7 +299,9 @@ function ProductTable({ actor }: { actor: Actor }) {
                           {stock === 0 ? t("admin.outOfStock") : `${t("admin.columnStock")}: ${stock}`}
                         </span>
                       </div>
-                      {showVendor && row.vendorName ? <p dir="auto" className="mt-0.5 truncate text-[12px] ink-muted">{row.vendorName}</p> : null}
+                      <p className="mt-0.5 truncate text-[12px] ink-muted">
+                        {showVendor && row.vendorName ? <><bdi>{row.vendorName}</bdi> · </> : null}{departmentName(row.categoryName)}
+                      </p>
                     </div>
                     {mayDelete ? (
                       <DeleteButton title={row.title} onClick={() => setDeleting({ id: row.id, title: row.title })} />
@@ -204,8 +316,18 @@ function ProductTable({ actor }: { actor: Actor }) {
               <table className="w-full text-start text-[14px]">
                 <thead className="border-b border-[#e1e7ef] bg-[#fafbfd] text-[13px] text-[#536b8c]">
                   <tr>
+                    {mayBulk ? (
+                      <th scope="col" className="w-12 ps-4 py-3">
+                        <PickBox
+                          checked={allOnPage}
+                          onChange={() => setSelected(allOnPage ? new Set() : new Set(rows.map(row => row.id)))}
+                          label={t("admin.selectPage")}
+                        />
+                      </th>
+                    ) : null}
                     <th scope="col" className="px-4 py-3 text-start font-semibold">{t("admin.columnProduct")}</th>
                     {showVendor ? <th scope="col" className="px-4 py-3 text-start font-semibold">{t("admin.columnVendor")}</th> : null}
+                    <th scope="col" className="px-4 py-3 text-start font-semibold">{t("admin.columnCategory")}</th>
                     <th scope="col" className="px-4 py-3 text-start font-semibold">{t("admin.columnStatus")}</th>
                     <th scope="col" className="px-4 py-3 text-end font-semibold">{t("admin.columnStock")}</th>
                     <th scope="col" className="px-4 py-3 text-end font-semibold">{t("admin.columnPrice")}</th>
@@ -224,8 +346,13 @@ function ProductTable({ actor }: { actor: Actor }) {
                           if ((event.target as HTMLElement).closest("a, button")) return;
                           navigate(`/admin/products/${row.id}`);
                         }}
-                        className="cursor-pointer border-b border-[#f0f2f6] last:border-b-0 hover:bg-[#0a285a]/[.06]"
+                        className={`cursor-pointer border-b border-[#f0f2f6] last:border-b-0 hover:bg-[#0a285a]/[.06] ${selected.has(row.id) ? "bg-[#0a285a]/[.04]" : ""}`}
                       >
+                        {mayBulk ? (
+                          <td className="w-12 ps-4 py-3">
+                            <PickBox checked={selected.has(row.id)} onChange={() => toggle(row.id)} label={t("admin.selectProduct", { title: row.title })} />
+                          </td>
+                        ) : null}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="size-11 shrink-0 overflow-hidden rounded-lg bg-[#f4f6f9]">
@@ -252,6 +379,7 @@ function ProductTable({ actor }: { actor: Actor }) {
                             ) : <span dir="auto" className="text-[#536b8c]">{row.vendorName ?? `#${row.vendorId}`}</span>}
                           </td>
                         ) : null}
+                        <td className="px-4 py-3 text-[#536b8c]">{departmentName(row.categoryName)}</td>
                         <td className="px-4 py-3"><StatusPill status={row.status} /></td>
                         <td className="px-4 py-3 text-end tabular-nums">
                           {stock === 0
@@ -278,7 +406,51 @@ function ProductTable({ actor }: { actor: Actor }) {
         onClose={() => setDeleting(null)}
         onDeleted={() => setDeleting(null)}
       />
+
+      {/* One dialog for every bulk act: it says how many, and asks for the
+          one figure a price change or a stock receipt needs. */}
+      <ConfirmDialog
+        open={bulk !== null}
+        title={
+          bulk === "publish" ? t("admin.bulkPublishTitle", { count: selected.size })
+            : bulk === "archive" ? t("admin.bulkArchiveTitle", { count: selected.size })
+            : bulk === "draft" ? t("admin.bulkDraftTitle", { count: selected.size })
+            : bulk === "reprice" ? t("admin.bulkRepriceTitle", { count: selected.size })
+            : t("admin.bulkRestockTitle", { count: selected.size })
+        }
+        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : t("admin.bulkStatusBody")}
+        confirmLabel={bulk === "publish" ? t("admin.publish") : bulk === "archive" ? t("admin.bulkArchive") : bulk === "draft" ? t("admin.bulkDraft") : t("admin.bulkApply")}
+        pending={runBulk.isPending}
+        confirmDisabled={fieldProblem !== null}
+        onClose={() => setBulk(null)}
+        onConfirm={confirmBulk}
+      >
+        {bulk === "reprice" ? (
+          <label className="block">
+            <span className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkPercent")}</span>
+            <input dir="ltr" inputMode="decimal" value={percent} onChange={event => setPercent(event.target.value)} aria-invalid={fieldProblem !== null} aria-describedby="bulk-percent-hint" className={`${fieldClass} mt-1.5`} />
+            <span id="bulk-percent-hint" className="mt-1.5 block text-[12px] leading-5 ink-muted">
+              {fieldProblem ? t(fieldProblem) : t("admin.bulkPercentHint", { example: money({ amount: scalePrice("10.000", percentValue), currencyCode: "KWD" }) })}
+            </span>
+          </label>
+        ) : bulk === "restock" ? (
+          <label className="block">
+            <span className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkAmount")}</span>
+            <input dir="ltr" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} aria-invalid={fieldProblem !== null} aria-describedby="bulk-amount-hint" className={`${fieldClass} mt-1.5`} />
+            {fieldProblem ? <span id="bulk-amount-hint" className="mt-1.5 block text-[12px] leading-5 text-[#8c2f22]">{t(fieldProblem)}</span> : null}
+          </label>
+        ) : null}
+      </ConfirmDialog>
     </>
+  );
+}
+
+/** A tick box named by what it selects, at a size a thumb can hit. */
+function PickBox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <label className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-lg" onClick={event => event.stopPropagation()}>
+      <input type="checkbox" checked={checked} onChange={onChange} aria-label={label} className="size-[18px] cursor-pointer accent-[#0a285a]" />
+    </label>
   );
 }
 

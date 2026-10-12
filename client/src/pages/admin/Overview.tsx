@@ -19,6 +19,7 @@ import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import type { HealthDetailKey } from "@shared/inventory/vendorHealth";
 import { PageHeader, SectionHeading } from "@/components/admin/ui";
+import { SalesPanel } from "@/components/admin/SalesPanel";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -127,6 +128,15 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.applications" as const, value: waitingApplications.data ?? 0, href: "/admin/applications", tone: "urgent" as const },
     ...(mayReview ? [{ label: "admin.countPendingReview" as const, value: data.pendingReview, href: "/admin/review", tone: "urgent" as const }] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),
+    /* A live store charging nothing: allowed, since zero is an instruction,
+       but usually a rate nobody set — and it costs every sale until noticed.
+       One store goes straight to its page, where the rate is set. */
+    ...(maySeeVendors ? [{
+      label: "admin.zeroCommissionTile" as const,
+      value: data.zeroCommission.length,
+      href: data.zeroCommission.length === 1 ? `/admin/vendors/${data.zeroCommission[0].id}` : "/admin/vendors",
+      tone: "urgent" as const,
+    }] : []),
     { label: "admin.countOutOfStock" as const, value: data.outOfStock, href: "/admin/stock", tone: "urgent" as const },
     { label: "admin.countLowStock" as const, value: data.lowStock, href: "/admin/stock", tone: "urgent" as const },
     /* A shopper waiting on a price is work, and it runs out: a request nobody
@@ -168,6 +178,8 @@ function Overview({ actor }: { actor: Actor }) {
           </div>
         )}
       </section>
+
+      {can(actor, "payouts.view", vendorScope) ? <SalesPanel /> : null}
 
       {health.data ? <HealthPanel health={health.data} /> : null}
 

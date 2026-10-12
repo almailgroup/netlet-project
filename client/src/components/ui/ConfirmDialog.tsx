@@ -24,6 +24,8 @@ export function ConfirmDialog({
   tone = "normal",
   pending = false,
   icon,
+  confirmDisabled = false,
+  children,
   onConfirm,
   onClose,
 }: {
@@ -41,6 +43,10 @@ export function ConfirmDialog({
   tone?: "normal" | "danger";
   pending?: boolean;
   icon?: ReactNode;
+  /** True while a field below the sentence holds something the act would refuse. */
+  confirmDisabled?: boolean;
+  /** A field the act needs — an amount, a percentage — drawn under the sentence. */
+  children?: ReactNode;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -80,12 +86,13 @@ export function ConfirmDialog({
 
         <h2 id={titleId} className="mt-4 text-lg font-extrabold text-[#0a285a]">{title}</h2>
         <p className="type-body mt-2 text-sm leading-6 text-[#536b8c]">{body}</p>
+        {children ? <div className="mt-4">{children}</div> : null}
 
         <div className="mt-6 flex flex-wrap gap-2.5">
           <button
             type="button"
             onClick={onConfirm}
-            disabled={pending}
+            disabled={pending || confirmDisabled}
             className={`pressable inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white transition disabled:opacity-60 ${
               tone === "danger" ? "bg-[#8c2f22] hover:bg-[#7a2a1e]" : "bg-[#0a285a] hover:bg-[#0d3372]"
             }`}

@@ -13,6 +13,7 @@ import { warrantyRequired } from "../shared/inventory/productDraft.js";
 import { merchantWarranty } from "../shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../shared/inventory/stockMoves.js";
 import { optionPairs, optionPairsProblem, optionsRecord } from "../shared/inventory/variantOptions.js";
+import { percentProblem, scalePrice } from "../shared/inventory/productBulk.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
@@ -324,11 +325,18 @@ export async function publishedProduct(handle: string) {
 export async function listProductsFor(
   actor: Actor,
   vendorId?: number,
-  request: PageRequest & { query?: string; status?: (typeof productStatus.enumValues)[number] } = {},
+  request: PageRequest & {
+    query?: string;
+    status?: (typeof productStatus.enumValues)[number];
+    /** A department, by id. */
+    categoryId?: number;
+    /** `out`: a variant at nothing; `low`: one at or under its own threshold. */
+    stock?: "out" | "low";
+  } = {},
 ) {
   assertCan(actor, "product.view", vendorId);
   const db = await getDb();
-  if (!db) return emptyPage<Awaited<ReturnType<typeof hydrate>>[number] & { vendorName: string | null }>(request);
+  if (!db) return emptyPage<Awaited<ReturnType<typeof hydrate>>[number] & { vendorName: string | null; categoryName: string | null }>(request);
 
   const owned = actor.kind === "admin"
     ? (vendorId ? eq(products.vendorId, vendorId) : undefined)
@@ -354,6 +362,15 @@ export async function listProductsFor(
     term
       ? sql`(lower(${products.title}) like ${`%${term}%`} or lower(coalesce(${products.titleAr}, '')) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`} or exists (select 1 from ${productVariants} where ${productVariants.productId} = ${products.id} and lower(coalesce(${productVariants.sku}, '')) like ${`%${term}%`}))`
       : undefined,
+    request.categoryId ? eq(products.categoryId, request.categoryId) : undefined,
+    /* On the server, like the search: a stock filter over one page reports a
+       quiet shelf for a store whose empty products are on page four. Low is
+       the variant's own threshold, the rule `/admin/stock` judges by. */
+    request.stock === "out"
+      ? sql`(exists (select 1 from ${productVariants} where ${productVariants.productId} = ${products.id} and ${productVariants.stock} <= 0))`
+      : request.stock === "low"
+        ? sql`(exists (select 1 from ${productVariants} where ${productVariants.productId} = ${products.id} and ${productVariants.lowStockAt} is not null and ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAt}))`
+        : undefined,
   );
 
   const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(products).where(scope);
@@ -373,9 +390,17 @@ export async function listProductsFor(
   const names = vendorIds.length
     ? await db.select({ id: vendors.id, name: vendors.name }).from(vendors).where(inArray(vendors.id, vendorIds))
     : [];
+  const categoryIds = Array.from(new Set(rows.map(row => row.categoryId).filter((id): id is number => id !== null)));
+  const departments = categoryIds.length
+    ? await db.select({ id: categories.id, name: categories.name }).from(categories).where(inArray(categories.id, categoryIds))
+    : [];
   const hydrated = await hydrate(db, rows);
   return {
-    rows: hydrated.map(row => ({ ...row, vendorName: names.find(vendor => vendor.id === row.vendorId)?.name ?? null })),
+    rows: hydrated.map(row => ({
+      ...row,
+      vendorName: names.find(vendor => vendor.id === row.vendorId)?.name ?? null,
+      categoryName: departments.find(category => category.id === row.categoryId)?.name ?? null,
+    })),
     total,
     page,
     pageSize,
@@ -1248,6 +1273,56 @@ export async function saveVariant(actor: Actor, input: {
   return row.id;
 }
 
+/**
+ * Every variant of a product moved by a percentage, and nothing else written.
+ *
+ * The list's bulk "Change price" (`shared/inventory/productBulk.ts`). It does
+ * not go through `saveVariant`, because that writes a variant whole and takes
+ * an absent pre-order allowance or unit as their defaults — a bulk price
+ * change through it would have emptied every pre-order and turned every bag
+ * of tomatoes back into "each". A price that would fall to nothing is refused,
+ * the money rule `assertPriced` keeps, and so is one that would sit at or
+ * below a member's price, the rule the editor's field asks. Each change is
+ * audited as the editor's are.
+ */
+export async function repriceProduct(actor: Actor, productId: number, percent: number) {
+  const invalid = percentProblem(percent);
+  if (invalid) throw new Error(invalid);
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [product] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  if (!product) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", product.vendorId);
+  const variants = await db.select().from(productVariants).where(eq(productVariants.productId, productId));
+  const changes = variants.map(variant => ({ variant, price: scalePrice(variant.price, percent) }));
+  for (const { variant, price } of changes) {
+    if (Number(price) <= 0) throw new Error("UNPRICED");
+    if (variant.memberPrice) {
+      const problem = memberPriceProblem(price, variant.memberPrice);
+      if (problem) throw new Error(problem);
+    }
+  }
+  await db.transaction(async tx => {
+    for (const { variant, price } of changes) {
+      await tx.update(productVariants).set({ price }).where(eq(productVariants.id, variant.id));
+    }
+  });
+  const who = await auditActor(actor);
+  for (const { variant, price } of changes) {
+    if (price === variant.price) continue;
+    await recordAudit(who, {
+      action: "product.priceChange",
+      subjectType: "variant",
+      subjectId: variant.id,
+      subjectLabel: `${product.title} — ${variant.title}`,
+      vendorId: product.vendorId,
+      before: { price: variant.price },
+      after: { price },
+    });
+  }
+  return changes.length;
+}
+
 /* ---------------------------------------------------------------- people --- */
 
 export async function listMembers(actor: Actor, vendorId: number) {
@@ -1384,7 +1459,7 @@ export async function overview(actor: Actor) {
   assertCan(actor, "product.view", scopeOf(actor));
   const db = await getDb();
   if (!db) {
-    return { draft: 0, pendingReview: 0, published: 0, archived: 0, outOfStock: 0, lowStock: 0, vendorsPending: 0, vendorsApproved: 0 };
+    return { draft: 0, pendingReview: 0, published: 0, archived: 0, outOfStock: 0, lowStock: 0, vendorsPending: 0, vendorsApproved: 0, zeroCommission: [] as { id: number; name: string }[] };
   }
   const vendorId = scopeOf(actor);
   const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
@@ -1412,6 +1487,7 @@ export async function overview(actor: Actor) {
 
   let vendorsPending = 0;
   let vendorsApproved = 0;
+  let zeroCommission: { id: number; name: string }[] = [];
   if (actor.kind === "admin") {
     const byVendorStatus = await db
       .select({ status: vendors.status, count: sql<number>`count(*)::int` })
@@ -1419,6 +1495,21 @@ export async function overview(actor: Actor) {
       .groupBy(vendors.status);
     vendorsPending = byVendorStatus.find(row => row.status === "pending")?.count ?? 0;
     vendorsApproved = byVendorStatus.find(row => row.status === "approved")?.count ?? 0;
+    /*
+     * A live store charged nothing. Zero is a real instruction — "this store
+     * earns us nothing" — so it is allowed, but it is far more often a rate
+     * nobody set than one somebody chose, and it costs NetLet every sale until
+     * somebody notices. Said where an administrator looks first.
+     */
+    zeroCommission = await db
+      .select({ id: vendors.id, name: vendors.name })
+      .from(vendors)
+      .where(and(
+        eq(vendors.status, "approved"),
+        sql`${vendors.commissionPercent} = 0`,
+        sql`coalesce(${vendors.commissionFixed}, 0) = 0`,
+      ))
+      .orderBy(asc(vendors.name), asc(vendors.id));
   }
 
   return {
@@ -1430,6 +1521,7 @@ export async function overview(actor: Actor) {
     lowStock: stock?.lowStock ?? 0,
     vendorsPending,
     vendorsApproved,
+    zeroCommission,
   };
 }
 

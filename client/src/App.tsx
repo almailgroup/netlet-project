@@ -30,6 +30,7 @@ const Account = lazy(() => import("@/pages/Account"));
 const Saved = lazy(() => import("@/pages/Saved"));
 const Cart = lazy(() => import("@/pages/Cart"));
 const Returns = lazy(() => import("@/pages/Returns"));
+const Help = lazy(() => import("@/pages/Help"));
 const GiftList = lazy(() => import("@/pages/GiftList"));
 const Invoice = lazy(() => import("@/pages/Invoice"));
 const InvoiceVerify = lazy(() => import("@/pages/InvoiceVerify"));
@@ -258,6 +259,7 @@ function Router() {
         <Route path="/saved" component={Saved} />
         <Route path="/cart" component={Cart} />
         <Route path="/returns" component={Returns} />
+        <Route path="/help" component={Help} />
         <Route path="/gifts/:token" component={GiftList} />
         <Route path="/gifts" component={GiftList} />
         <Route path="/invoices/verify/:number" component={InvoiceVerify} />

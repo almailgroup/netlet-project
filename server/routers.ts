@@ -20,6 +20,7 @@ import { ordersRouter } from "./routers/orders.js";
 import { recommendationsRouter } from "./routers/recommendations.js";
 import { rewardsRouter } from "./routers/rewards.js";
 import { assistantRouter } from "./routers/assistant.js";
+import { helpRouter } from "./routers/help.js";
 import { financeRouter } from "./routers/finance.js";
 import { reviewsRouter } from "./routers/reviews.js";
 import { searchRouter } from "./routers/search.js";
@@ -48,6 +49,7 @@ export const appRouter = router({
   recommendations: recommendationsRouter,
   rewards: rewardsRouter,
   assistant: assistantRouter,
+  help: helpRouter,
   finance: financeRouter,
   reviews: reviewsRouter,
   search: searchRouter,

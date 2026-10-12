@@ -16,6 +16,7 @@ import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../server/routers";
+import { summarise } from "@shared/commerce/salesSummary";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
@@ -187,6 +188,14 @@ function resolve(path: string, rawInput: unknown): unknown {
     }
     /* The invented catalogue has sold nothing, so the demo draws no
        Bestsellers shelf rather than inventing a ranking. */
+    /* No orders and no model behind the demo: the lookup finds nothing and
+       the assistant is not drawn, the branch a deployment with no key takes. */
+    case "help.lookupOrder":
+      return null;
+    case "help.assistantAvailable":
+      return false;
+    case "help.ask":
+      return { kind: "unavailable" };
     case "commerce.bestsellers":
       return [];
     case "commerce.brands": {
@@ -819,6 +828,13 @@ function resolve(path: string, rawInput: unknown): unknown {
        returns for a vendor, rather than an admin's view a manager never has. */
     case "inventory.overview":
       return demoOverview;
+    /* Nothing is written in the demo, so nothing is changed and nothing refused. */
+    case "inventory.products.bulk":
+      return { done: 0, refused: [] };
+    /* The invented catalogue has sold nothing: the same empty summary a new
+       shop gets, rather than invented takings. */
+    case "inventory.sales":
+      return summarise([], [], new Date());
     case "inventory.lowStock":
       return onePage(demoLowStock);
     case "inventory.stockHistory":

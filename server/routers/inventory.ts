@@ -10,6 +10,8 @@
  * code path.
  */
 import { arabicTitleAvailable, draftArabicTitle } from "../arabicTitle.js";
+import { salesSummary } from "../salesSummary.js";
+import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, percentProblem, restockProblem } from "../../shared/inventory/productBulk.js";
 import { STOCK_REASONS } from "../../shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
@@ -46,6 +48,7 @@ import {
   setProductAddons,
   setProductImages,
   setProductStatus,
+  repriceProduct,
   setUserAdmin,
   setProductCommission,
   setVendorBadges,
@@ -389,6 +392,8 @@ export const inventoryRouter = router({
       .input(vendorScope.extend({
         query: z.string().trim().max(160).optional(),
         status: z.enum(["draft", "pending_review", "published", "archived"]).optional(),
+        categoryId: rowId.optional(),
+        stock: z.enum(["out", "low"]).optional(),
         page: z.number().int().min(1).max(100_000).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
       }).optional())
@@ -720,6 +725,55 @@ export const inventoryRouter = router({
         return guard(() => setProductStatus(actor, input.id, input.status));
       }),
 
+    /**
+     * One action over several products: each is the single-product operation,
+     * with its own guard and its own rules, and the answer names every product
+     * refused and why — never the whole batch failing over one, and never one
+     * skipped in silence.
+     */
+    bulk: protectedProcedure
+      .input(z.object({
+        ids: z.array(rowId).min(1).max(BULK_LIMIT),
+        action: z.enum(BULK_ACTIONS),
+        percent: z.number().min(MIN_PERCENT).max(MAX_PERCENT).optional(),
+        amount: z.number().int().min(1).max(MAX_RESTOCK).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        if (input.action === "reprice" && (input.percent === undefined || percentProblem(input.percent))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkPercentInvalid" });
+        }
+        if (input.action === "restock" && (input.amount === undefined || restockProblem(input.amount))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkRestockInvalid" });
+        }
+        let done = 0;
+        const refused: { id: number; reason: string }[] = [];
+        for (const id of Array.from(new Set(input.ids))) {
+          try {
+            await guard(async () => {
+              switch (input.action) {
+                case "publish": return setProductStatus(actor, id, "published");
+                case "archive": return setProductStatus(actor, id, "archived");
+                case "draft": return setProductStatus(actor, id, "draft");
+                case "reprice": return repriceProduct(actor, id, input.percent!);
+                case "restock": {
+                  const product = await getProduct(actor, id);
+                  if (!product) throw new Error("NOT_FOUND");
+                  for (const variant of product.variants) await adjustStock(actor, variant.id, input.amount!, "received");
+                  return;
+                }
+              }
+            });
+            done += 1;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "";
+            /* A message key the page can say; anything else is a refusal it names generically. */
+            refused.push({ id, reason: /^[a-z]+\.[A-Za-z.]+$/.test(message) ? message : "admin.bulkRefused" });
+          }
+        }
+        return { done, refused };
+      }),
+
     /** Admin only — the data layer refuses anyone else. */
     review: protectedProcedure
       .input(z.object({
@@ -784,6 +838,12 @@ export const inventoryRouter = router({
       const actor = await resolveActor(ctx.user, input?.vendorId);
       return guard(() => overview(actor));
     }),
+
+  /** Sales, orders, average order and returns, a 30-day line and what sold most — scoped like payouts. */
+  sales: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return guard(() => salesSummary(actor));
+  }),
 
   lowStock: protectedProcedure
     .input(z.object({

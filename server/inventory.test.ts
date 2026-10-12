@@ -1566,3 +1566,24 @@ describe("a variant's options", () => {
     })).rejects.toThrow("admin.optionDuplicate");
   });
 });
+
+describe("repricing a product in bulk", () => {
+  it("moves every variant's price and writes nothing else", async () => {
+    const id = await inv.saveVariant(ownerActor(), {
+      productId: ids.acmeProduct, title: "By weight", price: "2.000", unit: "g", stepAmount: 250, preorderStock: 7,
+    });
+    await inv.repriceProduct(ownerActor(), ids.acmeProduct, 10);
+    const [row] = await db.select().from(productVariants).where(eq(productVariants.id, id));
+    expect(row).toMatchObject({ price: "2.200", unit: "g", preorderStock: 7 });
+    expect(Number(row.stepAmount)).toBe(250);
+  });
+
+  it("refuses a cut that would put a variant at or below its member price", async () => {
+    const created = await inv.createProduct(adminActor(), { vendorId: ids.acme, title: "Member Thing" });
+    const [variant] = await db.select().from(productVariants).where(eq(productVariants.productId, created.id));
+    await inv.saveVariant(adminActor(), { id: variant.id, productId: created.id, title: "Default", price: "10.000", memberPrice: "9.000" });
+    await expect(inv.repriceProduct(adminActor(), created.id, -20)).rejects.toThrow("membership.");
+    const [kept] = await db.select().from(productVariants).where(eq(productVariants.id, variant.id));
+    expect(kept.price).toBe("10.000");
+  });
+});

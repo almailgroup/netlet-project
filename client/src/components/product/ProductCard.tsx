@@ -345,7 +345,9 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         */}
         <Link href={href} tabIndex={-1} aria-hidden="true" className="block overflow-hidden rounded-xl bg-[#f4f6f9]">
           {image
-            ? <Thumb src={image.url} alt="" className="product-card-photo aspect-square w-full object-cover" />
+            /* Named, though the link around it is hidden from a screen reader:
+               the alt is what image search reads, and what a checker counts. */
+            ? <Thumb src={image.url} alt={image.altText || product.title} className="product-card-photo aspect-square w-full object-cover" />
             : <div className="grid aspect-square place-items-center px-3 text-center text-[12px] font-semibold ink-muted">{t("product.imageProcessing")}</div>}
         </Link>
 

@@ -103,6 +103,24 @@ export const MAX_VOUCHER_MISSES_PER_ADDRESS = 20;
 export const VOUCHER_MISS_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * Looking an order up on the help page by its number and email, signed out.
+ * Only misses count, the sign-in rule: a shopper typing their own pair never
+ * comes near it, and the ceiling is what stops somebody walking reference
+ * tails against an address they know. Past it every pair is refused alike,
+ * the right one included, or the throttle would say which guess was right.
+ */
+export const MAX_ORDER_LOOKUP_MISSES_PER_ADDRESS = 10;
+export const ORDER_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * Questions to the help assistant, per address. Every one counts, answered
+ * or not — each is a call paid for at a third party, counted before it is
+ * made, as the product assistant's are.
+ */
+export const MAX_HELP_QUESTIONS_PER_ADDRESS = 20;
+export const HELP_QUESTION_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * How often one account's "Picked for you" rail may be reordered by the model.
  * The rail is read on every visit to the saved page, so it is drawn far more
  * often than it changes; past the ceiling it is the ranking it already had,

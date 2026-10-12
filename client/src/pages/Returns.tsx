@@ -77,7 +77,7 @@ export default function Returns() {
           <div className="mt-3 rounded-2xl border border-[#e6e9ef] bg-white p-5 sm:p-6"><Rows rows={AFTER} /></div>
         </section>
 
-        <Link href="/account/help" className="mt-8 flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-4 hover:bg-[#f0f2f5]">
+        <Link href="/help" className="mt-8 flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-4 hover:bg-[#f0f2f5]">
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#eef2f8]"><LifeBuoy className="size-4" aria-hidden /></span>
           <span className="text-sm font-bold">{t("returnsPage.questions")} {t("support.section")}</span>
           <ArrowRight className="ms-auto size-4 text-[#536b8c] rtl:-scale-x-100" aria-hidden />

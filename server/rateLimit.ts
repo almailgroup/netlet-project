@@ -28,6 +28,10 @@ import {
   SEARCH_REFINE_WINDOW_MS,
   MAX_VOUCHER_MISSES_PER_ADDRESS,
   VOUCHER_MISS_WINDOW_MS,
+  MAX_ORDER_LOOKUP_MISSES_PER_ADDRESS,
+  ORDER_LOOKUP_WINDOW_MS,
+  MAX_HELP_QUESTIONS_PER_ADDRESS,
+  HELP_QUESTION_WINDOW_MS,
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
@@ -309,6 +313,47 @@ export async function recordVoucherMiss(address: string | null | undefined): Pro
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "voucherMiss"), lt(authAttempts.createdAt, new Date(Date.now() - VOUCHER_MISS_WINDOW_MS))),
   );
+}
+
+/** Whether this address may look an order up once more. Only misses count. */
+export async function checkOrderLookupAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  return windowVerdict(address, "orderLookupMiss", MAX_ORDER_LOOKUP_MISSES_PER_ADDRESS, ORDER_LOOKUP_WINDOW_MS);
+}
+
+export async function recordOrderLookupMiss(address: string | null | undefined): Promise<void> {
+  await recordInWindow(address, "orderLookupMiss", ORDER_LOOKUP_WINDOW_MS);
+}
+
+/** Whether this address may ask the help assistant once more. Every question counts. */
+export async function checkHelpQuestionAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  return windowVerdict(address, "helpQuestion", MAX_HELP_QUESTIONS_PER_ADDRESS, HELP_QUESTION_WINDOW_MS);
+}
+
+export async function recordHelpQuestion(address: string | null | undefined): Promise<void> {
+  await recordInWindow(address, "helpQuestion", HELP_QUESTION_WINDOW_MS);
+}
+
+/* The two halves every per-address ceiling above writes out by hand, for the newer ones. */
+async function windowVerdict(address: string | null | undefined, kind: string, ceiling: number, windowMs: number): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, addressBucket(address)),
+      eq(authAttempts.kind, kind),
+      gt(authAttempts.createdAt, new Date(Date.now() - windowMs)),
+    ));
+  return limitVerdict(rows.map(row => row.at), ceiling, new Date(), windowMs);
+}
+
+async function recordInWindow(address: string | null | undefined, kind: string, windowMs: number): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind }]);
+  /* Its own kind only: one table holds every ceiling. */
+  await db.delete(authAttempts).where(and(eq(authAttempts.kind, kind), lt(authAttempts.createdAt, new Date(Date.now() - windowMs))));
 }
 
 /**

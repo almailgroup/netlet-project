@@ -34,7 +34,7 @@ const SHOPPING: FooterLink[] = [
 const SERVICE: FooterLink[] = [
   { key: "footer.yourOrders", href: "/account/orders" },
   { key: "footer.returns", href: "/returns" },
-  { key: "footer.contact", href: "/account/help" },
+  { key: "footer.contact", href: "/help" },
 ];
 
 const NETLET: FooterLink[] = [
