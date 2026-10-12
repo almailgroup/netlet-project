@@ -8,6 +8,7 @@
  * **A card is a photograph, a name, a price, and Add to cart over Buy now**,
  * sharing one quantity whose minus and plus appear inside either button under
  * a pointer — without moving anything, which is what the old pair got wrong.
+ * Both are the card's original white button (`PURCHASE_TONE`).
  *
  * **Add turns into the quantity once the item is in the bag**, the way the
  * delivery apps people here use every day do it: the card answers "is this in
@@ -66,8 +67,8 @@ export async function shareProduct(product: Product, t: Translate) {
  * screen, which has no hover to reveal them. `always` draws them regardless,
  * which is the bag's own stepper once the item is in it.
  *
- * The focus ring is drawn inside the pill in the colour that shows on it:
- * the shop's orange ring vanishes on the orange Buy now.
+ * The focus ring is the shop's own orange, drawn inside the pill so it is not
+ * cut off by the card's edge.
  */
 function BuyPill({ tone, label, children, onPress, href, busy = false, step, always = false, pressRef, plusRef }: {
   tone: "add" | "buy";
@@ -84,10 +85,10 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   plusRef?: Ref<HTMLButtonElement>;
 }) {
   const { t } = useTranslation();
-  const ring = `focus-visible:outline-offset-[-2px] ${tone === "add" ? "focus-visible:outline-white" : "focus-visible:outline-[#0a285a]"}`;
+  const ring = "focus-visible:outline-offset-[-2px]";
   /* Drawn always (the bag's stepper, which a phone uses too) it is a full
      40px square; revealed by a pointer it can be smaller. */
-  const stepClass = `${always ? "grid h-full w-10" : "pill-step size-8"} shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${tone === "add" ? "hover:bg-white/15" : "hover:bg-[#0a285a]/10"} ${ring}`;
+  const stepClass = `${always ? "grid h-full w-10" : "pill-step size-8"} shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[#0a285a]/[.06] ${ring}`;
   /* `pressable` is the header's own button lettering, so the card's two
      buttons read like every other button on the site. */
   const press = `pressable flex h-full min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-1 whitespace-nowrap disabled:cursor-wait ${ring}`;
@@ -97,7 +98,7 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   const display = !onPress && !href;
 
   return (
-    <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-10 w-full items-center rounded-xl ${always ? "" : "px-1"}`}>
+    <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-10 w-full items-center rounded-xl ${always ? "@container" : "px-1"}`}>
       {step ? (
         <button type="button" onClick={step.less} disabled={busy || !step.canLess} aria-label={t(step.lessIsRemove ? "cart.remove" : "cart.decrease", { name: step.name })} className={stepClass}>
           {step.lessIsRemove ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}
@@ -248,7 +249,14 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
             : setQuantity(quantity - 1),
         }}
       >
-        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <span className="truncate tabular-nums">{t("card.inCart", { count })}</span>}
+        {/* "2 in cart" where the pill has room for it beside two 40px steps,
+            the number alone on a narrow phone card — never a word cut short. */}
+        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : (
+          <>
+            <span className="tabular-nums @min-[11rem]:hidden">{count}</span>
+            <span className="hidden truncate tabular-nums @min-[11rem]:inline">{t("card.inCart", { count })}</span>
+          </>
+        )}
       </BuyPill>
     ) : (
       <BuyPill

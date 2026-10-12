@@ -591,8 +591,10 @@ on the bag's own stepper once the item is in — which Buy now then follows.
 
 `BuyPill` is the pill: a coloured surface holding minus, press and plus side by
 side, because a button inside a button is not something HTML allows. Its focus
-ring is drawn inside, white on navy and navy on orange, since the shop's orange
-ring vanishes on an orange button. Each press's accessible name *starts* with
+ring is the shop's orange, drawn inside the pill. On a narrow phone card the
+bag's stepper shows the number alone and "2 in cart" only where the pill has the
+room (a container query on the pill), so a 40px minus and plus never cut the
+words short — the Arabic read "1 في الـ…" before. Each press's accessible name *starts* with
 the words drawn ("Buy 2 now: Smart watch"), so somebody driving the page by
 voice can say what they see.
 
@@ -617,9 +619,11 @@ pressed Add on a shirt found a medium in the bag.
 **One Add to cart and one Buy now, everywhere they appear.** The card, the
 preview and the product page each had their own pair and no two agreed — a white
 Add, a white Add beside an orange Buy, a navy Add over a white Buy. `PURCHASE_TONE`
-in `lib/purchaseStyle.ts` is the pair now: Add to cart is navy, the header's own
-cart button, with the bag icon; Buy now is the brand orange with navy text
-(4.65:1) and the bolt. The bundle's "add the set" takes the Add tone too.
+in `lib/purchaseStyle.ts` is the pair now, and both are the card's original
+white button — a white surface, a light navy rim, navy words — told apart by the
+bag icon on Add and the bolt on Buy. A navy-and-orange pair was tried first and
+the owner asked for the white back. The bundle's "add the set" wears it too, and
+the keys stay separate so the two can be coloured apart again in that one file.
 
 **The photo and the title both open the product, and only the title is a link
 anybody hears.** The photo's link is `tabIndex={-1}` and `aria-hidden`: two
