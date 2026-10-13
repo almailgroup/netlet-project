@@ -60,26 +60,53 @@ It is safe to run more than once, on a fresh database or on one that is behind.
 > later and somewhere else, as pages that will not load with
 > *"column … does not exist"*.
 >
-> If you do not see the confirmation row, that is what happened. Scroll to the
-> end of what you actually pasted and run the remainder from there, or paste
-> the file in a few parts. Re-running costs nothing.
+> If you do not see the confirmation row, that is what happened — and because
+> the whole file is one transaction, *nothing* was applied, so the database is
+> exactly as it was. Paste the whole file again from the Raw view. Do not run
+> the remainder on its own or split the file into parts: the opening `BEGIN`
+> and the closing `COMMIT` belong to one paste. Re-running costs nothing.
 
 ### Is this database complete?
 
 [`docs/schema-audit.sql`](./schema-audit.sql) answers that in one read-only
-query: of every table and column the code expects, which are absent? Paste it
-into the SQL editor and run it.
+query, and it is the thing to run if you have pasted migrations one at a time
+and are not sure you ran them all. Open it from the **Raw view**, paste the
+whole file into the SQL editor and run it. It changes nothing.
 
-**No rows is the good result.** Any row names something missing, and the fix is
-always the same — run `docs/supabase-bootstrap.sql` again in full, and check for
-its "bootstrap complete" row.
+It checks everything a migration can leave half-done: every table and column,
+whether each column takes NULL and has a default (several migrations change
+only that, so a column can be there and still wrong), each primary key, every
+enum value, index and foreign key with what it does on delete, the things later
+migrations removed, and the five departments and the house vendor.
+
+**The last row is the verdict.**
+
+| area | object | finding |
+|---|---|---|
+| result | everything | complete — … all match |
+
+Anything else above it names one problem, and the verdict counts them. The fix
+is the same for all of them — run `docs/supabase-bootstrap.sql` again in full,
+check for its "bootstrap complete" row, then run the audit again. One kind is
+the exception and says so: an index or foreign key that exists with a different
+definition. No missed migration does that — somebody changed it by hand — and
+the bootstrap keeps what it finds by name.
+
+A **security** row is not a missing migration. It means the `anon` role can
+read those tables and they have no row-level security, so anybody holding the
+anon key can read them through Supabase's Data API while it is on.
+[One thing to check while you are in the dashboard](./SUPABASE-AUTH.md#one-thing-to-check-while-you-are-in-the-dashboard)
+has the two ways to close it.
+
+A syntax error instead of rows means the paste was cut short. The audit is one
+statement, so a partial paste can never report a clean bill.
 
 Worth running whenever a page fails with *"column … does not exist"*: the error
 names one column, but a partial apply usually costs several, and fixing them one
 reload at a time is a slow way to find that out.
 
 `node scripts/build-schema-audit.mjs` regenerates it from the Drizzle snapshot
-after a schema change.
+after a schema change, and the test suite fails until it has been.
 
 ### Route B — from a clone
 
@@ -183,8 +210,9 @@ reads the same tables the admin portal writes.
 Worth being clear, because Supabase offers all of these and NetLet uses none of
 them:
 
-- **Not Supabase Auth's tables.** The session is our own
-  httpOnly cookie. Supabase holds the `users` mirror row, nothing more.
+- **Not Supabase Auth's sessions.** Supabase Auth holds the passwords
+  (`docs/SUPABASE-AUTH.md`), but the session is our own httpOnly cookie, and
+  everything else about an account is the `users` row.
 - **Not Supabase's client SDK.** Nothing Supabase-shaped ships to the browser.
   The server talks to Postgres over the connection string and the client only
   ever talks to our own API.

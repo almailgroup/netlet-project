@@ -3857,6 +3857,22 @@ is the walkthrough. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.
 
+**`docs/schema-audit.sql` is the other half: did it all land?** One read-only
+statement, generated from the latest Drizzle snapshot by
+`scripts/build-schema-audit.mjs`, that names every table, column, NOT NULL,
+default, primary key, enum value, index and foreign key (with its delete rule)
+the database lacks, anything a later migration dropped that is still there, and
+the seed rows — and ends on a verdict row, so a clean database says "complete"
+rather than returning nothing, which a cut-short paste can also look like. The
+NOT NULL and default checks are there because six migrations change only
+those: a column can be present and still be the old column. It reads the seed
+through `query_to_xml`, because naming a missing table in plain SQL fails the
+whole statement before it reports anything. `bootstrap.test.ts` runs it — on a
+bootstrapped database, on one broken in each of those ways, and again after the
+bootstrap repairs it — and fails while the committed file is stale. It also
+says when Supabase's `anon` role can read tables that have no row-level
+security, the one thing wrong with a complete schema the schema cannot show.
+
 Configuration lives in `.env.example`, annotated with what each value switches
 off — nothing throws at boot, so a missing value shows up as a dead feature.
 `pnpm setup:env` writes the `.env` from it and generates `JWT_SECRET`; it used

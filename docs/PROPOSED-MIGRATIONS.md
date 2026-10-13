@@ -5,7 +5,7 @@
 `drizzle/0059_application_documents.sql`, and `docs/supabase-bootstrap.sql` carries them.
 **Run `docs/supabase-bootstrap.sql` again in the Supabase SQL editor before deploying the code
 that uses them**, and check for its "bootstrap complete" row at the end; `docs/schema-audit.sql`
-then returns no rows when nothing is missing.
+then ends on a "complete" row when nothing is missing.
 
 This file keeps the proposal as it was shown, for the record; where what was built differs, a
 note under each part says so. `CLAUDE.md` describes the result.

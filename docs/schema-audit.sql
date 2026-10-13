@@ -3,92 +3,248 @@
 -- Answers one question: of everything the deployed code expects, what is this
 -- database missing? Read-only; it changes nothing and is safe on production.
 --
--- Run it in the Supabase SQL editor. **No rows returned is the good result.**
--- Any row names a table or column that is absent, which means the bootstrap was
--- applied only in part — usually a paste that was cut short. The fix is always
--- the same: run `docs/supabase-bootstrap.sql` again, in full, and check for its
--- "bootstrap complete" row at the end.
+-- Paste the whole file into the Supabase SQL editor and run it. The LAST row
+-- is the verdict:
 --
--- Expected: 667 columns across 63 tables.
+--   result | everything | complete ...    nothing is missing.
+--   result | everything | N problems ...   each row above it names one. The fix
+--                                          is always the same: run
+--                                          docs/supabase-bootstrap.sql again,
+--                                          in full, and check for its
+--                                          "bootstrap complete" row.
+--
+-- A row saying "changed by hand" is the exception: no missed migration leaves
+-- it, and the bootstrap will not undo it. A "security" row is not a missing
+-- migration either; docs/SUPABASE-AUTH.md says what it means and what to do.
+--
+-- If the editor shows a syntax error instead, the paste was cut short — this is
+-- one statement, so a partial paste can never report a clean bill.
+--
+-- Checks 63 tables, 667 columns, 119 indexes, 144 foreign keys, 17 enums, what later migrations dropped, and the seed rows.
 
-WITH expected AS (
+WITH
+expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
+  ('ad_bookings', 'banner_headline,banner_headline_ar,banner_media_id,banner_note,banner_reviewed_at,banner_reviewed_by,banner_status,booked_by,cancelled_by,cancelled_on,category_id,created_at:nd,daily_rate:n,ends_on:n,id:pnd,product_id,product_title:n,slot:n,starts_on:n,total:n,vendor_id:n', 'ad_bookings_slot_idx,ad_bookings_vendor_idx', 'banner_media_id>media_files:n,banner_reviewed_by>users:n,booked_by>users:n,cancelled_by>users:n,category_id>categories:n,product_id>products:n,vendor_id>vendors:c'),
+  ('affiliates', 'channel,created_at:nd,decided_at,decided_by,disclosure_accepted_at:n,display_name:n,id:pnd,rate_percent:nd,status:nd,user_id:n', 'affiliates_status_idx,affiliates_user_unique:u', 'decided_by>users:n,user_id>users:c'),
+  ('application_documents', 'application_id:n,byte_size:n,bytes:n,content_type:n,created_at:nd,file_name:n,id:pnd,kind:n,review_note,reviewed_at,reviewed_by,sha256:n,status:nd,uploaded_by', 'application_documents_application_idx', 'application_id>vendor_applications:c,reviewed_by>users:n,uploaded_by>users:n'),
+  ('audit_log', 'action:n,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at:nd,id:pnd,subject_id,subject_label,subject_type:n,vendor_id', 'audit_log_action_idx,audit_log_actor_idx,audit_log_created_idx,audit_log_subject_idx', 'actor_id>users:n,authorised_by_id>users:n,vendor_id>vendors:n'),
+  ('auth_attempts', 'bucket:n,created_at:nd,id:pnd,kind:n', 'auth_attempts_bucket_idx,auth_attempts_created_idx', ''),
+  ('bundle_items', 'bundle_id:n,id:pnd,position:nd,quantity:nd,variant_id:n', 'bundle_items_unique:u', 'bundle_id>bundles:c,variant_id>product_variants:c'),
+  ('bundles', 'active:nd,bundle_price:n,created_at:nd,id:pnd,name:n,name_ar,updated_at:nd,vendor_id', 'bundles_vendor_idx', 'vendor_id>vendors:c'),
+  ('cart_item_addons', 'addon_id:n,cart_item_id:n,id:pnd', 'cart_item_addons_unique:u', 'addon_id>product_addons:c,cart_item_id>cart_items:c'),
+  ('cart_items', 'address_id,bundle_id,cart_id:n,created_at:nd,id:pnd,quantity:nd,updated_at:nd,variant_id:n', 'cart_items_cart_id_idx,cart_items_cart_variant_unique:u', 'address_id>customer_addresses:n,bundle_id>bundles:n,cart_id>carts:c,variant_id>product_variants:c'),
+  ('carts', 'created_at:nd,id:pn,updated_at:nd,user_id', 'carts_user_id_idx', 'user_id>users:c'),
+  ('categories', 'created_at:nd,id:pnd,name:n,name_ar,parent_id,position:nd,slug:n', 'categories_slug_unique:u', ''),
+  ('conversation_messages', 'author_id,body:n,conversation_id:n,created_at:nd,id:pnd,order_id,product_id,product_title,side:n', 'conversation_messages_thread_idx', 'author_id>users:n,conversation_id>conversations:c,order_id>orders:n,product_id>products:n'),
+  ('conversations', 'created_at:nd,id:pnd,last_message_at:nd,shopper_read_at,user_id:n,vendor_id:n,vendor_read_at', 'conversations_pair_unique:u,conversations_user_idx,conversations_vendor_idx', 'user_id>users:c,vendor_id>vendors:c'),
+  ('courier_members', 'courier_id:n,created_at:nd,id:pnd,user_id:n', 'courier_members_unique:u,courier_members_user_idx', 'courier_id>couriers:c,user_id>users:c'),
+  ('couriers', 'contact_email,contact_phone,created_at:nd,id:pnd,name:n,name_ar,status:nd,updated_at:nd', 'couriers_status_idx', ''),
+  ('customer_addresses', 'address_line:n,address_notes,apartment,area,avenue,block,building,contact_name,contact_phone,created_at:nd,floor,governorate,id:pnd,label:n,paci_number,pin,street,updated_at:nd,user_id:n', 'customer_addresses_user_idx', 'user_id>users:c'),
+  ('customer_notification_preferences', 'created_at:nd,enabled:nd,id:pnd,kind:n,updated_at:nd,user_id:n', 'customer_notification_user_id_idx,customer_notification_user_kind_unique:u', 'user_id>users:c'),
+  ('customer_preferences', 'cart_id,created_at:nd,delivery_zone_id,id:pnd,locale,updated_at:nd,user_id:n,wishlist_phone', 'customer_preferences_user_id_unique:u,customer_preferences_wishlist_phone_unique:uw', 'user_id>users:c'),
+  ('damage_claims', 'awarded_amount,claimed_amount:n,courier_id,courier_responded_at,courier_response,created_at:nd,decided_at,decided_by,decision_note,description:n,evidence_url,filed_as:n,filed_by,id:pnd,line_ids:n,order_id:n,parcel_key:n,status:nd,updated_at:nd,vendor_id,vendor_name', 'damage_claims_courier_idx,damage_claims_open_unique:uw,damage_claims_order_idx', 'courier_id>couriers:n,decided_by>users:n,filed_by>users:n,order_id>orders:c,vendor_id>vendors:n'),
+  ('delivery_ratings', 'comment,courier_id,created_at:nd,id:pnd,order_id:n,parcel_key:n,rating:n,updated_at:nd,user_id:n,vendor_id,vendor_name', 'delivery_ratings_courier_idx,delivery_ratings_parcel_unique:u,delivery_ratings_vendor_idx', 'courier_id>couriers:n,order_id>orders:c,user_id>users:c,vendor_id>vendors:n'),
+  ('discount_codes', 'code:n,created_at:nd,ends_at,id:pnd,kind:nd,max_redemptions,min_spend,per_shopper:nd,starts_at,value:n', 'discount_codes_code_unique:u', ''),
+  ('discount_redemptions', 'amount:n,code_id:n,created_at:nd,id:pnd,order_id,user_id', 'discount_redemptions_order_unique:u,discount_redemptions_user_idx', 'code_id>discount_codes:c,order_id>orders:n,user_id>users:n'),
+  ('driver_positions', 'accuracy_m,courier_id:n,position:n,recorded_at:nd,user_id:pn', '', 'courier_id>couriers:c,user_id>users:c'),
+  ('feature_switches', 'enabled:n,key:pn,updated_at:nd,updated_by', '', 'updated_by>users:n'),
+  ('followed_products', 'back_in_stock:nd,created_at:nd,id:pnd,last_notified_price,price_drop:nd,product_id:n,updated_at:nd,user_id:n', 'followed_products_product_id_idx,followed_products_user_id_idx,followed_products_user_product_unique:u', 'user_id>users:c'),
+  ('fulfilment_centres', 'active:nd,address_line:n,created_at:nd,governorate:n,id:pnd,name:n,pack_fee_per_unit', '', ''),
+  ('fulfilment_charges', 'amount:n,centre_id:n,created_at:nd,id:pnd,order_item_id,order_reference:n,rate_per_unit:n,units:n,vendor_id:n', 'fulfilment_charges_line_unique:u,fulfilment_charges_vendor_idx', 'centre_id>fulfilment_centres:r,order_item_id>order_items:n,vendor_id>vendors:c'),
+  ('gift_card_uses', 'amount:n,created_at:nd,gift_card_id:n,id:pnd,order_id', 'gift_card_uses_card_idx', 'gift_card_id>gift_cards:c,order_id>orders:n'),
+  ('gift_cards', 'code:n,created_at:nd,expires_at,id:pnd,initial_balance:n,note,remaining:n', 'gift_cards_code_unique:u', ''),
+  ('inbound_lines', 'expected:n,id:pnd,product_title:n,received,shipment_id:n,sku,variant_id,variant_title:n', 'inbound_lines_shipment_idx', 'shipment_id>inbound_shipments:c,variant_id>product_variants:n'),
+  ('inbound_shipments', 'announced_by,centre_id:n,created_at:nd,id:pnd,note,received_at,received_by,reference:n,status:nd,vendor_id:n', 'inbound_shipments_reference_unique:u,inbound_shipments_status_idx,inbound_shipments_vendor_idx', 'announced_by>users:n,centre_id>fulfilment_centres:r,received_by>users:n,vendor_id>vendors:c'),
+  ('invoice_counters', 'last:n,series:pn', '', ''),
+  ('invoices', 'credits_invoice_id,document:n,id:pnd,issued_at:nd,kind:n,number:n,order_id:n,return_request_id,total:n,verify_code', 'invoices_issued_idx,invoices_number_unique:u,invoices_one_per_order:uw,invoices_one_per_return:uw', 'credits_invoice_id>invoices:r,order_id>orders:r,return_request_id>return_requests:n'),
+  ('media_files', 'byte_size:n,bytes:n,content_type:n,created_at:nd,height:n,id:pn,source_url,uploaded_by,vendor_id,width:n', 'media_files_uploader_idx', 'uploaded_by>users:n,vendor_id>vendors:n'),
+  ('membership_terms', 'free_delivery_over,id:pn,updated_at:nd,updated_by', '', 'updated_by>users:n'),
+  ('memberships', 'cancelled_at,created_at:nd,ends_at:n,granted_by,id:pnd,note,source:nd,starts_at:n,user_id:n', 'memberships_user_idx', 'granted_by>users:n,user_id>users:c'),
+  ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
+  ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,destination,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,order_id>orders:c,product_id>products:n,variant_id>product_variants:n,vendor_id>vendors:n'),
+  ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
+  ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email:n,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
+  ('payout_files', 'created_at:nd,created_by,id:pnd', '', 'created_by>users:n'),
+  ('payout_run_items', 'amount:n,booking_id,charge_id,id:pnd,order_id,order_reference:n,run_id:n,vendor_id', 'payout_run_items_order_idx,payout_run_items_run_booking_unique:u,payout_run_items_run_charge_unique:u,payout_run_items_run_order_unique:u', 'booking_id>ad_bookings:n,charge_id>fulfilment_charges:n,order_id>orders:n,run_id>payout_runs:c,vendor_id>vendors:n'),
+  ('payout_runs', 'bank_reference,file_id,iban_used,id:pnd,paid_at,paid_by,prepared_at,prepared_by,status:nd,total:n,vendor_id,vendor_name:n', 'payout_runs_status_idx,payout_runs_vendor_idx', 'file_id>payout_files:n,paid_by>users:n,prepared_by>users:n,vendor_id>vendors:n'),
+  ('point_entries', 'created_at:nd,id:pnd,note,order_id,order_item_id,points:n,pot:nd,reason:n,referral_id,settled_at,user_id:n', 'point_entries_affiliate_line_unique:uw,point_entries_affiliate_order_unique:uw,point_entries_pot_idx,point_entries_referral_reason_unique:uw,point_entries_user_idx', 'order_id>orders:n,order_item_id>order_items:n,referral_id>referrals:n,user_id>users:c'),
+  ('price_offers', 'answered_at,answered_by,asked_price:n,created_at:nd,expires_at,id:pnd,list_price:n,offered_price,product_id,product_title:n,quantity:nd,shopper_note,status:nd,updated_at:nd,used_on_order_id,user_id:n,variant_id:n,vendor_id,vendor_note', 'price_offers_open_unique:uw,price_offers_user_idx,price_offers_variant_idx,price_offers_vendor_idx', 'answered_by>users:n,product_id>products:n,used_on_order_id>orders:n,user_id>users:c,variant_id>product_variants:c,vendor_id>vendors:n'),
+  ('product_addons', 'created_at:nd,id:pnd,kind:nd,label:n,label_ar,position:nd,price:n,product_id:n', 'product_addons_product_idx', 'product_id>products:c'),
+  ('product_images', 'alt_text,created_at:nd,id:pnd,kind:nd,position:nd,poster_url,product_id:n,url:n', 'product_images_product_id_idx', 'product_id>products:c'),
+  ('product_variants', 'centre_id,compare_at_price,created_at:nd,id:pnd,low_stock_at,member_price,options:nd,position:nd,preorder_release_at,preorder_stock:nd,price:n,product_id:n,sku,step_amount:nd,stock:nd,title:nd,unit:nd,updated_at:nd', 'product_variants_product_id_idx,product_variants_product_sku_unique:u', 'centre_id>fulfilment_centres:r,product_id>products:c'),
+  ('products', 'accepts_offers,attributes:nd,category_id,commission_fixed,commission_percent,created_at:nd,delivery_speed,description,description_ar,handle:n,id:pnd,review_note,size_chart,size_class,status:nd,tags:nd,title:n,title_ar,updated_at:nd,vendor_id:n', 'products_category_id_idx,products_handle_unique:u,products_status_idx,products_vendor_id_idx', 'category_id>categories:n,vendor_id>vendors:c'),
+  ('referrals', 'created_at:nd,id:pnd,qualified_at,qualified_order_id,referred_id:n,referrer_id:n', 'referrals_referred_unique:u,referrals_referrer_idx', 'qualified_order_id>orders:n,referred_id>users:c,referrer_id>users:c'),
+  ('return_requests', 'collected_at,created_at:nd,decided_at,decided_by,decline_reason,id:pnd,kind:n,note,order_id:n,order_item_id:n,reason:n,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked:nd,status:nd,updated_at:nd,user_id,vendor_id', 'return_requests_open_unique:uw,return_requests_user_idx,return_requests_vendor_idx', 'order_id>orders:c,order_item_id>order_items:c,replacement_order_id>orders:n,user_id>users:n,vendor_id>vendors:n'),
+  ('reviews', 'body,created_at:nd,hidden_at,hidden_reason,id:pnd,order_item_id:n,product_id,product_title:n,rating:n,title,updated_at:nd,user_id:n,vendor_id,vendor_replied_at,vendor_reply', 'reviews_order_item_unique:u,reviews_product_idx,reviews_user_idx,reviews_vendor_idx', 'order_item_id>order_items:c,product_id>products:n,user_id>users:c,vendor_id>vendors:n'),
+  ('saved_products', 'created_at:nd,id:pnd,product_id:n,user_id:n', 'saved_products_user_id_idx,saved_products_user_product_unique:u', 'user_id>users:c'),
+  ('stock_movements', 'actor_id,created_at:nd,delta:n,id:pnd,note,reason:n,resulting:n,variant_id:n', 'stock_movements_created_idx,stock_movements_variant_id_idx', 'actor_id>users:n,variant_id>product_variants:c'),
+  ('subscriptions', 'address_id,created_at:nd,id:pnd,interval_weeks:n,last_order_id,last_outcome,last_run_on,next_run_on:n,paused_reason,price_ceiling:n,product_id,product_title:n,quantity:n,status:nd,updated_at:nd,user_id:n,variant_id,variant_title,vendor_id', 'subscriptions_due_idx,subscriptions_one_open:uw,subscriptions_user_idx', 'address_id>customer_addresses:n,last_order_id>orders:n,product_id>products:n,user_id>users:c,variant_id>product_variants:n,vendor_id>vendors:n'),
+  ('support_conversations', 'created_at:nd,id:pnd,last_message_at:nd,order_id,order_reference,shopper_read_at,staff_read_at,status:nd,topic:n,user_id:n', 'support_conversations_status_idx,support_conversations_user_idx', 'order_id>orders:n,user_id>users:c'),
+  ('support_messages', 'answer,author:n,author_id,body,conversation_id:n,created_at:nd,id:pnd', 'support_messages_conversation_idx', 'author_id>users:n,conversation_id>support_conversations:c'),
+  ('users', 'audit_seen_at,created_at:nd,email:n,id:pnd,last_signed_in:nd,name,password_hash,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_supabase_uid_unique:uw', ''),
+  ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
+  ('vendor_members', 'created_at:nd,id:pnd,role:nd,user_id:n,vendor_id:n', 'vendor_members_user_id_idx,vendor_members_vendor_user_unique:u', 'user_id>users:c,vendor_id>vendors:c'),
+  ('vendors', 'accepts_cod:nd,accepts_offers:nd,address_line,auto_publish:nd,badges:nd,cod_ceiling,commission_fixed,commission_percent:nd,contact_email,contact_phone,created_at:nd,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id:pnd,licence_expires_at,licence_number,logo_url,name:n,name_ar,payout_iban,slug:n,status:nd,subscription_percent,under_platform_licence:nd,updated_at:nd', 'vendors_slug_unique:u', ''),
+  ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at:nd,id:pnd,note,product_id:n,quantity:nd,updated_at:nd,wishlist_id:n', 'wishlist_items_list_id_idx,wishlist_items_list_product_unique:u', 'claimed_by>users:n,wishlist_id>wishlists:c'),
+  ('wishlists', 'created_at:nd,id:pnd,owner_name,share_token:n,title:n,updated_at:nd,user_id:n,visibility:nd', 'wishlists_share_token_unique:u,wishlists_user_id_idx', 'user_id>users:c')
+),
+expected_enums (type_name, labels) AS (VALUES
+  ('ad_slot', 'home,department,home_banner'),
+  ('fulfilment_status', 'pending,preparing,shipped,delivered,cancelled,returned'),
+  ('inbound_status', 'announced,received,cancelled'),
+  ('locale_code', 'en,ar'),
+  ('media_kind', 'image,video'),
+  ('notification_kind', 'price_drop,bag_reminder,new_arrival,delivery_update'),
+  ('order_status', 'pending_payment,paid,cancelled,refunded'),
+  ('payout_run_status', 'prepared,sent,cancelled'),
+  ('product_status', 'draft,pending_review,published,rejected,archived'),
+  ('sell_unit', 'each,g,kg,ml,l'),
+  ('subscription_status', 'active,paused,cancelled'),
+  ('support_status', 'open,waiting,resolved'),
+  ('support_topic', 'order,delivery,return,payment,account,other'),
+  ('user_role', 'user,admin'),
+  ('vendor_role', 'staff,manager,owner'),
+  ('vendor_status', 'pending,approved,suspended'),
+  ('wishlist_visibility', 'private,public')
+),
+retired (kind, table_name, object_name) AS (VALUES
+  ('index', '', 'product_variants_sku_unique'),
+  ('index', '', 'users_firebase_uid_unique'),
+  ('column', 'users', 'firebase_uid')
+),
+departments (slug) AS (VALUES ('electronics'), ('home-and-kitchen'), ('beauty'), ('style'), ('grocery')),
+
+found_tables AS (
+  SELECT e.*, to_regclass(format('public.%I', e.table_name)) AS rel FROM expected_tables e
+),
+expected_columns AS (
+  SELECT t.table_name, t.rel, split_part(spec, ':', 1) AS column_name, split_part(spec, ':', 2) AS flags
+  FROM found_tables t CROSS JOIN LATERAL unnest(string_to_array(t.columns, ',')) AS spec
+  WHERE t.rel IS NOT NULL
+),
+found_columns AS (
+  SELECT e.*, a.attnum, a.attnotnull, a.atthasdef
+  FROM expected_columns e
+  LEFT JOIN pg_attribute a ON a.attrelid = e.rel AND a.attname = e.column_name AND a.attnum > 0 AND NOT a.attisdropped
+),
+found_indexes AS (
+  SELECT t.table_name, t.rel, split_part(spec, ':', 1) AS index_name, split_part(spec, ':', 2) AS flags, x.indrelid, x.indisunique, x.indpred IS NOT NULL AS partial
+  FROM found_tables t CROSS JOIN LATERAL unnest(string_to_array(t.indexes, ',')) AS spec
+  LEFT JOIN pg_index x ON x.indexrelid = to_regclass(format('public.%I', split_part(spec, ':', 1)))
+  WHERE t.rel IS NOT NULL
+),
+found_keys AS (
+  SELECT t.table_name, t.rel, split_part(split_part(spec, ':', 1), '>', 1) AS column_name,
+    split_part(split_part(spec, ':', 1), '>', 2) AS target, split_part(spec, ':', 2) AS rule, k.confdeltype::text AS actual_rule
+  FROM found_tables t CROSS JOIN LATERAL unnest(string_to_array(t.foreign_keys, ',')) AS spec
+  LEFT JOIN LATERAL (
+    SELECT k.confdeltype FROM pg_constraint k
+    JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = k.conkey[1]
+    WHERE k.contype = 'f' AND k.conrelid = t.rel AND cardinality(k.conkey) = 1
+      AND a.attname = split_part(split_part(spec, ':', 1), '>', 1)
+      AND k.confrelid = to_regclass(format('public.%I', split_part(split_part(spec, ':', 1), '>', 2)))
+    ORDER BY k.confdeltype::text = split_part(spec, ':', 2) DESC
+    LIMIT 1
+  ) k ON true
+  WHERE t.rel IS NOT NULL
+),
+seeded AS (
+  -- Read through query_to_xml so a missing table is a finding, not an error
+  -- that stops the whole audit before it reports anything.
   SELECT
-    packed.table_name,
-    unnest(string_to_array(packed.columns, ',')) AS column_name
-  FROM (VALUES
-    ('ad_bookings', 'banner_headline,banner_headline_ar,banner_media_id,banner_note,banner_reviewed_at,banner_reviewed_by,banner_status,booked_by,cancelled_by,cancelled_on,category_id,created_at,daily_rate,ends_on,id,product_id,product_title,slot,starts_on,total,vendor_id'),
-    ('affiliates', 'channel,created_at,decided_at,decided_by,disclosure_accepted_at,display_name,id,rate_percent,status,user_id'),
-    ('application_documents', 'application_id,byte_size,bytes,content_type,created_at,file_name,id,kind,review_note,reviewed_at,reviewed_by,sha256,status,uploaded_by'),
-    ('audit_log', 'action,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at,id,subject_id,subject_label,subject_type,vendor_id'),
-    ('auth_attempts', 'bucket,created_at,id,kind'),
-    ('bundle_items', 'bundle_id,id,position,quantity,variant_id'),
-    ('bundles', 'active,bundle_price,created_at,id,name,name_ar,updated_at,vendor_id'),
-    ('cart_item_addons', 'addon_id,cart_item_id,id'),
-    ('cart_items', 'address_id,bundle_id,cart_id,created_at,id,quantity,updated_at,variant_id'),
-    ('carts', 'created_at,id,updated_at,user_id'),
-    ('categories', 'created_at,id,name,name_ar,parent_id,position,slug'),
-    ('conversation_messages', 'author_id,body,conversation_id,created_at,id,order_id,product_id,product_title,side'),
-    ('conversations', 'created_at,id,last_message_at,shopper_read_at,user_id,vendor_id,vendor_read_at'),
-    ('courier_members', 'courier_id,created_at,id,user_id'),
-    ('couriers', 'contact_email,contact_phone,created_at,id,name,name_ar,status,updated_at'),
-    ('customer_addresses', 'address_line,address_notes,apartment,area,avenue,block,building,contact_name,contact_phone,created_at,floor,governorate,id,label,paci_number,pin,street,updated_at,user_id'),
-    ('customer_notification_preferences', 'created_at,enabled,id,kind,updated_at,user_id'),
-    ('customer_preferences', 'cart_id,created_at,delivery_zone_id,id,locale,updated_at,user_id,wishlist_phone'),
-    ('damage_claims', 'awarded_amount,claimed_amount,courier_id,courier_responded_at,courier_response,created_at,decided_at,decided_by,decision_note,description,evidence_url,filed_as,filed_by,id,line_ids,order_id,parcel_key,status,updated_at,vendor_id,vendor_name'),
-    ('delivery_ratings', 'comment,courier_id,created_at,id,order_id,parcel_key,rating,updated_at,user_id,vendor_id,vendor_name'),
-    ('discount_codes', 'code,created_at,ends_at,id,kind,max_redemptions,min_spend,per_shopper,starts_at,value'),
-    ('discount_redemptions', 'amount,code_id,created_at,id,order_id,user_id'),
-    ('driver_positions', 'accuracy_m,courier_id,position,recorded_at,user_id'),
-    ('feature_switches', 'enabled,key,updated_at,updated_by'),
-    ('followed_products', 'back_in_stock,created_at,id,last_notified_price,price_drop,product_id,updated_at,user_id'),
-    ('fulfilment_centres', 'active,address_line,created_at,governorate,id,name,pack_fee_per_unit'),
-    ('fulfilment_charges', 'amount,centre_id,created_at,id,order_item_id,order_reference,rate_per_unit,units,vendor_id'),
-    ('gift_card_uses', 'amount,created_at,gift_card_id,id,order_id'),
-    ('gift_cards', 'code,created_at,expires_at,id,initial_balance,note,remaining'),
-    ('inbound_lines', 'expected,id,product_title,received,shipment_id,sku,variant_id,variant_title'),
-    ('inbound_shipments', 'announced_by,centre_id,created_at,id,note,received_at,received_by,reference,status,vendor_id'),
-    ('invoice_counters', 'last,series'),
-    ('invoices', 'credits_invoice_id,document,id,issued_at,kind,number,order_id,return_request_id,total,verify_code'),
-    ('media_files', 'byte_size,bytes,content_type,created_at,height,id,source_url,uploaded_by,vendor_id,width'),
-    ('membership_terms', 'free_delivery_over,id,updated_at,updated_by'),
-    ('memberships', 'cancelled_at,created_at,ends_at,granted_by,id,note,source,starts_at,user_id'),
-    ('order_item_addons', 'addon_id,id,kind,label,order_item_id,price'),
-    ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount,commission_fixed,commission_percent,courier_id,created_at,delivered_at,destination,fulfilment,id,line_total,order_id,preorder_release_at,preordered,product_id,product_title,quantity,size_class,sku,unit_price,updated_at,variant_id,variant_title,vendor_id,vendor_name,vendor_net,weight_grams'),
-    ('order_tracking_events', 'created_at,id,message,occurred_at,order_reference,status,user_id'),
-    ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total,contact_name,contact_phone,currency,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total,delivery_waived,delivery_zone_id,discount_code,discount_value,email,gift_card_code,gift_card_value,grand_total,id,items_total,member,payment_collected_at,payment_method,placed_at,points_spent,points_value,reference,status,subscription_id,updated_at,user_id'),
-    ('payout_files', 'created_at,created_by,id'),
-    ('payout_run_items', 'amount,booking_id,charge_id,id,order_id,order_reference,run_id,vendor_id'),
-    ('payout_runs', 'bank_reference,file_id,iban_used,id,paid_at,paid_by,prepared_at,prepared_by,status,total,vendor_id,vendor_name'),
-    ('point_entries', 'created_at,id,note,order_id,order_item_id,points,pot,reason,referral_id,settled_at,user_id'),
-    ('price_offers', 'answered_at,answered_by,asked_price,created_at,expires_at,id,list_price,offered_price,product_id,product_title,quantity,shopper_note,status,updated_at,used_on_order_id,user_id,variant_id,vendor_id,vendor_note'),
-    ('product_addons', 'created_at,id,kind,label,label_ar,position,price,product_id'),
-    ('product_images', 'alt_text,created_at,id,kind,position,poster_url,product_id,url'),
-    ('product_variants', 'centre_id,compare_at_price,created_at,id,low_stock_at,member_price,options,position,preorder_release_at,preorder_stock,price,product_id,sku,step_amount,stock,title,unit,updated_at'),
-    ('products', 'accepts_offers,attributes,category_id,commission_fixed,commission_percent,created_at,delivery_speed,description,description_ar,handle,id,review_note,size_chart,size_class,status,tags,title,title_ar,updated_at,vendor_id'),
-    ('referrals', 'created_at,id,qualified_at,qualified_order_id,referred_id,referrer_id'),
-    ('return_requests', 'collected_at,created_at,decided_at,decided_by,decline_reason,id,kind,note,order_id,order_item_id,reason,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked,status,updated_at,user_id,vendor_id'),
-    ('reviews', 'body,created_at,hidden_at,hidden_reason,id,order_item_id,product_id,product_title,rating,title,updated_at,user_id,vendor_id,vendor_replied_at,vendor_reply'),
-    ('saved_products', 'created_at,id,product_id,user_id'),
-    ('stock_movements', 'actor_id,created_at,delta,id,note,reason,resulting,variant_id'),
-    ('subscriptions', 'address_id,created_at,id,interval_weeks,last_order_id,last_outcome,last_run_on,next_run_on,paused_reason,price_ceiling,product_id,product_title,quantity,status,updated_at,user_id,variant_id,variant_title,vendor_id'),
-    ('support_conversations', 'created_at,id,last_message_at,order_id,order_reference,shopper_read_at,staff_read_at,status,topic,user_id'),
-    ('support_messages', 'answer,author,author_id,body,conversation_id,created_at,id'),
-    ('users', 'audit_seen_at,created_at,email,id,last_signed_in,name,password_hash,role,supabase_uid,updated_at'),
-    ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at,governorate,id,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status,store_name,store_name_ar,under_platform_licence,updated_at,user_id,vendor_id'),
-    ('vendor_members', 'created_at,id,role,user_id,vendor_id'),
-    ('vendors', 'accepts_cod,accepts_offers,address_line,auto_publish,badges,cod_ceiling,commission_fixed,commission_percent,contact_email,contact_phone,created_at,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id,licence_expires_at,licence_number,logo_url,name,name_ar,payout_iban,slug,status,subscription_percent,under_platform_licence,updated_at'),
-    ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at,id,note,product_id,quantity,updated_at,wishlist_id'),
-    ('wishlists', 'created_at,id,owner_name,share_token,title,updated_at,user_id,visibility')
-  ) AS packed (table_name, columns)
+    CASE WHEN EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.categories') AND attname = 'slug' AND NOT attisdropped)
+      THEN coalesce((xpath('/row/s/text()', query_to_xml('SELECT string_agg(slug, '','') AS s FROM public.categories', false, true, '')))[1]::text, '')
+    END AS department_slugs,
+    CASE WHEN EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('public.vendors') AND attname = 'slug' AND NOT attisdropped)
+      THEN (xpath('/row/n/text()', query_to_xml('SELECT count(*) AS n FROM public.vendors WHERE slug = ''netlet''', false, true, '')))[1]::text::int
+    END AS house_vendor
+),
+wording (by_hand) AS (
+  -- No migration redefines an index or a key under the same name, so these
+  -- were changed by hand, and the bootstrap keeps what it finds by name.
+  VALUES ('Changed by hand: re-running the bootstrap will not fix this one')
+),
+problems (sort, area, object, finding) AS (
+  SELECT 1, 'table', table_name, 'missing, with everything in it' FROM found_tables WHERE rel IS NULL
+  UNION ALL
+  SELECT 2, 'column', table_name || '.' || column_name, 'missing' FROM found_columns WHERE attnum IS NULL
+  UNION ALL
+  SELECT 3, 'column', table_name || '.' || column_name,
+    CASE WHEN flags LIKE '%n%' THEN 'allows NULL; should be NOT NULL' ELSE 'is NOT NULL; should allow NULL' END
+  FROM found_columns WHERE attnum IS NOT NULL AND attnotnull <> (flags LIKE '%n%')
+  UNION ALL
+  SELECT 3, 'column', table_name || '.' || column_name,
+    CASE WHEN flags LIKE '%d%' THEN 'has no default; should have one' ELSE 'has a default; a later migration removed it' END
+  FROM found_columns WHERE attnum IS NOT NULL AND atthasdef <> (flags LIKE '%d%')
+  UNION ALL
+  SELECT 3, 'primary key', table_name || '.' || column_name, 'is not the primary key'
+  FROM found_columns c WHERE attnum IS NOT NULL AND flags LIKE '%p%' AND NOT EXISTS (
+    SELECT 1 FROM pg_constraint k WHERE k.conrelid = c.rel AND k.contype = 'p' AND c.attnum = ANY (k.conkey))
+  UNION ALL
+  SELECT 4, 'enum', type_name, 'missing' FROM expected_enums WHERE to_regtype(format('public.%I', type_name)) IS NULL
+  UNION ALL
+  SELECT 4, 'enum value', e.type_name || ' = ' || label, 'missing'
+  FROM expected_enums e CROSS JOIN LATERAL unnest(string_to_array(e.labels, ',')) AS label
+  WHERE to_regtype(format('public.%I', e.type_name)) IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM pg_enum v WHERE v.enumtypid = to_regtype(format('public.%I', e.type_name)) AND v.enumlabel = label)
+  UNION ALL
+  SELECT 5, 'index', index_name,
+    CASE
+      WHEN indrelid IS NULL THEN 'missing'
+      WHEN indrelid <> rel THEN 'is on the wrong table; should be on ' || table_name || '. ' || by_hand
+      WHEN flags LIKE '%u%' AND NOT indisunique THEN 'is not unique; should be. ' || by_hand
+      WHEN flags NOT LIKE '%u%' AND indisunique THEN 'is unique; should not be. ' || by_hand
+      ELSE 'has the wrong WHERE clause. ' || by_hand
+    END
+  FROM found_indexes, wording
+  WHERE indrelid IS NULL OR indrelid <> rel OR indisunique <> (flags LIKE '%u%') OR partial <> (flags LIKE '%w%')
+  UNION ALL
+  SELECT 6, 'foreign key', k.table_name || '.' || k.column_name || ' -> ' || k.target,
+    CASE WHEN actual_rule IS NULL THEN 'missing'
+      ELSE 'deletes with ' || CASE actual_rule WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'r' THEN 'RESTRICT' WHEN 'd' THEN 'SET DEFAULT' ELSE 'NO ACTION' END
+        || '; should be ' || CASE rule WHEN 'c' THEN 'CASCADE' WHEN 'n' THEN 'SET NULL' WHEN 'r' THEN 'RESTRICT' WHEN 'd' THEN 'SET DEFAULT' ELSE 'NO ACTION' END
+        || '. ' || by_hand
+    END
+  FROM found_keys k, wording
+  WHERE (actual_rule IS NULL OR actual_rule <> rule)
+    -- A missing column or target table is already its own row.
+    AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = k.rel AND a.attname = k.column_name AND NOT a.attisdropped)
+    AND to_regclass(format('public.%I', k.target)) IS NOT NULL
+  UNION ALL
+  SELECT 7, 'leftover', CASE WHEN kind = 'column' THEN table_name || '.' || object_name ELSE object_name END,
+    'a later migration dropped this ' || kind || '; it is still here'
+  FROM retired r
+  WHERE (kind = 'index' AND to_regclass(format('public.%I', object_name)) IS NOT NULL)
+     OR (kind = 'column' AND EXISTS (SELECT 1 FROM pg_attribute a
+           WHERE a.attrelid = to_regclass(format('public.%I', r.table_name)) AND a.attname = r.object_name AND NOT a.attisdropped))
+  UNION ALL
+  SELECT 8, 'seed', 'department ' || d.slug, 'missing from categories'
+  FROM departments d, seeded s
+  WHERE s.department_slugs IS NOT NULL AND NOT d.slug = ANY (string_to_array(s.department_slugs, ','))
+  UNION ALL
+  SELECT 8, 'seed', 'vendor netlet', 'missing — the house vendor that owns NetLet''s own products'
+  FROM seeded WHERE house_vendor = 0
+),
+security AS (
+  -- Only on Supabase, where the anon role exists: a table the anon key can
+  -- read with row-level security off is readable through the Data API.
+  SELECT 9 AS sort, 'security' AS area,
+    count(*) || ' of 63 tables' AS object,
+    'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
+  FROM found_tables t
+  JOIN pg_class c ON c.oid = t.rel
+  WHERE NOT c.relrowsecurity
+    AND CASE WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN has_table_privilege('anon', c.oid, 'SELECT') ELSE false END
+  HAVING count(*) > 0
 )
-SELECT
-  e.table_name,
-  e.column_name,
-  CASE WHEN t.table_name IS NULL THEN 'whole table missing' ELSE 'column missing' END AS problem
-FROM expected e
-LEFT JOIN information_schema.columns c
-  ON c.table_schema = 'public' AND c.table_name = e.table_name AND c.column_name = e.column_name
-LEFT JOIN information_schema.tables t
-  ON t.table_schema = 'public' AND t.table_name = e.table_name
-WHERE c.column_name IS NULL
-ORDER BY e.table_name, e.column_name;
+SELECT area, object, finding FROM (
+  SELECT * FROM problems
+  UNION ALL
+  SELECT * FROM security
+  UNION ALL
+  SELECT 10, 'result', 'everything',
+    CASE WHEN count(*) = 0 THEN 'complete — 63 tables, 667 columns, 119 indexes, 144 foreign keys, 17 enums, the drops and the seed all match'
+      ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
+  FROM problems
+) AS report
+ORDER BY sort, object;

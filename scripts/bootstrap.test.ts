@@ -17,6 +17,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
+import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { DEPARTMENTS } from "../shared/commerce/departments.js";
@@ -92,6 +93,11 @@ describe("the Supabase bootstrap generator", () => {
    * audit that has fallen behind reports a clean bill on a database that is
    * broken, which is worse than having no audit.
    */
+  /* Indexes, keys and enums too: the generator says whether its output moved. */
+  it("has a schema audit the generator would write today", () => {
+    expect(() => execFileSync(process.execPath, [path.join(root, "scripts/build-schema-audit.mjs"), "--check"], { stdio: "pipe" })).not.toThrow();
+  });
+
   it("has a schema audit covering every column in the current snapshot", () => {
     const audit = readFileSync(path.join(root, "docs/schema-audit.sql"), "utf-8");
     const snapshots = readdirSync(path.join(root, "drizzle/meta"))
@@ -101,16 +107,108 @@ describe("the Supabase bootstrap generator", () => {
 
     const missing: string[] = [];
     for (const table of Object.values(snapshot.tables) as { name: string; columns: Record<string, { name: string }> }[]) {
+      // Packed one row per table: name, then its columns as name:flags.
+      const packed = new RegExp(`\\('${table.name}', '([^']*)'`).exec(audit);
+      const listed = packed ? packed[1].split(",").map(spec => spec.split(":")[0]) : [];
       for (const column of Object.values(table.columns)) {
-        // Packed one row per table, so the check is on the table's column list.
-        const packed = new RegExp(`\\('${table.name}', '([^']*)'\\)`).exec(audit);
-        if (!packed || !packed[1].split(",").includes(column.name)) {
-          missing.push(`${table.name}.${column.name}`);
-        }
+        if (!listed.includes(column.name)) missing.push(`${table.name}.${column.name}`);
       }
     }
     expect(missing).toEqual([]);
   });
+});
+
+/*
+ * The audit is a query, so it is checked by running it. A clean bill on a
+ * broken database is the one answer it must never give, and the only way to
+ * know it does not is to break a database and ask.
+ */
+describe("the schema audit, actually executed", () => {
+  const bootstrap = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
+  const audit = readFileSync(path.join(root, "docs/schema-audit.sql"), "utf-8");
+  type Row = { area: string; object: string; finding: string };
+  const report = async (db: PGlite) => (await db.query<Row>(audit)).rows;
+
+  it("says complete, and only that, on a database the bootstrap stood up", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    const rows = await report(db);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ area: "result", object: "everything" });
+    expect(rows[0].finding).toMatch(/^complete/);
+    await db.close();
+  }, 120_000);
+
+  /*
+   * One of each thing a missed migration can leave: a table, a column, a NOT
+   * NULL and a default a later migration took off, an index, a foreign key,
+   * something a later migration dropped, and the seed rows. Then the fix the
+   * audit prescribes — the bootstrap again — has to make it say complete.
+   */
+  it("names each thing a missed migration leaves, and the bootstrap repairs them all", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    await db.exec(`
+      DROP TABLE application_documents;
+      ALTER TABLE orders DROP COLUMN delivery_address_parts;
+      ALTER TABLE users ALTER COLUMN password_hash SET NOT NULL;
+      ALTER TABLE customer_preferences ALTER COLUMN locale SET DEFAULT 'en';
+      DROP INDEX product_variants_product_sku_unique;
+      ALTER TABLE order_items DROP CONSTRAINT order_items_bundle_id_bundles_id_fk;
+      CREATE UNIQUE INDEX product_variants_sku_unique ON product_variants (sku);
+      ALTER TABLE users ADD COLUMN firebase_uid varchar(128);
+      DELETE FROM categories WHERE slug = 'grocery';
+      DELETE FROM vendors WHERE slug = 'netlet';
+    `);
+    const found = (await report(db)).map(row => `${row.area} ${row.object}: ${row.finding}`);
+    expect(found).toEqual(expect.arrayContaining([
+      "table application_documents: missing, with everything in it",
+      "column orders.delivery_address_parts: missing",
+      "column users.password_hash: is NOT NULL; should allow NULL",
+      "column customer_preferences.locale: has a default; a later migration removed it",
+      "index product_variants_product_sku_unique: missing",
+      "foreign key order_items.bundle_id -> bundles: missing",
+      "leftover product_variants_sku_unique: a later migration dropped this index; it is still here",
+      "leftover users.firebase_uid: a later migration dropped this column; it is still here",
+      "seed department grocery: missing from categories",
+      expect.stringMatching(/^seed vendor netlet: missing/),
+      "result everything: 10 problems above: run docs/supabase-bootstrap.sql again, in full, then this again",
+    ]));
+    expect(found).toHaveLength(11);
+
+    await db.exec(bootstrap);
+    const after = await report(db);
+    expect(after).toHaveLength(1);
+    expect(after[0].finding).toMatch(/^complete/);
+    await db.close();
+  }, 120_000);
+
+  /* A missing table is a finding, not an error that stops the report. */
+  it("still reports when the seeded tables themselves are gone", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    await db.exec("DROP TABLE categories CASCADE; DROP TABLE vendors CASCADE;");
+    const objects = (await report(db)).filter(row => row.area === "table").map(row => row.object);
+    expect(objects).toEqual(["categories", "vendors"]);
+    await db.close();
+  }, 120_000);
+
+  /*
+   * On Supabase the anon role can read every table it is granted, and with
+   * row-level security off the Data API hands those rows to anybody holding the
+   * anon key. A plain Postgres has no such role and gets no such row.
+   */
+  it("says when the anon role can read tables that have no row-level security", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    await db.exec("CREATE ROLE anon; GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon; ALTER TABLE users ENABLE ROW LEVEL SECURITY;");
+    const security = (await report(db)).filter(row => row.area === "security");
+    expect(security).toHaveLength(1);
+    expect(security[0].object).toMatch(/^\d+ of \d+ tables$/);
+    const [readable, total] = security[0].object.match(/\d+/g)!.map(Number);
+    expect(readable).toBe(total - 1);
+    await db.close();
+  }, 120_000);
 });
 
 /*
