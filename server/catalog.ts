@@ -67,6 +67,8 @@ import {
 type Named = { id: number; name: string; nameAr: string | null };
 /** A vendor also carries its badges — awarded on the row, then measured by `badgesFor`. */
 type VendorNamed = Named & {
+  /** The store's public address, `/stores/<slug>`. */
+  slug: string;
   badges: string[] | null;
   discountLicenceNumber: string | null;
   discountLicenceExpiresAt: Date | null;
@@ -89,7 +91,7 @@ async function contextFor(
 
   const [vendorRows, categoryRows] = await Promise.all([
     vendorIds.length
-      ? db.select({ id: vendors.id, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent }).from(vendors).where(inArray(vendors.id, vendorIds))
+      ? db.select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent }).from(vendors).where(inArray(vendors.id, vendorIds))
       : Promise.resolve([] as VendorNamed[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
@@ -110,7 +112,7 @@ async function contextFor(
  * start arriving late stops showing them without anybody pressing anything —
  * the rule the discount permit follows for the strikethrough.
  */
-async function badgesFor(
+export async function badgesFor(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   vendorRows: { id: number; badges: string[] | null }[],
 ): Promise<Map<number, TrustBadge[]>> {
@@ -169,6 +171,7 @@ function shape(
     {
       vendorName: vendor?.name,
       vendorNameAr: vendor?.nameAr,
+      vendorSlug: vendor?.slug,
       vendorBadges: vendor?.badges,
       vendorDeliverySpeed: vendor?.deliverySpeed,
       vendorDeliveryProvider: vendor?.deliveryProvider,

@@ -106,6 +106,8 @@ export type ProductContext = {
   /** Display name of the vendor that owns the product. */
   vendorName?: string | null;
   vendorNameAr?: string | null;
+  /** The store's public address, for "Sold by" to link to. */
+  vendorSlug?: string | null;
   /** The badges the store's evidence supports (`storefrontBadges`); `visibleBadges` drops anything unknown. */
   vendorBadges?: string[] | null;
   /* The store's usual band, which this product may override (3.2.5). */
@@ -293,6 +295,7 @@ export function toStorefrontProduct(
        nothing. The label is the dictionary's (`categoryMessageKey`). */
     productType: context.categoryName || null,
     vendor: pick(locale, context.vendorName, context.vendorNameAr) || null,
+    vendorSlug: context.vendorSlug ?? null,
     vendorBadges: visibleBadges(context.vendorBadges),
     /* Resolved here, once, so no page has to know the override rule — the
        same reason `images` is derived from `media` rather than filtered at

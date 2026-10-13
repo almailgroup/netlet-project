@@ -251,7 +251,7 @@ async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows:
  * from the storefront without anyone editing the product, which is what makes
  * suspension a real lever.
  */
-export async function publishedCatalog(options: { limit?: number; categoryId?: number; ids?: number[] } = {}) {
+export async function publishedCatalog(options: { limit?: number; categoryId?: number; ids?: number[]; vendorId?: number } = {}) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db
@@ -263,6 +263,8 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
         eq(products.status, "published"),
         eq(vendors.status, "approved"),
         options.categoryId ? eq(products.categoryId, options.categoryId) : undefined,
+        /* One store's shelf, for its public page — the same rules, narrowed. */
+        options.vendorId ? eq(products.vendorId, options.vendorId) : undefined,
         /* Narrowing to named products still passes every rule above — which is
            the point: a sponsored placement is drawn through this read so a
            paid slot cannot show what the shelf would not (3.3.15). */

@@ -136,6 +136,11 @@ export type Product = {
   productType: string | null;
   vendor: string | null;
   /**
+   * The store's public address (`/stores/<slug>`), so "Sold by" can go there.
+   * Optional because a demo catalogue and a cart line's snapshot carry none.
+   */
+  vendorSlug?: string | null;
+  /**
    * Trust badges the vendor has been awarded, as plain keys the client
    * translates. They are here rather than on a vendor object because the
    * storefront never loads a vendor — it loads products, and this is the one
