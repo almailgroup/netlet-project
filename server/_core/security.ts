@@ -22,9 +22,43 @@ import { MAP_TILE_ORIGIN } from "../../shared/commerce/geo.js";
  * only — React sets element styles directly for the gallery lens and the
  * card fade, and there is no nonce plumbing on a static index.html.
  */
+/*
+ * Google's "I'm not a robot" box on Create account, only while it is
+ * configured: the script that draws it, and the frame it is drawn in. Unset, the
+ * policy names nothing of Google's.
+ */
+const CAPTCHA_SCRIPTS = ENV.recaptchaSiteKey && ENV.recaptchaSecretKey
+  ? ["https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"]
+  : [];
+const CAPTCHA_FRAMES = CAPTCHA_SCRIPTS.length ? ["https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"] : [];
+
+/*
+ * The pin picker's two maps (3.2.7), each only while its keys are set — the
+ * hosts Google and Apple publish for their map scripts, tiles and data. Both
+ * draw tiles in workers built from blobs.
+ */
+const GOOGLE_MAPS = Boolean(ENV.googleMapsKey);
+const APPLE_MAPS = Boolean(ENV.appleMapkitToken || (ENV.appleMapkitTeamId && ENV.appleMapkitKeyId && ENV.appleMapkitPrivateKey));
+const MAP_SCRIPTS = [
+  ...(GOOGLE_MAPS ? ["https://*.googleapis.com", "https://*.gstatic.com", "https://*.google.com", "https://*.ggpht.com", "https://*.googleusercontent.com"] : []),
+  ...(APPLE_MAPS ? ["https://cdn.apple-mapkit.com"] : []),
+];
+const MAP_CONNECT = [
+  ...(GOOGLE_MAPS ? ["https://*.googleapis.com", "https://*.google.com", "https://*.gstatic.com"] : []),
+  ...(APPLE_MAPS ? ["https://*.apple-mapkit.com", "https://*.ls.apple.com"] : []),
+];
+const MAP_IMAGES = [
+  ...(GOOGLE_MAPS ? ["https://*.googleapis.com", "https://*.gstatic.com", "https://*.google.com", "https://*.googleusercontent.com"] : []),
+  ...(APPLE_MAPS ? ["https://*.apple-mapkit.com", "https://*.ls.apple.com"] : []),
+];
+const MAP_FRAMES = GOOGLE_MAPS ? ["https://*.google.com"] : [];
+const MAP_WORKERS = GOOGLE_MAPS || APPLE_MAPS ? ["blob:"] : [];
+
 const CONTENT_SECURITY_POLICY = {
   defaultSrc: ["'self'"],
-  scriptSrc: ["'self'"],
+  scriptSrc: ["'self'", ...CAPTCHA_SCRIPTS, ...MAP_SCRIPTS],
+  frameSrc: ["'self'", ...CAPTCHA_FRAMES, ...MAP_FRAMES],
+  workerSrc: ["'self'", ...MAP_WORKERS],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
   // Product imagery: whatever MEDIA_HOST names, or any https origin while
@@ -32,10 +66,10 @@ const CONTENT_SECURITY_POLICY = {
   // artwork as inline SVG data URIs.
   // The map picker's tiles (3.2.7) come from one named host, which has to be
   // listed once MEDIA_HOST narrows the rest.
-  imgSrc: ["'self'", "data:", "blob:", ...(ENV.mediaHost ? [ENV.mediaHost, MAP_TILE_ORIGIN] : ["https:"])],
+  imgSrc: ["'self'", "data:", "blob:", ...(ENV.mediaHost ? [ENV.mediaHost, MAP_TILE_ORIGIN, ...MAP_IMAGES] : ["https:"])],
   // Nothing off-origin to talk to: the catalog, the cart and checkout are
   // all NetLet's own API now.
-  connectSrc: ["'self'"],
+  connectSrc: ["'self'", ...MAP_CONNECT],
   formAction: ["'self'"],
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],

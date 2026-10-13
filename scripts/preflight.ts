@@ -121,13 +121,58 @@ if (supabaseAuthMissing.length === 0) {
       "They are two different keys. Project Settings -> API Keys has both — anon/public and service_role");
   } else {
     add("ok", "Supabase Auth", `accounts are stored in ${new URL(url).host}`);
+    /*
+     * Create account sends a six-digit code and makes nothing until it comes
+     * back. With "Confirm email" switched off, Supabase confirms every address
+     * itself, sends no code, and the step cannot happen — accounts are made on
+     * the spot, unproven. Asked of the project's public settings.
+     */
+    try {
+      const settings = await fetch(`${url.replace(/\/+$/, "")}/auth/v1/settings`, {
+        headers: { apikey: anon, authorization: `Bearer ${anon}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      const body = settings.ok ? ((await settings.json()) as { mailer_autoconfirm?: boolean }) : {};
+      if (body.mailer_autoconfirm === true) {
+        add("blocked", "Sign-up code", "\"Confirm email\" is off, so Supabase sends no code and accounts are made unproven",
+          "Authentication -> Sign In / Providers -> Email -> turn on Confirm email; docs/SUPABASE-AUTH.md, under The sign-up code");
+      } else if (body.mailer_autoconfirm === false) {
+        add("ok", "Sign-up code", "Supabase emails a code before an account exists — the template must show {{ .Token }} (docs/SUPABASE-AUTH.md, under The sign-up code)");
+      }
+    } catch {
+      add("warn", "Sign-up code", "could not ask Supabase whether Confirm email is on", "Check it by hand: docs/SUPABASE-AUTH.md, under The sign-up code");
+    }
   }
 } else if (supabaseAuthMissing.length === supabaseAuthVars.length) {
-  add("warn", "Supabase Auth", "not set — registrations will not appear under Authentication in the Supabase dashboard",
+  add("warn", "Supabase Auth", "not set — registrations will not appear under Authentication in the Supabase dashboard, and sign-up codes go to the server's log instead of an inbox",
     "Optional, and the reason that page is empty. docs/SUPABASE-AUTH.md has the setup");
 } else {
   add("blocked", "Supabase Auth", `partly set: ${supabaseAuthMissing.join(", ")} missing, so a different password store is used instead`,
     "Set all three, or clear them all — see docs/SUPABASE-AUTH.md");
+}
+
+/* ---------------------------------------------------- human check, maps --- */
+
+{
+  /* Google's "I'm not a robot" box on Create account. Both keys or neither: a
+     site key alone draws a box the server cannot check. */
+  const site = (process.env.RECAPTCHA_SITE_KEY ?? "").trim();
+  const secret = (process.env.RECAPTCHA_SECRET_KEY ?? "").trim();
+  if (site && secret) add("ok", "Human check", "Google reCAPTCHA is on for Create account");
+  else if (site || secret) add("blocked", "Human check", `${site ? "RECAPTCHA_SECRET_KEY" : "RECAPTCHA_SITE_KEY"} missing, so the box is off`, "Both come from google.com/recaptcha/admin (v2, \"I'm not a robot\" checkbox)");
+  else add("warn", "Human check", "RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY not set — Create account has no \"I'm not a robot\" box", "google.com/recaptcha/admin -> v2 checkbox, with NetLet's domain");
+
+  /* The pin picker's two maps. Neither is OpenStreetMap, which still works. */
+  const google = Boolean((process.env.GOOGLE_MAPS_API_KEY ?? "").trim());
+  const appleSigning = ["APPLE_MAPKIT_TEAM_ID", "APPLE_MAPKIT_KEY_ID", "APPLE_MAPKIT_PRIVATE_KEY"].filter(name => (process.env[name] ?? "").trim());
+  const apple = Boolean((process.env.APPLE_MAPKIT_TOKEN ?? "").trim()) || appleSigning.length === 3;
+  if (appleSigning.length > 0 && appleSigning.length < 3 && !apple) {
+    add("blocked", "Maps", `Apple Maps partly set (${appleSigning.join(", ")}), so it is off`, "Set APPLE_MAPKIT_TOKEN alone, or all three of APPLE_MAPKIT_TEAM_ID, APPLE_MAPKIT_KEY_ID and APPLE_MAPKIT_PRIVATE_KEY");
+  } else if (google || apple) {
+    add("ok", "Maps", `the pin picker offers ${[google && "Google Maps", apple && "Apple Maps"].filter(Boolean).join(" and ")}`);
+  } else {
+    add("warn", "Maps", "no Google or Apple map key — the pin picker draws OpenStreetMap", "Set GOOGLE_MAPS_API_KEY and/or APPLE_MAPKIT_TOKEN; docs/MAPS.md");
+  }
 }
 
 /* -------------------------------------------------------------- invoices --- */

@@ -17,6 +17,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers.js";
 import { createContext } from "./context.js";
 import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
+import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { getDb } from "../db.js";
@@ -303,8 +304,30 @@ export function createApp(): Express {
     }
   });
 
+  /**
+   * A MapKit JS token for Apple's map in the pin picker (3.2.7), signed here
+   * so Apple's private key never reaches a browser. Bound to the origin that
+   * asked, and half an hour long. 404 while Apple's map is off — the same
+   * answer an unknown path gets.
+   */
+  app.get("/api/maps/apple-token", apiRateLimit, async (req, res) => {
+    try {
+      const token = await appleMapToken(`${req.protocol}://${req.get("host")}`);
+      if (!token) {
+        res.status(404).type("text/plain").send("Not found");
+        return;
+      }
+      res.set("Cache-Control", "private, no-store").type("text/plain").send(token);
+    } catch (error) {
+      console.error(`[maps] could not sign an Apple Maps token: ${describeError(error)}`);
+      res.status(500).type("text/plain").send("Token unavailable");
+    }
+  });
+
   app.use("/api/trpc/auth.login", authRateLimit);
   app.use("/api/trpc/auth.register", authRateLimit);
+  app.use("/api/trpc/auth.verifyEmail", authRateLimit);
+  app.use("/api/trpc/auth.resendCode", authRateLimit);
   app.use("/api/trpc", apiRateLimit);
   /**
    * Server errors are logged, not just returned.

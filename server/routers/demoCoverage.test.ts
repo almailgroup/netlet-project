@@ -27,6 +27,9 @@ const ROOT = path.resolve(import.meta.dirname, "../..");
 const NOT_IN_DEMO = new Set([
   "auth.login",
   "auth.register",
+  // Registering needs a server to send the code and take it back.
+  "auth.verifyEmail",
+  "auth.resendCode",
   "auth.logout",
   // The demo has no backend and no mail: there is nothing to send from.
   "auth.requestPasswordReset",

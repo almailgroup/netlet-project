@@ -235,10 +235,47 @@ password.
 
 **The dialog is one column, the form alone.** It had a navy panel of selling
 points beside the form, which drew the eye from the form on a wide screen and
-was hidden on a phone anyway. The pages keep that content, beside the card on a
-wide screen and under it on a phone — three things the account does, the
-department art, and the three facts every order carries — because a page has
-the room and somebody deciding whether to register is reading it.
+was hidden on a phone anyway. The pages keep that content, because a page has
+the room and somebody deciding whether to register is reading it — as **one
+card in two halves**: the form on white, and a flat navy panel (an orange edge,
+no gradient or blur) with three things the account does and the three facts
+every order carries, beside it on a wide screen and under it on a phone. The
+form and some notes loose on the pearl read as two things; one card reads as
+the shop's door. The department pictures were on it and the owner asked for a
+picture of the marketplace instead: `client/src/assets/auth/welcome.webp`,
+NetLet's own street with the van being loaded, edge to edge across the panel's
+top because its edges are the panel's navy. It is picked up at build time by
+`import.meta.glob`, so replacing it is dropping in another file, and with none
+the panel is its words alone rather than an empty frame.
+
+**Create account proves the address before anything exists.** It is two steps,
+said as "Step 1 of 2": the details (and Google's box, below), then a six-digit
+code emailed to the address. `auth.register` sends the code and makes nothing;
+`auth.verifyEmail` takes it back with everything the form still holds and makes
+the account then. Supabase sends it — `/auth/v1/signup` with the anon key, so
+the project holds the account unconfirmed, and `/auth/v1/verify` confirms it —
+and the "Confirm signup" template has to print `{{ .Token }}`
+(`docs/SUPABASE-AUTH.md`); `createSupabaseUser`'s admin endpoint, which makes an
+account confirmed, is now the administrator's door only. **The password typed
+with the code is the one kept**: an address can be registered twice before
+anybody confirms it, by somebody else first, and the person reading that inbox
+is the one whose password the account should have. A sign-in with the right
+password on an account still waiting goes to the same step (GoTrue checks the
+password before the confirmation, so "unconfirmed" tells nobody anything). The
+code is one input drawn as six boxes — one field takes a paste, a phone's
+one-time-code suggestion and a screen reader whole — read left to right on
+either page, Arabic-Indic digits folded (`shared/auth/emailCode.ts`). Every code
+sent counts (`codeSend`) and every wrong one (`codeMiss`), in the sign-in
+ceilings' table. With no Supabase the code is written to the server log
+(`localCodes.ts`, in memory, the dev fallback and never the path).
+
+**Google's "I'm not a robot" box guards Create account**
+(`components/auth/HumanCheck.tsx`, `server/_core/captcha.ts`): reCAPTCHA v2,
+its script fetched only on that form, in the page's language, compact under
+304px. The server asks Google before any code is sent — a form that sends email
+is a way to mail anybody — and a Google it cannot reach refuses rather than
+waves through. Both keys or none; a token is good once, so the box resets after
+every attempt. The CSP names Google only while the keys are set.
 
 What the form does, each for a reason:
 
@@ -2042,6 +2079,19 @@ re-entered. Placing the pin from a PACI number needs PACI's own lookup
 service — a provider account, not a column.
 
 ## The map pin
+
+**Google Maps or Apple Maps, as the shopper prefers.** People here use both,
+and the map you know is the one you find your own roof on, so the picker offers
+whichever is set up (`maps.providers`; `docs/MAPS.md` for the keys) as two
+buttons over the map, opens on this device's last choice or Apple's on an Apple
+device, and a switch keeps the spot and the zoom. With neither it is
+OpenStreetMap, which needs no account. `components/map/engines.ts` draws all
+three behind one shape — mount, hear the middle move, move it — so the
+instruction under the map is the same for each. Google's browser key goes to the
+page by design (restricted to NetLet's addresses in Google's console); Apple's
+private key never does — `/api/maps/apple-token` signs a half-hour ES256 token
+for the asking origin, or passes on a ready-made one. A map that fails offers
+the other one and takes focus to it.
 
 `shared/commerce/geo.ts` is the rule, pure and shared. **A pin is optional and
 the typed address is not** — location refused, tiles that never load, or a

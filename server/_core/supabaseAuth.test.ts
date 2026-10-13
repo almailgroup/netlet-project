@@ -236,3 +236,71 @@ describe("deleting a user", () => {
     await expect(auth.deleteSupabaseUser("u1")).rejects.toThrow(/HTTP 500/);
   });
 });
+
+/*
+ * Registering with a code. The shopper's door is the public sign-up endpoint
+ * with the anon key — never the admin one, which would make the account
+ * confirmed and skip the code entirely.
+ */
+describe("signing up with a code", () => {
+  it("goes to the public sign-up endpoint with the anon key and the name as metadata", async () => {
+    stubFetch([{ status: 200, body: { id: "u1", email: "a@b.test", identities: [{ id: "i1" }], confirmation_sent_at: "now" } }]);
+    await expect(auth.signUpSupabaseUser({ email: "a@b.test", password: "Harbour-Falcon-2026", name: "Noura" }))
+      .resolves.toEqual({ kind: "codeSent" });
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/signup`);
+    expect(headerOf(0, "apikey")).toBe(ANON);
+    expect(headerOf(0, "authorization")).toBe(`Bearer ${ANON}`);
+    expect(bodyOf(0)).toEqual({ email: "a@b.test", password: "Harbour-Falcon-2026", data: { name: "Noura" } });
+  });
+
+  /* GoTrue's disguise for an address it already holds, confirmed: a user with
+     no identities and no mail sent. Waiting on it would wait for nothing. */
+  it("reads a user with no identities as a taken address", async () => {
+    stubFetch([{ status: 200, body: { id: "fake", email: "a@b.test", identities: [] } }]);
+    await expect(auth.signUpSupabaseUser({ email: "a@b.test", password: "x" })).rejects.toBeInstanceOf(auth.SupabaseEmailTaken);
+  });
+
+  it("reads Supabase's mail ceiling as a code not sent, not a fault", async () => {
+    stubFetch([{ status: 429, body: { error_code: "over_email_send_rate_limit" } }]);
+    await expect(auth.signUpSupabaseUser({ email: "a@b.test", password: "x" })).rejects.toBeInstanceOf(auth.SupabaseMailLimited);
+  });
+
+  it("says when the project confirmed the address itself and sent nothing", async () => {
+    stubFetch([{ status: 200, body: { access_token: "t", user: { id: "u2", email: "a@b.test" } } }]);
+    await expect(auth.signUpSupabaseUser({ email: "a@b.test", password: "x" }))
+      .resolves.toEqual({ kind: "confirmed", user: { uid: "u2", email: "a@b.test", name: null } });
+  });
+
+  it("checks the code as an email code, with the anon key", async () => {
+    stubFetch([{ status: 200, body: { access_token: "t", user: { id: "u3", email: "a@b.test" } } }]);
+    await expect(auth.verifySupabaseSignupCode("a@b.test", "482913")).resolves.toMatchObject({ uid: "u3" });
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/verify`);
+    expect(headerOf(0, "apikey")).toBe(ANON);
+    expect(bodyOf(0)).toEqual({ type: "email", email: "a@b.test", token: "482913" });
+  });
+
+  it("answers null for a wrong or expired code, at each status GoTrue uses", async () => {
+    for (const status of [400, 403, 410, 422]) {
+      stubFetch([{ status, body: { msg: "Token has expired or is invalid" } }]);
+      await expect(auth.verifySupabaseSignupCode("a@b.test", "000000")).resolves.toBeNull();
+    }
+  });
+
+  it("resends the sign-up mail, silently for an address with nothing waiting", async () => {
+    stubFetch([{ status: 200, body: {} }, { status: 422, body: { msg: "nothing to resend" } }]);
+    await auth.resendSupabaseSignupCode("a@b.test");
+    await expect(auth.resendSupabaseSignupCode("nobody@b.test")).resolves.toBeUndefined();
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/resend`);
+    expect(bodyOf(0)).toEqual({ type: "signup", email: "a@b.test" });
+  });
+
+  /* The right password on an account whose code never came back. */
+  it("tells an unconfirmed account apart from a wrong password at sign-in", async () => {
+    stubFetch([{ status: 400, body: { error_code: "email_not_confirmed", msg: "Email not confirmed" } }]);
+    await expect(auth.signInSupabase("a@b.test", "right")).resolves.toBe("unconfirmed");
+    stubFetch([{ status: 400, body: { error_code: "invalid_credentials", msg: "Invalid login credentials" } }]);
+    await expect(auth.signInSupabase("a@b.test", "wrong")).resolves.toBeNull();
+    stubFetch([{ status: 400, body: { error_code: "email_not_confirmed" } }]);
+    await expect(auth.verifySupabasePassword("a@b.test", "right")).resolves.toBeNull();
+  });
+});

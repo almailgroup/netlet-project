@@ -77,18 +77,19 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
  * true of every order, so a fair thing to put beside a password box, where a
  * slogan or an invented count of happy customers would not be.
  */
-export function OrderFacts({ className = "" }: { className?: string }) {
+export function OrderFacts({ className = "", tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
   const { t } = useTranslation();
   const facts = [
     { icon: Truck, label: t("checkout.builtForKuwait") },
     { icon: Wallet, label: t("home.payOnDelivery") },
     { icon: RotateCcw, label: t("home.returnsWithin", { days: RETURN_WINDOW_DAYS }) },
   ];
+  const dark = tone === "dark";
   return (
-    <ul className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-semibold text-[#3d5170] ${className}`}>
+    <ul className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-semibold ${dark ? "text-[#c9d4e2]" : "text-[#3d5170]"} ${className}`}>
       {facts.map(fact => (
         <li key={fact.label} className="flex items-center gap-1.5">
-          <fact.icon className="size-3.5 shrink-0 text-[#0a285a]" aria-hidden />
+          <fact.icon className={`size-3.5 shrink-0 ${dark ? "text-[#ffab85]" : "text-[#0a285a]"}`} aria-hidden />
           {fact.label}
         </li>
       ))}

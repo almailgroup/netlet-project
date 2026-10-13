@@ -745,16 +745,19 @@
 
 /*
  * The map picker (3.2.7). A map is a picture of the ground, not a run of text,
- * so it keeps the ground's own left and right on an Arabic page: Leaflet
- * places its tiles and controls by physical offsets, and an inherited
+ * so it keeps the ground's own left and right on an Arabic page, whichever of
+ * Google's, Apple's or OpenStreetMap's it is: Leaflet places its tiles and
+ * controls by physical offsets, and an inherited
  * `direction: rtl` mirrors the attribution and the zoom buttons into each
  * other. This is the map's own box only — the panel around it still follows
  * the page. The attribution link is darkened to the codebase's accent ink,
  * because Leaflet's own blue on its translucent strip is the kind of contrast
  * an audit passes only by not looking.
  */
-.netlet-map.leaflet-container {
+.netlet-map {
   direction: ltr;
+}
+.netlet-map.leaflet-container {
   font: inherit;
 }
 .netlet-map .leaflet-control-attribution {

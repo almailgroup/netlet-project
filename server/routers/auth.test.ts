@@ -130,6 +130,12 @@ describe("auth with Supabase Auth as the password store", () => {
   function stubStore(over: Partial<Record<string, unknown>> = {}) {
     vi.doMock("../_core/passwordStore.js", () => ({
       EmailTakenError: class EmailTakenError extends Error {},
+      CodeNotSentError: class CodeNotSentError extends Error {},
+      PasswordMismatchError: class PasswordMismatchError extends Error {},
+      WeakPasswordError: class WeakPasswordError extends Error {},
+      startRegistration: async () => ({ status: "codeSent" }),
+      finishRegistration: async ({ code }: { code: string }) => (code === "482913" ? supabaseUser : null),
+      resendRegistrationCode: async () => {},
       activeStore: () => "supabase",
       storeFor: () => "supabase",
       isUsable: () => true,
@@ -152,14 +158,17 @@ describe("auth with Supabase Auth as the password store", () => {
     });
     vi.doMock("../rateLimit.js", () => ({
       checkAuthAllowed: async () => ({ allowed: true }),
-      recordAuthAttempt: async () => {},
+      recordAuthAttempt: async (_caller: unknown, kind: string) => { recorded.push(kind); },
       clearAccountFailures: async () => {},
     }));
     vi.doMock("../db.js", () => ({ touchLastSignedIn: async () => {} }));
     vi.doMock("../referral.js", () => ({ recordReferral: async () => {} }));
   }
 
+  let recorded: string[] = [];
+
   beforeEach(() => {
+    recorded = [];
     vi.stubEnv("JWT_SECRET", "test-secret");
     vi.stubEnv("DATABASE_URL", "postgres://unused");
     vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
@@ -167,14 +176,66 @@ describe("auth with Supabase Auth as the password store", () => {
     vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service");
   });
 
-  it("registers and sets the session cookie", async () => {
+  /* Registering makes nothing and signs nobody in: it sends a code. */
+  it("answers registration with the code step and sets no cookie", async () => {
     stubStore();
     const { ctx, set } = createContext(null);
     const api = await caller(ctx);
 
-    const user = await api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026" });
+    const answer = await api.auth.register({ email: "Supa@Example.com", password: "Harbour-Falcon-2026" });
+    expect(answer).toEqual({ status: "verify", email: "supa@example.com" });
+    expect(set).toHaveLength(0);
+    expect(recorded).toEqual(["codeSend"]);
+  });
+
+  it("makes the account and the session from the right code", async () => {
+    stubStore();
+    const { ctx, set } = createContext(null);
+    const api = await caller(ctx);
+
+    const user = await api.auth.verifyEmail({ email: "supa@example.com", password: "Harbour-Falcon-2026", code: " ٤٨٢ ٩١٣ " });
     expect(user).toMatchObject({ id: 42, email: "supa@example.com" });
     expect(set.map(entry => entry.name)).toContain(COOKIE_NAME);
+  });
+
+  /* A wrong code counts like a wrong password, and is said as one sentence. */
+  it("refuses a wrong code, and counts it", async () => {
+    stubStore();
+    const { ctx, set } = createContext(null);
+    const api = await caller(ctx);
+
+    await expect(api.auth.verifyEmail({ email: "supa@example.com", password: "Harbour-Falcon-2026", code: "111111" }))
+      .rejects.toMatchObject({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+    await expect(api.auth.verifyEmail({ email: "supa@example.com", password: "Harbour-Falcon-2026", code: "12345" }))
+      .rejects.toMatchObject({ code: "BAD_REQUEST", message: "auth.codeShape" });
+    expect(recorded).toEqual(["codeMiss", "codeMiss"]);
+    expect(set).toHaveLength(0);
+  });
+
+  /* The right password on an account whose code never came back is not a
+     wrong password, and is not a failure to count. */
+  it("sends an unconfirmed account to the code step rather than calling the password wrong", async () => {
+    stubStore({ signIn: async () => "unconfirmed" });
+    const { ctx, set } = createContext(null);
+    const api = await caller(ctx);
+
+    await expect(api.auth.login({ email: "supa@example.com", password: "Harbour-Falcon-2026" }))
+      .rejects.toMatchObject({ code: "FORBIDDEN", message: "auth.emailNotConfirmed" });
+    expect(recorded).toEqual([]);
+    expect(set).toHaveLength(0);
+  });
+
+  it("resends the same way for any address, and says when the mail service is resting", async () => {
+    class Limited extends Error {}
+    stubStore({ CodeNotSentError: Limited });
+    const { ctx } = createContext(null);
+    let api = await caller(ctx);
+    await expect(api.auth.resendCode({ email: "nobody@example.com" })).resolves.toEqual({ sent: true });
+
+    stubStore({ CodeNotSentError: Limited, resendRegistrationCode: async () => { throw new Limited(); } });
+    api = await caller(ctx);
+    await expect(api.auth.resendCode({ email: "supa@example.com" }))
+      .rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", message: "auth.codeNotSent" });
   });
 
   /* The uid is a credential's address in someone else's system; the browser has
@@ -184,8 +245,7 @@ describe("auth with Supabase Auth as the password store", () => {
     const { ctx } = createContext(null);
     const api = await caller(ctx);
 
-    const user = await api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026" });
-    expect(user).not.toHaveProperty("supabaseUid");
+    const user = await api.auth.verifyEmail({ email: "supa@example.com", password: "Harbour-Falcon-2026", code: "482913" });
     expect(user).not.toHaveProperty("supabaseUid");
     expect(user).not.toHaveProperty("passwordHash");
   });
@@ -248,7 +308,7 @@ describe("auth with Supabase Auth as the password store", () => {
     class Taken extends Error {}
     stubStore({
       EmailTakenError: Taken,
-      createLogin: async () => { throw new Taken(); },
+      startRegistration: async () => { throw new Taken(); },
     });
     const { ctx } = createContext(null);
     const api = await caller(ctx);
@@ -282,5 +342,73 @@ describe("auth with Supabase Auth as the password store", () => {
       .resolves.toEqual({ sent: true });
     expect(logged).toHaveBeenCalled();
     logged.mockRestore();
+  });
+
+  /*
+   * Google's box. Off without both keys; with them, nothing is sent until
+   * Google says the tick is real, and a Google that cannot be reached refuses
+   * rather than waves through.
+   */
+  describe("the human check", () => {
+    function stubGoogle(answer: { success?: boolean; "error-codes"?: string[] } | "down") {
+      const asked: string[] = [];
+      vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+        asked.push(`${url} ${String(init.body)}`);
+        if (answer === "down") throw new Error("ECONNREFUSED");
+        return { ok: true, status: 200, json: async () => answer } as unknown as Response;
+      }));
+      return asked;
+    }
+
+    beforeEach(() => {
+      vi.stubEnv("RECAPTCHA_SITE_KEY", "site-key-public");
+      vi.stubEnv("RECAPTCHA_SECRET_KEY", "secret-key");
+    });
+
+    it("tells the form which key to draw the box with, and only when both are set", async () => {
+      stubStore();
+      const { ctx } = createContext(null);
+      expect(await (await caller(ctx)).auth.signupOptions()).toEqual({ captchaSiteKey: "site-key-public" });
+      vi.stubEnv("RECAPTCHA_SECRET_KEY", "");
+      expect(await (await caller(ctx)).auth.signupOptions()).toEqual({ captchaSiteKey: null });
+    });
+
+    it("sends no code without a tick, or with one Google does not recognise", async () => {
+      const started: string[] = [];
+      stubStore({ startRegistration: async ({ email }: { email: string }) => { started.push(email); return { status: "codeSent" }; } });
+      const asked = stubGoogle({ success: false, "error-codes": ["invalid-input-response"] });
+      const { ctx } = createContext(null);
+      const api = await caller(ctx);
+
+      await expect(api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026" }))
+        .rejects.toMatchObject({ code: "BAD_REQUEST", message: "auth.captchaFailed" });
+      await expect(api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026", captcha: "forged" }))
+        .rejects.toMatchObject({ code: "BAD_REQUEST", message: "auth.captchaFailed" });
+      expect(asked).toHaveLength(1);
+      expect(asked[0]).toContain("https://www.google.com/recaptcha/api/siteverify");
+      expect(asked[0]).toContain("secret=secret-key");
+      expect(started).toEqual([]);
+    });
+
+    it("sends the code once Google says the tick is real", async () => {
+      stubStore();
+      stubGoogle({ success: true });
+      const { ctx } = createContext(null);
+      const api = await caller(ctx);
+      await expect(api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026", captcha: "ticked" }))
+        .resolves.toEqual({ status: "verify", email: "supa@example.com" });
+    });
+
+    it("refuses rather than waves through when Google cannot be reached", async () => {
+      stubStore();
+      stubGoogle("down");
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { ctx } = createContext(null);
+      const api = await caller(ctx);
+      await expect(api.auth.register({ email: "supa@example.com", password: "Harbour-Falcon-2026", captcha: "ticked" }))
+        .rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE", message: "auth.captchaUnavailable" });
+      logged.mockRestore();
+      vi.unstubAllGlobals();
+    });
   });
 });

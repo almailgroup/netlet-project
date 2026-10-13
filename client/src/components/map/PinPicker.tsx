@@ -18,21 +18,45 @@
  * keyboard alike. A tap on the map brings that spot to the middle, which is
  * what somebody who taps their own roof expects.
  *
- * ## Leaflet is loaded when the map opens, not before
+ * ## Google's map or Apple's, as the shopper prefers
+ *
+ * People here use both — an iPhone opens Apple Maps for an address, most
+ * Android phones open Google's — and the map you already know is the one you
+ * can find your own roof on. So the picker offers whichever of the two is set
+ * up (`maps.providers`), as two buttons over the map, opens on the one this
+ * device chose last (or Apple's on an Apple device and Google's elsewhere), and
+ * a switch keeps the spot and the zoom. With neither set up it is
+ * OpenStreetMap, which needs no account, so the pin works before either does.
+ * `engines.ts` draws all three behind one shape.
+ *
+ * ## Loaded when the map opens, not before
  *
  * The picker is closed on nearly every visit to checkout — most shoppers pick a
- * saved address or never touch it — so the library and its stylesheet are
- * fetched the first time somebody opens it, not with the page. A failed fetch
- * says the typed address is enough rather than leaving a grey box.
- *
- * The tiles are OpenStreetMap's, credited on the map as their terms ask.
+ * saved address or never touch it — so a map's library is fetched the first
+ * time somebody opens it, not with the page. A map that fails to load says the
+ * typed address is enough, and offers the other map when there is one, rather
+ * than leaving a grey box.
  */
 import { useEffect, useId, useRef, useState } from "react";
-import type { Map as LeafletMap } from "leaflet";
 import { LocateFixed, MapPin, X } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { KUWAIT_BOUNDS, MAP_TILES, centreFor, cleanPin, formatPin, mapsLink, pinProblem, type Pin } from "@shared/commerce/geo";
+import { trpc } from "@/lib/trpc";
+import { readStored, writeStored } from "@/lib/browserStore";
+import { centreFor, cleanPin, formatPin, mapsLink, pinProblem, type Pin } from "@shared/commerce/geo";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { mountMap, type MapEngine, type MapHandle } from "./engines";
+
+/** Which of the two maps this device chose last. A convenience, so browser storage. */
+const ENGINE_KEY = "netlet:mapEngine";
+
+/** The map somebody probably knows: Apple's on an Apple device, Google's elsewhere. */
+function preferredEngine(offered: MapEngine[]): MapEngine {
+  const stored = readStored(ENGINE_KEY) as MapEngine | null;
+  if (stored && offered.includes(stored)) return stored;
+  const apple = typeof navigator !== "undefined" && /iPhone|iPad|Macintosh/.test(navigator.userAgent);
+  if (apple && offered.includes("apple")) return "apple";
+  return offered[0];
+}
 
 export function PinPicker({ value, onChange, governorate }: {
   value: Pin | null;
@@ -111,56 +135,80 @@ function PinMap({ start, zoom, onPin, onCancel }: {
   onPin: (pin: Pin) => void;
   onCancel: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const hintId = useId();
   const node = useRef<HTMLDivElement>(null);
-  const map = useRef<LeafletMap | null>(null);
+  const map = useRef<MapHandle | null>(null);
+  /* Where the map is, kept outside React's state too, so a switch from one
+     map to the other opens on the same spot at the same zoom. */
+  const view = useRef({ centre: start, zoom });
   const [centre, setCentre] = useState<Pin>(start);
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [status, setStatus] = useState<Status>(null);
   const canLocate = typeof navigator !== "undefined" && "geolocation" in navigator;
 
+  /* What can be offered. A failed question is no maps of either kind, which
+     is the OpenStreetMap fallback rather than no map at all. */
+  const providers = trpc.maps.providers.useQuery(undefined, { staleTime: Infinity, retry: false });
+  const settled = providers.isSuccess || providers.isError;
+  const offered: MapEngine[] = providers.data
+    ? [...(providers.data.google ? (["google"] as const) : []), ...(providers.data.apple ? (["apple"] as const) : [])]
+    : [];
+  const [chosen, setChosen] = useState<MapEngine | null>(null);
+  const engine: MapEngine | null = !settled ? null : offered.length === 0 ? "osm" : chosen && offered.includes(chosen) ? chosen : preferredEngine(offered);
+  const googleKey = providers.data?.google ?? null;
+
   useEffect(() => {
+    if (!engine || !node.current) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const [{ default: L }] = await Promise.all([import("leaflet"), import("leaflet/dist/leaflet.css")]);
-        if (cancelled || !node.current) return;
-        const { south, north, west, east } = KUWAIT_BOUNDS;
-        const created = L.map(node.current, {
-          center: [start.lat, start.lng],
-          zoom,
-          minZoom: 8,
-          /* A little past the border, so a pin at the edge of the country is
-             still in the middle of the map rather than pressed into a corner. */
-          maxBounds: L.latLngBounds([south - 0.3, west - 0.3], [north + 0.3, east + 0.3]),
-        });
-        L.tileLayer(MAP_TILES, {
-          maxZoom: 19,
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(created);
-        created.on("move", () => {
-          const at = created.getCenter();
-          setCentre({ lat: at.lat, lng: at.lng });
-        });
-        created.on("click", event => created.panTo(event.latlng));
-        map.current = created;
+    let mounted: MapHandle | null = null;
+    setState("loading");
+    setStatus(null);
+    mountMap(engine, {
+      node: node.current,
+      start: view.current.centre,
+      zoom: view.current.zoom,
+      locale,
+      onMove: at => {
+        view.current.centre = at;
+        setCentre(at);
+      },
+      onBroken: () => { if (!cancelled) setState("failed"); },
+    }, googleKey)
+      .then(handle => {
+        if (cancelled) { handle.destroy(); return; }
+        mounted = handle;
+        map.current = handle;
         setState("ready");
         /* The button that opened this is gone, so the map takes focus: it is
-           what the keyboard came here to move, and its label says how. */
-        node.current.focus();
-      } catch {
-        if (!cancelled) setState("failed");
-      }
-    })();
+           what the keyboard came here to move, and its label says how. Google
+           and Apple draw their own focusable surface a moment after mounting. */
+        window.setTimeout(() => { if (!cancelled) handle.focusTarget()?.focus(); }, 300);
+      })
+      .catch(() => { if (!cancelled) setState("failed"); });
     return () => {
       cancelled = true;
-      map.current?.remove();
+      if (mounted) view.current.zoom = mounted.zoom();
+      mounted?.destroy();
       map.current = null;
     };
-    /* Opened once per showing; the start is where it opens, not a binding. */
+    /* Mounted once per map; where it opens is read from `view`, not watched. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [engine]);
+
+  /* A map that will not load leaves nothing to focus where it was: the way
+     out takes it — the other map if there is one, else closing. */
+  const recovery = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (state === "failed") (recovery.current ?? closeButton.current)?.focus();
+  }, [state]);
+
+  const choose = (next: MapEngine) => {
+    writeStored(ENGINE_KEY, next);
+    setChosen(next);
+  };
+  const other = offered.find(name => name !== engine);
 
   const locate = () => {
     setStatus({ key: "pin.locating", tone: "info" });
@@ -173,7 +221,7 @@ function PinMap({ start, zoom, onPin, onCancel }: {
           setStatus({ key: "address.pinOutsideKuwait", tone: "problem" });
           return;
         }
-        map.current?.setView([here.lat, here.lng], 18);
+        map.current?.setView(here, 18);
         setStatus(null);
       },
       error => setStatus({ key: error.code === error.PERMISSION_DENIED ? "pin.denied" : "pin.notFound", tone: "problem" }),
@@ -194,17 +242,38 @@ function PinMap({ start, zoom, onPin, onCancel }: {
     <div className="rounded-2xl border border-[#d5dfeb] bg-white p-4">
       <div className="flex items-start justify-between gap-3">
         <p id={hintId} className="text-[12px] leading-5 text-[#0a285a]">{t("pin.howTo")}</p>
-        <button type="button" onClick={onCancel} aria-label={t("pin.cancel")} className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">
+        <button ref={closeButton} type="button" onClick={onCancel} aria-label={t("pin.cancel")} className="glass pressable grid size-9 shrink-0 place-items-center rounded-full">
           <X className="size-4" aria-hidden />
         </button>
       </div>
 
+      {/* The two maps, when there are two to choose between. A switch, not a
+          tab list: it changes how the one map is drawn. */}
+      {offered.length > 1 ? (
+        <div role="group" aria-label={t("pin.mapChoice")} className="mt-3 inline-flex rounded-full border border-[#d5dfeb] bg-[#f6f7f9] p-1">
+          {offered.map(name => (
+            <button
+              key={name}
+              type="button"
+              aria-pressed={engine === name}
+              onClick={() => choose(name)}
+              className={`rounded-full px-4 py-1.5 text-[13px] font-bold transition ${engine === name ? "bg-[#0a285a] text-white" : "text-[#0a285a] hover:bg-[#0a285a]/[.06]"}`}
+            >
+              {t(name === "google" ? "pin.google" : "pin.apple")}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {/* `isolate`, because Leaflet's panes and controls carry z-indexes up to
           a thousand and would otherwise draw over the sticky header. */}
       <div className="relative isolate mt-3 h-[280px] overflow-hidden rounded-xl bg-[#e7edf5]">
+        {/* Keyed by the map, so a switch starts from an empty box rather
+            than one the last library still holds. */}
         <div
+          key={engine ?? "none"}
           ref={node}
-          role="application"
+          role={engine === "osm" ? "application" : "group"}
           aria-label={t("pin.mapLabel")}
           aria-describedby={hintId}
           className="netlet-map size-full"
@@ -217,9 +286,16 @@ function PinMap({ start, zoom, onPin, onCancel }: {
             className="pointer-events-none absolute left-1/2 top-1/2 z-[500] size-9 -translate-x-1/2 -translate-y-full fill-[#f2683a] text-[#0a285a] drop-shadow"
           />
         ) : (
-          <p role="status" className="absolute inset-0 grid place-items-center p-6 text-center text-[12px] font-bold text-[#0a285a]">
-            {t(state === "loading" ? "pin.loading" : "pin.failed")}
-          </p>
+          <div role="status" className="absolute inset-0 grid place-items-center p-6 text-center">
+            <div>
+              <p className="text-[12px] font-bold text-[#0a285a]">{t(state === "loading" ? "pin.loading" : "pin.failed")}</p>
+              {state === "failed" && other ? (
+                <button ref={recovery} type="button" onClick={() => choose(other)} className="glass pressable type-control mt-3 rounded-full px-4 py-2">
+                  {t(other === "google" ? "pin.tryGoogle" : "pin.tryApple")}
+                </button>
+              ) : null}
+            </div>
+          </div>
         )}
       </div>
 

@@ -134,10 +134,13 @@ async function reasonFrom(response: Response): Promise<string> {
  *
  * `email_confirm: true` is the one line here that cannot be left out. Without
  * it Supabase creates the user unconfirmed, and the password grant then refuses
- * every sign-in with "Email not confirmed" — so registration would appear to
- * work, the row would appear in the dashboard, and nobody would ever get in.
- * NetLet is not running an email-verification flow yet; when it does, this
- * becomes false and the verification mail becomes the gate.
+ * every sign-in with "Email not confirmed" — so the account would appear in the
+ * dashboard and nobody would ever get in.
+ *
+ * **This is the administrator's door, not the shopper's.** Opening a store with
+ * its owner, or adding a member to one, makes an account for somebody an
+ * administrator is vouching for. A shopper registering proves the address
+ * themselves, with the code `signUpSupabaseUser` has Supabase send.
  */
 export async function createSupabaseUser(input: {
   email: string;
@@ -185,6 +188,21 @@ export async function createSupabaseUser(input: {
  * be a second session to expire, revoke and reason about for no gain.
  */
 export async function verifySupabasePassword(email: string, password: string): Promise<SupabaseUser | null> {
+  const answer = await signInSupabase(email, password);
+  return answer === "unconfirmed" ? null : answer;
+}
+
+/**
+ * The same check, with the one answer sign-in needs told apart: the password
+ * is right and the address has not been confirmed yet.
+ *
+ * GoTrue checks the password *before* it checks the confirmation, so
+ * "unconfirmed" is only ever said to somebody who has just typed the right
+ * password — it tells them nothing they could not already find out by signing
+ * in, and it lets the form take them to the code rather than calling a right
+ * password wrong. Every other refusal stays null.
+ */
+export async function signInSupabase(email: string, password: string): Promise<SupabaseUser | "unconfirmed" | null> {
   if (!isSupabaseAuthConfigured()) return null;
 
   const response = await fetch(`${base()}/auth/v1/token?grant_type=password`, {
@@ -196,13 +214,161 @@ export async function verifySupabasePassword(email: string, password: string): P
 
   /* 400 is a wrong password or an unknown address; 401 is a rejected grant.
      Both are "no", said the same way. */
-  if (response.status === 400 || response.status === 401) return null;
+  if (response.status === 400 || response.status === 401) {
+    return /email_not_confirmed|email not confirmed/i.test(await reasonFrom(response)) ? "unconfirmed" : null;
+  }
   if (!response.ok) {
     throw new Error(`Supabase sign-in failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
   }
 
   const body = (await response.json()) as { user?: GoTrueUser };
   return body.user ? toUser(body.user, email) : null;
+}
+
+/** Thrown when Supabase will not send another email yet — its own mail ceiling. */
+export class SupabaseMailLimited extends Error {
+  constructor() {
+    super("SUPABASE_MAIL_LIMITED");
+    this.name = "SupabaseMailLimited";
+  }
+}
+
+export function isSupabaseMailLimited(error: unknown): boolean {
+  return error instanceof SupabaseMailLimited;
+}
+
+/**
+ * What registering asked Supabase for: a code is on its way, or the account
+ * was confirmed on the spot because the project confirms addresses by itself.
+ */
+export type SignUpOutcome = { kind: "codeSent" } | { kind: "confirmed"; user: SupabaseUser };
+
+/**
+ * Registers through Supabase's own sign-up, which emails a code.
+ *
+ * The public endpoint and the anon key, unlike `createSupabaseUser`: this is a
+ * shopper asking for an account, and what Supabase does with it is what it does
+ * for any sign-up — it holds the account unconfirmed and emails the address a
+ * code (the "Confirm signup" template, which carries `{{ .Token }}`). Nothing is
+ * written to NetLet until the code comes back.
+ *
+ * **An address Supabase already holds, confirmed, is answered with a user that
+ * has no identities and no mail is sent** — GoTrue's way of not saying who is
+ * registered to an anonymous caller. That is "taken" here: the form offers
+ * signing in, which adopts the account if NetLet has no row for it yet. An
+ * address still waiting for its code is sent a fresh one.
+ */
+export async function signUpSupabaseUser(input: {
+  email: string;
+  password: string;
+  name?: string | null;
+}): Promise<SignUpOutcome> {
+  const response = await fetch(`${base()}/auth/v1/signup`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({
+      email: input.email,
+      password: input.password,
+      data: input.name ? { name: input.name } : {},
+    }),
+  });
+
+  if (response.status === 429) throw new SupabaseMailLimited();
+  if (!response.ok) {
+    const reason = await reasonFrom(response);
+    /* With the project confirming addresses itself, a taken one is refused
+       outright rather than disguised. */
+    if ((response.status === 400 || response.status === 422) && /already|registered|exists/i.test(reason)) throw new SupabaseEmailTaken();
+    if (/rate limit|over_email_send_rate_limit/i.test(reason)) throw new SupabaseMailLimited();
+    throw new Error(`Supabase sign-up failed with HTTP ${response.status}: ${reason}`);
+  }
+
+  const body = (await response.json()) as GoTrueUser & { access_token?: string; user?: GoTrueUser; identities?: unknown[] };
+  if (body.access_token && body.user) {
+    const user = toUser(body.user, input.email);
+    if (!user) throw new Error("Supabase sign-up returned a session with no user");
+    return { kind: "confirmed", user };
+  }
+  const user = body.user ?? body;
+  if (Array.isArray((user as { identities?: unknown[] }).identities) && (user as { identities: unknown[] }).identities.length === 0) {
+    throw new SupabaseEmailTaken();
+  }
+  return { kind: "codeSent" };
+}
+
+/**
+ * Sends the sign-up code again.
+ *
+ * Silent for an address with nothing waiting — already confirmed, or never
+ * registered — because the reply must not say which. Supabase's minute between
+ * mails to one address is `SupabaseMailLimited`, which the form turns into
+ * "wait a moment" rather than a fault.
+ */
+export async function resendSupabaseSignupCode(email: string): Promise<void> {
+  const response = await fetch(`${base()}/auth/v1/resend`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ type: "signup", email }),
+  });
+
+  if (response.status === 429) throw new SupabaseMailLimited();
+  if (response.ok) return;
+  const reason = await reasonFrom(response);
+  if (/rate limit|over_email_send_rate_limit|security purposes/i.test(reason)) throw new SupabaseMailLimited();
+  if (response.status === 400 || response.status === 404 || response.status === 422) return;
+  throw new Error(`Supabase could not resend the sign-up code: HTTP ${response.status}: ${reason}`);
+}
+
+/**
+ * Checks a sign-up code, which confirms the account in Supabase when it is right.
+ *
+ * `type: "email"` is GoTrue's current name for an emailed code; for an address
+ * not yet confirmed it checks the sign-up token, which is the one the "Confirm
+ * signup" mail carried. A wrong code and an expired one are both null — GoTrue
+ * answers them with one message, and the form says "that code is not right, or
+ * it has expired" for both.
+ */
+export async function verifySupabaseSignupCode(email: string, code: string): Promise<SupabaseUser | null> {
+  const response = await fetch(`${base()}/auth/v1/verify`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ type: "email", email, token: code }),
+  });
+
+  if ([400, 401, 403, 404, 410, 422].includes(response.status)) return null;
+  if (!response.ok) {
+    throw new Error(`Supabase code check failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
+  }
+
+  const body = (await response.json()) as { user?: GoTrueUser };
+  return body.user ? toUser(body.user, email) : null;
+}
+
+/**
+ * Whether the project confirms addresses by itself — Authentication → Sign In
+ * / Providers → Email → "Confirm email" switched off.
+ *
+ * Then no code is ever sent and an account is usable the moment it is asked
+ * for, which is the one setting that makes the code step impossible. Asked by
+ * `pnpm preflight` and the features page, never on a shopper's path. Null when
+ * it cannot be told.
+ */
+export async function supabaseConfirmsEmailItself(): Promise<boolean | null> {
+  if (!isSupabaseAuthConfigured()) return null;
+  try {
+    const response = await fetch(`${base()}/auth/v1/settings`, {
+      headers: anonHeaders(),
+      signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { mailer_autoconfirm?: boolean };
+    return typeof body.mailer_autoconfirm === "boolean" ? body.mailer_autoconfirm : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

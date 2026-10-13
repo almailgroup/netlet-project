@@ -45,10 +45,17 @@ import {
   deleteSupabaseUser,
   isSupabaseAuthConfigured,
   isSupabaseEmailTaken,
+  isSupabaseMailLimited,
+  resendSupabaseSignupCode,
   sendSupabasePasswordReset,
+  signInSupabase,
+  signUpSupabaseUser,
   updateSupabaseUser,
   verifySupabasePassword,
+  verifySupabaseSignupCode,
 } from "./supabaseAuth.js";
+import { hasLocalCode, issueLocalCode, takeLocalCode } from "./localCodes.js";
+import { checkPassword } from "../../shared/auth/passwordStrength.js";
 import { createUser, deleteUserRow, findLoginByEmail, linkExternalUser } from "../logins.js";
 import { updateUserPasswordHash } from "../profile.js";
 import type { User } from "../../drizzle/schema.js";
@@ -60,6 +67,30 @@ export class EmailTakenError extends Error {
   constructor() {
     super("EMAIL_TAKEN");
     this.name = "EmailTakenError";
+  }
+}
+
+/** Thrown when the mail service will not send another code yet. */
+export class CodeNotSentError extends Error {
+  constructor() {
+    super("CODE_NOT_SENT");
+    this.name = "CodeNotSentError";
+  }
+}
+
+/** Thrown when the code was right and the password given beside it is not the account's. */
+export class PasswordMismatchError extends Error {
+  constructor() {
+    super("PASSWORD_MISMATCH");
+    this.name = "PasswordMismatchError";
+  }
+}
+
+/** Thrown when a password being set falls under the floor. */
+export class WeakPasswordError extends Error {
+  constructor() {
+    super("WEAK_PASSWORD");
+    this.name = "WeakPasswordError";
   }
 }
 
@@ -147,6 +178,123 @@ export async function createLogin(input: {
   return user;
 }
 
+/* ---------------------------------------------------------- registering --- */
+
+/**
+ * Registering is two requests, and the account exists only after the second.
+ *
+ * The first sends a code to the address; the second takes the code back. A
+ * shopper's account is never made from an address nobody has shown they read —
+ * an account made at a typo, or at somebody else's address, would be one whose
+ * owner can never get in, or one that is not theirs at all.
+ *
+ * `createLogin` above stays the administrator's door: opening a store with its
+ * owner is somebody vouching for an address, which is a different act.
+ */
+export type Registration = { email: string; password: string; name?: string | null };
+
+/**
+ * Sends the code, or — on a project that confirms addresses by itself — makes
+ * the account on the spot, which is the one configuration the code step cannot
+ * survive and `pnpm preflight` warns about.
+ *
+ * Refuses an address NetLet already has a row for before anything is sent: a
+ * code that ends in "that address is taken" is a mail spent on a refusal.
+ */
+export async function startRegistration(input: Registration): Promise<{ status: "codeSent" } | { status: "created"; user: User }> {
+  const email = input.email.trim().toLowerCase();
+
+  if (activeStore() === "supabase") {
+    if (await findLoginByEmail(email)) throw new EmailTakenError();
+    let outcome;
+    try {
+      outcome = await signUpSupabaseUser({ ...input, email });
+    } catch (error) {
+      if (isSupabaseEmailTaken(error)) throw new EmailTakenError();
+      if (isSupabaseMailLimited(error)) throw new CodeNotSentError();
+      throw error;
+    }
+    if (outcome.kind === "codeSent") return { status: "codeSent" };
+
+    console.warn("[auth] Supabase confirmed a new address without sending a code. Turn on \"Confirm email\" under Authentication → Sign In / Providers → Email.");
+    const user = await createUser({ email, supabaseUid: outcome.user.uid, name: outcome.user.name ?? input.name ?? null });
+    if (!user) {
+      await deleteSupabaseUser(outcome.user.uid).catch(() => {});
+      throw new EmailTakenError();
+    }
+    return { status: "created", user };
+  }
+
+  /* Hashed whether or not the address is free, so the time taken does not say
+     which — the reason `createLogin` hashes first. */
+  const [existing] = await Promise.all([findLoginByEmail(email), hashPassword(input.password)]);
+  if (existing) throw new EmailTakenError();
+  issueLocalCode(email);
+  return { status: "codeSent" };
+}
+
+/**
+ * Sends the code again. Silent for an address with nothing waiting, so the
+ * reply never says which addresses are part-way through registering.
+ */
+export async function resendRegistrationCode(email: string): Promise<void> {
+  const address = email.trim().toLowerCase();
+  if (activeStore() === "supabase") {
+    try {
+      await resendSupabaseSignupCode(address);
+    } catch (error) {
+      if (isSupabaseMailLimited(error)) throw new CodeNotSentError();
+      throw error;
+    }
+    return;
+  }
+  if (hasLocalCode(address)) issueLocalCode(address);
+}
+
+/**
+ * Takes the code back and makes the account. Null when the code is wrong or
+ * has expired.
+ *
+ * **The password given here is the one the account keeps.** An address can be
+ * registered more than once before anybody confirms it — by its owner twice, or
+ * by somebody else first — and which password Supabase kept is then whichever
+ * it decided to. The person typing the code is the one who reads that inbox, so
+ * their password is written over whatever was held, provided it meets the floor
+ * a password being *set* has to. Below the floor it must already be the
+ * account's: that is the path from sign-in, where an account made before the
+ * code step existed is asked for its code, and it is checked rather than
+ * written.
+ */
+export async function finishRegistration(input: Registration & { code: string }): Promise<User | null> {
+  const email = input.email.trim().toLowerCase();
+  const strong = checkPassword(input.password).acceptable;
+
+  if (activeStore() === "supabase") {
+    const confirmed = await verifySupabaseSignupCode(email, input.code);
+    if (!confirmed) return null;
+
+    if (strong) {
+      await updateSupabaseUser(confirmed.uid, { password: input.password, ...(input.name ? { name: input.name } : {}) });
+    } else if (!(await verifySupabasePassword(email, input.password))) {
+      throw new PasswordMismatchError();
+    }
+
+    const user = await createUser({ email, supabaseUid: confirmed.uid, name: input.name ?? confirmed.name ?? null });
+    if (user) return user;
+    /* A second press of the same code after the first had already landed. */
+    const row = await findLoginByEmail(email);
+    if (row?.supabaseUid === confirmed.uid) return row;
+    throw new EmailTakenError();
+  }
+
+  if (!strong) throw new WeakPasswordError();
+  if (!takeLocalCode(email, input.code)) return null;
+  const passwordHash = await hashPassword(input.password);
+  const user = await createUser({ email, passwordHash, name: input.name ?? null });
+  if (!user) throw new EmailTakenError();
+  return user;
+}
+
 /**
  * Undoes a login this request had just created.
  *
@@ -184,7 +332,8 @@ export async function deleteLogin(user: User): Promise<void> {
  * Verifies an email and password against whichever store can vouch for them.
  *
  * Returns the NetLet row, or null. See the file header for why the answer never
- * says which of the reasons it was.
+ * says which of the reasons it was — with one exception, "unconfirmed", which
+ * Supabase only gives for the right password (see `signInSupabase`).
  *
  * Supabase goes first, and without reading the row: it is the common case, and
  * it is the only one that can vouch for a credential this database has never
@@ -192,9 +341,12 @@ export async function deleteLogin(user: User): Promise<void> {
  * The row is read only once Supabase has said no, so an ordinary sign-in still
  * costs one round trip.
  */
-export async function signIn(email: string, password: string): Promise<User | null> {
+export async function signIn(email: string, password: string): Promise<User | "unconfirmed" | null> {
   if (activeStore() === "supabase") {
-    const verified = await verifySupabasePassword(email, password);
+    const verified = await signInSupabase(email, password);
+    /* The right password on an address whose code was never typed in: the
+       form takes them to the code rather than calling the password wrong. */
+    if (verified === "unconfirmed") return "unconfirmed";
     if (verified) {
       return linkExternalUser({ uid: verified.uid, email: verified.email, name: verified.name });
     }

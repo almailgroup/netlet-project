@@ -126,6 +126,71 @@ template, not the request.
 
 ---
 
+## The sign-up code
+
+Create account is two steps. The shopper fills in their details (and ticks
+Google's "I'm not a robot" box, when that is set up), and Supabase emails a
+**six-digit code** to the address. The account exists only once that code is
+typed back on the site — an address nobody has shown they read is not one
+NetLet opens an account on. Signing in with the right password on an account
+whose code never came back goes to the same step and sends a fresh code.
+
+Three settings in the Supabase dashboard make it work. All three are switches
+or text boxes; none is code.
+
+**1. "Confirm email" stays on.** **Authentication → Sign In / Providers →
+Email → Confirm email.** It is on in a new project. Off, Supabase confirms
+every address itself and sends nothing, so there is no code to type — NetLet
+then makes the account on the spot and logs a warning, and `pnpm preflight`
+refuses the configuration.
+
+**2. The "Confirm signup" email shows the code.** **Authentication → Emails →
+Confirm signup.** Supabase's default message is a link; NetLet asks for the
+code, so the template has to print `{{ .Token }}`. Replace the subject and body
+with something like this — both languages, because the email goes out before
+anybody has chosen one:
+
+Subject:
+
+```
+Your NetLet code: {{ .Token }} · رمزك في نت‑لت
+```
+
+Body (HTML):
+
+```html
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#0a285a">
+  <h2 style="margin:0 0 12px">Confirm your email</h2>
+  <p>Enter this code on NetLet to finish creating your account:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0">{{ .Token }}</p>
+  <p style="color:#536b8c;font-size:13px">If you did not try to create a NetLet account, ignore this email — nothing has been made.</p>
+  <hr style="border:none;border-top:1px solid #e3e1d9;margin:24px 0">
+  <div dir="rtl" style="text-align:right">
+    <h2 style="margin:0 0 12px">أكّد بريدك الإلكتروني</h2>
+    <p>أدخل هذا الرمز في نت‑لت لإكمال إنشاء حسابك:</p>
+    <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0" dir="ltr">{{ .Token }}</p>
+    <p style="color:#536b8c;font-size:13px">إن لم تحاول إنشاء حساب في نت‑لت، فتجاهل هذه الرسالة — لم يُنشأ شيء.</p>
+  </div>
+</div>
+```
+
+Without `{{ .Token }}` the email carries a link instead, which lands on the
+project's Site URL rather than on the code box.
+
+**3. Your own mail server.** **Project Settings → Authentication → SMTP
+Settings.** Supabase's built-in mailer only sends to the email addresses of
+your Supabase team and only a few an hour — enough to test with, not enough for
+shoppers. Any SMTP provider works (Amazon SES, Resend, SendGrid, Zoho, Google
+Workspace); it is a host, a port, a user and a password typed into that page.
+The same server then sends the password-reset emails too.
+
+While you are there, **Authentication → Rate Limits** sets how many emails an
+hour Supabase will send in all; raise it to fit your traffic once your own SMTP
+is in. NetLet also throttles on its side: ten codes a quarter of an hour per
+address, and ten wrong codes before it stops checking for a while.
+
+---
+
 ## One thing to check while you are in the dashboard
 
 Supabase exposes the `public` schema through its Data API, and that is separate

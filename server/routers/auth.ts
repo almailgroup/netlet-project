@@ -29,16 +29,23 @@ import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
+  CodeNotSentError,
   EmailTakenError,
+  finishRegistration,
+  PasswordMismatchError,
+  resendRegistrationCode,
   revertEmail,
   sendReset,
   setDisplayName,
   setEmail,
   setPassword,
   signIn,
+  startRegistration,
   verifyCurrent,
+  WeakPasswordError,
 } from "../_core/passwordStore.js";
-import { createAccount } from "../_core/accounts.js";
+import { captchaSiteKey, checkCaptcha } from "../_core/captcha.js";
+import { isCodeShaped, normaliseCode } from "../../shared/auth/emailCode.js";
 import { touchLastSignedIn } from "../db.js";
 import { loadUser, updateUserEmail, updateUserName } from "../profile.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../rateLimit.js";
@@ -91,6 +98,22 @@ const registration = credentials.extend({
    * nothing.
    */
   referral: z.string().trim().max(32).optional(),
+  /* The token Google's "I'm not a robot" box handed the page. Asked for only
+     while the check is configured (`captchaSiteKey`). */
+  captcha: z.string().max(4000).optional(),
+});
+
+/**
+ * Taking the code back. Everything registration took comes again, because the
+ * account is made here and not before — the form still holds it all — and a
+ * password may arrive below the floor only on the path from sign-in, where it
+ * must already be the account's (`finishRegistration`).
+ */
+const verification = credentials.extend({
+  code: z.string().trim().max(32),
+  name: z.string().trim().min(1).max(255).optional(),
+  referral: z.string().trim().max(32).optional(),
+  remember: z.boolean().optional(),
 });
 
 /**
@@ -137,6 +160,25 @@ const emailTaken = new TRPCError({ code: "CONFLICT", message: "auth.emailTaken" 
 
 const wrongPassword = new TRPCError({ code: "UNAUTHORIZED", message: "auth.wrongCurrentPassword" });
 
+/* The mail service will not send another code yet — Supabase's minute between
+   mails to one address, or its hourly ceiling. Not the shopper's doing. */
+const codeNotSent = new TRPCError({ code: "TOO_MANY_REQUESTS", message: "auth.codeNotSent" });
+
+/** Sets the session cookie, for a week or for this browser only. */
+async function startSession(
+  ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: object) => void } },
+  userId: number,
+  remember = true,
+): Promise<void> {
+  /* Not remembered: a cookie with no expiry, which the browser drops when it
+     closes, round a token that lapses in a day for a browser that keeps it. */
+  if (remember === false) {
+    ctx.res.cookie(COOKIE_NAME, await signSession(userId, SHORT_SESSION_MS), getSessionCookieOptions(ctx.req));
+  } else {
+    ctx.res.cookie(COOKIE_NAME, await signSession(userId), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+  }
+}
+
 /**
  * Re-checks the password of somebody already signed in.
  *
@@ -181,25 +223,115 @@ export const authRouter = router({
   /** Current user, or null. Cheap enough to call on every page load. */
   me: publicProcedure.query(({ ctx }) => (ctx.user ? toPublicUser(ctx.user) : null)),
 
+  /**
+   * What the Create account form needs before it is drawn: whether to draw
+   * Google's box, and the public key it draws with. Null is "no box".
+   */
+  signupOptions: publicProcedure.query(() => ({ captchaSiteKey: captchaSiteKey() })),
+
+  /**
+   * The first half of registering: the human check, then a code to the address.
+   *
+   * Nothing is made in NetLet here. The account exists once the code comes
+   * back through `verifyEmail` — an address nobody has shown they read is not
+   * one to open an account on. Every request counts against the sender's
+   * ceiling, sent or refused, because what is being protected is somebody
+   * else's inbox.
+   *
+   * Answers `signedIn` only on a Supabase project that confirms addresses by
+   * itself, where no code is sent and the account is made on the spot — the
+   * configuration `pnpm preflight` warns about.
+   */
   register: publicProcedure.input(registration).mutation(async ({ ctx, input }) => {
     assertConfigured();
 
-    let user: User;
+    const caller = callerOf(ctx, input.email);
+    await assertNotThrottled(caller, "codeSend");
+
+    const human = await checkCaptcha(input.captcha, ctx.req.ip ?? null);
+    if (human === "unavailable") throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.captchaUnavailable" });
+    if (human === "failed") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.captchaFailed" });
+
+    await recordAuthAttempt(caller, "codeSend");
+    let started;
     try {
-      user = await createAccount(input);
+      started = await startRegistration(input);
     } catch (error) {
       if (error instanceof EmailTakenError) throw emailTaken;
+      if (error instanceof CodeNotSentError) throw codeNotSent;
       throw error;
     }
 
-    /* Recorded, not paid. The points land when this account's first order is
-       paid for — a scheme that pays at registration pays for registrations. */
-    if (input.referral) await recordReferral(user.id, input.referral);
+    if (started.status === "codeSent") return { status: "verify" as const, email: input.email.trim().toLowerCase() };
 
-    const token = await signSession(user.id);
-    ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+    if (input.referral) await recordReferral(started.user.id, input.referral);
+    await startSession(ctx, started.user.id);
+    return { status: "signedIn" as const, user: toPublicUser(started.user) };
+  }),
+
+  /**
+   * The second half: the code, and the account made from it.
+   *
+   * A wrong code counts like a wrong password, against the address and the
+   * account both, and a throttled caller is told so rather than told the code
+   * is wrong — six digits are a million guesses, and a ceiling of ten a quarter
+   * of an hour is what makes that a number nobody reaches.
+   */
+  verifyEmail: publicProcedure.input(verification).mutation(async ({ ctx, input }) => {
+    assertConfigured();
+
+    const caller = callerOf(ctx, input.email);
+    await assertNotThrottled(caller, "codeMiss");
+
+    const code = normaliseCode(input.code);
+    if (!isCodeShaped(code)) {
+      await recordAuthAttempt(caller, "codeMiss");
+      throw new TRPCError({ code: "BAD_REQUEST", message: "auth.codeShape" });
+    }
+
+    let user: User | null;
+    try {
+      user = await finishRegistration({ email: input.email, password: input.password, name: input.name ?? null, code });
+    } catch (error) {
+      if (error instanceof EmailTakenError) throw emailTaken;
+      if (error instanceof PasswordMismatchError) throw invalidCredentials;
+      if (error instanceof WeakPasswordError) throw new TRPCError({ code: "BAD_REQUEST", message: "auth.passwordTooWeak" });
+      throw error;
+    }
+    if (!user) {
+      await recordAuthAttempt(caller, "codeMiss");
+      throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+    }
+
+    /* Recorded, not paid. The points land when this account's first order is
+       paid for — a scheme that pays at registration pays for registrations.
+       Forgotten by the page once used, so an invitation cannot ride along on a
+       second account made from the same browser. */
+    if (input.referral) await recordReferral(user.id, input.referral);
+    await touchLastSignedIn(user.id);
+    await startSession(ctx, user.id, input.remember);
     return toPublicUser(user);
   }),
+
+  /**
+   * Sends the code again. The same reply whether or not anything was waiting
+   * for that address, so it cannot be used to ask who is part-way through
+   * registering; every request counts, as a reset does.
+   */
+  resendCode: publicProcedure
+    .input(z.object({ email: z.string().trim().email().max(320) }))
+    .mutation(async ({ ctx, input }) => {
+      const caller = callerOf(ctx, input.email);
+      await assertNotThrottled(caller, "codeSend");
+      await recordAuthAttempt(caller, "codeSend");
+      try {
+        await resendRegistrationCode(input.email);
+      } catch (error) {
+        if (error instanceof CodeNotSentError) throw codeNotSent;
+        console.error(`[auth] sign-up code could not be resent: ${String(error)}`);
+      }
+      return { sent: true } as const;
+    }),
 
   /**
    * The profile, as its owner may change it.
@@ -320,18 +452,15 @@ export const authRouter = router({
       await recordAuthAttempt(caller, "login");
       throw invalidCredentials;
     }
+    /* The right password on an account whose code never came back. Not a
+       failure, and not "wrong password": the form asks for the code. */
+    if (user === "unconfirmed") throw new TRPCError({ code: "FORBIDDEN", message: "auth.emailNotConfirmed" });
 
     // Somebody who mistyped nine times and then got it right is not one
     // failure from a lockout for the next quarter of an hour.
     await clearAccountFailures(input.email);
     await touchLastSignedIn(user.id);
-    /* Not remembered: a cookie with no expiry, which the browser drops when it
-       closes, round a token that lapses in a day for a browser that keeps it. */
-    if (input.remember === false) {
-      ctx.res.cookie(COOKIE_NAME, await signSession(user.id, SHORT_SESSION_MS), getSessionCookieOptions(ctx.req));
-    } else {
-      ctx.res.cookie(COOKIE_NAME, await signSession(user.id), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
-    }
+    await startSession(ctx, user.id, input.remember);
     return toPublicUser(user);
   }),
 

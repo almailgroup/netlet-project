@@ -38,6 +38,13 @@
  *   a way to send it again and a way to correct the address. The reply is the
  *   same whether or not the address has an account, so it cannot be used to
  *   ask who is registered.
+ * - **An account is made from an address somebody has shown they read.**
+ *   Create account is two steps: the details and Google's "I'm not a robot"
+ *   box, then a six-digit code sent to the address. Nothing is made until the
+ *   code comes back, and the form keeps everything typed in the first step,
+ *   so "use a different email" loses nothing else. A sign-in with the right
+ *   password on an account whose code never came back goes to the same step
+ *   rather than being told the password is wrong.
  */
 import { trpc } from "@/lib/trpc";
 import {
@@ -48,8 +55,10 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import { suggestEmail } from "@shared/auth/emailTypo";
+import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS as CODE_RESEND_SECONDS } from "@shared/auth/emailCode";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { clearReferral, storedReferral } from "@/lib/referral";
+import { HumanCheck } from "./HumanCheck";
 
 export type AuthMode = "signin" | "register" | "reset";
 
@@ -92,6 +101,17 @@ const STRONGER: { rule: PasswordRule; label: MessageKey }[] = [
 /** A refusal and, where there is one, what to do about it. */
 type Refusal = { message: string; next?: "reset" | "signin" };
 
+/** Everything the code step needs to make the account, held by the form. */
+type AwaitingCode = {
+  email: string;
+  password: string;
+  name?: string;
+  referral?: string;
+  remember: boolean;
+  /** Registering, or signing in to an account whose code never came back. */
+  from: "register" | "signin";
+};
+
 export function AuthForm({
   mode,
   onModeChange,
@@ -128,11 +148,16 @@ export function AuthForm({
   /** The address a reset link went to, which turns the reset form into its confirmation. */
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [wait, setWait] = useState(0);
+  /** Set once a code has gone out, which turns the form into the code step. */
+  const [awaiting, setAwaiting] = useState<AwaitingCode | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const sentRef = useRef<HTMLHeadingElement>(null);
+  const captchaRef = useRef<HTMLDivElement>(null);
   /* Whether the next mode change was asked for here, which is when focus has to
      move: the control pressed has gone by the next frame. */
   const movedByUs = useRef(false);
@@ -148,6 +173,7 @@ export function AuthForm({
     setSubmitted(false);
     setRefusal(null);
     setSentTo(null);
+    setAwaiting(null);
     if (!movedByUs.current && !autoFocus) return;
     movedByUs.current = false;
     const first = mode === "register" ? nameRef.current : email && mode === "signin" ? passwordRef.current : emailRef.current;
@@ -174,18 +200,41 @@ export function AuthForm({
     onDone?.();
   };
 
+  const resendCode = trpc.auth.resendCode.useMutation();
   const login = trpc.auth.login.useMutation({
     onSuccess: user => void settle(user.name),
-    onError: error => {
+    onError: (error, input) => {
+      /* The right password, and a code that never came back: a fresh code, and
+         the step that takes it. The one it was first sent may be long expired. */
+      if (error.message === "auth.emailNotConfirmed") {
+        setAwaiting({ email: input.email, password: input.password, remember: input.remember !== false, from: "signin" });
+        resendCode.mutate({ email: input.email });
+        return;
+      }
       setRefusal({ message: error.message, next: error.message === "auth.invalidCredentials" ? "reset" : undefined });
       if (error.message === "auth.invalidCredentials") { passwordRef.current?.focus(); passwordRef.current?.select(); }
     },
   });
+  /* Google's box, when the server has it configured. Asked only on Create
+     account, so nobody else fetches anything of Google's. */
+  const signupOptions = trpc.auth.signupOptions.useQuery(undefined, { enabled: isRegister, staleTime: Infinity });
+  const captchaKey = signupOptions.data?.captchaSiteKey ?? null;
   const register = trpc.auth.register.useMutation({
-    /* Forgotten once used, so an invitation cannot ride along on a second
-       account made from the same browser. */
-    onSuccess: user => { clearReferral(); void settle(user.name); },
+    onSuccess: (answer, input) => {
+      if (answer.status === "verify") {
+        setAwaiting({ email: answer.email, password: input.password, name: input.name, referral: input.referral, remember: true, from: "register" });
+        return;
+      }
+      /* A project that confirms addresses itself made the account on the spot.
+         Forgotten once used, so an invitation cannot ride along on a second
+         account made from the same browser. */
+      clearReferral();
+      void settle(answer.user.name);
+    },
     onError: error => setRefusal({ message: error.message, next: error.message === "auth.emailTaken" ? "signin" : undefined }),
+    /* A tick is good once, sent or refused — forgotten here too, because the
+       box may already have gone (the code step replaced it) and cannot say so. */
+    onSettled: () => { setCaptcha(null); setCaptchaReset(count => count + 1); },
   });
   const reset = trpc.auth.requestPasswordReset.useMutation({
     onSuccess: (_answer, input) => { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); },
@@ -222,9 +271,11 @@ export function AuthForm({
     : !password
       ? "auth.passwordRequired"
       : isRegister && !verdict.acceptable ? "auth.passwordNeedsRules" : null;
+  const captchaIssue: MessageKey | null = isRegister && captchaKey && !captcha ? "auth.captchaRequired" : null;
   /* Said once Submit has been pressed, and only for as long as it is true. */
   const showEmailIssue = submitted && emailIssue;
   const showPasswordIssue = submitted && passwordIssue;
+  const showCaptchaIssue = submitted && captchaIssue;
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -233,10 +284,13 @@ export function AuthForm({
     setSuggestion(isReset ? null : suggestEmail(email));
     if (emailIssue) { emailRef.current?.focus(); return; }
     if (passwordIssue) { passwordRef.current?.focus(); return; }
+    /* Google's box is an iframe and cannot take focus from here; it is brought
+       into view, with the sentence under it saying what it wants. */
+    if (captchaIssue) { captchaRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
     /* The locale is sent and unused for now: Supabase composes the reset mail
        from a dashboard template. It is here for when those are translated. */
     if (isReset) reset.mutate({ email: trimmed, locale });
-    else if (isRegister) register.mutate({ email: trimmed, password, name: name.trim() || undefined, referral: storedReferral() });
+    else if (isRegister) register.mutate({ email: trimmed, password, name: name.trim() || undefined, referral: storedReferral(), captcha: captcha ?? undefined });
     else login.mutate({ email: trimmed, password, remember });
   };
 
@@ -246,6 +300,26 @@ export function AuthForm({
   const readCapsLock = (event: React.KeyboardEvent) => {
     if (event.getModifierState) setCapsLock(event.getModifierState("CapsLock"));
   };
+
+  if (awaiting) {
+    return (
+      <CodeStep
+        awaiting={awaiting}
+        Heading={Heading}
+        headingId={headingId}
+        resending={resendCode.isPending}
+        onDone={user => {
+          if (awaiting.from === "register") clearReferral();
+          setAwaiting(null);
+          void settle(user.name);
+        }}
+        onDifferent={() => {
+          setAwaiting(null);
+          window.setTimeout(() => emailRef.current?.focus(), 30);
+        }}
+      />
+    );
+  }
 
   if (isReset && sentTo) {
     return (
@@ -264,7 +338,7 @@ export function AuthForm({
   }
 
   const describe = (...ids: (string | false | null | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
-  const busyLabel: MessageKey = isReset ? "auth.sending" : isRegister ? "auth.creating" : "auth.signingIn";
+  const busyLabel: MessageKey = isReset ? "auth.sending" : isRegister ? "auth.sendingCode" : "auth.signingIn";
 
   return (
     <div>
@@ -278,6 +352,8 @@ export function AuthForm({
           {t("auth.resetBack")}
         </button>
       ) : null}
+
+      {isRegister ? <Steps step={1} /> : null}
 
       <Heading id={headingId} className="text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
         {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
@@ -435,6 +511,18 @@ export function AuthForm({
           </div>
         ) : null}
 
+        {isRegister && captchaKey ? (
+          <div ref={captchaRef}>
+            <HumanCheck
+              siteKey={captchaKey}
+              onToken={setCaptcha}
+              resetKey={captchaReset}
+              issue={showCaptchaIssue ? t(captchaIssue) : null}
+              issueId={id("captcha-issue")}
+            />
+          </div>
+        ) : null}
+
         {isRegister ? <p className="text-[13px] leading-5 text-[#536b8c]">{t("auth.terms")}</p> : null}
 
         <button
@@ -443,8 +531,14 @@ export function AuthForm({
           className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80"
         >
           {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-          {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "account.createAccount" : "header.signIn")}
+          {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "auth.continue" : "header.signIn")}
         </button>
+        {isRegister ? (
+          <p className="flex items-start gap-2 text-[13px] leading-5 text-[#536b8c]">
+            <MailCheck className="mt-0.5 size-4 shrink-0 text-[#0a285a]" aria-hidden />
+            {t("auth.codeWillBeSent")}
+          </p>
+        ) : null}
       </form>
 
       {!isReset ? (
@@ -631,6 +725,220 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
           className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline"
         >
           {sending ? t("auth.sending") : wait > 0 ? t("auth.resendIn", { seconds: wait }) : t("auth.resend")}
+        </button>
+        <button
+          type="button"
+          onClick={onDifferent}
+          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
+        >
+          {t("auth.differentEmail")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Where Create account is: the details, then the code. Two steps said as two,
+ * because the second is an email somebody has to go and open, and a form that
+ * says so up front is not a surprise half-way through.
+ */
+function Steps({ step }: { step: 1 | 2 }) {
+  const { t } = useTranslation();
+  return (
+    <div className="mb-5">
+      <p className="text-[13px] font-semibold text-[#536b8c]">
+        {t("auth.stepOf", { step, total: 2 })}
+        <span aria-hidden> · </span>
+        <span className="text-[#0a285a]">{t(step === 1 ? "auth.stepDetails" : "auth.stepConfirm")}</span>
+      </p>
+      <div className="mt-2 flex gap-1.5" aria-hidden>
+        <span className="h-1 flex-1 rounded-full bg-[#f2683a]" />
+        <span className={`h-1 flex-1 rounded-full ${step === 2 ? "bg-[#f2683a]" : "bg-[#e3e7ee]"}`} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The code step: six boxes, one field.
+ *
+ * **It is one input drawn as six boxes**, not six inputs. Six inputs is six
+ * stops for a keyboard and a screen reader, a paste that lands one digit in the
+ * first box, and a phone's "from Messages/Mail" suggestion that fills nothing;
+ * one field with `autocomplete="one-time-code"` takes all of those whole. The
+ * boxes are a picture of its value, and the field lies over them, transparent,
+ * so a press anywhere on them is a press in it.
+ *
+ * Six digits submit on their own — the last one typed is the moment the
+ * shopper is done — once per code, so a refused one is not sent again until it
+ * changes. "Send a new code" waits a minute, which is Supabase's own interval
+ * between mails to one address.
+ */
+function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent }: {
+  awaiting: AwaitingCode;
+  Heading: "h1" | "h2";
+  headingId: string;
+  resending: boolean;
+  onDone: (user: { name: string | null }) => void;
+  onDifferent: () => void;
+}) {
+  const { t, tError } = useTranslation();
+  const ownId = useId();
+  const [code, setCode] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const [wait, setWait] = useState(CODE_RESEND_SECONDS);
+  const [resentTo, setResentTo] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const lastTried = useRef<string | null>(null);
+
+  const verify = trpc.auth.verifyEmail.useMutation({
+    onSuccess: user => onDone(user),
+    onError: error => {
+      setRefusal(error.message);
+      input.current?.focus();
+      input.current?.select();
+    },
+  });
+  const resend = trpc.auth.resendCode.useMutation({
+    onSuccess: () => { setWait(CODE_RESEND_SECONDS); setResentTo(awaiting.email); setRefusal(null); },
+    onError: error => setRefusal(error.message),
+  });
+
+  useEffect(() => {
+    window.setTimeout(() => input.current?.focus(), 30);
+  }, []);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = window.setTimeout(() => setWait(seconds => seconds - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [wait]);
+
+  const send = (value: string) => {
+    lastTried.current = value;
+    setRefusal(null);
+    verify.mutate({
+      email: awaiting.email,
+      password: awaiting.password,
+      code: value,
+      name: awaiting.name,
+      referral: awaiting.referral,
+      remember: awaiting.remember,
+    });
+  };
+
+  const change = (raw: string) => {
+    const next = normaliseCode(raw);
+    setCode(next);
+    if (refusal === "auth.codeWrong" || refusal === "auth.codeShape") setRefusal(null);
+    if (isCodeShaped(next) && next !== lastTried.current && !verify.isPending) send(next);
+  };
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitted(true);
+    if (!isCodeShaped(code)) { input.current?.focus(); return; }
+    send(code);
+  };
+
+  const issue = submitted && !code ? "auth.codeRequired" : submitted && !isCodeShaped(code) ? "auth.codeShape" : null;
+  const invalid = Boolean(issue) || refusal === "auth.codeWrong";
+  const active = Math.min(code.length, CODE_LENGTH - 1);
+  const marker = "\u2063";
+  const [before, after = ""] = t(awaiting.from === "register" ? "auth.verifyBody" : "auth.verifyBodySignIn", { email: marker }).split(marker);
+
+  return (
+    <div>
+      {awaiting.from === "register" ? <Steps step={2} /> : null}
+      <span className="grid size-14 place-items-center rounded-2xl bg-[#fdeee8] text-[#a44a2b]">
+        <MailCheck className="size-7" aria-hidden />
+      </span>
+      <Heading id={headingId} className="mt-6 text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
+        {t("auth.verifyTitle")}
+      </Heading>
+      <p id={`${ownId}-body`} className="mt-3 text-[15px] leading-6 text-[#3d5170]">
+        {before}<bdi dir="ltr" className="font-bold text-[#0a285a]">{awaiting.email}</bdi>{after}
+      </p>
+
+      <form onSubmit={submit} noValidate className="mt-7">
+        <label htmlFor={`${ownId}-code`} className={labelClass}>{t("auth.codeLabel")}</label>
+        {/* Read left to right on either page: it is a number, not a sentence. */}
+        <div className="relative mt-2 [direction:ltr]">
+          <div className="grid grid-cols-6 gap-2" aria-hidden>
+            {Array.from({ length: CODE_LENGTH }, (_, index) => {
+              const here = focused && index === active;
+              return (
+                <span
+                  key={index}
+                  className={`grid h-14 place-items-center rounded-xl border bg-white text-[24px] font-bold tabular-nums text-[#0a285a] transition ${
+                    here
+                      ? "border-[#0a285a] ring-4 ring-[#0a285a]/10"
+                      : invalid
+                        ? "border-[#b3261e]"
+                        : code[index] ? "border-[#9fb0c6]" : "border-[#c9d4e2]"
+                  }`}
+                >
+                  {code[index] ?? (here ? <span className="h-6 w-px animate-pulse bg-[#0a285a]" /> : "")}
+                </span>
+              );
+            })}
+          </div>
+          <input
+            id={`${ownId}-code`}
+            ref={input}
+            name="code"
+            dir="ltr"
+            value={code}
+            onChange={event => change(event.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            maxLength={32}
+            spellCheck={false}
+            aria-invalid={invalid ? true : undefined}
+            aria-describedby={[`${ownId}-body`, issue && `${ownId}-issue`].filter(Boolean).join(" ")}
+            className="absolute inset-0 h-full w-full cursor-text rounded-xl bg-transparent text-transparent caret-transparent outline-none selection:bg-transparent selection:text-transparent"
+          />
+        </div>
+        {issue ? <Issue id={`${ownId}-issue`}>{t(issue)}</Issue> : null}
+
+        {refusal && refusal !== "auth.codeShape" ? (
+          <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p>{tError(refusal)}</p>
+          </div>
+        ) : null}
+        {resentTo && !refusal ? (
+          <p role="status" className="mt-5 flex items-start gap-2 rounded-xl bg-[#e9f4ee] px-4 py-3 text-[14px] leading-5 text-[#1f5e3a]">
+            <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {t("auth.codeResent", { email: resentTo })}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={verify.isPending}
+          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80"
+        >
+          {verify.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+          {t(verify.isPending ? "auth.verifying" : awaiting.from === "register" ? "auth.verifyCreate" : "auth.verifySignIn")}
+        </button>
+      </form>
+
+      <p className="mt-5 text-[14px] leading-6 text-[#536b8c]">{t("auth.codeTip")}</p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[14px]">
+        <button
+          type="button"
+          onClick={() => resend.mutate({ email: awaiting.email })}
+          disabled={wait > 0 || resend.isPending || resending}
+          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline"
+        >
+          {resend.isPending || resending ? t("auth.sending") : wait > 0 ? t("auth.resendCodeIn", { seconds: wait }) : t("auth.resendCode")}
         </button>
         <button
           type="button"

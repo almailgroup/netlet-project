@@ -169,6 +169,12 @@ function resolve(path: string, rawInput: unknown): unknown {
       return null;
     case "auth.logout":
       return { success: true } as const;
+    /* No Google box in the demo: there is no server to ask Google with. */
+    case "auth.signupOptions":
+      return { captchaSiteKey: null };
+    /* No keys in the demo, so the pin picker draws OpenStreetMap. */
+    case "maps.providers":
+      return { google: null, apple: false };
 
     case "commerce.products.list": {
       const first =

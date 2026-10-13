@@ -46,7 +46,12 @@ import {
 } from "../shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
-export type AttemptKind = "login" | "reset" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
+/*
+ * `codeSend` counts every sign-up code asked for, sent or resent — like a reset,
+ * there is no failure to count, and the abuse is using NetLet to mail somebody
+ * else. `codeMiss` counts a wrong code, like a wrong password.
+ */
+export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -62,8 +67,8 @@ const accountBucket = (email: string) => `account:${email.trim().toLowerCase()}`
 const addressBucket = (address: string) => `address:${address.trim()}`;
 
 /**
- * Sign-in and reset rows older than their window can never affect a verdict
- * again. Only those two kinds: the table also holds every hourly and daily
+ * Sign-in, reset and sign-up-code rows older than their window can never
+ * affect a verdict again. Only those kinds: the table also holds every hourly and daily
  * ceiling, and pruning them at fifteen minutes — which this did, on every
  * failed sign-in — quietly turned a sixty-an-hour limit into sixty a quarter
  * of an hour and a twelve-a-day one into twelve a quarter of an hour. Each of
@@ -71,7 +76,7 @@ const addressBucket = (address: string) => `address:${address.trim()}`;
  */
 async function prune(db: NonNullable<Awaited<ReturnType<typeof getDb>>>): Promise<void> {
   await db.delete(authAttempts).where(
-    and(inArray(authAttempts.kind, ["login", "reset"]), lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS))),
+    and(inArray(authAttempts.kind, ["login", "reset", "codeSend", "codeMiss"]), lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS))),
   );
 }
 

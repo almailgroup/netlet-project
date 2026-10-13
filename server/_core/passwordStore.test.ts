@@ -28,6 +28,10 @@ const supabaseKnows = new Map<string, { uid: string; name: string | null }>();
 /** Stands in for the real `SupabaseEmailTaken`, which the stub replaces. */
 class SupabaseEmailTakenStub extends Error {}
 let supabaseOn = true;
+/** Accounts registered in Supabase and still waiting for their code, by address. */
+const supabaseWaiting = new Map<string, { uid: string; password: string; name: string | null }>();
+/** The one code the stubbed Supabase ever sends. */
+const SENT_CODE = "482913";
 
 beforeAll(async () => {
   const client = new PGlite();
@@ -43,6 +47,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   asked = [];
   supabaseKnows.clear();
+  supabaseWaiting.clear();
   supabaseOn = true;
   await db.delete(users);
   vi.resetModules();
@@ -53,6 +58,32 @@ beforeEach(async () => {
       asked.push("supabase.verify");
       return supabaseKnows.get(`${email}:${password}`) ? { ...supabaseKnows.get(`${email}:${password}`)!, email } : null;
     },
+    /* GoTrue checks the password before the confirmation, so "unconfirmed" is
+       only said for the right one. */
+    signInSupabase: async (email: string, password: string) => {
+      asked.push("supabase.verify");
+      if (supabaseWaiting.get(email)?.password === password) return "unconfirmed";
+      return supabaseKnows.get(`${email}:${password}`) ? { ...supabaseKnows.get(`${email}:${password}`)!, email } : null;
+    },
+    signUpSupabaseUser: async (input: { email: string; password: string; name?: string | null }) => {
+      asked.push("supabase.signup");
+      if ([...supabaseKnows.keys()].some(key => key.startsWith(`${input.email}:`))) throw new SupabaseEmailTakenStub();
+      /* Like GoTrue, a second sign-up for an address still waiting keeps the
+         first password — the case `finishRegistration` writes over. */
+      const waiting = supabaseWaiting.get(input.email);
+      supabaseWaiting.set(input.email, waiting ?? { uid: `sb-${supabaseKnows.size + supabaseWaiting.size + 1}`, password: input.password, name: input.name ?? null });
+      return { kind: "codeSent" };
+    },
+    verifySupabaseSignupCode: async (email: string, code: string) => {
+      asked.push("supabase.verifyCode");
+      const waiting = supabaseWaiting.get(email);
+      if (!waiting || code !== SENT_CODE) return null;
+      supabaseWaiting.delete(email);
+      supabaseKnows.set(`${email}:${waiting.password}`, { uid: waiting.uid, name: waiting.name });
+      return { uid: waiting.uid, email, name: waiting.name };
+    },
+    resendSupabaseSignupCode: async () => { asked.push("supabase.resend"); },
+    isSupabaseMailLimited: () => false,
     createSupabaseUser: async (input: { email: string; password: string; name?: string | null }) => {
       asked.push("supabase.create");
       /* Supabase refuses a second account on one address, and the refusal is
@@ -65,7 +96,15 @@ beforeEach(async () => {
       supabaseKnows.set(`${input.email}:${input.password}`, { uid, name: input.name ?? null });
       return { uid, email: input.email, name: input.name ?? null };
     },
-    updateSupabaseUser: async () => { asked.push("supabase.update"); },
+    updateSupabaseUser: async (uid: string, patch: { password?: string }) => {
+      asked.push("supabase.update");
+      if (!patch.password) return;
+      for (const [key, value] of [...supabaseKnows]) {
+        if (value.uid !== uid) continue;
+        supabaseKnows.delete(key);
+        supabaseKnows.set(`${key.split(":")[0]}:${patch.password}`, value);
+      }
+    },
     deleteSupabaseUser: async () => { asked.push("supabase.delete"); },
     sendSupabasePasswordReset: async () => { asked.push("supabase.reset"); },
     isSupabaseEmailTaken: (error: unknown) => error instanceof SupabaseEmailTakenStub,
@@ -307,5 +346,89 @@ describe("sending a reset", () => {
     expect(store.canSendReset()).toBe(false);
     await store.sendReset("whoever@shop.test", "en");
     expect(asked).toEqual([]);
+  });
+});
+
+/*
+ * Registering is two requests, and the second is the one that makes anything.
+ * The part worth a real database is the row: none until the code is right, and
+ * then exactly one, with exactly one credential column set.
+ */
+describe("registering with a code", () => {
+  it("sends a code through Supabase and writes no row until it comes back", async () => {
+    await expect(store.startRegistration({ email: "new@shop.test", password: "Harbour-Falcon-2026", name: "Noura" }))
+      .resolves.toEqual({ status: "codeSent" });
+    expect(asked).toEqual(["supabase.signup"]);
+    expect(await row("new@shop.test")).toBeUndefined();
+
+    expect(await store.finishRegistration({ email: "new@shop.test", password: "Harbour-Falcon-2026", code: "000000" })).toBeNull();
+    expect(await row("new@shop.test")).toBeUndefined();
+
+    const user = await store.finishRegistration({ email: "new@shop.test", password: "Harbour-Falcon-2026", name: "Noura", code: SENT_CODE });
+    expect(user).toMatchObject({ email: "new@shop.test", name: "Noura" });
+    const stored = await row("new@shop.test");
+    expect(stored.supabaseUid).toBeTruthy();
+    expect(stored.passwordHash).toBeNull();
+  });
+
+  it("refuses an address NetLet already holds before any mail is sent", async () => {
+    supabaseOn = false;
+    await store.createLogin({ email: "held@shop.test", password: "Harbour-Falcon-2026" });
+    supabaseOn = true;
+    asked = [];
+    await expect(store.startRegistration({ email: "Held@Shop.test", password: "Harbour-Falcon-2026" }))
+      .rejects.toBeInstanceOf(store.EmailTakenError);
+    expect(asked).toEqual([]);
+  });
+
+  /*
+   * Somebody registers an address that is not theirs, with their own password,
+   * and the code goes to its owner. The owner registers too, types the code,
+   * and the account must be theirs — their password, not the first one.
+   */
+  it("keeps the password of whoever typed the code, not of whoever registered first", async () => {
+    await store.startRegistration({ email: "owner@shop.test", password: "Someone-Elses-2026" });
+    await store.startRegistration({ email: "owner@shop.test", password: "Harbour-Falcon-2026" });
+    await store.finishRegistration({ email: "owner@shop.test", password: "Harbour-Falcon-2026", code: SENT_CODE });
+
+    expect(await store.signIn("owner@shop.test", "Harbour-Falcon-2026")).toMatchObject({ email: "owner@shop.test" });
+    expect(await store.signIn("owner@shop.test", "Someone-Elses-2026")).toBeNull();
+  });
+
+  it("checks rather than writes a password below the floor, which only sign-in sends", async () => {
+    await store.startRegistration({ email: "old@shop.test", password: "Short-9ch" });
+    await expect(store.finishRegistration({ email: "old@shop.test", password: "wrong-one", code: SENT_CODE }))
+      .rejects.toBeInstanceOf(store.PasswordMismatchError);
+  });
+
+  it("says an account is waiting for its code only when the password is right", async () => {
+    await store.startRegistration({ email: "wait@shop.test", password: "Harbour-Falcon-2026" });
+    expect(await store.signIn("wait@shop.test", "Harbour-Falcon-2026")).toBe("unconfirmed");
+    expect(await store.signIn("wait@shop.test", "not-the-password")).toBeNull();
+  });
+
+  /* No Supabase: the code goes to the log, and the account is a local digest. */
+  it("works end to end on the local digest, with the code in the server log", async () => {
+    supabaseOn = false;
+    const logged: string[] = [];
+    const info = vi.spyOn(console, "info").mockImplementation((line: string) => { logged.push(line); });
+
+    await store.startRegistration({ email: "dev@shop.test", password: "Harbour-Falcon-2026" });
+    const code = /is (\d{6})$/.exec(logged.at(-1) ?? "")?.[1];
+    expect(code).toMatch(/^\d{6}$/);
+    expect(await row("dev@shop.test")).toBeUndefined();
+
+    const wrong = code === "000000" ? "111111" : "000000";
+    expect(await store.finishRegistration({ email: "dev@shop.test", password: "Harbour-Falcon-2026", code: wrong })).toBeNull();
+    const user = await store.finishRegistration({ email: "dev@shop.test", password: "Harbour-Falcon-2026", code: code! });
+    expect(user?.passwordHash).toBeTruthy();
+
+    /* Spent: the same code does not make a second account or adopt the first. */
+    await db.delete(users);
+    expect(await store.finishRegistration({ email: "dev@shop.test", password: "Harbour-Falcon-2026", code: code! })).toBeNull();
+
+    await expect(store.finishRegistration({ email: "dev@shop.test", password: "short", code: code! }))
+      .rejects.toBeInstanceOf(store.WeakPasswordError);
+    info.mockRestore();
   });
 });

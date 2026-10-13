@@ -54,4 +54,22 @@ export const ENV = {
   payoutFromName: process.env.PAYOUT_FROM_NAME || process.env.INVOICE_ISSUER_NAME || "",
   payoutFromIban: process.env.PAYOUT_FROM_IBAN ?? "",
   payoutFromBic: process.env.PAYOUT_FROM_BIC ?? "",
+  /* Google reCAPTCHA v2, the "I'm not a robot" box on Create account. Both
+     from google.com/recaptcha/admin. The site key is public — the browser
+     needs it to draw the box; the secret is how the server asks Google whether
+     the box was really ticked. Unset, the box is not drawn and registration
+     does not ask for it — see server/_core/captcha.ts. */
+  recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY ?? "",
+  recaptchaSecretKey: process.env.RECAPTCHA_SECRET_KEY ?? "",
+  /* The map behind "Drop a pin" (3.2.7). Google's is a browser key — public by
+     design, and locked to NetLet's own addresses in the Google Cloud console.
+     Apple's is either a ready-made MapKit JS token from the Apple Developer
+     site, or the three values the server signs short-lived tokens with; the
+     private key never reaches a browser. With neither set the picker falls
+     back to OpenStreetMap — see server/_core/maps.ts. */
+  googleMapsKey: process.env.GOOGLE_MAPS_API_KEY ?? "",
+  appleMapkitToken: process.env.APPLE_MAPKIT_TOKEN ?? "",
+  appleMapkitTeamId: process.env.APPLE_MAPKIT_TEAM_ID ?? "",
+  appleMapkitKeyId: process.env.APPLE_MAPKIT_KEY_ID ?? "",
+  appleMapkitPrivateKey: (process.env.APPLE_MAPKIT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
 };

@@ -56,6 +56,9 @@ describe("dictionary completeness", () => {
       // The file formats an application document may be — PDF, JPEG, PNG,
       // WebP — named as the phone's file picker names them: the CSV reason.
       "documents.note", "documents.notAccepted", "documents.tooLarge", "documents.wrongType",
+      // The two maps a shopper chooses between, named as their makers name them
+      // on an Arabic phone — "خرائط Google", with the company in Latin.
+      "pin.google", "pin.apple", "pin.tryGoogle", "pin.tryApple",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

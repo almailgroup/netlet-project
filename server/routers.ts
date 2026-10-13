@@ -26,6 +26,7 @@ import { reviewsRouter } from "./routers/reviews.js";
 import { searchRouter } from "./routers/search.js";
 import { togetherRouter } from "./routers/together.js";
 import { wishlistsRouter } from "./routers/wishlists.js";
+import { mapsRouter } from "./routers/maps.js";
 
 export const appRouter = router({
   ads: adsRouter,
@@ -55,6 +56,7 @@ export const appRouter = router({
   search: searchRouter,
   together: togetherRouter,
   wishlists: wishlistsRouter,
+  maps: mapsRouter,
 });
 
 export type AppRouter = typeof appRouter;
