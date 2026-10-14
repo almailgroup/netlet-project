@@ -891,18 +891,36 @@ there is something off-screen.
 once that said "Small upgrades. A brighter everyday." over blurred colour blobs —
 a slogan where a shopper looks for something to tap — and it went, leaving the
 page to open on six tiles, which the owner found plain. `HomeHero` is the door
-that came back, built the other way round: NetLet's own street (`streetImage`
-in `lib/brandAssets.ts`, the sign-in panel's picture, so the shop's door looks
-the same wherever a shopper meets it) on navy with an orange foot, one line
-saying what the shop is — "Kuwait's stores, one cart." — the three facts every
-order carries (every governorate, cash at the door, `RETURN_WINDOW_DAYS`), and
-two ways in. The first is Today's deals only while the home page draws a Deals
-shelf (`shelvesFor`), New arrivals otherwise, so the first press never lands on
-a half-empty page. Nothing moves; the picture is the page's largest paint and is
-fetched first. The page's `h1` is in it, the shop's name first for a screen
-reader. On a phone the facts are a short list and the buttons sit side by side
-only while both fit (`flex-[1_0_auto]`, never wrapping their words), each the
-full width at 320.
+that came back, built the other way round: a navy band the width of the screen
+with NetLet's pictures on it, one line saying what the shop is — "Kuwait's
+stores, one cart." — the three facts every order carries (every governorate,
+cash at the door, `RETURN_WINDOW_DAYS`), and two ways in. The first is Today's
+deals only while the home page draws a Deals shelf (`shelvesFor`), New arrivals
+otherwise, so the first press never lands on a half-empty page. The page's `h1`
+is in it, the shop's name first for a screen reader. On a phone the facts are a
+short list and the buttons sit side by side only while both fit
+(`flex-[1_0_auto]`, never wrapping their words), each the full width at 320.
+
+**The band fades into the page rather than ending on a line**: its foot runs
+from the navy into `--background`, over the pictures too, so the departments
+below read as the same surface continuing. It ended on an orange rule once, and
+the owner asked for the fade.
+
+**Its pictures are a slideshow — the one thing on the shop that moves on its
+own, on the owner's word.** `heroSlides` (`lib/brandAssets.ts`) is NetLet's
+street (`streetImage`, the sign-in panel's picture, so the shop's door looks
+the same wherever a shopper meets it) and then every picture in
+`client/src/assets/hero/`, in file-name order, so a slide is added by dropping
+in a file (that folder's README says the shape). Only the pictures change: the
+words and the buttons hold still, so nothing a shopper is reading moves. It
+crossfades every `SLIDE_MS`, and waits while a pointer or the keyboard is on
+the band, while the band is off screen or the tab hidden, and for good once
+somebody presses Pause — content that moves for more than five seconds needs a
+way to stop it (WCAG 2.2.2). Nobody who asked for less motion sees it move; the
+dots still change the picture. A picture is fetched only when it is next, the
+first with `fetchPriority="high"` as the page's largest paint; one picture alone
+is a still with no controls. The header, the cards and the paid banners'
+carousel still never move on their own.
 
 `DepartmentCards` follows under a heading of its own — six tiles, the five
 departments and "All departments", three to a row on a phone and six on a wide
@@ -3900,7 +3918,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It is 599 KB (175 KB) now: the
+with the whole first download 35 KB smaller. It is 609 KB (178 KB) now: the
 shop's frame, the page template and the navigation layer (see "One frame, one
 template") are on every page, so they belong in it, and so is the home page's
 front door, which is its first paint. That door's street picture is 86 KB

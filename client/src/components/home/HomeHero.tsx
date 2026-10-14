@@ -1,6 +1,7 @@
 /**
- * The front door: a navy panel with NetLet's own street on it, one line saying
- * what the shop is, the three facts every order carries, and two ways in.
+ * The front door: a navy band the width of the screen with NetLet's pictures
+ * on it, one line saying what the shop is, the three facts every order
+ * carries, and two ways in.
  *
  * The home page opened on a slogan once ("Small upgrades. A brighter
  * everyday.") over blurred colour blobs, and it went because it was words where
@@ -11,34 +12,148 @@
  * draws a Deals shelf (`shelvesFor`), the new arrivals otherwise, so the first
  * press never lands on a half-empty page.
  *
- * Nothing moves. The picture is the sign-in panel's (`streetImage`), so the
- * shop's door looks the same wherever a shopper meets it; its edges are the
- * panel's navy, and a gradient on the words' side fades it in, mirrored on the
- * Arabic page so the words always sit on the dark side. With no picture the
- * panel is its words alone.
+ * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
+ * street, then `client/src/assets/hero/` in name order). Only the pictures
+ * change; the words and the buttons hold still, so nothing a shopper is
+ * reading moves. It crossfades every `SLIDE_MS` and waits while a pointer or
+ * the keyboard is on the band, while the band is off screen or the tab hidden,
+ * and for good once somebody presses Pause — moving content that runs past
+ * five seconds needs a way to stop it (WCAG 2.2.2). Nobody who asked for less
+ * motion is shown it moving at all; the dots still change the picture. One
+ * picture is a still, with no controls.
+ *
+ * **The band fades into the page** rather than ending on a line: its foot runs
+ * from the navy into the page's own background, so the departments below
+ * read as the same surface continuing. The words sit above the fade.
  */
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug } from "@shared/commerce/browse";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
-import { ArrowRight, RotateCcw, Truck, Wallet } from "lucide-react";
+import { ArrowRight, Pause, Play, RotateCcw, Truck, Wallet } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslation } from "@/hooks/useTranslation";
-import { streetImage } from "@/lib/brandAssets";
+import { heroSlides } from "@/lib/brandAssets";
+
+/** How long each picture stays before the next fades in. */
+export const SLIDE_MS = 6000;
 
 export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   const { t } = useTranslation();
+  const slides = heroSlides;
+  const many = slides.length > 1;
+  const [index, setIndex] = useState(0);
+  /* A picture is fetched once it is about to be shown, never all at once. */
+  const [fetched, setFetched] = useState(() => new Set([0, 1]));
+  const [paused, setPaused] = useState(false);
+  const [held, setHeld] = useState(false);
+  const [onScreen, setOnScreen] = useState(true);
+  const stillWanted = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const bandRef = useRef<HTMLElement>(null);
+
+  const show = (next: number) => {
+    const wrapped = (next + slides.length) % slides.length;
+    setIndex(wrapped);
+    setFetched(previous => new Set([...previous, wrapped, (wrapped + 1) % slides.length]));
+  };
+
+  /* Off screen or in a hidden tab, nobody is watching it change. */
+  useEffect(() => {
+    const band = bandRef.current;
+    if (!many || !band) return;
+    let visible = true;
+    let tabShown = document.visibilityState === "visible";
+    const apply = () => setOnScreen(visible && tabShown);
+    const observer = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; apply(); });
+    observer?.observe(band);
+    const onTab = () => { tabShown = document.visibilityState === "visible"; apply(); };
+    document.addEventListener("visibilitychange", onTab);
+    return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", onTab); };
+  }, [many]);
+
+  const running = many && !paused && !held && onScreen && !stillWanted;
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setTimeout(() => show(index + 1), SLIDE_MS);
+    return () => window.clearTimeout(timer);
+    /* `show` reads only the number of pictures, which never changes. */
+  }, [running, index]);
+
   const facts = [
     { icon: Truck, label: t("checkout.builtForKuwait") },
     { icon: Wallet, label: t("home.payOnDelivery") },
     { icon: RotateCcw, label: t("home.returnsWithin", { days: RETURN_WINDOW_DAYS }) },
   ];
+
   return (
-    <section aria-labelledby="home-hero-title" className="container pt-4 sm:pt-6">
-      <div className="relative grid overflow-hidden rounded-[22px] bg-[#0a285a] text-white sm:rounded-[28px] lg:min-h-[420px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-        <div className="relative z-10 flex flex-col justify-center px-5 pb-7 pt-1 sm:px-10 sm:pb-10 lg:px-14 lg:py-12">
+    <section
+      ref={bandRef}
+      aria-labelledby="home-hero-title"
+      className="relative isolate overflow-hidden bg-[#0a285a] text-white"
+      onMouseEnter={() => setHeld(true)}
+      onMouseLeave={() => setHeld(false)}
+      onFocus={() => setHeld(true)}
+      onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false); }}
+    >
+      {slides.length ? (
+        <div className="relative h-[220px] sm:h-[300px] lg:absolute lg:inset-y-0 lg:end-0 lg:h-auto lg:w-[56%]">
+          {/* Decorative: the words beside them say what the shop is. */}
+          <div aria-hidden className="absolute inset-0">
+            {slides.map((src, slide) => fetched.has(slide) ? (
+              <img
+                key={src}
+                src={src}
+                alt=""
+                loading="eager"
+                fetchPriority={slide === 0 ? "high" : "low"}
+                decoding="async"
+                className={`absolute inset-0 size-full object-cover object-[center_60%] transition-opacity duration-700 ease-out ${slide === index ? "opacity-100" : "opacity-0"}`}
+              />
+            ) : null)}
+            {/* Into the navy on the words' side: below the pictures on a
+                phone, beside them from `lg`, from the start edge in either
+                direction. */}
+            <span className="absolute inset-0 bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_35%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_35%)]" />
+          </div>
+
+          {many ? (
+            /* Centred under the picture on a phone; in the picture's end
+               corner from `lg`, above the fade, clear of what it shows. */
+            <div className="absolute inset-x-0 bottom-2 z-20 flex items-center justify-center gap-1 lg:bottom-36 lg:justify-end lg:pe-8">
+              {slides.map((src, slide) => (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => show(slide)}
+                  aria-label={t("hero.picture", { n: slide + 1, total: slides.length })}
+                  aria-current={slide === index ? "true" : undefined}
+                  className="grid size-6 place-items-center rounded-full hover:bg-white/[.12]"
+                >
+                  <span className={`block h-2 rounded-full transition-all duration-300 ${slide === index ? "w-5 bg-white" : "w-2 bg-white/50"}`} />
+                </button>
+              ))}
+              {stillWanted ? null : (
+                <button
+                  type="button"
+                  onClick={() => setPaused(value => !value)}
+                  aria-label={t(paused ? "hero.play" : "hero.pause")}
+                  title={t(paused ? "hero.play" : "hero.pause")}
+                  className="ms-1 grid size-8 place-items-center rounded-full bg-[#0a285a]/40 text-white hover:bg-white/[.12]"
+                >
+                  {paused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="container relative z-10 pb-24 pt-1 sm:pb-28 lg:flex lg:min-h-[480px] lg:items-center lg:pb-36 lg:pt-12">
+        <div className="max-w-[600px]">
           {/* The page's heading: the shop's name for a screen reader's outline,
               then the line everybody reads. */}
-          <h1 id="home-hero-title" className="max-w-[15ch] text-[30px] font-extrabold leading-[1.08] tracking-[-.02em] sm:text-[40px] lg:text-[46px]">
+          <h1 id="home-hero-title" className="max-w-[15ch] text-[30px] font-extrabold leading-[1.08] tracking-[-.02em] sm:text-[40px] lg:text-[48px]">
             <span className="sr-only">{t("home.heading")}: </span>
             {t("home.heroTitle")} <span className="text-[#f2683a]">{t("home.heroTitleAccent")}</span>
           </h1>
@@ -70,28 +185,11 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
             </Link>
           </div>
         </div>
-
-        {streetImage ? (
-          <div className="relative order-first h-[200px] sm:h-[280px] lg:order-none lg:h-auto">
-            {/* The page's largest paint, so it is fetched first. Decorative: the
-                words beside it say what the shop is. */}
-            <img
-              src={streetImage}
-              alt=""
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-              className="absolute inset-0 size-full object-cover object-[center_60%]"
-            />
-            {/* Fades the picture into the navy on the words' side: below it on
-                a phone, beside it from `lg`, from the start edge in either
-                direction. */}
-            <span aria-hidden className="absolute inset-0 bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_30%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_30%)]" />
-          </div>
-        ) : null}
-        {/* The orange of the logo's roof, as the panel's foot. */}
-        <span aria-hidden className="absolute inset-x-0 bottom-0 z-10 h-1.5 bg-[#f2683a]" />
       </div>
+
+      {/* The foot: from the navy into the page's own background, over the
+          pictures as well, so the band ends without an edge. */}
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-20 bg-[linear-gradient(180deg,rgba(10,40,90,0)_0%,var(--background)_100%)] sm:h-24 lg:h-32" />
     </section>
   );
 }

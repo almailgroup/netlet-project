@@ -27,4 +27,20 @@ export const streetImage: string | null = Object.values(
   import.meta.glob<string>("../assets/auth/welcome.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
 )[0] ?? null;
 
+/**
+ * The home page's front door as a slideshow: the street first, then every
+ * picture in `client/src/assets/hero/`, in file-name order (`02-…`, `03-…`).
+ * Found at build time like the street, so adding a slide is dropping in a
+ * file; only the addresses are in the bundle, and each picture is fetched when
+ * the slideshow is about to show it.
+ */
+export const heroSlides: string[] = [
+  ...(streetImage ? [streetImage] : []),
+  ...Object.entries(
+    import.meta.glob<string>("../assets/hero/*.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
+  )
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, url]) => url),
+];
+
 /** Placeholder QR for the app-download panel: reads as a code, decodes to nothing. */
