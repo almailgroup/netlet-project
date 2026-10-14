@@ -33,6 +33,10 @@
       "destination": "/api?__page=/stores"
     },
     {
+      "source": "/categories",
+      "destination": "/api?__page=/categories"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

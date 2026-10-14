@@ -10,7 +10,9 @@
  * the owner's picture.** The current tab sits in a pale grey pill with its icon
  * and its word in navy, the rest are near-black outlines. Saved left the bar
  * with that picture; it is the Saved tile on the account page, one press under
- * Profile. Categories opens the departments on every page, as Browse did.
+ * Profile. Categories opens `/categories`, the departments as a page: it was
+ * a sheet over whatever page the shopper was on, with no address to go Back
+ * from, and the owner asked for a page.
  *
  * **Its background is the header's liquid glass** (`.glass-bar-surface` with
  * `.glass-bar-round`, in `index.css`): the page blurs under it as it scrolls
@@ -27,14 +29,13 @@
  * owner's word (`.tab-pill` in `index.css`). It moves on the press, not when
  * the page arrives — a page whose code is still coming keeps the old one up
  * for as long as `MAX_WAIT_MS`, and a highlight that waited with it would read
- * as a press that had not taken — and settles wherever the address lands. It
- * sits on Categories while the departments sheet is open and goes back if the
- * sheet closes on nothing. On a page no tab names (a product, a search) it
+ * as a press that had not taken — and settles wherever the address lands.
+ * Categories holds it on the department pages too, since that is where the tab
+ * leads. On a page no tab names (a product, a search) it
  * fades where it is, and it fades in rather than slides when one is reached
  * again, since a slide from a tab nobody was on describes no move. The word
  * and icon follow the pill; `aria-current` follows the address.
  */
-import { DepartmentSheet } from "@/components/layout/DepartmentSheet";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -70,15 +71,13 @@ type Tab = {
   icon: (active: boolean) => ReactNode;
   active: boolean;
   badge?: number;
-  href?: string;
-  action?: () => void;
+  href: string;
 };
 
 export function MobileTabBar() {
   const { t } = useTranslation();
   const [location] = useLocation();
   const { itemCount } = useCart();
-  const [browsing, setBrowsing] = useState(false);
   /* The tab pressed whose page has not arrived yet. */
   const [pressed, setPressed] = useState<string | null>(null);
   /* The same counts the header's account menu reads, so the two agree. */
@@ -125,15 +124,14 @@ export function MobileTabBar() {
       key: "categories",
       label: t("nav.categories"),
       icon: () => <CategoriesIcon />,
-      active: location.startsWith("/category"),
-      /* The departments, on every page — not the whole catalogue here and a
-         sheet on the home page, which made one tab mean two things. */
-      action: () => setBrowsing(true),
+      /* The page of departments, and every department page it leads to. */
+      active: location === "/categories" || location.startsWith("/category/"),
+      href: "/categories",
     },
   ];
 
-  /* Where the pill is: the sheet open, then a press on its way, then the page. */
-  const shownKey = browsing ? "categories" : pressed ?? tabs.find(tab => tab.active)?.key ?? null;
+  /* Where the pill is: a press on its way, then the page. */
+  const shownKey = pressed ?? tabs.find(tab => tab.active)?.key ?? null;
   const shown = shownKey ? tabs.findIndex(tab => tab.key === shownKey) : -1;
   /* It slides only from a tab it was on; from nowhere it fades in. */
   const previous = useRef(-1);
@@ -146,8 +144,6 @@ export function MobileTabBar() {
   }, [shown]);
 
   return (
-    <>
-    <DepartmentSheet open={browsing} onClose={() => setBrowsing(false)} />
     <nav
       aria-label={t("nav.mobile")}
       className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-4 rounded-full border border-black/[.12] p-[5px] shadow-[0_8px_28px_rgba(10,40,90,.12),0_1px_3px_rgba(10,40,90,.06)] lg:hidden"
@@ -182,10 +178,10 @@ export function MobileTabBar() {
             {tab.label}
           </>
         );
-        /* A tab that goes to a page is a link to it, so a finger landing on it
-           starts fetching the page before it lifts. Pressing the tab you are
+        /* Every tab is a link to its page, so a finger landing on it starts
+           fetching the page before it lifts. Pressing the tab you are
            on takes you to the top of it, as a phone's own tab bars do. */
-        return tab.href ? (
+        return (
           <Link
             key={tab.key}
             href={tab.href}
@@ -203,13 +199,8 @@ export function MobileTabBar() {
           >
             {face}
           </Link>
-        ) : (
-          <button key={tab.key} type="button" onClick={tab.action} aria-current={tab.active ? "page" : undefined} className={className}>
-            {face}
-          </button>
         );
       })}
     </nav>
-    </>
   );
 }

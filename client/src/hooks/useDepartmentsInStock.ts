@@ -2,12 +2,14 @@
  * Which departments have something on sale, for the navigation to leave out
  * the ones that do not.
  *
- * Beauty, Style and Grocery sat in the header, the phone's department sheet and
- * the footer with nothing behind them — a link that leads to "nothing here
- * yet" is a dead end that looks like an open shop. A department with no
- * products is dropped from those (the home page's six cards stay, on the
- * owner's word); its page still answers its address with
- * its own name and an empty state, because a link already shared must not 404.
+ * Beauty, Style and Grocery sat in the header, the phone's department sheet
+ * and the footer with nothing behind them — a link that leads to "nothing
+ * here yet" is a dead end that looks like an open shop. A department with no
+ * products is dropped from the header and the footer. The home page's six
+ * cards keep all six, on the owner's word, and the `/categories` page follows
+ * them, with each department's count under it. Its page still answers its
+ * address with its own name and an empty state, because a link already shared
+ * must not 404.
  *
  * Until the counts arrive every department is shown, so the bar does not start
  * empty and fill in.

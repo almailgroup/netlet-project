@@ -103,7 +103,8 @@ a picture the owner sent: **a floating pill of four tabs — Home, Profile, Cart
 Categories** — the current one in a pale grey pill with its icon and word in
 navy and bold (the house filled), the rest near-black outlines. Saved left the
 bar with that picture and is the Saved tile on the account page, one press
-under Profile; Categories is the old Browse, the departments sheet. The words
+under Profile; Categories opens `/categories`, the departments as a page (see
+Browsing). The words
 are dark, not the muted ink they once were — the tint keeps dark ink at 4.5:1
 over the darkest thing that passes, and the muted ink would have needed nine
 parts white — and the current tab's pill is solid for the same reason.
@@ -115,9 +116,9 @@ that slides between the tabs** (`.tab-pill`, 420ms, mirrored on the Arabic
 page), also on the owner's word. It moves on the press rather than when the
 address does, because a page whose code is still coming keeps the old one up
 for as long as `MAX_WAIT_MS` and a highlight waiting with it reads as a press
-that did not take; it then settles wherever the address lands. It sits on
-Categories while the departments sheet is open and returns if the sheet
-closes on nothing; on a page no tab names it fades where it is, and on
+that did not take; it then settles wherever the address lands. It stays on
+Categories on every department page, since that is where the tab leads; on a
+page no tab names it fades where it is, and on
 reaching a tab again it fades in rather than sliding from a tab nobody was on.
 The word and icon follow the pill, `aria-current` follows the address, and
 reduced motion makes it a cut. Measured frame by frame in both languages: it
@@ -589,8 +590,8 @@ in). It is the WAI-ARIA menu button (arrows, Home/End, Escape back to the
 button, Tab out). The name is the first word of
 the display name as typed, so an account named "Admin Panel" reads "Admin".
 Signed out it opens the sign-in dialog where the shopper is. Anything the bar
-opens is portalled to `<body>` — `AuthDialog`, `DeliveryZoneDialog`,
-`DepartmentSheet`. The reason was `backdrop-filter` on the header, which made it
+opens is portalled to `<body>` — `AuthDialog`, `DeliveryZoneDialog`. The
+reason was `backdrop-filter` on the header, which made it
 the containing block for every `position: fixed` inside it; the blur has gone
 and the portals stay, because a header that gains a filter or a transform again
 would otherwise break every overlay in it without a word.
@@ -664,7 +665,7 @@ layout, where it types a letter.
 
 **Deals ends the department row, on the home shelf's rule.** `shelvesFor`
 decides whether the home page draws a Deals shelf, and the same answer decides
-the link — in the wide row and at the foot of the phone's department sheet — so
+the link — in the wide row and under the departments on `/categories` — so
 a link never leads to the half-empty shelf the home page refuses to draw. On
 `/category/all?offer=1` it is the current one and "All departments" is not.
 
@@ -681,10 +682,10 @@ to look for something vanished exactly where a shopper was lost. The header
 keeps the words itself, starts each page from the address's `q` (the term on a
 results or department page, nothing elsewhere — what a fresh header did when
 every page drew its own), suggests from the catalogue it already holds and opens
-the product chosen. The hamburger's department list
-is `DepartmentSheet` now, behind the bottom bar's Categories on every page — it
-used to open it on Home and go to the whole catalogue everywhere else, one tab
-meaning two things.
+the product chosen. The hamburger's department list became a sheet behind the
+bottom bar's Categories on every page — it had opened it on Home and gone to the
+whole catalogue everywhere else, one tab meaning two things — and the sheet
+became the `/categories` page (see Browsing).
 
 **Nothing in the header moves on its own.** It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
@@ -3625,18 +3626,36 @@ sidebar, the suggestions and the product page come from the dictionary, so
 "Home & kitchen" is spelled one way everywhere and in Arabic on the Arabic
 page; a merchant's own type stays as typed.
 
-**An empty department is not in the navigation.** The header row, the phone's
-department sheet and the footer list only departments with something on
+**An empty department is not in the navigation.** The header row and the
+footer list only departments with something on
 sale (`commerce.departmentCounts`, the `publishedCatalog` rule counted per
 department); everything shows until the counts arrive, and the department a
 shopper is standing on is always shown. **The home page's six cards are the
 exception, on the owner's word**: they followed the same rule for a while and
 the page opened on three tiles, and the cards are the shop's shape rather than
-a menu. Its page still answers its address
+a menu — and `/categories` follows the cards, saying each one's count. Its page
+still answers its address
 with its name and an empty state, since a link already shared must not 404, and
 the "Offers and delivery" box is not drawn over nothing. A department page with
 no search or filter is indexable (`departmentMeta`); a search or a filtered view
 is not.
+
+**The departments have a page, `/categories`, and the phone's Categories tab
+opens it.** The tab slid a sheet in over whatever page the shopper was on: no
+address, so Back left the page under it rather than the list, and nothing to
+send anybody. The owner asked for a page, and it is the home page's department
+cards made the page's subject (`pages/Categories.tsx`) — the same art, two to a
+row on a phone and six on a wide screen, each with its count from
+`commerce.departmentCounts`, "All departments" last with no count (a product
+filed under a seller's own type is in it and in no department, so a sum would
+be short), and Today's deals under the grid only while the home page would
+draw that shelf. All six, as the cards keep them: an empty department says "No
+products" rather than leaving the one page that lists them all. The function
+writes its head like the stores index's (`categoriesMeta`, a `vercel.json`
+rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
+so anything that reads a department page off the address asks for
+`/category/` with its slash — the footer's clearance for the department page's
+filter button does, or it would leave room for a button this page has not got.
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and

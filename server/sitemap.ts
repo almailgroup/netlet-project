@@ -27,6 +27,7 @@ const MAX_PRODUCTS = 5000;
 export async function sitemapEntries(): Promise<SitemapEntry[]> {
   const entries: SitemapEntry[] = [
     { path: "/", priority: 1.0 },
+    { path: "/categories", priority: 0.7 },
     ...DEPARTMENTS.map(department => ({ path: `/category/${department.slug}`, priority: 0.8 })),
   ];
 

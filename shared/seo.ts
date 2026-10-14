@@ -103,6 +103,17 @@ export function storeMeta(
   };
 }
 
+/** Every department on NetLet, the page the phone's Categories tab opens. */
+export function categoriesMeta(siteUrl: string): PageMeta {
+  return {
+    title: `Categories — ${SITE_NAME}`,
+    description: "Every department on NetLet, Kuwait's marketplace — electronics, home and kitchen, beauty, style and grocery, delivered across all six governorates.",
+    canonical: absoluteUrl(siteUrl, "/categories"),
+    image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+    type: "website",
+  };
+}
+
 /** Every store on NetLet. */
 export function storesMeta(siteUrl: string): PageMeta {
   return {

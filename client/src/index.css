@@ -674,36 +674,6 @@
   animation: photo-scan 1700ms var(--ease-out) infinite;
 }
 
-@keyframes netlet-menu-scrim-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes netlet-menu-panel-in {
-  from {
-    opacity: 0;
-    transform: translateX(-28px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .netlet-menu-scrim {
-    animation: netlet-menu-scrim-in 180ms var(--ease-out) both;
-  }
-  .netlet-menu-panel {
-    animation: netlet-menu-panel-in 240ms var(--ease-out) both;
-    will-change: transform, opacity;
-  }
-}
-
 /*
  * Luxury-blue migration for the original compact Tailwind component palette.
  * These semantic overrides keep NetLet Orange reserved for actions while
