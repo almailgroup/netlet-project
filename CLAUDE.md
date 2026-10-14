@@ -1162,7 +1162,7 @@ every governorate), the language, and the last line saying who the shop is —
 the company, its commercial registration and its address, which a Kuwaiti shop
 shows its customers — beside the terms and the privacy policy. **The contact
 block is the owner's own**: under "Get in touch" and their line about the team,
-Call us, Email support and Visit us (+965 2512 3456, support@netlet.com, Kuwait
+Call us, Email support and Visit us (+965 5080 8606, support@netlet.net, Kuwait
 City — `NETLET_CONTACT`, the defaults, so they show on a deployment that has set
 nothing), then WhatsApp when configured, Message NetLet and the help centre.
 Visit us opens the address on a map, and the line names its first part ("visit

@@ -16,8 +16,8 @@
 
 /** NetLet's own published contact details, as the owner gave them. */
 export const NETLET_CONTACT = {
-  phone: "+965 2512 3456",
-  email: "support@netlet.com",
+  phone: "+965 5080 8606",
+  email: "support@netlet.net",
   address: "Kuwait City, Kuwait",
   addressAr: "مدينة الكويت، الكويت",
 } as const;

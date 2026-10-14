@@ -70,9 +70,9 @@ describe("nameInSentence", () => {
 
 describe("NetLet's own details", () => {
   it("are a number, an address and a place the rules accept", () => {
-    expect(supportNumber(NETLET_CONTACT.phone)).toBe("96525123456");
-    expect(displayNumber(supportNumber(NETLET_CONTACT.phone)!)).toBe("+965 2512 3456");
-    expect(contactEmail(NETLET_CONTACT.email)).toBe("support@netlet.com");
+    expect(supportNumber(NETLET_CONTACT.phone)).toBe("96550808606");
+    expect(displayNumber(supportNumber(NETLET_CONTACT.phone)!)).toBe("+965 5080 8606");
+    expect(contactEmail(NETLET_CONTACT.email)).toBe("support@netlet.net");
     expect(visitDetails(NETLET_CONTACT.address, NETLET_CONTACT.addressAr)).toEqual({ address: "Kuwait City, Kuwait", addressAr: "مدينة الكويت، الكويت" });
   });
 });
