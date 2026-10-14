@@ -63,7 +63,7 @@ export function DeliverySpeedLine({ speed, provider = null, area = null, classNa
       {/* The carrier the seller named, when there is also a band to sit
           beside — never a tracking promise, which NetLet cannot keep. */}
       {speed && provider ? <span dir="auto" className="ink-muted">{t("product.shippedBy", { name: provider })}</span> : null}
-      {speed ? <span className="text-[11px] ink-muted">{t("speed.bySeller")}</span> : null}
+      {speed ? <span className="text-[12px] ink-muted">{t("speed.bySeller")}</span> : null}
     </p>
     </div>
   );

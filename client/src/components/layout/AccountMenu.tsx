@@ -140,7 +140,7 @@ export function AccountMenu() {
     >
       <span className="grid size-5 shrink-0 place-items-center text-[#536b8c]" aria-hidden>{icon}</span>
       <span className="min-w-0 flex-1">{t(label)}</span>
-      {note ? <span className="shrink-0 rounded-full bg-[#fff0e8] px-2 py-0.5 text-[11px] font-extrabold ink-accent">{note}</span> : null}
+      {note ? <span className="shrink-0 rounded-full bg-[#fff0e8] px-2 py-0.5 text-[12px] font-extrabold ink-accent">{note}</span> : null}
     </Link>
   );
 

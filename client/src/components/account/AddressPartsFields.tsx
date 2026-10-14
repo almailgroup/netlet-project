@@ -74,7 +74,7 @@ export function AddressPartsFields({
         aria-describedby={key === "paciNumber" ? id("paci-hint") : undefined}
         className={`${fieldClass} mt-1 font-normal`}
       />
-      {key === "paciNumber" ? <span id={id("paci-hint")} className="mt-1 block text-[11px] font-normal ink-muted">{t("address.paciHint")}</span> : null}
+      {key === "paciNumber" ? <span id={id("paci-hint")} className="mt-1 block text-[12px] font-normal ink-muted">{t("address.paciHint")}</span> : null}
     </label>
   );
 

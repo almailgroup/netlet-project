@@ -44,7 +44,7 @@ function Both({ k, values, className = "" }: { k: MessageKey; values?: Record<st
   return (
     <span className={className}>
       <span className="block">{translate(locale, k, values)}</span>
-      <span lang={other} dir={other === "ar" ? "rtl" : "ltr"} className="block text-[10px] font-semibold text-[#536b8c] align-parent">{translate(other, k, values)}</span>
+      <span lang={other} dir={other === "ar" ? "rtl" : "ltr"} className="block text-[11px] font-semibold text-[#536b8c] align-parent">{translate(other, k, values)}</span>
     </span>
   );
 }
@@ -128,14 +128,14 @@ function Document({ document: doc, credits, verifyCode }: { document: InvoiceDoc
 
       <section className="grid gap-5 border-b border-[#e6e9ef] py-5 sm:grid-cols-2" aria-label={t("invoice.parties")}>
         <div>
-          <h2 className="text-[11px] font-extrabold uppercase tracking-wide"><Both k="invoice.issuer" /></h2>
+          <h2 className="text-[12px] font-extrabold uppercase tracking-wide"><Both k="invoice.issuer" /></h2>
           <p className="mt-2 text-sm font-extrabold">{doc.issuer.name}</p>
           {doc.issuer.nameAr ? <p lang="ar" dir="rtl" className="text-sm font-extrabold align-parent">{doc.issuer.nameAr}</p> : null}
           <Registration licence={doc.issuer.licence} underPlatformLicence={false} />
           {doc.issuer.address ? <p className="mt-1 text-[12px] text-[#536b8c]"><bdi>{doc.issuer.address}</bdi></p> : null}
         </div>
         <div>
-          <h2 className="text-[11px] font-extrabold uppercase tracking-wide"><Both k="invoice.buyer" /></h2>
+          <h2 className="text-[12px] font-extrabold uppercase tracking-wide"><Both k="invoice.buyer" /></h2>
           {doc.buyer.name ? <p className="mt-2 text-sm font-extrabold"><bdi>{doc.buyer.name}</bdi></p> : null}
           {doc.buyer.phone ? <p className="text-[12px]"><bdi dir="ltr">{doc.buyer.phone}</bdi></p> : null}
           <p className="text-[12px]"><bdi dir="ltr">{doc.buyer.email}</bdi></p>
@@ -180,7 +180,7 @@ function Document({ document: doc, credits, verifyCode }: { document: InvoiceDoc
 
       <Verification number={doc.number} code={verifyCode} document={doc} />
 
-      <footer className="mt-6 border-t border-[#e6e9ef] pt-4 text-[11px] text-[#536b8c]">
+      <footer className="mt-6 border-t border-[#e6e9ef] pt-4 text-[12px] text-[#536b8c]">
         <Both k="invoice.footer" />
       </footer>
     </article>
@@ -207,7 +207,7 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
   const { t } = useTranslation();
   return (
     <section className="border-b border-[#e6e9ef] py-5">
-      <p className="text-[11px] font-extrabold uppercase tracking-wide"><Both k="invoice.soldBy" /></p>
+      <p className="text-[12px] font-extrabold uppercase tracking-wide"><Both k="invoice.soldBy" /></p>
       <h2 className="mt-1 text-sm font-extrabold">
         <bdi className="block">{seller.name}</bdi>
         {seller.nameAr ? <span lang="ar" dir="rtl" className="block align-parent">{seller.nameAr}</span> : null}
@@ -232,7 +232,7 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
                   <bdi className="block font-bold">{line.title}</bdi>
                   {line.titleAr ? <span lang="ar" dir="rtl" className="block align-parent">{line.titleAr}</span> : null}
                   {line.variantTitle && line.variantTitle !== "Default" ? <bdi className="block text-[#536b8c]">{line.variantTitle}</bdi> : null}
-                  {line.sku ? <span className="block text-[11px] text-[#536b8c]"><bdi dir="ltr">{line.sku}</bdi></span> : null}
+                  {line.sku ? <span className="block text-[12px] text-[#536b8c]"><bdi dir="ltr">{line.sku}</bdi></span> : null}
                 </td>
                 <td className="py-2 text-end">{line.quantity}</td>
                 <td className="py-2 text-end">{money(line.unitPrice)}</td>

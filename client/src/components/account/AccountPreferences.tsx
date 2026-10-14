@@ -65,7 +65,7 @@ export function AccountPreferences() {
           {deliveryZone ? t("account.zoneSelected", { name: zoneName(deliveryZone) }) : t("account.chooseZone")}
         </p>
         <label className="mt-3 block">
-          <span className="text-[11px] font-extrabold text-[#0a285a]">{t("delivery.governorate")}</span>
+          <span className="text-[12px] font-extrabold text-[#0a285a]">{t("delivery.governorate")}</span>
           {/* The wrapping <label> would otherwise give this a name made of
               every governorate in the list. */}
           <Select

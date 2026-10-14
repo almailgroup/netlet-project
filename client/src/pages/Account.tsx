@@ -318,7 +318,7 @@ function Tile({ entry, badge }: { entry: Entry; badge: string | null }) {
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-[15px] font-bold text-[#0a285a]">{t(entry.label)}</span>
-          {badge ? <span className="rounded-full bg-[#f2683a] px-2 py-0.5 text-[11px] font-bold text-[#0a285a]">{badge}</span> : null}
+          {badge ? <span className="rounded-full bg-[#f2683a] px-2 py-0.5 text-[12px] font-bold text-[#0a285a]">{badge}</span> : null}
         </span>
         <span className="mt-0.5 block text-[13px] leading-snug ink-muted">{t(entry.hint)}</span>
       </span>

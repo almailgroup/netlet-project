@@ -78,7 +78,7 @@ export function PreorderBadge({ variant, className = "" }: {
   if (!variant?.preorder) return null;
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full bg-[#fde8df] px-2 py-0.5 text-[10px] font-extrabold ink-accent ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full bg-[#fde8df] px-2 py-0.5 text-[11px] font-extrabold ink-accent ${className}`}>
       <Clock className="size-3 shrink-0" aria-hidden />
       {t("product.preorder")}
     </span>

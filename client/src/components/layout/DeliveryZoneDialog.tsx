@@ -225,7 +225,7 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
                         )}
                       </span>
                       {chosen ? (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-1 text-[11px] font-bold text-[#0a285a]">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e7edf5] px-2 py-1 text-[12px] font-bold text-[#0a285a]">
                           <Check className="size-3.5" aria-hidden />
                           <span className="hidden min-[380px]:inline">{t("delivery.chosenAddress")}</span>
                         </span>

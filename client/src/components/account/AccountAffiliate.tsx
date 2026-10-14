@@ -68,11 +68,11 @@ function Join() {
       <p className="mt-2 max-w-prose text-sm leading-6 text-[#536b8c]">{t("affiliate.pitch", { days: String(ATTRIBUTION_DAYS) })}</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="block text-[11px] font-extrabold ink-muted">{t("affiliate.displayName")}</span>
+          <span className="block text-[12px] font-extrabold ink-muted">{t("affiliate.displayName")}</span>
           <input value={displayName} onChange={event => setDisplayName(event.target.value)} maxLength={80} required dir="auto" className="glass-field mt-1 h-10 w-full rounded-full px-4 text-sm" />
         </label>
         <label className="block">
-          <span className="block text-[11px] font-extrabold ink-muted">{t("affiliate.channel")}</span>
+          <span className="block text-[12px] font-extrabold ink-muted">{t("affiliate.channel")}</span>
           <input value={channel} onChange={event => setChannel(event.target.value)} maxLength={300} dir="ltr" className="glass-field mt-1 h-10 w-full rounded-full px-4 text-sm" />
         </label>
       </div>
@@ -104,7 +104,7 @@ function Dashboard({ view }: { view: NonNullable<inferRouterOutputs<AppRouter>["
       <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-[#f3f2ed] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="flex items-center gap-2 font-extrabold text-[#0a285a]"><Megaphone className="size-5 shrink-0 ink-accent" aria-hidden />{t("affiliate.title")}</p>
-          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-extrabold text-[#0a285a]">{t(STATUS[view.status] ?? "affiliate.statusPending")}</span>
+          <span className="rounded-full bg-white px-3 py-1 text-[12px] font-extrabold text-[#0a285a]">{t(STATUS[view.status] ?? "affiliate.statusPending")}</span>
         </div>
         {view.status === "pending" ? <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("affiliate.pendingNote")}</p> : null}
         {view.status === "suspended" ? <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("affiliate.suspendedNote")}</p> : null}
@@ -136,7 +136,7 @@ function Dashboard({ view }: { view: NonNullable<inferRouterOutputs<AppRouter>["
           ["affiliate.balance", amount(view.balance)],
         ] as [MessageKey, string][]).map(([label, value]) => (
           <div key={label} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
-            <dt className="text-[11px] font-extrabold ink-muted">{t(label)}</dt>
+            <dt className="text-[12px] font-extrabold ink-muted">{t(label)}</dt>
             <dd className="mt-1 text-lg font-extrabold text-[#0a285a]">{value}</dd>
           </div>
         ))}

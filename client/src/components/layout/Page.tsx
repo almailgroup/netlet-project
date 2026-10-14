@@ -79,12 +79,12 @@ export function Breadcrumbs({ trail }: { trail: { label: ReactNode; href?: strin
   return (
     <nav aria-label={t("nav.breadcrumb")} className="mb-3 min-w-0">
       <ol className="flex flex-wrap items-center gap-x-1.5 text-[13px] ink-muted">
-        <li><Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link></li>
+        <li><Link href="/" className="tap-target py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link></li>
         {trail.map((step, index) => (
           <li key={index} className="flex min-w-0 items-center gap-x-1.5">
             <ChevronRight className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />
             {step.href
-              ? <Link href={step.href} className="py-1.5 hover:text-[#0a285a]">{step.label}</Link>
+              ? <Link href={step.href} className="tap-target py-1.5 hover:text-[#0a285a]">{step.label}</Link>
               : <span aria-current="page" className="truncate text-[#404553]"><bdi>{step.label}</bdi></span>}
           </li>
         ))}

@@ -70,7 +70,7 @@ export function StoreBadges({ badges }: { badges: string[] }) {
   return (
     <span className="flex flex-wrap gap-1">
       {known.map(badge => (
-        <span key={badge} className="rounded-full bg-[#e3efe4] px-2 py-0.5 text-[11px] font-bold text-[#2f5d33]">{t(BADGE_LABEL[badge])}</span>
+        <span key={badge} className="rounded-full bg-[#e3efe4] px-2 py-0.5 text-[12px] font-bold text-[#2f5d33]">{t(BADGE_LABEL[badge])}</span>
       ))}
     </span>
   );

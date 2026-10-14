@@ -65,7 +65,7 @@ export function ChatThread({
             <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${mine ? "bg-[#0a285a] text-white" : "border border-[#e6e9ef] bg-white text-[#0a285a]"}`}>
               <p className="sr-only">{mine ? t("chat.you") : theirName}:</p>
               {message.productTitle || message.orderReference ? (
-                <p className={`mb-1 text-[11px] font-extrabold ${mine ? "text-[#c9d6ea]" : "ink-muted"}`}>
+                <p className={`mb-1 text-[12px] font-extrabold ${mine ? "text-[#c9d6ea]" : "ink-muted"}`}>
                   {message.productTitle ? (
                     href ? <Link href={href} className="underline" dir="auto">{t("chat.about", { subject: message.productTitle })}</Link>
                       : <span dir="auto">{t("chat.about", { subject: message.productTitle })}</span>
@@ -75,7 +75,7 @@ export function ChatThread({
                 </p>
               ) : null}
               <p dir="auto" className="text-sm leading-6 whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
-              <p className={`mt-1 text-[10px] ${mine ? "text-[#c9d6ea]" : "ink-muted"}`}>{stamp(message.createdAt)}</p>
+              <p className={`mt-1 text-[11px] ${mine ? "text-[#c9d6ea]" : "ink-muted"}`}>{stamp(message.createdAt)}</p>
             </div>
           </li>
         );

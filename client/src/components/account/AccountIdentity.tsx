@@ -80,7 +80,7 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
           </p>
         </div>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold ${
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${
             isAdmin ? "bg-[#0a285a] text-white" : "bg-[#e7edf5] text-[#0a285a]"
           }`}
         >

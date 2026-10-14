@@ -80,7 +80,7 @@ export function ProductReviews({ productId, productTitle }: { productId: string;
                   <li key={review.id} className="border-b border-[#e7edf5] pb-5 last:border-0">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <StarRow value={review.rating} />
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[#d8ead8] px-2.5 py-1 text-[10px] font-extrabold text-[#2f5d33]">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#d8ead8] px-2.5 py-1 text-[11px] font-extrabold text-[#2f5d33]">
                         {t("review.verified")}
                       </span>
                       <span className="text-xs ink-muted">

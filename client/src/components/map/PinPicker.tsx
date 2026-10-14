@@ -120,7 +120,7 @@ export function PinPicker({ value, onChange, governorate }: {
             <MapPin className="size-4" aria-hidden />
             {t("pin.drop")}
           </button>
-          <p className="mt-2 text-[11px] leading-5 ink-muted">{t("pin.why")}</p>
+          <p className="mt-2 text-[12px] leading-5 ink-muted">{t("pin.why")}</p>
         </>
       )}
     </div>
@@ -299,7 +299,7 @@ function PinMap({ start, zoom, onPin, onCancel }: {
         )}
       </div>
 
-      <p className="mt-2 text-[11px] ink-muted">
+      <p className="mt-2 text-[12px] ink-muted">
         <bdi dir="ltr">{formatPin(centre)}</bdi>
       </p>
 

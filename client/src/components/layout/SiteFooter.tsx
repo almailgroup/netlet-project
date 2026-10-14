@@ -293,8 +293,8 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
             ) : null}
           </div>
           <ul className="flex shrink-0 flex-wrap gap-x-5 gap-y-1">
-            <li><Link href="/terms" className="inline-block py-1.5 hover:text-white hover:underline sm:py-0">{t("footer.terms")}</Link></li>
-            <li><Link href="/privacy" className="inline-block py-1.5 hover:text-white hover:underline sm:py-0">{t("footer.privacy")}</Link></li>
+            <li><Link href="/terms" className="tap-target inline-block py-1.5 hover:text-white hover:underline sm:py-0">{t("footer.terms")}</Link></li>
+            <li><Link href="/privacy" className="tap-target inline-block py-1.5 hover:text-white hover:underline sm:py-0">{t("footer.privacy")}</Link></li>
           </ul>
         </div>
       </div>

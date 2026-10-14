@@ -362,16 +362,16 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         <div className="pointer-events-none absolute start-1.5 top-1.5 flex flex-col items-start gap-1">
           {/* Navy on the orange: white on #f2683a is 3.08:1 at this size, navy is 4.65:1. */}
           {savings > 0 ? (
-            <span dir="ltr" className={`rounded-md bg-[#f2683a] font-bold text-[#0a285a] ${feature ? "px-2.5 py-1 text-[15px]" : "px-1.5 py-0.5 text-[11px]"}`}>−{savings}%</span>
+            <span dir="ltr" className={`rounded-md bg-[#f2683a] font-bold text-[#0a285a] ${feature ? "px-2.5 py-1 text-[15px]" : "px-1.5 py-0.5 text-[12px]"}`}>−{savings}%</span>
           ) : null}
           <PreorderBadge variant={variant} />
           {express ? (
-            <span className="inline-flex items-center gap-1 rounded-md bg-[#0a285a] px-1.5 py-0.5 text-[10px] font-bold text-white">
+            <span className="inline-flex items-center gap-1 rounded-md bg-[#0a285a] px-1.5 py-0.5 text-[11px] font-bold text-white">
               <Zap className="size-2.5 fill-current" aria-hidden />{t("product.express")}
             </span>
           ) : null}
           {!canBuy ? (
-            <span className="rounded-md bg-[#404553] px-1.5 py-0.5 text-[10px] font-bold text-white">{t("product.soldOut")}</span>
+            <span className="rounded-md bg-[#404553] px-1.5 py-0.5 text-[11px] font-bold text-white">{t("product.soldOut")}</span>
           ) : null}
         </div>
 

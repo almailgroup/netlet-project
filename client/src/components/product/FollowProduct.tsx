@@ -65,7 +65,7 @@ export function FollowProduct({ product, compact = false }: { product: Product; 
         {label}
       </button>
       {!inStock && (demand.data ?? 0) > 0 ? (
-        <p className="mt-2 text-center text-[11px] font-semibold ink-muted">
+        <p className="mt-2 text-center text-[12px] font-semibold ink-muted">
           {demand.data === 1 ? t("follow.waitingOne") : t("follow.waiting", { count: demand.data ?? 0 })}
         </p>
       ) : null}

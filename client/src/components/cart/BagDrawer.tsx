@@ -78,18 +78,18 @@ export function BagLines() {
               <div className="flex justify-between gap-2">
                 <div className="min-w-0">
                   <p dir="auto" className="text-sm font-extrabold text-[#0a285a]">{title}</p>
-                  {!isDefaultVariantTitle(item.variantTitle) && <p dir="auto" className="mt-0.5 text-[11px] text-[#536b8c]">{item.variantTitle}</p>}
+                  {!isDefaultVariantTitle(item.variantTitle) && <p dir="auto" className="mt-0.5 text-[12px] text-[#536b8c]">{item.variantTitle}</p>}
                   {/* The extras this line carries (3.1.2), named rather than folded
                       silently into the total — somebody who ticked a fitting
                       should be able to see they did. */}
-                  {(item.addons ?? []).map(addon => (<p key={addon.id} dir="auto" className="mt-0.5 text-[11px] ink-accent">+ {addon.label}</p>))}
+                  {(item.addons ?? []).map(addon => (<p key={addon.id} dir="auto" className="mt-0.5 text-[12px] ink-accent">+ {addon.label}</p>))}
                   {/* Which set made this line cheaper (3.3.11) — a lower
                       figure with no explanation is one a shopper cannot check. */}
-                  {item.bundleName ? <p dir="auto" className="mt-0.5 text-[11px] ink-accent">{item.bundleName}</p> : null}
+                  {item.bundleName ? <p dir="auto" className="mt-0.5 text-[12px] ink-accent">{item.bundleName}</p> : null}
                   {/* Where this one is going (3.2.6), when it is not going where the
                       rest is. Read-only here: the picker belongs at checkout,
                       beside the address it is an exception to. */}
-                  {item.destination ? <p dir="auto" className="mt-0.5 text-[11px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
+                  {item.destination ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
                 </div>
                 <button onClick={() => removeItem(item.lineId)} disabled={loading} aria-label={t("cart.remove", { name: title })} className="ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
               </div>
@@ -105,9 +105,9 @@ export function BagLines() {
                       it is. Never a strikethrough and never a percentage badge: those
                       are the machinery of an advertised saving, which needs a Ministry
                       of Commerce permit, and this is a private answer to one person. */}
-                  {item.agreedFrom ? <p className="mt-0.5 text-[10px] font-bold ink-accent">{t(item.priceReason === "member" ? "membership.priceFrom" : "offers.agreedFrom", { price: money(item.agreedFrom) })}</p> : null}
+                  {item.agreedFrom ? <p className="mt-0.5 text-[11px] font-bold ink-accent">{t(item.priceReason === "member" ? "membership.priceFrom" : "offers.agreedFrom", { price: money(item.agreedFrom) })}</p> : null}
                   {/* "1.5 kg" beside a quantity of 6. Nothing for a counted line. */}
-                  <MeasureLabel measure={item.measure} quantity={item.quantity} className="text-[11px] ink-muted" />
+                  <MeasureLabel measure={item.measure} quantity={item.quantity} className="text-[12px] ink-muted" />
                 </div>
               </div>
             </div>
@@ -142,16 +142,16 @@ export function BagSummary() {
           parcels, and a nudge that does not name the parcel points at
           the wrong one half the time. */}
       {cart.delivery.perVendor.filter(row => row.toFree).map(row => (
-        <p key={`tofree-${row.vendorId}|${row.destinationLabel ?? ""}`} className="mb-2 text-[11px] font-bold ink-accent" dir="auto">
+        <p key={`tofree-${row.vendorId}|${row.destinationLabel ?? ""}`} className="mb-2 text-[12px] font-bold ink-accent" dir="auto">
           {row.destinationLabel ? t("address.toFreeAt", { amount: money(row.toFree!), name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryToFree", { amount: money(row.toFree!), name: storeName(row, isArabic) })}
         </p>
       ))}
       <div className="flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")}</span><span className="font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className="font-bold text-[#0a285a]">{money(cart.delivery.total)}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
-      {cart.delivery.memberWaived ? <p className="mt-1 text-[11px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
+      {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className="text-lg font-extrabold text-[#0a285a]">{money(cart.total)}</span></div>
-      <p className="mt-2 text-[11px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
+      <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
       <button onClick={proceedToCheckout} disabled={loading} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold disabled:opacity-60">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>

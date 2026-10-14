@@ -255,7 +255,7 @@ function GiftRow({ item, product, token, onChanged }: {
       {/* Text, then colour. A row of grey pills tells a colour-blind visitor
           nothing; every state here carries its own words. */}
       {item.state === "bought" ? (
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-2 text-[11px] font-extrabold text-[#536b8c]">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold text-[#536b8c]">
           <Check className="size-3.5" aria-hidden />{t("gift.bought")}
         </span>
       ) : item.claimedByYou ? (
@@ -270,23 +270,23 @@ function GiftRow({ item, product, token, onChanged }: {
             onSuccess: () => { onChanged(); toast.success(t("gift.released")); },
           })}
           disabled={release.isPending}
-          className="glass pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[11px] font-extrabold disabled:opacity-60"
+          className="glass pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[12px] font-extrabold disabled:opacity-60"
         >
           <Check className="size-3.5" aria-hidden />{t("gift.release")}
         </button>
       ) : item.state === "claimed" ? (
-        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-2 text-[11px] font-extrabold text-[#536b8c]">
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold text-[#536b8c]">
           <Check className="size-3.5" aria-hidden />{t("gift.claimed")}
         </span>
       ) : soldOut ? (
-        <span className="shrink-0 rounded-full bg-[#e7edf5] px-3 py-2 text-[11px] font-extrabold text-[#536b8c]">
+        <span className="shrink-0 rounded-full bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold text-[#536b8c]">
           {t("gift.soldOut")}
         </span>
       ) : (
         <button
           onClick={take}
           disabled={taken || !variant || claim.isPending}
-          className="glass glass-navy pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[11px] font-extrabold disabled:opacity-60"
+          className="glass glass-navy pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[12px] font-extrabold disabled:opacity-60"
         >
           <Gift className="size-3.5" aria-hidden />{t("gift.claim")}
         </button>

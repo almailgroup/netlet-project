@@ -89,7 +89,7 @@ export function AddressBook() {
                 <p className="mt-2 text-[12px] leading-5 text-[#536b8c]" dir="auto">
                   {addressLineIn(row, isArabic)}
                 </p>
-                <p className="mt-1 text-[11px] text-[#536b8c]">
+                <p className="mt-1 text-[12px] text-[#536b8c]">
                   {[
                     zone ? (isArabic ? zone.labelAr : zone.label) : null,
                     row.contactName,
@@ -106,13 +106,13 @@ export function AddressBook() {
                     ))}
                 </p>
                 {row.pin ? (
-                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-[#0a285a]">
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] font-bold text-[#0a285a]">
                     {t("address.pinned")}
                     <PinLink pin={row.pin} />
                   </p>
                 ) : null}
                 {gaps.length > 0 ? (
-                  <p className="mt-2 text-[11px] ink-muted">{gaps.map(key => t(key)).join(" · ")}</p>
+                  <p className="mt-2 text-[12px] ink-muted">{gaps.map(key => t(key)).join(" · ")}</p>
                 ) : null}
               </li>
             );
@@ -130,7 +130,7 @@ export function AddressBook() {
           >
             <Plus className="size-4" aria-hidden /> {t("address.add")}
           </button>
-          <p className="text-[11px] ink-muted">
+          <p className="text-[12px] ink-muted">
             {t("address.count", { count: rows.length, max: MAX_ADDRESSES })}
           </p>
         </div>

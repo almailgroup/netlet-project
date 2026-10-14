@@ -87,7 +87,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
         {t(latest.kind === "exchange" ? "returns.kindExchange" : "returns.kindRefund")} · {t(STATUS_LABEL[latest.status] ?? "returns.statusRequested")}
         {latest.decidedBy === "auto" && latest.status !== "requested" ? <span className="font-semibold ink-muted"> · {t("returns.decidedAutomatically")}</span> : null}
       </p>
-      <p className="mt-0.5 text-[11px] leading-5 ink-muted">
+      <p className="mt-0.5 text-[12px] leading-5 ink-muted">
         {latest.status === "approved" ? t("returns.nextApproved") : null}
         {latest.status === "requested" ? t("returns.nextRequested") : null}
         {latest.status === "collected" ? t("returns.nextCollected") : null}
@@ -103,7 +103,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
           type="button"
           disabled={cancel.isPending}
           onClick={() => cancel.mutate({ requestId: latest.id })}
-          className="pressable mt-1 text-[11px] font-extrabold text-[#8c2f22] underline disabled:opacity-60"
+          className="pressable mt-1 text-[12px] font-extrabold text-[#8c2f22] underline disabled:opacity-60"
         >
           {t("returns.withdraw")}
         </button>
@@ -142,7 +142,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
       }}
     >
       <fieldset>
-        <legend className="text-[11px] font-extrabold ink-muted">{t("returns.whatInstead")}</legend>
+        <legend className="text-[12px] font-extrabold ink-muted">{t("returns.whatInstead")}</legend>
         <div className="mt-1 flex flex-wrap gap-3">
           {(["refund", "exchange"] as const).map(option => (
             <label key={option} className="flex items-center gap-1.5 text-[13px] text-[#0a285a]">
@@ -153,7 +153,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
         </div>
       </fieldset>
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t("returns.why")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t("returns.why")}</span>
         <Select
           value={reason}
           onChange={event => setReason(event.target.value as ReturnReason)}
@@ -163,7 +163,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
         </Select>
       </label>
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t(reason === "other" ? "returns.noteRequired" : "returns.noteOptional")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t(reason === "other" ? "returns.noteRequired" : "returns.noteOptional")}</span>
         <textarea
           value={note}
           onChange={event => setNote(event.target.value)}
@@ -174,7 +174,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
           className="glass-field mt-1 w-full rounded-2xl px-3 py-2 text-sm"
         />
       </label>
-      <p className="mt-2 text-[11px] leading-5 ink-muted">{t("returns.howItWorks")}</p>
+      <p className="mt-2 text-[12px] leading-5 ink-muted">{t("returns.howItWorks")}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="submit" disabled={ask.isPending} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
           {t("returns.submit")}

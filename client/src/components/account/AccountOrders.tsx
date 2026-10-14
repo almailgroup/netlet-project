@@ -60,7 +60,7 @@ export const FULFILMENT: Record<string, { label: MessageKey; className: string }
 
 export function Pill({ label, className, icon: Icon }: { label: string; className: string; icon?: LucideIcon }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-extrabold ${className}`}>
       {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
       {label}
     </span>
@@ -113,7 +113,7 @@ function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
     <span className="relative shrink-0" aria-hidden>
       <Thumb src={photo} alt="" className="size-16 rounded-2xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-6" />} />
       {more > 0 ? (
-        <span className="absolute -bottom-1.5 -end-1.5 rounded-full bg-[#0a285a] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white ring-2 ring-white">
+        <span className="absolute -bottom-1.5 -end-1.5 rounded-full bg-[#0a285a] px-1.5 py-0.5 text-[12px] font-bold leading-none text-white ring-2 ring-white">
           +{more}
         </span>
       ) : null}
@@ -232,7 +232,7 @@ function OrderTotal({ order }: {
     <>
       <span className="text-[15px] font-extrabold text-[#0a285a]">{formatMoney(owes, { currencyCode: order.currency, locale })}</span>
       {how ? <span className={`text-[12px] font-semibold ${how.className}`}>{t(how.label)}</span> : null}
-      {!over && order.owed?.reduced ? <span className="text-[11px] font-semibold ink-muted">{t("orders.cancelledNotCharged")}</span> : null}
+      {!over && order.owed?.reduced ? <span className="text-[12px] font-semibold ink-muted">{t("orders.cancelledNotCharged")}</span> : null}
     </>
   );
 }
@@ -288,7 +288,7 @@ function OrderLines({ reference }: { reference: string }) {
                         neither of them.
                       */}
                       {line.returnState.returnable ? (
-                        <span className="inline-flex items-start gap-1.5 text-[11px] font-extrabold text-[#2f5d33]">
+                        <span className="inline-flex items-start gap-1.5 text-[12px] font-extrabold text-[#2f5d33]">
                           <RotateCcw className="mt-px size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />
                           {t("returns.openUntil", {
                             date: formatDate(line.returnState.closesAt),
@@ -296,7 +296,7 @@ function OrderLines({ reference }: { reference: string }) {
                           })}
                         </span>
                       ) : (
-                        <span className="text-[11px] font-semibold ink-muted">{t(line.returnState.reason)}</span>
+                        <span className="text-[12px] font-semibold ink-muted">{t(line.returnState.reason)}</span>
                       )}
                     </div>
                     <LineReturn reference={reference} currency={data.order.currency} line={line} requests={data.returns} />

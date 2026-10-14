@@ -145,7 +145,7 @@ function EmailForm({ user, onSaved, onFail }: {
             onChange={event => setPassword(event.target.value)}
             className={field}
           />
-          <p className="text-[11px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
+          <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => save.mutate({ email: email.trim(), currentPassword: password })}
@@ -230,7 +230,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
             </button>
           </div>
           <PasswordChecklist id={rulesId} verdict={verdict} typed={next.length > 0} />
-          <p className="text-[11px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
+          <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => save.mutate({ currentPassword: current, newPassword: next })}

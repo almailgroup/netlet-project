@@ -213,7 +213,7 @@ export function AddressForm({
       {/* What is wrong, named. A form that only greys the button leaves
           somebody guessing which field it meant. */}
       {problems.length > 0 && (draft.label || draft.addressLine || hasParts(draft.parts)) ? (
-        <ul className="mt-3 space-y-1 text-[11px] text-[#8c2f22]">
+        <ul className="mt-3 space-y-1 text-[12px] text-[#8c2f22]">
           {problems.map(key => (
             <li key={key}>{t(key)}</li>
           ))}

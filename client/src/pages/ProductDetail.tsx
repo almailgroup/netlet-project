@@ -353,14 +353,14 @@ function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, on
           {/* Said once, and only while it applies: a hint that is always on
               screen is one nobody reads by the third product. */}
           {zoomable ? (
-            <p className="pointer-events-none absolute start-2 top-2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white">
+            <p className="pointer-events-none absolute start-2 top-2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[12px] font-bold text-white">
               {t("product.dragToPan")}
             </p>
           ) : null}
           {hasMultipleImages ? <>
             <button onClick={() => onChangeImage("previous")} aria-label={t("product.prevImage")} className="pressable absolute start-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] hover:bg-[#f0f2f5]"><ChevronLeft className="size-6 rtl:-scale-x-100" /></button>
             <button onClick={() => onChangeImage("next")} aria-label={t("product.nextImage")} className="pressable absolute end-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.16)] hover:bg-[#f0f2f5]"><ChevronRight className="size-6 rtl:-scale-x-100" /></button>
-            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[11px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {media.length}</span></span>
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[12px] font-bold text-white" aria-live="polite"><span dir="ltr">{selectedImageIndex + 1} / {media.length}</span></span>
           </> : null}
         </div>
       </div>
@@ -648,7 +648,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
               />
             ) : null}
             {hasMultipleImages ? (
-              <span className="pointer-events-none absolute bottom-3 start-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[11px] font-bold text-white" aria-live="polite">
+              <span className="pointer-events-none absolute bottom-3 start-3 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[12px] font-bold text-white" aria-live="polite">
                 <span dir="ltr">{selectedImageIndex + 1} / {media.length}</span>
               </span>
             ) : null}
@@ -686,7 +686,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
         </div>
       </div>
 
-      {hasMultipleImages ? <p className="mt-3 text-[11px] font-semibold ink-muted">{t(canHover ? "product.galleryHintHover" : "product.galleryHintTouch")}</p> : null}
+      {hasMultipleImages ? <p className="mt-3 text-[12px] font-semibold ink-muted">{t(canHover ? "product.galleryHintHover" : "product.galleryHintTouch")}</p> : null}
     </div>
   );
 }
@@ -707,7 +707,7 @@ function VendorBadges({ badges }: { badges: string[] }) {
       {shown.map(badge => (
         <span
           key={badge}
-          className="rounded-full bg-[#eaf1fb] px-2 py-0.5 text-[10px] font-extrabold text-[#0a285a]"
+          className="rounded-full bg-[#eaf1fb] px-2 py-0.5 text-[11px] font-extrabold text-[#0a285a]"
         >
           {t(`badge.${badge}` as MessageKey)}
         </span>
@@ -1170,7 +1170,7 @@ export default function ProductDetail() {
             {product.vendor && chatOn ? <AskSeller productId={product.id} vendor={product.vendor} /> : null}
 
 
-            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
+            {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
 
             {/* The details come after the decision, not before it. The tabs and
                 the assistant sat between the price and the buttons, which put

@@ -95,7 +95,7 @@ function ReviewableLine({ line, onChanged }: { line: Line; onChanged: () => void
           </button>
         ) : (
           /* The reason, not silence. See the file comment. */
-          <span className="shrink-0 rounded-full bg-[#e7edf5] px-3 py-2 text-[11px] font-extrabold text-[#536b8c]">
+          <span className="shrink-0 rounded-full bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold text-[#536b8c]">
             {t(`review.${line.eligibility.reason}` as MessageKey)}
           </span>
         )}

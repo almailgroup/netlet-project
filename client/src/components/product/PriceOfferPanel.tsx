@@ -184,7 +184,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
                 placeholder={listPrice}
                 className="glass-field mt-1 w-full rounded-xl px-3.5 py-2.5 text-[15px] font-bold"
               />
-              <p className="mt-1 text-[11px] ink-muted">{t("offers.listPrice", { price: amount(listPrice) })}</p>
+              <p className="mt-1 text-[12px] ink-muted">{t("offers.listPrice", { price: amount(listPrice) })}</p>
             </div>
             <div>
               <label htmlFor="offer-qty" className="text-[12px] font-semibold ink-muted">
@@ -271,7 +271,7 @@ function Standing({ offer, onWithdraw, pending }: {
       <button
         onClick={onWithdraw}
         disabled={pending}
-        className="glass pressable mt-3 inline-flex rounded-full px-4 py-2 text-[11px] font-extrabold disabled:opacity-50"
+        className="glass pressable mt-3 inline-flex rounded-full px-4 py-2 text-[12px] font-extrabold disabled:opacity-50"
       >
         {t("offers.withdraw")}
       </button>

@@ -351,7 +351,7 @@ export function VoiceSearchPanel({ open, onClose, onUse }: {
             ))}
           </div>
           {heard ? <p dir="auto" className="mt-3 text-sm text-[#0a285a]">{heard}</p> : null}
-          <p className="mt-4 max-w-[40ch] text-center text-[11px] leading-5 ink-muted">{t("search.voicePrivacy")}</p>
+          <p className="mt-4 max-w-[40ch] text-center text-[12px] leading-5 ink-muted">{t("search.voicePrivacy")}</p>
         </div>
       ) : state === "heard" ? (
         <div className="rounded-2xl border border-[#d5dfeb] bg-white px-5 py-6">
@@ -514,7 +514,7 @@ export function PhotoSearchPanel({ open, onClose, onUse }: {
           ) : state === "preview" ? (
             <>
               <p className="mt-4 text-center text-xs leading-5 ink-muted">{t("search.photoPreviewNote")}</p>
-              {wired ? <p className="mt-2 text-center text-[11px] leading-5 ink-muted">{t("search.photoConsent")}</p> : null}
+              {wired ? <p className="mt-2 text-center text-[12px] leading-5 ink-muted">{t("search.photoConsent")}</p> : null}
               {problem ? <p role="alert" className="mt-2 text-center text-sm font-bold text-[#8c2f22]">{problem}</p> : null}
             </>
           ) : null}

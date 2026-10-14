@@ -1173,3 +1173,19 @@ html[dir="rtl"] .nav-progress {
     box-shadow: 0 8px 24px rgb(10 40 90 / 0.08);
   }
 }
+
+/*
+ * A field a finger types into is at least 16px. iOS Safari zooms the whole
+ * page in when a text field under 16px takes focus, and leaves it zoomed —
+ * on a 390px phone the header's search, every box at checkout, the address
+ * form and the voucher box all did it (13px to 15px, measured). A coarse
+ * pointer only, so a wide screen keeps the sizes it was drawn with; unlayered
+ * and `!important` because the field's own utility set the smaller size; and
+ * a field already drawn larger keeps its size. The six-digit code is a
+ * transparent field over drawn boxes, so it changes nothing visible there.
+ */
+@media (pointer: coarse) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="hidden"]), select, textarea):not([class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-[18px]"], [class*="text-[20px]"], [class*="text-[22px]"], [class*="text-[24px]"], .type-heading, [class*="type-price"]) {
+    font-size: 16px !important;
+  }
+}

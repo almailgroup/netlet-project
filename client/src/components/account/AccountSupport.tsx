@@ -112,9 +112,9 @@ export function AccountSupport() {
                     <span className="font-extrabold">
                       {t(TOPIC_LABEL[row.topic])}
                       {row.orderReference ? <> · <bdi dir="ltr">{row.orderReference}</bdi></> : null}
-                      {row.unread ? <span className="ms-2 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] text-white">{t("support.newReply")}</span> : null}
+                      {row.unread ? <span className="ms-2 rounded-full bg-[#0a285a] px-2 py-0.5 text-[11px] text-white">{t("support.newReply")}</span> : null}
                     </span>
-                    <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[11px] font-extrabold">{t(STATUS_LABEL[row.status])}</span>
+                    <span className="rounded-full bg-[#e7edf5] px-3 py-1 text-[12px] font-extrabold">{t(STATUS_LABEL[row.status])}</span>
                   </button>
                   {openId === row.id ? <Thread id={row.id} /> : null}
                 </li>
@@ -160,7 +160,7 @@ function Thread({ id }: { id: number }) {
                 ))}
               </ol>
               <form className="mt-3" onSubmit={event => { event.preventDefault(); if (!messageProblem(body)) reply.mutate({ id, body }); }}>
-                <label className="block text-[11px] font-extrabold ink-muted">
+                <label className="block text-[12px] font-extrabold ink-muted">
                   {t("support.reply")}
                   <textarea value={body} maxLength={MAX_SUPPORT_MESSAGE} onChange={event => setBody(event.target.value)} className={`${field} min-h-20`} />
                 </label>
@@ -209,7 +209,7 @@ function OtherChannels({ reference }: { reference: string }) {
           </a>
         ) : null}
       </div>
-      <p className="mt-2 text-[11px] leading-5 ink-muted">{t("support.otherChannelsNote")}</p>
+      <p className="mt-2 text-[12px] leading-5 ink-muted">{t("support.otherChannelsNote")}</p>
     </div>
   );
 }

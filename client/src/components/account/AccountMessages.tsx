@@ -57,12 +57,12 @@ export function AccountMessages() {
                           {row.previewSide === "shopper" ? `${t("chat.you")}: ` : ""}{row.preview}
                         </span>
                       ) : null}
-                      <span className="mt-1 block text-[11px] ink-muted">{formatDate(row.lastMessageAt)}</span>
+                      <span className="mt-1 block text-[12px] ink-muted">{formatDate(row.lastMessageAt)}</span>
                     </span>
                     <span className="flex shrink-0 items-center gap-3">
                       {/* Drawn only with something to say, like every badge here. */}
                       {row.unread > 0 ? (
-                        <span className="rounded-full bg-[#0a285a] px-2.5 py-1 text-[11px] font-extrabold text-white">
+                        <span className="rounded-full bg-[#0a285a] px-2.5 py-1 text-[12px] font-extrabold text-white">
                           {t(row.unread === 1 ? "chat.unreadOne" : "chat.unread", { count: row.unread })}
                         </span>
                       ) : null}

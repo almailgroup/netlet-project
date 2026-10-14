@@ -84,7 +84,7 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
           </span>
         </p>
         {parcel.arrivedAt ? (
-          <span className="text-[11px] ink-muted">{t("delivery.arrivedOn", { date: formatDate(parcel.arrivedAt) })}</span>
+          <span className="text-[12px] ink-muted">{t("delivery.arrivedOn", { date: formatDate(parcel.arrivedAt) })}</span>
         ) : null}
       </div>
 
@@ -106,7 +106,7 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
       ) : parcel.claimRefusal !== "claims.alreadyOpen" && parcel.claimRefusal !== "claims.alreadyPaid" && parcel.arrivedAt ? (
         /* Said rather than hidden, except for the two refusals the claim's own
            status line above already explains. */
-        <p className="mt-3 text-[11px] leading-5 ink-muted">{refusal(parcel.claimRefusal)}</p>
+        <p className="mt-3 text-[12px] leading-5 ink-muted">{refusal(parcel.claimRefusal)}</p>
       ) : null}
 
     </li>
@@ -132,7 +132,7 @@ function RateDelivery({ reference, parcel, readOnly = false }: { reference: stri
   const state = parcel.ratingState;
   if (!state.allowed || readOnly) {
     /* Closed: what they said stays visible; not arrived: nothing to say yet. */
-    if (!parcel.rating) return !state.allowed && state.reason === "delivery.ratingClosed" ? <p className="mt-3 text-[11px] ink-muted">{refusal(state.reason)}</p> : null;
+    if (!parcel.rating) return !state.allowed && state.reason === "delivery.ratingClosed" ? <p className="mt-3 text-[12px] ink-muted">{refusal(state.reason)}</p> : null;
     return (
       <p className="mt-3 inline-flex items-center gap-2 text-[12px] font-bold text-[#0a285a]">
         {t("delivery.yourRating")} <Stars value={parcel.rating.rating} />
@@ -152,7 +152,7 @@ function RateDelivery({ reference, parcel, readOnly = false }: { reference: stri
     >
       <fieldset>
         <legend className="text-[12px] font-extrabold text-[#0a285a]">{t("delivery.rateLegend")}</legend>
-        <p className="mt-0.5 text-[11px] leading-5 ink-muted">{t("delivery.rateNote")}</p>
+        <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("delivery.rateNote")}</p>
         {/* Radios, because five stars are one choice from a set — the same
             control the product review uses, and for the same reason. */}
         <div className="mt-2 flex gap-1">
@@ -178,7 +178,7 @@ function RateDelivery({ reference, parcel, readOnly = false }: { reference: stri
         </div>
       </fieldset>
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t("delivery.commentLabel")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t("delivery.commentLabel")}</span>
         <input
           value={comment}
           onChange={event => setComment(event.target.value)}
@@ -197,7 +197,7 @@ function RateDelivery({ reference, parcel, readOnly = false }: { reference: stri
           {t("delivery.save")}
         </button>
         {parcel.rating ? (
-          <span className="text-[11px] ink-muted">{t("delivery.openUntil", { date: formatDate(state.closesAt) })}</span>
+          <span className="text-[12px] ink-muted">{t("delivery.openUntil", { date: formatDate(state.closesAt) })}</span>
         ) : null}
       </div>
     </form>
@@ -229,10 +229,10 @@ function ClaimStatus({ claim, currency }: { claim: NonNullable<Parcel["claim"]>;
     claim.status === "accepted" ? "bg-[#d8ead8] text-[#2f5d33]" : claim.status === "rejected" ? "bg-[#e7edf5] text-[#536b8c]" : "bg-[#fff0ab] text-[#705523]";
   return (
     <div className="mt-3">
-      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${tone}`}>
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-extrabold ${tone}`}>
         <ShieldAlert className="size-3.5" aria-hidden />{line}
       </span>
-      {claim.decisionNote ? <p dir="auto" className="mt-1 text-[11px] leading-5 ink-muted">{claim.decisionNote}</p> : null}
+      {claim.decisionNote ? <p dir="auto" className="mt-1 text-[12px] leading-5 ink-muted">{claim.decisionNote}</p> : null}
     </div>
   );
 }
@@ -278,10 +278,10 @@ function ReportDamage({ reference, currency, parcel, onDone }: { reference: stri
       }}
     >
       <h5 className="text-sm font-extrabold text-[#0a285a]">{t("claims.reportHeading")}</h5>
-      <p className="mt-1 text-[11px] leading-5 ink-muted">{t("claims.reportNote")}</p>
+      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("claims.reportNote")}</p>
 
       <fieldset className="mt-3">
-        <legend className="text-[11px] font-extrabold ink-muted">{t("claims.whichItems")}</legend>
+        <legend className="text-[12px] font-extrabold ink-muted">{t("claims.whichItems")}</legend>
         <ul className="mt-1 space-y-1">
           {parcel.lines.map(line => (
             <li key={line.lineId}>
@@ -301,7 +301,7 @@ function ReportDamage({ reference, currency, parcel, onDone }: { reference: stri
       </fieldset>
 
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t("claims.amountLabel")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t("claims.amountLabel")}</span>
         <input
           value={amount}
           onChange={event => setAmount(event.target.value)}
@@ -311,13 +311,13 @@ function ReportDamage({ reference, currency, parcel, onDone }: { reference: stri
           aria-describedby={`ceiling-${parcel.key}`}
           className="glass-field mt-1 w-40 rounded-full px-4 py-2 text-sm"
         />
-        <span id={`ceiling-${parcel.key}`} className="mt-1 block text-[11px] ink-muted">
+        <span id={`ceiling-${parcel.key}`} className="mt-1 block text-[12px] ink-muted">
           {t("claims.amountHint", { amount: formatMoney(ceiling, { currencyCode: currency, locale }) })}
         </span>
       </label>
 
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t("claims.descriptionLabel")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t("claims.descriptionLabel")}</span>
         <textarea
           value={description}
           onChange={event => setDescription(event.target.value)}
@@ -330,7 +330,7 @@ function ReportDamage({ reference, currency, parcel, onDone }: { reference: stri
       </label>
 
       <label className="mt-3 block">
-        <span className="block text-[11px] font-extrabold ink-muted">{t("claims.evidenceLabel")}</span>
+        <span className="block text-[12px] font-extrabold ink-muted">{t("claims.evidenceLabel")}</span>
         <input
           value={evidenceUrl}
           onChange={event => setEvidenceUrl(event.target.value)}

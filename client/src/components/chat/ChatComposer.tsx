@@ -96,7 +96,7 @@ export function ChatComposer({
       </div>
 
       <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="text-[11px] ink-muted">{t("chat.keepOnNetLet")}</p>
+        <p className="text-[12px] ink-muted">{t("chat.keepOnNetLet")}</p>
         <button
           type="submit"
           disabled={!body.trim() || blocked || pending}

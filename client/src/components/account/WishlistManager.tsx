@@ -207,7 +207,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
         </div>
 
         {/* Text first, colour second — the state is never carried by hue. */}
-        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-extrabold ${published ? "bg-[#d8ead8] text-[#2f5d33]" : "bg-[#e7edf5] text-[#536b8c]"}`}>
+        <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${published ? "bg-[#d8ead8] text-[#2f5d33]" : "bg-[#e7edf5] text-[#536b8c]"}`}>
           {published ? <Gift className="size-3.5" aria-hidden /> : <Lock className="size-3.5" aria-hidden />}
           {t(published ? "wish.public" : "wish.private")}
         </span>
@@ -416,7 +416,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                           onError: error => toast.error(t(error.message as "wishlist.listFull")),
                         })}
                         disabled={onList.has(product.id) || add.isPending}
-                        className="glass pressable inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-extrabold disabled:opacity-50"
+                        className="glass pressable inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold disabled:opacity-50"
                       >
                         {onList.has(product.id) ? <Check className="size-3.5" aria-hidden /> : <Plus className="size-3.5" aria-hidden />}
                         {t("wish.add")}

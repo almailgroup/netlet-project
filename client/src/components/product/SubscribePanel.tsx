@@ -78,7 +78,7 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
           ? t("subscribe.priceSave", { price: amount(unit), was: amount(variant.price.amount) })
           : t("subscribe.price", { price: amount(unit) })}
       </p>
-      <p className="mt-1 text-[11px] leading-5 ink-muted">{t("subscribe.promise", { price: amount(unit) })}</p>
+      <p className="mt-1 text-[12px] leading-5 ink-muted">{t("subscribe.promise", { price: amount(unit) })}</p>
 
       {!open ? (
         <button
@@ -97,7 +97,7 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
           }}
         >
           <label className="block">
-            <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.every")}</span>
+            <span className="block text-[12px] font-extrabold ink-muted">{t("subscribe.every")}</span>
             <Select aria-label={t("subscribe.every")} value={intervalWeeks} onChange={event => setIntervalWeeks(Number(event.target.value))} className={field}>
               {SUBSCRIPTION_INTERVALS.map(weeks => (
                 <option key={weeks} value={weeks}>{t(weeks === 1 ? "subscribe.weekly" : "subscribe.weeks", { count: String(weeks) })}</option>
@@ -105,7 +105,7 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
             </Select>
           </label>
           <label className="block">
-            <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.firstDelivery")}</span>
+            <span className="block text-[12px] font-extrabold ink-muted">{t("subscribe.firstDelivery")}</span>
             <input type="date" required value={firstRunOn} min={addDays(today, 1)} max={addDays(today, MAX_FIRST_RUN_DAYS)} onChange={event => setFirstRunOn(event.target.value)} className={field} />
           </label>
           <div className="sm:col-span-2">
@@ -116,7 +116,7 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
               </p>
             ) : (
               <label className="block">
-                <span className="block text-[11px] font-extrabold ink-muted">{t("subscribe.deliverTo")}</span>
+                <span className="block text-[12px] font-extrabold ink-muted">{t("subscribe.deliverTo")}</span>
                 <Select aria-label={t("subscribe.deliverTo")} value={chosen ?? ""} onChange={event => setAddressId(Number(event.target.value))} className={field}>
                   {(book.data ?? []).map(address => <option key={address.id} value={address.id}>{address.label}</option>)}
                 </Select>

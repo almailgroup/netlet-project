@@ -310,13 +310,13 @@ export default function Category() {
                     key={chip.key}
                     onClick={chip.clear}
                     aria-label={t("browse.remove", { name: chip.label })}
-                    className="pressable inline-flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-1.5 text-[11px] font-bold text-[#0a285a] hover:border-[#f2683a] hover:bg-[#f0f2f5]"
+                    className="pressable inline-flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-1.5 text-[12px] font-bold text-[#0a285a] hover:border-[#f2683a] hover:bg-[#f0f2f5]"
                   >
                     <span dir="auto">{chip.label}</span>
                     <X className="size-3 ink-muted" aria-hidden />
                   </button>
                 ))}
-                <button onClick={clearAll} className="text-[11px] font-extrabold ink-accent underline underline-offset-4">
+                <button onClick={clearAll} className="text-[12px] font-extrabold ink-accent underline underline-offset-4">
                   {t("browse.clearAll")}
                 </button>
               </div>
@@ -432,7 +432,7 @@ export default function Category() {
               <h2 className="text-sm font-extrabold">{t("browse.filters")}</h2>
               <div className="flex items-center gap-3">
                 {activeCount ? (
-                  <button onClick={clearAll} className="text-[11px] font-extrabold ink-accent underline underline-offset-4">
+                  <button onClick={clearAll} className="text-[12px] font-extrabold ink-accent underline underline-offset-4">
                     {t("browse.clearAll")}
                   </button>
                 ) : null}

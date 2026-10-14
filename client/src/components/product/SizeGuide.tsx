@@ -115,7 +115,7 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
 
         <div role="region" tabIndex={0} aria-label={t("sizeGuide.chartLabel")} className="mt-4 overflow-x-auto">
           <table className="w-full text-[12px] text-[#0a285a]">
-            <caption className="pb-2 text-start text-[11px] font-semibold ink-muted">{t("sizeGuide.chartCaption")}</caption>
+            <caption className="pb-2 text-start text-[12px] font-semibold ink-muted">{t("sizeGuide.chartCaption")}</caption>
             <thead>
               <tr className="border-b border-[#e6e9ef]">
                 <th scope="col" className="py-2 pe-3 text-start font-extrabold"><bdi>{chart.axis}</bdi></th>
@@ -153,11 +153,11 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
           onSubmit={event => { event.preventDefault(); find(); }}
         >
           <h3 className="text-sm font-extrabold text-[#0a285a]">{t("sizeGuide.findMine")}</h3>
-          <p className="mt-1 text-[11px] leading-5 ink-muted">{t("sizeGuide.private")}</p>
+          <p className="mt-1 text-[12px] leading-5 ink-muted">{t("sizeGuide.private")}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {chart.measures.map((measure, index) => (
               <label key={measure} className="block">
-                <span className="block text-[11px] font-extrabold ink-muted">{t("sizeGuide.yourMeasure", { measure: t(MEASURE_LABEL[measure]) })}</span>
+                <span className="block text-[12px] font-extrabold ink-muted">{t("sizeGuide.yourMeasure", { measure: t(MEASURE_LABEL[measure]) })}</span>
                 <input
                   ref={index === 0 ? firstField : undefined}
                   inputMode="decimal"

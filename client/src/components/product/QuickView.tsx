@@ -133,7 +133,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             <div className="mt-3 flex flex-wrap items-baseline gap-2">
               <span className="type-price text-2xl font-extrabold tracking-[-.04em] text-[#0a285a]">{money(price)}</span>
               {compareAt ? <span className="text-sm ink-muted line-through">{money(compareAt)}</span> : null}
-              {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2 py-0.5 text-[11px] font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
+              {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2 py-0.5 text-[12px] font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] font-semibold">
@@ -144,7 +144,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 ? null
                 : <DeliverySpeedLine speed={product.deliverySpeed} provider={product.deliveryProvider} className="mt-1 text-[12px]" />}
               {isExpressEligible(product) ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[10px] font-extrabold text-white">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#0a285a] px-2 py-0.5 text-[11px] font-extrabold text-white">
                   <Zap className="size-2.5 fill-current" />{t("product.express")}
                 </span>
               ) : null}
@@ -155,7 +155,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             ) : null}
 
             {product.variants.length > 1 ? (
-              <label className="mt-4 block text-[11px] font-extrabold text-[#0a285a]">
+              <label className="mt-4 block text-[12px] font-extrabold text-[#0a285a]">
                 {t("product.chooseOption")}
                 <Select
                   value={variant?.id ?? ""}
