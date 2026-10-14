@@ -59,7 +59,8 @@ function Group({ title, links }: { title: MessageKey; links: FooterLink[] }) {
  * `clearance` is how much room the foot of the page needs on a phone: the tab
  * bar always, and on a page with a floating bar of its own — the filters
  * button, the product page's buy bar — that as well, or the last line of the
- * footer sits under it.
+ * footer sits under it. The tab bar floats above the home indicator, so the
+ * safe area is added to both.
  *
  * **Four columns of links, then one line: the logo, the year, the language.**
  * The logo used to head a column of its own beside the links, and once the
@@ -80,7 +81,7 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
   const departments: FooterLink[] = DEPARTMENTS.filter(department => inStock(department.name))
     .map(department => ({ key: department.label, href: `/category/${categorySlug(department.name)}` }));
   return (
-    <footer className={`mt-auto bg-[#0a285a] pt-10 text-white sm:pt-12 lg:pb-8 ${clearance === "tall" ? "pb-44" : "pb-24"}`}>
+    <footer className={`mt-auto bg-[#0a285a] pt-10 text-white sm:pt-12 lg:pb-8 ${clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
       <div className="container">
         <div className="grid grid-cols-2 gap-x-6 gap-y-9 sm:grid-cols-4">
           <Group title="footer.categories" links={departments} />

@@ -408,10 +408,12 @@ export default function Category() {
       </PageBody>
 
       {/* On a phone the sidebar becomes a sheet behind one always-reachable
-          button, so the filters do not push the products off the first screen. */}
+          button, so the filters do not push the products off the first screen.
+          It sits 8px above the tab bar, which floats at
+          max(0.75rem, safe area) and is 64px tall. */}
       <button
         onClick={() => setSheetOpen(true)}
-        className="glass glass-navy pressable fixed inset-x-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:hidden"
+        className="glass glass-navy pressable fixed inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-30 mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:hidden"
       >
         <SlidersHorizontal className="size-4" aria-hidden />
         {activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters")}

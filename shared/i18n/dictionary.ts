@@ -24,7 +24,8 @@ export type LocaleCode = (typeof LOCALES)[number];
 export const en = {
   // --- chrome --------------------------------------------------------
   "nav.home": "Home",
-  "nav.browse": "Browse",
+  "nav.profile": "Profile",
+  "nav.categories": "Categories",
   "nav.saved": "Saved",
   "nav.account": "Account",
   "nav.cart": "Cart",
@@ -3076,7 +3077,8 @@ export type MessageKey = keyof typeof en;
 export const ar: Record<MessageKey, string> = {
   // --- chrome --------------------------------------------------------
   "nav.home": "الرئيسية",
-  "nav.browse": "تصفّح",
+  "nav.profile": "حسابي",
+  "nav.categories": "الأقسام",
   "nav.saved": "المحفوظات",
   "nav.account": "حسابي",
   "nav.cart": "السلة",

@@ -98,14 +98,23 @@ only in the glass build. What keeps the words legible is the tint, and that is
 not conditional.
 
 **The phone's tab bar wears the same glass, on the owner's word**
-(`MobileTabBar`, `.glass-bar-surface` with `.glass-bar-round`). Two things
-changed on it to keep its words legible over whatever scrolls under: the tabs
-are navy, not the muted ink they were — the tint keeps navy at 4.5:1 over the
-darkest thing that passes, and the muted ink would have needed nine parts white
-— and the current tab is a solid white pill, so its accent ink sits on the same
-surface whatever is behind the glass. Measured by hiding the tabs' ink and
-reading the darkest pixel under each label at every 120px of the home page, at
-390 in both languages: 6.07:1 at worst. **A rounded bar's blur keeps to its own
+(`MobileTabBar`, `.glass-bar-surface` with `.glass-bar-round`), and is drawn to
+a picture the owner sent: **a floating pill of four tabs — Home, Profile, Cart,
+Categories** — the current one in a pale grey pill with its icon and word in
+navy and bold (the house filled), the rest near-black outlines. Saved left the
+bar with that picture and is the Saved tile on the account page, one press
+under Profile; Categories is the old Browse, the departments sheet. The words
+are dark, not the muted ink they once were — the tint keeps dark ink at 4.5:1
+over the darkest thing that passes, and the muted ink would have needed nine
+parts white — and the current tab's pill is solid for the same reason.
+Measured by hiding the tabs' ink and reading the darkest pixel behind each
+label's words at every 120px of the home page, at 390 in both languages: 7.62:1
+at worst. The words step down from 14px to 13px under 390 and 12px under 360,
+so "Categories" in bold fits a 320px phone. **It floats above the home
+indicator** (`bottom: max(0.75rem, safe area)`) rather than padding over it,
+so an iPhone gets the same pill lifted rather than a pill with a thick foot;
+the department page's filter button and the footer's clearance add the safe
+area to match. **A rounded bar's blur keeps to its own
 corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
 clip, which Safari has not always applied to a backdrop filter; it reaches past
 them only for the warp, under a fine pointer, which no phone has.
@@ -599,7 +608,7 @@ happened.
 button, and in the menu "1 on the way" beside Orders and "2 unread" beside
 Messages — and Help from NetLet, which is in the menu only while NetLet has
 answered and the shopper has not read it. `useAccountSignals` is the one
-reader, so the phone's Account tab shows the same count; it is the server's
+reader, so the phone's Profile tab shows the same count; it is the server's
 own figures (`chat.unread`, `support.unread`, `orders.onTheWay`), asked each
 minute while the tab is visible, and zero outright when signed out because the
 cache still holds the last account's. **While the session loads, the control
@@ -649,7 +658,8 @@ a link never leads to the half-empty shelf the home page refuses to draw. On
 
 **On a phone the top bar does not repeat the bottom one.** Home's had a
 hamburger and a cart, and every other page's had saved, account and cart —
-all of it already in `MobileTabBar`, a thumb's reach below. The top row carries
+all of it in `MobileTabBar`, a thumb's reach below (Saved now one press under
+Profile). The top row carries
 what the bottom does not: the logo, the area and the language, and the search
 field has a whole row under it. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **Every
@@ -660,7 +670,7 @@ keeps the words itself, starts each page from the address's `q` (the term on a
 results or department page, nothing elsewhere — what a fresh header did when
 every page drew its own), suggests from the catalogue it already holds and opens
 the product chosen. The hamburger's department list
-is `DepartmentSheet` now, behind the bottom bar's Browse on every page — Browse
+is `DepartmentSheet` now, behind the bottom bar's Categories on every page — it
 used to open it on Home and go to the whole catalogue everywhere else, one tab
 meaning two things.
 
