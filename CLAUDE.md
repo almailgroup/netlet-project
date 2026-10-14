@@ -859,45 +859,103 @@ red beside it computes 4.58:1 and was left alone.
 "more controls soon". They scroll a screenful at a time and appear only when
 there is something off-screen.
 
-**Home opens on the departments, as big cards.** It opened on a navy hero that
-said "Small upgrades. A brighter everyday." over blurred colour blobs: a slogan
-where a shopper looks for something to tap. `DepartmentCards` is six tiles —
-the five departments and "All departments" — three to a row on a phone and six
-on a wide screen, each a link. **The art is a file per department**,
-`client/public/departments/<slug>.webp`, so a picture is replaced by dropping
-a file of the same name. Each is a few of the department's typical goods as
-soft, rounded 3D renders in their natural colours — the owner's choice over a
-version held to white, navy and orange, which read as beige on white cards.
-They arrive as transparent squares and are trimmed to the objects and fitted
-into one 480 × 360 frame, so every card's picture is the same size; about
-25 KB each, loaded eagerly as the first paint. A set made as one grid has to be
-redone as separate images: cutting the grid apart clipped a sneaker and left a
-sliver of it beside the grocery basket. The page's `h1` is the shop's name, for a screen reader's outline; the
-banner used to carry it.
+**Home opens on a front door, then the departments.** It opened on a navy hero
+once that said "Small upgrades. A brighter everyday." over blurred colour blobs —
+a slogan where a shopper looks for something to tap — and it went, leaving the
+page to open on six tiles, which the owner found plain. `HomeHero` is the door
+that came back, built the other way round: NetLet's own street (`streetImage`
+in `lib/brandAssets.ts`, the sign-in panel's picture, so the shop's door looks
+the same wherever a shopper meets it) on navy with an orange foot, one line
+saying what the shop is — "Kuwait's stores, one cart." — the three facts every
+order carries (every governorate, cash at the door, `RETURN_WINDOW_DAYS`), and
+two ways in. The first is Today's deals only while the home page draws a Deals
+shelf (`shelvesFor`), New arrivals otherwise, so the first press never lands on
+a half-empty page. Nothing moves; the picture is the page's largest paint and is
+fetched first. The page's `h1` is in it, the shop's name first for a screen
+reader. On a phone the facts are a short list and the buttons sit side by side
+only while both fit (`flex-[1_0_auto]`, never wrapping their words), each the
+full width at 320.
 
-Then the paid placements, Deals and Bestsellers as strips that scroll
-sideways, Picked for you, Shop by brand, the new arrivals as a grid to browse,
-four lines on what shopping here involves (delivery, cash on delivery, returns,
-help), and the footer. **A strip below four products is not drawn**:
-`shelvesFor` in `client/src/content/homeLayout.ts` decides — Deals is what is
-actually discounted, deepest first; Bestsellers is what sold, by units over
-ninety days (`server/homeShelves.ts`: never a cancelled or returned line, nor
-an exchange's zero-priced replacement, which is the same item counted twice);
-New arrivals is the most recent; each leaves out what a shelf above shows, and
-what a hidden shelf did not show is free for the next. Anything that points at
-a shelf asks whether it is drawn. There were five shelves once, and on a
-dozen-product catalog they were the same dozen five times — Bestsellers came
-back when there were orders to count, because then it is a different list
-rather than the same one reordered. **Picked for you is drawn only when it is
-personal** (the rule under Recommendations), draws nothing while it loads, and
-on the home page is held to the strips' floor — two cards in a row built for
-four read as a broken shelf; on `/saved` it is drawn from one. New arrivals is
-the one shelf exempt from the floor, on purpose (`homeLayout.ts` says why).
-**Shop by brand is the Brand rows sellers wrote** (`commerce.brands`, counted
-by the `brandOf` the Brand filter uses, so a tile reading "3 products" opens a
-page of three), from three brands up, an initial on each tile because NetLet
-holds no logos. The paid home banners sit under the department cards (see
-Paid placements) and are absent when none is approved and running.
+`DepartmentCards` follows under a heading of its own — six tiles, the five
+departments and "All departments", three to a row on a phone and six on a wide
+screen, each a link. **The tiles are white, all six alike**: a colour per
+department was offered in the mockup and the owner declined it. **The art is a
+file per department**, `client/public/departments/<slug>.webp`, so a picture is
+replaced by dropping a file of the same name. Each is a few of the department's
+typical goods as soft, rounded 3D renders in their natural colours — the
+owner's choice over a version held to white, navy and orange, which read as
+beige on white cards. They arrive as transparent squares and are trimmed to the
+objects and fitted into one 480 × 360 frame, so every card's picture is the
+same size; about 25 KB each, loaded eagerly. A set made as one grid has to be
+redone as separate images: cutting the grid apart clipped a sneaker and left a
+sliver of it beside the grocery basket.
+
+Then the paid placements, Deals, Bestsellers, Picked for you, Shop by brand,
+Stores on NetLet, the new arrivals as a grid to browse, and the footer. **A
+shelf below four products is not drawn**: `shelvesFor` in
+`client/src/content/homeLayout.ts` decides — Deals is what is actually
+discounted, deepest first; Bestsellers is what sold, by units over ninety days
+(`server/homeShelves.ts`: never a cancelled or returned line, nor an exchange's
+zero-priced replacement, which is the same item counted twice); New arrivals is
+the most recent; each leaves out what a shelf above shows, and what a hidden
+shelf did not show is free for the next. Anything that points at a shelf asks
+whether it is drawn. There were five shelves once, and on a dozen-product
+catalog they were the same dozen five times — Bestsellers came back when there
+were orders to count, because then it is a different list rather than the same
+one reordered.
+
+**Deals is a navy band across the page, led by the deepest saving.** The lead
+card is `ProductCard`'s `feature` — two of five columns on a wide screen, the
+whole row on a phone, a wider photograph and a larger price — and three more
+sit beside it (two on a phone, never three with one left alone on a row). It is
+the same shelf in a different dress, so it is drawn exactly when the Deals
+shelf would be, and every saving on it has passed the permit rule on the read.
+No "ends on" date: a permit's period is when a saving may be advertised, not
+when this one stops.
+
+**Bestsellers carries its places, 1 to 12, as large outlined figures** beside
+the cards (`.rank-figure`), because that shelf's order *is* a ranking; no other
+shelf has one to show. The figures are pale navy and outlined, so they read as
+order rather than as a second price, hidden from a screen reader (the list's
+order says it), and one column width whatever the number — a two-digit place is
+drawn smaller — so every card is the same size. **The figure has no `direction`
+of its own**: digits read left to right by themselves, and `direction: ltr` on
+it turned its `margin-inline-end` into a right margin on the Arabic page too,
+where the scroller then clipped the "1".
+
+**Stores on NetLet is the row that says this is a marketplace** — the one thing
+departments, shelves and a grid never said. `commerce.stores`
+(`listStoreCards` in `server/catalog.ts`) is approved stores with something
+published, the busiest first and ties by id, named in the page's language by
+the same `pick` their products use, so the card's link —
+`/category/all?seller=…`, the Seller filter, until stores have pages of their
+own — matches. Everything on a card is measured: products on sale, a rating only
+from five visible reviews (the High Rating floor), the badges `badgesFor`
+grants. A logo when the store has one, otherwise its initial on the portal's
+pale navy (`StoreAvatar`'s look), not a palette of its own. Under three stores
+the row is not drawn, the brand row's rule.
+
+**Picked for you is drawn only when it is personal** (the rule under
+Recommendations), draws nothing while it loads, and on the home page is held to
+the shelves' floor — two cards in a row built for four read as a broken shelf;
+on `/saved` it is drawn from one. New arrivals is the one shelf exempt from the
+floor, on purpose (`homeLayout.ts` says why). **Shop by brand is the Brand rows
+sellers wrote** (`commerce.brands`, counted by the `brandOf` the Brand filter
+uses, so a tile reading "3 products" opens a page of three), from three brands
+up, an initial on each tile because NetLet holds no logos. The paid home banners
+sit under the department cards (see Paid placements) and are absent when none
+is approved and running. The four lines on what shopping here involves
+(delivery, cash, returns, help) that closed the page went: their facts are the
+front door's now, and saying them twice is filler.
+
+**A screenshot in phone emulation is not the phone.** Headless Chromium starts
+matching `(hover: hover) and (pointer: fine)` once a capture resizes the
+viewport — a full-page screenshot, or one of an element taller than the screen —
+so the card's invisible minus and plus are laid out and every narrow card's "Add
+to cart" reads "Add …" in the picture while the page itself is fine. A
+viewport-sized capture, or an element that fits on screen, leaves it alone
+(measured). Measure on a fresh page, and take the pictures that matter at the
+viewport's size.
 
 **Copy a shopper reads is never a status report.** "Live catalog", "Persistent
 cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
@@ -3773,9 +3831,13 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It is 592 KB (173 KB) now: the
+with the whole first download 35 KB smaller. It is 599 KB (175 KB) now: the
 shop's frame, the page template and the navigation layer (see "One frame, one
-template") are on every page, so they belong in it.
+template") are on every page, so they belong in it, and so is the home page's
+front door, which is its first paint. That door's street picture is 86 KB
+(1120 × 840, WebP) — the one image the home page fetches ahead of everything
+else, and the sign-in panel's own file, so a shopper who goes on to sign in
+already has it.
 
 - **React's renderer is in the `react` chunk.** `manualChunks` named
   `react-dom`, which matched only the package's small entry, so

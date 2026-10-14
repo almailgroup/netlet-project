@@ -879,3 +879,44 @@ html[dir="rtl"] .nav-progress {
     transform: scaleX(0.85);
   }
 }
+
+/*
+ * A Bestsellers place — 1, 2, 3 — as a large outlined figure beside its card,
+ * the card overlapping it slightly. Outlined rather than filled so it reads as
+ * the shelf's order and not as a second price, and in the pale navy of the
+ * shop's rules so it never competes with the card's own words. The column is
+ * one width whatever the number, and a two-digit place is drawn smaller to fit
+ * it, so every card on the shelf is the same size. No `direction` of its own:
+ * digits read left to right by themselves, and `ltr` here flipped the overlap
+ * margin to the outside edge on the Arabic page, where the scroller clipped
+ * the "1". Hidden from a screen reader in the markup: the list's order already
+ * says it.
+ */
+.rank-figure {
+  flex: none;
+  position: relative;
+  width: 3.6rem;
+  margin-inline-end: -0.5rem;
+  text-align: center;
+  font-size: 84px;
+  font-weight: 700;
+  line-height: 0.8;
+  font-variant-numeric: lining-nums;
+  color: transparent;
+  -webkit-text-stroke: 2px #9fb1cc;
+  user-select: none;
+}
+.rank-figure[data-digits="2"] {
+  font-size: 58px;
+  letter-spacing: -0.1em;
+}
+@media (min-width: 640px) {
+  .rank-figure {
+    width: 4.6rem;
+    font-size: 116px;
+    -webkit-text-stroke-width: 2.5px;
+  }
+  .rank-figure[data-digits="2"] {
+    font-size: 78px;
+  }
+}

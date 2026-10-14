@@ -16,4 +16,15 @@ export const logoImage = appPath("/brand/netlet-logo.png");
 export const footerLogoImage = appPath("/brand/netlet-logo-white.png");
 export const heroImage = appPath("/brand/hero.svg");
 
+/**
+ * NetLet's own street — four stores and the van being loaded, the towers
+ * behind — drawn on the home page's front door and over the sign-in panel.
+ * Found at build time by name (`client/src/assets/auth/welcome.*`), so
+ * replacing it is dropping in another file, and with none each place draws
+ * its words alone rather than an empty frame or a broken image.
+ */
+export const streetImage: string | null = Object.values(
+  import.meta.glob<string>("../assets/auth/welcome.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
+)[0] ?? null;
+
 /** Placeholder QR for the app-download panel: reads as a code, decodes to nothing. */

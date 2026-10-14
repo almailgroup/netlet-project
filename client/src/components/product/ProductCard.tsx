@@ -306,13 +306,21 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
   );
 }
 
-export function ProductCard({ product, saved, onSave, onQuickView, compact = false, note }: {
+export function ProductCard({ product, saved, onSave, onQuickView, compact = false, feature = false, note }: {
   product: Product;
   saved: boolean;
   onSave: () => void;
   /** Opens the preview: the eye on the photo, and how a variant is chosen. */
   onQuickView?: () => void;
   compact?: boolean;
+  /**
+   * The one card a shelf leads with — the home page's deepest deal. Two
+   * columns wide, so its photo is drawn 2:1 (the height of a square beside it)
+   * and contained rather than cropped, on white, since a product photo's own
+   * ground is usually white; the words and the price are larger. Everything
+   * else — the buttons, the badges, the heart — is the ordinary card's.
+   */
+  feature?: boolean;
   /**
    * One line above the title saying why this card is here.
    *
@@ -347,14 +355,14 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           {image
             /* Named, though the link around it is hidden from a screen reader:
                the alt is what image search reads, and what a checker counts. */
-            ? <Thumb src={image.url} alt={image.altText || product.title} className="product-card-photo aspect-square w-full object-cover" />
-            : <div className="grid aspect-square place-items-center px-3 text-center text-[12px] font-semibold ink-muted">{t("product.imageProcessing")}</div>}
+            ? <Thumb src={image.url} alt={image.altText || product.title} className={`product-card-photo w-full ${feature ? "aspect-[2/1] bg-white object-contain" : "aspect-square object-cover"}`} />
+            : <div className={`grid place-items-center px-3 text-center text-[12px] font-semibold ink-muted ${feature ? "aspect-[2/1]" : "aspect-square"}`}>{t("product.imageProcessing")}</div>}
         </Link>
 
         <div className="pointer-events-none absolute start-1.5 top-1.5 flex flex-col items-start gap-1">
           {/* Navy on the orange: white on #f2683a is 3.08:1 at this size, navy is 4.65:1. */}
           {savings > 0 ? (
-            <span dir="ltr" className="rounded-md bg-[#f2683a] px-1.5 py-0.5 text-[11px] font-bold text-[#0a285a]">−{savings}%</span>
+            <span dir="ltr" className={`rounded-md bg-[#f2683a] font-bold text-[#0a285a] ${feature ? "px-2.5 py-1 text-[15px]" : "px-1.5 py-0.5 text-[11px]"}`}>−{savings}%</span>
           ) : null}
           <PreorderBadge variant={variant} />
           {express ? (
@@ -393,7 +401,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
 
       <div className="flex flex-1 flex-col px-1 pt-2">
         {note ?? (product.vendor ? <p className="truncate text-[12px] ink-muted"><bdi>{product.vendor}</bdi></p> : null)}
-        <h3 className="mt-0.5 min-h-[2.5em] text-[14px] font-semibold leading-[1.25] text-[#0a285a]">
+        <h3 className={`mt-0.5 font-semibold leading-[1.25] text-[#0a285a] ${feature ? "text-[17px] sm:text-[20px]" : "min-h-[2.5em] text-[14px]"}`}>
           <Link href={href} dir="auto" className="line-clamp-2 hover:underline">{product.title}</Link>
         </h3>
 
@@ -406,8 +414,8 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         ) : null}
 
         <div className="mt-1.5 flex flex-wrap items-baseline gap-x-1.5">
-          <p className="text-[16px] font-bold text-[#0a285a]">{money(price)}</p>
-          {compareAt && savings > 0 ? <p className="text-[12px] ink-muted line-through">{money(compareAt)}</p> : null}
+          <p className={`font-bold text-[#0a285a] ${feature ? "text-[20px] sm:text-[24px]" : "text-[16px]"}`}>{money(price)}</p>
+          {compareAt && savings > 0 ? <p className={`ink-muted line-through ${feature ? "text-[14px]" : "text-[12px]"}`}>{money(compareAt)}</p> : null}
         </div>
         {/* Draws nothing for a counted product, which is nearly every product. */}
         {variant ? <UnitPrice variant={variant} className="mt-0.5" /> : null}

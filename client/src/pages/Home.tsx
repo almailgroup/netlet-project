@@ -1,29 +1,23 @@
 /**
- * The home page: the departments as cards, the paid placements, Deals,
- * Bestsellers, the shopper's own picks, the brands, the new arrivals as a
- * grid, what shopping with NetLet involves, and the footer. Every shelf after
- * the departments is drawn only when it has something true to show.
+ * The home page: the front door (`HomeHero`), the departments as cards, the
+ * paid placements, Deals as a navy band led by the deepest one, Bestsellers
+ * ranked, the shopper's own picks, the brands, the stores, the new arrivals as
+ * a grid, and the footer. Every shelf after the departments is drawn only when
+ * it has something true to show.
  */
 import { useCatalog } from "@/hooks/useCatalog";
 import { editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { Product } from "@shared/commerce/types";
 import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  LifeBuoy,
-  RotateCcw,
-  Truck,
-  Wallet,
-} from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
+import { HomeHero } from "@/components/home/HomeHero";
+import { StoreShelf } from "@/components/home/StoreShelf";
 import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { Link, useLocation } from "wouter";
@@ -53,6 +47,11 @@ type RailProps = {
   onQuickView: (product: Product) => void;
   /** Absent where the shelf is the whole list — Bestsellers has no page of its own. */
   onViewAll?: () => void;
+  /**
+   * Each card beside its place — 1, 2, 3 — in large outlined figures. Only for
+   * a shelf whose order *is* a ranking: Bestsellers, by units sold.
+   */
+  ranked?: boolean;
 };
 
 /**
@@ -82,7 +81,7 @@ function ShelfHeading({ id, title, onViewAll, children }: { id: string; title: s
  * One shelf of products, scrolled sideways. The arrows scroll it a screenful at
  * a time and appear only when there is something off-screen to reach.
  */
-function ProductRail({ id, title, products, catalogLoading, catalogError, saved, onSave, onQuickView, onViewAll }: RailProps) {
+function ProductRail({ id, title, products, catalogLoading, catalogError, saved, onSave, onQuickView, onViewAll, ranked = false }: RailProps) {
   const { t } = useTranslation();
   const railProducts = products.slice(0, 12);
   const railTitle = t(title);
@@ -133,10 +132,15 @@ function ProductRail({ id, title, products, catalogLoading, catalogError, saved,
           <div className="mt-4 rounded-2xl border border-[#f2b69e] bg-white px-6 py-10 text-center text-[#0a285a]"><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div>
         ) : (
           <div ref={trackRef} className="hide-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
-            {railProducts.map((product) => (
+            {railProducts.map((product, index) => (
               /* Four to a row from lg up, whatever the container's width, so a shelf fills its row. */
-              <div key={`${id}-${product.id}`} className="w-[164px] shrink-0 snap-start sm:w-[195px] lg:w-[calc((100%-2.25rem)/4)]">
-                <ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
+              <div key={`${id}-${product.id}`} className={`shrink-0 snap-start ${ranked ? "flex w-[200px] items-end sm:w-[235px]" : "w-[164px] sm:w-[195px]"} lg:w-[calc((100%-2.25rem)/4)]`}>
+                {/* Drawn, not said: the list's own order is the ranking for a
+                    screen reader, and "1" read before every card is noise. */}
+                {ranked ? <span aria-hidden className="rank-figure" data-digits={String(index + 1).length}>{index + 1}</span> : null}
+                <div className="relative min-w-0 flex-1">
+                  <ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
+                </div>
               </div>
             ))}
           </div>
@@ -170,29 +174,42 @@ function ProductGrid({ id, title, products, catalogLoading, catalogError, saved,
 }
 
 /**
- * What a shopper wants to know before the first order, in four lines that are
- * all true today: where NetLet delivers, how paying works, the return window,
- * and where to ask. It replaces a card with a ring, a pin on a yellow tile and
- * a slogan ("NetLet, nearer to you.") whose one button the header now carries.
+ * Deals, as a navy band across the page rather than one more white shelf.
+ *
+ * The deepest saving leads, two columns wide (`ProductCard`'s `feature`), and
+ * three more sit beside it — the shelf `shelvesFor` already decided, deepest
+ * first, so the band is drawn exactly when the home page's Deals shelf would
+ * be, from four products up, and a saving is only ever one the store's
+ * discount permit allows (`fromInventory` drops the rest on the read). No
+ * "ends on" date: a permit's period is when a saving *may* be advertised, not
+ * when this one stops, and saying it would be the shop promising for a seller.
  */
-function DeliveryStrip() {
+function DealsBand({ products, saved, onSave, onQuickView }: Pick<RailProps, "products" | "saved" | "onSave" | "onQuickView">) {
   const { t } = useTranslation();
-  const item = "flex items-center gap-3 rounded-2xl bg-white p-4";
-  const icon = "grid size-10 shrink-0 place-items-center rounded-xl bg-[#eef2f8] text-[#0a285a]";
+  const [lead, ...rest] = products;
+  if (!lead) return null;
+  const card = (product: Product, feature = false) => (
+    <ProductCard compact={!feature} feature={feature} product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
+  );
   return (
-    <section className="container py-6 sm:py-8" aria-label={t("home.howItWorks")}>
-      <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <li className={item}><span className={icon}><Truck className="size-5" aria-hidden /></span><span className="text-sm font-bold text-[#0a285a]">{t("checkout.builtForKuwait")}</span></li>
-        <li className={item}><span className={icon}><Wallet className="size-5" aria-hidden /></span><span className="text-sm font-bold text-[#0a285a]">{t("home.payOnDelivery")}</span></li>
-        <li className={item}><span className={icon}><RotateCcw className="size-5" aria-hidden /></span><span className="text-sm font-bold text-[#0a285a]">{t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</span></li>
-        <li>
-          <Link href="/help" className={`${item} h-full hover:bg-[#f0f2f5]`}>
-            <span className={icon}><LifeBuoy className="size-5" aria-hidden /></span>
-            <span className="text-sm font-bold text-[#0a285a]">{t("support.section")}</span>
-            <ChevronRight className="ms-auto size-4 text-[#536b8c] rtl:-scale-x-100" aria-hidden />
+    <section id="deals" aria-labelledby="deals-title" className="mt-6 bg-[#0a285a] py-8 sm:mt-10 sm:py-11">
+      <div className="container">
+        <div className="flex items-center justify-between gap-4">
+          <h2 id="deals-title" className="text-xl font-extrabold tracking-[-.01em] text-white sm:text-2xl">{t("rail.deals.title")}</h2>
+          <Link href="/category/all?offer=1&sort=discount" className="pressable inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm font-bold ink-accent-on-dark hover:underline">
+            {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
           </Link>
-        </li>
-      </ul>
+        </div>
+        {/* The lead is the whole row on a phone and a tablet, two of five
+            columns on a wide screen. A phone shows two beside nothing, not
+            three with one left alone on a row. */}
+        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <li className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">{card(lead, true)}</li>
+          {rest.slice(0, 3).map((product, index) => (
+            <li key={product.id} className={`min-w-0 ${index === 2 ? "hidden sm:block" : ""}`}>{card(product)}</li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }
@@ -220,11 +237,11 @@ export default function Home() {
      kept a header of its own for a long time and drifted from the rest. */
   return <>
 
-    {/* The page's name for a screen reader's outline. The banner that used
-        to carry the h1 was a slogan; the shop's name is what the page is. */}
-    <h1 className="sr-only">{t("home.heading")}</h1>
+    {/* The front door: the street, one line, the facts, two ways in. It
+        carries the page's h1, the shop's name first for a screen reader. */}
+    <HomeHero dealsDrawn={shelves.deals.length > 0} />
 
-    {/* The departments, as big cards, where a slogan used to be. */}
+    {/* The departments, as big cards. */}
     <DepartmentCards />
 
     {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
@@ -247,13 +264,14 @@ export default function Home() {
       const viewAll = rail.select === "offers" ? () => navigate("/category/all?offer=1&sort=discount")
         : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
         : undefined;
-      const shared = { id: rail.id, title: rail.title, products, catalogLoading, catalogError: Boolean(catalogError), saved, onSave: toggleSaved, onQuickView: setQuickProduct, onViewAll: viewAll };
+      const shared = { id: rail.id, title: rail.title, products, catalogLoading, catalogError: Boolean(catalogError), saved, onSave: toggleSaved, onQuickView: setQuickProduct, onViewAll: viewAll, ranked: rail.id === "bestsellers" };
       /* What is about this shopper, and the brands, sit between what sold
          and what is new — drawn only when each has something true to show. */
       const before = rail.id === "newest" ? (
         <>
           <RecommendedRail quiet saved={saved} onSave={toggleSaved} onQuickView={setQuickProduct} />
           <BrandShelf />
+          <StoreShelf />
         </>
       ) : null;
       if ((catalogLoading || catalogError) && index > 0) return <Fragment key={rail.id}>{before}</Fragment>;
@@ -263,7 +281,9 @@ export default function Home() {
       return (
         <Fragment key={rail.id}>
           {before}
-          {rail.layout === "grid" ? <ProductGrid {...shared} /> : <ProductRail {...shared} />}
+          {rail.id === "deals" && !catalogLoading && !catalogError
+            ? <DealsBand {...shared} />
+            : rail.layout === "grid" ? <ProductGrid {...shared} /> : <ProductRail {...shared} />}
         </Fragment>
       );
     })}
@@ -271,8 +291,6 @@ export default function Home() {
     {articlesOn ? (
       <section className="border-y border-[#d5dfeb] bg-white/45 py-10 sm:py-14"><div className="container"><div className="flex items-end justify-between gap-5"><div><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.notesFrom")}</p><h2 className="font-extrabold mt-1 text-2xl text-[#0a285a] sm:text-4xl">{t("home.usefulReading")}</h2></div><button onClick={() => toast(t("home.editorialSoon"))} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="mt-6 grid gap-3 md:grid-cols-3">{editorialUpdates.map((entry) => <article key={entry.title} className="rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-6"><p className="text-[12px] font-semibold ink-accent">{t(entry.date)}</p><h3 className="type-heading mt-4 text-lg tracking-[-.025em] text-[#0a285a]">{t(entry.title)}</h3><p className="type-body mt-3 text-sm leading-6 text-[#536b8c]">{t(entry.summary)}</p><button onClick={() => toast(t("home.guideSoon"))} className="mt-5 inline-flex items-center gap-1 text-[12px] font-semibold text-[#0a285a]">{t("home.readMore")} <ArrowRight className="size-3.5 ink-accent rtl:-scale-x-100" /></button></article>)}</div></div></section>
     ) : null}
-
-    <DeliveryStrip />
 
     {/* Switched off until there is an app to download (2.3). */}
     {appBannerOn ? <section className="container pb-10"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.application")}</p><h2 className="font-extrabold mt-3 text-2xl text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[12px] font-semibold">{t("home.appUpdates")}</button></div></div></section> : null}

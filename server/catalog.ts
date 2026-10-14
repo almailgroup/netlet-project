@@ -16,7 +16,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { and, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
   cartItemAddons,
   cartItems,
@@ -33,6 +33,7 @@ import {
 } from "../drizzle/schema.js";
 import {
   CURRENCY,
+  pick,
   toStorefrontCollection,
   toStorefrontProduct,
   type LocalePick,
@@ -58,6 +59,7 @@ import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
   FAST_SHIPPING_WINDOW_DAYS,
+  HIGH_RATING_MIN_REVIEWS,
   storefrontBadges,
   type TrustBadge,
 } from "../shared/inventory/vendorHealth.js";
@@ -154,6 +156,76 @@ export async function badgesFor(
       fastDeliveries: Number(delivered?.fast ?? 0),
     })];
   }));
+}
+
+/* ------------------------------------------------------------ the stores --- */
+
+/** How many stores the home page's row can hold. */
+export const STORE_ROW_LIMIT = 10;
+
+/** A store as the home page's "Stores on NetLet" row draws it. */
+export type StoreCard = {
+  slug: string;
+  /** In the page's language, exactly as its products name it — the Seller filter matches on this. */
+  name: string;
+  logoUrl: string | null;
+  /** Published products on its shelf now. */
+  products: number;
+  /** Only from `HIGH_RATING_MIN_REVIEWS` reviews up: one five-star review is an anecdote. */
+  rating: { average: number; count: number } | null;
+  badges: TrustBadge[];
+};
+
+/**
+ * The stores a shopper can buy from, the busiest shelf first.
+ *
+ * The rule `publishedCatalog` keeps — a published product of an approved
+ * store — counted per store, so a store with nothing on sale or a suspended
+ * one is absent rather than a door onto an empty page. The badges are the
+ * measured ones (`badgesFor`), never a value somebody typed, and the rating is
+ * the same visible reviews they are measured from. The name is the products'
+ * own (`pick`), because the card opens the shop filtered to that seller and the
+ * filter compares names: a card spelling it differently would open a page of
+ * nothing.
+ */
+export async function listStoreCards(locale: LocalePick = "en", limit = STORE_ROW_LIMIT): Promise<StoreCard[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const live = sql<number>`count(*)::int`;
+  const rows = await db
+    .select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, logoUrl: vendors.logoUrl, badges: vendors.badges, products: live })
+    .from(products)
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved")))
+    .groupBy(vendors.id)
+    /* Ends on the id, for the reason `publishedCatalog` does: two stores with
+       the same count must not swap places between two page loads. */
+    .orderBy(desc(live), asc(vendors.id))
+    .limit(limit);
+  if (!rows.length) return [];
+  const [badges, ratings] = await Promise.all([
+    badgesFor(db, rows),
+    db
+      .select({ vendorId: reviews.vendorId, count: sql<number>`count(*)::int`, average: sql<string | null>`avg(${reviews.rating})` })
+      .from(reviews)
+      .where(and(inArray(reviews.vendorId, rows.map(row => row.id)), isNull(reviews.hiddenAt)))
+      .groupBy(reviews.vendorId),
+  ]);
+  const ratingBy = new Map(ratings.map(row => [row.vendorId, row]));
+  return rows.map(row => {
+    const rated = ratingBy.get(row.id);
+    const count = Number(rated?.count ?? 0);
+    return {
+      slug: row.slug,
+      name: pick(locale, row.name, row.nameAr),
+      logoUrl: row.logoUrl?.trim() || null,
+      products: Number(row.products),
+      rating: count >= HIGH_RATING_MIN_REVIEWS && rated?.average != null
+        ? { average: Math.round(Number(rated.average) * 10) / 10, count }
+        : null,
+      badges: badges.get(row.id) ?? [],
+    };
+  });
 }
 
 type CatalogRow = Awaited<ReturnType<typeof publishedCatalog>>[number];

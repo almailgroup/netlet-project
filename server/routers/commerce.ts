@@ -21,6 +21,7 @@ import {
   getProductByHandle,
   listCollections,
   listProducts,
+  listStoreCards,
   removeCartLines,
   updateCartLines,
 } from "../catalog.js";
@@ -85,6 +86,10 @@ export const commerceRouter = router({
     .query(({ input }) => listBestsellers(input?.locale ?? "en")),
   /** The home page's Shop by brand: the Brand rows of the live catalogue, counted. */
   brands: publicProcedure.query(() => listBrands()),
+  /** The home page's Stores on NetLet: stores with something on sale, the busiest first. */
+  stores: publicProcedure
+    .input(z.object({ locale: localeSchema }).optional())
+    .query(({ input }) => listStoreCards(input?.locale ?? "en")),
   collections: router({
     list: publicProcedure
       .input(z.object({ first: z.number().int().min(1).max(50).optional(), locale: localeSchema }).optional())

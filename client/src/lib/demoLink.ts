@@ -213,6 +213,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       }
       return Array.from(counts, ([name, count]) => ({ name, count }));
     }
+    /* The invented stores, counted off the invented shelf. No rating and no
+       badge: nobody has reviewed them and nothing has been delivered. */
+    case "commerce.stores": {
+      const counts = new Map<string, number>();
+      for (const { vendor } of demoCatalog) if (vendor) counts.set(vendor, (counts.get(vendor) ?? 0) + 1);
+      return Array.from(counts, ([name, products]) => ({
+        slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        name,
+        logoUrl: null,
+        products,
+        rating: null,
+        badges: [],
+      })).sort((a, b) => b.products - a.products).slice(0, 10);
+    }
     case "commerce.collections.list":
       return [];
     case "commerce.collections.byHandle":

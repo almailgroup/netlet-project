@@ -1,11 +1,13 @@
 /**
- * The departments, as large cards — the first thing on the home page.
+ * The departments, as large cards, directly under the front door
+ * (`HomeHero`) and under a heading of their own.
  *
- * They replace a navy hero that said "Small upgrades. A brighter everyday."
- * over blurred colour blobs and an abstract illustration: a slogan where a
- * shopper looks for something to tap, and the clearest sign the page had come
- * out of a template. The marketplaces people here use every day open on their
- * departments as pictures, big enough to hit with a thumb, and so does this.
+ * They replaced a navy hero that said "Small upgrades. A brighter everyday."
+ * over blurred colour blobs: a slogan where a shopper looks for something to
+ * tap. The front door above them now says what the shop is in one line and
+ * goes somewhere; these stay what a shopper taps next, big enough for a thumb.
+ * The tiles are white, all six alike — the owner's word: a colour per
+ * department was tried in a mockup and declined.
  *
  * **The art is a file per department**, `client/public/departments/<slug>.webp`,
  * so a picture is replaced by dropping a file with the same name — no code
@@ -41,11 +43,11 @@ export function DepartmentCards() {
   const { t } = useTranslation();
   const cards = CARDS;
   return (
-    <section aria-labelledby="departments-title" className="container pt-4 sm:pt-6">
-      <h2 id="departments-title" className="sr-only">{t("home.shopByCategory")}</h2>
+    <section aria-labelledby="departments-title" className="container pt-7 sm:pt-10">
+      <h2 id="departments-title" className="text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
       {/* Six to a row on a wide screen, three on a phone. */}
       <ul
-        className="grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-[repeat(var(--tiles),minmax(0,1fr))]"
+        className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-[repeat(var(--tiles),minmax(0,1fr))]"
         style={{ "--tiles": Math.min(cards.length, 6) } as CSSProperties}
       >
         {cards.map(card => (

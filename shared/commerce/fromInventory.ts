@@ -137,7 +137,7 @@ export type ProductContext = {
  * must not blank the card — an English title inside an Arabic page is a
  * merchant's omission, a blank one is our bug.
  */
-function pick(locale: LocalePick, en: string | null | undefined, ar: string | null | undefined): string {
+export function pick(locale: LocalePick, en: string | null | undefined, ar: string | null | undefined): string {
   if (locale === "ar") {
     const trimmed = ar?.trim();
     if (trimmed) return trimmed;

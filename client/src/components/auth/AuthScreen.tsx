@@ -28,13 +28,12 @@
  */
 import { Heart, MapPin, Package } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
+import { streetImage } from "@/lib/brandAssets";
 import { AuthForm, type AuthMode } from "./AuthForm";
 import { OrderFacts } from "./AuthDialog";
 
 /* Found at build time: an empty match is no picture, never a missing file. */
-const WELCOME = Object.values(
-  import.meta.glob<string>("../../assets/auth/welcome.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
-)[0] ?? null;
+const WELCOME = streetImage;
 
 export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus }: {
   mode: AuthMode;
