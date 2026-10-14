@@ -15,12 +15,15 @@
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
  * street, then `client/src/assets/hero/` in name order). Only the pictures
  * change; the words and the buttons hold still, so nothing a shopper is
- * reading moves. A picture stays `SLIDE_MS` — three seconds, the owner's
- * figure — and waits while a pointer or the keyboard is on the band, while the
- * band is off screen or the tab hidden, and for good once somebody presses
- * Pause — moving content that runs past five seconds needs a way to stop it
- * (WCAG 2.2.2). Nobody who asked for less motion is shown it moving at all;
- * the dots still change the picture. One picture is a still, with no controls.
+ * reading moves. A picture stays `SLIDE_MS` — two seconds, the owner's figure
+ * — and the band carries no controls, also on the owner's word: it had dots
+ * and a Pause button, and they asked for it to change by itself and nothing
+ * else. It still waits while the band is off screen or the tab hidden, and
+ * while the keyboard is in it (`:focus-visible`, so a click on a link does
+ * not stop it), which is what remains of WCAG 2.2.2's way to stop moving
+ * content; a resting mouse no longer holds it, since a pointer left on a big
+ * band read as a slideshow that had broken. Nobody who asked for less motion
+ * is shown it moving at all. One picture is a still.
  *
  * **The next picture fades in over the last**, which stays whole underneath
  * until it is covered: fading one out while the other fades in let the navy
@@ -36,7 +39,7 @@
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug } from "@shared/commerce/browse";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
-import { ArrowRight, Pause, Play, RotateCcw, Truck, Wallet } from "lucide-react";
+import { ArrowRight, RotateCcw, Truck, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -44,7 +47,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { heroSlides } from "@/lib/brandAssets";
 
 /** How long each picture stays before the next fades in. */
-export const SLIDE_MS = 3000;
+export const SLIDE_MS = 2000;
 
 export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   const { t } = useTranslation();
@@ -59,7 +62,6 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   const [ready, setReady] = useState<ReadonlySet<number>>(() => new Set());
   /* The current picture has had its time; the next waits only on loading. */
   const [due, setDue] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [held, setHeld] = useState(false);
   const [onScreen, setOnScreen] = useState(true);
   const stillWanted = useMediaQuery("(prefers-reduced-motion: reduce)");
@@ -67,7 +69,6 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
 
   const show = (next: number) => {
     const wrapped = (next + slides.length) % slides.length;
-    if (wrapped === index) return;
     setPrevious(index);
     setIndex(wrapped);
     setDue(false);
@@ -94,7 +95,7 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
     return () => { observer?.disconnect(); document.removeEventListener("visibilitychange", onTab); };
   }, [many]);
 
-  const running = many && !paused && !held && onScreen && !stillWanted;
+  const running = many && !held && onScreen && !stillWanted;
   const upcoming = (index + 1) % slides.length;
   useEffect(() => {
     if (!running) { setDue(false); return; }
@@ -117,9 +118,7 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
       ref={bandRef}
       aria-labelledby="home-hero-title"
       className="relative isolate overflow-hidden bg-[#0a285a] text-white"
-      onMouseEnter={() => setHeld(true)}
-      onMouseLeave={() => setHeld(false)}
-      onFocus={() => setHeld(true)}
+      onFocus={event => { if ((event.target as Element).matches(":focus-visible")) setHeld(true); }}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false); }}
     >
       {slides.length ? (
@@ -151,35 +150,6 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
             <span className="absolute inset-0 z-[3] bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_35%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_35%)]" />
           </div>
 
-          {many ? (
-            /* Centred under the picture on a phone; in the picture's end
-               corner from `lg`, above the fade, clear of what it shows. */
-            <div className="absolute inset-x-0 bottom-2 z-20 flex items-center justify-center gap-1 lg:bottom-36 lg:justify-end lg:pe-8">
-              {slides.map((src, slide) => (
-                <button
-                  key={src}
-                  type="button"
-                  onClick={() => show(slide)}
-                  aria-label={t("hero.picture", { n: slide + 1, total: slides.length })}
-                  aria-current={slide === index ? "true" : undefined}
-                  className="grid size-6 place-items-center rounded-full hover:bg-white/[.12]"
-                >
-                  <span className={`block h-2 rounded-full transition-all duration-300 ${slide === index ? "w-5 bg-white" : "w-2 bg-white/50"}`} />
-                </button>
-              ))}
-              {stillWanted ? null : (
-                <button
-                  type="button"
-                  onClick={() => setPaused(value => !value)}
-                  aria-label={t(paused ? "hero.play" : "hero.pause")}
-                  title={t(paused ? "hero.play" : "hero.pause")}
-                  className="ms-1 grid size-8 place-items-center rounded-full bg-[#0a285a]/40 text-white hover:bg-white/[.12]"
-                >
-                  {paused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
-                </button>
-              )}
-            </div>
-          ) : null}
         </div>
       ) : null}
 

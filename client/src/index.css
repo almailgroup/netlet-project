@@ -926,9 +926,8 @@ html[dir="rtl"] .nav-progress {
  * the one going out, which stays whole underneath, so the band never dips
  * towards its navy halfway through a change. An animation rather than a
  * transition because it has to start from nothing every time a picture
- * becomes current — a transition would let the picture just covered snap back
- * on top when a dot brings it back. Under reduced motion the base layer's
- * guard makes it a cut.
+ * becomes current, whatever it was showing as before. Under reduced motion the
+ * base layer's guard makes it a cut, though the slideshow does not move there.
  */
 .hero-slide-in {
   animation: hero-slide-in 1s ease-in-out both;
