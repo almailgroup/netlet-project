@@ -33,7 +33,8 @@ Read it for layout and treatment. Worth knowing what is in there:
 
 - The glass is on the header _bar_, not just its controls:
   `rgba(247,246,242,0.75)` under `blur(25px) saturate(210%)`. NetLet carried
-  that idea for a while and took it out again — see Buttons.
+  that idea for a while, took it out, and the owner asked for it back on the
+  bar alone — see Buttons.
 - The mobile bottom bar floats with a 24px radius, an upward shadow, and
   `env(safe-area-inset-bottom)` — that last part is where the current mobile
   nav's home-indicator fix came from.
@@ -64,8 +65,29 @@ names are only names now: `.glass` is a white surface with a hairline border,
 `.glass-navy` and `.glass-accent` are flat navy and flat orange, `.glass-white`
 is white with a navy-tinted rim for the one control drawn on a photograph,
 `.glass-on-dark` is a faint white on navy, `.glass-field` is a bordered field
-that takes a navy ring on focus. No pseudo-elements, no `backdrop-filter`
-anywhere in the storefront.
+that takes a navy ring on focus. No pseudo-elements on them, and no
+`backdrop-filter` on any control.
+
+**The header bar's background is the one piece of glass, on the owner's
+word** — the bar, never its controls, which stay solid. It is ui-layouts'
+Liquid Glass recipe laid along a bar (`.glass-bar` in `index.css`): a layer
+that blurs and saturates what passes under it and is then warped by an SVG
+turbulence displacement (`#netlet-glass`, drawn in `StoreHeader`), under a
+white tint with a bright rim. Four things make it safe where the old glass was
+not. **The layers sit inside the header, behind its contents**, never as a
+filter on `<header>`, which would make the bar the containing block for every
+fixed overlay inside it (the department picker's list was measured opening
+under its button, the search panel under the field). **The warped layer
+reaches 40px past the bar and is clipped**, because a displacement pulls in
+transparent pixels at the edges of what it filters and a bar's rim showed them
+as ragged bites. **The tint keeps the bar's words at 4.5:1** over the darkest
+thing that passes under them, the navy Deals band — 72% white at the top, 58%
+at the foot, about 5:1 there — and nothing on the bar is in the muted ink.
+**The warp runs only under a fine pointer**: it is recomputed on every frame of
+a scroll, so a phone gets the blur and the tint without it, and a browser with
+no `backdrop-filter`, or somebody who asked for less transparency, gets the
+solid white bar. The department row under it wears the tint alone, so the two
+read as one surface at rest.
 
 **`.glass-accent` carries navy text, not white**: white on `#f2683a` is 3.08:1
 and navy is 4.65:1, so the orange stays the brand's while the words on it pass.

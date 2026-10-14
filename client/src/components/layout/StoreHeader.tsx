@@ -233,7 +233,21 @@ export function StoreHeader({ activeDepartment }: {
         rather than a row before it, which is the same picture with no
         stranded content.
       */}
-      <header ref={headerRef} className="sticky-header sticky -top-14 z-40 border-b border-[#e6e9ef] bg-white lg:top-0 lg:border-b-0">
+      <header ref={headerRef} className="sticky-header glass-bar sticky -top-14 z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
+        {/* The bar's liquid glass, behind everything in it (`.glass-bar` in
+            index.css). Layers inside the header rather than a filter on the
+            header itself: a `backdrop-filter` there would make the bar the
+            containing block for every fixed overlay drawn inside it. */}
+        <span aria-hidden className="glass-bar-surface">
+          <span className="glass-bar-bend" />
+          <span className="glass-bar-face" />
+        </span>
+        <svg aria-hidden focusable="false" className="pointer-events-none absolute size-0 overflow-hidden">
+          <filter id="netlet-glass" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.003 0.007" numOctaves={1} seed={7} result="turbulence" />
+            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale={70} xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
         {phoneTop}
         <div className="container pb-2.5 pt-1 lg:hidden">{field}</div>
 
@@ -275,7 +289,9 @@ export function StoreHeader({ activeDepartment }: {
         </div>
         <div aria-hidden className="header-edge pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[#e6e9ef]" />
       </header>
-      <nav aria-label={t("nav.primary")} className="hidden border-b border-[#e6e9ef] bg-white lg:block">
+      {/* The bar's tint without its blur: nothing passes under this row while
+          it is on screen, so it only has to match the glass at rest. */}
+      <nav aria-label={t("nav.primary")} className="glass-bar-row hidden border-b border-[#e6e9ef] lg:block">
         <div className="container flex h-12 items-center gap-1.5">
           {categoryRail.filter(department => inStock(department.query) || activeDepartment === department.query).map(department => {
             const current = !onDeals && activeDepartment === department.query;
