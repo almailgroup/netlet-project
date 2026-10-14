@@ -10,13 +10,13 @@ import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { captureAffiliate } from "@/lib/affiliate";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import { matchRoute, Route, Router as WouterRouter, Switch, useLocation, useRouter, useSearch, type RouteComponentProps } from "wouter";
 import { PageFallback, StorefrontShell } from "@/components/layout/StorefrontShell";
 import { useIntentPrefetch } from "@/hooks/useIntentPrefetch";
 import { shelvedProduct } from "@/hooks/useCatalog";
 import { useQueryClient } from "@tanstack/react-query";
-import { lazyPage, type LazyPage } from "@/lib/lazyPage";
+import { lazyPage, type Preloadable } from "@/lib/lazyPage";
 import { isWaiting, setPageResolver, subscribeWaiting, useReadyLocation } from "@/lib/readyNavigation";
 import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
@@ -82,6 +82,10 @@ const AdminVendorNew = lazyPage(() => import("@/pages/admin/VendorNew"));
 const AdminVendorDetail = lazyPage(() => import("@/pages/admin/VendorDetail"));
 const AdminTeam = lazyPage(() => import("@/pages/admin/Team"));
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
+/* The portal's frame too: it is fetched with the first admin page, never by a shopper. */
+const loadAdminFrame = () => import("@/components/admin/AdminShell");
+const AdminLayout = lazyPage<{ children: ReactNode }>(async () => ({ default: (await loadAdminFrame()).AdminLayout }));
+const AdminNotFound = lazyPage(async () => ({ default: (await loadAdminFrame()).AdminNotFound }));
 
 /**
  * The bag drawer, out of the first download.
@@ -239,85 +243,103 @@ function ScrollMemory() {
  * router, and the prefetcher that fetches a page's code before it is opened.
  * A second list for the prefetcher would be the one that falls behind.
  *
- * `shell` is whether the page sits in the shop's frame (`StorefrontShell`).
- * Checkout and sign-in draw a bare header of their own, and the portal is its
- * own application. Order matters as it does in any `Switch`: `/admin/products/new`
- * before `:id`, which would otherwise read "new" as a product id.
+ * `frame` is which frame the page sits in, drawn once and kept while pages
+ * change under it: the shop's (`StorefrontShell`), the portal's
+ * (`AdminLayout`), or none — checkout and sign-in draw a bare header of their
+ * own. Order matters as it does in any `Switch`: `/admin/products/new` before
+ * `:id`, which would otherwise read "new" as a product id.
  */
-const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; shell: boolean }[] = [
-  { path: "/", page: Home, shell: true },
-  { path: "/signin", page: SignIn, shell: false },
-  { path: "/signup", page: SignIn, shell: false },
-  { path: "/login", page: SignIn, shell: false },
-  { path: "/register", page: SignIn, shell: false },
-  { path: "/checkout", page: Checkout, shell: false },
-  { path: "/account", page: Account, shell: true },
-  { path: "/account/:section", page: Account, shell: true },
-  { path: "/saved", page: Saved, shell: true },
-  { path: "/cart", page: Cart, shell: true },
-  { path: "/returns", page: Returns, shell: true },
-  { path: "/help", page: Help, shell: true },
-  { path: "/gifts/:token", page: GiftList, shell: true },
-  { path: "/gifts", page: GiftList, shell: true },
-  { path: "/invoices/verify/:number", page: InvoiceVerify, shell: true },
-  { path: "/invoices/:number", page: Invoice, shell: true },
-  { path: "/sell", page: Sell, shell: true },
-  { path: "/category/:slug", page: Category, shell: true },
+const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "shop" | "admin" | "bare" }[] = [
+  { path: "/", page: Home, frame: "shop" },
+  { path: "/signin", page: SignIn, frame: "bare" },
+  { path: "/signup", page: SignIn, frame: "bare" },
+  { path: "/login", page: SignIn, frame: "bare" },
+  { path: "/register", page: SignIn, frame: "bare" },
+  { path: "/checkout", page: Checkout, frame: "bare" },
+  { path: "/account", page: Account, frame: "shop" },
+  { path: "/account/:section", page: Account, frame: "shop" },
+  { path: "/saved", page: Saved, frame: "shop" },
+  { path: "/cart", page: Cart, frame: "shop" },
+  { path: "/returns", page: Returns, frame: "shop" },
+  { path: "/help", page: Help, frame: "shop" },
+  { path: "/gifts/:token", page: GiftList, frame: "shop" },
+  { path: "/gifts", page: GiftList, frame: "shop" },
+  { path: "/invoices/verify/:number", page: InvoiceVerify, frame: "shop" },
+  { path: "/invoices/:number", page: Invoice, frame: "shop" },
+  { path: "/sell", page: Sell, frame: "shop" },
+  { path: "/category/:slug", page: Category, frame: "shop" },
   /* Search results are the department layout over the whole catalog. */
-  { path: "/search", page: Category, shell: true },
-  { path: "/products/:handle", page: ProductDetail, shell: true },
-  { path: "/404", page: NotFound, shell: true },
-  { path: "/admin", page: AdminOverview, shell: false },
-  { path: "/admin/products", page: AdminProducts, shell: false },
-  { path: "/admin/products/new", page: AdminNewProduct, shell: false },
-  { path: "/admin/products/:id", page: AdminProductEditor, shell: false },
-  { path: "/admin/review", page: AdminReview, shell: false },
-  { path: "/admin/stock", page: AdminStock, shell: false },
-  { path: "/admin/orders", page: AdminOrders, shell: false },
-  { path: "/admin/import", page: AdminImport, shell: false },
-  { path: "/admin/promotions", page: AdminPromotions, shell: false },
-  { path: "/admin/applications", page: AdminApplications, shell: false },
-  { path: "/admin/bundles", page: AdminBundles, shell: false },
+  { path: "/search", page: Category, frame: "shop" },
+  { path: "/products/:handle", page: ProductDetail, frame: "shop" },
+  { path: "/404", page: NotFound, frame: "shop" },
+  { path: "/admin", page: AdminOverview, frame: "admin" },
+  { path: "/admin/products", page: AdminProducts, frame: "admin" },
+  { path: "/admin/products/new", page: AdminNewProduct, frame: "admin" },
+  { path: "/admin/products/:id", page: AdminProductEditor, frame: "admin" },
+  { path: "/admin/review", page: AdminReview, frame: "admin" },
+  { path: "/admin/stock", page: AdminStock, frame: "admin" },
+  { path: "/admin/orders", page: AdminOrders, frame: "admin" },
+  { path: "/admin/import", page: AdminImport, frame: "admin" },
+  { path: "/admin/promotions", page: AdminPromotions, frame: "admin" },
+  { path: "/admin/applications", page: AdminApplications, frame: "admin" },
+  { path: "/admin/bundles", page: AdminBundles, frame: "admin" },
   /* The fifth party's own board (2.2, 3.4.2), inside the same portal rather
      than a shell of its own: scope is already decided by the server, and two
      shells would be two navigations showing the same links. A courier sees
      only these. */
-  { path: "/admin/dispatch", page: AdminDispatch, shell: false },
-  { path: "/admin/couriers", page: AdminCouriers, shell: false },
-  { path: "/admin/claims", page: AdminClaims, shell: false },
-  { path: "/admin/messages", page: AdminMessages, shell: false },
-  { path: "/admin/returns", page: AdminReturns, shell: false },
-  { path: "/admin/features", page: AdminFeatures, shell: false },
-  { path: "/admin/affiliates", page: AdminAffiliates, shell: false },
-  { path: "/admin/payouts", page: AdminPayouts, shell: false },
-  { path: "/admin/ads", page: AdminAds, shell: false },
-  { path: "/admin/subscriptions", page: AdminSubscriptions, shell: false },
-  { path: "/admin/support", page: AdminSupport, shell: false },
-  { path: "/admin/fulfilment", page: AdminFulfilment, shell: false },
-  { path: "/admin/membership", page: AdminMembership, shell: false },
-  { path: "/admin/invoices", page: AdminInvoices, shell: false },
-  { path: "/admin/finance", page: AdminFinance, shell: false },
-  { path: "/admin/offers", page: AdminOffers, shell: false },
-  { path: "/admin/vendors", page: AdminVendors, shell: false },
-  { path: "/admin/vendors/new", page: AdminVendorNew, shell: false },
-  { path: "/admin/vendors/:id", page: AdminVendorDetail, shell: false },
-  { path: "/admin/people", page: AdminPeople, shell: false },
-  { path: "/admin/audit", page: AdminAudit, shell: false },
-  { path: "/admin/team", page: AdminTeam, shell: false },
+  { path: "/admin/dispatch", page: AdminDispatch, frame: "admin" },
+  { path: "/admin/couriers", page: AdminCouriers, frame: "admin" },
+  { path: "/admin/claims", page: AdminClaims, frame: "admin" },
+  { path: "/admin/messages", page: AdminMessages, frame: "admin" },
+  { path: "/admin/returns", page: AdminReturns, frame: "admin" },
+  { path: "/admin/features", page: AdminFeatures, frame: "admin" },
+  { path: "/admin/affiliates", page: AdminAffiliates, frame: "admin" },
+  { path: "/admin/payouts", page: AdminPayouts, frame: "admin" },
+  { path: "/admin/ads", page: AdminAds, frame: "admin" },
+  { path: "/admin/subscriptions", page: AdminSubscriptions, frame: "admin" },
+  { path: "/admin/support", page: AdminSupport, frame: "admin" },
+  { path: "/admin/fulfilment", page: AdminFulfilment, frame: "admin" },
+  { path: "/admin/membership", page: AdminMembership, frame: "admin" },
+  { path: "/admin/invoices", page: AdminInvoices, frame: "admin" },
+  { path: "/admin/finance", page: AdminFinance, frame: "admin" },
+  { path: "/admin/offers", page: AdminOffers, frame: "admin" },
+  { path: "/admin/vendors", page: AdminVendors, frame: "admin" },
+  { path: "/admin/vendors/new", page: AdminVendorNew, frame: "admin" },
+  { path: "/admin/vendors/:id", page: AdminVendorDetail, frame: "admin" },
+  { path: "/admin/people", page: AdminPeople, frame: "admin" },
+  { path: "/admin/audit", page: AdminAudit, frame: "admin" },
+  { path: "/admin/team", page: AdminTeam, frame: "admin" },
   /* The portal used to live at /dashboard. Anyone who bookmarked it lands
      there rather than on a 404 that looks like the tool is gone. */
-  { path: "/dashboard/:rest*", page: LegacyAdminRedirect, shell: false },
-  { path: "/dashboard", page: LegacyAdminRedirect, shell: false },
+  { path: "/dashboard/:rest*", page: LegacyAdminRedirect, frame: "bare" },
+  { path: "/dashboard", page: LegacyAdminRedirect, frame: "bare" },
 ];
 
-const isLazy = (page: ComponentType<RouteComponentProps>): page is LazyPage => typeof (page as Partial<LazyPage>).preload === "function";
+/* Every address the portal answers, whether or not a page does. */
+const ADMIN_AREA = /^\/admin(?:\/.*)?$/;
+
+const isLazy = (page: unknown): page is Preloadable => typeof (page as Partial<Preloadable>).preload === "function";
+
+/**
+ * Whose code an address needs before it can draw: its page, and for the
+ * portal the portal's frame as well. An address no route answers is the 404 of
+ * whichever frame it falls in.
+ */
+function piecesFor(parser: Parameters<typeof matchRoute>[0], path: string): Preloadable[] {
+  const route = ROUTES.find(entry => matchRoute(parser, entry.path, path)[0]);
+  const inPortal = ADMIN_AREA.test(path);
+  const page = route?.page ?? (inPortal ? AdminNotFound : NotFound);
+  const pieces: unknown[] = inPortal ? [page, AdminLayout] : [page];
+  return pieces.filter(isLazy);
+}
 
 /**
  * Fetches a page before it is opened (`useIntentPrefetch`): its code, and for
  * a product the product too, so the press lands on a page that is already
  * here. And once the first page has drawn, the two pages nearly every visit
- * goes on to — a product and a department — so the first of those opens at
- * once even on a phone, where there is no pointer to rest on a link first.
+ * goes on to — a product and a department, or in the portal its overview,
+ * products and orders — so the first of those opens at once even on a phone,
+ * where there is no pointer to rest on a link first.
  */
 function Prefetcher() {
   const { parser } = useRouter();
@@ -325,9 +347,7 @@ function Prefetcher() {
   const client = useQueryClient();
   const { locale } = useTranslation();
   const prefetch = useCallback((path: string) => {
-    const route = ROUTES.find(entry => matchRoute(parser, entry.path, path)[0]);
-    const page = route?.page ?? NotFound;
-    if (isLazy(page)) void page.preload().catch(() => undefined);
+    for (const piece of piecesFor(parser, path)) void piece.preload().catch(() => undefined);
     const [isProduct, params] = matchRoute(parser, "/products/:handle", path);
     if (isProduct && params?.handle) {
       const handle = decodeURIComponent(params.handle);
@@ -341,14 +361,16 @@ function Prefetcher() {
   /* A press on a link whose page has not arrived waits for it, with the
      current page still up (`readyNavigation`). */
   useEffect(() => setPageResolver(path => {
-    const route = ROUTES.find(entry => matchRoute(parser, entry.path, path)[0]);
-    const page = route?.page ?? NotFound;
-    return isLazy(page) && !page.loaded() ? page.preload : null;
+    const missing = piecesFor(parser, path).filter(piece => !piece.loaded());
+    return missing.length ? () => Promise.all(missing.map(piece => piece.preload())) : null;
   }), [parser]);
+  /* In the portal, the pages somebody running a store opens most instead. */
+  const [location] = useLocation();
+  const inPortal = ADMIN_AREA.test(location);
   useEffect(() => whenIdle(() => {
-    void ProductDetail.preload().catch(() => undefined);
-    void Category.preload().catch(() => undefined);
-  }), []);
+    const likely = inPortal ? [AdminLayout, AdminOverview, AdminProducts, AdminOrders] : [ProductDetail, Category];
+    for (const page of likely) void page.preload().catch(() => undefined);
+  }), [inPortal]);
   return null;
 }
 
@@ -372,7 +394,8 @@ function NavigationProgress() {
 }
 
 function Router() {
-  const storefront = ROUTES.filter(route => route.shell);
+  const storefront = ROUTES.filter(route => route.frame === "shop");
+  const portal = ROUTES.filter(route => route.frame === "admin");
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
     // sub-directory (GitHub Pages). It is "" for a root deployment.
@@ -383,7 +406,16 @@ function Router() {
       <Prefetcher />
       <Suspense fallback={<RouteFallback />}>
         <Switch>
-          {ROUTES.filter(route => !route.shell).map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+          {ROUTES.filter(route => route.frame === "bare").map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+          {/* The portal, in one frame that stays put while its pages change. */}
+          <Route path={ADMIN_AREA}>
+            <AdminLayout>
+              <Switch>
+                {portal.map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+                <Route component={AdminNotFound} />
+              </Switch>
+            </AdminLayout>
+          </Route>
           {/* Everything else is the shop, in one frame that stays put while
               the page inside it changes — a 404 included. */}
           <Route>

@@ -24,8 +24,9 @@
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StoreHeader } from "@/components/layout/StoreHeader";
+import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { useTranslation } from "@/hooks/useTranslation";
-import { createContext, Suspense, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, Suspense, useCallback, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 
 type Chrome = { activeDepartment: string | null };
@@ -69,10 +70,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
    * painted later than it could be, for an effect nobody asked of a first
    * visit. `page-enter` does nothing for somebody who asked for less motion.
    */
-  const landedOn = useRef(location);
-  const moved = useRef(false);
-  if (location !== landedOn.current) moved.current = true;
-  const enter = moved.current;
+  const enter = usePageEntrance(pageOf(location));
   const printed = PRINTED.test(location);
 
   return (
@@ -85,7 +83,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         </div>
         <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
           <Suspense fallback={<PageFallback />}>
-            <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter ? "page-enter" : ""}`}>{children}</div>
+            <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>
           </Suspense>
         </main>
         <div className={printed ? "contents print:hidden" : "contents"}>

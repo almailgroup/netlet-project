@@ -1,6 +1,16 @@
 /**
  * The admin portal frame: who you are, and what that lets you reach.
  *
+ * **Drawn once, and kept while the page inside it changes.** `AdminLayout` is
+ * the frame — the bar, the grouped menu, the one `<main>` — and `App` mounts it
+ * once round every `/admin` route. Every page used to wrap itself in a frame
+ * of its own, so each press in the menu threw the bar and the menu away and
+ * built them again: the menu lost its scroll on every move, a phone's open
+ * menu snapped shut, and while the next page's code arrived the whole screen
+ * gave way to a grey outline. `AdminShell` is what a page still wraps itself
+ * in, and it is only the page's own gate now: whether *this* page is yours,
+ * and the actor to draw it for.
+ *
  * There is one admin portal, not an admin one beside a vendor one. The pages are
  * the same pages; what differs is scope, and scope is already decided by the
  * server — `products.list` returns one vendor's rows or every vendor's
@@ -11,7 +21,7 @@
  * guards with. A hidden link is a courtesy, never a control: the server
  * refuses regardless, so the two cannot drift into a button that 403s.
  */
-import { buttonClass } from "@/components/admin/ui";
+import { buttonClass, PageHeader, SkeletonCards } from "@/components/admin/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
@@ -20,7 +30,8 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { logoImage } from "@/lib/brandAssets";
 import { ArrowLeft, BadgeCheck, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { usePageEntrance } from "@/hooks/usePageEntrance";
+import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
@@ -49,6 +60,9 @@ function canAny(actor: Actor, need: Capability | Capability[], vendorId?: number
   return (Array.isArray(need) ? need : [need]).some(one => can(actor, one, vendorId));
 }
 
+/* Who is signed in to the portal, settled once by the frame for every page. */
+const ActorContext = createContext<Actor | null>(null);
+
 export function AdminShell({ need, children }: {
   /**
    * What this page requires. Hiding a nav link is a courtesy; a route typed
@@ -64,8 +78,44 @@ export function AdminShell({ need, children }: {
   children: (actor: Actor) => ReactNode;
 }) {
   const { t } = useTranslation();
+  const actor = useContext(ActorContext);
+  /* Never drawn outside the frame, which settles the actor before any page. */
+  if (!actor) return null;
+  if (need && !canAny(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
+    return (
+      <>
+        <PageHeader title={t("admin.forbidden")} />
+        <Link href="/admin" className={buttonClass.secondary}>
+          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.overview")}
+        </Link>
+      </>
+    );
+  }
+  return <>{children(actor)}</>;
+}
+
+/** An address under `/admin` that answers to no page — inside the frame, with the way back. */
+export function AdminNotFound() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <PageHeader title={t("notFound.title")} />
+      <Link href="/admin" className={buttonClass.secondary}>
+        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.overview")}
+      </Link>
+    </>
+  );
+}
+
+/** The frame, mounted once round every `/admin` page (see `App`). */
+export function AdminLayout({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [location] = useLocation();
+  const enter = usePageEntrance(location);
   const [menuOpen, setMenuOpen] = useState(false);
+  /* The frame outlives the page now, so a phone's open menu closes on any
+     move, not only on a press inside it. */
+  useEffect(() => setMenuOpen(false), [location]);
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   /*
    * The demo build is a signed-out guest everywhere — there is no server to
@@ -109,16 +159,6 @@ export function AdminShell({ need, children }: {
     );
   }
 
-  if (need && !canAny(actor, need, actor.kind === "vendor" ? actor.vendorId : undefined)) {
-    return (
-      <Frame>
-        <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.forbidden")}</h1>
-        <Link href="/admin" className={`${buttonClass.secondary} mt-5`}>
-          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.overview")}
-        </Link>
-      </Frame>
-    );
-  }
 
   /*
    * Grouped, because the flat list had grown to twenty-eight links in one
@@ -215,7 +255,14 @@ export function AdminShell({ need, children }: {
   );
 
   return (
-    <main className="min-h-screen bg-background text-[#0a285a]">
+    <ActorContext.Provider value={actor}>
+    <div className="min-h-screen bg-background text-[#0a285a]">
+      <a
+        href="#admin-main"
+        className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-50"
+      >
+        {t("nav.skipToContent")}
+      </a>
       <header className="sticky top-0 z-40 border-b border-[#e1e7ef] bg-white">
         <div className="container flex h-16 items-center gap-3 sm:gap-4">
           <Link href="/admin" className="flex shrink-0 items-center gap-2.5" aria-label={t("admin.overview")}>
@@ -263,10 +310,17 @@ export function AdminShell({ need, children }: {
         </nav>
         {/* Any word that cannot fit breaks rather than pushing the page
             sideways: names, emails and links here are typed by merchants and
-            shoppers, and one long enough held a phone layout 55px open. */}
-        <section className="min-w-0 [overflow-wrap:anywhere]">{children(actor)}</section>
+            shoppers, and one long enough held a phone layout 55px open.
+            Only this part waits while a page's code arrives; the bar and the
+            menu stay where they are. */}
+        <main id="admin-main" tabIndex={-1} className="min-w-0 outline-none [overflow-wrap:anywhere]">
+          <Suspense fallback={<SkeletonCards count={3} label={t("admin.loading")} />}>
+            <div key={location} className={enter}>{children}</div>
+          </Suspense>
+        </main>
       </div>
-    </main>
+    </div>
+    </ActorContext.Provider>
   );
 }
 

@@ -16,17 +16,20 @@
  */
 import { createElement, lazy, type ComponentType, type ReactElement } from "react";
 
-/* A route hands its page the matched params; none of the pages read them as props. */
-type Props = object;
-export type LazyPage = ((props: Props) => ReactElement) & {
+/** What the prefetcher and the router need from a page whose code may not be here yet. */
+export type Preloadable = {
   preload: () => Promise<unknown>;
   /** Whether the code is here, so a move to the page need not wait. */
   loaded: () => boolean;
 };
 
-export function lazyPage(load: () => Promise<{ default: ComponentType<Props> }>): LazyPage {
-  let loaded: ComponentType<Props> | null = null;
-  let pending: Promise<{ default: ComponentType<Props> }> | null = null;
+/* A route hands its page the matched params; none of the pages read them as
+   props. A frame takes its children. */
+export type LazyPage<P extends object = object> = ((props: P) => ReactElement) & Preloadable;
+
+export function lazyPage<P extends object = object>(load: () => Promise<{ default: ComponentType<P> }>): LazyPage<P> {
+  let loaded: ComponentType<P> | null = null;
+  let pending: Promise<{ default: ComponentType<P> }> | null = null;
   const preload = () => {
     pending ??= load().then(
       module => {
@@ -41,7 +44,7 @@ export function lazyPage(load: () => Promise<{ default: ComponentType<Props> }>)
     );
     return pending;
   };
-  const Lazy = lazy(preload);
-  const Page = (props: Props) => createElement(loaded ?? Lazy, props);
+  const Lazy = lazy(preload) as unknown as ComponentType<P>;
+  const Page = (props: P) => createElement(loaded ?? Lazy, props);
   return Object.assign(Page, { preload, loaded: () => loaded !== null });
 }

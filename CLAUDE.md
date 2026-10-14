@@ -1054,9 +1054,11 @@ what a shopper gets):
   bag line, an order — is prefetched on intent instead.
 - **A page fades in over 180ms, opacity only**, on a move and never on the
   first load (which would delay the largest paint), and not at all for somebody
-  who asked for less motion. A transform would make the page the containing
-  block for its fixed bars for as long as it ran. Sections of the account share
-  one key, so its menu does not blink between them.
+  who asked for less motion (`usePageEntrance`, which the portal uses too). A
+  transform would make the page the containing block for its fixed bars for as
+  long as it ran. Sections of the account share one key, so its menu does not
+  blink between them — and the hook is keyed the same way, or landing on one
+  section and moving to another faded the menu in after all.
 
 **A finger gets the hover's tint while it is down** (`(hover: none)` and
 `:active`, in the base layer for the hover rule's reason), and the browser's own
@@ -2887,6 +2889,24 @@ are the same pages; scope is already decided by the server, so `products.list`
 returns one vendor's rows or every vendor's depending on who asks. Two shells
 would mean two navigations showing the same links. It was `/dashboard` until
 the rename; `/dashboard/*` still redirects, so old bookmarks land.
+
+**The portal's frame is drawn once, like the shop's.** `AdminLayout` — the
+bar, the grouped menu, the one `<main id="admin-main">`, a skip link — is
+mounted once by `App` round every `/admin` address (`frame: "admin"` in
+`ROUTES`), and settles who is signed in once for every page. Each page used to
+wrap itself in a whole frame, so each press in the menu rebuilt the bar and the
+menu: the menu lost its scroll, a phone's open menu snapped shut on some moves
+and stayed open on others, and a page's first visit swapped the whole screen
+for a grey outline. A page still wraps itself in `AdminShell`, which is now
+only its gate — whether *this* page is yours (`need`), and the actor to draw it
+for — and a refusal or an unknown `/admin/…` address (`AdminNotFound`) is drawn
+inside the frame, with the menu still there. The frame is fetched with the
+first admin page and waited for with it (`piecesFor`), never by a shopper: the
+main bundle did not grow by a byte. Moving between pages is the shop's own
+(`readyNavigation`, `useIntentPrefetch`, `usePageEntrance`), and once inside,
+the overview, products and orders are fetched while the browser is idle.
+Measured on a production build, across eight menu presses at 1440 and four at
+390: the bar and the menu never left the screen, and no outline was drawn.
 
 Which links appear comes from `can()` — the same pure function the server
 guards with. **A hidden link is a courtesy, never a control.** Pass `need` to
