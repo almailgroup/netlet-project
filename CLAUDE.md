@@ -612,15 +612,19 @@ squares, two CSS pixels to a unit so every edge lands on a whole pixel, with
 pixel-art circle is, the orange inside, one pale pixel of shine, and the number
 in a 3 × 5 pixel font drawn from a table in the file — no font file, and the
 digits read left to right on either page. When a badge appears or its number
-changes it crouches, jumps and lands with a squash, three times over 2.4s,
-throwing four pixels off its corners at the top of each jump, then holds still
-(`.pixel-badge-hop`, `.pixel-spark` in `index.css`). Every keyframe is held
-rather than tweened (`steps(1, end)`), which is what makes it move like a
-sprite. The span is keyed by the number, so a new number restarts the hop.
-It ends inside five seconds, the line WCAG 2.2.2 draws for motion nobody can
-pause, and under reduced motion it never moves. Measured frame by frame at 390
-and 1440 in both languages: it starts on the press of Add, nothing is left
-running three seconds later, and axe finds nothing on the pages that draw it.
+changes it crouches, jumps and lands with a squash, throwing four pixels off
+its corners at the top of the jump — **once, and again every ten seconds**
+(`.pixel-badge-hop`, `.pixel-spark` in `index.css`: a 10s loop whose first
+0.8s is the jump). It hopped three times and then held still at first, and the
+owner asked for one hop on an interval instead. Every keyframe is held rather
+than tweened (`steps(1, end)`), which is what makes it move like a sprite. The
+span is keyed by the number, so a new number hops at once and starts the ten
+seconds again. Repeating is a trade against WCAG 2.2.2, which asks for a way
+to stop motion that lasts past five seconds, made on the owner's word as the
+slideshow's was; under reduced motion it never moves. Measured on a production
+build, sampling every frame for 23s after Add: one 0.7s hop at the press, then
+at 10.0s and 20.0s and still between, in both languages; a second Add at 4.5s
+hopped at 4.5s and next at 14.5s. axe found nothing on the pages that draw it.
 
 **Delivery sits in the primary bar, because that is the row that survives a
 scroll** — on a wide screen; a phone's bar no longer carries it (see below). It spent one release at the end of the department rail, put there to
@@ -712,7 +716,7 @@ whole catalogue everywhere else, one tab meaning two things — and the sheet
 became the `/categories` page (see Browsing).
 
 **Nothing in the header moves on its own** — only its badges, which hop when
-their number changes (above). It used to watch the scroll and fold:
+their number changes and every ten seconds after (above). It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
 `data-compact` flag. Now the header is one fixed height and nothing animates:
@@ -1020,8 +1024,8 @@ it — a pointer left on a band that size read as a slideshow that had stopped
 working. Nobody who asked for less motion sees it move. A picture is fetched
 only when it is next, the first with `fetchPriority="high"` as the page's
 largest paint; one picture alone is a still. The header, the cards and the
-paid banners' carousel still never move on their own; a badge hops only when
-its number changes.
+paid banners' carousel still never move on their own; a badge hops when its
+number changes and every ten seconds after.
 
 **The next picture fades in over the last, and only once it is decoded.** The
 one going out stays whole underneath (`.hero-slide-in`, a one-second fade

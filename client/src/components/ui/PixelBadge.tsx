@@ -9,14 +9,14 @@
  * orange, 4.65:1, the rule every badge here follows; the SVG is hidden from a
  * screen reader because the control it sits on already says the count.
  *
- * **It hops when it has news** — when it appears and whenever the number
- * changes: three stepped 8-bit hops with a spark of four pixels flying off,
- * about two and a half seconds, then still (`.pixel-badge` in `index.css`).
- * Every hop is a cut between held poses rather than a glide, which is what
- * makes it read as a sprite. It stops on its own inside five seconds, the line
- * WCAG 2.2.2 draws for motion nobody can pause, and nobody who asked for less
- * motion sees it move at all. Keyed by the number, so a new number restarts
- * it from the first hop.
+ * **It hops when it has news, and again every ten seconds** — one stepped
+ * 8-bit hop with a spark of four pixels flying off, then still until the next
+ * (`.pixel-badge` in `index.css`), on the owner's word. Every hop is a cut
+ * between held poses rather than a glide, which is what makes it read as a
+ * sprite. Keyed by the number, so a new number hops at once and starts the ten
+ * seconds again. Repeating is a trade against WCAG 2.2.2, which asks for a way
+ * to stop motion that lasts past five seconds; nobody who asked for less
+ * motion sees it move at all.
  */
 import type { CSSProperties } from "react";
 

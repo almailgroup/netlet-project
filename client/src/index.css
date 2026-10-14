@@ -927,13 +927,17 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
- * The notification badges' hop (`PixelBadge`), on the owner's word: when a
- * badge appears or its number changes it crouches, jumps, lands with a
- * squash, three times over 2.4s, throwing four pixels off its corners at the
- * top of each jump — then holds still. Every keyframe is held rather than
- * tweened (`steps(1, end)` between each), so it moves the way a sprite does,
- * in poses. Inside five seconds, so it ends before WCAG 2.2.2 asks for a way
- * to stop it; and not at all for somebody who asked for less motion.
+ * The notification badges' hop (`PixelBadge`), on the owner's word: a badge
+ * crouches, jumps and lands with a squash, throwing four pixels off its
+ * corners at the top of the jump — once, then still, and again every ten
+ * seconds. The jump is the first 0.8s of a 10s loop (the first 8% of each
+ * keyframe list) and the rest of the loop holds still. It starts on the
+ * badge's first draw, and a new number restarts the loop (the span is keyed
+ * by it), so news hops at once. Every keyframe is held rather than tweened
+ * (`steps(1, end)` between each), so it moves the way a sprite does, in poses.
+ * Repeating, it no longer stops on its own inside five seconds, which is a
+ * trade against WCAG 2.2.2 made on the owner's word; nobody who asked for less
+ * motion sees it move at all.
  */
 .pixel-badge {
   display: block;
@@ -956,28 +960,28 @@ html[dir="rtl"] .nav-progress {
 }
 @media (prefers-reduced-motion: no-preference) {
   .pixel-badge-hop {
-    animation: pixel-hop 800ms steps(1, end) 3 both;
+    animation: pixel-hop 10s steps(1, end) infinite both;
   }
   .pixel-spark {
-    animation: pixel-spark 800ms steps(1, end) 3 both;
+    animation: pixel-spark 10s steps(1, end) infinite both;
   }
 }
 @keyframes pixel-hop {
   0% { transform: none; }
-  12% { transform: scale(1.18, 0.82); }
-  24% { transform: translateY(-4px) scale(0.88, 1.14); }
-  36% { transform: translateY(-7px) scale(1.12); }
-  50% { transform: translateY(-4px); }
-  62% { transform: scale(1.18, 0.82); }
-  74% { transform: scale(0.95, 1.05); }
-  86%, 100% { transform: none; }
+  0.96% { transform: scale(1.18, 0.82); }
+  1.92% { transform: translateY(-4px) scale(0.88, 1.14); }
+  2.88% { transform: translateY(-7px) scale(1.12); }
+  4% { transform: translateY(-4px); }
+  4.96% { transform: scale(1.18, 0.82); }
+  5.92% { transform: scale(0.95, 1.05); }
+  6.88%, 100% { transform: none; }
 }
 @keyframes pixel-spark {
-  0%, 30% { opacity: 0; transform: none; }
-  36% { opacity: 1; transform: translate(calc(var(--dx) * 3px), calc(var(--dy) * 3px)); }
-  48% { opacity: 1; transform: translate(calc(var(--dx) * 6px), calc(var(--dy) * 6px)); }
-  60% { opacity: 1; transform: translate(calc(var(--dx) * 9px), calc(var(--dy) * 9px)); }
-  70%, 100% { opacity: 0; transform: none; }
+  0%, 2.4% { opacity: 0; transform: none; }
+  2.88% { opacity: 1; transform: translate(calc(var(--dx) * 3px), calc(var(--dy) * 3px)); }
+  3.84% { opacity: 1; transform: translate(calc(var(--dx) * 6px), calc(var(--dy) * 6px)); }
+  4.8% { opacity: 1; transform: translate(calc(var(--dx) * 9px), calc(var(--dy) * 9px)); }
+  5.6%, 100% { opacity: 0; transform: none; }
 }
 
 /*
