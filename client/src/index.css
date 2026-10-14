@@ -922,6 +922,38 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * The phone's tab bar highlight (`MobileTabBar`): one pale pill that slides to
+ * the tab chosen, a quarter of the bar wide and stepped a quarter at a time,
+ * mirrored on the Arabic page. It slides only when it moves from a tab it was
+ * on (`data-slide`); otherwise it appears where it is needed, fading in.
+ * Under reduced motion the base layer's guard makes both a cut.
+ */
+.tab-pill {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  inset-inline-start: 5px;
+  width: calc((100% - 10px) / 4);
+  border-radius: 9999px;
+  background: #ececef;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.06);
+  pointer-events: none;
+  transform: translateX(calc(var(--tab, 0) * 100%));
+  transition: opacity 200ms ease;
+}
+[dir="rtl"] .tab-pill {
+  transform: translateX(calc(var(--tab, 0) * -100%));
+}
+.tab-pill[data-slide] {
+  transition:
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms ease;
+}
+.tab-pill[data-hidden] {
+  opacity: 0;
+}
+
+/*
  * The home page's slideshow (`HomeHero`): the picture coming in fades in over
  * the one going out, which stays whole underneath, so the band never dips
  * towards its navy halfway through a change. An animation rather than a

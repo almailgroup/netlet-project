@@ -22,13 +22,25 @@
  * **It floats above the home indicator rather than growing over it**: the
  * bar's foot is `max(0.75rem, safe area)`, so on an iPhone it is the same
  * pill, lifted, instead of a pill with a thick bottom edge.
+ *
+ * **The grey pill is one element that slides to the tab chosen**, on the
+ * owner's word (`.tab-pill` in `index.css`). It moves on the press, not when
+ * the page arrives — a page whose code is still coming keeps the old one up
+ * for as long as `MAX_WAIT_MS`, and a highlight that waited with it would read
+ * as a press that had not taken — and settles wherever the address lands. It
+ * sits on Categories while the departments sheet is open and goes back if the
+ * sheet closes on nothing. On a page no tab names (a product, a search) it
+ * fades where it is, and it fades in rather than slides when one is reached
+ * again, since a slide from a tab nobody was on describes no move. The word
+ * and icon follow the pill; `aria-current` follows the address.
  */
 import { DepartmentSheet } from "@/components/layout/DepartmentSheet";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ShoppingCart, UserRound } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { MAX_WAIT_MS } from "@/lib/readyNavigation";
 import { Link, useLocation } from "wouter";
 
 /** A house, filled while it is the current tab — the picture's own mark. */
@@ -67,8 +79,19 @@ export function MobileTabBar() {
   const [location] = useLocation();
   const { itemCount } = useCart();
   const [browsing, setBrowsing] = useState(false);
+  /* The tab pressed whose page has not arrived yet. */
+  const [pressed, setPressed] = useState<string | null>(null);
   /* The same counts the header's account menu reads, so the two agree. */
   const signals = useAccountSignals();
+
+  /* The address has moved: the page decides from here. A move that never
+     happens (Back while it waited) gives the pill back after the wait. */
+  useEffect(() => setPressed(null), [location]);
+  useEffect(() => {
+    if (!pressed) return;
+    const timer = window.setTimeout(() => setPressed(null), MAX_WAIT_MS + 500);
+    return () => window.clearTimeout(timer);
+  }, [pressed]);
 
   const tabs: Tab[] = [
     {
@@ -109,6 +132,19 @@ export function MobileTabBar() {
     },
   ];
 
+  /* Where the pill is: the sheet open, then a press on its way, then the page. */
+  const shownKey = browsing ? "categories" : pressed ?? tabs.find(tab => tab.active)?.key ?? null;
+  const shown = shownKey ? tabs.findIndex(tab => tab.key === shownKey) : -1;
+  /* It slides only from a tab it was on; from nowhere it fades in. */
+  const previous = useRef(-1);
+  const resting = useRef(Math.max(shown, 0));
+  const slides = previous.current >= 0 && shown >= 0;
+  const at = shown >= 0 ? shown : resting.current;
+  useEffect(() => {
+    previous.current = shown;
+    if (shown >= 0) resting.current = shown;
+  }, [shown]);
+
   return (
     <>
     <DepartmentSheet open={browsing} onClose={() => setBrowsing(false)} />
@@ -121,16 +157,22 @@ export function MobileTabBar() {
         <span className="glass-bar-bend" />
         <span className="glass-bar-face" />
       </span>
-      {tabs.map(tab => {
-        const className = `relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full text-[12px] leading-4 min-[360px]:text-[13px] min-[390px]:text-[14px] ${
-          tab.active
-            ? "bg-[#ececef] font-bold text-[#0a285a] shadow-[inset_0_1px_2px_rgba(0,0,0,.06)]"
-            : "font-medium text-[#16181d]"
+      <span
+        aria-hidden
+        className="tab-pill"
+        data-slide={slides ? "" : undefined}
+        data-hidden={shown < 0 ? "" : undefined}
+        style={{ "--tab": at } as CSSProperties}
+      />
+      {tabs.map((tab, index) => {
+        const lit = index === shown;
+        const className = `relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full text-[12px] leading-4 transition-colors duration-300 min-[360px]:text-[13px] min-[390px]:text-[14px] ${
+          lit ? "font-bold text-[#0a285a]" : "font-medium text-[#16181d]"
         }`;
         const face = (
           <>
             <span className="relative">
-              {tab.icon(tab.active)}
+              {tab.icon(lit)}
               {tab.badge ? (
                 <span className="absolute -end-2 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold leading-4 text-[#0a285a]">
                   {tab.badge > 99 ? "99+" : tab.badge}
@@ -148,7 +190,11 @@ export function MobileTabBar() {
             key={tab.key}
             href={tab.href}
             onClick={event => {
-              if (location !== tab.href) return;
+              if (location !== tab.href) {
+                /* A modified press opens a new tab and moves nothing here. */
+                if (!(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) setPressed(tab.key);
+                return;
+              }
               event.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}

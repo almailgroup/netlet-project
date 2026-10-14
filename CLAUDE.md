@@ -110,7 +110,19 @@ parts white — and the current tab's pill is solid for the same reason.
 Measured by hiding the tabs' ink and reading the darkest pixel behind each
 label's words at every 120px of the home page, at 390 in both languages: 7.62:1
 at worst. The words step down from 14px to 13px under 390 and 12px under 360,
-so "Categories" in bold fits a 320px phone. **It floats above the home
+so "Categories" in bold fits a 320px phone. **The grey pill is one element
+that slides between the tabs** (`.tab-pill`, 420ms, mirrored on the Arabic
+page), also on the owner's word. It moves on the press rather than when the
+address does, because a page whose code is still coming keeps the old one up
+for as long as `MAX_WAIT_MS` and a highlight waiting with it reads as a press
+that did not take; it then settles wherever the address lands. It sits on
+Categories while the departments sheet is open and returns if the sheet
+closes on nothing; on a page no tab names it fades where it is, and on
+reaching a tab again it fades in rather than sliding from a tab nobody was on.
+The word and icon follow the pill, `aria-current` follows the address, and
+reduced motion makes it a cut. Measured frame by frame in both languages: it
+lands centred on the tab every time, and the labels stay drawn above it
+mid-slide. **It floats above the home
 indicator** (`bottom: max(0.75rem, safe area)`) rather than padding over it,
 so an iPhone gets the same pill lifted rather than a pill with a thick foot;
 the department page's filter button and the footer's clearance add the safe
