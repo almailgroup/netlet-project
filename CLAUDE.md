@@ -946,18 +946,29 @@ a slogan where a shopper looks for something to tap — and it went, leaving the
 page to open on six tiles, which the owner found plain. `HomeHero` is the door
 that came back, built the other way round: a navy band the width of the screen
 with NetLet's pictures on it, one line saying what the shop is — "Kuwait's
-stores, one cart." — the three facts every order carries (every governorate,
-cash at the door, `RETURN_WINDOW_DAYS`), and two ways in. The first is Today's
+stores, one cart." — and two ways in. The first is Today's
 deals only while the home page draws a Deals shelf (`shelvesFor`), New arrivals
 otherwise, so the first press never lands on a half-empty page. The page's `h1`
-is in it, the shop's name first for a screen reader. On a phone the facts are a
-short list and the buttons sit side by side only while both fit
-(`flex-[1_0_auto]`, never wrapping their words), each the full width at 320.
+is in it, the shop's name first for a screen reader. On a phone the buttons
+sit side by side only while both fit (`flex-[1_0_auto]`, never wrapping their
+words), each the full width at 320. The three facts every order carries (every
+governorate, cash at the door, `RETURN_WINDOW_DAYS`) sat under the line as a
+list, and the owner asked for them gone; checkout and the sign-in page still
+say them.
 
 **The band fades into the page rather than ending on a line**: its foot runs
 from the navy into `--background`, over the pictures too, so the departments
 below read as the same surface continuing. It ended on an orange rule once, and
-the owner asked for the fade.
+the owner asked for the fade — and then for a softer one. **Both of the band's
+fades are eased** (`.hero-foot`, `.hero-shade`: smoothstep, as a stop every
+tenth): a straight gradient starts at a visible line and spends its middle in
+one flat slate grey, and the eased one leaves the navy and reaches the page
+with neither. The foot is 144px on a phone and 192px wide, taller than the
+room under the buttons, because its first fifth is all but clear. Its stops are
+`rgb(var(--background-rgb) / a)`, the page's ground as channels: written with
+`color-mix`, the minifier wrapped them in a fallback that painted the ground
+solid from the first tenth down — no browser that matters takes that branch,
+but the built CSS is what ships, and it is the thing to read.
 
 **Its pictures are a slideshow — the one thing on the shop that moves on its
 own, on the owner's word.** `heroSlides` (`lib/brandAssets.ts`) is NetLet's

@@ -1,16 +1,17 @@
 /**
  * The front door: a navy band the width of the screen with NetLet's pictures
- * on it, one line saying what the shop is, the three facts every order
- * carries, and two ways in.
+ * on it, one line saying what the shop is, and two ways in.
  *
  * The home page opened on a slogan once ("Small upgrades. A brighter
  * everyday.") over blurred colour blobs, and it went because it was words where
  * a shopper looks for something to tap. This is the opposite arrangement: the
- * line is short, the facts beside it are the shop's own rules (delivery to
- * every governorate, cash at the door, `RETURN_WINDOW_DAYS`), and both buttons
- * go somewhere with something in it — today's deals only while the home page
+ * line is short and both buttons go somewhere with something in it — today's
+ * deals only while the home page
  * draws a Deals shelf (`shelvesFor`), the new arrivals otherwise, so the first
- * press never lands on a half-empty page.
+ * press never lands on a half-empty page. The three facts every order carries
+ * (every governorate, cash at the door, the return window) sat under the line
+ * as a list for a while; the owner asked for them gone, and they are still
+ * said at checkout and on the sign-in page.
  *
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
  * street, then `client/src/assets/hero/` in name order). Only the pictures
@@ -34,12 +35,14 @@
  *
  * **The band fades into the page** rather than ending on a line: its foot runs
  * from the navy into the page's own background, so the departments below
- * read as the same surface continuing. The words sit above the fade.
+ * read as the same surface continuing. The words sit above the fade. It is
+ * eased (`.hero-foot` in `index.css`), on the owner's word: a straight
+ * gradient starts at a visible line and lingers in a slate grey halfway, and
+ * an eased one leaves the navy and arrives at the page without either.
  */
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug } from "@shared/commerce/browse";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
-import { ArrowRight, RotateCcw, Truck, Wallet } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -107,12 +110,6 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
     /* `show` reads the index, which `upcoming` already follows. */
   }, [running, due, ready, upcoming]);
 
-  const facts = [
-    { icon: Truck, label: t("checkout.builtForKuwait") },
-    { icon: Wallet, label: t("home.payOnDelivery") },
-    { icon: RotateCcw, label: t("home.returnsWithin", { days: RETURN_WINDOW_DAYS }) },
-  ];
-
   return (
     <section
       ref={bandRef}
@@ -147,13 +144,13 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
             {/* Into the navy on the words' side: below the pictures on a
                 phone, beside them from `lg`, from the start edge in either
                 direction. */}
-            <span className="absolute inset-0 z-[3] bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_35%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_35%)]" />
+            <span className="hero-shade absolute inset-0 z-[3]" />
           </div>
 
         </div>
       ) : null}
 
-      <div className="container relative z-10 pb-24 pt-1 sm:pb-28 lg:flex lg:min-h-[480px] lg:items-center lg:pb-36 lg:pt-12">
+      <div className="container relative z-10 pb-32 pt-1 sm:pb-36 lg:flex lg:min-h-[480px] lg:items-center lg:pb-40 lg:pt-12">
         <div className="max-w-[600px]">
           {/* The page's heading: the shop's name for a screen reader's outline,
               then the line everybody reads. */}
@@ -162,18 +159,9 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
             {t("home.heroTitle")} <span className="text-[#f2683a]">{t("home.heroTitleAccent")}</span>
           </h1>
           <p className="mt-3 max-w-[46ch] text-[15px] leading-6 text-[#c9d4e2] sm:mt-4 sm:text-[17px] sm:leading-7">{t("home.heroNote")}</p>
-          {/* A short list on a phone, where three pills wrapped to three
-              lines anyway; pills from `sm` up, where they sit in a row. */}
-          <ul className="mt-4 grid gap-1.5 sm:mt-6 sm:flex sm:flex-wrap sm:gap-2">
-            {facts.map(fact => (
-              <li key={fact.label} className="inline-flex items-center gap-2 text-[13px] font-semibold sm:gap-1.5 sm:rounded-full sm:border sm:border-white/15 sm:bg-white/[.08] sm:px-3 sm:py-1.5">
-                <fact.icon className="size-3.5 shrink-0 text-[#ffab85]" aria-hidden />{fact.label}
-              </li>
-            ))}
-          </ul>
           {/* Side by side while both fit on one line, each the whole width
               once they do not — the words never wrap inside a button. */}
-          <div className="mt-5 flex flex-wrap gap-3 sm:mt-7">
+          <div className="mt-5 flex flex-wrap gap-3 sm:mt-6">
             <Link
               href={dealsDrawn ? "/category/all?offer=1&sort=discount" : "/category/all?sort=newest"}
               className="inline-flex h-12 flex-[1_0_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#f2683a] px-5 tint-on-hover text-[15px] font-bold text-[#0a285a] sm:flex-none sm:px-6"
@@ -192,8 +180,9 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
       </div>
 
       {/* The foot: from the navy into the page's own background, over the
-          pictures as well, so the band ends without an edge. */}
-      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-20 bg-[linear-gradient(180deg,rgba(10,40,90,0)_0%,var(--background)_100%)] sm:h-24 lg:h-32" />
+          pictures as well, so the band ends without an edge. Taller than the
+          room under the buttons, because its first fifth is all but clear. */}
+      <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-36 sm:h-40 lg:h-48" />
     </section>
   );
 }
