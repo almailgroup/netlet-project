@@ -47,6 +47,18 @@ export const ENV = {
      unset is no channel: the Help section draws only what is configured. */
   supportWhatsapp: process.env.SUPPORT_WHATSAPP ?? "",
   supportPhone: process.env.SUPPORT_PHONE ?? "",
+  /* NetLet's support address and its social profiles, for the footer. Each
+     public and each optional: unset or malformed is absent, never a link to
+     nobody (`shared/commerce/contact.ts`). */
+  supportEmail: process.env.SUPPORT_EMAIL ?? "",
+  social: {
+    instagram: process.env.SOCIAL_INSTAGRAM ?? "",
+    snapchat: process.env.SOCIAL_SNAPCHAT ?? "",
+    tiktok: process.env.SOCIAL_TIKTOK ?? "",
+    x: process.env.SOCIAL_X ?? "",
+    youtube: process.env.SOCIAL_YOUTUBE ?? "",
+    facebook: process.env.SOCIAL_FACEBOOK ?? "",
+  },
   /* NetLet's own account, the one payouts leave (3.3.21). Only the ISO 20022
      bank file needs it — the CSV names only the people being paid — so unset
      is that one format unavailable, said on the page. The name falls back to

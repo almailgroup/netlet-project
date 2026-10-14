@@ -590,7 +590,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "support.mine":
       return [];
     case "support.channels":
-      return { whatsapp: null, phone: null };
+      return { whatsapp: null, phone: null, email: null, social: [], company: null };
     case "support.unread":
     case "support.waiting":
       return 0;

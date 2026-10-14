@@ -49,6 +49,7 @@ const Category = lazyPage(() => import("@/pages/Category"));
 const Store = lazyPage(() => import("@/pages/Store"));
 const Stores = lazyPage(() => import("@/pages/Stores"));
 const Categories = lazyPage(() => import("@/pages/Categories"));
+const Legal = lazyPage(() => import("@/pages/Legal"));
 /* The admin portal is a separate application in everything but deployment: no
    shopper ever loads it, so it stays out of the storefront's bundle. */
 const AdminOverview = lazyPage(() => import("@/pages/admin/Overview"));
@@ -265,6 +266,8 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/cart", page: Cart, frame: "shop" },
   { path: "/returns", page: Returns, frame: "shop" },
   { path: "/help", page: Help, frame: "shop" },
+  { path: "/terms", page: Legal, frame: "shop" },
+  { path: "/privacy", page: Legal, frame: "shop" },
   { path: "/gifts/:token", page: GiftList, frame: "shop" },
   { path: "/gifts", page: GiftList, frame: "shop" },
   { path: "/invoices/verify/:number", page: InvoiceVerify, frame: "shop" },

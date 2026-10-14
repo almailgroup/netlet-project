@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS, supportNumber } from "../../shared/commerce/support.js";
+import { companyDetails, contactEmail, socialLinks } from "../../shared/commerce/contact.js";
 import { ENV } from "../_core/env.js";
 import {
   conversationForShopper,
@@ -48,11 +49,20 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 const body = z.string().max(MAX_SUPPORT_MESSAGE + 200);
 
 export const supportRouter = router({
-  /* NetLet's WhatsApp and phone (3.5.1), when configured. Public numbers; a
-     malformed one is no channel rather than a link to nobody. */
+  /* NetLet's WhatsApp and phone (3.5.1), its email and profiles, and who it
+     is — every one public and optional, as the footer and the help page draw
+     them. A malformed value is no channel rather than a link to nobody. */
   channels: publicProcedure.query(() => ({
     whatsapp: supportNumber(ENV.supportWhatsapp),
     phone: supportNumber(ENV.supportPhone),
+    email: contactEmail(ENV.supportEmail),
+    social: socialLinks(ENV.social),
+    company: companyDetails({
+      name: ENV.invoiceIssuerName,
+      nameAr: ENV.invoiceIssuerNameAr,
+      licence: ENV.invoiceIssuerLicence,
+      address: ENV.invoiceIssuerAddress,
+    }),
   })),
 
   open: protectedProcedure

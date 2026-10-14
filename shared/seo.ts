@@ -114,6 +114,25 @@ export function categoriesMeta(siteUrl: string): PageMeta {
   };
 }
 
+/** The terms of use or the privacy policy — public and indexable, as a shop's are. */
+export function legalMeta(page: "terms" | "privacy", siteUrl: string): PageMeta {
+  return page === "terms"
+    ? {
+        title: `Terms of use — ${SITE_NAME}`,
+        description: "The terms for shopping on NetLet: who sells to you, prices and cash on delivery, delivery, returns, and the law that applies.",
+        canonical: absoluteUrl(siteUrl, "/terms"),
+        image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+        type: "website",
+      }
+    : {
+        title: `Privacy policy — ${SITE_NAME}`,
+        description: "What NetLet keeps about you, why, who else sees it, and how to change or delete it.",
+        canonical: absoluteUrl(siteUrl, "/privacy"),
+        image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+        type: "website",
+      };
+}
+
 /** Every store on NetLet. */
 export function storesMeta(siteUrl: string): PageMeta {
   return {

@@ -1150,6 +1150,48 @@ heading read "All products" over both, which is what made them look broken.
 The departments listed are the ones with something on sale, the navigation's
 rule.
 
+**The footer is what a shop's footer owes a shopper, on the owner's word** —
+it was four columns of links and a copyright line, and read as a template's.
+Now: how to reach a person (WhatsApp, the phone, the email, Message NetLet, the
+help centre), the link groups, how paying and delivery work (cash on delivery,
+every governorate), the language, and the last line saying who the shop is —
+the company, its commercial registration and its address, which a Kuwaiti shop
+shows its customers — beside the terms and the privacy policy. **Every contact
+is a setting, and an unset one is absent**: `support.channels` carries
+`SUPPORT_WHATSAPP`, `SUPPORT_PHONE`, `SUPPORT_EMAIL`, the `SOCIAL_*` profiles
+and the company, each through `shared/commerce/contact.ts`, which refuses an
+address that is not one and a profile link that is not https on that
+platform's own host — a lookalike domain or a link pasted into the wrong box
+draws nothing rather than sending a shopper somewhere nobody meant. Message
+NetLet is always there, so the block is never empty on a deployment that has
+set nothing. **The company is the invoices' own issuer** (`INVOICE_ISSUER_*`),
+so the footer and an invoice cannot name two companies, and `nameInSentence`
+drops the name's own full stop, which the sentence after it supplies — "Example
+Co.." on the first draw. On a phone the link groups fold (the WAI-ARIA
+disclosure, one structure at a time by `useMediaQuery`), the contact block open
+above them, so the footer is a short page and not five screens of links; the
+terms and the privacy policy stay on the last line at every width, where a
+folded column would have hidden them.
+
+**`/terms` and `/privacy` say what the code does** (`pages/Legal.tsx`,
+`content/legal.ts`): who sells to a shopper and who issues the invoice, the
+full total before ordering, cash on delivery and a store's cash ceiling, each
+store's own delivery fee, `RETURN_WINDOW_DAYS` and the perishable exception,
+the contact filter; what is kept, what stays on the device (recent searches,
+remembered measurements — the language and the area do not, being synced for
+an account), who else sees what (the stores and the carrier, Vercel, Supabase,
+Google's reCAPTCHA, the map chosen, a model provider for the assistants and
+photo search, the browser's own speech service), the one sign-in cookie, and
+asking through Help to close an account, since there is no button for it. A
+paragraph about a service the deployment does not run — the analytics tool —
+is drawn only when the build configures it. The operator is named from the
+same company, and with none recorded the introduction says what NetLet is
+without "run by NetLet". **Written from the code, not by a lawyer**; somebody
+qualified in Kuwaiti consumer and data law should read both, and when a rule
+they describe changes, the sentence and `LEGAL_UPDATED` change with it. The
+three Arabic entries that name those services in Latin are allowed by the
+dictionary test, for the maps' reason.
+
 **The bag has a page.** `/cart` answered 404 because the bag was only a
 drawer, so nothing could link to it and Back on a phone left the shop. The page
 and the drawer draw the same parts (`BagLines`, `BagSummary` in

@@ -28,6 +28,8 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
   const entries: SitemapEntry[] = [
     { path: "/", priority: 1.0 },
     { path: "/categories", priority: 0.7 },
+    { path: "/terms", priority: 0.2 },
+    { path: "/privacy", priority: 0.2 },
     ...DEPARTMENTS.map(department => ({ path: `/category/${department.slug}`, priority: 0.8 })),
   ];
 

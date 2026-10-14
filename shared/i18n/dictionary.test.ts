@@ -59,6 +59,10 @@ describe("dictionary completeness", () => {
       // The two maps a shopper chooses between, named as their makers name them
       // on an Arabic phone — "خرائط Google", with the company in Latin.
       "pin.google", "pin.apple", "pin.tryGoogle", "pin.tryApple",
+      // The privacy policy names the services a shopper's information reaches
+      // — Vercel, Supabase, Google's reCAPTCHA and the three maps — as their
+      // makers write them, so a reader can look each one up: the maps' reason.
+      "privacy.who.services", "privacy.who.google", "privacy.cookies.body",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.
