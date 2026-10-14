@@ -84,10 +84,18 @@ as ragged bites. **The tint keeps the bar's words at 4.5:1** over the darkest
 thing that passes under them, the navy Deals band — 72% white at the top, 58%
 at the foot, about 5:1 there — and nothing on the bar is in the muted ink.
 **The warp runs only under a fine pointer**: it is recomputed on every frame of
-a scroll, so a phone gets the blur and the tint without it, and a browser with
-no `backdrop-filter`, or somebody who asked for less transparency, gets the
-solid white bar. The department row under it wears the tint alone, so the two
-read as one surface at rest.
+a scroll, so a phone gets the blur and the tint without it, and only a browser
+with no `backdrop-filter` gets the solid white bar. The department row under it
+wears the tint alone, so the two read as one surface at rest.
+
+**It shows for everybody, the reduce-transparency setting included, on the
+owner's word.** It went solid under `prefers-reduced-transparency: reduce` at
+first, and the owner reported it missing from the live site: in Chrome and Edge
+on Windows that setting is the "Transparency effects" switch, which was off on
+their own machine. Their screenshot's bar was 99% pure white pixels, which is
+how it was told apart from a stale deploy — the soft shadow under it existed
+only in the glass build. What keeps the words legible is the tint, and that is
+not conditional.
 
 **`.glass-accent` carries navy text, not white**: white on `#f2683a` is 3.08:1
 and navy is 4.65:1, so the orange stays the brand's while the words on it pass.

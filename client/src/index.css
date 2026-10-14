@@ -942,8 +942,12 @@ html[dir="rtl"] .nav-progress {
  * - The warp runs only under a fine pointer. It is recomputed on every frame
  *   of every scroll, and a phone — what this shop sells to — gets the blur
  *   and the tint without it.
- * - Solid white where the browser has no backdrop-filter, and for anybody
- *   who asked for less transparency.
+ * - Solid white only where the browser has no backdrop-filter. It was solid
+ *   too wherever the system asks for less transparency, and the owner asked
+ *   for it to show for everybody: in Chrome and Edge on Windows that setting
+ *   is the "Transparency effects" switch, which was off on the owner's own
+ *   machine, so the glass they had asked for never appeared for them. The
+ *   tint is what keeps the bar's words at 4.5:1, and it stays.
  */
 .glass-bar-surface {
   position: absolute;
@@ -996,15 +1000,5 @@ html[dir="rtl"] .nav-progress {
 @media (min-width: 1024px) {
   .sticky-header.glass-bar[data-stuck] {
     box-shadow: 0 8px 24px rgb(10 40 90 / 0.08);
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .glass-bar-surface,
-  .glass-bar-row {
-    background: #fff;
-  }
-  .glass-bar-bend,
-  .glass-bar-face {
-    display: none;
   }
 }
