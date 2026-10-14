@@ -466,6 +466,8 @@ function toProduct(seed: Seed, index: number): Product {
     descriptionHtml: `<p>${seed.description}</p>`,
     productType: seed.productType,
     vendor: seed.vendor,
+    /* So "Sold by" opens the invented store's page, which `demoLink` answers. */
+    vendorSlug: seed.vendor.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     // None: a badge is a claim backed by a document check, reviews or
     // delivery times, and an invented seller has none of the three.
     vendorBadges: [],

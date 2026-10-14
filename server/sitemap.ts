@@ -12,6 +12,7 @@
 import { DEPARTMENTS } from "../shared/commerce/departments.js";
 import type { SitemapEntry } from "../shared/sitemap.js";
 import { publishedCatalog } from "./inventory.js";
+import { listStoreCards, STORE_INDEX_LIMIT } from "./catalog.js";
 
 /**
  * The cap is a ceiling on work per request, not a page size.
@@ -36,6 +37,12 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
   for (const product of products) {
     entries.push({ path: `/products/${product.handle}`, lastModified: product.updatedAt, priority: 0.6 });
   }
+
+  /* A store's page is listed while it has something on sale — the rule the
+     Stores row and `/stores` keep — so the index never leads to an empty shelf. */
+  const stores = await listStoreCards("en", STORE_INDEX_LIMIT).catch(() => []);
+  if (stores.length) entries.push({ path: "/stores", priority: 0.5 });
+  for (const store of stores) entries.push({ path: `/stores/${store.slug}`, priority: 0.5 });
 
   return entries;
 }

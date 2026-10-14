@@ -25,6 +25,14 @@
       "destination": "/api?__page=/category/:slug"
     },
     {
+      "source": "/stores/:slug",
+      "destination": "/api?__page=/stores/:slug"
+    },
+    {
+      "source": "/stores",
+      "destination": "/api?__page=/stores"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

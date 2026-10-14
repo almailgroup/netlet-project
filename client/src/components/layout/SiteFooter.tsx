@@ -26,6 +26,7 @@ type FooterLink = { key: MessageKey; href: string };
 
 const SHOPPING: FooterLink[] = [
   { key: "footer.allProducts", href: "/category/all" },
+  { key: "stores.title", href: "/stores" },
   { key: "footer.newArrivals", href: "/category/all?sort=newest" },
   { key: "footer.onOffer", href: "/category/all?offer=1" },
   { key: "footer.savedItems", href: "/saved" },

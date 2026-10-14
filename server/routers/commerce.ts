@@ -19,10 +19,12 @@ import {
   getCart,
   getCollectionByHandle,
   getProductByHandle,
+  getStorePage,
   listCollections,
   listProducts,
   listStoreCards,
   removeCartLines,
+  STORE_INDEX_LIMIT,
   updateCartLines,
 } from "../catalog.js";
 import { publicProcedure, router } from "../_core/trpc.js";
@@ -86,10 +88,14 @@ export const commerceRouter = router({
     .query(({ input }) => listBestsellers(input?.locale ?? "en")),
   /** The home page's Shop by brand: the Brand rows of the live catalogue, counted. */
   brands: publicProcedure.query(() => listBrands()),
-  /** The home page's Stores on NetLet: stores with something on sale, the busiest first. */
+  /** Stores with something on sale, the busiest first: the home page's row, and every one on `/stores`. */
   stores: publicProcedure
-    .input(z.object({ locale: localeSchema }).optional())
-    .query(({ input }) => listStoreCards(input?.locale ?? "en")),
+    .input(z.object({ locale: localeSchema, limit: z.number().int().min(1).max(STORE_INDEX_LIMIT).optional() }).optional())
+    .query(({ input }) => listStoreCards(input?.locale ?? "en", input?.limit)),
+  /** One store's public page — null for an address no approved store answers to. */
+  store: publicProcedure
+    .input(z.object({ slug: z.string().min(1).max(120), locale: localeSchema }))
+    .query(({ input }) => getStorePage(input.slug, input.locale ?? "en")),
   collections: router({
     list: publicProcedure
       .input(z.object({ first: z.number().int().min(1).max(50).optional(), locale: localeSchema }).optional())

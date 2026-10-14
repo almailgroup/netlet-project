@@ -82,6 +82,38 @@ export function departmentMeta(name: string, slug: string, siteUrl: string): Pag
   };
 }
 
+/**
+ * A store's public page. The store's own description when it wrote one, a
+ * plain sentence otherwise; its logo as the share picture when the logo is one
+ * a preview card can fetch.
+ */
+export function storeMeta(
+  store: { slug: string; name: string; description: string | null; logoUrl: string | null; products: number },
+  siteUrl: string,
+): PageMeta {
+  const description = store.description?.trim()
+    ? toPreviewText(store.description)
+    : `Shop ${store.name} on NetLet: ${store.products === 1 ? "1 product" : `${store.products} products`}, with delivery across Kuwait and cash on delivery.`;
+  return {
+    title: `${store.name} — ${SITE_NAME}`,
+    description,
+    canonical: absoluteUrl(siteUrl, `/stores/${encodeURIComponent(store.slug)}`),
+    image: shareableImage(store.logoUrl ?? undefined, siteUrl),
+    type: "website",
+  };
+}
+
+/** Every store on NetLet. */
+export function storesMeta(siteUrl: string): PageMeta {
+  return {
+    title: `Stores — ${SITE_NAME}`,
+    description: "Every store selling on NetLet, Kuwait's marketplace — each with its own shelf, delivery terms and reviews.",
+    canonical: absoluteUrl(siteUrl, "/stores"),
+    image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+    type: "website",
+  };
+}
+
 export function productMeta(product: Product, siteUrl: string): PageMeta {
   const description = product.description.trim()
     ? toPreviewText(product.description)

@@ -42,6 +42,12 @@ Read it for layout and treatment. Worth knowing what is in there:
 soft orange `#ffa86e`. The current brand is navy `#0a285a`, orange `#f2683a`,
 pearl `#f3f2ed`. Do not carry the old colours across without asking.
 
+**`ui-layouts` (MIT, `github.com/ui-layouts/uilayouts`) is the owner's second
+reference**, for components: `apps/ui-layout/components/ui/` holds the source.
+Adapt what is borrowed by hand — NetLet's colours, RTL, the hover rule, the
+accessibility checks — rather than through its CLI, which rewrites project
+configuration and pulls in `motion` for effects this shop keeps still.
+
 ## Buttons
 
 **Every surface is solid, and that is a reversal.** The storefront was glass
@@ -927,13 +933,13 @@ where the scroller then clipped the "1".
 departments, shelves and a grid never said. `commerce.stores`
 (`listStoreCards` in `server/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
-the same `pick` their products use, so the card's link —
-`/category/all?seller=…`, the Seller filter, until stores have pages of their
-own — matches. Everything on a card is measured: products on sale, a rating only
-from five visible reviews (the High Rating floor), the badges `badgesFor`
-grants. A logo when the store has one, otherwise its initial on the portal's
-pale navy (`StoreAvatar`'s look), not a palette of its own. Under three stores
-the row is not drawn, the brand row's rule.
+the same `pick` their products use. Each card opens the store's own page, and
+"See all stores" opens `/stores` (see "A store has a page"). Everything on a
+card is measured: products on sale, a rating only from five visible reviews
+(the High Rating floor), the badges `badgesFor` grants. A logo when the store
+has one, otherwise its initial on the portal's pale navy (`StoreAvatar`'s
+look), not a palette of its own. Under three stores the row is not drawn, the
+brand row's rule.
 
 **Picked for you is drawn only when it is personal** (the rule under
 Recommendations), draws nothing while it loads, and on the home page is held to
@@ -3533,6 +3539,47 @@ model, so the commonest act on a shop's search box depended on a third party
 and failed to "AI search is temporarily unavailable" with no results at all.
 "Refine with NetLet AI" is the quieter button under the results now, lands on
 the same page, and when it fails says so and leaves the standard results.
+
+## A store has a page
+
+**`/stores/<slug>` is a store as a shopper would ask about it** — who it is,
+what it says about itself, where it is, how it delivers, how its customers
+rated it — and its whole live shelf. Sellers had no page of their own: "Sold
+by" was a line of text and the nearest thing to a store was the department
+page ticked to one seller. `/stores` lists every store with something on sale,
+from the Stores row's own read and cards (`components/store/StoreCard.tsx`, one
+copy for both), and says so when it reaches `STORE_INDEX_LIMIT`. "Sold by" on a
+product page is a link to the store now, through the `vendorSlug` products
+already carried, and the footer lists Stores.
+
+**What `getStorePage` selects is the whole privacy rule.** A vendor row carries
+the store's email, phone, street address, licence numbers, IBAN and commission;
+none of them is named in the select, so no later edit to the shaping can leak
+one. `storeCards.test.ts` writes all six onto a store and checks the page says
+none of them, and that the profile's keys are exactly the public ten. A store
+that is not approved answers null — the same as an address nobody has — and
+its products come through `publishedCatalog({ vendorId })`, so the page shows
+exactly what the shop would.
+
+**Everything on it is the store's own words or measured.** The description
+(either language rather than none: a store that wrote only Arabic still says
+something on the English page), the logo and the governorate are what the
+store gave NetLet; the rating counts only from five visible reviews; the badges
+are `storefrontBadges`'; the delivery line is the rule checkout charges by (no
+fee recorded is free delivery, never a number the store did not type); cash on
+delivery is said only when the store takes it. **The reviews shown are the
+newest three, whatever their stars** (`recentReviewsForStore`) — a store page
+that chose its best ones would be an advert — named by `displayName`.
+
+The shelf is narrowed in the address — `?dept=`, `?q=`, `?sort=` — the
+department page's rule, so a narrowed store is something somebody sends; the
+search is `rankBySearch`, the rule every search on the shop answers by, and is
+drawn only past twelve products. Department chips appear when the store sells
+in more than one, each with its count. The read carries the newest
+`STORE_PAGE_PRODUCTS` and the page says when there are more. A store's page and
+`/stores` have their own head for a shared link (`storeMeta`, `storesMeta`,
+written by `pageShell.ts` through the `vercel.json` rewrites) and are in the
+sitemap while the store has something on sale.
 
 ## The product page
 

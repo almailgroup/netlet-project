@@ -1,20 +1,22 @@
 /**
  * The HTML a crawler or a chat app receives for a page, with that page's head.
  *
- * Product and department pages only: they are what gets shared and indexed,
- * and each answer costs a catalogue read. Everything else keeps the shell's
+ * Product, department and store pages only: they are what gets shared and
+ * indexed, and each answer costs a catalogue read. Everything else keeps the shell's
  * default tags, which describe the shop. A read that fails — no database, a
  * product taken down — sends the shell unchanged rather than an error, since
  * the page itself still loads and says what happened.
  */
 import { DEPARTMENTS } from "../shared/commerce/departments.js";
-import { breadcrumbJsonLd, departmentMeta, productJsonLd, productMeta } from "../shared/seo.js";
+import { breadcrumbJsonLd, departmentMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../shared/seo.js";
 import { headTags, withHead } from "../shared/seoHead.js";
 import { describeError } from "./_core/describeError.js";
-import { getProductByHandle } from "./catalog.js";
+import { getProductByHandle, getStorePage } from "./catalog.js";
 
 const PRODUCT = /^\/products\/([^/?#]+)\/?$/;
 const DEPARTMENT = /^\/category\/([^/?#]+)\/?$/;
+const STORE = /^\/stores\/([^/?#]+)\/?$/;
+const STORES = /^\/stores\/?$/;
 
 /**
  * The page a request is for. On Vercel a page is rewritten onto the function
@@ -30,7 +32,7 @@ export function pagePathOf(req: { originalUrl: string; query: Record<string, unk
 
 /** Whether this address is one the server writes a head for. */
 export function hasPageHead(path: string): boolean {
-  return PRODUCT.test(path) || DEPARTMENT.test(path);
+  return PRODUCT.test(path) || DEPARTMENT.test(path) || STORE.test(path) || STORES.test(path);
 }
 
 export async function pageWithHead(template: string, path: string, origin: string): Promise<string> {
@@ -52,6 +54,13 @@ export async function pageWithHead(template: string, path: string, origin: strin
       if (!known) return template;
       return withHead(template, headTags(departmentMeta(known.name, known.slug, origin)));
     }
+    const store = STORE.exec(path);
+    if (store) {
+      const page = await getStorePage(decodeURIComponent(store[1]), "en");
+      if (!page) return template;
+      return withHead(template, headTags(storeMeta(page.store, origin)));
+    }
+    if (STORES.test(path)) return withHead(template, headTags(storesMeta(origin)));
   } catch (error) {
     console.error(`[page head] ${path}: ${describeError(error)}`);
   }

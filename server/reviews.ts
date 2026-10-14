@@ -286,6 +286,49 @@ export async function reviewsForProduct(
   };
 }
 
+/** A review as a store's page shows it: the product it was about, by its frozen title. */
+export type StoreReview = Omit<PublicReview, "vendorReply" | "vendorRepliedAt"> & { productTitle: string };
+
+/** How many reviews a store's page shows; the average beside them counts every one. */
+export const STORE_PAGE_REVIEWS = 3;
+
+/**
+ * A store's newest visible reviews, whatever their stars.
+ *
+ * The newest rather than the best: a page that picks its own five-star reviews
+ * is an advert, and a shopper reading it knows. Hidden rows are left out in
+ * the query, for `reviewsForProduct`'s reason. Without a database the page
+ * simply has none to show.
+ */
+export async function recentReviewsForStore(vendorId: number, limit = STORE_PAGE_REVIEWS): Promise<StoreReview[]> {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({
+      id: reviews.id,
+      rating: reviews.rating,
+      title: reviews.title,
+      body: reviews.body,
+      productTitle: reviews.productTitle,
+      createdAt: reviews.createdAt,
+      authorName: sql<string | null>`(select "name" from "users" where "users"."id" = ${reviews.userId})`,
+    })
+    .from(reviews)
+    .where(and(eq(reviews.vendorId, vendorId), isNull(reviews.hiddenAt)))
+    .orderBy(desc(reviews.createdAt), desc(reviews.id))
+    .limit(limit);
+  return rows.map(row => ({
+    id: row.id,
+    rating: row.rating,
+    title: row.title,
+    body: row.body,
+    productTitle: row.productTitle,
+    author: displayName(row.authorName),
+    createdAt: row.createdAt.toISOString(),
+    verifiedPurchase: true,
+  }));
+}
+
 /**
  * Rating summaries for many products at once.
  *

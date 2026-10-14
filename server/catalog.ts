@@ -55,6 +55,8 @@ import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { shopperPrice } from "../shared/commerce/shopperPrice.js";
 import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
 import { discountAllowed } from "../shared/inventory/discountLicence.js";
+import { isDeliverySpeed, type DeliverySpeed } from "../shared/commerce/deliverySpeed.js";
+import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
@@ -162,6 +164,8 @@ export async function badgesFor(
 
 /** How many stores the home page's row can hold. */
 export const STORE_ROW_LIMIT = 10;
+/** How many `/stores` lists — a ceiling on one read, which the page says when it reaches. */
+export const STORE_INDEX_LIMIT = 200;
 
 /** A store as the home page's "Stores on NetLet" row draws it. */
 export type StoreCard = {
@@ -203,29 +207,151 @@ export async function listStoreCards(locale: LocalePick = "en", limit = STORE_RO
     .orderBy(desc(live), asc(vendors.id))
     .limit(limit);
   if (!rows.length) return [];
-  const [badges, ratings] = await Promise.all([
-    badgesFor(db, rows),
+  const [badges, ratings] = await Promise.all([badgesFor(db, rows), storeRatings(db, rows.map(row => row.id))]);
+  return rows.map(row => ({
+    slug: row.slug,
+    name: pick(locale, row.name, row.nameAr),
+    logoUrl: row.logoUrl?.trim() || null,
+    products: Number(row.products),
+    rating: ratings.get(row.id) ?? null,
+    badges: badges.get(row.id) ?? [],
+  }));
+}
+
+/**
+ * Each store's rating over its visible reviews, only where there are
+ * `HIGH_RATING_MIN_REVIEWS` of them — the floor the High Rating badge keeps,
+ * so a store card and a store page never show an average of one review.
+ */
+async function storeRatings(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  vendorIds: number[],
+): Promise<Map<number, { average: number; count: number }>> {
+  if (!vendorIds.length) return new Map();
+  const rows = await db
+    .select({ vendorId: reviews.vendorId, count: sql<number>`count(*)::int`, average: sql<string | null>`avg(${reviews.rating})` })
+    .from(reviews)
+    .where(and(inArray(reviews.vendorId, vendorIds), isNull(reviews.hiddenAt)))
+    .groupBy(reviews.vendorId);
+  const rated = new Map<number, { average: number; count: number }>();
+  for (const row of rows) {
+    const count = Number(row.count);
+    if (row.vendorId === null || row.average == null || count < HIGH_RATING_MIN_REVIEWS) continue;
+    rated.set(row.vendorId, { average: Math.round(Number(row.average) * 10) / 10, count });
+  }
+  return rated;
+}
+
+/* --------------------------------------------------------- a store's page --- */
+
+/**
+ * How many of a store's products its page carries. A ceiling on one read, not
+ * a page size: past it the page shows the newest and says how many there are.
+ */
+export const STORE_PAGE_PRODUCTS = 500;
+
+/** What a store's public page says about the store — and nothing else. */
+export type StoreProfile = {
+  slug: string;
+  name: string;
+  /** The store's own words, in the page's language when it wrote both; null when it wrote none. */
+  description: string | null;
+  logoUrl: string | null;
+  /** Where the store is, as a governorate id; null when it has not said. */
+  governorate: string | null;
+  /** When the store opened on NetLet. */
+  since: string;
+  /** Published products on its shelf now. */
+  products: number;
+  rating: { average: number; count: number } | null;
+  badges: TrustBadge[];
+  /** The store's own delivery terms (`shared/commerce/delivery.ts`): a fee, a free-over threshold, a band. */
+  delivery: {
+    flat: string | null;
+    freeOver: string | null;
+    speed: DeliverySpeed | null;
+    cashOnDelivery: boolean;
+  };
+};
+
+export type StorePage = {
+  store: StoreProfile;
+  /** The store's live products, newest first, up to `STORE_PAGE_PRODUCTS`. */
+  products: Product[];
+  reviews: StoreReview[];
+};
+
+/**
+ * One store's public page: an approved store, by its address.
+ *
+ * **What it selects is the whole privacy rule.** A vendor row carries the
+ * store's email, phone, street address, licence numbers, IBAN and commission
+ * — and none of them is named below, so none of them can reach a shopper by a
+ * later edit to the shaping. The products come through `publishedCatalog`, so
+ * the page shows exactly what the shop would: a draft, or anything at all from
+ * a suspended store (which answers null here, the same as an unknown address).
+ */
+export async function getStorePage(slug: string, locale: LocalePick = "en"): Promise<StorePage | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const [row] = await db
+    .select({
+      id: vendors.id,
+      slug: vendors.slug,
+      name: vendors.name,
+      nameAr: vendors.nameAr,
+      description: vendors.description,
+      descriptionAr: vendors.descriptionAr,
+      logoUrl: vendors.logoUrl,
+      governorate: vendors.governorate,
+      createdAt: vendors.createdAt,
+      badges: vendors.badges,
+      deliveryFlat: vendors.deliveryFlat,
+      deliveryFreeOver: vendors.deliveryFreeOver,
+      deliverySpeed: vendors.deliverySpeed,
+      acceptsCod: vendors.acceptsCod,
+    })
+    .from(vendors)
+    .where(and(eq(vendors.slug, slug), eq(vendors.status, "approved")))
+    .limit(1);
+  if (!row) return null;
+
+  const [shelf, [counted], badges, ratings, recent] = await Promise.all([
+    publishedCatalog({ vendorId: row.id, limit: STORE_PAGE_PRODUCTS }),
     db
-      .select({ vendorId: reviews.vendorId, count: sql<number>`count(*)::int`, average: sql<string | null>`avg(${reviews.rating})` })
-      .from(reviews)
-      .where(and(inArray(reviews.vendorId, rows.map(row => row.id)), isNull(reviews.hiddenAt)))
-      .groupBy(reviews.vendorId),
+      .select({ count: sql<number>`count(*)::int` })
+      .from(products)
+      .where(and(eq(products.vendorId, row.id), eq(products.status, "published"))),
+    badgesFor(db, [row]),
+    storeRatings(db, [row.id]),
+    recentReviewsForStore(row.id),
   ]);
-  const ratingBy = new Map(ratings.map(row => [row.vendorId, row]));
-  return rows.map(row => {
-    const rated = ratingBy.get(row.id);
-    const count = Number(rated?.count ?? 0);
-    return {
+  const { vendorById, categoryById } = await contextFor(db, shelf);
+
+  /* Either language rather than none: a store that wrote only Arabic still
+     says something on the English page. */
+  const description = (locale === "ar" ? row.descriptionAr?.trim() || row.description?.trim() : row.description?.trim() || row.descriptionAr?.trim()) || null;
+  return {
+    store: {
       slug: row.slug,
       name: pick(locale, row.name, row.nameAr),
+      description,
       logoUrl: row.logoUrl?.trim() || null,
-      products: Number(row.products),
-      rating: count >= HIGH_RATING_MIN_REVIEWS && rated?.average != null
-        ? { average: Math.round(Number(rated.average) * 10) / 10, count }
-        : null,
+      governorate: row.governorate,
+      since: row.createdAt.toISOString(),
+      products: Number(counted?.count ?? 0),
+      rating: ratings.get(row.id) ?? null,
       badges: badges.get(row.id) ?? [],
-    };
-  });
+      delivery: {
+        flat: row.deliveryFlat,
+        freeOver: row.deliveryFreeOver,
+        speed: isDeliverySpeed(row.deliverySpeed) ? row.deliverySpeed : null,
+        cashOnDelivery: row.acceptsCod,
+      },
+    },
+    products: shelf.map(product => shape(product, vendorById, categoryById, locale)),
+    reviews: recent,
+  };
 }
 
 type CatalogRow = Awaited<ReturnType<typeof publishedCatalog>>[number];

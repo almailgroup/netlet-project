@@ -44,6 +44,10 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     param: "count",
     ar: { two: "منتجان", few: "{count} منتجات", many: "{count} منتجاً" },
   },
+  "stores.countMany": {
+    param: "count",
+    ar: { two: "متجران", few: "{count} متاجر", many: "{count} متجراً", other: "{count} متجر" },
+  },
   "home.brandCountMany": {
     param: "count",
     ar: { two: "منتجان", many: "{count} منتجاً", other: "{count} منتج" },

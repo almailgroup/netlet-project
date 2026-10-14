@@ -225,7 +225,30 @@ function resolve(path: string, rawInput: unknown): unknown {
         products,
         rating: null,
         badges: [],
-      })).sort((a, b) => b.products - a.products).slice(0, 10);
+      })).sort((a, b) => b.products - a.products).slice(0, typeof input.limit === "number" ? input.limit : 10);
+    }
+    /* An invented store's page: its invented shelf, and nothing it never
+       said — no description, rating, reviews or delivery terms. */
+    case "commerce.store": {
+      const slugOf = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const shelf = demoCatalog.filter(product => product.vendor && slugOf(product.vendor) === String(input.slug ?? ""));
+      if (!shelf.length) return null;
+      return {
+        store: {
+          slug: slugOf(shelf[0].vendor!),
+          name: shelf[0].vendor!,
+          description: null,
+          logoUrl: null,
+          governorate: null,
+          since: new Date(Date.UTC(2026, 0, 1)).toISOString(),
+          products: shelf.length,
+          rating: null,
+          badges: [],
+          delivery: { flat: null, freeOver: null, speed: null, cashOnDelivery: true },
+        },
+        products: shelf,
+        reviews: [],
+      };
     }
     case "commerce.collections.list":
       return [];

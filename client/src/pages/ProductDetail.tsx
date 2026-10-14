@@ -1039,7 +1039,15 @@ export default function ProductDetail() {
           <div className="min-w-0 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 shadow-[0_8px_32px_rgba(10,40,90,.05)] sm:p-7">
             {product.vendor ? (
               <div className="flex flex-wrap items-center gap-2">
-                <p dir="auto" className="text-xs font-bold ink-muted">{product.vendor}</p>
+                {/* The store's own page, where its other products, its delivery
+                    terms and its reviews are. */}
+                {product.vendorSlug ? (
+                  <Link href={`/stores/${encodeURIComponent(product.vendorSlug)}`} className="text-xs font-bold ink-accent hover:underline">
+                    <bdi>{t("browse.soldBy", { name: product.vendor })}</bdi>
+                  </Link>
+                ) : (
+                  <p dir="auto" className="text-xs font-bold ink-muted">{product.vendor}</p>
+                )}
                 <VendorBadges badges={product.vendorBadges} />
               </div>
             ) : null}

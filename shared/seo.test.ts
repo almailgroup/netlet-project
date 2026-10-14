@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absoluteUrl, breadcrumbJsonLd, productJsonLd, productMeta, toPreviewText } from "./seo.js";
+import { absoluteUrl, breadcrumbJsonLd, productJsonLd, productMeta, storeMeta, toPreviewText } from "./seo.js";
 import type { Product } from "./commerce/types.js";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
@@ -152,5 +152,27 @@ describe("breadcrumbJsonLd", () => {
   it("skips the category step when the product has none", () => {
     const ld = breadcrumbJsonLd(product({ productType: null }), "https://netlet.com") as any;
     expect(ld.itemListElement).toHaveLength(2);
+  });
+});
+
+describe("storeMeta", () => {
+  const store = { slug: "dar-home", name: "Dar Home", description: null, logoUrl: null, products: 5 };
+
+  it("names the store, links its page and says what it sells when it wrote nothing", () => {
+    const meta = storeMeta(store, "https://netlet.example");
+    expect(meta.title).toBe("Dar Home — NetLet");
+    expect(meta.canonical).toBe("https://netlet.example/stores/dar-home");
+    expect(meta.description).toContain("5 products");
+    expect(meta.image).toBe("https://netlet.example/brand/og-cover.png");
+  });
+
+  it("uses the store's own words and a logo a preview card can fetch", () => {
+    const meta = storeMeta({ ...store, description: "Linen and lamps\nmade in Kuwait.", logoUrl: "/media/abc.webp" }, "https://netlet.example");
+    expect(meta.description).toBe("Linen and lamps · made in Kuwait.");
+    expect(meta.image).toBe("https://netlet.example/media/abc.webp");
+  });
+
+  it("never uses an SVG logo as the share picture", () => {
+    expect(storeMeta({ ...store, logoUrl: "https://cdn.example/logo.svg" }, "https://netlet.example").image).toBe("https://netlet.example/brand/og-cover.png");
   });
 });
