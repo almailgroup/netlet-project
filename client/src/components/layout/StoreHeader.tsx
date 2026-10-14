@@ -58,7 +58,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
-import { categorySlug } from "@shared/commerce/browse";
+import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
 import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
@@ -95,11 +95,7 @@ function Count({ value }: { value: number }) {
   );
 }
 
-export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProduct, activeDepartment }: {
-  catalog?: Product[];
-  search?: string;
-  onSearch?: (query: string) => void;
-  onSelectProduct?: (product: Product) => void;
+export function StoreHeader({ activeDepartment }: {
   /** The department this page is in, by its query ("Electronics", "All"), so the row can mark it. */
   activeDepartment?: string | null;
 }) {
@@ -117,19 +113,16 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 
   /*
-   * The field is on every page that wears this header. A page with no search
-   * of its own — the sell page, a 404, an invoice — used to get the header
-   * without it, so the one way to look for something vanished exactly where a
-   * shopper is lost; such a page passes no handler and the header keeps the
-   * words itself, suggests from the catalogue it already holds, and opens the
-   * product chosen.
+   * The field keeps its own words. It is drawn once for the whole shop now
+   * (`StorefrontShell`) and stays while pages change under it, so it starts
+   * each page from what the address searched for — the term on a results or
+   * department page, nothing anywhere else — exactly as a fresh header did
+   * when every page drew its own. Typing changes no address, so nothing here
+   * resets the field under somebody's fingers.
    */
-  const [ownSearch, setOwnSearch] = useState("");
-  const handled = Boolean(onSearch && onSelectProduct);
-  const searchValue = handled ? search : ownSearch;
-  const changeSearch = handled ? onSearch! : setOwnSearch;
-  const selectProduct = onSelectProduct ?? ((product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`));
-  const searchCatalog = catalog.length ? catalog : shelf.data ?? [];
+  const [search, setSearch] = useState(() => searchTermFrom(query));
+  useEffect(() => { setSearch(searchTermFrom(query)); }, [location, query]);
+  const selectProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
   const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
   /*
    * The address being delivered to, by the name the shopper gave it — "Home"
@@ -181,10 +174,12 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
     return () => window.removeEventListener("keydown", toSearch);
   }, []);
 
-  const field = <LiveSearch catalog={searchCatalog} value={searchValue} onChange={changeSearch} onSelectProduct={selectProduct} department={activeDepartment} />;
+  const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} />;
 
   const area = (where: "bar" | "phone") => (
-    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={`${plain} ${where === "phone" ? "min-w-0 px-2.5" : ""}`}>
+    /* On a phone it is the one thing on its row that gives way: a long area
+       name truncates rather than pushing the language off a 320px screen. */
+    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={where === "phone" ? `${plain.replace("shrink-0", "min-w-0 shrink")} px-2.5` : plain}>
       <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
       {/* "Deliver to" is in the name and not drawn: the pin and the area say it,
           and the width it took is the search field's now. The name still
@@ -202,9 +197,10 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
     </button>
   );
 
-  /* Phone: the logo, where it goes, the language. */
+  /* Phone: the logo, where it goes, the language — one fixed height, because
+     the bar's sticky offset is exactly this row (`-top-14`). */
   const phoneTop = (
-    <div className="container flex items-center gap-1 py-1.5 lg:hidden">
+    <div className="container flex h-14 items-center gap-1 lg:hidden">
       <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
         <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain" />
       </Link>
@@ -221,8 +217,6 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
       >
         {t("nav.skipToContent")}
       </a>
-      {/* Above the pinned bar, so it scrolls away and the search row stays. */}
-      <div className="bg-white lg:hidden">{phoneTop}</div>
       {/*
         No line under the bar on a wide screen: the department row sits right
         below it, and a rule between the two cut one header into two strips.
@@ -231,7 +225,16 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
         line, because nothing sits below the search row there.
       */}
       <div ref={markerRef} aria-hidden className="pointer-events-none -mb-px h-px" />
-      <header ref={headerRef} className="sticky-header sticky top-0 z-40 border-b border-[#e6e9ef] bg-white lg:border-b-0">
+      {/*
+        On a phone the logo row is inside the header — it is the header's,
+        and outside every landmark a screen reader's map of the page lost it —
+        and the header sticks fourteen units *above* the top of the screen,
+        so that row scrolls away and the search row stays. One sticky element
+        rather than a row before it, which is the same picture with no
+        stranded content.
+      */}
+      <header ref={headerRef} className="sticky-header sticky -top-14 z-40 border-b border-[#e6e9ef] bg-white lg:top-0 lg:border-b-0">
+        {phoneTop}
         <div className="container pb-2.5 pt-1 lg:hidden">{field}</div>
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
@@ -245,13 +248,15 @@ export function StoreHeader({ catalog = [], search = "", onSearch, onSelectProdu
               somebody who knew it. */}
           <div className="flex shrink-0 items-center gap-0.5">
             {area("bar")}
-            <button onClick={() => navigate("/saved")} aria-label={t("header.savedItems", { count: savedIds.length })} title={t("header.savedItems", { count: savedIds.length })} className={plain}>
+            {/* A link, because it goes to a page: it opens in a new tab, and a
+                pointer resting on it starts fetching the page. */}
+            <Link href="/saved" aria-current={location === "/saved" ? "page" : undefined} aria-label={t("header.savedItems", { count: savedIds.length })} title={t("header.savedItems", { count: savedIds.length })} className={plain}>
               <span className="relative grid shrink-0 place-items-center">
                 <Heart className="size-[19px]" aria-hidden />
                 <Count value={savedIds.length} />
               </span>
               <span className="hidden xl:inline">{t("nav.saved")}</span>
-            </button>
+            </Link>
             {language}
             <AccountMenu />
             <button

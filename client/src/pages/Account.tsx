@@ -22,7 +22,6 @@
  * The old in-page addresses still land: `/account#orders` is answered with
  * `/account/orders`, so a link in an old email or a bookmark is not a dead end.
  */
-import { useCatalog } from "@/hooks/useCatalog";
 import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -40,21 +39,18 @@ import { AccountOrders } from "@/components/account/AccountOrders";
 import { AccountMessages } from "@/components/account/AccountMessages";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
+import { PageBody, PageHeading, TITLE } from "@/components/layout/Page";
 import { useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import type { Product } from "@shared/commerce/types";
 import {
   ArrowLeft,
   ChevronRight,
@@ -142,12 +138,10 @@ export default function Account() {
   const [guestMode, setGuestMode] = useState<AuthMode>("signin");
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [search, setSearch] = useState("");
   const { t } = useTranslation();
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [, navigate] = useLocation();
   const [onSection, params] = useRoute("/account/:section");
-  const { data: catalog = [] } = useCatalog(24);
   const signals = useAccountSignals();
 
   /*
@@ -199,11 +193,9 @@ export default function Account() {
     if (onSection && settled && isAuthenticated && !section) navigate("/account", { replace: true });
   }, [onSection, settled, isAuthenticated, section, navigate]);
 
-  const openProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
+    <PageBody>
       {/* Signing out costs a password to undo, so it asks — the same
           treatment anything with a real cost gets. */}
       <ConfirmDialog
@@ -228,7 +220,6 @@ export default function Account() {
         }}
       />
 
-      <div id="main" className="container flex-1 py-6 sm:py-10">
         {loading ? (
           <div className="space-y-3" aria-hidden>
             <div className="h-9 w-56 animate-pulse rounded-xl bg-[#e7edf5]" />
@@ -259,19 +250,17 @@ export default function Account() {
               {/* The page is the account and this is one part of it, which is
                   also what keeps the cards' own h3s one level below a heading. */}
               <h1 className="sr-only">{t("account.backToAccount")}</h1>
-              <h2 className="text-2xl font-extrabold sm:text-3xl">{t(section.label)}</h2>
-              <p className="mt-1 text-[14px] ink-muted">{t(section.hint)}</p>
-              <div className="mt-6">
+              <h2 className={TITLE}>{t(section.label)}</h2>
+              <p className="mt-2 max-w-prose text-[15px] leading-7 text-[#404553]">{t(section.hint)}</p>
+              <div className="mt-6 sm:mt-8">
                 <SectionBody id={section.id} user={user} />
               </div>
             </div>
           </div>
         ) : (
-          <div className="mx-auto max-w-5xl">
-            <h1 className="text-2xl font-extrabold sm:text-3xl">
-              {user.name ? t("account.welcomeBackName", { name: user.name }) : t("account.welcomeBack")}
-            </h1>
-            <div className="mt-5 space-y-4">
+          <div className="max-w-5xl">
+            <PageHeading title={user.name ? t("account.welcomeBackName", { name: user.name }) : t("account.welcomeBack")} />
+            <div className="space-y-4">
               <AccountIdentity user={user} />
               {/* Only for a member (4.1): nobody can buy one yet. */}
               <MembershipCard />
@@ -306,11 +295,7 @@ export default function Account() {
             </div>
           </div>
         )}
-      </div>
-
-      <SiteFooter />
-      <MobileTabBar />
-    </main>
+    </PageBody>
   );
 }
 

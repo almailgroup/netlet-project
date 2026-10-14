@@ -22,7 +22,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
 import { BrandShelf } from "@/components/home/BrandShelf";
@@ -31,8 +30,6 @@ import { Link, useLocation } from "wouter";
 
 /* Fetched on the first preview, not with the page: most visits open none. */
 const QuickView = lazy(() => import("@/components/product/QuickView").then(module => ({ default: module.QuickView })));
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { homeMeta } from "@shared/seo";
@@ -207,7 +204,6 @@ export default function Home() {
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
   const { t, locale } = useTranslation();
-  const [search, setSearch] = useState("");
   const { savedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
   const { data: catalog = [], isLoading: catalogLoading, error: catalogError } = useCatalog(24);
   const bestsellers = trpc.commerce.bestsellers.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
@@ -218,15 +214,11 @@ export default function Home() {
   const appBannerOn = useFeature("appBanner");
 
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
-  const openProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
 
-  return <main id="top" className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-    {/* The one header every shopping page wears (`StoreHeader`). Home kept
-        its own for a long time — taller, labelled, with the departments and
-        the area — and the two drifted apart while every other page went
-        without the area and the departments entirely. */}
-    <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
-
+  /* The header, the footer and the tab bar are the shop's frame
+     (`StorefrontShell`), drawn once for every page — Home included, which
+     kept a header of its own for a long time and drifted from the rest. */
+  return <>
 
     {/* The page's name for a screen reader's outline. The banner that used
         to carry the h1 was a slogan; the shop's name is what the page is. */}
@@ -285,9 +277,6 @@ export default function Home() {
     {/* Switched off until there is an app to download (2.3). */}
     {appBannerOn ? <section className="container pb-10"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.application")}</p><h2 className="font-extrabold mt-3 text-2xl text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[12px] font-semibold">{t("home.appUpdates")}</button></div></div></section> : null}
 
-    <SiteFooter />
-
-    <MobileTabBar />
     {quickProduct ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
-  </main>;
+  </>;
 }

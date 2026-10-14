@@ -10,8 +10,15 @@ import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { captureAffiliate } from "@/lib/affiliate";
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Route, Router as WouterRouter, Switch, useLocation, useSearch } from "wouter";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType } from "react";
+import { matchRoute, Route, Router as WouterRouter, Switch, useLocation, useRouter, useSearch, type RouteComponentProps } from "wouter";
+import { PageFallback, StorefrontShell } from "@/components/layout/StorefrontShell";
+import { useIntentPrefetch } from "@/hooks/useIntentPrefetch";
+import { shelvedProduct } from "@/hooks/useCatalog";
+import { useQueryClient } from "@tanstack/react-query";
+import { lazyPage, type LazyPage } from "@/lib/lazyPage";
+import { isWaiting, setPageResolver, subscribeWaiting, useReadyLocation } from "@/lib/readyNavigation";
+import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -26,71 +33,56 @@ import Home from "./pages/Home";
  */
 const loadBagDrawer = () => import("@/components/cart/BagDrawer");
 const BagDrawer = lazy(() => loadBagDrawer().then(module => ({ default: module.BagDrawer })));
-const ProductDetail = lazy(() => import("@/pages/ProductDetail"));
-const Checkout = lazy(() => import("@/pages/Checkout"));
-const Account = lazy(() => import("@/pages/Account"));
-const SignIn = lazy(() => import("@/pages/SignIn"));
-const Saved = lazy(() => import("@/pages/Saved"));
-const Cart = lazy(() => import("@/pages/Cart"));
-const Returns = lazy(() => import("@/pages/Returns"));
-const Help = lazy(() => import("@/pages/Help"));
-const GiftList = lazy(() => import("@/pages/GiftList"));
-const Invoice = lazy(() => import("@/pages/Invoice"));
-const InvoiceVerify = lazy(() => import("@/pages/InvoiceVerify"));
-const AdminInvoices = lazy(() => import("@/pages/admin/Invoices"));
-const Category = lazy(() => import("@/pages/Category"));
+const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
+const Checkout = lazyPage(() => import("@/pages/Checkout"));
+const Account = lazyPage(() => import("@/pages/Account"));
+const SignIn = lazyPage(() => import("@/pages/SignIn"));
+const Saved = lazyPage(() => import("@/pages/Saved"));
+const Cart = lazyPage(() => import("@/pages/Cart"));
+const Returns = lazyPage(() => import("@/pages/Returns"));
+const Help = lazyPage(() => import("@/pages/Help"));
+const GiftList = lazyPage(() => import("@/pages/GiftList"));
+const Invoice = lazyPage(() => import("@/pages/Invoice"));
+const InvoiceVerify = lazyPage(() => import("@/pages/InvoiceVerify"));
+const AdminInvoices = lazyPage(() => import("@/pages/admin/Invoices"));
+const Category = lazyPage(() => import("@/pages/Category"));
 /* The admin portal is a separate application in everything but deployment: no
    shopper ever loads it, so it stays out of the storefront's bundle. */
-const AdminOverview = lazy(() => import("@/pages/admin/Overview"));
-const AdminProducts = lazy(() => import("@/pages/admin/Products"));
-const AdminPeople = lazy(() => import("@/pages/admin/People"));
-const AdminAudit = lazy(() => import("@/pages/admin/Audit"));
-const AdminStock = lazy(() => import("@/pages/admin/Stock"));
-const AdminOrders = lazy(() => import("@/pages/admin/Orders"));
-const AdminImport = lazy(() => import("@/pages/admin/Import"));
-const AdminPromotions = lazy(() => import("@/pages/admin/Promotions"));
-const AdminApplications = lazy(() => import("@/pages/admin/Applications"));
-const AdminBundles = lazy(() => import("@/pages/admin/Bundles"));
-const AdminDispatch = lazy(() => import("@/pages/admin/Dispatch"));
-const AdminCouriers = lazy(() => import("@/pages/admin/Couriers"));
-const AdminClaims = lazy(() => import("@/pages/admin/Claims"));
-const AdminMessages = lazy(() => import("@/pages/admin/Messages"));
-const AdminReturns = lazy(() => import("@/pages/admin/Returns"));
-const AdminFeatures = lazy(() => import("@/pages/admin/Features"));
-const AdminAffiliates = lazy(() => import("@/pages/admin/Affiliates"));
-const AdminPayouts = lazy(() => import("@/pages/admin/Payouts"));
-const AdminAds = lazy(() => import("@/pages/admin/Ads"));
-const AdminSubscriptions = lazy(() => import("@/pages/admin/Subscriptions"));
-const AdminSupport = lazy(() => import("@/pages/admin/Support"));
-const AdminFulfilment = lazy(() => import("@/pages/admin/Fulfilment"));
-const AdminMembership = lazy(() => import("@/pages/admin/Membership"));
-const Sell = lazy(() => import("@/pages/Sell"));
-const AdminFinance = lazy(() => import("@/pages/admin/Finance"));
-const AdminOffers = lazy(() => import("@/pages/admin/Offers"));
-const AdminProductEditor = lazy(() => import("@/pages/admin/ProductEditor"));
-const AdminNewProduct = lazy(() => import("@/pages/admin/NewProduct"));
-const AdminReview = lazy(() => import("@/pages/admin/Review"));
-const AdminVendors = lazy(() => import("@/pages/admin/Vendors"));
-const AdminVendorNew = lazy(() => import("@/pages/admin/VendorNew"));
-const AdminVendorDetail = lazy(() => import("@/pages/admin/VendorDetail"));
-const AdminTeam = lazy(() => import("@/pages/admin/Team"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+const AdminOverview = lazyPage(() => import("@/pages/admin/Overview"));
+const AdminProducts = lazyPage(() => import("@/pages/admin/Products"));
+const AdminPeople = lazyPage(() => import("@/pages/admin/People"));
+const AdminAudit = lazyPage(() => import("@/pages/admin/Audit"));
+const AdminStock = lazyPage(() => import("@/pages/admin/Stock"));
+const AdminOrders = lazyPage(() => import("@/pages/admin/Orders"));
+const AdminImport = lazyPage(() => import("@/pages/admin/Import"));
+const AdminPromotions = lazyPage(() => import("@/pages/admin/Promotions"));
+const AdminApplications = lazyPage(() => import("@/pages/admin/Applications"));
+const AdminBundles = lazyPage(() => import("@/pages/admin/Bundles"));
+const AdminDispatch = lazyPage(() => import("@/pages/admin/Dispatch"));
+const AdminCouriers = lazyPage(() => import("@/pages/admin/Couriers"));
+const AdminClaims = lazyPage(() => import("@/pages/admin/Claims"));
+const AdminMessages = lazyPage(() => import("@/pages/admin/Messages"));
+const AdminReturns = lazyPage(() => import("@/pages/admin/Returns"));
+const AdminFeatures = lazyPage(() => import("@/pages/admin/Features"));
+const AdminAffiliates = lazyPage(() => import("@/pages/admin/Affiliates"));
+const AdminPayouts = lazyPage(() => import("@/pages/admin/Payouts"));
+const AdminAds = lazyPage(() => import("@/pages/admin/Ads"));
+const AdminSubscriptions = lazyPage(() => import("@/pages/admin/Subscriptions"));
+const AdminSupport = lazyPage(() => import("@/pages/admin/Support"));
+const AdminFulfilment = lazyPage(() => import("@/pages/admin/Fulfilment"));
+const AdminMembership = lazyPage(() => import("@/pages/admin/Membership"));
+const Sell = lazyPage(() => import("@/pages/Sell"));
+const AdminFinance = lazyPage(() => import("@/pages/admin/Finance"));
+const AdminOffers = lazyPage(() => import("@/pages/admin/Offers"));
+const AdminProductEditor = lazyPage(() => import("@/pages/admin/ProductEditor"));
+const AdminNewProduct = lazyPage(() => import("@/pages/admin/NewProduct"));
+const AdminReview = lazyPage(() => import("@/pages/admin/Review"));
+const AdminVendors = lazyPage(() => import("@/pages/admin/Vendors"));
+const AdminVendorNew = lazyPage(() => import("@/pages/admin/VendorNew"));
+const AdminVendorDetail = lazyPage(() => import("@/pages/admin/VendorDetail"));
+const AdminTeam = lazyPage(() => import("@/pages/admin/Team"));
+const NotFound = lazyPage(() => import("@/pages/NotFound"));
 
-/**
- * Shown while a route chunk is in flight. Deliberately the page's own ground
- * colour with a single centred mark rather than a spinner on white: on a fast
- * connection this is on screen for a few frames, and a white flash between two
- * off-white pages reads as a fault.
- */
-/**
- * What shows while a page's code arrives: the page's shape, not a spinner.
- *
- * A spinner in the middle of an empty screen on every first visit to a page
- * read as the whole shop reloading; a header-height strip and grey blocks
- * where the content will be say "this page, nearly here" and do not jump
- * when it lands. A product page, a department grid and anything else get
- * their own outline.
- */
 /**
  * The bag drawer, out of the first download.
  *
@@ -109,42 +101,17 @@ function BagDrawerWhenWanted() {
   return wanted || isOpen ? <Suspense fallback={null}><BagDrawer /></Suspense> : null;
 }
 
+/**
+ * What shows while the code of a page outside the shop's frame arrives —
+ * checkout, sign-in, the portal: a header-height strip and the page's shape.
+ * A page inside the frame never sees this; the shell keeps its header and
+ * draws `PageFallback` under it instead.
+ */
 function RouteFallback() {
-  const [location] = useLocation();
-  const block = "animate-pulse rounded-2xl bg-[#e9edf3]";
-  const shape = location.startsWith("/products/")
-    ? (
-        <div className="grid gap-8 lg:grid-cols-2">
-          <div className={`aspect-square ${block}`} />
-          <div className="space-y-4 pt-4">
-            <div className={`h-4 w-28 ${block}`} />
-            <div className={`h-9 w-4/5 ${block}`} />
-            <div className={`h-7 w-32 ${block}`} />
-            <div className={`h-12 ${block}`} />
-            <div className={`h-12 ${block}`} />
-          </div>
-        </div>
-      )
-    : /^\/(signin|signup|login|register)$/.test(location)
-      ? <div className={`mx-auto h-[560px] max-w-[480px] lg:mx-0 ${block}`} />
-    : location.startsWith("/category/") || location.startsWith("/search") || location === "/saved"
-      ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }, (_, index) => <div key={index} className={`h-72 ${block}`} />)}
-          </div>
-        )
-      : (
-          <div className="space-y-4">
-            <div className={`h-8 w-1/3 ${block}`} />
-            <div className={`h-40 ${block}`} />
-            <div className={`h-40 ${block}`} />
-          </div>
-        );
   return (
-    <div className="min-h-screen bg-background" role="status" aria-live="polite">
-      <span className="sr-only">Loading…</span>
-      <div className="h-[72px] border-b border-[#e6e9ef] bg-white lg:h-[124px]" aria-hidden />
-      <div className="container py-8" aria-hidden>{shape}</div>
+    <div className="min-h-screen bg-background">
+      <div className="h-16 border-b border-[#e6e9ef] bg-white" aria-hidden />
+      <PageFallback />
     </div>
   );
 }
@@ -267,81 +234,167 @@ function ScrollMemory() {
   return null;
 }
 
+/**
+ * Every address the app answers, in one list, because two things read it: the
+ * router, and the prefetcher that fetches a page's code before it is opened.
+ * A second list for the prefetcher would be the one that falls behind.
+ *
+ * `shell` is whether the page sits in the shop's frame (`StorefrontShell`).
+ * Checkout and sign-in draw a bare header of their own, and the portal is its
+ * own application. Order matters as it does in any `Switch`: `/admin/products/new`
+ * before `:id`, which would otherwise read "new" as a product id.
+ */
+const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; shell: boolean }[] = [
+  { path: "/", page: Home, shell: true },
+  { path: "/signin", page: SignIn, shell: false },
+  { path: "/signup", page: SignIn, shell: false },
+  { path: "/login", page: SignIn, shell: false },
+  { path: "/register", page: SignIn, shell: false },
+  { path: "/checkout", page: Checkout, shell: false },
+  { path: "/account", page: Account, shell: true },
+  { path: "/account/:section", page: Account, shell: true },
+  { path: "/saved", page: Saved, shell: true },
+  { path: "/cart", page: Cart, shell: true },
+  { path: "/returns", page: Returns, shell: true },
+  { path: "/help", page: Help, shell: true },
+  { path: "/gifts/:token", page: GiftList, shell: true },
+  { path: "/gifts", page: GiftList, shell: true },
+  { path: "/invoices/verify/:number", page: InvoiceVerify, shell: true },
+  { path: "/invoices/:number", page: Invoice, shell: true },
+  { path: "/sell", page: Sell, shell: true },
+  { path: "/category/:slug", page: Category, shell: true },
+  /* Search results are the department layout over the whole catalog. */
+  { path: "/search", page: Category, shell: true },
+  { path: "/products/:handle", page: ProductDetail, shell: true },
+  { path: "/404", page: NotFound, shell: true },
+  { path: "/admin", page: AdminOverview, shell: false },
+  { path: "/admin/products", page: AdminProducts, shell: false },
+  { path: "/admin/products/new", page: AdminNewProduct, shell: false },
+  { path: "/admin/products/:id", page: AdminProductEditor, shell: false },
+  { path: "/admin/review", page: AdminReview, shell: false },
+  { path: "/admin/stock", page: AdminStock, shell: false },
+  { path: "/admin/orders", page: AdminOrders, shell: false },
+  { path: "/admin/import", page: AdminImport, shell: false },
+  { path: "/admin/promotions", page: AdminPromotions, shell: false },
+  { path: "/admin/applications", page: AdminApplications, shell: false },
+  { path: "/admin/bundles", page: AdminBundles, shell: false },
+  /* The fifth party's own board (2.2, 3.4.2), inside the same portal rather
+     than a shell of its own: scope is already decided by the server, and two
+     shells would be two navigations showing the same links. A courier sees
+     only these. */
+  { path: "/admin/dispatch", page: AdminDispatch, shell: false },
+  { path: "/admin/couriers", page: AdminCouriers, shell: false },
+  { path: "/admin/claims", page: AdminClaims, shell: false },
+  { path: "/admin/messages", page: AdminMessages, shell: false },
+  { path: "/admin/returns", page: AdminReturns, shell: false },
+  { path: "/admin/features", page: AdminFeatures, shell: false },
+  { path: "/admin/affiliates", page: AdminAffiliates, shell: false },
+  { path: "/admin/payouts", page: AdminPayouts, shell: false },
+  { path: "/admin/ads", page: AdminAds, shell: false },
+  { path: "/admin/subscriptions", page: AdminSubscriptions, shell: false },
+  { path: "/admin/support", page: AdminSupport, shell: false },
+  { path: "/admin/fulfilment", page: AdminFulfilment, shell: false },
+  { path: "/admin/membership", page: AdminMembership, shell: false },
+  { path: "/admin/invoices", page: AdminInvoices, shell: false },
+  { path: "/admin/finance", page: AdminFinance, shell: false },
+  { path: "/admin/offers", page: AdminOffers, shell: false },
+  { path: "/admin/vendors", page: AdminVendors, shell: false },
+  { path: "/admin/vendors/new", page: AdminVendorNew, shell: false },
+  { path: "/admin/vendors/:id", page: AdminVendorDetail, shell: false },
+  { path: "/admin/people", page: AdminPeople, shell: false },
+  { path: "/admin/audit", page: AdminAudit, shell: false },
+  { path: "/admin/team", page: AdminTeam, shell: false },
+  /* The portal used to live at /dashboard. Anyone who bookmarked it lands
+     there rather than on a 404 that looks like the tool is gone. */
+  { path: "/dashboard/:rest*", page: LegacyAdminRedirect, shell: false },
+  { path: "/dashboard", page: LegacyAdminRedirect, shell: false },
+];
+
+const isLazy = (page: ComponentType<RouteComponentProps>): page is LazyPage => typeof (page as Partial<LazyPage>).preload === "function";
+
+/**
+ * Fetches a page before it is opened (`useIntentPrefetch`): its code, and for
+ * a product the product too, so the press lands on a page that is already
+ * here. And once the first page has drawn, the two pages nearly every visit
+ * goes on to — a product and a department — so the first of those opens at
+ * once even on a phone, where there is no pointer to rest on a link first.
+ */
+function Prefetcher() {
+  const { parser } = useRouter();
+  const utils = trpc.useUtils();
+  const client = useQueryClient();
+  const { locale } = useTranslation();
+  const prefetch = useCallback((path: string) => {
+    const route = ROUTES.find(entry => matchRoute(parser, entry.path, path)[0]);
+    const page = route?.page ?? NotFound;
+    if (isLazy(page)) void page.preload().catch(() => undefined);
+    const [isProduct, params] = matchRoute(parser, "/products/:handle", path);
+    if (isProduct && params?.handle) {
+      const handle = decodeURIComponent(params.handle);
+      /* A card's own shelf already holds the product, and the page starts
+         from that copy (`useProductByHandle`); anything else — a bag line,
+         an order, a link in a message — is asked for now. */
+      if (!shelvedProduct(client, handle, locale)) void utils.commerce.products.byHandle.prefetch({ handle, locale }, { staleTime: 30_000 });
+    }
+  }, [parser, utils, client, locale]);
+  useIntentPrefetch(prefetch);
+  /* A press on a link whose page has not arrived waits for it, with the
+     current page still up (`readyNavigation`). */
+  useEffect(() => setPageResolver(path => {
+    const route = ROUTES.find(entry => matchRoute(parser, entry.path, path)[0]);
+    const page = route?.page ?? NotFound;
+    return isLazy(page) && !page.loaded() ? page.preload : null;
+  }), [parser]);
+  useEffect(() => whenIdle(() => {
+    void ProductDetail.preload().catch(() => undefined);
+    void Category.preload().catch(() => undefined);
+  }), []);
+  return null;
+}
+
+/**
+ * The slim bar across the top while a press waits for its page's code
+ * (`readyNavigation`). Drawn only once the wait passes 120ms, so a page that
+ * is nearly here arrives without a bar flicking on and off before it.
+ */
+function NavigationProgress() {
+  const waiting = useSyncExternalStore(subscribeWaiting, isWaiting, () => false);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!waiting) {
+      setShown(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setShown(true), 120);
+    return () => window.clearTimeout(timer);
+  }, [waiting]);
+  return <div aria-hidden className={`nav-progress ${shown ? "is-on" : ""}`} />;
+}
+
 function Router() {
+  const storefront = ROUTES.filter(route => route.shell);
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
     // sub-directory (GitHub Pages). It is "" for a root deployment.
-    <WouterRouter base={BASE_PATH}>
+    <WouterRouter base={BASE_PATH} hook={useReadyLocation}>
+      <NavigationProgress />
       <ReferralCapture />
       <ScrollMemory />
+      <Prefetcher />
       <Suspense fallback={<RouteFallback />}>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/signin" component={SignIn} />
-        <Route path="/signup" component={SignIn} />
-        <Route path="/login" component={SignIn} />
-        <Route path="/register" component={SignIn} />
-        <Route path="/account" component={Account} />
-        <Route path="/account/:section" component={Account} />
-        <Route path="/saved" component={Saved} />
-        <Route path="/cart" component={Cart} />
-        <Route path="/returns" component={Returns} />
-        <Route path="/help" component={Help} />
-        <Route path="/gifts/:token" component={GiftList} />
-        <Route path="/gifts" component={GiftList} />
-        <Route path="/invoices/verify/:number" component={InvoiceVerify} />
-        <Route path="/invoices/:number" component={Invoice} />
-        <Route path="/checkout" component={Checkout} />
-        <Route path="/sell" component={Sell} />
-        <Route path="/category/:slug" component={Category} />
-        {/* Search results are the department layout over the whole catalog. */}
-        <Route path="/search" component={Category} />
-        <Route path="/admin" component={AdminOverview} />
-        <Route path="/admin/products" component={AdminProducts} />
-        {/* Before `:id`, which would otherwise read "new" as a product id. */}
-        <Route path="/admin/products/new" component={AdminNewProduct} />
-        <Route path="/admin/products/:id" component={AdminProductEditor} />
-        <Route path="/admin/review" component={AdminReview} />
-        <Route path="/admin/stock" component={AdminStock} />
-        <Route path="/admin/orders" component={AdminOrders} />
-        <Route path="/admin/import" component={AdminImport} />
-        <Route path="/admin/promotions" component={AdminPromotions} />
-        <Route path="/admin/applications" component={AdminApplications} />
-        <Route path="/admin/bundles" component={AdminBundles} />
-        {/* The fifth party's own board (2.2, 3.4.2), inside the same portal
-            rather than a shell of its own: scope is already decided by the
-            server, and two shells would be two navigations showing the same
-            links. A courier sees only these. */}
-        <Route path="/admin/dispatch" component={AdminDispatch} />
-        <Route path="/admin/couriers" component={AdminCouriers} />
-        <Route path="/admin/claims" component={AdminClaims} />
-        <Route path="/admin/messages" component={AdminMessages} />
-        <Route path="/admin/returns" component={AdminReturns} />
-        <Route path="/admin/features" component={AdminFeatures} />
-        <Route path="/admin/affiliates" component={AdminAffiliates} />
-        <Route path="/admin/payouts" component={AdminPayouts} />
-        <Route path="/admin/ads" component={AdminAds} />
-        <Route path="/admin/subscriptions" component={AdminSubscriptions} />
-        <Route path="/admin/support" component={AdminSupport} />
-        <Route path="/admin/fulfilment" component={AdminFulfilment} />
-        <Route path="/admin/membership" component={AdminMembership} />
-        <Route path="/admin/invoices" component={AdminInvoices} />
-        <Route path="/admin/finance" component={AdminFinance} />
-        <Route path="/admin/offers" component={AdminOffers} />
-        <Route path="/admin/vendors" component={AdminVendors} />
-        <Route path="/admin/vendors/new" component={AdminVendorNew} />
-        <Route path="/admin/vendors/:id" component={AdminVendorDetail} />
-        <Route path="/admin/people" component={AdminPeople} />
-        <Route path="/admin/audit" component={AdminAudit} />
-        <Route path="/admin/team" component={AdminTeam} />
-        {/* The portal used to live at /dashboard. Anyone who bookmarked it
-            lands here rather than on a 404 that looks like the tool is gone. */}
-        <Route path="/dashboard/:rest*" component={LegacyAdminRedirect} />
-        <Route path="/dashboard" component={LegacyAdminRedirect} />
-        <Route path="/products/:handle" component={ProductDetail} />
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
+        <Switch>
+          {ROUTES.filter(route => !route.shell).map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+          {/* Everything else is the shop, in one frame that stays put while
+              the page inside it changes — a 404 included. */}
+          <Route>
+            <StorefrontShell>
+              <Switch>
+                {storefront.map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+                <Route component={NotFound} />
+              </Switch>
+            </StorefrontShell>
+          </Route>
+        </Switch>
       </Suspense>
     </WouterRouter>
   );

@@ -1,3 +1,5 @@
+import { BUTTON_PRIMARY, Breadcrumbs, PageBody, PageHeading } from "@/components/layout/Page";
+import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useCart } from "@/contexts/CartContext";
 import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
 import { SizeGuide } from "@/components/product/SizeGuide";
@@ -43,11 +45,8 @@ import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { ProductCard, shareProduct } from "@/components/product/ProductCard";
-import { StoreHeader } from "@/components/layout/StoreHeader";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useFeature } from "@/hooks/useFeature";
 import { useMembership } from "@/hooks/useMembership";
@@ -896,8 +895,8 @@ export default function ProductDetail() {
   /* Nothing ticked by default (3.1.2): a pre-ticked warranty is how somebody
      pays for what they did not ask for and did not notice. */
   const [chosenAddons, setChosenAddons] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
-  const openRelated = (item: Product) => navigate(`/products/${encodeURIComponent(item.handle)}`);
+  /* The department row marks the product's own department. */
+  usePageChrome({ activeDepartment: product?.productType ?? null });
 
   // Built before the loading and error returns below, because a hook cannot be
   // called conditionally. While the product is in flight the page describes
@@ -979,9 +978,32 @@ export default function ProductDetail() {
   // The cart drawer lives on the home route, and `isOpen` is held in the cart
   // context above the router — so opening it before navigating carries across.
 
-  if (isLoading) return <main className="min-h-screen bg-background px-4 py-8"><div className="mx-auto max-w-6xl animate-pulse"><div className="h-10 w-32 rounded-full bg-[#e7edf5]" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><div className="aspect-square rounded-[1.5rem] bg-[#e7edf5]" /><div className="space-y-5 pt-7"><div className="h-5 w-24 rounded bg-[#dce5e9]" /><div className="h-16 w-4/5 rounded bg-[#dce5e9]" /><div className="h-20 rounded bg-[#e7edf5]" /></div></div></div></main>;
+  /* Under the shop's own header, which stays: only the page waits. Rarely
+     seen — a card's shelf already holds the product (`useProductByHandle`). */
+  if (isLoading) return (
+    <PageBody>
+      <div className="animate-pulse" aria-hidden>
+        <div className="h-4 w-48 rounded bg-[#e9edf3]" />
+        <div className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
+          <div className="aspect-square rounded-2xl bg-[#e9edf3]" />
+          <div className="space-y-4 pt-4">
+            <div className="h-4 w-28 rounded-2xl bg-[#e9edf3]" />
+            <div className="h-9 w-4/5 rounded-2xl bg-[#e9edf3]" />
+            <div className="h-7 w-32 rounded-2xl bg-[#e9edf3]" />
+            <div className="h-12 rounded-2xl bg-[#e9edf3]" />
+            <div className="h-12 rounded-2xl bg-[#e9edf3]" />
+          </div>
+        </div>
+      </div>
+    </PageBody>
+  );
 
-  if (!product || error) return <main className="min-h-screen bg-background px-4 py-16"><div className="mx-auto max-w-lg rounded-[2rem] border border-[#d5dfeb] bg-[#fffdf9] p-9 text-center"><div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]"><PackageOpen className="size-7" /></div><h1 className="font-extrabold mt-5 text-3xl text-[#0a285a]">{t("product.notFound")}</h1><p className="mt-3 text-sm leading-6 text-[#536b8c]">{t("product.notFoundNote")}</p><Link href="/" className="glass glass-navy pressable mt-7 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"><ArrowLeft className="size-4 rtl:-scale-x-100" />{t("product.backToNetlet")}</Link></div></main>;
+  if (!product || error) return (
+    <PageBody>
+      <PageHeading title={t("product.notFound")} note={t("product.notFoundNote")} />
+      <Link href="/" className={BUTTON_PRIMARY}><ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("product.backToNetlet")}</Link>
+    </PageBody>
+  );
 
   const rating = productRating(product.attributes);
   const express = isExpressEligible(product);
@@ -993,23 +1015,19 @@ export default function ProductDetail() {
 
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openRelated} activeDepartment={product?.productType ?? null} />
+    <>
+      <PageBody>
+        <Breadcrumbs
+          trail={[
+            ...(product.productType ? [{
+              label: categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType,
+              href: `/category/${categorySlug(product.productType)}`,
+            }] : []),
+            { label: product.title },
+          ]}
+        />
 
-      <div className="container py-6 sm:py-8">
-        <nav className="flex flex-wrap items-center gap-x-2 text-[13px] ink-muted" aria-label={t("nav.breadcrumb")}>
-          <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
-          {product.productType ? <>
-            <span aria-hidden>/</span>
-            <Link href={`/category/${categorySlug(product.productType)}`} className="py-1.5 hover:text-[#0a285a]">
-              {categoryMessageKey(product.productType) ? t(categoryMessageKey(product.productType)!) : product.productType}
-            </Link>
-          </> : null}
-          <span aria-hidden>/</span>
-          <bdi className="text-[#404553]">{product.title}</bdi>
-        </nav>
-
-        <section id="main" className="mt-5 grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
 
           {/* `min-w-0`, because a grid item's minimum is its content's: the
@@ -1198,12 +1216,9 @@ export default function ProductDetail() {
             </ul>
           </section>
         ) : null}
-      </div>
-      <MobileTabBar />
+      </PageBody>
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
-      <div aria-hidden className="h-12 lg:h-16" />
-      <SiteFooter clearance="tall" />
-    </main>
+    </>
   );
 }

@@ -128,8 +128,7 @@ export const en = {
   "admin.riskRefunds": "{refunded} of this account's {orders} orders were refunded",
   "admin.riskQuantity": "{quantity} of one item on a first order",
   /* Seller self-registration (3.3.1). */
-  "sell.eyebrow": "Sell on NetLet",
-  "sell.title": "Open a store",
+  "sell.title": "Open a store on NetLet",
   "sell.note": "Tell us about your business, accept the seller agreement, and we will review it. Nothing is published until you have a store and have put something in it.",
   "sell.signInFirst": "A store belongs to an account, so the first step is signing in. Your application is saved to it and you can come back to finish it.",
   "sell.signIn": "Sign in to apply",
@@ -663,7 +662,8 @@ export const en = {
   "admin.vendors": "Vendors",
   "admin.products": "Products",
   "admin.title": "Admin",
-  "nav.skipToContent": "Skip to products",
+  "nav.skipToContent": "Skip to content",
+  "nav.loadingPage": "Loading the page…",
   "header.home": "NetLet home",
   "header.searchPlaceholder": "Search for {example}",
   "header.searchAria": "Search NetLet",
@@ -3013,7 +3013,6 @@ export const en = {
   "auth.tooManyAttempts": "Too many attempts. Wait a few minutes and try again.",
 
   // --- checkout ------------------------------------------------------
-  "checkout.return": "Return to NetLet home",
   "checkout.heading": "Checkout",
   "checkout.note": "Add your address and check your order. You pay the driver when it arrives.",
   "checkout.deliveryDetails": "Delivery details",
@@ -3149,8 +3148,7 @@ export const ar: Record<MessageKey, string> = {
   "admin.riskRefunds": "استُرجع {refunded} من أصل {orders} من طلبات هذا الحساب",
   "admin.riskQuantity": "{quantity} من صنف واحد في أول طلب",
   /* تسجيل البائع بنفسه. */
-  "sell.eyebrow": "بِع على نت‑لت",
-  "sell.title": "افتح متجرك",
+  "sell.title": "افتح متجرك على نت‑لت",
   "sell.note": "أخبرنا عن نشاطك، ووافق على اتفاقية البائع، وسنراجع الطلب. لا يُنشر شيء قبل أن يكون لديك متجر وتضع فيه منتجاتك.",
   "sell.signInFirst": "المتجر يخص حساباً، فالخطوة الأولى هي تسجيل الدخول. يُحفظ طلبك في حسابك ويمكنك العودة لإكماله.",
   "sell.signIn": "سجّل الدخول لتقديم الطلب",
@@ -3683,7 +3681,8 @@ export const ar: Record<MessageKey, string> = {
   "admin.vendors": "البائعون",
   "admin.products": "المنتجات",
   "admin.title": "لوحة التحكم",
-  "nav.skipToContent": "تخطَّ إلى المنتجات",
+  "nav.skipToContent": "تخطَّ إلى المحتوى",
+  "nav.loadingPage": "جارٍ تحميل الصفحة…",
   "header.home": "الصفحة الرئيسية لنت‑لت",
   "header.searchPlaceholder": "ابحث عن {example}",
   "header.searchAria": "البحث في نت‑لت",
@@ -6015,7 +6014,6 @@ export const ar: Record<MessageKey, string> = {
   "auth.tooManyAttempts": "محاولات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.",
 
   // --- checkout ------------------------------------------------------
-  "checkout.return": "العودة إلى الصفحة الرئيسية",
   "checkout.heading": "إتمام الطلب",
   "checkout.note": "أضف عنوانك وراجع طلبك. تدفع للمندوب عند وصول الطلب.",
   "checkout.deliveryDetails": "تفاصيل التوصيل",

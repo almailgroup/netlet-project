@@ -411,9 +411,10 @@ trusted again.
 ## Chrome
 
 `StoreHeader` and `MobileTabBar` are the site's navigation, and every shopping
-page uses both. They exist because the cart did not: a shopper could add four
-things from a category page and have no way to reach the cart from it. The
-drawer is mounted once in `App`, not per page, for the same reason.
+page sits under both — drawn once, by `StorefrontShell` (see "One frame, one
+template"), never by a page. They exist because the cart did not: a shopper
+could add four things from a category page and have no way to reach the cart
+from it. The drawer is mounted once in `App`, not per page, for the same reason.
 
 **One header, on every shopping page, Home included.** Home kept its own for a
 long time — taller, labelled, with the departments and the delivery area —
@@ -423,8 +424,10 @@ left the landing page, and two copies drifted apart more than once. The area
 also decides what delivery costs, which made "only on Home, only on a wide
 screen" the wrong answer once delivery was priced per seller. `StoreHeader` is
 the one copy; `activeDepartment` marks the department a page is in, and a
-search marks none. Checkout opts out and keeps a bare header: every extra exit
-on a payment page is an invitation to take it. The account pages wear it too —
+search marks none — a page says which through `usePageChrome`, since the
+header is no longer its to draw. Checkout opts out and keeps a bare header
+(`BareHeader`, which sign-in shares): every extra exit on a payment page is an
+invitation to take it. The account pages wear it too —
 they kept a bare "settings page" header for a long time, which took the search,
 the cart and the phone's tab bar away the moment somebody looked at an order.
 
@@ -594,10 +597,11 @@ field has a whole row under it. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **Every
 page that wears the header has the search field** — the sell page, a 404, an
 invoice and the returns page used to get the header without it, so the one way
-to look for something vanished exactly where a shopper was lost. A page with no
-search of its own passes no handler and the header keeps the words itself,
-suggests from the catalogue it already holds and opens the product chosen. The
-hamburger's department list
+to look for something vanished exactly where a shopper was lost. The header
+keeps the words itself, starts each page from the address's `q` (the term on a
+results or department page, nothing elsewhere — what a fresh header did when
+every page drew its own), suggests from the catalogue it already holds and opens
+the product chosen. The hamburger's department list
 is `DepartmentSheet` now, behind the bottom bar's Browse on every page — Browse
 used to open it on Home and go to the whole catalogue everywhere else, one tab
 meaning two things.
@@ -605,11 +609,16 @@ meaning two things.
 **Nothing in the header moves on its own.** It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
-`data-compact` flag. Now the header is one fixed height and only the rows that
-must stay are inside the sticky element: on a phone the logo row sits *before*
-`<header>` and simply scrolls off, and on a wide screen the department row sits
-*after* it and does the same. The page does the moving, which is the one thing
-a shopper expects to move. `StoreHeader` returns a fragment for that reason —
+`data-compact` flag. Now the header is one fixed height and nothing animates:
+on a phone the logo row is the header's first row and the header sticks at
+`-top-14`, exactly that row's height above the screen, so the row scrolls off
+and the search row stays; on a wide screen the department row sits *after*
+`<header>` and simply scrolls away. The page does the moving, which is the one
+thing a shopper expects to move. **The phone's logo row is inside `<header>`
+for a reason**: it sat before it as a sibling, which was fine while every page
+wrapped its header in `<main>` and became content outside every landmark — an
+axe `region` failure on every page at phone width — the moment the shell took
+the header out of the page. `StoreHeader` returns a fragment for that reason —
 the rows that leave are siblings of the sticky bar, not children of it.
 
 The search placeholder takes its example **from the live catalog**, and holds
@@ -718,8 +727,9 @@ signed in next before the refetch.
 **Every header starts with a skip link.** Home was once the one page without one,
 which is the wrong way round: it carries the most header of any page — a bar,
 a search row and a department rail — so it is where tabbing past costs the
-most. It lands on `#main`, which is the department cards, the same id every
-other page gives its first content.
+most. It lands on the shell's `<main id="main">` (focusable, `tabIndex={-1}`),
+which is the one `<main>` on every shopping page; no page carries the id itself.
+It reads "Skip to content" — "Skip to products" was wrong on every page but two.
 
 **A product title takes its own direction wherever it is drawn** —
 `dir="auto"` on the element that clamps or truncates it, or a `<bdi>` inline.
@@ -981,6 +991,77 @@ only shows the viewport. Measure `scrollWidth` against the width asked for on ev
 `clientWidth` grows with the overflow and hides it); finding the culprit is easier by clipping each
 subtree in turn (`overflow: clip`) than by hiding it, which shifts the layout
 and points at the wrong element.
+
+## One frame, one template
+
+**The shop is one frame, and pages are what changes inside it.**
+`StorefrontShell` (`components/layout/StorefrontShell.tsx`) draws the header,
+the one `<main id="main">`, the footer and the phone's tab bar, and `App`'s
+route table (`ROUTES`, `shell: true`) puts every shopping page inside it. Each
+page used to draw all four itself, so every move between two pages threw the
+whole screen away and rebuilt it — header included — and while the next page's
+code arrived the fallback drew a grey strip where the header had been: the
+blink a shopper saw on nearly every first visit to a page. It also let pages
+drift: three had no footer, two wrapped `<main>` round the header, the gift and
+invoice pages had none, and the invoice wrapped the header in a box the height
+of the header, so it never stuck. A page now returns its content and nothing
+else; the one thing the header needs from it, the department to mark, goes
+through `usePageChrome`. The footer's clearance for a floating bar is read off
+the address (`/category`, `/search`, `/products`), and an invoice's chrome is
+`print:hidden` so the document prints alone. Checkout, sign-in and the portal
+are outside the frame on purpose, and checkout and sign-in share `BareHeader` —
+they had two that agreed on nothing, and checkout's way back was a plain `<a>`
+that reloaded the whole app.
+
+**Every page is drawn from `components/layout/Page.tsx`**: `PageBody` (the
+container, with the same room above and below everywhere), `PageHeading` (the
+`h1` at 24px on a phone and 30px from `sm`, a line under it, room for actions),
+`Breadcrumbs`, `EmptyState`, `CARD`. The audit that started this measured titles
+at 17, 24, 26, 30 and 36 pixels, the first line anywhere from 89 to 235 pixels
+under the header, columns centred on some pages and at the edge on others —
+so a page's title jumped sideways from the logo's line between pages — four
+different "nothing here" boxes and an orange eyebrow over one heading. **A
+column starts at the logo's line on every page**; a reading page
+(`width="reading"`) is narrower, never moved to the middle. The product page's
+title is the product's name in the buy box and is the one exception, by its
+nature. `.scratch/audit-pages.mjs` measures the title's size, its gap under the
+header and its start against the logo's, per route at 1440 and 390.
+
+**Moving between pages never shows a blank.** Four things, each measured on a
+production build (the dev server compiles on demand and says nothing about
+what a shopper gets):
+
+- **`readyNavigation` is the router's location hook**, so a press on a link
+  whose page has not arrived keeps the current page up, shows a slim orange bar
+  after 120ms, and moves when the code is in — capped at `MAX_WAIT_MS`, a second
+  press wins, Back cancels. The reason it exists: once React shows a Suspense
+  fallback it deliberately holds it about 300ms, so every first visit to a page
+  cost at least that much grey however fast the network. Measured: 18 frames
+  of outline on Saved, Returns and Help before; none after.
+- **`useIntentPrefetch` fetches a page's code when a pointer rests on a link,
+  a finger lands on one or the keyboard reaches one**, from one listener on the
+  document, so every anchor takes part — which is why the header's Saved and
+  the phone's tabs are links now, not buttons calling `navigate`. Once the
+  first page has drawn, the product and department pages are fetched while the
+  browser is idle (about 23 KB gzipped together), since nearly every visit goes
+  on to one. `lazyPage` keeps a module once it arrives and renders it directly,
+  because `React.lazy` suspends on its first render even when the code is
+  already in the browser — prefetching into plain `lazy` still flashed.
+- **A product opens from the shelf's own copy.** A card's product is the same
+  `shape()` on the server as `byHandle`'s, so `useProductByHandle` starts from
+  whichever list already holds it (`shelvedProduct`: the catalogue, bestsellers,
+  a search) and asks the server again behind it; a product no shelf holds — a
+  bag line, an order — is prefetched on intent instead.
+- **A page fades in over 180ms, opacity only**, on a move and never on the
+  first load (which would delay the largest paint), and not at all for somebody
+  who asked for less motion. A transform would make the page the containing
+  block for its fixed bars for as long as it ran. Sections of the account share
+  one key, so its menu does not blink between them.
+
+**A finger gets the hover's tint while it is down** (`(hover: none)` and
+`:active`, in the base layer for the hover rule's reason), and the browser's own
+grey tap flash is off — on a slow connection a tap that drew nothing until the
+next page arrived read as a tap that did not take.
 
 ## The account
 
@@ -3671,8 +3752,10 @@ anything NetLet actually needs is on the server.
 
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
-features since took it back to 799 KB (236 KB), and it is 583 KB (170 KB) now,
-with the whole first download 35 KB smaller:
+features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
+with the whole first download 35 KB smaller. It is 592 KB (173 KB) now: the
+shop's frame, the page template and the navigation layer (see "One frame, one
+template") are on every page, so they belong in it.
 
 - **React's renderer is in the `react` chunk.** `manualChunks` named
   `react-dom`, which matched only the package's small entry, so
@@ -3811,10 +3894,12 @@ card draws one, and it is what a product without a photo carries — so those
 fall back to the shop's PNG cover. `pnpm smoke` checks the function answers a
 product page with the shell.
 
-Between pages, while a page's code arrives, `RouteFallback` draws that page's
-outline — a header strip and grey blocks shaped like a product page, a grid or
-a list — rather than a spinner in an empty screen, which read as the whole
-shop reloading.
+Between pages the current page stays up until the next one's code is in
+(`readyNavigation`, under "One frame, one template"); only past the wait's cap,
+or on a first load of a page outside the shop's frame, does an outline stand in
+— `PageFallback` under the shell's header, `RouteFallback` with a header strip
+for checkout, sign-in and the portal — shaped like a product page, a grid or a
+list rather than a spinner in an empty screen.
 
 ### robots.txt and sitemap.xml
 

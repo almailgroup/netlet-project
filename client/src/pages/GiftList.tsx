@@ -21,8 +21,7 @@
  * system is built for that. It is also true: `itemsForOwner` does not select
  * the claim columns.
  */
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { StoreHeader } from "@/components/layout/StoreHeader";
+import { CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { useFeature } from "@/hooks/useFeature";
 import { Thumb } from "@/components/product/Thumb";
 import { useCart } from "@/contexts/CartContext";
@@ -50,23 +49,14 @@ export default function GiftList() {
   usePageMeta(privatePageMeta(t("gift.title")));
 
   return (
-    <div className="type-body min-h-dvh bg-background pb-24 lg:pb-0">
-      <StoreHeader />
-      <main id="main" className="container py-8 sm:py-12">
-        <div className="mx-auto max-w-2xl">
-          <div className="grid size-12 place-items-center rounded-2xl bg-[#e7edf5]">
-            <Gift className="size-6 text-[#0a285a]" aria-hidden />
-          </div>
-          <h1 className="font-extrabold mt-4 text-2xl text-[#0a285a] sm:text-4xl">{t("gift.heading")}</h1>
-          <p className="mt-2 max-w-prose text-sm leading-6 ink-muted">{t("gift.intro")}</p>
-
-          {!on
-            ? <p className="mt-6 rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm ink-muted">{t("gift.switchedOff")}</p>
-            : token ? <ByToken token={token} locale={locale} /> : <Lookup locale={locale} />}
-        </div>
-      </main>
-      <MobileTabBar />
-    </div>
+    <PageBody width="reading">
+      <div className="type-body max-w-2xl">
+        <PageHeading title={t("gift.heading")} note={t("gift.intro")} />
+        {!on
+          ? <p className={`${CARD} px-5 py-6 text-sm ink-muted`}>{t("gift.switchedOff")}</p>
+          : token ? <ByToken token={token} locale={locale} /> : <Lookup locale={locale} />}
+      </div>
+    </PageBody>
   );
 }
 
@@ -102,7 +92,7 @@ function Lookup({ locale }: { locale: "en" | "ar" }) {
   return (
     <>
       <form
-        className="mt-6 flex flex-wrap items-end gap-2"
+        className="flex flex-wrap items-end gap-2"
         onSubmit={event => { event.preventDefault(); if (valid) setAsked(value.trim()); }}
       >
         <label className="min-w-0 flex-1">

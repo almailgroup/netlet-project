@@ -13,9 +13,7 @@ import { useCatalog } from "@/hooks/useCatalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { SiteFooter } from "@/components/layout/SiteFooter";
+import { BUTTON_PRIMARY, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -24,15 +22,13 @@ import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
 import { ArrowRight, Heart } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { Link } from "wouter";
 import { toast } from "sonner";
 
 export default function Saved() {
   usePageMeta(privatePageMeta("Saved items"));
-  const [, navigate] = useLocation();
   const { savedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
-  const [search, setSearch] = useState("");
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const { data: catalog = [], isLoading } = useCatalog(60);
 
@@ -48,38 +44,32 @@ export default function Saved() {
   // available" is information; silently showing fewer cards is a bug report.
   const missingCount = savedIds.length - savedProducts.length;
 
-  const openProduct = (product: Product) =>
-    navigate(`/products/${encodeURIComponent(product.handle)}`);
-
-
-
   return (
-    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-      <StoreHeader catalog={catalog} search={search} onSearch={setSearch} onSelectProduct={openProduct} />
-
-      <div id="main" className="container py-8 sm:py-10">
-        <h1 className="text-2xl font-extrabold text-[#0a285a] sm:text-3xl">{t("saved.title")}</h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-[#536b8c]">
-          {savedProducts.length === 0
+    <>
+      <PageBody>
+        <PageHeading
+          title={t("saved.title")}
+          /* A line held while the list loads, so the grid does not drop when it lands. */
+          note={isLoading ? "\u00a0" : savedProducts.length === 0
             ? t("saved.emptyPrompt")
             : savedProducts.length === 1
               ? t("saved.countOne")
               : t("saved.count", { count: savedProducts.length })}
-        </p>
-        {missingCount > 0 ? (
-          <p className="mt-3 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-xs font-semibold text-[#a44a2b]">
+        />
+        {missingCount > 0 && !isLoading ? (
+          <p className="-mt-2 mb-6 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-[13px] font-semibold text-[#a44a2b]">
             {missingCount === 1 ? t("saved.unavailableOne") : t("saved.unavailableCount", { count: missingCount })}
           </p>
         ) : null}
 
         {isLoading ? (
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (
               <div key={i} className="h-[420px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
             ))}
           </div>
         ) : savedProducts.length ? (
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {savedProducts.map((product) => (
               <ProductCard
                 key={product.id}
@@ -94,23 +84,13 @@ export default function Saved() {
             ))}
           </div>
         ) : (
-          <div className="mt-8 rounded-[1.5rem] border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#e7edf5] ink-accent">
-              <Heart className="size-6" />
-            </div>
-            <h2 className="mt-5 text-lg font-extrabold text-[#0a285a]">{t("saved.emptyTitle")}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">
-              {t("saved.emptyNote")}
-            </p>
-            <button
-              onClick={() => navigate("/")}
-              className="glass glass-navy pressable mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"
-            >
-              {t("saved.browse")} <ArrowRight className="size-4 rtl:-scale-x-100" />
-            </button>
-          </div>
+          <EmptyState icon={<Heart className="size-6" />} title={t("saved.emptyTitle")} note={t("saved.emptyNote")}>
+            <Link href="/" className={BUTTON_PRIMARY}>
+              {t("saved.browse")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
+            </Link>
+          </EmptyState>
         )}
-      </div>
+      </PageBody>
       {/* Under the hearts it learns from, and only once it has learned
           something: the rail draws nothing until it is personal. */}
       <RecommendedRail
@@ -123,9 +103,6 @@ export default function Saved() {
         onQuickView={setQuickProduct}
       />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
-      <MobileTabBar />
-      <div aria-hidden className="h-12 lg:h-16" />
-      <SiteFooter />
-    </main>
+    </>
   );
 }

@@ -20,9 +20,8 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { appPath } from "@/lib/basePath";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { StoreHeader } from "@/components/layout/StoreHeader";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { PAGE_SPACE } from "@/components/layout/Page";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -58,10 +57,8 @@ export default function Invoice() {
   usePageMeta(privatePageMeta(number || t("invoice.title")));
 
   return (
-    <div className="type-body min-h-dvh bg-background pb-24 print:bg-white print:pb-0 lg:pb-0">
-      <div className="print:hidden"><StoreHeader /></div>
-      <main id="main" className="container py-8 sm:py-12 print:p-0">
-        <div className="mx-auto max-w-3xl">
+    <div className={`type-body container flex-1 ${PAGE_SPACE} print:p-0`}>
+        <div className="max-w-3xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 print:hidden">
             <Link href="/account/orders" className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
               <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("invoice.back")}
@@ -78,8 +75,6 @@ export default function Invoice() {
             <Loaded number={number} />
           )}
         </div>
-      </main>
-      <div className="print:hidden"><MobileTabBar /></div>
     </div>
   );
 }

@@ -16,23 +16,21 @@
  * replaced by the two real addresses. Signed in already, the page goes
  * straight to `next` — or the account — rather than offering a form.
  */
-import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { AuthScreen } from "@/components/auth/AuthScreen";
+import { BareHeader } from "@/components/layout/BareHeader";
+import { PAGE_SPACE } from "@/components/layout/Page";
 import type { AuthMode } from "@/components/auth/AuthForm";
-import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
-import { logoImage } from "@/lib/brandAssets";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { privatePageMeta } from "@shared/seo";
 import { returnPath } from "@shared/auth/returnPath";
 
 export default function SignIn() {
-  const { t, isArabic } = useTranslation();
-  const { toggleLocale } = useCustomer();
+  const { t } = useTranslation();
   const { isAuthenticated, loading } = useAuth();
   const [location, navigate] = useLocation();
   const search = useSearch();
@@ -66,29 +64,10 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f3f2ed] text-[#0a285a]">
-      <a
-        href="#main"
-        className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-50"
-      >
-        {t("auth.skipToForm")}
-      </a>
-      <header className="border-b border-[#e3e1d9] bg-white">
-        <div className="container flex h-[68px] items-center gap-2 sm:h-[76px]">
-          <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain sm:h-12 sm:max-w-[156px]" />
-          </Link>
-          <button onClick={toggleLocale} title={t("header.changeLanguage")} className={plain}>
-            <span lang={isArabic ? "en" : "ar"}>{t("header.language")}</span>
-          </button>
-          <Link href="/" className={`${plain} hidden sm:flex`}>
-            <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-            {t("header.continueShopping")}
-          </Link>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-background text-[#0a285a]">
+      <BareHeader skipLabel="auth.skipToForm" />
 
-      <main id="main" className="container flex-1 py-6 sm:py-12 lg:py-16">
+      <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE}`}>
         {DEMO_MODE ? (
           <p role="note" className="mx-auto mb-6 max-w-[1080px] rounded-xl border border-[#e3e1d9] bg-white px-4 py-3 text-[14px] text-[#3d5170]">
             <strong className="text-[#0a285a]">{t("header.signInDisabled")}</strong> {t("header.signInDisabledNote")}
@@ -114,4 +93,3 @@ export default function SignIn() {
   );
 }
 
-const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";

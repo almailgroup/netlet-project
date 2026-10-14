@@ -17,9 +17,8 @@
  * that will not press and says nothing is the worst of both: the page names
  * each gap, and the button follows.
  */
+import { CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import AuthDialog from "@/components/auth/AuthDialog";
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -170,19 +169,14 @@ export default function Sell() {
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(current => ({ ...current, [key]: value }));
 
   return (
-    <main className="type-body min-h-screen bg-background text-[#0a285a]">
-      <StoreHeader />
-
-      <div id="main" className="container max-w-3xl py-8 sm:py-12">
-        <p className="type-label ink-accent">{t("sell.eyebrow")}</p>
-        <h1 className="font-extrabold mt-2 text-xl sm:text-2xl">{t("sell.title")}</h1>
-        <p className="mt-3 max-w-prose text-sm leading-6 text-[#536b8c]">{t("sell.note")}</p>
+    <PageBody width="reading" className="type-body">
+        <PageHeading title={t("sell.title")} note={t("sell.note")} />
 
         {loading ? null : !isAuthenticated ? (
           /* An application belongs to an account — that is the first step the
              requirement names — so this asks for one rather than collecting a
              form it would then have nowhere to keep. */
-          <div className="mt-8 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-6">
+          <div className={`${CARD} p-6`}>
             <p className="text-sm leading-6 text-[#536b8c]">{t("sell.signInFirst")}</p>
             <button
               onClick={() => setAuthOpen(true)}
@@ -194,13 +188,13 @@ export default function Sell() {
         ) : (
           <>
             {state === "submitted" ? (
-              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#0a285a]">
+              <p className="mb-6 flex items-start gap-2 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#0a285a]">
                 <Clock className="mt-0.5 size-4 shrink-0 ink-accent" aria-hidden /> {t("sell.waiting")}
               </p>
             ) : null}
 
             {state === "approved" ? (
-              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#bcd8c0] bg-[#e3efe4] px-4 py-3 text-[13px] leading-6 text-[#2f5d33]">
+              <p className="mb-6 flex items-start gap-2 rounded-xl border border-[#bcd8c0] bg-[#e3efe4] px-4 py-3 text-[13px] leading-6 text-[#2f5d33]">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
                 {t("sell.approved")}{" "}
                 <a href={appPath("/admin")} className="font-extrabold underline">{t("sell.openPortal")}</a>
@@ -210,14 +204,14 @@ export default function Sell() {
             {/* The reason is on the row the applicant reads, because a rejection
                 with no reason sends somebody back to guess. */}
             {state === "rejected" ? (
-              <p className="mt-6 flex items-start gap-2 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[13px] leading-6 text-[#8c2f22]">
+              <p className="mb-6 flex items-start gap-2 rounded-xl border border-[#f2b69e] bg-[#fdeceb] px-4 py-3 text-[13px] leading-6 text-[#8c2f22]">
                 <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <span dir="auto">{mine.data?.rejectionReason || t("sell.rejected")}</span>
               </p>
             ) : null}
 
-            <fieldset disabled={!editable} className="mt-8 space-y-6">
-              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+            <fieldset disabled={!editable} className="space-y-6">
+              <section className={`${CARD} p-5 sm:p-6`}>
                 <h2 className="text-sm font-extrabold">{t("sell.aboutStore")}</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Labelled label={t("sell.fieldStoreName")}>
@@ -249,7 +243,7 @@ export default function Sell() {
                 </div>
               </section>
 
-              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+              <section className={`${CARD} p-5 sm:p-6`}>
                 <h2 className="text-sm font-extrabold">{t("sell.papers")}</h2>
 
                 <label className="tint-on-hover mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-[#f3f2ed] p-3">
@@ -295,7 +289,7 @@ export default function Sell() {
               {/* Uploaded, not linked (3.3.1): each kind its own file and its
                   own decision. Once submitted the fieldset disables the
                   buttons, and the files, being links, can still be opened. */}
-              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6" aria-labelledby="sell-documents">
+              <section className={`${CARD} p-5 sm:p-6`} aria-labelledby="sell-documents">
                 <h2 id="sell-documents" className="text-sm font-extrabold">{t("documents.title")}</h2>
                 <p className="mt-1 max-w-prose text-[12px] leading-5 ink-muted">{t("documents.note")}</p>
                 <DocumentUploads saved={Boolean(mine.data)} editable={editable} />
@@ -306,7 +300,7 @@ export default function Sell() {
                   so the page cannot quote a figure the database does not. A
                   different rate can be *proposed*; commission is outside a
                   seller's control, so it is NetLet that decides, at approval. */}
-              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+              <section className={`${CARD} p-5 sm:p-6`}>
                 <h2 className="text-sm font-extrabold">{t("sell.commission")}</h2>
                 <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">
                   {t("sell.commissionStandard", { rate: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
@@ -351,7 +345,7 @@ export default function Sell() {
                 ) : null}
               </section>
 
-              <section className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5 sm:p-6">
+              <section className={`${CARD} p-5 sm:p-6`}>
                 <h2 className="text-sm font-extrabold">{t("sell.agreement")}</h2>
                 <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("sell.agreementNote")}</p>
                 <label className="mt-4 flex cursor-pointer items-start gap-3">
@@ -415,11 +409,8 @@ export default function Sell() {
             ) : null}
           </>
         )}
-      </div>
-
-      <MobileTabBar />
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-    </main>
+    </PageBody>
   );
 }
 

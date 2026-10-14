@@ -18,8 +18,8 @@ import { Thumb } from "@/components/product/Thumb";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { appPath } from "@/lib/basePath";
-import { logoImage } from "@/lib/brandAssets";
+import { BareHeader } from "@/components/layout/BareHeader";
+import { PAGE_SPACE, PageHeading } from "@/components/layout/Page";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -36,7 +36,7 @@ import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddr
 import { currentAffiliate } from "@/lib/affiliate";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
-import { ArrowLeft, Info, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
+import { Info, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { PinPicker } from "@/components/map/PinPicker";
 import type { Pin } from "@shared/commerce/geo";
@@ -252,11 +252,12 @@ export default function Checkout() {
   const payable = bill.payable;
 
   return (
-    <main className="type-body min-h-screen bg-background text-[#0a285a]">
+    <div className="type-body flex min-h-screen flex-col bg-background text-[#0a285a]">
       <AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} />
-      <header className="border-b border-[#d5dfeb] bg-background/95"><div className="container flex h-[76px] items-center justify-between"><a href={appPath("/")} aria-label={t("checkout.return")}><img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain sm:h-12 sm:max-w-[156px]" /></a><div className="type-label hidden items-center gap-2 text-[#536b8c] sm:flex"><Wallet className="size-4 ink-accent" /> {t("home.payOnDelivery")}</div><a href={appPath("/")} className="glass type-control pressable flex items-center gap-1.5 rounded-full px-4 py-2.5"><ArrowLeft className="size-3.5 rtl:-scale-x-100" /> {t("header.continueShopping")}</a></div></header>
+      <BareHeader note={<><Wallet className="size-4 ink-accent" aria-hidden /> {t("home.payOnDelivery")}</>} />
 
-      <div className="container py-6 sm:py-10"><div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-extrabold sm:text-3xl">{t("checkout.heading")}</h1><p className="type-body mt-2 max-w-xl text-[#536b8c]">{t("checkout.note")}</p></div></div>
+      <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE}`}>
+        <PageHeading title={t("checkout.heading")} note={t("checkout.note")} />
 
         <div className="grid gap-6 lg:grid-cols-[1.35fr_.8fr]">
           {/* Both columns carry `min-w-0`: a grid item's minimum is its content's,
@@ -400,7 +401,7 @@ export default function Checkout() {
         </div>
 
         <section className="type-label mt-8 grid gap-3 border-t border-[#d5dfeb] pt-6 text-[#536b8c] sm:grid-cols-3"><div className="flex items-center gap-2"><MapPin className="size-4 ink-accent" /> {t("checkout.builtForKuwait")}</div><div className="flex items-center gap-2"><Wallet className="size-4 ink-accent" /> {t("home.payOnDelivery")}</div><div className="flex items-center gap-2"><RotateCcw className="size-4 ink-accent" /> {t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</div></section>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

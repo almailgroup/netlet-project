@@ -17,11 +17,9 @@
  *   message, which needs signing in because the answer comes to the account.
  */
 import { FULFILMENT, PAYMENT, Pill } from "@/components/account/AccountOrders";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { SiteFooter } from "@/components/layout/SiteFooter";
-import { StoreHeader } from "@/components/layout/StoreHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -41,28 +39,22 @@ const KIND_LABEL: Record<ContactKind, MessageKey> = {
   handle: "chat.foundHandle",
 };
 
-const card = "rounded-2xl border border-[#e6e9ef] bg-white p-5 sm:p-6";
+const card = `${CARD} p-5 sm:p-6`;
 const field = "mt-1.5 h-11 w-full rounded-xl border border-[#cfd9e6] bg-white px-3 text-[15px] text-[#0a285a] outline-none focus-visible:border-[#0a285a] focus-visible:ring-2 focus-visible:ring-[#0a285a]/25";
 
 export default function Help() {
   const { t } = useTranslation();
   usePageMeta(privatePageMeta("Help"));
   return (
-    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-      <StoreHeader />
-      <div id="main" className="container max-w-4xl py-8 sm:py-12">
-        <h1 className="text-2xl font-extrabold sm:text-3xl">{t("help.title")}</h1>
-        <p className="mt-3 max-w-prose text-[15px] leading-7 text-[#404553]">{t("help.intro")}</p>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <OrderLookup />
-          <Contact />
-        </div>
-        <Answers />
-        <Ask />
+    <PageBody width="reading">
+      <PageHeading title={t("help.title")} note={t("help.intro")} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <OrderLookup />
+        <Contact />
       </div>
-      <SiteFooter />
-      <MobileTabBar />
-    </main>
+      <Answers />
+      <Ask />
+    </PageBody>
   );
 }
 

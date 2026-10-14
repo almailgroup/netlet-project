@@ -3,88 +3,79 @@
  *
  * This was a slate-and-red template card with a pulsing alert icon — a page
  * from a different product, shown at the moment a shopper is most likely to
- * leave. It now looks like NetLet and, more usefully, offers a way onward:
- * a mistyped or dead product link is a dead end otherwise.
+ * leave. It looks like every other page now — the shop's frame round it, the
+ * title every page has — and, more usefully, offers a way
+ * onward: a mistyped or dead product link is a dead end otherwise. The
+ * suggestions are the shop's own cards, so they can be bought from here.
  */
+import { BUTTON_PLAIN, BUTTON_PRIMARY, PageBody, PageHeading } from "@/components/layout/Page";
+import { ProductCard } from "@/components/product/ProductCard";
+import { QuickView } from "@/components/product/QuickView";
+import { useCustomer } from "@/contexts/CustomerContext";
 import { useCatalog } from "@/hooks/useCatalog";
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { Thumb } from "@/components/product/Thumb";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
-import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { useTranslation } from "@/hooks/useTranslation";
+import type { Product } from "@shared/commerce/types";
 import { privatePageMeta } from "@shared/seo";
-import { ArrowRight, Compass, Heart } from "lucide-react";
-import { useLocation } from "wouter";
+import { ArrowRight, Heart } from "lucide-react";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { toast } from "sonner";
 
 export default function NotFound() {
   usePageMeta(privatePageMeta("Page not found"));
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
   const { t } = useTranslation();
-  const money = useMoney();
+  const { savedIds, toggleSaved } = useCustomer();
+  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   // A handful of real products beats a dead end, and the catalog is already
   // cached from wherever the shopper came in.
   const { data: catalog = [] } = useCatalog(8);
   const suggestions = catalog.slice(0, 4);
 
   return (
-    <main className="min-h-screen bg-background pb-28 text-[#0a285a] lg:pb-0">
-      <StoreHeader />
-
-      <div id="main" className="container py-14 sm:py-20">
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-grid size-14 place-items-center rounded-2xl bg-[#e7edf5] ink-accent">
-            <Compass className="size-7" />
-          </span>
-          <p className="mt-6 text-[12px] font-semibold text-[#a44a2b]">404</p>
-          <h1 className="font-extrabold mt-2 text-2xl sm:text-3xl">{t("notFound.title")}</h1>
-          <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-[#536b8c]">{t("notFound.note")}</p>
-          {/* The path is shown so a mistyped URL is obvious, and escaped by
-              React rather than interpolated into markup. */}
-          <p className="mt-3 truncate font-mono text-[11px] ink-muted"><bdi dir="ltr">{location}</bdi></p>
-
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <button onClick={() => navigate("/")} className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-xs font-extrabold">
-              {t("notFound.back")} <ArrowRight className="size-4 rtl:-scale-x-100" />
-            </button>
-            <button onClick={() => navigate("/saved")} className="glass pressable inline-flex items-center gap-2 rounded-full px-5 py-3.5 text-xs font-extrabold">
-              <Heart className="size-4" aria-hidden />{t("notFound.saved")}
-            </button>
-          </div>
-        </div>
-
-        {suggestions.length ? (
-          <section className="mt-14 border-t border-[#d5dfeb] pt-10">
-            <h2 className="text-center text-[12px] font-semibold text-[#a44a2b]">
-              {t("notFound.suggestions")}
-            </h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {suggestions.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => navigate(`/products/${encodeURIComponent(product.handle)}`)}
-                  className="group overflow-hidden rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-3 text-start"
-                >
-                  <div className="overflow-hidden rounded-xl bg-[#e7edf5]">
-                    {product.images[0] ? (
-                      <Thumb
-                        src={product.images[0].url}
-                        alt={product.images[0].altText ?? product.title}
-                        className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : <div className="aspect-square" />}
-                  </div>
-                  <h3 dir="auto" className="mt-3 line-clamp-2 text-sm font-extrabold tracking-[-.025em] group-hover:text-[#a44a2b]">
-                    {product.title}
-                  </h3>
-                  <p className="mt-1 text-sm font-extrabold tracking-[-.04em]">{money(product.priceRange.min)}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
+    <PageBody>
+      <PageHeading
+        title={t("notFound.title")}
+        note={
+          <>
+            {t("notFound.note")}
+            {/* The path is shown so a mistyped URL is obvious, and escaped by
+                React rather than interpolated into markup. */}
+            <span className="mt-1 block truncate font-mono text-[13px] ink-muted"><bdi dir="ltr">{location}</bdi></span>
+          </>
+        }
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Link href="/" className={BUTTON_PRIMARY}>
+          {t("notFound.back")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
+        </Link>
+        <Link href="/saved" className={BUTTON_PLAIN}>
+          <Heart className="size-4" aria-hidden />{t("notFound.saved")}
+        </Link>
       </div>
-      <MobileTabBar />
-    </main>
+
+      {suggestions.length ? (
+        <section className="mt-12" aria-labelledby="not-found-suggestions">
+          <h2 id="not-found-suggestions" className="text-lg font-extrabold text-[#0a285a]">{t("notFound.suggestions")}</h2>
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {suggestions.map(product => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                saved={savedIds.includes(product.id)}
+                onSave={() => {
+                  const adding = !savedIds.includes(product.id);
+                  toggleSaved(product.id);
+                  toast(t(adding ? "saved.savedForLater" : "saved.removed", { name: product.title }));
+                }}
+                onQuickView={() => setQuickProduct(product)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+      <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
+    </PageBody>
   );
 }

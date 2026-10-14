@@ -41,7 +41,7 @@ export function DepartmentCards() {
   const { t } = useTranslation();
   const cards = CARDS;
   return (
-    <section id="main" aria-labelledby="departments-title" className="container pt-4 sm:pt-6">
+    <section aria-labelledby="departments-title" className="container pt-4 sm:pt-6">
       <h2 id="departments-title" className="sr-only">{t("home.shopByCategory")}</h2>
       {/* Six to a row on a wide screen, three on a phone. */}
       <ul

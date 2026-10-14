@@ -20,9 +20,8 @@ import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
-import { StoreHeader } from "@/components/layout/StoreHeader";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { SiteFooter } from "@/components/layout/SiteFooter";
+import { BUTTON_PRIMARY, Breadcrumbs, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
+import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
@@ -52,7 +51,7 @@ import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronRight, PackageOpen, SlidersHorizontal, X } from "lucide-react";
+import { PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -76,7 +75,6 @@ export default function Category() {
   const shelf = useCatalog(100);
   const catalog = shelf.data ?? [];
 
-  const [search, setSearch] = useState("");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   useOverlay(sheetOpen, () => setSheetOpen(false));
@@ -91,13 +89,14 @@ export default function Category() {
   useEffect(() => { setQueryString(window.location.search); }, [location]);
   /* What the URL searched for; the header field starts from it and Enter writes it back. */
   const term = searchTermFrom(queryString);
-  useEffect(() => { setSearch(term); }, [term]);
 
   const categories = useMemo(
     () => knownCategories(DEPARTMENTS.map(department => department.name), catalog),
     [catalog],
   );
   const category = categoryFromSlug(slug, categories);
+  /* The department row marks where the shopper is; a search spans them all, so it marks none. */
+  usePageChrome({ activeDepartment: onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category });
 
   const filters: BrowseFilters = useMemo(
     () => filtersFromSearch(queryString, category),
@@ -205,8 +204,6 @@ export default function Category() {
     setQueryString(query);
   };
 
-  const openProduct = (product: Product) =>
-    navigate(`/products/${encodeURIComponent(product.handle)}`);
 
 
 
@@ -262,24 +259,41 @@ export default function Category() {
   );
 
   return (
-    <main className="flex min-h-screen flex-col bg-background text-[#0a285a]">
-      {/* The department row marks where the shopper is; a search spans them all, so it marks none. */}
-      <StoreHeader
-        catalog={catalog}
-        search={search}
-        onSearch={setSearch}
-        onSelectProduct={openProduct}
-        activeDepartment={onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category}
-      />
+    <>
+      <PageBody>
+        <Breadcrumbs trail={[{ label: onSearchPage ? t("browse.searchCrumb") : departmentName }]} />
+        {/* The count under the name rather than as the heading: "No results for Beauty"
+            read as a search that failed, for a department that simply has nothing yet. */}
+        <PageHeading
+          title={title}
+          note={
+            <span aria-live="polite">
+              {isLoading || error ? "\u00a0" : results.length === 0
+                ? t("browse.countNone")
+                : results.length === 1
+                  ? t("browse.countOne")
+                  : moreThanShown
+                    ? t("browse.countBestOf", { count: results.length, total: moreThanShown })
+                    : t("browse.countMany", { count: results.length })}
+            </span>
+          }
+          actions={
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white transition-colors hover:bg-[#f0f2f5] px-3 py-2 text-[13px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
+              <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
+              {t("browse.sortBy")}
+              <Select
+                aria-label={t("browse.sortBy")}
+                value={filters.sort}
+                onChange={event => setFilters({ sort: event.target.value as BrowseSort })}
+                className="bg-transparent font-extrabold text-[#0a285a] outline-none"
+              >
+                {BROWSE_SORTS.map(sort => <option key={sort} value={sort}>{t(SORT_LABELS[sort])}</option>)}
+              </Select>
+            </label>
+          }
+        />
 
-      <div className="container pt-4 sm:pt-6">
-        <nav className="flex items-center gap-1.5 text-[12px] ink-muted" aria-label={t("nav.breadcrumb")}>
-          <Link href="/" className="py-1.5 hover:text-[#0a285a]">{t("nav.home")}</Link>
-          <ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
-          <span className="text-[#404553]">{onSearchPage ? t("browse.searchCrumb") : departmentName}</span>
-        </nav>
-
-        <div className="mt-4 grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
+        <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
           {/* Sticky so the filters stay reachable through a long grid, and
               independently scrollable so a long facet list cannot trap the page. */}
           <aside className="hidden lg:block">
@@ -288,39 +302,9 @@ export default function Category() {
             </div>
           </aside>
 
-          <section id="main" aria-label={t("browse.resultsRegion")}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h1 className="text-[17px] font-extrabold text-[#0a285a]">{title}</h1>
-                {/* The count beside the name rather than as the heading: "No results for Beauty"
-                    read as a search that failed, for a department that simply has nothing yet. */}
-                <p className="mt-0.5 text-[12px] font-bold ink-muted" aria-live="polite">
-                  {isLoading || error ? " " : results.length === 0
-                    ? t("browse.countNone")
-                    : results.length === 1
-                      ? t("browse.countOne")
-                      : moreThanShown
-                        ? t("browse.countBestOf", { count: results.length, total: moreThanShown })
-                        : t("browse.countMany", { count: results.length })}
-                </p>
-              </div>
-
-              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white transition-colors hover:bg-[#f0f2f5] px-3 py-2 text-[12px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
-                <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
-                {t("browse.sortBy")}
-                <Select
-                  aria-label={t("browse.sortBy")}
-                  value={filters.sort}
-                  onChange={event => setFilters({ sort: event.target.value as BrowseSort })}
-                  className="bg-transparent font-extrabold text-[#0a285a] outline-none"
-                >
-                  {BROWSE_SORTS.map(sort => <option key={sort} value={sort}>{t(SORT_LABELS[sort])}</option>)}
-                </Select>
-              </label>
-            </div>
-
+          <section aria-label={t("browse.resultsRegion")} className="min-w-0">
             {chips.length ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
                 {chips.map(chip => (
                   <button
                     key={chip.key}
@@ -362,13 +346,10 @@ export default function Category() {
                 ))}
               </div>
             ) : error ? (
-              <div className="mt-6 rounded-2xl border border-[#f2b69e] bg-white px-6 py-14 text-center">
-                <PackageOpen className="mx-auto size-7 ink-accent" aria-hidden />
-                <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">{t("home.catalogSlow")}</h2>
-                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">{t("home.refreshNote")}</p>
-                <button onClick={() => void refetch()} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
-                  {t("home.refreshCatalog")}
-                </button>
+              <div className="mt-5">
+                <EmptyState icon={<PackageOpen className="size-6" />} title={t("home.catalogSlow")} note={t("home.refreshNote")}>
+                  <button type="button" onClick={() => void refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+                </EmptyState>
               </div>
             ) : results.length ? (
               <>
@@ -401,36 +382,30 @@ export default function Category() {
                 </div>
               </>
             ) : (
-              <div className="mt-6 rounded-2xl border border-dashed border-[#b8c9dc] bg-white/60 px-6 py-14 text-center">
-                <PackageOpen className="mx-auto size-7 ink-muted" aria-hidden />
-                <h2 className="mt-3 text-lg font-extrabold text-[#0a285a]">
-                  {elsewhere ? t("browse.emptyHere", { name: departmentName }) : activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
-                </h2>
-                <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#536b8c]">
-                  {activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
-                </p>
-                {elsewhere ? (
-                  <Link
-                    href={searchPath(typed)}
-                    className="glass glass-navy pressable mt-5 inline-flex rounded-full px-5 py-3 text-xs font-extrabold"
-                  >
-                    {t(elsewhere === 1 ? "browse.searchAllOne" : "browse.searchAllMany", { count: elsewhere })}
-                  </Link>
-                ) : activeCount ? (
-                  <button onClick={clearAll} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
-                    {t("browse.clearAll")}
-                  </button>
-                ) : (
-                  /* Everything means everything: the search term goes as well. */
-                  <button onClick={() => { setSheetOpen(false); navigate("/category/all"); setQueryString(""); }} className="glass glass-navy pressable mt-5 rounded-full px-5 py-3 text-xs font-extrabold">
-                    {t("browse.browseEverything")}
-                  </button>
-                )}
+              <div className="mt-5">
+                <EmptyState
+                  icon={<PackageOpen className="size-6" />}
+                  title={elsewhere ? t("browse.emptyHere", { name: departmentName }) : activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
+                  note={activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
+                >
+                  {elsewhere ? (
+                    <Link href={searchPath(typed)} className={BUTTON_PRIMARY}>
+                      {t(elsewhere === 1 ? "browse.searchAllOne" : "browse.searchAllMany", { count: elsewhere })}
+                    </Link>
+                  ) : activeCount ? (
+                    <button type="button" onClick={clearAll} className={BUTTON_PRIMARY}>{t("browse.clearAll")}</button>
+                  ) : (
+                    /* Everything means everything: the search term goes as well. */
+                    <button type="button" onClick={() => { setSheetOpen(false); navigate("/category/all"); setQueryString(""); }} className={BUTTON_PRIMARY}>
+                      {t("browse.browseEverything")}
+                    </button>
+                  )}
+                </EmptyState>
               </div>
             )}
           </section>
         </div>
-      </div>
+      </PageBody>
 
       {/* On a phone the sidebar becomes a sheet behind one always-reachable
           button, so the filters do not push the products off the first screen. */}
@@ -477,9 +452,6 @@ export default function Category() {
         </div>
       ) : null}
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
-      <MobileTabBar />
-      <div aria-hidden className="h-12 lg:h-16" />
-      <SiteFooter clearance="tall" />
-    </main>
+    </>
   );
 }

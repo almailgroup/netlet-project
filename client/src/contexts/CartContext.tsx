@@ -1,6 +1,6 @@
 import { readStored, removeStored, writeStored } from "@/lib/browserStore";
 import { appPath } from "@/lib/basePath";
-import { navigate as navigateBrowser } from "wouter/use-browser-location";
+import { navigateWhenReady } from "@/lib/readyNavigation";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import type { Cart } from "@shared/commerce/types";
@@ -293,12 +293,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * and fetched it again on the press that leads to paying — the fault Buy now
    * had. This provider sits outside the router (it wraps it), so it navigates
    * the browser's own history with the base path on, which the router then
-   * reads like any other move.
+   * reads like any other move — waiting for checkout's code first, as every
+   * link does (`readyNavigation`), so the bag never gives way to a blank.
    */
   const proceedToCheckout = useCallback(() => {
     if (!cart?.items.length) return;
     setIsOpen(false);
-    navigateBrowser(appPath(cart.checkoutUrl));
+    navigateWhenReady(appPath(cart.checkoutUrl));
   }, [cart]);
 
   const settling = hydrating || (loading && !cart?.items.length);

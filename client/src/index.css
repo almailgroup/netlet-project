@@ -71,6 +71,9 @@
   }
   html {
     scroll-behavior: smooth;
+    /* The browser's own grey flash on a tap is replaced by the press below:
+       one answer to a finger, in the shop's tint, rather than two. */
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Global motion guard, taken from the old-design reference. The reveal
@@ -171,6 +174,28 @@
         [class*="size-"], [class*=" h-"], [class^="h-"]
       ):not(:disabled, [aria-disabled="true"]):hover {
       box-shadow: 0 0 0 0.25rem var(--hover-tint);
+    }
+  }
+  /*
+   * And a finger gets the same tint while it is down. A phone has no hover,
+   * so a bare control — a footer link, a menu row, a tab — answered a tap with
+   * nothing until the next page arrived, which on a slow connection reads as
+   * a press that did not take. In the base layer for the hover rule's reason:
+   * a control with a fill of its own keeps it (and `.pressable` presses it).
+   */
+  @media (hover: none) {
+    :is(
+      button,
+      a[href],
+      summary,
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [role="menuitemradio"],
+      [role="option"],
+      label:has(> input:is([type="checkbox"], [type="radio"]))
+    ):not(:disabled, [aria-disabled="true"]):active {
+      background-color: var(--hover-tint);
     }
   }
   ::selection {
@@ -798,5 +823,59 @@
 @media (min-width: 1024px) {
   .sticky-header[data-stuck] .header-edge {
     display: block;
+  }
+}
+
+/*
+ * A page arriving. Opacity only, and quick: enough that the content under the
+ * header settles in rather than snapping, never so long that anybody waits on
+ * it. Not a slide — a transform would make the page the containing block for
+ * every fixed bar inside it (the product page's buy bar, the filters button)
+ * for as long as it ran. The shell adds it only on a move between pages, never
+ * on the first load, and nobody who asked for less motion gets it at all.
+ */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-enter 180ms var(--ease-out);
+  }
+}
+
+/*
+ * The bar across the top while a press waits for the next page's code
+ * (`readyNavigation`). The brand orange as a fill, three pixels, creeping
+ * towards the end and never reaching it — it is a sign of life, not a measure.
+ * It grows from the side the page reads from.
+ */
+.nav-progress {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 80;
+  height: 3px;
+  background: #f2683a;
+  transform: scaleX(0);
+  transform-origin: left center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-out);
+}
+html[dir="rtl"] .nav-progress {
+  transform-origin: right center;
+}
+.nav-progress.is-on {
+  opacity: 1;
+  animation: nav-progress 2500ms cubic-bezier(0.1, 0.6, 0.3, 1) forwards;
+}
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.85);
   }
 }

@@ -12,8 +12,7 @@
  */
 import { useRoute, useSearch } from "wouter";
 import { BadgeCheck, CircleAlert } from "lucide-react";
-import { MobileTabBar } from "@/components/layout/MobileTabBar";
-import { StoreHeader } from "@/components/layout/StoreHeader";
+import { CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatMoney } from "@/lib/format";
@@ -34,19 +33,17 @@ export default function InvoiceVerify() {
   const found = check.data;
 
   return (
-    <div className="type-body min-h-dvh bg-background pb-24 lg:pb-0">
-      <StoreHeader />
-      <main id="main" className="container py-10">
-        <div className="mx-auto max-w-xl rounded-[1.5rem] border border-[#d5dfeb] bg-white p-6 text-[#0a285a] sm:p-8">
-          <h1 className="text-2xl font-extrabold">{t("invoice.verifyHeading")}</h1>
-          {shaped && check.isLoading ? <p className="mt-4 text-sm ink-muted">{t("invoice.verifyChecking")}</p> : null}
+    <PageBody width="reading">
+      <PageHeading title={t("invoice.verifyHeading")} />
+        <div className={`${CARD} max-w-xl p-6 text-[#0a285a] sm:p-8`}>
+          {shaped && check.isLoading ? <p className="text-sm ink-muted">{t("invoice.verifyChecking")}</p> : null}
           {!shaped || (!check.isLoading && !found) ? (
-            <p role="status" className="mt-4 flex items-start gap-2 text-sm font-bold text-[#8c2f22]">
+            <p role="status" className="flex items-start gap-2 text-sm font-bold text-[#8c2f22]">
               <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />{t("invoice.verifyNo")}
             </p>
           ) : null}
           {found ? (
-            <div role="status" className="mt-4">
+            <div role="status">
               <p className="flex items-start gap-2 text-sm font-extrabold text-[#2f5d33]">
                 <BadgeCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
                 {t(found.kind === "credit_note" ? "invoice.verifyYesCredit" : "invoice.verifyYes")}
@@ -62,8 +59,6 @@ export default function InvoiceVerify() {
             </div>
           ) : null}
         </div>
-      </main>
-      <MobileTabBar />
-    </div>
+    </PageBody>
   );
 }
