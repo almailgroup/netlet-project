@@ -3826,6 +3826,21 @@ fourth. Below `sm` each opens and closes, the specifications open to start;
 from `sm` up they are tabs. One structure at a time (`useMediaQuery`), never
 both with one hidden, which would put every panel and its id on the page twice.
 
+**On a phone the price and the two buttons follow the shopper down the page**
+(`StickyBuyBar` in `ProductDetail.tsx`). The buy box is under the photo, so
+somebody reading the specifications or the reviews had to scroll back up to
+buy. Once the page's own Add to cart and Buy now have gone above the screen a
+bar floats over the tab bar with the price and the same two buttons — the same
+handlers, labels and disabled state, so the options and the quantity chosen
+above go with it — and it goes again when they come back. Hidden it is `inert`
+and `aria-hidden`, so nobody meets two sets of the same buttons; a wide screen
+keeps the buy box sticky beside the photos and never draws it. **What decides
+it is an observer whose area runs from the top of the screen to far below**
+(`rootMargin` 100000px at the foot): watching the screen alone, a jump from
+below it to above it — Back, a fling, an anchor — read "not visible" twice and
+never fired, which is exactly what the first test did. And it is a callback
+ref, because the buttons first exist a render or two after the hook does.
+
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
 
@@ -3881,6 +3896,40 @@ same query through the index and keeps the order either way, so
 line per switch from `readinessOf` — no model key, `ai` off, no orders yet to
 pair products from, a browser that cannot listen — rather than a switch that
 reads on over a page that shows nothing.
+
+## Measured on a phone
+
+Audits over every shopping route at 320, 390 and 1440 in
+both languages — sideways scroll, tap targets, text size, field size, layout
+shift, console errors — found four things no screenshot showed, now fixed:
+
+- **The footer jumped on every first visit to a page.** While a page's code
+  arrived the shell drew its header and footer round an outline, so the footer
+  sat half-way up the screen and was then pushed off it when the page landed —
+  0.28 to 0.46 of layout shift on Account, Help, the terms and a 404, where 0.1
+  is the line. The shell's `<main>` is at least a screen tall
+  (`min-h-[100svh]`), so the footer starts below the fold and moving it costs
+  nothing. A short page still keeps its space above the footer, never below.
+- **The Arabic page was painted left to right for a frame.** `<html dir>` was
+  written in an ordinary effect, after the first paint, so the whole page moved
+  sideways as it flipped — 0.77 on the Arabic home page at 1440. It is a layout
+  effect now (`CustomerContext`), which lands before the paint. After both:
+  every route under 0.1, nearly all at 0.
+- **A field under 16px zooms an iPhone in**, and leaves it zoomed. The header's
+  search, every box at checkout, the address form and the voucher box were 13
+  to 15px. Under a coarse pointer every text field is 16px (`index.css`,
+  unlayered and `!important` over the field's own utility), except one already
+  drawn larger.
+- **Nothing a shopper reads is under 12px.** The storefront's 11px hints,
+  counts and badges are 12px, and its 10px badges 11px; the portal was left as
+  it is. The breadcrumb and the footer's terms and privacy links carry
+  `.tap-target`, so a thumb gets 44px where the words are 13px.
+
+Left as they are, deliberately: the search field's voice and submit discs
+(36px, for the overlapping-targets reason under Chrome), the product card's
+title link (the photo above it opens the same page and is the target a thumb
+uses), and the department page's floating Filters pill, which can cover a
+card's button while it scrolls past.
 
 ## Languages
 

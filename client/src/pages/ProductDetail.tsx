@@ -40,7 +40,7 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
@@ -895,6 +895,25 @@ export default function ProductDetail() {
   /* Nothing ticked by default (3.1.2): a pre-ticked warranty is how somebody
      pays for what they did not ask for and did not notice. */
   const [chosenAddons, setChosenAddons] = useState<string[]>([]);
+  /* The phone's buy bar appears once the page's own buttons have scrolled away
+     above the screen — never while they are in view, never before reaching them.
+     A callback ref, because the buttons first exist a render or two after this
+     hook does (the loading state comes first), and an effect keyed on the
+     product ran while there was nothing yet to watch. */
+  const [buyPassed, setBuyPassed] = useState(false);
+  const buyRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    /* The watched area runs from the top of the screen to far below it, so the
+       one edge that counts is the top: a jump from below the screen to above
+       it (Back, a fling, an anchor) changes the answer, where an observer of
+       the screen alone saw "not visible" twice and said nothing. */
+    const observer = new IntersectionObserver(
+      ([entry]) => setBuyPassed(!entry.isIntersecting && entry.boundingClientRect.top < 0),
+      { rootMargin: "0px 0px 100000px 0px" },
+    );
+    observer.observe(node);
+    return () => { observer.disconnect(); setBuyPassed(false); };
+  }, []);
   /* The department row marks the product's own department. */
   usePageChrome({ activeDepartment: product?.productType ?? null });
 
@@ -1138,6 +1157,7 @@ export default function ProductDetail() {
               ) : null}
             </div>
 
+            <div ref={buyRef}>
             <div className="mt-6 flex gap-3">
               <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.add} pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}>{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
@@ -1146,6 +1166,7 @@ export default function ProductDetail() {
                 card and the preview use, so "which button buys" has the same
                 answer everywhere (`PURCHASE_TONE`). */}
             <button onClick={() => void buyNow()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.buy} pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
+            </div>
 
             {selectedVariant?.preorder
               ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>
@@ -1229,6 +1250,62 @@ export default function ProductDetail() {
       </PageBody>
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
+      <StickyBuyBar
+        shown={buyPassed}
+        name={t("product.buyBar", { name: product.title })}
+        price={money(price)}
+        addLabel={t(buyLabelFor(selectedVariant))}
+        buyLabel={t("product.buyNow")}
+        disabled={!inStock || cartLoading}
+        busy={cartLoading}
+        onAdd={() => void addToCart()}
+        onBuy={() => void buyNow()}
+      />
     </>
+  );
+}
+
+/**
+ * The phone's buy bar. Once the page's own Add to cart and Buy now have
+ * scrolled away above the screen, the price and the same two buttons float
+ * over the tab bar, so somebody reading the specifications or the reviews buys
+ * from where they are instead of scrolling back up for the buttons. The same
+ * handlers, the same disabled state and the same labels as the buttons it
+ * stands in for — the quantity and options chosen above go with it. A wide
+ * screen keeps its buy box sticky beside the photos, so it never draws there.
+ * Hidden, it is `inert` and out of the accessibility tree, so a keyboard or a
+ * screen reader never meets two sets of the same buttons at once.
+ */
+function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, busy, onAdd, onBuy }: {
+  shown: boolean;
+  name: string;
+  price: string;
+  addLabel: string;
+  buyLabel: string;
+  disabled: boolean;
+  busy: boolean;
+  onAdd: () => void;
+  onBuy: () => void;
+}) {
+  return (
+    <div
+      role="region"
+      aria-label={name}
+      aria-hidden={!shown}
+      inert={!shown}
+      className={`fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-30 rounded-2xl border border-[#e6e9ef] bg-white p-2 shadow-[0_10px_30px_rgba(10,40,90,.18)] transition-[opacity,translate] duration-200 lg:hidden ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
+    >
+      <div className="flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate px-1.5 text-[15px] font-extrabold text-[#0a285a] min-[360px]:px-2 min-[360px]:text-[16px]">{price}</p>
+        <button type="button" onClick={onAdd} disabled={disabled} className={`${PURCHASE_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
+          {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ShoppingBag className="hidden size-4 min-[380px]:block" aria-hidden />}
+          {addLabel}
+        </button>
+        <button type="button" onClick={onBuy} disabled={disabled} className={`${PURCHASE_TONE.buy} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
+          <Zap className="hidden size-4 fill-current min-[380px]:block" aria-hidden />
+          {buyLabel}
+        </button>
+      </div>
+    </div>
   );
 }
