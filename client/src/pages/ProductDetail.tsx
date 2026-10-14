@@ -951,11 +951,13 @@ export default function ProductDetail() {
     const next = imageIndexForVariant(product!, product!.variants.find(entry => entry.id === variant.id));
     if (next !== null) setSelectedImageIndex(next);
   };
+  /* The bag drawer opening is the confirmation, and the header's count hops:
+     the "added to your cart" toast that said it a third time is gone, on the
+     owner's word. A failure still says so. */
   const addToCart = async () => {
     if (!product || !selectedVariant?.availableForSale) return;
     try {
       await addItem(selectedVariant.id, quantity, true, chosenAddons);
-      toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
     } catch {
       toast.error(t("cart.addFailed"));
     }

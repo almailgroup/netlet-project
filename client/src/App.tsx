@@ -441,10 +441,11 @@ function Router() {
 /**
  * Toasts, at the top of the screen, under the header.
  *
- * They sat in the bottom corner on the bag's side, and "added to your cart" is
- * the toast that fires as the bag drawer opens — so the confirmation covered
- * the checkout button it was confirming, on every add, in both languages, and
- * on a phone it covered the tab bar too. The top centre is the one place
+ * They sat in the bottom corner on the bag's side, and "added to your cart"
+ * fired as the bag drawer opened — so the confirmation covered the checkout
+ * button it was confirming, on every add, in both languages, and on a phone it
+ * covered the tab bar too. That toast is gone now, on the owner's word (the
+ * drawer and the header's count say it); the rest still land here. The top centre is the one place
  * nothing a shopper presses next lives: the drawer's actions are at its foot,
  * the tab bar is at the bottom, and the offset keeps it under the header's
  * cart and account controls. `dir` still lays the text out right-to-left.

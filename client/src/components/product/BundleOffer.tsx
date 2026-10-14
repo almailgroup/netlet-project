@@ -28,6 +28,8 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
   const money = useMoney();
   const { addItem } = useCart();
   const [adding, setAdding] = useState<number | null>(null);
+  /* Said to a screen reader; the eye has the header's count, which hops. */
+  const [said, setSaid] = useState("");
 
   const bundles = trpc.commerce.bundlesForVariant.useQuery(
     { variantId: variantId ?? "" },
@@ -82,7 +84,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
                 for (const member of bundle.members) {
                   await addItem(String(member.variantId), member.quantity, false, [], bundle.id);
                 }
-                toast.success(t("bundle.added", { name: bundle.name }));
+                setSaid(t("bundle.added", { name: bundle.name }));
               } catch {
                 toast.error(t("cart.addFailed"));
               } finally {
@@ -98,6 +100,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
           <p className="mt-2 text-[12px] leading-5 ink-muted">{t("bundle.allOrNothing")}</p>
         </div>
       ))}
+      <span aria-live="polite" className="sr-only">{said}</span>
     </section>
   );
 }

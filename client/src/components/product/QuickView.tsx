@@ -65,9 +65,9 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
     if (thenCheckout) return buyNow(product, quantity, variant.id);
+    /* The drawer opening is the confirmation; no toast (see the product page). */
     try {
       await addItem(variant.id, quantity);
-      toast.success(t("cart.addedQuantity", { count: quantity, name: product.title }));
       onClose();
     } catch {
       toast.error(t(thenCheckout ? "cart.buyFailed" : "cart.addFailed"));

@@ -808,6 +808,12 @@ stored bag loads or the first item is being added, and the drawer draws a
 skeleton then — it used to say "your bag is empty" to somebody who had just
 pressed Add. **Toasts sit top-centre under the header**: in the bag's bottom
 corner, "added to your cart" covered the checkout button it was confirming.
+**And adding to the bag raises no toast at all**, on the owner's word — from a
+card, the product page, the preview or a bundle. The drawer opening says it on
+the product page and the preview, the header's count hops everywhere, and a
+polite live region says it to a screen reader where no drawer opens (the card,
+the bundle). A failed add still toasts, because a failure nobody is told about
+reads as a success.
 
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
