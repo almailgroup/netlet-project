@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { companyDetails, contactEmail, displayNumber, nameInSentence, socialLink, socialLinks } from "./contact.js";
+import { NETLET_CONTACT, companyDetails, contactEmail, displayNumber, mapsLink, nameInSentence, socialLink, socialLinks, visitDetails } from "./contact.js";
+import { supportNumber } from "./support.js";
 
 describe("contactEmail", () => {
   it("takes an ordinary address and lowercases it", () => {
@@ -64,5 +65,25 @@ describe("nameInSentence", () => {
   it("drops the name's own full stop so the sentence has one", () => {
     expect(nameInSentence("Example Trading Co.")).toBe("Example Trading Co");
     expect(nameInSentence(" NetLet ")).toBe("NetLet");
+  });
+});
+
+describe("NetLet's own details", () => {
+  it("are a number, an address and a place the rules accept", () => {
+    expect(supportNumber(NETLET_CONTACT.phone)).toBe("96525123456");
+    expect(displayNumber(supportNumber(NETLET_CONTACT.phone)!)).toBe("+965 2512 3456");
+    expect(contactEmail(NETLET_CONTACT.email)).toBe("support@netlet.com");
+    expect(visitDetails(NETLET_CONTACT.address, NETLET_CONTACT.addressAr)).toEqual({ address: "Kuwait City, Kuwait", addressAr: "مدينة الكويت، الكويت" });
+  });
+});
+
+describe("visitDetails", () => {
+  it("is absent without an address, and the Arabic is optional", () => {
+    expect(visitDetails(" ", "مدينة الكويت")).toBeNull();
+    expect(visitDetails("Salmiya, Kuwait", "")).toEqual({ address: "Salmiya, Kuwait", addressAr: null });
+  });
+
+  it("opens the address on a map", () => {
+    expect(mapsLink("Kuwait City, Kuwait")).toBe("https://www.google.com/maps/search/?api=1&query=Kuwait%20City%2C%20Kuwait");
   });
 });

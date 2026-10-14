@@ -3,6 +3,8 @@
  * an empty environment — so each unset entry disables a feature rather than
  * preventing startup. See .env.example for what each one switches off.
  */
+import { NETLET_CONTACT } from "../../shared/commerce/contact.js";
+
 export const ENV = {
   /** Signs session cookies. Required before any sign-in can succeed. */
   cookieSecret: process.env.JWT_SECRET ?? "",
@@ -45,12 +47,14 @@ export const ENV = {
   invoiceIssuerAddress: process.env.INVOICE_ISSUER_ADDRESS ?? "",
   /* NetLet's own WhatsApp and phone for support (3.5.1). Public numbers, and
      unset is no channel: the Help section draws only what is configured. */
+  /* The phone, the email and the visiting address default to NetLet's own
+     published ones (`NETLET_CONTACT`); a setting replaces one, and an empty
+     setting removes it. Malformed is absent, never a link to nobody. */
   supportWhatsapp: process.env.SUPPORT_WHATSAPP ?? "",
-  supportPhone: process.env.SUPPORT_PHONE ?? "",
-  /* NetLet's support address and its social profiles, for the footer. Each
-     public and each optional: unset or malformed is absent, never a link to
-     nobody (`shared/commerce/contact.ts`). */
-  supportEmail: process.env.SUPPORT_EMAIL ?? "",
+  supportPhone: process.env.SUPPORT_PHONE ?? NETLET_CONTACT.phone,
+  supportEmail: process.env.SUPPORT_EMAIL ?? NETLET_CONTACT.email,
+  supportAddress: process.env.SUPPORT_ADDRESS ?? NETLET_CONTACT.address,
+  supportAddressAr: process.env.SUPPORT_ADDRESS_AR ?? (process.env.SUPPORT_ADDRESS === undefined ? NETLET_CONTACT.addressAr : ""),
   social: {
     instagram: process.env.SOCIAL_INSTAGRAM ?? "",
     snapchat: process.env.SOCIAL_SNAPCHAT ?? "",

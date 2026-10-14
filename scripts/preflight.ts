@@ -15,7 +15,7 @@ import net from "node:net";
 import path from "node:path";
 import { debtorProblem } from "../shared/commerce/payoutFile.js";
 import { supportNumber } from "../shared/commerce/support.js";
-import { SOCIAL_PLATFORMS, contactEmail, socialLink } from "../shared/commerce/contact.js";
+import { NETLET_CONTACT, SOCIAL_PLATFORMS, contactEmail, socialLink } from "../shared/commerce/contact.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -191,8 +191,9 @@ if ((process.env.CRON_SECRET ?? "").trim().length >= 16) {
     "Set CRON_SECRET to a long random string, and the same value in Vercel; /admin/subscriptions can still run them by hand");
 }
 
-for (const [name, label] of [["SUPPORT_WHATSAPP", "WhatsApp support"], ["SUPPORT_PHONE", "Phone support"]] as const) {
-  const value = (process.env[name] ?? "").trim();
+for (const [name, label, fallback] of [["SUPPORT_WHATSAPP", "WhatsApp support", ""], ["SUPPORT_PHONE", "Phone support", NETLET_CONTACT.phone]] as const) {
+  /* The phone defaults to NetLet's own published number, as the server does. */
+  const value = (process.env[name] ?? fallback).trim();
   if (!value) add("warn", label, `${name} not set — the Help section offers no ${label.toLowerCase()} channel`, `Set ${name} to NetLet's number in international form`);
   else if (!supportNumber(value)) add("blocked", label, `${name} is not an international number`, "Write it like 96550001234 or +965 5000 1234");
   else add("ok", label, `+${supportNumber(value)}`);
@@ -201,7 +202,7 @@ for (const [name, label] of [["SUPPORT_WHATSAPP", "WhatsApp support"], ["SUPPORT
 {
   /* The footer's email and profiles: unset is fine and simply absent, but a
      value that is set and refused would vanish without a word, so it blocks. */
-  const email = (process.env.SUPPORT_EMAIL ?? "").trim();
+  const email = (process.env.SUPPORT_EMAIL ?? NETLET_CONTACT.email).trim();
   if (!email) add("warn", "Support email", "SUPPORT_EMAIL not set — the footer offers no email address", "Set SUPPORT_EMAIL to NetLet's support address");
   else if (!contactEmail(email)) add("blocked", "Support email", "SUPPORT_EMAIL is not an email address", "Write it like support@netlet.com.kw");
   else add("ok", "Support email", contactEmail(email)!);

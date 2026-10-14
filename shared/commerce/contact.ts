@@ -1,15 +1,26 @@
 /**
  * NetLet's public contact details, as the footer and the help page draw them.
  *
- * Every one is optional and comes from the deployment's own settings
- * (`SUPPORT_EMAIL`, `SOCIAL_*`), the rule `supportNumber` already follows for
- * WhatsApp and the phone: unset or malformed is *absent*, never a link to
- * nobody. A footer that offers an address bouncing every message, or an icon
- * opening somebody else's account, is worse than one that offers less.
+ * Every one comes from the deployment's own settings (`SUPPORT_PHONE`,
+ * `SUPPORT_EMAIL`, `SUPPORT_ADDRESS`, `SOCIAL_*`), and a malformed one is
+ * *absent*, never a link to nobody: a footer that offers an address bouncing
+ * every message, or an icon opening somebody else's account, is worse than
+ * one that offers less. The phone, the email and the address NetLet publishes
+ * are the defaults (`NETLET_CONTACT`, the owner's own), so they show on a
+ * deployment that has set nothing; a setting replaces one, and a setting left
+ * empty removes it.
  *
  * Pure and shared, so the server decides what is published and the page draws
  * exactly that.
  */
+
+/** NetLet's own published contact details, as the owner gave them. */
+export const NETLET_CONTACT = {
+  phone: "+965 2512 3456",
+  email: "support@netlet.com",
+  address: "Kuwait City, Kuwait",
+  addressAr: "مدينة الكويت، الكويت",
+} as const;
 
 /** A support address, lowercased, or null. Deliberately plain: one @, a dot after it, no spaces. */
 export function contactEmail(raw: string): string | null {
@@ -29,6 +40,20 @@ export function displayNumber(digits: string): string {
 
 export function mailLink(address: string): string {
   return `mailto:${address}`;
+}
+
+/** Where a shopper can call in, in each language; the Arabic falls back to the English. */
+export type Visit = { address: string; addressAr: string | null };
+
+export function visitDetails(address: string, addressAr: string): Visit | null {
+  const english = address.trim().slice(0, 200);
+  if (!english) return null;
+  return { address: english, addressAr: addressAr.trim().slice(0, 200) || null };
+}
+
+/** The address on a map, opened in the shopper's own maps app or Google Maps. */
+export function mapsLink(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 /**

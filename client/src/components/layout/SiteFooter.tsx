@@ -27,7 +27,7 @@
  * links; from `sm` up they are columns. One structure at a time
  * (`useMediaQuery`), the product page's rule.
  */
-import { Banknote, ChevronDown, Facebook, Ghost, Globe, Instagram, LifeBuoy, Mail, MessageCircle, MessagesSquare, Phone, Truck, Youtube, type LucideIcon } from "lucide-react";
+import { Banknote, ChevronDown, Facebook, Ghost, Globe, Headset, Instagram, LifeBuoy, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Truck, Youtube, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -37,7 +37,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { footerLogoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
-import { displayNumber, mailLink, nameInSentence, type SocialPlatform } from "@shared/commerce/contact";
+import { displayNumber, mailLink, mapsLink, nameInSentence, type SocialPlatform } from "@shared/commerce/contact";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { phoneLink, whatsappLink } from "@shared/commerce/support";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -184,6 +184,10 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
   const contact = channels.data;
   const company = contact?.company ?? null;
   const companyName = nameInSentence(company ? (isArabic && company.nameAr ? company.nameAr : company.name) : t("footer.netlet"));
+  /* Where to call in, in the page's language, and the place for the line above
+     it: the address's first part ("Kuwait City" of "Kuwait City, Kuwait"). */
+  const visitAddress = contact?.visit ? (isArabic && contact.visit.addressAr ? contact.visit.addressAr : contact.visit.address) : null;
+  const visitPlace = visitAddress ? visitAddress.split(/[,،]/)[0].trim() : null;
   /* The navigation's rule: a department with nothing on sale is not linked. */
   const inStock = useDepartmentsInStock();
   const departments: FooterLink[] = [
@@ -203,8 +207,15 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
               <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-10 w-auto object-contain" />
             </Link>
             <p className="mt-3 text-[15px] font-semibold text-white">{t("home.heroTitle")} <span className="ink-accent-on-dark">{t("home.heroTitleAccent")}</span></p>
-            <h2 className="mt-6 text-[15px] font-bold text-white">{t("footer.contactTitle")}</h2>
-            <ul className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
+            <h2 className="mt-6 flex items-center gap-2 text-[15px] font-bold text-white">
+              <Headset className="size-[18px] shrink-0 text-[#ffab85]" aria-hidden />{t("footer.contactTitle")}
+            </h2>
+            {/* The owner's own line: who answers, and the three ways to reach
+                them — the place named from the visiting address itself. */}
+            <p className="mt-2 max-w-[44ch] text-[14px] leading-6 text-[#c5d3e6]">
+              {visitPlace ? t("footer.contactNote", { place: visitPlace }) : t("footer.contactNotePlain")}
+            </p>
+            <ul className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
               {contact?.whatsapp ? (
                 <ContactRow
                   icon={MessageCircle}
@@ -219,6 +230,15 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
               ) : null}
               {contact?.email ? (
                 <ContactRow icon={Mail} label={t("footer.emailUs")} detail={<bdi dir="ltr">{contact.email}</bdi>} href={mailLink(contact.email)} />
+              ) : null}
+              {contact?.visit ? (
+                <ContactRow
+                  icon={MapPin}
+                  label={t("footer.visitUs")}
+                  detail={<span dir="auto">{visitAddress}</span>}
+                  href={mapsLink(contact.visit.address)}
+                  external={t("footer.opensNewTab")}
+                />
               ) : null}
               <ContactRow icon={MessagesSquare} label={t("help.contactMessage")} href="/account/help" internal />
               <ContactRow icon={LifeBuoy} label={t("footer.helpCentre")} href="/help" internal />

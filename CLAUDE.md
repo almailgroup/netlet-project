@@ -1156,15 +1156,20 @@ Now: how to reach a person (WhatsApp, the phone, the email, Message NetLet, the
 help centre), the link groups, how paying and delivery work (cash on delivery,
 every governorate), the language, and the last line saying who the shop is —
 the company, its commercial registration and its address, which a Kuwaiti shop
-shows its customers — beside the terms and the privacy policy. **Every contact
-is a setting, and an unset one is absent**: `support.channels` carries
-`SUPPORT_WHATSAPP`, `SUPPORT_PHONE`, `SUPPORT_EMAIL`, the `SOCIAL_*` profiles
-and the company, each through `shared/commerce/contact.ts`, which refuses an
-address that is not one and a profile link that is not https on that
-platform's own host — a lookalike domain or a link pasted into the wrong box
-draws nothing rather than sending a shopper somewhere nobody meant. Message
-NetLet is always there, so the block is never empty on a deployment that has
-set nothing. **The company is the invoices' own issuer** (`INVOICE_ISSUER_*`),
+shows its customers — beside the terms and the privacy policy. **The contact
+block is the owner's own**: under "Get in touch" and their line about the team,
+Call us, Email support and Visit us (+965 2512 3456, support@netlet.com, Kuwait
+City — `NETLET_CONTACT`, the defaults, so they show on a deployment that has set
+nothing), then WhatsApp when configured, Message NetLet and the help centre.
+Visit us opens the address on a map, and the line names its first part ("visit
+us in Kuwait City"). **Every contact is still a setting**: `support.channels`
+carries `SUPPORT_WHATSAPP`, `SUPPORT_PHONE`, `SUPPORT_EMAIL`,
+`SUPPORT_ADDRESS`(`_AR`), the `SOCIAL_*` profiles and the company, each through
+`shared/commerce/contact.ts`; a setting replaces a default, an empty one removes
+it, and the rules refuse an address that is not one and a profile link that is
+not https on that platform's own host — a lookalike domain or a link pasted
+into the wrong box draws nothing rather than sending a shopper somewhere nobody
+meant. **The company is the invoices' own issuer** (`INVOICE_ISSUER_*`),
 so the footer and an invoice cannot name two companies, and `nameInSentence`
 drops the name's own full stop, which the sentence after it supplies — "Example
 Co.." on the first draw. On a phone the link groups fold (the WAI-ARIA

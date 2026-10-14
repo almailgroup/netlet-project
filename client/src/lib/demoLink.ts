@@ -21,6 +21,8 @@ import { summarise } from "@shared/commerce/salesSummary";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
+import { NETLET_CONTACT, contactEmail, visitDetails } from "@shared/commerce/contact";
+import { supportNumber } from "@shared/commerce/support";
 import { MIN_CASH_OUT_POINTS, referralCodeFor } from "@shared/commerce/referral";
 import { defaultStates, FEATURE_KEYS } from "@shared/features";
 
@@ -590,7 +592,15 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "support.mine":
       return [];
     case "support.channels":
-      return { whatsapp: null, phone: null, email: null, social: [], company: null };
+      /* NetLet's own published details, the defaults a deployment starts from. */
+      return {
+        whatsapp: null,
+        phone: supportNumber(NETLET_CONTACT.phone),
+        email: contactEmail(NETLET_CONTACT.email),
+        visit: visitDetails(NETLET_CONTACT.address, NETLET_CONTACT.addressAr),
+        social: [],
+        company: null,
+      };
     case "support.unread":
     case "support.waiting":
       return 0;

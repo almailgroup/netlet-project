@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS, supportNumber } from "../../shared/commerce/support.js";
-import { companyDetails, contactEmail, socialLinks } from "../../shared/commerce/contact.js";
+import { companyDetails, contactEmail, socialLinks, visitDetails } from "../../shared/commerce/contact.js";
 import { ENV } from "../_core/env.js";
 import {
   conversationForShopper,
@@ -56,6 +56,7 @@ export const supportRouter = router({
     whatsapp: supportNumber(ENV.supportWhatsapp),
     phone: supportNumber(ENV.supportPhone),
     email: contactEmail(ENV.supportEmail),
+    visit: visitDetails(ENV.supportAddress, ENV.supportAddressAr),
     social: socialLinks(ENV.social),
     company: companyDetails({
       name: ENV.invoiceIssuerName,
