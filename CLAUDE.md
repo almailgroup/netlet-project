@@ -97,6 +97,28 @@ how it was told apart from a stale deploy — the soft shadow under it existed
 only in the glass build. What keeps the words legible is the tint, and that is
 not conditional.
 
+**The phone's tab bar wears the same glass, on the owner's word**
+(`MobileTabBar`, `.glass-bar-surface` with `.glass-bar-round`). Two things
+changed on it to keep its words legible over whatever scrolls under: the tabs
+are navy, not the muted ink they were — the tint keeps navy at 4.5:1 over the
+darkest thing that passes, and the muted ink would have needed nine parts white
+— and the current tab is a solid white pill, so its accent ink sits on the same
+surface whatever is behind the glass. Measured by hiding the tabs' ink and
+reading the darkest pixel under each label at every 120px of the home page, at
+390 in both languages: 6.07:1 at worst. **A rounded bar's blur keeps to its own
+corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
+clip, which Safari has not always applied to a backdrop filter; it reaches past
+them only for the warp, under a fine pointer, which no phone has.
+
+**Headless Chromium does not draw a backdrop blur the way a phone does.** Its
+default software compositor leaves a band unblurred along every edge of the
+blurred layer, so a short bar shows the words under it nearly crisp through a
+tint — which read as a broken blur on the tab bar and had been quietly
+under-selling the header's in every earlier screenshot. Launched with
+`--enable-gpu-rasterization --ignore-gpu-blocklist --use-angle=swiftshader` it
+blurs edge to edge, as Chrome and Safari do on a device. Take pictures of any
+glass that way.
+
 **`.glass-accent` carries navy text, not white**: white on `#f2683a` is 3.08:1
 and navy is 4.65:1, so the orange stays the brand's while the words on it pass.
 

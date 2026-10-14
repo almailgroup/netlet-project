@@ -942,7 +942,8 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
- * The header bar's liquid glass — the bar's background and nothing on it.
+ * The header bar's liquid glass — the bar's background and nothing on it —
+ * and, on the owner's word, the phone's bottom tab bar's too.
  *
  * The recipe is ui-layouts' Liquid Glass card (MIT): a "bend" layer that blurs
  * what is behind it and is then warped by an SVG turbulence displacement
@@ -974,6 +975,8 @@ html[dir="rtl"] .nav-progress {
   inset: 0;
   z-index: -1;
   overflow: hidden;
+  /* The tab bar's rounded corners; nothing on the square header. */
+  border-radius: inherit;
   pointer-events: none;
   background: #fff;
 }
@@ -981,6 +984,7 @@ html[dir="rtl"] .nav-progress {
 .glass-bar-face {
   position: absolute;
   display: none;
+  border-radius: inherit;
 }
 .glass-bar-row {
   background: #fff;
@@ -1011,9 +1015,22 @@ html[dir="rtl"] .nav-progress {
     background: rgb(255 255 255 / 0.58);
   }
 }
+/* A rounded bar's blur keeps to its own corners rather than trusting the
+   bar's clip, which Safari has not always applied to a backdrop filter. It
+   reaches past them only for the warp, under a fine pointer — never on the
+   phones the tab bar is drawn for. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-bar-round .glass-bar-bend {
+    inset: 0;
+  }
+}
 @media (hover: hover) and (pointer: fine) {
   .glass-bar-bend {
     filter: url(#netlet-glass);
+  }
+  .glass-bar-round .glass-bar-bend {
+    inset: -40px;
+    border-radius: 0;
   }
 }
 /* A soft shadow under the glass while the page passes beneath it. */

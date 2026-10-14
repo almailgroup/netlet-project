@@ -8,6 +8,14 @@
  *
  * The current page is marked rather than left to guess, and the labels are the
  * same words as the header's, so the two do not read as different sites.
+ *
+ * **Its background is the header's liquid glass, on the owner's word**
+ * (`.glass-bar-surface` with `.glass-bar-round`, in `index.css`): the page
+ * blurs under it as it scrolls past, while the tabs on it stay solid. That is
+ * why the words are navy rather than the muted ink they were — the tint keeps
+ * navy at 4.5:1 over the darkest thing that passes under it, and the muted ink
+ * would not — and why the current tab is a white pill: the accent ink needs a
+ * surface that is the same whatever is behind the glass.
  */
 import { DepartmentSheet } from "@/components/layout/DepartmentSheet";
 import { useCart } from "@/contexts/CartContext";
@@ -79,10 +87,15 @@ export function MobileTabBar() {
     <DepartmentSheet open={browsing} onClose={() => setBrowsing(false)} />
     <nav
       aria-label={t("nav.mobile")}
-      className="fixed inset-x-3 bottom-3 z-30 flex items-center justify-around rounded-2xl border border-[#ece7da] bg-[#fffdf7] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_28px_rgba(10,40,90,.10)] lg:hidden"
+      className="fixed inset-x-3 bottom-3 z-30 flex items-center justify-around rounded-2xl border border-[#0a285a]/[.08] px-2 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-6px_28px_rgba(10,40,90,.10)] lg:hidden"
     >
+      {/* The header's glass, behind the tabs and inside the bar's corners. */}
+      <span aria-hidden className="glass-bar-surface glass-bar-round">
+        <span className="glass-bar-bend" />
+        <span className="glass-bar-face" />
+      </span>
       {tabs.map(tab => {
-        const className = `pressable relative grid min-w-[52px] place-items-center gap-0.5 rounded-xl p-1.5 text-[10px] font-bold ${tab.active ? "ink-accent" : "text-[#536b8c]"}`;
+        const className = `pressable relative grid min-w-[52px] place-items-center gap-0.5 rounded-xl p-1.5 text-[10px] font-bold ${tab.active ? "ink-accent bg-white shadow-[0_1px_3px_rgba(10,40,90,.12)]" : "text-[#0a285a]"}`;
         const face = (
           <>
             <span className="relative">
