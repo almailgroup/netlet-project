@@ -36,6 +36,7 @@
  * again, since a slide from a tab nobody was on describes no move. The word
  * and icon follow the pill; `aria-current` follows the address.
  */
+import { PixelBadge } from "@/components/ui/PixelBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -169,11 +170,7 @@ export function MobileTabBar() {
           <>
             <span className="relative">
               {tab.icon(lit)}
-              {tab.badge ? (
-                <span className="absolute -end-2 -top-1 grid min-w-4 place-items-center rounded-full bg-[#f2683a] px-1 text-[9px] font-extrabold leading-4 text-[#0a285a]">
-                  {tab.badge > 99 ? "99+" : tab.badge}
-                </span>
-              ) : null}
+              <PixelBadge value={tab.badge ?? 0} className="absolute -end-3 -top-2" />
             </span>
             {tab.label}
           </>

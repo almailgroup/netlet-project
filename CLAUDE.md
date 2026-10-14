@@ -603,6 +603,25 @@ missed the guard and still showed a zero. **The count is navy on the orange**:
 white on `#f2683a` is 3.08:1 at 10px, navy on it is 4.65:1, and the badge keeps
 the brand colour.
 
+**Every badge is pixel art, and it hops when it has news — both on the owner's
+word.** `PixelBadge` (`components/ui/PixelBadge.tsx`) is the count on the
+cart, Saved and Profile, in the header and the phone's tab bar; `PixelDot` is
+the account control's dot and the account menu's. Each is one SVG of unit
+squares, two CSS pixels to a unit so every edge lands on a whole pixel, with
+`shapeRendering="crispEdges"`: a navy outline stepped at the corners the way a
+pixel-art circle is, the orange inside, one pale pixel of shine, and the number
+in a 3 × 5 pixel font drawn from a table in the file — no font file, and the
+digits read left to right on either page. When a badge appears or its number
+changes it crouches, jumps and lands with a squash, three times over 2.4s,
+throwing four pixels off its corners at the top of each jump, then holds still
+(`.pixel-badge-hop`, `.pixel-spark` in `index.css`). Every keyframe is held
+rather than tweened (`steps(1, end)`), which is what makes it move like a
+sprite. The span is keyed by the number, so a new number restarts the hop.
+It ends inside five seconds, the line WCAG 2.2.2 draws for motion nobody can
+pause, and under reduced motion it never moves. Measured frame by frame at 390
+and 1440 in both languages: it starts on the press of Add, nothing is left
+running three seconds later, and axe finds nothing on the pages that draw it.
+
 **Delivery sits in the primary bar, because that is the row that survives a
 scroll** — on a wide screen; a phone's bar no longer carries it (see below). It spent one release at the end of the department rail, put there to
 fill the 650px the notifications bell and the saved icon left behind — and the
@@ -692,7 +711,8 @@ bottom bar's Categories on every page — it had opened it on Home and gone to t
 whole catalogue everywhere else, one tab meaning two things — and the sheet
 became the `/categories` page (see Browsing).
 
-**Nothing in the header moves on its own.** It used to watch the scroll and fold:
+**Nothing in the header moves on its own** — only its badges, which hop when
+their number changes (above). It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
 `data-compact` flag. Now the header is one fixed height and nothing animates:
@@ -994,7 +1014,8 @@ it — a pointer left on a band that size read as a slideshow that had stopped
 working. Nobody who asked for less motion sees it move. A picture is fetched
 only when it is next, the first with `fetchPriority="high"` as the page's
 largest paint; one picture alone is a still. The header, the cards and the
-paid banners' carousel still never move on their own.
+paid banners' carousel still never move on their own; a badge hops only when
+its number changes.
 
 **The next picture fades in over the last, and only once it is decoded.** The
 one going out stays whole underneath (`.hero-slide-in`, a one-second fade

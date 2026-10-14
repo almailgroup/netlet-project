@@ -25,6 +25,7 @@
 import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PixelDot } from "@/components/ui/PixelBadge";
 import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountIdentity, initialsFor } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
@@ -368,7 +369,7 @@ function SideMenu({ user, entries, current, badge, onSignOut }: {
                       >
                         <Icon className="size-4 shrink-0" aria-hidden />
                         <span className="min-w-0 flex-1 truncate">{t(entry.label)}</span>
-                        {waiting ? <span className={`size-2 shrink-0 rounded-full ${active ? "bg-white" : "bg-[#f2683a]"}`} aria-label={waiting} role="img" /> : null}
+                        {waiting ? <PixelDot className="shrink-0" label={waiting} /> : null}
                       </Link>
                     </li>
                   );

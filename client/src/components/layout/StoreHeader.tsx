@@ -53,6 +53,7 @@ import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { addressInUse } from "@/lib/lastAddress";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
+import { PixelBadge } from "@/components/ui/PixelBadge";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -81,19 +82,11 @@ const DeliveryZoneDialog = lazy(() => loadDeliveryDialog().then(module => ({ def
 const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";
 
 /**
- * A count on a control's shoulder, drawn only when there is something to count.
- *
- * Navy on the brand orange rather than white: white on `#f2683a` is 3.08:1 and
- * these are 10px, so 4.5:1 is the bar; navy on the same orange is 4.65:1, and
- * the badge keeps its colour.
+ * A count on a control's shoulder, drawn only when there is something to
+ * count — the shop's pixel badge (`PixelBadge`), which hops when it changes.
  */
 function Count({ value }: { value: number }) {
-  if (!value) return null;
-  return (
-    <span aria-hidden className="absolute -end-2 -top-2 grid min-w-[17px] place-items-center rounded-full bg-[#f2683a] px-1 text-[10px] font-extrabold text-[#0a285a]">
-      <bdi dir="ltr">{value > 99 ? "99+" : value}</bdi>
-    </span>
-  );
+  return <PixelBadge value={value} className="absolute -end-2.5 -top-2.5" />;
 }
 
 export function StoreHeader({ activeDepartment }: {

@@ -927,6 +927,60 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * The notification badges' hop (`PixelBadge`), on the owner's word: when a
+ * badge appears or its number changes it crouches, jumps, lands with a
+ * squash, three times over 2.4s, throwing four pixels off its corners at the
+ * top of each jump — then holds still. Every keyframe is held rather than
+ * tweened (`steps(1, end)` between each), so it moves the way a sprite does,
+ * in poses. Inside five seconds, so it ends before WCAG 2.2.2 asks for a way
+ * to stop it; and not at all for somebody who asked for less motion.
+ */
+.pixel-badge {
+  display: block;
+  line-height: 0;
+}
+.pixel-badge-hop {
+  position: relative;
+  display: block;
+  transform-origin: 50% 100%;
+}
+.pixel-spark {
+  position: absolute;
+  /* At the sprite's corners: --dx and --dy are -1 or 1. */
+  left: calc(50% + var(--dx) * 50% - 1px);
+  top: calc(50% + var(--dy) * 50% - 1px);
+  width: 2px;
+  height: 2px;
+  background: #f2683a;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pixel-badge-hop {
+    animation: pixel-hop 800ms steps(1, end) 3 both;
+  }
+  .pixel-spark {
+    animation: pixel-spark 800ms steps(1, end) 3 both;
+  }
+}
+@keyframes pixel-hop {
+  0% { transform: none; }
+  12% { transform: scale(1.18, 0.82); }
+  24% { transform: translateY(-4px) scale(0.88, 1.14); }
+  36% { transform: translateY(-7px) scale(1.12); }
+  50% { transform: translateY(-4px); }
+  62% { transform: scale(1.18, 0.82); }
+  74% { transform: scale(0.95, 1.05); }
+  86%, 100% { transform: none; }
+}
+@keyframes pixel-spark {
+  0%, 30% { opacity: 0; transform: none; }
+  36% { opacity: 1; transform: translate(calc(var(--dx) * 3px), calc(var(--dy) * 3px)); }
+  48% { opacity: 1; transform: translate(calc(var(--dx) * 6px), calc(var(--dy) * 6px)); }
+  60% { opacity: 1; transform: translate(calc(var(--dx) * 9px), calc(var(--dy) * 9px)); }
+  70%, 100% { opacity: 0; transform: none; }
+}
+
+/*
  * The home band's two fades, eased rather than straight (`HomeHero`). A
  * straight gradient starts at a visible line and spends its middle in one
  * flat grey; easing in and out (smoothstep, as stops every tenth) leaves the
