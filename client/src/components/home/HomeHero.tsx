@@ -15,7 +15,7 @@
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
  * street, then `client/src/assets/hero/` in name order). Only the pictures
  * change; the words and the buttons hold still, so nothing a shopper is
- * reading moves. A picture stays `SLIDE_MS` — two seconds, the owner's figure
+ * reading moves. A picture stays `SLIDE_MS` — three seconds, the owner's figure
  * — and the band carries no controls, also on the owner's word: it had dots
  * and a Pause button, and they asked for it to change by itself and nothing
  * else. It still waits while the band is off screen or the tab hidden, and
@@ -47,7 +47,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { heroSlides } from "@/lib/brandAssets";
 
 /** How long each picture stays before the next fades in. */
-export const SLIDE_MS = 2000;
+export const SLIDE_MS = 3000;
 
 export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   const { t } = useTranslation();

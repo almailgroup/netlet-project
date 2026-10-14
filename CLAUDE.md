@@ -921,7 +921,8 @@ the same wherever a shopper meets it) and then every picture in
 `client/src/assets/hero/`, in file-name order, so a slide is added by dropping
 in a file (that folder's README says the shape). Only the pictures change: the
 words and the buttons hold still, so nothing a shopper is reading moves. A
-picture stays `SLIDE_MS`, two seconds on the owner's word, and the band has no
+picture stays `SLIDE_MS`, three seconds on the owner's word (two was tried and
+they asked for three back), and the band has no
 controls, also on the owner's word: it had a dot per picture and a Pause
 button, and they asked for it to change by itself and be steered by nobody.
 That is a trade against WCAG 2.2.2, which asks for a way to stop content that
@@ -939,7 +940,7 @@ one going out stays whole underneath (`.hero-slide-in`, a one-second fade
 started afresh each time a picture becomes current): fading both at once let
 the navy through at the midpoint, a dip in every change. And a picture is not
 shown until it has loaded and decoded, or on a slow phone it popped in at the
-end of its own fade. Measured on a production build: one change every 2.0s,
+end of its own fade. Measured on a production build: one change every 3.0s,
 the band fully covered on every frame, the incoming picture about half drawn
 500ms into its one-second fade. The four that follow the street are the owner's, in the order they
 sent them — on the road, one cart, unboxing, at the door — 1600 × 900 WebP
