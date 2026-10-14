@@ -920,15 +920,26 @@ street (`streetImage`, the sign-in panel's picture, so the shop's door looks
 the same wherever a shopper meets it) and then every picture in
 `client/src/assets/hero/`, in file-name order, so a slide is added by dropping
 in a file (that folder's README says the shape). Only the pictures change: the
-words and the buttons hold still, so nothing a shopper is reading moves. It
-crossfades every `SLIDE_MS`, and waits while a pointer or the keyboard is on
-the band, while the band is off screen or the tab hidden, and for good once
-somebody presses Pause — content that moves for more than five seconds needs a
-way to stop it (WCAG 2.2.2). Nobody who asked for less motion sees it move; the
-dots still change the picture. A picture is fetched only when it is next, the
-first with `fetchPriority="high"` as the page's largest paint; one picture alone
-is a still with no controls. The header, the cards and the paid banners'
-carousel still never move on their own.
+words and the buttons hold still, so nothing a shopper is reading moves. A
+picture stays `SLIDE_MS`, three seconds on the owner's word, and waits while a
+pointer or the keyboard is on the band, while the band is off screen or the tab
+hidden, and for good once somebody presses Pause — content that moves for more
+than five seconds needs a way to stop it (WCAG 2.2.2). Nobody who asked for
+less motion sees it move; the dots still change the picture. A picture is
+fetched only when it is next, the first with `fetchPriority="high"` as the
+page's largest paint; one picture alone is a still with no controls. The
+header, the cards and the paid banners' carousel still never move on their own.
+
+**The next picture fades in over the last, and only once it is decoded.** The
+one going out stays whole underneath (`.hero-slide-in`, a one-second fade
+started afresh each time a picture becomes current): fading both at once let
+the navy through at the midpoint, a dip in every change. And a picture is not
+shown until it has loaded and decoded, or on a slow phone it popped in at the
+end of its own fade. Measured on a production build: one change every 3.0s,
+the band fully covered on every frame, the incoming picture about half drawn
+500ms in. The four that follow the street are the owner's, in the order they
+sent them — on the road, one cart, unboxing, at the door — 1600 × 900 WebP
+between 46 and 111 KB.
 
 `DepartmentCards` follows under a heading of its own — six tiles, the five
 departments and "All departments", three to a row on a phone and six on a wide

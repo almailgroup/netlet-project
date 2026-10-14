@@ -2,7 +2,8 @@
 
 Every picture in this folder is a slide on the home page's front door
 (`HomeHero`), after NetLet's street (`../auth/welcome.webp`), in file-name
-order. Name them so they sort: `02-delivery.webp`, `03-unboxing.webp`, ….
+order — `02-on-the-road`, `03-one-cart`, `04-unboxing`, `05-delivery` now. To
+reorder them, rename them; to add one, give it the next number.
 
 - **Shape:** wide, 16:9, at least 1600 × 900 (1920 × 1080 is ideal). The band
   crops each picture to fill it — about 16:9 on a laptop and on a phone, wider

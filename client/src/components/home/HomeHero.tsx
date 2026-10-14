@@ -15,12 +15,19 @@
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
  * street, then `client/src/assets/hero/` in name order). Only the pictures
  * change; the words and the buttons hold still, so nothing a shopper is
- * reading moves. It crossfades every `SLIDE_MS` and waits while a pointer or
- * the keyboard is on the band, while the band is off screen or the tab hidden,
- * and for good once somebody presses Pause — moving content that runs past
- * five seconds needs a way to stop it (WCAG 2.2.2). Nobody who asked for less
- * motion is shown it moving at all; the dots still change the picture. One
- * picture is a still, with no controls.
+ * reading moves. A picture stays `SLIDE_MS` — three seconds, the owner's
+ * figure — and waits while a pointer or the keyboard is on the band, while the
+ * band is off screen or the tab hidden, and for good once somebody presses
+ * Pause — moving content that runs past five seconds needs a way to stop it
+ * (WCAG 2.2.2). Nobody who asked for less motion is shown it moving at all;
+ * the dots still change the picture. One picture is a still, with no controls.
+ *
+ * **The next picture fades in over the last**, which stays whole underneath
+ * until it is covered: fading one out while the other fades in let the navy
+ * through at the midpoint, a dip in every change. And it is not shown until it
+ * has loaded and decoded — a slide that fades in while it is still arriving
+ * pops in at the end of the fade, which on a phone on a slow connection was
+ * the whole transition.
  *
  * **The band fades into the page** rather than ending on a line: its foot runs
  * from the navy into the page's own background, so the departments below
@@ -37,15 +44,21 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { heroSlides } from "@/lib/brandAssets";
 
 /** How long each picture stays before the next fades in. */
-export const SLIDE_MS = 6000;
+export const SLIDE_MS = 3000;
 
 export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   const { t } = useTranslation();
   const slides = heroSlides;
   const many = slides.length > 1;
   const [index, setIndex] = useState(0);
+  /* The picture being covered, which stays whole under the one fading in. */
+  const [previous, setPrevious] = useState<number | null>(null);
   /* A picture is fetched once it is about to be shown, never all at once. */
   const [fetched, setFetched] = useState(() => new Set([0, 1]));
+  /* Loaded and decoded, so its fade has a picture to fade. */
+  const [ready, setReady] = useState<ReadonlySet<number>>(() => new Set());
+  /* The current picture has had its time; the next waits only on loading. */
+  const [due, setDue] = useState(false);
   const [paused, setPaused] = useState(false);
   const [held, setHeld] = useState(false);
   const [onScreen, setOnScreen] = useState(true);
@@ -54,8 +67,17 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
 
   const show = (next: number) => {
     const wrapped = (next + slides.length) % slides.length;
+    if (wrapped === index) return;
+    setPrevious(index);
     setIndex(wrapped);
-    setFetched(previous => new Set([...previous, wrapped, (wrapped + 1) % slides.length]));
+    setDue(false);
+    setFetched(before => new Set([...before, wrapped, (wrapped + 1) % slides.length]));
+  };
+  const markReady = (slide: number) => setReady(before => before.has(slide) ? before : new Set(before).add(slide));
+  const onLoaded = (slide: number, image: HTMLImageElement) => {
+    /* Decoded off the main thread before it is faded in, so the fade does
+       not stall on the first frame that draws it. */
+    void image.decode().catch(() => undefined).finally(() => markReady(slide));
   };
 
   /* Off screen or in a hidden tab, nobody is watching it change. */
@@ -73,12 +95,16 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
   }, [many]);
 
   const running = many && !paused && !held && onScreen && !stillWanted;
+  const upcoming = (index + 1) % slides.length;
   useEffect(() => {
-    if (!running) return;
-    const timer = window.setTimeout(() => show(index + 1), SLIDE_MS);
+    if (!running) { setDue(false); return; }
+    const timer = window.setTimeout(() => setDue(true), SLIDE_MS);
     return () => window.clearTimeout(timer);
-    /* `show` reads only the number of pictures, which never changes. */
   }, [running, index]);
+  useEffect(() => {
+    if (running && due && ready.has(upcoming)) show(upcoming);
+    /* `show` reads the index, which `upcoming` already follows. */
+  }, [running, due, ready, upcoming]);
 
   const facts = [
     { icon: Truck, label: t("checkout.builtForKuwait") },
@@ -108,13 +134,21 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
                 loading="eager"
                 fetchPriority={slide === 0 ? "high" : "low"}
                 decoding="async"
-                className={`absolute inset-0 size-full object-cover object-[center_60%] transition-opacity duration-700 ease-out ${slide === index ? "opacity-100" : "opacity-0"}`}
+                ref={image => { if (image?.complete && image.naturalWidth) markReady(slide); }}
+                onLoad={event => onLoaded(slide, event.currentTarget)}
+                /* The first picture is simply there — fading in the page's
+                   largest picture would hold back its largest paint. */
+                className={`absolute inset-0 size-full object-cover object-[center_60%] ${
+                  slide === index ? `z-[2] opacity-100${previous === null ? "" : " hero-slide-in"}`
+                  : slide === previous ? "z-[1] opacity-100"
+                  : "opacity-0"
+                }`}
               />
             ) : null)}
             {/* Into the navy on the words' side: below the pictures on a
                 phone, beside them from `lg`, from the start edge in either
                 direction. */}
-            <span className="absolute inset-0 bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_35%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_35%)]" />
+            <span className="absolute inset-0 z-[3] bg-[linear-gradient(0deg,#0a285a_0%,rgba(10,40,90,0)_45%)] lg:bg-[linear-gradient(90deg,#0a285a_0%,rgba(10,40,90,0)_35%)] lg:rtl:bg-[linear-gradient(270deg,#0a285a_0%,rgba(10,40,90,0)_35%)]" />
           </div>
 
           {many ? (

@@ -922,6 +922,27 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * The home page's slideshow (`HomeHero`): the picture coming in fades in over
+ * the one going out, which stays whole underneath, so the band never dips
+ * towards its navy halfway through a change. An animation rather than a
+ * transition because it has to start from nothing every time a picture
+ * becomes current — a transition would let the picture just covered snap back
+ * on top when a dot brings it back. Under reduced motion the base layer's
+ * guard makes it a cut.
+ */
+.hero-slide-in {
+  animation: hero-slide-in 1s ease-in-out both;
+}
+@keyframes hero-slide-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
  * The header bar's liquid glass — the bar's background and nothing on it.
  *
  * The recipe is ui-layouts' Liquid Glass card (MIT): a "bend" layer that blurs
