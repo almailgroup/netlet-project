@@ -64,7 +64,7 @@ import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
 import { Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { whenIdle } from "@/lib/idle";
 import { Link, useLocation, useSearch } from "wouter";
 
@@ -98,6 +98,16 @@ export function StoreHeader({ activeDepartment }: {
   const query = useSearch();
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
+  /* The logo is the way home, and on the home page the way back to its top: a
+     link to the page already open would push a second copy of it into the
+     history and move nothing. The page's own `scroll-behavior` decides how —
+     smooth, or a cut for somebody who asked for less motion. Any other page
+     moves home, and a new page starts at its top (`ScrollMemory`). */
+  const toTopOnHome = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (location !== "/" || query) return;
+    event.preventDefault();
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   /* Only where the bar draws the delivery button: a phone has none to open. */
   useEffect(() => {
@@ -199,7 +209,7 @@ export function StoreHeader({ activeDepartment }: {
   const phoneTop = (
     <div className="container grid h-16 grid-cols-[1fr_auto_1fr] items-center lg:hidden">
       <span aria-hidden />
-      <Link href="/" className="flex items-center rounded-xl px-1" aria-label={t("header.home")}>
+      <Link href="/" onClick={toTopOnHome} className="flex items-center rounded-xl px-1" aria-label={t("header.home")}>
         <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[150px] object-contain" />
       </Link>
       <div className="flex justify-end">{language}</div>
@@ -250,7 +260,7 @@ export function StoreHeader({ activeDepartment }: {
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
         <div className="container hidden h-[76px] items-center gap-5 lg:flex">
-          <Link href="/" className="flex shrink-0 items-center" aria-label={t("header.home")}>
+          <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[156px] object-contain" />
           </Link>
           <div className="min-w-0 flex-1">{field}</div>

@@ -715,6 +715,18 @@ bottom bar's Categories on every page — it had opened it on Home and gone to t
 whole catalogue everywhere else, one tab meaning two things — and the sheet
 became the `/categories` page (see Browsing).
 
+**The logo goes home, and on the home page back to its top**
+(`toTopOnHome` in `StoreHeader`), on the owner's word. There a link to the page
+already open moved nothing and pushed a second copy of it into the history; it
+scrolls to the top now, by the page's own `scroll-behavior` — a glide, or a cut
+for somebody who asked for less motion. From any other page it goes home, which
+starts at its top like every new page (`ScrollMemory`). A click with Ctrl, ⌘ or
+Shift still opens a tab: wouter's `Link` hands the handler only a plain click.
+On a phone the logo row scrolls away with the page, so there it is in reach
+only near the top. Measured at 1440 and 390 in both languages: 2400px down on
+the home page it reaches 0 with the history unchanged, and from a product page
+900px down it lands on the home page at 0.
+
 **Nothing in the header moves on its own** — only its badges, which hop when
 their number changes and every ten seconds after (above). It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
