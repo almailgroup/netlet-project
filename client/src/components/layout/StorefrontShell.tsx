@@ -81,7 +81,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         <div className={printed ? "contents print:hidden" : "contents"}>
           <StoreHeader activeDepartment={chrome.activeDepartment} />
         </div>
-        <main id="main" tabIndex={-1} className="flex flex-1 flex-col outline-none">
+        <main id="main" tabIndex={-1} className="flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0">
           <Suspense fallback={<PageFallback />}>
             <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>
           </Suspense>

@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { directionFor, type LocaleCode } from "@shared/i18n/dictionary";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const SAVED_STORAGE_KEY = "netlet:saved-product-ids";
 const DELIVERY_STORAGE_KEY = "netlet:delivery-zone";
@@ -58,8 +58,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   // The one writer of <html lang/dir>. Direction is a document property, and
   // setting it here — above every page — is what makes the `ms-`/`me-`/
-  // `start-`/`end-` utilities throughout the tree flip together.
-  useEffect(() => {
+  // `start-`/`end-` utilities throughout the tree flip together. A layout
+  // effect, so it lands before the first paint: as an ordinary effect the
+  // Arabic page was painted left to right for a frame and then flipped, and
+  // the whole page moving sideways measured 0.77 of layout shift on Home.
+  useLayoutEffect(() => {
     document.documentElement.lang = locale;
     document.documentElement.dir = directionFor(locale);
   }, [locale]);
