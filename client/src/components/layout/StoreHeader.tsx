@@ -12,12 +12,13 @@
  * invitation to take it.
  *
  * **On a phone the top bar does not repeat the bottom one.** The bottom bar is
- * the navigation — home, browse, saved, account, cart — so the top carries
- * what the bottom does not: the logo, where the order goes, and the language.
- * Search keeps a whole row, because it is how most people move through a
- * catalogue on a small screen, and it is the row that stays: the top row
- * scrolls away with the page like anything else. A page with nothing to
- * search keeps its top row pinned instead, or it would have no header at all.
+ * the navigation — home, profile, cart, categories — so the top carries what
+ * the bottom does not: the logo, centred and larger, and the language at its
+ * end, on the owner's word. The delivery area left the phone's bar at the same
+ * time, also on the owner's word; checkout and the account's preferences still
+ * set it, and a wide screen keeps its button. Search keeps a whole row, because it is how most people move through
+ * a catalogue on a small screen, and it is the row that stays: the top row
+ * scrolls away with the page like anything else.
  *
  * **Nothing here moves on its own.** The bar used to collapse on scroll and
  * expand on hover, animating heights while a scroll listener and a settle
@@ -61,7 +62,7 @@ import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { whenIdle } from "@/lib/idle";
 import { Link, useLocation, useSearch } from "wouter";
@@ -105,7 +106,11 @@ export function StoreHeader({ activeDepartment }: {
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale, deliveryZone } = useCustomer();
   const [deliveryOpen, setDeliveryOpen] = useState(false);
-  useEffect(() => whenIdle(() => void loadDeliveryDialog()), []);
+  /* Only where the bar draws the delivery button: a phone has none to open. */
+  useEffect(() => {
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    return whenIdle(() => void loadDeliveryDialog());
+  }, []);
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
@@ -176,18 +181,15 @@ export function StoreHeader({ activeDepartment }: {
 
   const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} />;
 
-  const area = (where: "bar" | "phone") => (
-    /* On a phone it is the one thing on its row that gives way: a long area
-       name truncates rather than pushing the language off a 320px screen. */
-    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={where === "phone" ? `${plain.replace("shrink-0", "min-w-0 shrink")} px-2.5` : plain}>
+  const area = (
+    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={plain}>
       <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
       {/* "Deliver to" is in the name and not drawn: the pin and the area say it,
           and the width it took is the search field's now. The name still
           starts with what is seen (WCAG 2.5.3), and the trailing space keeps
           it "Deliver to Hawalli" rather than one word. */}
       <span className="sr-only">{t("home.deliverTo")} </span>
-      <span dir="auto" className={`truncate ${where === "phone" ? "max-w-[118px]" : "max-w-[130px]"}`}>{areaName}</span>
-      {where === "phone" ? <ChevronDown className="size-3.5 shrink-0 text-[#536b8c]" aria-hidden /> : null}
+      <span dir="auto" className="max-w-[130px] truncate">{areaName}</span>
     </button>
   );
 
@@ -197,15 +199,17 @@ export function StoreHeader({ activeDepartment }: {
     </button>
   );
 
-  /* Phone: the logo, where it goes, the language — one fixed height, because
-     the bar's sticky offset is exactly this row (`-top-14`). */
+  /* Phone: the logo in the middle and the language at the end — one fixed
+     height, because the bar's sticky offset is exactly this row (`-top-16`).
+     Three columns, the outer two of one width, so the logo sits on the
+     screen's centre line whatever the language button's word is. */
   const phoneTop = (
-    <div className="container flex h-14 items-center gap-1 lg:hidden">
-      <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
-        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain" />
+    <div className="container grid h-16 grid-cols-[1fr_auto_1fr] items-center lg:hidden">
+      <span aria-hidden />
+      <Link href="/" className="flex items-center rounded-xl px-1" aria-label={t("header.home")}>
+        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[150px] object-contain" />
       </Link>
-      {area("phone")}
-      {language}
+      <div className="flex justify-end">{language}</div>
     </div>
   );
 
@@ -228,12 +232,12 @@ export function StoreHeader({ activeDepartment }: {
       {/*
         On a phone the logo row is inside the header — it is the header's,
         and outside every landmark a screen reader's map of the page lost it —
-        and the header sticks fourteen units *above* the top of the screen,
+        and the header sticks sixteen units *above* the top of the screen,
         so that row scrolls away and the search row stays. One sticky element
         rather than a row before it, which is the same picture with no
         stranded content.
       */}
-      <header ref={headerRef} className="sticky-header glass-bar sticky -top-14 z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
+      <header ref={headerRef} className="sticky-header glass-bar sticky -top-16 z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
         {/* The bar's liquid glass, behind everything in it (`.glass-bar` in
             index.css). Layers inside the header rather than a filter on the
             header itself: a `backdrop-filter` there would make the bar the
@@ -261,7 +265,7 @@ export function StoreHeader({ activeDepartment }: {
               both old headers had settled on, kept so nothing moves for
               somebody who knew it. */}
           <div className="flex shrink-0 items-center gap-0.5">
-            {area("bar")}
+            {area}
             {/* A link, because it goes to a page: it opens in a new tab, and a
                 pointer resting on it starts fetching the page. */}
             <Link href="/saved" aria-current={location === "/saved" ? "page" : undefined} aria-label={t("header.savedItems", { count: savedIds.length })} title={t("header.savedItems", { count: savedIds.length })} className={plain}>

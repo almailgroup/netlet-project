@@ -604,7 +604,7 @@ white on `#f2683a` is 3.08:1 at 10px, navy on it is 4.65:1, and the badge keeps
 the brand colour.
 
 **Delivery sits in the primary bar, because that is the row that survives a
-scroll.** It spent one release at the end of the department rail, put there to
+scroll** — on a wide screen; a phone's bar no longer carries it (see below). It spent one release at the end of the department rail, put there to
 fill the 650px the notifications bell and the saved icon left behind — and the
 argument for it was that an area could otherwise only be set from a hero link
 that scrolls away. The rail collapses on scroll too, so that fixed nothing and
@@ -673,8 +673,13 @@ a link never leads to the half-empty shelf the home page refuses to draw. On
 hamburger and a cart, and every other page's had saved, account and cart —
 all of it in `MobileTabBar`, a thumb's reach below (Saved now one press under
 Profile). The top row carries
-what the bottom does not: the logo, the area and the language, and the search
-field has a whole row under it. The top row scrolls away with the page and the
+what the bottom does not: the logo, centred and larger (48px), and the
+language at its end, and the search field has a whole row under it. **The
+delivery area is not on the phone's bar**, on the owner's word, which came with the
+centred logo; a phone sets the area at checkout and in the account's
+preferences instead, and a wide screen keeps its button. The row is three columns,
+the outer two of one width, so the logo sits on the screen's centre line
+whatever the language button says. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **Every
 page that wears the header has the search field** — the sell page, a 404, an
 invoice and the returns page used to get the header without it, so the one way
@@ -692,7 +697,7 @@ the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
 `data-compact` flag. Now the header is one fixed height and nothing animates:
 on a phone the logo row is the header's first row and the header sticks at
-`-top-14`, exactly that row's height above the screen, so the row scrolls off
+`-top-16`, exactly that row's height above the screen, so the row scrolls off
 and the search row stays; on a wide screen the department row sits *after*
 `<header>` and simply scrolls away. The page does the moving, which is the one
 thing a shopper expects to move. **The phone's logo row is inside `<header>`
@@ -4031,7 +4036,8 @@ already has it.
   scheduler follows it in.
 - **The address book and the bag drawer load after the first paint.** Both are
   on every page and opened on few visits; each is fetched when the browser is
-  idle (`lib/idle.ts`), so the first press still opens it at once.
+  idle (`lib/idle.ts`), so the first press still opens it at once. The address
+  book only on a wide screen, since a phone's bar has no button to open it.
 
 - **Overlays load when opened.** The sign-in dialog, Home's preview and the
   voice and photo sheets are `lazy`. The header is on every page and most
