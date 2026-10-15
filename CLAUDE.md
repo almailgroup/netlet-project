@@ -897,6 +897,15 @@ arrow or swipe, the first photo the only one fetched before the card is
 reached, an up or down swipe over the photo still scrolls the page, a tap still
 opens the product, and axe finds nothing.
 
+**A card's photo runs to its edges and is taller than it is wide (4:5)**, on
+the owner's word: inset in a square it was a third of a phone card, the rest
+being words and buttons, and it is half the card now — 171 × 214 at 390 where
+it was 155 × 155, 264 × 330 at 1440 where it was 248 × 248. It is cropped to
+fill (`object-cover`), which takes about a tenth off each side of a square
+photo; that is the trade for the size. The Deals band's feature card spans two
+columns and the gap, so its photo is 33:20 and contained, which lands within a
+couple of pixels of the 4:5 photos beside it.
+
 **A hovered card rises three pixels**, its shadow deepens, its edge darkens
 and the photograph eases 5% closer inside its frame. Transform only, so nothing
 else in the grid moves. The lift and zoom are behind `(hover: hover) and

@@ -40,7 +40,7 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
   images: Image[];
   href: string;
   title: string;
-  /** The frame's shape and ground: the card's square, or the feature's 2:1. */
+  /** The frame's corners and ground; the photo's own shape sets its size. */
   frameClassName: string;
   /** How a photo fills the frame: cropped, or contained on white. */
   photoClassName: string;
@@ -86,7 +86,7 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
 
   return (
     <div className="relative" onPointerEnter={many ? () => setWarm(true) : undefined}>
-      <Link href={href} tabIndex={-1} aria-hidden="true" className={`block overflow-hidden rounded-xl ${frameClassName}`}>
+      <Link href={href} tabIndex={-1} aria-hidden="true" className={`block overflow-hidden ${frameClassName}`}>
         <div
           ref={scroller}
           tabIndex={-1}

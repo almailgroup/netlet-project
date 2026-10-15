@@ -315,8 +315,8 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   compact?: boolean;
   /**
    * The one card a shelf leads with — the home page's deepest deal. Two
-   * columns wide, so its photo is drawn 2:1 (the height of a square beside it)
-   * and contained rather than cropped, on white, since a product photo's own
+   * columns wide, so its photo is drawn wider (the height of a 4:5 photo
+   * beside it) and contained rather than cropped, on white, since a product photo's own
    * ground is usually white; the words and the price are larger. Everything
    * else — the buttons, the badges, the heart — is the ordinary card's.
    */
@@ -342,7 +342,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   const href = `/products/${encodeURIComponent(product.handle)}`;
 
   return (
-    <article className={`product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20 ${compact ? "p-2" : "p-2.5"}`}>
+    <article className="product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20">
       <div className="relative">
         {/*
           The photo and the title both open the product, and only the title is
@@ -350,16 +350,22 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           one place, read out twice in a row, is a grid that takes twice as
           long to get through. The photo is a row of the product's photographs
           a shopper can swipe or step through (`CardGallery`).
+
+          It runs to the card's edges and is taller than it is wide (4:5), on
+          the owner's word: inset in a square it was a third of a phone card,
+          the rest being words and buttons. The feature card spans two columns
+          and the gap between them, so its photo is 33:20 — the height of a
+          4:5 photo beside it, to a couple of pixels, on the Deals band.
         */}
         <CardGallery
           images={product.images}
           href={href}
           title={product.title}
-          frameClassName="bg-[#f4f6f9]"
-          photoClassName={feature ? "aspect-[2/1] bg-white object-contain" : "aspect-square object-cover"}
+          frameClassName="rounded-t-[15px] bg-[#f4f6f9]"
+          photoClassName={feature ? "aspect-[33/20] bg-white object-contain" : "aspect-[4/5] object-cover"}
         />
 
-        <div className="pointer-events-none absolute start-1.5 top-1.5 flex flex-col items-start gap-1">
+        <div className="pointer-events-none absolute start-2 top-2 flex flex-col items-start gap-1">
           {/* Navy on the orange: white on #f2683a is 3.08:1 at this size, navy is 4.65:1. */}
           {savings > 0 ? (
             <span dir="ltr" className={`rounded-md bg-[#f2683a] font-bold text-[#0a285a] ${feature ? "px-2.5 py-1 text-[15px]" : "px-1.5 py-0.5 text-[12px]"}`}>−{savings}%</span>
@@ -399,7 +405,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col px-1 pt-2">
+      <div className={`flex flex-1 flex-col ${compact ? "px-2.5 pb-2.5 pt-2" : "px-3 pb-3 pt-2.5"}`}>
         {note ?? (product.vendor ? <p className="truncate text-[12px] ink-muted"><bdi>{product.vendor}</bdi></p> : null)}
         <h3 className={`mt-0.5 font-semibold leading-[1.25] text-[#0a285a] ${feature ? "text-[17px] sm:text-[20px]" : "min-h-[2.5em] text-[14px]"}`}>
           <Link href={href} dir="auto" className="line-clamp-2 hover:underline">{product.title}</Link>
