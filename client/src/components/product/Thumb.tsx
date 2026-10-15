@@ -22,6 +22,7 @@ export function Thumb({
   alt,
   className = "",
   priority = false,
+  eager = false,
   icon,
   /**
    * The fallback's own surface, when the caller has a better one than a grey
@@ -39,6 +40,12 @@ export function Thumb({
   className?: string;
   /** The page's largest paint — its own picture, not a card in a rail. */
   priority?: boolean;
+  /**
+   * Fetched now, at no special priority: a picture drawn because it is about
+   * to be looked at, somewhere the browser's lazy loading cannot tell — off to
+   * the side of a scroller.
+   */
+  eager?: boolean;
   icon?: ReactNode;
   fallbackClassName?: string;
   onLoad?: () => void;
@@ -71,7 +78,7 @@ export function Thumb({
       src={src}
       alt={alt}
       aria-hidden={alt === "" ? true : undefined}
-      loading={priority ? "eager" : "lazy"}
+      loading={priority || eager ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : undefined}
       decoding="async"
       draggable={draggable}

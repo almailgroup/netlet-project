@@ -873,6 +873,30 @@ The owner asked for the pair back, each showing a minus and a plus on hover,
 and what made it moving was the shift, not the pair — so the pair came back
 without it.
 
+**A card's photographs can be browsed on the card**, on the owner's word —
+seeing a product's second photo used to mean opening the product.
+`CardGallery` is the photo: a row of up to `CARD_PHOTOS` (five) that a finger
+swipes, a mouse steps through with an arrow at each side while it rests on the
+card (`.reveal-control`, so never on a touch screen), and a row of dots under
+it saying how many and which. It is the browser's own sideways scroll with snap
+points, so a swipe has the phone's feel, Arabic runs it the other way with no
+code of its own (the index is read from the magnitude of `scrollLeft`, which
+goes below zero there), and a swipe that ends in a scroll is never taken for a
+tap on the link round it. Each photo is clipped in its own frame, or the hover
+zoom on one spilled over the next. **Only the first photo comes with the page**:
+the next is drawn once a pointer or a finger reaches the card and each after it
+once the one before is showing, fetched eagerly (`Thumb`'s `eager`), because a
+photo off to the side of a scroller is one lazy loading may never think is
+near. **The arrows take no focus and the dots are for the eye**: the photo link
+is already hidden from the keyboard and a screen reader, two more stops per
+card would double a grid's, and every photo is a press away in the preview and
+on the product page — the arrows even refuse the focus a click would give them.
+Nothing moves on its own; the photographs cycling by themselves is what the
+card stopped doing. Measured at 1440 and 390 in both languages: one photo per
+arrow or swipe, the first photo the only one fetched before the card is
+reached, an up or down swipe over the photo still scrolls the page, a tap still
+opens the product, and axe finds nothing.
+
 **A hovered card rises three pixels**, its shadow deepens, its edge darkens
 and the photograph eases 5% closer inside its frame. Transform only, so nothing
 else in the grid moves. The lift and zoom are behind `(hover: hover) and

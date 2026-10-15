@@ -22,7 +22,7 @@
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
-import { Thumb } from "@/components/product/Thumb";
+import { CardGallery } from "@/components/product/CardGallery";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
@@ -340,7 +340,6 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   const rating = productRating(product.attributes);
   const express = isExpressEligible(product);
   const href = `/products/${encodeURIComponent(product.handle)}`;
-  const image = product.images[0];
 
   return (
     <article className={`product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20 ${compact ? "p-2" : "p-2.5"}`}>
@@ -349,15 +348,16 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           The photo and the title both open the product, and only the title is
           a stop for the keyboard and a name for a screen reader: two links to
           one place, read out twice in a row, is a grid that takes twice as
-          long to get through.
+          long to get through. The photo is a row of the product's photographs
+          a shopper can swipe or step through (`CardGallery`).
         */}
-        <Link href={href} tabIndex={-1} aria-hidden="true" className="block overflow-hidden rounded-xl bg-[#f4f6f9]">
-          {image
-            /* Named, though the link around it is hidden from a screen reader:
-               the alt is what image search reads, and what a checker counts. */
-            ? <Thumb src={image.url} alt={image.altText || product.title} className={`product-card-photo w-full ${feature ? "aspect-[2/1] bg-white object-contain" : "aspect-square object-cover"}`} />
-            : <div className={`grid place-items-center px-3 text-center text-[12px] font-semibold ink-muted ${feature ? "aspect-[2/1]" : "aspect-square"}`}>{t("product.imageProcessing")}</div>}
-        </Link>
+        <CardGallery
+          images={product.images}
+          href={href}
+          title={product.title}
+          frameClassName="bg-[#f4f6f9]"
+          photoClassName={feature ? "aspect-[2/1] bg-white object-contain" : "aspect-square object-cover"}
+        />
 
         <div className="pointer-events-none absolute start-1.5 top-1.5 flex flex-col items-start gap-1">
           {/* Navy on the orange: white on #f2683a is 3.08:1 at this size, navy is 4.65:1. */}
