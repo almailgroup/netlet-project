@@ -13,9 +13,9 @@
  *
  * **On a phone the top bar does not repeat the bottom one.** The bottom bar is
  * the navigation — home, profile, cart, categories — so the top carries what
- * the bottom does not: the logo, centred and larger, and the language at its
- * end, on the owner's word. The delivery area left the phone's bar at the same
- * time, also on the owner's word; checkout and the account's preferences still
+ * the bottom does not: the logo at its start and the language at its end, on
+ * the owner's word. The delivery area left the phone's bar when the logo was
+ * centred, which it was for a while, also on the owner's word; checkout and the account's preferences still
  * set it, and a wide screen keeps its button. Search keeps a whole row, because it is how most people move through
  * a catalogue on a small screen, and it is the row that stays: the top row
  * scrolls away with the page like anything else.
@@ -202,17 +202,16 @@ export function StoreHeader({ activeDepartment }: {
     </button>
   );
 
-  /* Phone: the logo in the middle and the language at the end — one fixed
+  /* Phone: the logo at the start and the language at the end — one fixed
      height, because the bar's sticky offset is exactly this row (`-top-16`).
-     Three columns, the outer two of one width, so the logo sits on the
-     screen's centre line whatever the language button's word is. */
+     The logo sits on the line the search field and the page's title start
+     from, as it does on a wide screen. */
   const phoneTop = (
-    <div className="container grid h-16 grid-cols-[1fr_auto_1fr] items-center lg:hidden">
-      <span aria-hidden />
-      <Link href="/" onClick={toTopOnHome} className="flex items-center rounded-xl px-1" aria-label={t("header.home")}>
-        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[150px] object-contain" />
+    <div className="container flex h-16 items-center justify-between gap-3 lg:hidden">
+      <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
+        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[130px] object-contain" />
       </Link>
-      <div className="flex justify-end">{language}</div>
+      {language}
     </div>
   );
 

@@ -696,13 +696,14 @@ a link never leads to the half-empty shelf the home page refuses to draw. On
 hamburger and a cart, and every other page's had saved, account and cart —
 all of it in `MobileTabBar`, a thumb's reach below (Saved now one press under
 Profile). The top row carries
-what the bottom does not: the logo, centred and larger (48px), and the
-language at its end, and the search field has a whole row under it. **The
-delivery area is not on the phone's bar**, on the owner's word, which came with the
-centred logo; a phone sets the area at checkout and in the account's
-preferences instead, and a wide screen keeps its button. The row is three columns,
-the outer two of one width, so the logo sits on the screen's centre line
-whatever the language button says. The top row scrolls away with the page and the
+what the bottom does not: the logo at its start (40px tall) and the language
+at its end, and the search field has a whole row under it. **The logo sits at
+the start, on the owner's word**, on the line the search field and every page's
+title start from, as it does on a wide screen; it was centred and 48px for a
+while, and the owner asked for it at the side and a little smaller. **The
+delivery area is not on the phone's bar**, on the owner's word, which came with
+the centred logo and stayed when it moved; a phone sets the area at checkout and
+in the account's preferences instead, and a wide screen keeps its button. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **Every
 page that wears the header has the search field** — the sell page, a 404, an
 invoice and the returns page used to get the header without it, so the one way
