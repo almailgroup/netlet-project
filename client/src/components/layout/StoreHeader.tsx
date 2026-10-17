@@ -203,11 +203,11 @@ export function StoreHeader({ activeDepartment }: {
   );
 
   /* Phone: the logo at the start and the language at the end — one fixed
-     height, because the bar's sticky offset is exactly this row (`-top-16`).
-     The logo sits on the line the search field and the page's title start
-     from, as it does on a wide screen. */
+     height, because the bar's sticky offset is exactly this row
+     (`-top-[58px]`). The logo sits on the line the search field and the
+     page's title start from, as it does on a wide screen. */
   const phoneTop = (
-    <div className="container flex h-16 items-center justify-between gap-3 lg:hidden">
+    <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
         <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[130px] object-contain" />
       </Link>
@@ -234,12 +234,12 @@ export function StoreHeader({ activeDepartment }: {
       {/*
         On a phone the logo row is inside the header — it is the header's,
         and outside every landmark a screen reader's map of the page lost it —
-        and the header sticks sixteen units *above* the top of the screen,
-        so that row scrolls away and the search row stays. One sticky element
+        and the header sticks that row's height *above* the top of the
+        screen, so that row scrolls away and the search row stays. One sticky element
         rather than a row before it, which is the same picture with no
         stranded content.
       */}
-      <header ref={headerRef} className="sticky-header glass-bar sticky -top-16 z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
+      <header ref={headerRef} className="sticky-header glass-bar sticky -top-[58px] z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
         {/* The bar's liquid glass, behind everything in it (`.glass-bar` in
             index.css). Layers inside the header rather than a filter on the
             header itself: a `backdrop-filter` there would make the bar the
@@ -255,7 +255,12 @@ export function StoreHeader({ activeDepartment }: {
           </filter>
         </svg>
         {phoneTop}
-        <div className="container pb-2.5 pt-1 lg:hidden">{field}</div>
+        {/* The same room above the field as below it, because once the logo
+            row has gone this row is the whole bar: it had 4px over the field
+            and 10px under it, and stuck at the top of a phone the field sat
+            visibly high in its own bar. The 6px came out of the logo row, so
+            the header is as tall as it was and nothing under it moved. */}
+        <div className="container py-2.5 lg:hidden">{field}</div>
 
         {/* Wide: logo, a field that takes the room, then the controls. */}
         <div className="container hidden h-[76px] items-center gap-5 lg:flex">

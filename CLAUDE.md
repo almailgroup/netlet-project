@@ -741,8 +741,12 @@ the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
 `data-compact` flag. Now the header is one fixed height and nothing animates:
 on a phone the logo row is the header's first row and the header sticks at
-`-top-16`, exactly that row's height above the screen, so the row scrolls off
-and the search row stays; on a wide screen the department row sits *after*
+`-top-[58px]`, exactly that row's height above the screen, so the row scrolls
+off and the search row stays. **That row is then the whole bar, so the field
+has the same room above it as below** — 10px each, on the owner's word: it had
+4px over and 10px under, and stuck at the top of a phone the field sat high in
+its own bar. The 6px came out of the logo row, so the header is as tall as it
+was and nothing under it moved. On a wide screen the department row sits *after*
 `<header>` and simply scrolls away. The page does the moving, which is the one
 thing a shopper expects to move. **The phone's logo row is inside `<header>`
 for a reason**: it sat before it as a sibling, which was fine while every page
