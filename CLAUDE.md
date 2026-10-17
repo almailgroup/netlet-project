@@ -139,6 +139,9 @@ corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
 clip, which Safari has not always applied to a backdrop filter; it reaches past
 them only for the warp, under a fine pointer, which no phone has.
 
+**The search panel wears it too, on the owner's word** — see "The dropdown
+is liquid glass" under Chrome — with its words on white plates over it.
+
 **Headless Chromium does not draw a backdrop blur the way a phone does.** Its
 default software compositor leaves a band unblurred along every edge of the
 blurred layer, so a short bar shows the words under it nearly crisp through a
@@ -793,8 +796,18 @@ holds a camera permission), shrunk to 768px in the browser and under the API's
 with a line saying where it goes, and sent only on the press. The model may
 return a few words and nothing else; they go into the field like typing.
 
-**The dropdown is a solid white sheet**, not glass: the department rail read
-through its 82% white. And the phone's search row is never `overflow-hidden` — a row
+**The dropdown is liquid glass, on the owner's word, and everything with
+words on it is a white plate.** It was a solid sheet once, because the
+department rail read through an 82% white with text straight on it. It now
+wears the header's recipe (`.glass-bar-surface` with `.glass-bar-round`, the
+warp under a fine pointer) at a tint of its own — `.glass-panel`, an even 70%,
+thicker than the bar's because its headings sit on the glass — in a frame
+round the scroller, so the layers do not scroll away with the content. Chips,
+tiles, shortcuts and the typed results are white at 80–90% over it, and the
+phone's dim is 30% navy so colour still reaches the glass. Measured by hiding
+the panel's ink and reading the darkest pixel behind each run of words, opened
+at every 300px of the home page at 390 and 1440: headings 7.7:1 on the glass,
+the tiles' counts (the muted ink) 4.87:1 on their plates, Clear 5.2:1. And the phone's search row is never `overflow-hidden` — a row
 that was clipped the dropdown entirely at rest, which a screenshot showed and
 `elementFromPoint` confirmed.
 

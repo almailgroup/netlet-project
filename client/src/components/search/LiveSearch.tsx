@@ -509,15 +509,35 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
         <>
         {/* The page under a phone's sheet, dimmed; a press on it puts the search away. */}
         {!wide ? (
-          <div aria-hidden onClick={dismiss} style={{ top: sheetTop }} className="fixed inset-x-0 bottom-0 z-[59] touch-none bg-[#0a285a]/45" />
+          <div aria-hidden onClick={dismiss} style={{ top: sheetTop }} className="fixed inset-x-0 bottom-0 z-[59] touch-none bg-[#0a285a]/30" />
         ) : null}
+        {/*
+          Liquid glass, on the owner's word — the header's own recipe
+          (`.glass-bar-surface` in index.css: a blur that saturates what passes
+          under it, warped under a fine pointer, beneath a white tint with a
+          bright rim), with a tint of its own (`.glass-panel`, 70%) because
+          this sheet carries headings straight on the glass. The layers sit in
+          a frame round the scroller rather than inside it, or they would
+          scroll away with the content. Everything with words in it — a chip,
+          a tile, a shortcut, the results — is a plate of white over the
+          glass, which is what keeps the muted ink at 4.5:1 over the darkest
+          thing that can pass beneath (the navy Deals band, dimmed).
+        */}
         <div
           onBlur={leave}
-          style={wide ? undefined : { top: sheetTop, maxHeight: sheetRoom ? `${sheetRoom}px` : `calc(100dvh - ${sheetTop}px)` }}
-          className={wide
-            ? "absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] max-h-[min(36rem,calc(100dvh-9rem))] w-full overflow-y-auto overscroll-contain rounded-2xl border border-[#d5dfeb] bg-white p-3 shadow-[0_18px_45px_rgba(10,40,90,.18)]"
-            : "fixed inset-x-0 z-[60] overflow-y-auto overscroll-contain rounded-b-3xl bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_rgba(10,40,90,.28)]"}
+          style={wide ? undefined : { top: sheetTop }}
+          className={`glass-panel ${wide
+            ? "absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] w-full rounded-2xl border border-white/70 shadow-[0_18px_45px_rgba(10,40,90,.2)]"
+            : "fixed inset-x-0 z-[60] rounded-b-3xl border-b border-white/70 shadow-[0_24px_48px_rgba(10,40,90,.3)]"}`}
         >
+          <span aria-hidden className="glass-bar-surface glass-bar-round">
+            <span className="glass-bar-bend" />
+            <span className="glass-bar-face" />
+          </span>
+          <div
+            style={wide ? undefined : { maxHeight: sheetRoom ? `${sheetRoom}px` : `calc(100dvh - ${sheetTop}px)` }}
+            className={wide ? "max-h-[min(36rem,calc(100dvh-9rem))] overflow-y-auto overscroll-contain p-3" : "overflow-y-auto overscroll-contain px-4 pb-5 pt-3"}
+          >
           {emptyField ? (
             <>
               {recent.length ? (
@@ -529,7 +549,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => { clearRecentSearches(); setRecent([]); setActiveIndex(-1); }}
                       aria-label={t("header.clearRecentAria")}
-                      className="tap-target rounded-lg px-2 py-1 text-[13px] font-bold ink-accent hover:bg-[#0a285a]/[.06]"
+                      className="tap-target tint-on-hover rounded-full bg-white/80 px-3 py-1 text-[13px] font-bold ink-accent"
                     >
                       {t("header.clearRecent")}
                     </button>
@@ -547,7 +567,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                         onMouseDown={(event) => event.preventDefault()}
                         onMouseEnter={() => setActiveIndex(index)}
                         onClick={() => activate(entry)}
-                        className={`flex min-h-10 max-w-full items-center gap-1.5 rounded-full border px-3 text-[14px] font-medium text-[#0a285a] ${activeIndex === index ? "border-[#0a285a]/40 bg-[#f0f2f5]" : "border-[#d5dfeb] bg-white hover:bg-[#f0f2f5]"}`}
+                        className={`tint-on-hover flex min-h-10 max-w-full items-center gap-1.5 rounded-full border px-3 text-[14px] font-medium text-[#0a285a] shadow-[0_1px_2px_rgba(10,40,90,.06)] ${activeIndex === index ? "border-[#0a285a]/40 bg-white" : "border-white/80 bg-white/80"}`}
                       >
                         <Clock className="size-4 shrink-0 text-[#536b8c]" aria-hidden />
                         <span dir="auto" className="min-w-0 truncate">{entry.term}</span>
@@ -565,7 +585,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                         href={`/category/${categorySlug(tile.query)}`}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={dismiss}
-                        className="tint-on-hover flex h-full flex-col items-center rounded-2xl bg-[#f5f6f8] px-1.5 pb-2.5 pt-2 text-center"
+                        className="tint-on-hover flex h-full flex-col items-center rounded-2xl border border-white/80 bg-white/80 px-1.5 pb-2.5 pt-2 text-center shadow-[0_1px_2px_rgba(10,40,90,.06)]"
                       >
                         <img src={appPath(`/departments/${tile.slug}.webp`)} alt="" loading="lazy" decoding="async" width={480} height={360} className="aspect-[4/3] w-full object-contain" />
                         <span className="mt-1.5 line-clamp-2 text-[13px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
@@ -576,14 +596,14 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                   ))}
                 </ul>
               </section>
-              <nav aria-label={t("header.searchShortcuts")} className={`mt-4 grid gap-2 border-t border-[#e6e9ef] pt-4 ${shortcuts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+              <nav aria-label={t("header.searchShortcuts")} className={`mt-4 grid gap-2 border-t border-[#0a285a]/10 pt-4 ${shortcuts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
                 {shortcuts.map(({ key, href, label, icon: Icon }) => (
                   <Link
                     key={key}
                     href={href}
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={dismiss}
-                    className="tint-on-hover flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-[#f5f6f8] px-2 py-2 text-center text-[13px] font-bold leading-tight text-[#0a285a] lg:min-h-11 lg:flex-row lg:gap-2"
+                    className="tint-on-hover flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border border-white/80 bg-white/80 px-2 py-2 text-center text-[13px] font-bold leading-tight text-[#0a285a] shadow-[0_1px_2px_rgba(10,40,90,.06)] lg:min-h-11 lg:flex-row lg:gap-2"
                   >
                     <Icon className="size-[18px] shrink-0 ink-accent" aria-hidden />
                     {t(label)}
@@ -594,6 +614,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           ) : (
             <>
               {refineMessage && <div role="status" className="type-label mx-1 mb-2 rounded-xl bg-[#fff7e3] px-3 py-2 text-[#705523]">{refineMessage}</div>}
+              {/* The results are one white plate on the glass: their muted lines need it. */}
+              <div className="rounded-2xl border border-white/80 bg-white/90 p-1 shadow-[0_1px_2px_rgba(10,40,90,.06)]">
               {/* The words as typed found nothing and the catalogue's own spelling did: said, never silently swapped. */}
               {answer.data?.correctedTo && !waiting ? (
                 <p className="type-label px-3 pb-1 pt-1 text-[#536b8c]">{t("search.showingFor", { term: answer.data.correctedTo })}</p>
@@ -667,15 +689,17 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                 </span>
                 <ArrowRight className="size-4 shrink-0 rtl:-scale-x-100" />
               </button>
+              </div>
               {/* Optional, and quieter than the results it sits under. */}
               {typed.length >= 2 && (
-                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2.5 text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-60">
+                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => void refineQuery()} disabled={refine.isPending} className="type-control tint-on-hover mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/80 px-3 py-2.5 text-[#0a285a] shadow-[0_1px_2px_rgba(10,40,90,.06)] disabled:opacity-60">
                   {refine.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4 ink-accent" />}
                   {t(refine.isPending ? "header.refining" : "header.refineWithAi")}
                 </button>
               )}
             </>
           )}
+          </div>
         </div>
         </>
       )}

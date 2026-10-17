@@ -1191,6 +1191,17 @@ html[dir="rtl"] .nav-progress {
       background: rgb(255 255 255 / 0.45);
     }
   }
+  /*
+   * The search panel's glass, on the owner's word: one even 70% at every
+   * width. Its headings sit straight on the glass, so it is thicker than the
+   * bar's — navy keeps 7.7:1 over the darkest thing that can pass beneath, the
+   * navy Deals band under the phone's dim — and everything carrying the muted
+   * ink is drawn on a white plate over it. Two classes, so it outranks the
+   * phone's thinner bar above whatever the order.
+   */
+  .glass-panel .glass-bar-face {
+    background: rgb(255 255 255 / 0.7);
+  }
 }
 /* A rounded bar's blur keeps to its own corners rather than trusting the
    bar's clip, which Safari has not always applied to a backdrop filter. It
