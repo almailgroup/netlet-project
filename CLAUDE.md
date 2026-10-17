@@ -1234,8 +1234,11 @@ meant. **The company is the invoices' own issuer** (`INVOICE_ISSUER_*`),
 so the footer and an invoice cannot name two companies, and `nameInSentence`
 drops the name's own full stop, which the sentence after it supplies — "Example
 Co.." on the first draw. On a phone the link groups fold (the WAI-ARIA
-disclosure, one structure at a time by `useMediaQuery`), the contact block open
-above them, so the footer is a short page and not five screens of links; the
+disclosure, one structure at a time by `useMediaQuery`) and **come first, on
+the owner's word**, with the logo and the open contact block under them — the
+order chosen in the markup rather than with CSS `order`, so the keyboard and a
+screen reader meet it as drawn; from `sm` up the contact block leads. So the
+footer is a short page and not five screens of links; the
 terms and the privacy policy stay on the last line at every width, where a
 folded column would have hidden them.
 

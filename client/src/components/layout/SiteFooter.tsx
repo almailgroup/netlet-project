@@ -22,9 +22,13 @@
  * invoices' own issuer (`INVOICE_ISSUER_*`), so the footer and the invoice
  * cannot name two different companies.
  *
- * **On a phone the link groups fold** — a button per group, the contact block
- * open above them — so the footer is a short page rather than five screens of
- * links; from `sm` up they are columns. One structure at a time
+ * **On a phone the link groups fold** — a button per group — so the footer is
+ * a short page rather than five screens of links; from `sm` up they are
+ * columns. **They come first on a phone, on the owner's word**, and the logo
+ * and the contact block follow them; from `sm` up the contact block leads, as
+ * a row above the columns and then the first column. The order is chosen in
+ * the markup rather than with CSS `order`, so a keyboard and a screen reader
+ * meet the footer in the order it is drawn. One structure at a time
  * (`useMediaQuery`), the product page's rule.
  */
 import { Banknote, ChevronDown, Facebook, Ghost, Globe, Headset, Instagram, LifeBuoy, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Truck, Youtube, type LucideIcon } from "lucide-react";
@@ -196,82 +200,92 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
     { key: "footer.allCategories", href: "/categories" },
   ];
 
+  /* Who NetLet is and how to reach a person. */
+  const about = (
+    <div key="about" className="min-w-0 sm:col-span-4 lg:col-span-1">
+      <Link href="/" className="inline-block" aria-label={t("header.home")}>
+        <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-10 w-auto object-contain" />
+      </Link>
+      <p className="mt-3 text-[15px] font-semibold text-white">{t("home.heroTitle")} <span className="ink-accent-on-dark">{t("home.heroTitleAccent")}</span></p>
+      <h2 className="mt-6 flex items-center gap-2 text-[15px] font-bold text-white">
+        <Headset className="size-[18px] shrink-0 text-[#ffab85]" aria-hidden />{t("footer.contactTitle")}
+      </h2>
+      {/* The owner's own line: who answers, and the three ways to reach
+          them — the place named from the visiting address itself. */}
+      <p className="mt-2 max-w-[44ch] text-[14px] leading-6 text-[#c5d3e6]">
+        {visitPlace ? t("footer.contactNote", { place: visitPlace }) : t("footer.contactNotePlain")}
+      </p>
+      <ul className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
+        {contact?.whatsapp ? (
+          <ContactRow
+            icon={MessageCircle}
+            label={t("support.whatsapp")}
+            detail={<bdi dir="ltr">{displayNumber(contact.whatsapp)}</bdi>}
+            href={whatsappLink(contact.whatsapp, t("support.whatsappHello"))}
+            external={t("support.opensNewTab")}
+          />
+        ) : null}
+        {contact?.phone ? (
+          <ContactRow icon={Phone} label={t("footer.callUs")} detail={<bdi dir="ltr">{displayNumber(contact.phone)}</bdi>} href={phoneLink(contact.phone)} />
+        ) : null}
+        {contact?.email ? (
+          <ContactRow icon={Mail} label={t("footer.emailUs")} detail={<bdi dir="ltr">{contact.email}</bdi>} href={mailLink(contact.email)} />
+        ) : null}
+        {contact?.visit ? (
+          <ContactRow
+            icon={MapPin}
+            label={t("footer.visitUs")}
+            detail={<span dir="auto">{visitAddress}</span>}
+            href={mapsLink(contact.visit.address)}
+            external={t("footer.opensNewTab")}
+          />
+        ) : null}
+        <ContactRow icon={MessagesSquare} label={t("help.contactMessage")} href="/account/help" internal />
+        <ContactRow icon={LifeBuoy} label={t("footer.helpCentre")} href="/help" internal />
+      </ul>
+      {contact?.social.length ? (
+        <>
+          <h2 className="mt-6 text-[15px] font-bold text-white">{t("footer.follow")}</h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {contact.social.map(link => (
+              <li key={link.platform}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${t("footer.socialOn", { platform: t(`social.${link.platform}` as MessageKey) })} ${t("footer.opensNewTab")}`}
+                  title={t(`social.${link.platform}` as MessageKey)}
+                  className="grid size-11 place-items-center rounded-full border border-white/20 text-white hover:bg-white/[.12]"
+                >
+                  {SOCIAL_ICON[link.platform]()}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+  const groups = (
+    <div key="groups" className="min-w-0 sm:contents">
+      <Group title="footer.categories" links={departments} folded={!wide} />
+      <Group title="footer.shopping" links={SHOPPING} folded={!wide} />
+      <Group title="footer.service" links={SERVICE} folded={!wide} />
+      <Group title="footer.netlet" links={NETLET} folded={!wide} />
+    </div>
+  );
+
   return (
-    <footer className={`mt-auto bg-[#0a285a] pt-10 text-white sm:pt-14 lg:pb-8 ${clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
+    <footer className={`mt-auto bg-[#0a285a] pt-6 text-white sm:pt-14 lg:pb-8 ${clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
       <div className="container">
         <div className="grid gap-8 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))] lg:gap-x-8">
-          {/* Who NetLet is and how to reach a person: first on a phone, where
-              it is the reason most people scroll this far. */}
-          <div className="min-w-0 sm:col-span-4 lg:col-span-1">
-            <Link href="/" className="inline-block" aria-label={t("header.home")}>
-              <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-10 w-auto object-contain" />
-            </Link>
-            <p className="mt-3 text-[15px] font-semibold text-white">{t("home.heroTitle")} <span className="ink-accent-on-dark">{t("home.heroTitleAccent")}</span></p>
-            <h2 className="mt-6 flex items-center gap-2 text-[15px] font-bold text-white">
-              <Headset className="size-[18px] shrink-0 text-[#ffab85]" aria-hidden />{t("footer.contactTitle")}
-            </h2>
-            {/* The owner's own line: who answers, and the three ways to reach
-                them — the place named from the visiting address itself. */}
-            <p className="mt-2 max-w-[44ch] text-[14px] leading-6 text-[#c5d3e6]">
-              {visitPlace ? t("footer.contactNote", { place: visitPlace }) : t("footer.contactNotePlain")}
-            </p>
-            <ul className="mt-3 grid gap-1 sm:grid-cols-2 lg:grid-cols-1">
-              {contact?.whatsapp ? (
-                <ContactRow
-                  icon={MessageCircle}
-                  label={t("support.whatsapp")}
-                  detail={<bdi dir="ltr">{displayNumber(contact.whatsapp)}</bdi>}
-                  href={whatsappLink(contact.whatsapp, t("support.whatsappHello"))}
-                  external={t("support.opensNewTab")}
-                />
-              ) : null}
-              {contact?.phone ? (
-                <ContactRow icon={Phone} label={t("footer.callUs")} detail={<bdi dir="ltr">{displayNumber(contact.phone)}</bdi>} href={phoneLink(contact.phone)} />
-              ) : null}
-              {contact?.email ? (
-                <ContactRow icon={Mail} label={t("footer.emailUs")} detail={<bdi dir="ltr">{contact.email}</bdi>} href={mailLink(contact.email)} />
-              ) : null}
-              {contact?.visit ? (
-                <ContactRow
-                  icon={MapPin}
-                  label={t("footer.visitUs")}
-                  detail={<span dir="auto">{visitAddress}</span>}
-                  href={mapsLink(contact.visit.address)}
-                  external={t("footer.opensNewTab")}
-                />
-              ) : null}
-              <ContactRow icon={MessagesSquare} label={t("help.contactMessage")} href="/account/help" internal />
-              <ContactRow icon={LifeBuoy} label={t("footer.helpCentre")} href="/help" internal />
-            </ul>
-            {contact?.social.length ? (
-              <>
-                <h2 className="mt-6 text-[15px] font-bold text-white">{t("footer.follow")}</h2>
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {contact.social.map(link => (
-                    <li key={link.platform}>
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label={`${t("footer.socialOn", { platform: t(`social.${link.platform}` as MessageKey) })} ${t("footer.opensNewTab")}`}
-                        title={t(`social.${link.platform}` as MessageKey)}
-                        className="grid size-11 place-items-center rounded-full border border-white/20 text-white hover:bg-white/[.12]"
-                      >
-                        {SOCIAL_ICON[link.platform]()}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-
-          <div className="min-w-0 sm:contents">
-            <Group title="footer.categories" links={departments} folded={!wide} />
-            <Group title="footer.shopping" links={SHOPPING} folded={!wide} />
-            <Group title="footer.service" links={SERVICE} folded={!wide} />
-            <Group title="footer.netlet" links={NETLET} folded={!wide} />
-          </div>
+          {/* A phone opens on the folded link groups, on the owner's word, with
+              the logo and the ways to reach a person under them; from `sm` up
+              the contact block leads. A phone's footer starts closer to its
+              top edge (`pt-6`), because a group's row brings its own room
+              above the words. Keyed, so a resize across the line moves the
+              two rather than rebuilding one as the other. */}
+          {wide ? [about, groups] : [groups, about]}
         </div>
 
         {/* How paying and delivery work, and the language: one line on a wide
