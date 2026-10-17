@@ -244,7 +244,7 @@ export default function Account() {
             <SideMenu user={user} entries={entries} current={section.id} badge={badge} onSignOut={() => setSignOutOpen(true)} />
             <div className="min-w-0">
               {/* A phone has no side menu, so the way back is the first thing on the page. */}
-              <Link href="/account" className="mb-4 inline-flex items-center gap-1.5 rounded-full py-1 text-[14px] font-semibold text-[#536b8c] hover:text-[#0a285a] lg:hidden">
+              <Link href="/account" className="-ms-2 mb-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[14px] font-semibold text-[#536b8c] hover:text-[#0a285a] lg:hidden">
                 <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
                 {t("account.backToAccount")}
               </Link>

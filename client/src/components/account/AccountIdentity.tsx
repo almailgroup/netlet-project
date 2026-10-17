@@ -68,8 +68,11 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
               Arabic page needs its own internal order, but the heading is a
               field of this card and belongs on the card's side. `dir` on the
               block does both, which threw the name to the far edge and left
-              the label under it hugging the other one. */}
-          <h2 className="truncate text-xl font-extrabold text-[#0a285a]">
+              the label under it hugging the other one. It wraps rather than
+              truncating: cut on an Arabic page, a Latin name lost its first
+              letters ("…ra Al-Sabah"), and a name is the one thing on the
+              card a shopper reads to be sure it is theirs. */}
+          <h2 className="text-xl font-extrabold text-[#0a285a] [overflow-wrap:anywhere]">
             <bdi>{user.name?.trim() || t("account.noName")}</bdi>
           </h2>
           <p className="mt-0.5 text-[12px] font-semibold ink-muted">
@@ -79,13 +82,18 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
             <bdi dir="ltr">{user.email}</bdi>
           </p>
         </div>
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${
-            isAdmin ? "bg-[#0a285a] text-white" : "bg-[#e7edf5] text-[#0a285a]"
-          }`}
-        >
-          <ShieldCheck className="size-3.5" aria-hidden />
-          {t(isAdmin ? "account.roleAdmin" : "account.roleShopper")}
+        {/* On a phone the role goes on its own line under the email, lined up
+            with the words, so the name has the card's width; beside it, the
+            name broke at its hyphen ("Noura Al-" over "Sabah"). */}
+        <span className="max-sm:-mt-2 max-sm:basis-full max-sm:ps-20">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${
+              isAdmin ? "bg-[#0a285a] text-white" : "bg-[#e7edf5] text-[#0a285a]"
+            }`}
+          >
+            <ShieldCheck className="size-3.5" aria-hidden />
+            {t(isAdmin ? "account.roleAdmin" : "account.roleShopper")}
+          </span>
         </span>
       </div>
 

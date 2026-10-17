@@ -86,8 +86,10 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
 }) {
   const { t } = useTranslation();
   const ring = "focus-visible:outline-offset-[-2px]";
-  /* Drawn always (the bag's stepper, which a phone uses too) it is a full
-     40px square; revealed by a pointer it can be smaller. */
+  /* Drawn always (the bag's stepper, which a phone uses too) it is the
+     pill's full height, 44px under a finger; revealed by a pointer it can be
+     smaller. The pill is 44px tall under a coarse pointer and the 40px it was
+     under a mouse, so a thumb's press lands on a whole button. */
   const stepClass = `${always ? "grid h-full w-10" : "pill-step size-8"} shrink-0 place-items-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 hover:bg-[#0a285a]/[.06] ${ring}`;
   /* `pressable` is the header's own button lettering, so the card's two
      buttons read like every other button on the site. */
@@ -101,7 +103,7 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   const display = !onPress && !href;
 
   return (
-    <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-10 w-full items-center rounded-xl ${always ? "@container" : "px-1"}`}>
+    <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-11 w-full items-center rounded-xl pointer-fine:h-10 ${always ? "@container" : "px-1"}`}>
       {step ? (
         <button type="button" onClick={step.less} disabled={busy || !step.canLess} aria-label={t(step.lessIsRemove ? "cart.remove" : "cart.decrease", { name: step.name })} className={stepClass}>
           {step.lessIsRemove ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}

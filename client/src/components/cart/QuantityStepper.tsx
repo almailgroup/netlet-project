@@ -36,7 +36,9 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
 }) {
   const { t } = useTranslation();
   const compact = size === "compact";
-  const button = compact ? "grid size-8 place-items-center" : "grid size-9 place-items-center";
+  /* The product page's is a thumb's size under a coarse pointer (44px a
+     side); a mouse keeps the 36px it always had. */
+  const button = compact ? "grid size-8 place-items-center" : "grid size-11 place-items-center pointer-fine:size-9";
 
   return (
     <div className={`inline-flex items-center rounded-full border border-[#d5dfeb] bg-white ${compact ? "h-9" : ""}`}>

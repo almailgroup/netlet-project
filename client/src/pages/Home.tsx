@@ -68,7 +68,7 @@ function ShelfHeading({ id, title, onViewAll, children }: { id: string; title: s
       <div className="flex items-center gap-2">
         {children}
         {onViewAll ? (
-          <button onClick={onViewAll} className="pressable inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm font-bold ink-accent hover:underline">
+          <button onClick={onViewAll} className="pressable -me-2 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-bold ink-accent hover:underline">
             {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
           </button>
         ) : null}
@@ -196,7 +196,7 @@ function DealsBand({ products, saved, onSave, onQuickView }: Pick<RailProps, "pr
       <div className="container">
         <div className="flex items-center justify-between gap-4">
           <h2 id="deals-title" className="text-xl font-extrabold tracking-[-.01em] text-white sm:text-2xl">{t("rail.deals.title")}</h2>
-          <Link href="/category/all?offer=1&sort=discount" className="pressable inline-flex items-center gap-1 rounded-full px-2 py-2 text-sm font-bold ink-accent-on-dark hover:underline">
+          <Link href="/category/all?offer=1&sort=discount" className="pressable -me-2 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-bold ink-accent-on-dark hover:underline">
             {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
           </Link>
         </div>
