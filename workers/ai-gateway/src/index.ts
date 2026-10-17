@@ -2,7 +2,7 @@
  * NetLet's AI gateway: a Cloudflare Worker that holds the Gemini key and is
  * the only thing that talks to Gemini.
  *
- *   GET  /healthz                 whether it is configured, and which model
+ *   GET  / or /healthz            whether it is configured, and which model
  *   POST /api/ai/chat             the shop's assistant, streamed as Server-Sent Events
  *   POST /api/ai/catalog-assist   a product listing drafted from notes and photos, as JSON
  *
@@ -215,7 +215,9 @@ export async function handle(request: Request, env: Env, seams: Seams = {}): Pro
     return new Response(null, { status: 204, headers });
   }
 
-  if (url.pathname === "/healthz") {
+  /* The bare address too: it is what anybody checking the Worker opens first,
+     and "No such route" there read as a broken deploy. */
+  if (url.pathname === "/healthz" || url.pathname === "/") {
     if (request.method !== "GET") return refuse("method_not_allowed", "GET only", headers);
     const configured = Boolean(env.GEMINI_API_KEY) && (env.AI_GATEWAY_SECRET ?? "").length >= 32;
     return json(200, { ok: true, data: { configured, model: env.GEMINI_MODEL || GATEWAY_MODEL } }, headers);

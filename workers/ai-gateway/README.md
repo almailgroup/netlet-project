@@ -16,7 +16,7 @@ browser ── tRPC ai.gateway ──▶ NetLet server   (who is asking? may the
 
 | Route | Scope | Answers |
 | --- | --- | --- |
-| `GET /healthz` | none | `{ ok, data: { configured, model } }` — never the key |
+| `GET /` or `/healthz` | none | `{ ok, data: { configured, model } }` — never the key |
 | `POST /api/ai/chat` | `chat` | Server-Sent Events: `{type:"delta",text}` … `{type:"done",finish}` |
 | `POST /api/ai/catalog-assist` | `catalog` | `{ ok: true, data: CatalogDraft }` |
 

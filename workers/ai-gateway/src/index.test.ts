@@ -219,6 +219,8 @@ describe("everything else", () => {
   it("reports whether it is configured, never the key", async () => {
     const response = await handle(new Request("https://gateway.test/healthz"), env());
     expect(await response.json()).toEqual({ ok: true, data: { configured: true, model: "gemini-2.5-flash" } });
+    const root = await handle(new Request("https://gateway.test/"), env());
+    expect(await root.json()).toEqual({ ok: true, data: { configured: true, model: "gemini-2.5-flash" } });
     const bare = await handle(new Request("https://gateway.test/healthz"), env({ AI_GATEWAY_SECRET: "short" }));
     expect((await bare.json()).data.configured).toBe(false);
   });
