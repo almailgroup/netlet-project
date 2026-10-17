@@ -169,7 +169,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
    * seller's choice was sent with the request and stood. Focus goes to the name,
    * the first thing to read.
    */
-  const useDraft = (generated: CatalogDraft) => {
+  const applyDraft = (generated: CatalogDraft) => {
     const warranty = generated.attributes.find(row => row.key === "warranty")?.value;
     setDraft(current => ({
       ...current,
@@ -318,7 +318,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             canAddPhoto={photos.length < MAX_PHOTOS}
             onPhoto={addPhoto}
             departmentName={departmentName}
-            onUse={useDraft}
+            onUse={applyDraft}
           />
 
           <Card step={1} title={t("admin.newStepBasics")}>

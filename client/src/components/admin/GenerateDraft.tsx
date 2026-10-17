@@ -61,9 +61,11 @@ export function GenerateDraft({ vendorId, departmentSlug, photos, canAddPhoto, o
   const generator = useProductGenerator(vendorId);
   const [notes, setNotes] = useState("");
   const [needInput, setNeedInput] = useState(false);
+  /* Reading and shrinking the photos comes before the request, and is part of the wait. */
+  const [preparing, setPreparing] = useState(false);
   const draftHeading = useRef<HTMLHeadingElement>(null);
   const sending = draftPhotoUrls(photos);
-  const working = generator.status === "working";
+  const working = preparing || generator.status === "working";
 
   /* A draft is announced by taking focus to its heading, so a screen reader
      reads where it landed and a keyboard is one Tab from "Use this draft". */
@@ -79,7 +81,9 @@ export function GenerateDraft({ vendorId, departmentSlug, photos, canAddPhoto, o
       return;
     }
     setNeedInput(false);
-    await generator.generate({ notes: notes.trim(), department: departmentSlug, photos: await photosForDraft(photos) });
+    setPreparing(true);
+    const prepared = await photosForDraft(photos).finally(() => setPreparing(false));
+    await generator.generate({ notes: notes.trim(), department: departmentSlug, photos: prepared });
   };
 
   const draft = generator.status === "done" ? generator.draft : null;
@@ -137,7 +141,7 @@ export function GenerateDraft({ vendorId, departmentSlug, photos, canAddPhoto, o
               {working ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
               {t(working ? "admin.genWorking" : "admin.genGenerate")}
             </button>
-            {working ? <button type="button" onClick={generator.cancel} className={buttonClass.secondary}>{t("admin.genCancel")}</button> : null}
+            {generator.status === "working" ? <button type="button" onClick={generator.cancel} className={buttonClass.secondary}>{t("admin.genCancel")}</button> : null}
           </div>
         )}
 
