@@ -51,11 +51,14 @@ import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { PackageOpen, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
+import { PixelBadge } from "@/components/ui/PixelBadge";
+import { useBeyondScreen } from "@/hooks/useBeyondScreen";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const SORT_LABELS: Record<BrowseSort, MessageKey> = {
   relevance: "browse.sort.relevance",
@@ -248,6 +251,30 @@ export default function Category() {
     ...(filters.express ? [{ key: "express", label: t("browse.expressOnly"), clear: () => setFilters({ express: false }) }] : []),
   ];
 
+  /*
+   * On a phone, Filters and Sort are one row under the title, a thumb's
+   * width each. The filters used to be only a navy pill floating over the
+   * grid, which covered the first row's Buy now the moment the page opened;
+   * the row is where somebody arriving looks for them. Once it has scrolled
+   * up under the header, a round button in the corner above the tab bar
+   * stands in for it — at the edge, where it covers the end of one card's
+   * button rather than the middle of two. One structure at a time: the wide
+   * screen's sort sits beside the title instead, never both with one hidden.
+   */
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const [filtersRef, filtersPassed] = useBeyondScreen("top", 64);
+  const filtersLabel = activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters");
+  const sortSelect = (className: string) => (
+    <Select
+      aria-label={t("browse.sortBy")}
+      value={filters.sort}
+      onChange={event => setFilters({ sort: event.target.value as BrowseSort })}
+      className={className}
+    >
+      {BROWSE_SORTS.map(sort => <option key={sort} value={sort}>{t(SORT_LABELS[sort])}</option>)}
+    </Select>
+  );
+
   const sidebar = (
     <FilterSidebar
       facets={facets}
@@ -277,21 +304,27 @@ export default function Category() {
                     : t("browse.countMany", { count: results.length })}
             </span>
           }
-          actions={
+          actions={wide ? (
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[#d5dfeb] bg-white transition-colors hover:bg-[#f0f2f5] px-3 py-2 text-[13px] font-bold text-[#536b8c] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
               <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
               {t("browse.sortBy")}
-              <Select
-                aria-label={t("browse.sortBy")}
-                value={filters.sort}
-                onChange={event => setFilters({ sort: event.target.value as BrowseSort })}
-                className="bg-transparent font-extrabold text-[#0a285a] outline-none"
-              >
-                {BROWSE_SORTS.map(sort => <option key={sort} value={sort}>{t(SORT_LABELS[sort])}</option>)}
-              </Select>
+              {sortSelect("bg-transparent font-extrabold text-[#0a285a] outline-none")}
             </label>
-          }
+          ) : undefined}
         />
+
+        {!wide ? (
+          <div className="-mt-2 mb-5 grid grid-cols-2 gap-2">
+            <button ref={filtersRef} type="button" onClick={() => setSheetOpen(true)} className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[14px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+              <SlidersHorizontal className="size-4 shrink-0" aria-hidden />
+              <span className="truncate">{filtersLabel}</span>
+            </button>
+            <label className="flex h-11 min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#d5dfeb] bg-white ps-3 text-[#536b8c] hover:bg-[#f0f2f5] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
+              <ArrowUpDown className="size-4 shrink-0" aria-hidden />
+              {sortSelect("h-full min-w-0 flex-1 bg-transparent pe-3 text-[14px] font-bold text-[#0a285a] outline-none hover:bg-transparent")}
+            </label>
+          </div>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
           {/* Sticky so the filters stay reachable through a long grid, and
@@ -407,17 +440,22 @@ export default function Category() {
         </div>
       </PageBody>
 
-      {/* On a phone the sidebar becomes a sheet behind one always-reachable
-          button, so the filters do not push the products off the first screen.
-          It sits 8px above the tab bar, which floats at
-          max(0.75rem, safe area) and is 64px tall. */}
-      <button
-        onClick={() => setSheetOpen(true)}
-        className="glass glass-navy pressable fixed inset-x-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-30 mx-auto flex w-fit items-center gap-2 rounded-full px-6 py-3.5 text-xs font-extrabold shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:hidden"
-      >
-        <SlidersHorizontal className="size-4" aria-hidden />
-        {activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters")}
-      </button>
+      {/* The phone's filters once the row under the title has gone up under
+          the header: round, at the end, just above the tab bar (which floats
+          at max(0.75rem, safe area) and is 64px tall). */}
+      {!wide ? (
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-label={filtersLabel}
+          aria-hidden={!filtersPassed}
+          inert={!filtersPassed}
+          className={`glass glass-navy fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] transition-[opacity,translate] duration-200 ${filtersPassed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
+        >
+          <SlidersHorizontal className="size-5" aria-hidden />
+          <PixelBadge value={activeCount} className="absolute -end-1 -top-1" />
+        </button>
+      ) : null}
 
       {sheetOpen ? (
         <div className="fixed inset-0 z-[70] bg-[#061b3b]/35 lg:hidden" onClick={() => setSheetOpen(false)}>
