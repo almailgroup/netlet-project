@@ -2,14 +2,16 @@ import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
-import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, Tag, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, Store, Tag, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { EMPTY_FILTERS, searchPath, searchWithTerm } from "@shared/commerce/browse";
 import { brandsMatching, departmentsMatching, highlightParts } from "@shared/commerce/search";
-import { ALL_DEPARTMENTS, type Department } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { appPath } from "@/lib/basePath";
 import { categoryMessageKey, categoryRail } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";
@@ -66,6 +68,8 @@ type LiveSearchProps = {
   onSelectProduct: (product: Product) => void;
   /** The department the page is in, which the field starts out searching. */
   department?: string | null;
+  /** Whether the home page draws a Deals shelf — the rule every link to deals keeps. */
+  dealsDrawn?: boolean;
 };
 
 /** Whether this browser can listen at all. Firefox and the iOS app's WebView cannot. */
@@ -83,7 +87,7 @@ const SETTLE_MS = 120;
 /** How many products the dropdown shows; the results page has the rest. */
 const SUGGESTED_PRODUCTS = 5;
 
-export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null }: LiveSearchProps) {
+export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null, dealsDrawn = false }: LiveSearchProps) {
   const { t, isArabic, locale } = useTranslation();
   const money = useMoney();
   const uid = useId();
@@ -109,6 +113,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const inStock = useDepartmentsInStock();
+  const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const wide = useMediaQuery("(min-width: 1024px)");
   /* Read again on every focus, so the phone field and the wide one agree. */
   const [recent, setRecent] = useState<string[]>(() => readRecentSearches());
   /*
@@ -326,6 +332,73 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   /* The departments are always there to offer, so an open field always has a panel. */
   const showPanel = open;
   const listed = showPanel && entries.length > 0;
+
+  /*
+   * On a phone the panel is a sheet the width of the screen, hung from the foot
+   * of the header, with the page dimmed under it. It was a card floating 8px
+   * below the field, a few pixels narrower than the screen on either side, over
+   * whatever the page had there — on the home page the dark hero, which made a
+   * busy frame of photograph round a small cream box. The sheet's top is the
+   * header's bottom, measured, because the header is 123px tall at the top of
+   * the page and 65px once its logo row has gone; measured again as the page or
+   * the screen moves. **Its height is what the keyboard leaves**, from the
+   * visual viewport: a phone's keyboard covers the layout viewport without
+   * shrinking it, so a sheet sized to the screen put its last rows behind the
+   * keys — and putting the keyboard away blurs the field, which closes the
+   * sheet, so those rows could not be reached at all. Sized to what shows, the
+   * sheet scrolls instead.
+   */
+  const [sheetTop, setSheetTop] = useState(0);
+  const [sheetRoom, setSheetRoom] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!showPanel || wide) return;
+    const place = () => {
+      const edge = box.current?.closest("header") ?? box.current;
+      if (!edge) return;
+      const top = Math.max(0, Math.round(edge.getBoundingClientRect().bottom));
+      const view = window.visualViewport;
+      const shown = view ? view.offsetTop + view.height : window.innerHeight;
+      setSheetTop(top);
+      setSheetRoom(Math.max(160, Math.round(shown - top)));
+    };
+    place();
+    window.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
+    return () => {
+      window.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
+    };
+  }, [showPanel, wide]);
+
+  /* Leaving the search by a press on a link or the dimmed page: the keyboard goes too. */
+  const dismiss = () => { close(); field.current?.blur(); };
+
+  /*
+   * The departments, as pictures: the home page's own art, so a department
+   * looks the same in the search as on the shelf. Only those with something on
+   * sale — the navigation's rule — and "All departments" last, where somebody
+   * who did not find theirs looks next.
+   */
+  const tiles = [
+    ...DEPARTMENTS.filter(entry => inStock(entry.name)).map(entry => ({ slug: entry.slug, query: entry.name, label: entry.label, counted: true })),
+    { slug: "all", query: ALL_DEPARTMENTS.query, label: ALL_DEPARTMENTS.label, counted: false },
+  ];
+  const countLine = (slug: string, counted: boolean) => {
+    if (!counted) return t("browse.browseEverything");
+    if (!counts.data) return "";
+    const count = counts.data[slug] ?? 0;
+    return count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
+  };
+  /* The other ways in a shopper reaches for, each only while it leads somewhere. */
+  const shortcuts: { key: string; href: string; label: MessageKey; icon: typeof Tag }[] = [
+    ...(dealsDrawn ? [{ key: "deals", href: "/category/all?offer=1", label: "home.heroDeals" as MessageKey, icon: Tag }] : []),
+    { key: "new", href: "/category/all?sort=newest", label: "footer.newArrivals", icon: Sparkles },
+    { key: "stores", href: "/stores", label: "stores.title", icon: Store },
+  ];
   return (
     <div ref={box} className="relative ms-auto w-full min-w-0 flex-1 lg:ms-0">
       {/*
@@ -433,50 +506,90 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           : ""}
       </p>
       {showPanel && (
-        <div onBlur={leave} className="absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] max-h-[min(34rem,calc(100dvh-9rem))] w-full overflow-y-auto overscroll-contain rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-2 shadow-[0_18px_45px_rgba(10,40,90,.18)]">
+        <>
+        {/* The page under a phone's sheet, dimmed; a press on it puts the search away. */}
+        {!wide ? (
+          <div aria-hidden onClick={dismiss} style={{ top: sheetTop }} className="fixed inset-x-0 bottom-0 z-[59] touch-none bg-[#0a285a]/45" />
+        ) : null}
+        <div
+          onBlur={leave}
+          style={wide ? undefined : { top: sheetTop, maxHeight: sheetRoom ? `${sheetRoom}px` : `calc(100dvh - ${sheetTop}px)` }}
+          className={wide
+            ? "absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] max-h-[min(36rem,calc(100dvh-9rem))] w-full overflow-y-auto overscroll-contain rounded-2xl border border-[#d5dfeb] bg-white p-3 shadow-[0_18px_45px_rgba(10,40,90,.18)]"
+            : "fixed inset-x-0 z-[60] overflow-y-auto overscroll-contain rounded-b-3xl bg-white px-4 pb-5 pt-3 shadow-[0_24px_48px_rgba(10,40,90,.28)]"}
+        >
           {emptyField ? (
             <>
               {recent.length ? (
-                <>
-                  <div className="type-label flex items-center justify-between gap-3 px-3 pb-1 pt-1 text-[#536b8c]">
-                    <span>{t("header.recentSearches")}</span>
+                <section className="mb-4">
+                  <div className="flex items-center justify-between gap-3 pb-2">
+                    <h2 className="text-[14px] font-bold text-[#0a285a]">{t("header.recentSearches")}</h2>
                     <button
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => { clearRecentSearches(); setRecent([]); setActiveIndex(-1); }}
                       aria-label={t("header.clearRecentAria")}
-                      className="rounded-lg px-2 py-1 font-extrabold ink-accent hover:bg-[#0a285a]/[.06]"
+                      className="tap-target rounded-lg px-2 py-1 text-[13px] font-bold ink-accent hover:bg-[#0a285a]/[.06]"
                     >
                       {t("header.clearRecent")}
                     </button>
                   </div>
-                  <div id={listboxId} role="listbox" aria-label={t("header.recentSearches")}>
+                  {/* Chips rather than rows: six searches in two lines, not six lines. */}
+                  <div id={listboxId} role="listbox" aria-label={t("header.recentSearches")} className="flex flex-wrap gap-2">
                     {entries.map((entry, index) => entry.kind === "recent" ? (
-                      <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
+                      <button
+                        key={entry.key}
+                        id={optionId(index)}
+                        type="button"
+                        role="option"
+                        aria-selected={activeIndex === index}
+                        tabIndex={-1}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onMouseEnter={() => setActiveIndex(index)}
+                        onClick={() => activate(entry)}
+                        className={`flex min-h-10 max-w-full items-center gap-1.5 rounded-full border px-3 text-[14px] font-medium text-[#0a285a] ${activeIndex === index ? "border-[#0a285a]/40 bg-[#f0f2f5]" : "border-[#d5dfeb] bg-white hover:bg-[#f0f2f5]"}`}
+                      >
                         <Clock className="size-4 shrink-0 text-[#536b8c]" aria-hidden />
-                        <span dir="auto" className="min-w-0 flex-1 truncate text-sm">{entry.term}</span>
-                        <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+                        <span dir="auto" className="min-w-0 truncate">{entry.term}</span>
                       </button>
                     ) : null)}
                   </div>
-                </>
+                </section>
               ) : null}
-              <p className={`type-label px-3 pb-2 text-[#536b8c] ${recent.length ? "mt-2 border-t border-[#e6e9ef] pt-3" : "pt-1"}`}>{t("header.shopByDepartment")}</p>
-              {/* Only departments with something on sale — the navigation's rule. */}
-              <div className="flex flex-wrap gap-1.5 px-2 pb-1">
-                {categoryRail.filter(entry => inStock(entry.query)).map(entry => (
+              <section>
+                <h2 className="pb-2 text-[14px] font-bold text-[#0a285a]">{t("header.shopByDepartment")}</h2>
+                <ul className="grid grid-cols-3 gap-2 lg:grid-cols-6">
+                  {tiles.map(tile => (
+                    <li key={tile.slug} className="min-w-0">
+                      <Link
+                        href={`/category/${categorySlug(tile.query)}`}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={dismiss}
+                        className="tint-on-hover flex h-full flex-col items-center rounded-2xl bg-[#f5f6f8] px-1.5 pb-2.5 pt-2 text-center"
+                      >
+                        <img src={appPath(`/departments/${tile.slug}.webp`)} alt="" loading="lazy" decoding="async" width={480} height={360} className="aspect-[4/3] w-full object-contain" />
+                        <span className="mt-1.5 line-clamp-2 text-[13px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
+                        {/* One line on every tile, so the row keeps one height while the counts arrive. */}
+                        <span className="mt-0.5 h-4 truncate text-[12px] leading-4 ink-muted">{countLine(tile.slug, tile.counted)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <nav aria-label={t("header.searchShortcuts")} className={`mt-4 grid gap-2 border-t border-[#e6e9ef] pt-4 ${shortcuts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+                {shortcuts.map(({ key, href, label, icon: Icon }) => (
                   <Link
-                    key={entry.query}
-                    href={`/category/${categorySlug(entry.query)}`}
+                    key={key}
+                    href={href}
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={close}
-                    className="flex items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 py-2 text-xs font-bold text-[#0a285a] hover:border-[#0a285a]/40 hover:bg-[#f0f2f5]"
+                    onClick={dismiss}
+                    className="tint-on-hover flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl bg-[#f5f6f8] px-2 py-2 text-center text-[13px] font-bold leading-tight text-[#0a285a] lg:min-h-11 lg:flex-row lg:gap-2"
                   >
-                    <DepartmentIcon query={entry.query} className="size-3.5 shrink-0 text-[#536b8c]" />
-                    {t(entry.key)}
+                    <Icon className="size-[18px] shrink-0 ink-accent" aria-hidden />
+                    {t(label)}
                   </Link>
                 ))}
-              </div>
+              </nav>
             </>
           ) : (
             <>
@@ -564,6 +677,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
             </>
           )}
         </div>
+        </>
       )}
       {voiceOn || photoOn || voiceOpen || photoOpen || reviewingSearchModes() ? (
         <Suspense fallback={null}>

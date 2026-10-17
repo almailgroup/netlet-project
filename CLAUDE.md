@@ -686,7 +686,24 @@ overwrites a choice.
 **The empty search box offers what is true.** It listed the first four products
 under "Popular searches", and nothing counts what anybody searches. It offers
 this device's recent searches (`lib/recentSearches.ts`, never sent anywhere,
-with Clear) and the departments with something on sale. The panel stays open while focus is anywhere
+with Clear) and the departments with something on sale. **It was redrawn on the
+owner's word**, who found it plain: the recent searches are chips (six in two
+lines, not six lines), the departments are the home page's own art as tiles
+with each one's count (`commerce.departmentCounts`, "All departments" last,
+three to a row on a phone and six wide), and a row of shortcuts closes it —
+Today's deals only while the home page draws that shelf (`dealsDrawn`, the
+header's own answer), New arrivals and Stores. **On a phone it is a sheet the
+width of the screen hung from the header's foot, with the page dimmed under
+it** (a press on the dim puts the search away, the keyboard with it); it was a
+cream card 8px below the field, narrower than the screen, over whatever the
+page had there. The sheet's top is the header's bottom, measured, since that
+is 123px at the top of the page and 65px once the logo row has gone, and its
+height is what the *visual* viewport leaves: a phone's keyboard covers the
+screen without shrinking the layout, so a sheet sized to the screen put its
+last rows behind the keys — and putting the keyboard away blurs the field,
+which closes the sheet, so they could not be reached at all. Sized to what
+shows, it scrolls instead. The scrim sits inside the header's stacking context
+(`z-40`), so it covers the tab bar (`z-30`) too. The panel stays open while focus is anywhere
 inside the search, so a keyboard can Tab to Clear and the departments — it
 closed on the field's own blur, which left everything below the suggestions to
 the mouse. **"/" goes to the field** (`aria-keyshortcuts`), never from inside
@@ -776,8 +793,8 @@ holds a camera permission), shrunk to 768px in the browser and under the API's
 with a line saying where it goes, and sent only on the press. The model may
 return a few words and nothing else; they go into the field like typing.
 
-**The dropdown is a solid sheet**, not glass: the department rail read through
-its 82% white. And the phone's search row is never `overflow-hidden` — a row
+**The dropdown is a solid white sheet**, not glass: the department rail read
+through its 82% white. And the phone's search row is never `overflow-hidden` — a row
 that was clipped the dropdown entirely at rest, which a screenshot showed and
 `elementFromPoint` confirmed.
 

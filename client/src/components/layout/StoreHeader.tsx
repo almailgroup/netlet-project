@@ -182,7 +182,7 @@ export function StoreHeader({ activeDepartment }: {
     return () => window.removeEventListener("keydown", toSearch);
   }, []);
 
-  const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} />;
+  const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} dealsDrawn={dealsDrawn} />;
 
   const area = (
     <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={plain}>
