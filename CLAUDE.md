@@ -2007,6 +2007,77 @@ would make `baseUnitsFor` round, and the arithmetic would stop being exact. The
 guard lives in `server/inventory.ts` next to the query, not in the router alone,
 for the reason every other guard there does.
 
+## The AI gateway
+
+`workers/ai-gateway/` is a Cloudflare Worker that holds the Gemini key and is
+the only thing that talks to Gemini (`gemini-2.5-flash`, thinking off, so the
+first word is not held behind a reasoning pass): `POST /api/ai/chat` streams the
+shop's assistant as Server-Sent Events, `POST /api/ai/catalog-assist` drafts a
+listing from a seller's notes and photos as JSON. Its `README.md` is the setup,
+`wrangler` commands included. **The eight model features that predate it still
+call Mistral from this server** (`MISTRAL_API_KEY`); moving them behind the
+gateway, for one provider, one key and one bill, is a decision of its own and
+was not made with it.
+
+**CORS is not authentication, so a browser reaches the gateway only with a
+token this server signed.** CORS stops another site's page reading an answer
+and does nothing about a script that sets its own `Origin`; guarded by CORS
+alone the gateway would be a Gemini key anybody could spend. `ai.chatSession`
+and `ai.catalogSession` sign a five-minute HMAC token (`shared/ai/gateway.ts`,
+Web Crypto, the same file the Worker verifies with) with `AI_GATEWAY_SECRET`,
+which the Worker holds too. The token carries a scope — a shopper's chat token
+cannot draft products — and a subject the ceilings count against: an account
+number, or for a guest a keyed hash of their address, so a fresh token is not a
+fresh allowance and the gateway never holds where anybody came from. A
+catalogue token is signed only for somebody `can()` lets create a product in
+that store, and no token at all while the `ai` switch is off; a token already
+handed out lasts at most its five minutes. Tokens are mutations, because a
+query is a GET a cache could keep.
+
+**The ceilings are Cloudflare's rate-limiting bindings**, per caller per route
+and per address across both (`wrangler.toml`), because the Worker cannot reach
+Postgres and a `Map` in a Worker is the per-instance count `rateLimit.ts`
+exists to avoid. A request is counted after its token and before its body, so a
+malformed body still costs. Set a spending cap on the Google project as well:
+the ceilings stop one caller, the cap stops everything.
+
+**Its prompts are built from NetLet's own shared code**, so the gateway cannot
+drift from the shop: the chat's facts are the help page's answers (`helpBrief`,
+its return window `RETURN_WINDOW_DAYS`) in the shopper's language from the
+dictionary, and the catalogue's departments and rows are the editor's. That
+makes **a change to `helpArticles.ts`, the departments or the attribute schema
+a change to the Worker** — deploy it with NetLet. Everything typed by a person
+is fenced as data, the product assistant's rule; a question carrying a phone
+number, an email or a link is refused before it leaves, by the chat's filter,
+on the page (`chatDraftProblem`) and in the Worker alike.
+
+**A catalogue draft is held to the shop before a seller sees it**
+(`draftFromModel`, `shared/ai/catalogDraft.ts`): a department NetLet does not
+have is none and the seller's own choice stands, a row the department does not
+ask for is dropped, a unit typed into a number comes out, an option must be
+spelled as the field spells it, and a line carrying contact details goes — the
+listing rule, which lets a nine-digit barcode through. The description is
+paragraphs and "- " lines, the Markdown the product page draws; a heading or
+bold would print as its marks. **The SEO title and description it returns have
+no column to go to** — the search preview is `productMeta`'s rule — so keeping
+them needs a migration, shown first.
+
+**The address is never built into the page.** It arrives with each token, so a
+deployment sets two server variables and nothing else, the CSP names the
+gateway in `connect-src` only while it is configured, and unset is
+`ai.available: false` — the demo build's answer too. `useAIChat` and
+`useProductGenerator` are the browser's side, ready for the UI that comes once
+the gateway is deployed; nothing draws them yet.
+
+Measured, not assumed: the Worker's tests drive its own fetch handler against a
+stand-in Gemini (`workers/ai-gateway/src/index.test.ts`, in `pnpm test`);
+`wrangler deploy --dry-run` bundles it (about 150 KB gzipped, the dictionary
+included); and under `wrangler dev`, with a fake key against Google's real
+endpoint, every gate answered as designed, the local rate limiter refused the
+seventh catalogue call in a minute, and a page served by the production build
+reached it through its CSP and CORS. Google's own error text is never passed
+on: it names the project and its quota.
+
 ## The product assistant
 
 A specification block is written for somebody who already knows the category —

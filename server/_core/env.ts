@@ -22,6 +22,13 @@ export const ENV = {
    */
   mediaHost: process.env.MEDIA_HOST ?? "",
   mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
+  /* The AI gateway (`workers/ai-gateway/`): the Cloudflare Worker that holds
+     the Gemini key. Its address, and the secret this server signs browsers'
+     tokens with — the same value the Worker holds. Either unset, or the
+     secret under 32 characters, and nothing that uses the gateway is offered
+     (`server/aiGateway.ts`). */
+  aiGatewayUrl: (process.env.AI_GATEWAY_URL ?? "").trim().replace(/\/+$/, ""),
+  aiGatewaySecret: process.env.AI_GATEWAY_SECRET ?? "",
   /* What the scheduler presents to run standing orders (3.1.19). Vercel Cron
      sends it as a bearer token. Unset, the endpoint answers 404 and no
      standing order runs on its own — an administrator can still run them

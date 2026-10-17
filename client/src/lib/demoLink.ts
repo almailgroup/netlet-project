@@ -205,6 +205,13 @@ function resolve(path: string, rawInput: unknown): unknown {
       return false;
     case "help.ask":
       return { kind: "unavailable" };
+    /* The AI gateway: absent in the demo, the branch a deployment that has not
+       set AI_GATEWAY_URL takes — no backend, so nothing to sign a token. */
+    case "ai.available":
+      return false;
+    case "ai.chatSession":
+    case "ai.catalogSession":
+      return { available: false };
     case "commerce.bestsellers":
       return [];
     case "commerce.brands": {

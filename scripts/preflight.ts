@@ -184,6 +184,23 @@ if (supabaseAuthMissing.length === 0) {
  * issuer's commercial registration, and a missing one is the kind of gap
  * nobody notices until somebody official asks.
  */
+/* The AI gateway (workers/ai-gateway/). Off is a choice; half-set is a mistake. */
+{
+  const url = (process.env.AI_GATEWAY_URL ?? "").trim();
+  const secret = process.env.AI_GATEWAY_SECRET ?? "";
+  if (!url && !secret) {
+    add("warn", "AI gateway", "AI_GATEWAY_URL and AI_GATEWAY_SECRET not set — nothing that uses Gemini is offered", "workers/ai-gateway/README.md");
+  } else if (!url || !secret) {
+    add("blocked", "AI gateway", `${url ? "AI_GATEWAY_SECRET" : "AI_GATEWAY_URL"} missing, so the gateway is off`, "Set both; the secret is the same value the Worker holds");
+  } else if (secret.length < 32) {
+    add("blocked", "AI gateway", "AI_GATEWAY_SECRET is shorter than 32 characters, so the gateway is off", "node -e \"console.log(require('crypto').randomBytes(32).toString('base64url'))\", on both sides");
+  } else if (!/^https:\/\/[^/?#@]+\/?$/.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(url)) {
+    add("blocked", "AI gateway", "AI_GATEWAY_URL must be an https address with no path (or http://127.0.0.1 for wrangler dev)", "Use the address `wrangler deploy` printed");
+  } else {
+    add("ok", "AI gateway", `browsers are sent to ${url.replace(/\/$/, "")}`);
+  }
+}
+
 if ((process.env.CRON_SECRET ?? "").trim().length >= 16) {
   add("ok", "Standing orders", "CRON_SECRET set — the scheduler can run Subscribe & Save");
 } else {

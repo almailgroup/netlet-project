@@ -12,6 +12,7 @@ import type { Express, RequestHandler } from "express";
 import { ENV } from "./env.js";
 import { COOKIE_NAME } from "../../shared/const.js";
 import { MAP_TILE_ORIGIN } from "../../shared/commerce/geo.js";
+import { gatewayConfigured, gatewayOrigin } from "./aiGateway.js";
 
 /**
  * Sources the storefront legitimately loads from.
@@ -52,6 +53,10 @@ const MAP_IMAGES = [
   ...(APPLE_MAPS ? ["https://*.apple-mapkit.com", "https://*.ls.apple.com"] : []),
 ];
 const MAP_FRAMES = GOOGLE_MAPS ? ["https://*.google.com"] : [];
+
+/* The AI gateway (`workers/ai-gateway/`), which the browser streams the
+   assistant's answers from — only while it is configured. */
+const AI_GATEWAY = gatewayConfigured() ? [gatewayOrigin()!] : [];
 const MAP_WORKERS = GOOGLE_MAPS || APPLE_MAPS ? ["blob:"] : [];
 
 const CONTENT_SECURITY_POLICY = {
@@ -67,9 +72,9 @@ const CONTENT_SECURITY_POLICY = {
   // The map picker's tiles (3.2.7) come from one named host, which has to be
   // listed once MEDIA_HOST narrows the rest.
   imgSrc: ["'self'", "data:", "blob:", ...(ENV.mediaHost ? [ENV.mediaHost, MAP_TILE_ORIGIN, ...MAP_IMAGES] : ["https:"])],
-  // Nothing off-origin to talk to: the catalog, the cart and checkout are
-  // all NetLet's own API now.
-  connectSrc: ["'self'", ...MAP_CONNECT],
+  // The catalog, the cart and checkout are all NetLet's own API; off-origin
+  // is only the maps and the AI gateway, each while it is configured.
+  connectSrc: ["'self'", ...MAP_CONNECT, ...AI_GATEWAY],
   formAction: ["'self'"],
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],
