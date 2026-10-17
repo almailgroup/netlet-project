@@ -11,6 +11,7 @@
  * looking for which of nine boxes is wrong.
  */
 import { acceptableImageUrl } from "../commerce/media.js";
+import { SPEC_NAMESPACE, fieldFor, mergeAttributes, type Attribute } from "../commerce/attributeSchema.js";
 import type { MessageKey } from "../i18n/dictionary.js";
 
 /** Three decimal places, because the dinar has three. Matches the router. */
@@ -109,4 +110,33 @@ export const WARRANTY_REQUIRED_DEPARTMENTS: readonly string[] = ["electronics"];
 
 export function warrantyRequired(departmentSlug: string | null | undefined): boolean {
   return Boolean(departmentSlug && WARRANTY_REQUIRED_DEPARTMENTS.includes(departmentSlug));
+}
+
+/**
+ * The specification rows a new product starts with: the form's warranty and
+ * whatever rows its department's schema asks for, as the editor writes them —
+ * the `spec` namespace and the field's own label — so the editor opens on them
+ * in its own boxes rather than listing them as free-form rows beside empty
+ * ones. A key the department does not ask for is dropped (`draftFromModel`'s
+ * rule) and a blank is no row (`mergeAttributes`'). The form's warranty box
+ * wins over a warranty row, and is kept as a row of its own in a department
+ * whose schema has no warranty, since the seller typed it.
+ */
+export function openingSpecs(
+  departmentSlug: string | null | undefined,
+  specs: readonly { key: string; value: string }[] = [],
+  warranty?: string | null,
+): Attribute[] {
+  const values: Record<string, string> = {};
+  for (const row of specs) {
+    const value = row.value.trim();
+    if (value && fieldFor(departmentSlug, row.key) && !(row.key in values)) values[row.key] = value;
+  }
+  const stated = (warranty ?? "").trim();
+  if (stated) values.warranty = stated;
+  const rows = mergeAttributes([], departmentSlug, values);
+  if (stated && !fieldFor(departmentSlug, "warranty")) {
+    rows.push({ namespace: SPEC_NAMESPACE, key: "warranty", label: "Warranty", value: stated });
+  }
+  return rows;
 }

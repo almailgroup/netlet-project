@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { draftProblems, handleBase, photoUrlProblem, type ProductDraft } from "./productDraft.js";
+import { draftProblems, handleBase, openingSpecs, photoUrlProblem, type ProductDraft } from "./productDraft.js";
+import { valueOf } from "../commerce/attributeSchema.js";
+import { merchantWarranty } from "../commerce/productDetail.js";
 
 const draft = (patch: Partial<ProductDraft> = {}): ProductDraft => ({
   title: "Walnut tray", titleAr: "صينية جوز", price: "9.750", compareAtPrice: "", sku: "", stock: "", description: "", ...patch,
@@ -56,5 +58,31 @@ describe("the add-a-product form's rules", () => {
     expect(handleBase("Brass Lamp — 40 cm!")).toBe("brass-lamp-40-cm");
     /* An Arabic name has no ASCII to make an address from. */
     expect(handleBase("مصباح نحاسي")).toBe("product");
+  });
+});
+
+describe("the rows a new product starts with", () => {
+  it("writes the department's rows as the editor does, so it opens on them", () => {
+    const rows = openingSpecs("electronics", [{ key: "brand", value: " Samsung " }, { key: "storage", value: "256" }], "12 months");
+    expect(rows).toEqual([
+      { namespace: "spec", key: "brand", label: "Brand", value: "Samsung" },
+      { namespace: "spec", key: "storage", label: "Storage", value: "256" },
+      { namespace: "spec", key: "warranty", label: "Warranty", value: "12 months" },
+    ]);
+    expect(valueOf(rows, "warranty")).toBe("12 months");
+    expect(merchantWarranty(rows)).toBe("12 months");
+  });
+
+  it("drops a key the department does not ask for, a blank, and a second copy", () => {
+    expect(openingSpecs("beauty", [{ key: "ram", value: "8" }, { key: "brand", value: " " }, { key: "volume", value: "50" }, { key: "volume", value: "75" }]))
+      .toEqual([{ namespace: "spec", key: "volume", label: "Volume", value: "50" }]);
+    expect(openingSpecs(null, [{ key: "brand", value: "Acme" }])).toEqual([]);
+  });
+
+  it("lets the warranty box win, and keeps it where the schema has no warranty", () => {
+    expect(valueOf(openingSpecs("electronics", [{ key: "warranty", value: "6 months" }], "2 years"), "warranty")).toBe("2 years");
+    expect(valueOf(openingSpecs("electronics", [{ key: "warranty", value: "6 months" }]), "warranty")).toBe("6 months");
+    expect(openingSpecs("style", [], "No warranty")).toEqual([{ namespace: "spec", key: "warranty", label: "Warranty", value: "No warranty" }]);
+    expect(openingSpecs(null, [], "  ")).toEqual([]);
   });
 });

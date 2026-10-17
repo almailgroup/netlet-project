@@ -9,9 +9,9 @@
  * specification rows and taken out anything carrying contact details
  * (`shared/ai/catalogDraft.ts`).
  *
- * Photos go as they are handed in, so hand in what `preparePhoto` made: a
- * 768px JPEG or WebP is far under the gateway's limit, where a camera's
- * original is not. `vendorId` is the store the product is for; the token is
+ * Photos go as they are handed in, so hand in what `photosForDraft` made: a
+ * 768px JPEG is far under the gateway's limit, where a camera's original is
+ * not. `vendorId` is the store the product is for; the token is
  * signed only for somebody who may create a product there.
  */
 import { useCallback, useEffect, useRef, useState } from "react";

@@ -2063,15 +2063,17 @@ spelled as the field spells it, and a line carrying contact details goes — the
 listing rule, which lets a nine-digit barcode through. The description is
 paragraphs and "- " lines, the Markdown the product page draws; a heading or
 bold would print as its marks. **The SEO title and description it returns have
-no column to go to** — the search preview is `productMeta`'s rule — so keeping
-them needs a migration, shown first.
+no column to go to** — the search preview is `productMeta`'s rule — so the
+new-product form shows them and keeps neither; keeping them needs a migration,
+shown first.
 
 **The address is never built into the page.** It arrives with each token, so a
 deployment sets two server variables and nothing else, the CSP names the
 gateway in `connect-src` only while it is configured, and unset is
 `ai.available` answering `chat: false, catalog: false` — the demo build's
-answer too. `useAIChat` is the browser's side of all three conversations;
-`useProductGenerator` waits for the new-product form.
+answer too. `useAIChat` is the browser's side of all three conversations, and
+`useProductGenerator` of "Generate with AI" on the new-product form (see
+"Managing products").
 
 Measured, not assumed: the Worker's tests drive its own fetch handler against a
 stand-in Gemini (`workers/ai-gateway/src/index.test.ts`, in `pnpm test`);
@@ -3677,6 +3679,29 @@ transaction**, so Create is one outcome and leaving is none. Sizes, specs and
 extras stay in the editor it lands on. The route sits before `:id` in `App`,
 or "new" reads as a product id.
 
+**"Generate with AI" drafts it from a few notes and photos, on the owner's
+word** (`GenerateDraft`, above the first step, while the gateway is set up).
+The draft — both names, both descriptions, the department, the department's
+specification rows, tags, and what the notes did not answer — is shown whole
+and labelled as a model's, and goes into the boxes only on "Use this draft",
+so what Create writes is still what the seller read. What the draft has
+replaces a box and what it lacks leaves it alone; a department the seller had
+chosen was sent with the request and stands. The photos sent are the first
+three *uploads* in the gallery, shrunk to 768px in the browser (`draftPhotos.ts`,
+photo search's rule) — a photo added by its address is on somebody else's
+server, which this page cannot read. A row the draft filled is drawn under the
+description to change or take out; the warranty goes to the warranty box.
+
+**A new product starts with its Arabic description and its rows**, which the
+create call took neither of. `openingSpecs` (`productDraft.ts`) writes the rows
+as the editor does — the `spec` namespace and the field's own label — keeping
+only the department's keys. **The warranty used to be written under `specs`**,
+which the editor does not read (`valueOf` asks for `spec`): its Warranty box
+opened empty over a free-form "warranty" row, and saving it put a second
+warranty on the page. Rows written that way stay as they are, being free-form
+rows now. The editor gained the Arabic description too: the storefront has
+read `description_ar` on the Arabic page all along and no page could write it.
+
 **The form's rules are the server's, asked early.**
 `shared/inventory/productDraft.ts` is the client half of the router's own
 refusals — the money shape, a price above zero (`assertPriced` refuses zero at
@@ -4509,7 +4534,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It is 657 KB (192 KB) now: the
+with the whole first download 35 KB smaller. It is 664 KB (194 KB) now: the
 shop's frame, the page template and the navigation layer (see "One frame, one
 template") are on every page, so they belong in it, and so is the home page's
 front door, which is its first paint, and the shop assistant's button (4 KB

@@ -454,10 +454,13 @@ export const inventoryRouter = router({
         title: z.string().trim().min(1).max(255),
         titleAr: z.string().trim().max(255).nullable().optional(),
         description: z.string().max(20000).nullable().optional(),
+        descriptionAr: z.string().max(20000).nullable().optional(),
         categoryId: rowId.nullable().optional(),
         tags: z.array(z.string().max(60)).max(40).optional(),
         /* The seller's warranty, as they word it — a specification row. */
         warranty: z.string().trim().max(200).nullable().optional(),
+        /* Rows by the department's own keys; one it does not ask for is dropped. */
+        specs: z.array(z.object({ key: z.string().trim().max(60), value: z.string().trim().max(500) })).max(20).optional(),
         /* The guided form's first variant and pictures. The editor's blank
            draft sends neither and gets the "Default" at 0.000 it always did. */
         variant: z.object({

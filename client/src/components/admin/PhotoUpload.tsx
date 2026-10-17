@@ -38,7 +38,11 @@ const FIX_LABEL: Record<Fix, MessageKey> = {
 /** `source` is the manufacturer's image address when the photo came from one, else null. */
 type Choice = { taken: PreparedPhoto; fixed: PreparedPhoto; urls: { taken: string; fixed: string }; source: string | null };
 
-export function PhotoUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
+export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
+  onUploaded: (url: string) => void;
+  /** What the toast says once it is in the list: the editor saves photos with a Save, the new-product form with Create. */
+  addedNote?: MessageKey;
+}) {
   const { t, tError } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<"preparing" | "uploading" | null>(null);
@@ -76,7 +80,7 @@ export function PhotoUpload({ onUploaded }: { onUploaded: (url: string) => void 
       const body = (await response.json().catch(() => ({}))) as { url?: string; error?: string };
       if (!response.ok || !body.url) throw new Error(body.error ?? "media.failed");
       onUploaded(body.url);
-      toast.success(t("media.uploaded"));
+      toast.success(t(addedNote));
       setChoice(null);
     } catch (error) {
       toast.error(tError(error instanceof Error ? error.message : "media.failed"));

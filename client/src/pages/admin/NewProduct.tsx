@@ -18,12 +18,21 @@
  * Create is pressed — red under a box somebody has not reached yet tells them
  * they are failing at something they have not started.
  *
+ * **"Generate with AI" drafts it from a few notes and photos** (`GenerateDraft`,
+ * above the first step, only while the AI gateway is set up): the draft is
+ * shown first and written into these boxes only on "Use this draft", so what
+ * is created is still what the seller read. It is also how a product starts
+ * with its Arabic description and the department's specification rows, which
+ * the form otherwise leaves to the editor — a row the draft filled is drawn
+ * here, under the description, to change or take out.
+ *
  * **The search preview is what the page will actually say.** It is drawn from
  * `productMeta`'s own rule — the name with the shop's after it, the description
  * cut to 160 characters, the address made from the name — not a separate SEO
  * title that nothing reads.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
+import { GenerateDraft } from "@/components/admin/GenerateDraft";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Card, Field, PageHeader, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";
@@ -34,6 +43,7 @@ import { savingsPercent } from "@shared/commerce/productDetail";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import {
+  MAX_DESCRIPTION,
   MAX_PHOTOS,
   SEARCH_SNIPPET_FITS,
   SEARCH_TITLE_FITS,
@@ -45,6 +55,8 @@ import {
   type ProductDraft,
 } from "@shared/inventory/productDraft";
 import { privatePageMeta, toPreviewText } from "@shared/seo";
+import { fieldFor } from "@shared/commerce/attributeSchema";
+import type { CatalogDraft } from "@shared/ai/gateway";
 import { ArrowLeft, Check, Circle, ImageOff, LoaderCircle, Sparkles, Star, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
@@ -72,6 +84,9 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const [draft, setDraft] = useState<ProductDraft>(EMPTY);
   const [categoryId, setCategoryId] = useState("");
   const [tags, setTags] = useState("");
+  const [descriptionAr, setDescriptionAr] = useState("");
+  /* Rows a "Generate with AI" draft filled, by the department's own keys. */
+  const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoLink, setPhotoLink] = useState("");
   const [photoLinkError, setPhotoLinkError] = useState<MessageKey | null>(null);
@@ -105,6 +120,9 @@ function NewProductForm({ actor }: { actor: Actor }) {
   /* The chosen department decides whether a warranty must be stated. */
   const departmentSlug = (categories.data ?? []).find(category => String(category.id) === categoryId)?.slug ?? null;
   const needsWarranty = warrantyRequired(departmentSlug);
+  /* A row belongs to its department: choosing another hides the rows it does
+     not ask for, and the server drops them too (`openingSpecs`). */
+  const shownSpecs = specs.filter(row => fieldFor(departmentSlug, row.key));
   const problems = useMemo(() => ({ ...draftProblems(draft, { departmentSlug }), ...serverErrors }), [draft, serverErrors, departmentSlug]);
   const arabicDraftOn = trpc.inventory.products.arabicDraftAvailable.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const draftArabic = trpc.inventory.products.draftArabicTitle.useMutation({
@@ -117,7 +135,8 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const shown = (field: DraftField): MessageKey | undefined =>
     touched[field] || attempted || serverErrors[field] ? problems[field] : undefined;
 
-  const dirty = JSON.stringify(draft) !== JSON.stringify(EMPTY) || photos.length > 0 || tags.trim() !== "" || categoryId !== "";
+  const dirty = JSON.stringify(draft) !== JSON.stringify(EMPTY) || photos.length > 0 || tags.trim() !== "" || categoryId !== ""
+    || descriptionAr.trim() !== "" || specs.length > 0;
   /* Leaving with a half-filled form loses it, and nothing has been written —
      so the browser asks first. Only the browser's own prompt: an in-app one
      would have to intercept every link in the shell to be honest. */
@@ -143,6 +162,32 @@ function NewProductForm({ actor }: { actor: Actor }) {
     setPhotoLink("");
   };
 
+  /*
+   * "Use this draft": what the draft has replaces what the box holds, and what
+   * it lacks leaves the box alone — a draft with no Arabic description does not
+   * empty one the seller typed. The department only fills a blank, since the
+   * seller's choice was sent with the request and stood. Focus goes to the name,
+   * the first thing to read.
+   */
+  const useDraft = (generated: CatalogDraft) => {
+    const warranty = generated.attributes.find(row => row.key === "warranty")?.value;
+    setDraft(current => ({
+      ...current,
+      title: generated.title.en || current.title,
+      titleAr: generated.title.ar || current.titleAr,
+      description: generated.description.en || current.description,
+      warranty: warranty || current.warranty,
+    }));
+    if (generated.description.ar) setDescriptionAr(generated.description.ar);
+    const category = (categories.data ?? []).find(row => row.slug === generated.department);
+    if (category && !categoryId) setCategoryId(String(category.id));
+    if (generated.tags.length) setTags(generated.tags.join(", "));
+    setSpecs(generated.attributes.filter(row => row.key !== "warranty"));
+    setServerErrors({});
+    toast.success(t("admin.genApplied"));
+    requestAnimationFrame(() => document.getElementById(idFor("title"))?.focus());
+  };
+
   const submit = async (publish: boolean) => {
     setAttempted(true);
     if (vendorId === null) {
@@ -164,8 +209,10 @@ function NewProductForm({ actor }: { actor: Actor }) {
         titleAr: draft.titleAr.trim() || null,
         warranty: (draft.warranty ?? "").trim() || null,
         description: draft.description.trim() || null,
+        descriptionAr: descriptionAr.trim() || null,
         categoryId: categoryId ? Number(categoryId) : null,
         tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
+        specs: shownSpecs.filter(row => row.value.trim()),
         variant: {
           price: draft.price.trim(),
           compareAtPrice: draft.compareAtPrice.trim() || null,
@@ -230,6 +277,10 @@ function NewProductForm({ actor }: { actor: Actor }) {
   ];
 
   const categoryName = (row: { name: string; nameAr: string | null }) => (locale === "ar" ? row.nameAr || row.name : row.name);
+  const departmentName = (slug: string) => {
+    const row = (categories.data ?? []).find(category => category.slug === slug);
+    return row ? categoryName(row) : slug;
+  };
 
   /* An administrator on an installation with no store yet has nothing to put
      a product in, and a form that cannot be submitted is worse than saying so. */
@@ -260,6 +311,16 @@ function NewProductForm({ actor }: { actor: Actor }) {
         className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start"
       >
         <div className="min-w-0 space-y-5">
+          <GenerateDraft
+            vendorId={vendorId}
+            departmentSlug={departmentSlug}
+            photos={photos}
+            canAddPhoto={photos.length < MAX_PHOTOS}
+            onPhoto={addPhoto}
+            departmentName={departmentName}
+            onUse={useDraft}
+          />
+
           <Card step={1} title={t("admin.newStepBasics")}>
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Always drawn for an administrator, even with one store: which
@@ -363,7 +424,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             {photos.length < MAX_PHOTOS ? (
               <div className="mt-4 space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  <PhotoUpload onUploaded={addPhoto} />
+                  <PhotoUpload onUploaded={addPhoto} addedNote="admin.newPhotoAdded" />
                 </div>
                 <Field label={t("admin.newPhotoLink")} error={photoLinkError && t(photoLinkError, { scheme: "https://" })}>
                   <PhotoLink value={photoLink} onChange={value => { setPhotoLink(value); setPhotoLinkError(null); }} onAdd={addLink} />
@@ -406,9 +467,48 @@ function NewProductForm({ actor }: { actor: Actor }) {
               <Field label={t("admin.fieldDescription")} hint={`${t("admin.newDescriptionHint")} ${t("admin.newCharacters", { count: draft.description.length })}`} error={shown("description") && t(shown("description")!)}>
                 <textarea id={idFor("description")} dir="auto" value={draft.description} onChange={event => edit("description")(event.target.value)} onBlur={leave("description")} rows={6} className={`${fieldClass} h-auto min-h-36 py-2.5 leading-6`} />
               </Field>
+              <Field label={t("admin.fieldDescriptionAr")} optional hint={t("admin.fieldDescriptionArHint")}>
+                <textarea dir="rtl" lang="ar" value={descriptionAr} onChange={event => setDescriptionAr(event.target.value)} maxLength={MAX_DESCRIPTION} rows={4} className={`${fieldClass} h-auto min-h-28 py-2.5 leading-6`} />
+              </Field>
               <Field label={t("admin.fieldTags")} optional hint={t("admin.tagsHint")}>
                 <input dir="auto" value={tags} onChange={event => setTags(event.target.value)} autoComplete="off" className={fieldClass} />
               </Field>
+              {shownSpecs.length ? (
+                <fieldset className="min-w-0">
+                  <legend className="text-[13px] leading-5 font-semibold text-[#0a285a]">{t("admin.newSpecs")}</legend>
+                  <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("admin.newSpecsHint")}</p>
+                  <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
+                    {shownSpecs.map(row => {
+                      const field = fieldFor(departmentSlug, row.key)!;
+                      const name = locale === "ar" ? field.labelAr : field.label;
+                      return (
+                        <div key={row.key} className="flex min-w-0 items-end gap-2">
+                          <label className="min-w-0 flex-1">
+                            <span className="block text-[12px] leading-5 font-semibold text-[#0a285a]">{name}{field.unit ? <> (<bdi dir="ltr">{field.unit}</bdi>)</> : null}</span>
+                            <input
+                              dir="auto"
+                              value={row.value}
+                              maxLength={500}
+                              onChange={event => setSpecs(current => current.map(entry => entry.key === row.key ? { ...entry, value: event.target.value } : entry))}
+                              autoComplete="off"
+                              className={`${fieldClass} mt-1`}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setSpecs(current => current.filter(entry => entry.key !== row.key))}
+                            aria-label={t("admin.newSpecRemove", { label: name })}
+                            title={t("admin.newSpecRemove", { label: name })}
+                            className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
+                          >
+                            <X className="size-4" aria-hidden />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : null}
             </div>
           </Card>
 

@@ -69,7 +69,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const categories = trpc.inventory.categories.useQuery();
 
   const [specs, setSpecs] = useState<Record<string, string>>({});
-  const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", categoryId: "", tags: "" });
+  const [draft, setDraft] = useState({ title: "", titleAr: "", description: "", descriptionAr: "", categoryId: "", tags: "" });
   const [images, setImages] = useState<{ url: string; altText: string; kind: "image" | "video"; posterUrl: string }[]>([]);
   /* The optional extras this product offers (3.1.2), edited as a whole list
      for the reason the images are: they are read as a set. */
@@ -80,6 +80,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       title: product.data.title,
       titleAr: product.data.titleAr ?? "",
       description: product.data.description ?? "",
+      descriptionAr: product.data.descriptionAr ?? "",
       categoryId: product.data.categoryId ? String(product.data.categoryId) : "",
       tags: product.data.tags.join(", "),
     });
@@ -319,6 +320,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               title: draft.title,
               titleAr: draft.titleAr || null,
               description: draft.description || null,
+              descriptionAr: draft.descriptionAr || null,
               categoryId: draft.categoryId ? Number(draft.categoryId) : null,
               tags: draft.tags.split(",").map(tag => tag.trim()).filter(Boolean),
             }), !draft.title.trim()) : null}
@@ -340,6 +342,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               </Labelled>
               <Labelled label={t("admin.fieldDescription")} className="sm:col-span-2">
                 <textarea dir="auto" value={draft.description} disabled={!mayEdit} onChange={e => setDraft({ ...draft, description: e.target.value })} rows={6} className={`${inputClass} h-auto min-h-36 py-2.5 leading-6`} />
+              </Labelled>
+              <Labelled label={t("admin.fieldDescriptionAr")} hint={t("admin.fieldDescriptionArHint")} className="sm:col-span-2">
+                <textarea dir="rtl" lang="ar" value={draft.descriptionAr} disabled={!mayEdit} onChange={e => setDraft({ ...draft, descriptionAr: e.target.value })} rows={4} className={`${inputClass} h-auto min-h-28 py-2.5 leading-6`} />
               </Labelled>
               <Labelled label={t("admin.fieldTags")} hint={t("admin.tagsHint")} className="sm:col-span-2">
                 <input dir="auto" value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={inputClass} />

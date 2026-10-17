@@ -247,6 +247,30 @@ describe("creating", () => {
     await db.update(products).set({ status: "published" }).where(eq(products.id, first.id));
     expect((await inv.updateProduct(ownerActor(), first.id, { title: "Copper Floor Lamp" })).handle).toBe("brass-floor-lamp");
   });
+
+  /* A "Generate with AI" draft arrives with an Arabic description and rows by
+     the department's keys; the editor reads `spec` rows, so that is where they go. */
+  it("keeps the Arabic description and the department's rows, in the editor's namespace", async () => {
+    const [electronics] = await db.insert(categories)
+      .values({ slug: "electronics", name: "Electronics", nameAr: "الإلكترونيات", position: 1 })
+      .onConflictDoUpdate({ target: categories.slug, set: { name: "Electronics" } })
+      .returning({ id: categories.id });
+    const row = await inv.createProduct(ownerActor(), {
+      vendorId: ids.acme,
+      title: "Drafted Phone",
+      description: "A phone.",
+      descriptionAr: "  هاتف.  ",
+      categoryId: electronics.id,
+      warranty: "12 months",
+      specs: [{ key: "brand", value: "Acme" }, { key: "volume", value: "50" }, { key: "warranty", value: "6 months" }],
+    });
+    const [saved] = await db.select().from(products).where(eq(products.id, row.id));
+    expect(saved.descriptionAr).toBe("هاتف.");
+    expect(saved.attributes).toEqual([
+      { namespace: "spec", key: "brand", label: "Brand", value: "Acme" },
+      { namespace: "spec", key: "warranty", label: "Warranty", value: "12 months" },
+    ]);
+  });
 });
 
 /*

@@ -30,15 +30,27 @@ export function absoluteUrl(siteUrl: string, path: string): string {
   return `${siteUrl.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
 
+/** `descriptionBlocks`' bullet: dashes, a dot or a star, then a space. */
+const LIST_MARKER = /^\s*(?:--+|[-–—•*·▪])\s+/;
+
 /**
  * Collapses a description to something a preview card can show.
  *
  * Product descriptions here carry newline-separated spec blocks, which render
  * as one unbroken run in a share card; the newlines become separators, and the
- * result is cut on a word boundary rather than mid-word.
+ * result is cut on a word boundary rather than mid-word. A list line's own
+ * marker goes ("- Display: 6.6 inch"), or the card reads "· - Display" — the
+ * product page draws those lines as a list (`descriptionBlocks`), and the
+ * marker was never part of the words.
  */
 export function toPreviewText(text: string, limit = 160): string {
-  const flat = text.replace(/\s*\n+\s*/g, " · ").replace(/\s+/g, " ").trim();
+  const flat = text
+    .split(/\n+/)
+    .map(line => line.replace(LIST_MARKER, "").trim())
+    .filter(Boolean)
+    .join(" · ")
+    .replace(/\s+/g, " ")
+    .trim();
   if (flat.length <= limit) return flat;
   const cut = flat.slice(0, limit - 1);
   const lastSpace = cut.lastIndexOf(" ");

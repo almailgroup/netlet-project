@@ -9,7 +9,7 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
-import { warrantyRequired } from "../shared/inventory/productDraft.js";
+import { openingSpecs, warrantyRequired } from "../shared/inventory/productDraft.js";
 import { merchantWarranty } from "../shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../shared/inventory/stockMoves.js";
 import { optionPairs, optionPairsProblem, optionsRecord } from "../shared/inventory/variantOptions.js";
@@ -522,10 +522,13 @@ export async function createProduct(actor: Actor, input: {
   title: string;
   titleAr?: string | null;
   description?: string | null;
+  descriptionAr?: string | null;
   categoryId?: number | null;
   tags?: string[];
   /** The seller's warranty as they word it, stored as the Warranty specification row. */
   warranty?: string | null;
+  /** Specification rows by the department's own keys — a "Generate with AI" draft's (`openingSpecs`). */
+  specs?: { key: string; value: string }[];
   /**
    * The first variant's terms. Absent, the product starts with a "Default" at
    * 0.000, as it always did — the editor's own "New product" path. The guided
@@ -543,6 +546,11 @@ export async function createProduct(actor: Actor, input: {
   const sku = input.variant?.sku?.trim() || null;
   const opening = input.variant?.stock ?? 0;
   await assertSkuFree(db, input.vendorId, sku);
+  /* The rows are the department's, so its slug decides which survive. */
+  const [category] = input.categoryId
+    ? await db.select({ slug: categories.slug }).from(categories).where(eq(categories.id, input.categoryId)).limit(1)
+    : [];
+  const attributes = openingSpecs(category?.slug ?? null, input.specs, input.warranty);
 
   /*
    * One transaction, so the form's one press is one outcome. Three writes in a
@@ -563,10 +571,9 @@ export async function createProduct(actor: Actor, input: {
         title: input.title,
         titleAr: input.titleAr ?? null,
         description: input.description ?? null,
+        descriptionAr: input.descriptionAr?.trim() || null,
         tags: input.tags ?? [],
-        attributes: input.warranty?.trim()
-          ? [{ namespace: "specs", key: "warranty", label: "Warranty", value: input.warranty.trim() }]
-          : [],
+        attributes,
         status: "draft",
       }).returning();
 

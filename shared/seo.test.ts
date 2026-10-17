@@ -46,6 +46,9 @@ describe("toPreviewText", () => {
 
   it("leaves short text alone", () => {
     expect(toPreviewText("A lamp.")).toBe("A lamp.");
+    /* A list's markers are the page's, not the words'. */
+    expect(toPreviewText("A phone.\n\n- Display: 6.6 inch\n• Battery: 5000 mAh\n-- 5G")).toBe("A phone. · Display: 6.6 inch · Battery: 5000 mAh · 5G");
+    expect(toPreviewText("-5 °C storage")).toBe("-5 °C storage");
   });
 });
 
