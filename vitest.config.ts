@@ -24,6 +24,8 @@ export default defineConfig({
      * not be tested even if somebody wrote a test for it — which is what
      * happened the first time one was.
      */
-    include: ["{server,shared,client,scripts}/**/*.{test,spec}.{ts,tsx}"],
+    /* `workers/` holds the AI gateway, a Cloudflare Worker that is deployed
+       on its own and would otherwise have no tests anybody runs. */
+    include: ["{server,shared,client,scripts,workers}/**/*.{test,spec}.{ts,tsx}"],
   },
 });

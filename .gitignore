@@ -38,3 +38,7 @@ ios-app/ios/*.xcworkspace
 ios-app/ios/.xcode.env.local
 **/xcuserdata/
 ios-app/.expo/
+
+# The AI gateway's local state and its local secrets (`wrangler dev`).
+workers/*/.wrangler/
+workers/*/.dev.vars

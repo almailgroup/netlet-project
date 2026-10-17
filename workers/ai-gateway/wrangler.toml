@@ -1,0 +1,44 @@
+# NetLet's AI gateway — README.md beside this file is the setup.
+#
+# Secrets are never written here. Two are needed, set with wrangler:
+#   GEMINI_API_KEY      the Gemini API key (Google AI Studio)
+#   AI_GATEWAY_SECRET   32+ random characters, the same value as NetLet's
+#                       own AI_GATEWAY_SECRET — it signs the tokens browsers
+#                       present here
+name = "netlet-ai-gateway"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+
+[vars]
+# The pages allowed to call from a browser: scheme and host exactly, comma-
+# separated, no trailing slash. Add the Vercel address while it is in use.
+ALLOWED_ORIGINS = "https://netlet.net,https://www.netlet.net"
+GEMINI_MODEL = "gemini-2.5-flash"
+
+# Ceilings, counted by Cloudflare at the edge. A period is 10 or 60 seconds.
+# Each namespace_id is any positive integer, unique within the account.
+
+# A caller's questions to the shop's assistant.
+[[ratelimits]]
+name = "CHAT_LIMITER"
+namespace_id = "7101"
+simple = { limit = 10, period = 60 }
+
+# A seller's product drafts.
+[[ratelimits]]
+name = "CATALOG_LIMITER"
+namespace_id = "7102"
+simple = { limit = 6, period = 60 }
+
+# Everything from one network address, whoever's token: what stops a guest
+# from minting tokens to reset their own ceiling. Generous, because an office
+# or a mobile carrier puts many people behind one address.
+[[ratelimits]]
+name = "ADDRESS_LIMITER"
+namespace_id = "7103"
+simple = { limit = 40, period = 60 }
+
+[observability]
+enabled = true

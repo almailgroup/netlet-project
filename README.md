@@ -59,7 +59,10 @@ shared/          imported by both sides, and pure
   inventory/       permissions, commission, vendor health
   i18n/            one dictionary, English and Arabic
   auth/            password rules, rate-limit policy
+  ai/              the AI gateway's contract: tokens, requests, the stream
 drizzle/         schema and migrations
+workers/         Cloudflare Workers, deployed on their own
+  ai-gateway/      holds the Gemini key; README.md is its setup
 docs/            setup guides and the requirements
 scripts/         setup, seed, preflight, bootstrap and smoke
 ios-app/         Expo WebView shell, with its Xcode project committed
