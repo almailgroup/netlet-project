@@ -1113,10 +1113,11 @@ html[dir="rtl"] .nav-progress {
  * - The bend reaches 40px past the bar on every side and the surface clips
  *   it, because a displacement pulls in transparent pixels at the edges of
  *   whatever it filters — on a bar that read as ragged bites in its rim.
- * - The tint (72% white at the top, 58% at the foot) is thin enough to read
- *   as glass and strong enough that the bar's navy words keep 4.5:1 over the
- *   darkest thing that passes under them, the navy Deals band (about 5:1 at
- *   the foot). Nothing on the bar is in the muted ink, which would not.
+ * - The tint (72% white at the top, 58% at the foot; 60% and 45% on a phone,
+ *   below) is thin enough to read as glass and strong enough that the bar's
+ *   navy words keep 4.5:1 over the darkest thing that passes under them, the
+ *   navy Deals band (about 5:1 at the foot). Nothing on the bar is in the
+ *   muted ink, which would not.
  * - The warp runs only under a fine pointer. It is recomputed on every frame
  *   of every scroll, and a phone — what this shop sells to — gets the blur
  *   and the tint without it.
@@ -1170,6 +1171,25 @@ html[dir="rtl"] .nav-progress {
   /* The row under the bar is the bar's colour at rest. */
   .glass-bar-row {
     background: rgb(255 255 255 / 0.58);
+  }
+  /*
+   * Thinner on a phone, on the owner's word: 60% white at the top and 45% at
+   * the foot, below the width where the phone's header and tab bar are drawn.
+   * Five levels were tried side by side; this is the lowest that keeps the tab
+   * bar's words at 4.5:1 over the darkest thing that passes under them (the
+   * navy footer, 5.55:1 measured). A wide screen keeps 72% and 58%, because
+   * its header carries navy words directly on the glass, which at 45% would
+   * fall under 4.5:1 as the Deals band passes. A phone's header has none —
+   * the search field has its own fill, and the logo row scrolls away before
+   * anything dark reaches it.
+   */
+  @media (max-width: 1023.98px) {
+    .glass-bar-face {
+      background: linear-gradient(180deg, rgb(255 255 255 / 0.6) 0%, rgb(255 255 255 / 0.45) 100%);
+    }
+    .glass-bar-row {
+      background: rgb(255 255 255 / 0.45);
+    }
   }
 }
 /* A rounded bar's blur keeps to its own corners rather than trusting the

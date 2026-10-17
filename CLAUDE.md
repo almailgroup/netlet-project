@@ -83,6 +83,12 @@ transparent pixels at the edges of what it filters and a bar's rim showed them
 as ragged bites. **The tint keeps the bar's words at 4.5:1** over the darkest
 thing that passes under them, the navy Deals band — 72% white at the top, 58%
 at the foot, about 5:1 there — and nothing on the bar is in the muted ink.
+**Below `lg` the tint is 60% and 45%, on the owner's word**, who asked for the
+phone's bar and tab bar to read more like glass. It holds there because of what
+a phone's bar carries: its logo row scrolls away before anything passes under
+it, the search row that stays is a solid white field, and the tab bar's words
+are near-black rather than navy. The wide bar keeps 72 and 58, because its
+navy words sit on the glass over the Deals band and would fall to about 4:1.
 **The warp runs only under a fine pointer**: it is recomputed on every frame of
 a scroll, so a phone gets the blur and the tint without it, and only a browser
 with no `backdrop-filter` gets the solid white bar. The department row under it
@@ -110,7 +116,8 @@ over the darkest thing that passes, and the muted ink would have needed nine
 parts white — and the current tab's pill is solid for the same reason.
 Measured by hiding the tabs' ink and reading the darkest pixel behind each
 label's words at every 120px of the home page, at 390 in both languages: 7.62:1
-at worst. The words step down from 14px to 13px under 390 and 12px under 360,
+at worst under the old tint, 5.55:1 under the phone's 60 and 45 (over the navy
+footer); 50 and 35 measured 4.16:1, below the line. The words step down from 14px to 13px under 390 and 12px under 360,
 so "Categories" in bold fits a 320px phone. **The grey pill is one element
 that slides between the tabs** (`.tab-pill`, 420ms, mirrored on the Arabic
 page), also on the owner's word. It moves on the press rather than when the
