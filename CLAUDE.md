@@ -140,7 +140,10 @@ clip, which Safari has not always applied to a backdrop filter; it reaches past
 them only for the warp, under a fine pointer, which no phone has.
 
 **The search panel wears it too, on the owner's word** — see "The dropdown
-is liquid glass" under Chrome — with its words on white plates over it.
+is liquid glass" under Chrome — with its words on white plates over it. On a
+phone it is not a second pane but the header's own glass grown down behind
+the sheet, so there is one surface from the top of the screen to the sheet's
+foot.
 
 **Headless Chromium does not draw a backdrop blur the way a phone does.** Its
 default software compositor leaves a band unblurred along every edge of the
@@ -803,13 +806,46 @@ wears the header's recipe (`.glass-bar-surface` with `.glass-bar-round`, the
 warp under a fine pointer) at a tint of its own — `.glass-panel`, an even 70%,
 thicker than the bar's because its headings sit on the glass — in a frame
 round the scroller, so the layers do not scroll away with the content. Chips,
-tiles, shortcuts and the typed results are white at 80–90% over it, and the
-phone's dim is 30% navy so colour still reaches the glass. Measured by hiding
+tiles, shortcuts and the typed results are white at 80–90% over it. Measured by hiding
 the panel's ink and reading the darkest pixel behind each run of words, opened
 at every 300px of the home page at 390 and 1440: headings 7.7:1 on the glass,
 the tiles' counts (the muted ink) 4.87:1 on their plates, Clear 5.2:1. And the phone's search row is never `overflow-hidden` — a row
 that was clipped the dropdown entirely at rest, which a screenshot showed and
 `elementFromPoint` confirmed.
+
+**On a phone the sheet is the header, grown down, on the owner's word** ("make
+it part of the header — why is it separate?"). It was a pane of glass of its
+own hung under the bar, and read as one: the bar's lower rim, its border and
+the sheet's upper rim made a line between them, and the sheet blurred the
+dimmed page where the bar blurred the bright one, so it was a shade darker
+too. Now the sheet draws no glass. `LiveSearch` sets `data-search-open` and the
+sheet's height (`--search-sheet`) on the header, and the header's one surface
+reaches down behind it (index.css, "The search sheet is the header's glass") —
+one blur, one tint and one rim from the top of the screen to the sheet's
+rounded foot. While it is open the whole of it is the panel's even 70%, the
+bar's 60/45 gliding there (`--glass-top` and `--glass-foot` are registered
+colours, so a gradient can be eased). The dim starts under the sheet's foot and
+sits *beneath* the glass (`-z-[2]`), so the glass never blurs it and the
+rounded corners show dim rather than the page. Measured at the screen's edge
+across the join at 320 and 390 in both languages, at the top of the page and
+stuck: the brightness falls a step a pixel, with no line.
+
+**It grows out of the header and folds back into it.** The surface's `bottom`
+glides out over `--sheet-ms` (320ms) while the sheet's words unroll on the same
+curve (`search-unroll`, a clip on the sheet, which holds no blur); closing, the
+words roll up as the glass slides home (240ms), the sheet kept drawn and inert
+for that long rather than vanishing, which left an empty pane to slide. Never a
+clip, a fade or a filter on the surface itself: any of those makes it a
+backdrop root, and the blur turns to plain white mid-move. Only the opening
+glides — after it the surface follows the sheet at once, or the results
+changing height under the shopper's typing would leave words past the glass —
+and **the glide's own `transitionend` says when it is over, not a timer**: the
+first version ended it on a clock, and a frame drawn late (a phone busy with
+the tiles) cut the glide short, so the glass leapt to full height while the
+words were still unrolling. Seen by slowing the page's animations tenfold over
+CDP (`Animation.setPlaybackRate`) and taking a frame at a time; the timer is
+only a fallback for a glide that never runs. A wide screen keeps a card under
+the field, which drops a few pixels into place by a transform.
 
 **What was heard, and the photo, are shown back before anything is searched.**
 Recognition mishears and a half-framed shot matches nothing; both are obvious

@@ -1098,6 +1098,16 @@ html[dir="rtl"] .nav-progress {
   }
 }
 
+@property --glass-top {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgb(255 255 255 / 0.72);
+}
+@property --glass-foot {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: rgb(255 255 255 / 0.58);
+}
 /*
  * The header bar's liquid glass — the bar's background and nothing on it —
  * and, on the owner's word, the phone's bottom tab bar's too.
@@ -1160,7 +1170,12 @@ html[dir="rtl"] .nav-progress {
   .glass-bar-face {
     display: block;
     inset: 0;
-    background: linear-gradient(180deg, rgb(255 255 255 / 0.72) 0%, rgb(255 255 255 / 0.58) 100%);
+    /* The tint's two ends as registered colours (`@property` above), so a
+       change of tint glides rather than cuts — the search sheet thickens the
+       header's as it grows out of it. */
+    --glass-top: rgb(255 255 255 / 0.72);
+    --glass-foot: rgb(255 255 255 / 0.58);
+    background: linear-gradient(180deg, var(--glass-top) 0%, var(--glass-foot) 100%);
     /* The rim: a bright top edge and a softer lower one, ui-layouts' inset
        highlights laid along a bar rather than round a card. */
     box-shadow:
@@ -1185,7 +1200,8 @@ html[dir="rtl"] .nav-progress {
    */
   @media (max-width: 1023.98px) {
     .glass-bar-face {
-      background: linear-gradient(180deg, rgb(255 255 255 / 0.6) 0%, rgb(255 255 255 / 0.45) 100%);
+      --glass-top: rgb(255 255 255 / 0.6);
+      --glass-foot: rgb(255 255 255 / 0.45);
     }
     .glass-bar-row {
       background: rgb(255 255 255 / 0.45);
@@ -1199,8 +1215,10 @@ html[dir="rtl"] .nav-progress {
    * ink is drawn on a white plate over it. Two classes, so it outranks the
    * phone's thinner bar above whatever the order.
    */
-  .glass-panel .glass-bar-face {
-    background: rgb(255 255 255 / 0.7);
+  .glass-panel .glass-bar-face,
+  .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-face {
+    --glass-top: rgb(255 255 255 / 0.7);
+    --glass-foot: rgb(255 255 255 / 0.7);
   }
 }
 /* A rounded bar's blur keeps to its own corners rather than trusting the
@@ -1225,6 +1243,156 @@ html[dir="rtl"] .nav-progress {
 @media (min-width: 1024px) {
   .sticky-header.glass-bar[data-stuck] {
     box-shadow: 0 8px 24px rgb(10 40 90 / 0.08);
+  }
+}
+
+/*
+ * The search sheet is the header's glass, on the owner's word ("make it part
+ * of the header — why is it separate?"). On a phone the sheet under the field
+ * draws no glass of its own: `LiveSearch` sets `data-search-open` and its own
+ * height as `--search-sheet` on the header, and the header's one surface
+ * reaches down behind it — one blur, one tint and one rim from the top of the
+ * screen to the sheet's rounded foot. Two surfaces met along a line (the
+ * bar's lower rim, its border and the sheet's upper rim side by side) and
+ * were two shades, so it read as a box hung under a bar.
+ *
+ * - The tint is the panel's 70% everywhere while open, the header's included,
+ *   gliding there from 60/45 as the sheet grows. Even, so nothing marks where
+ *   the bar ends; and 70%, because the sheet's headings sit on the glass.
+ * - It grows: `bottom` glides out over `--sheet-ms` while the sheet's
+ *   content unrolls on the same curve (`search-unroll`), only while the
+ *   header says "opening". After that the surface follows the sheet at once,
+ *   or a list changing height under the shopper's typing would leave words
+ *   past the glass. Closing slides it back up, a little quicker, with the
+ *   words rolled up on the same curve (`search-fold`) so the sheet folds
+ *   home rather than leaving an empty pane of glass to slide.
+ * - `bottom`, never a clip or a fade on the surface: a clip-path, opacity or
+ *   filter on anything holding the blur makes it a backdrop root, and the
+ *   blur then sees nothing — the glass would turn to plain white mid-move.
+ * - The blur keeps to its own rounded corners while open (`inset: 0`), the
+ *   tab bar's rule, because Safari has not always clipped a backdrop filter
+ *   to a rounded parent; a fine pointer keeps the warp's reach, as there.
+ * - The shadow falls downward only, under the sheet's foot.
+ */
+@media (max-width: 1023.98px) {
+  .sticky-header {
+    --sheet-ms: 320ms;
+    transition: border-color 240ms ease;
+  }
+  .sticky-header > .glass-bar-surface {
+    transition:
+      bottom 240ms cubic-bezier(0.4, 0, 0.6, 1),
+      border-radius 240ms cubic-bezier(0.4, 0, 0.6, 1),
+      box-shadow 240ms ease;
+  }
+  .sticky-header > .glass-bar-surface > .glass-bar-face {
+    transition:
+      --glass-top 240ms ease,
+      --glass-foot 240ms ease;
+  }
+  .sticky-header[data-search-open] {
+    border-bottom-color: transparent;
+  }
+  .sticky-header[data-search-open] > .glass-bar-surface {
+    /* The surface fills the padding box; the 1px is the header's border, which
+       it now covers, so its foot lands on the sheet's. */
+    bottom: calc(-1px - var(--search-sheet, 0px));
+    border-radius: 0 0 1.5rem 1.5rem;
+    box-shadow: 0 30px 36px -18px rgb(10 40 90 / 0.35);
+    transition: none;
+  }
+  .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-face {
+    transition: none;
+  }
+  .sticky-header[data-search-open="opening"] > .glass-bar-surface {
+    transition:
+      bottom var(--sheet-ms) cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-radius var(--sheet-ms) cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow var(--sheet-ms) ease;
+  }
+  .sticky-header[data-search-open="opening"] > .glass-bar-surface > .glass-bar-face {
+    transition:
+      --glass-top var(--sheet-ms) ease,
+      --glass-foot var(--sheet-ms) ease;
+  }
+  .search-sheet {
+    animation: search-unroll var(--sheet-ms) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .search-sheet-body {
+    animation: search-arrive var(--sheet-ms) cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .search-dim {
+    animation: search-dim var(--sheet-ms) ease backwards;
+  }
+  /* Folding home: the words roll up on the glass's own closing curve, and the
+     dim lifts and lets presses through to the page at once. */
+  .search-sheet-fold {
+    animation: search-fold 240ms cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  }
+  .search-dim-fold {
+    pointer-events: none;
+    animation: search-undim 240ms ease forwards;
+  }
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (max-width: 1023.98px) {
+    .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-bend {
+      inset: 0;
+    }
+  }
+  @media (max-width: 1023.98px) and (hover: hover) and (pointer: fine) {
+    .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-bend {
+      inset: -40px;
+      border-radius: 0;
+    }
+  }
+}
+/* A wide screen's panel is a card under the field: it drops a few pixels into
+   place rather than growing, by a transform, which leaves its blur working. */
+@media (min-width: 1024px) {
+  .search-drop {
+    transform-origin: top center;
+    animation: search-drop 200ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .search-drop-body {
+    animation: search-arrive 200ms ease backwards;
+  }
+}
+@keyframes search-unroll {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes search-fold {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+@keyframes search-undim {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes search-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+@keyframes search-dim {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes search-drop {
+  from {
+    transform: translateY(-0.375rem) scaleY(0.97);
   }
 }
 

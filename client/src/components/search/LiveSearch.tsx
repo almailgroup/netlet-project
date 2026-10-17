@@ -86,6 +86,8 @@ type Entry =
 const SETTLE_MS = 120;
 /** How many products the dropdown shows; the results page has the rest. */
 const SUGGESTED_PRODUCTS = 5;
+/** How long the phone's sheet takes to grow out of the header — `--sheet-ms` in index.css — and so, five times over, how long a glide that never ran is waited for. */
+const SHEET_MS = 320;
 
 export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null, dealsDrawn = false }: LiveSearchProps) {
   const { t, isArabic, locale } = useTranslation();
@@ -112,6 +114,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const [voiceOpen, setVoiceOpen] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
   const inStock = useDepartmentsInStock();
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const wide = useMediaQuery("(min-width: 1024px)");
@@ -332,6 +335,17 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   /* The departments are always there to offer, so an open field always has a panel. */
   const showPanel = open;
   const listed = showPanel && entries.length > 0;
+  /*
+   * A phone's sheet folds back into the header rather than vanishing: it stays
+   * drawn, inert, while the header's glass slides back up and its words are
+   * rolled up on the same curve. Gone at once, the words left the glass to
+   * slide up empty, which read as a blurred slab rather than the sheet going
+   * home. Settled during render, so the sheet that folds is the one that was
+   * open, its scroll included; a wide screen's card simply goes.
+   */
+  const [drawn, setDrawn] = useState(false);
+  if (showPanel !== drawn && (showPanel || wide)) setDrawn(showPanel);
+  const folding = drawn && !showPanel;
 
   /*
    * On a phone the panel is a sheet the width of the screen, hung from the foot
@@ -373,6 +387,67 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
       window.visualViewport?.removeEventListener("scroll", place);
     };
   }, [showPanel, wide]);
+
+  /*
+   * The sheet is the header's own glass, grown downward. A sheet with glass of
+   * its own met the header along a line — the header's lower rim, its border
+   * and the sheet's upper rim side by side — and was a different shade besides,
+   * blurring the dimmed page where the header blurred the bright one. So on a
+   * phone the sheet draws no glass: it tells the header how tall it is
+   * (`--search-sheet`) and that it is open, and the header's one surface
+   * reaches down behind it (index.css, "The search sheet is the header's
+   * glass"), one blur, one tint and one rim from the top of the screen to the
+   * sheet's foot. "opening" is the first moment, the only one the surface
+   * glides through; after it the surface follows the sheet at once, because
+   * the results change height under the shopper's typing and a glass that
+   * trailed them would leave words over the dim. The glide's own end says when
+   * that moment is over, not a clock: on a phone busy drawing the tiles the
+   * glide starts late, and a timer cut it short, so the glass leapt to its
+   * full height while the words were still unrolling. The timer is only for a
+   * glide that never runs.
+   */
+  useLayoutEffect(() => {
+    if (!showPanel || wide) return;
+    const header = box.current?.closest("header");
+    const drawn = sheet.current;
+    const surface = header?.querySelector<HTMLElement>(":scope > .glass-bar-surface");
+    if (!header || !drawn) return;
+    const fit = () => header.style.setProperty("--search-sheet", `${drawn.offsetHeight}px`);
+    fit();
+    header.setAttribute("data-search-open", "opening");
+    const settle = () => {
+      window.clearTimeout(fallback);
+      surface?.removeEventListener("transitionend", glided);
+      if (header.getAttribute("data-search-open") === "opening") header.setAttribute("data-search-open", "");
+    };
+    const glided = (event: TransitionEvent) => { if (event.target === surface && event.propertyName === "bottom") settle(); };
+    const fallback = window.setTimeout(settle, SHEET_MS * 5);
+    surface?.addEventListener("transitionend", glided);
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    watch?.observe(drawn);
+    return () => {
+      window.clearTimeout(fallback);
+      surface?.removeEventListener("transitionend", glided);
+      watch?.disconnect();
+      /* The height stays until the fold is over: the dim is placed by it. */
+      header.removeAttribute("data-search-open");
+    };
+  }, [showPanel, wide]);
+
+  /* The fold ends when the glass is home — its own glide says so, as opening's does. */
+  useEffect(() => {
+    if (!folding) return;
+    const header = box.current?.closest("header");
+    const surface = header?.querySelector<HTMLElement>(":scope > .glass-bar-surface");
+    const done = () => { header?.style.removeProperty("--search-sheet"); setDrawn(false); };
+    const glided = (event: TransitionEvent) => { if (event.target === surface && event.propertyName === "bottom") done(); };
+    const fallback = window.setTimeout(done, SHEET_MS * 3);
+    surface?.addEventListener("transitionend", glided);
+    return () => {
+      window.clearTimeout(fallback);
+      surface?.removeEventListener("transitionend", glided);
+    };
+  }, [folding]);
 
   /* Leaving the search by a press on a link or the dimmed page: the keyboard goes too. */
   const dismiss = () => { close(); field.current?.blur(); };
@@ -505,38 +580,55 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           ? entries.length === 1 ? t("search.suggestionOne") : entries.length ? t("search.suggestionCount", { count: entries.length }) : t("search.noSuggestions")
           : ""}
       </p>
-      {showPanel && (
+      {(showPanel || folding) && (
         <>
-        {/* The page under a phone's sheet, dimmed; a press on it puts the search away. */}
+        {/*
+          The page under a phone's sheet, dimmed; a press on it puts the search
+          away. It starts under the sheet's rounded foot and sits beneath the
+          header's glass (`-z-[2]`, the surface being -1), so the glass never
+          blurs the dim — which was half of why the sheet read darker than the
+          header it hangs from — and the corners show dim rather than the page.
+        */}
         {!wide ? (
-          <div aria-hidden onClick={dismiss} style={{ top: sheetTop }} className="fixed inset-x-0 bottom-0 z-[59] touch-none bg-[#0a285a]/30" />
+          <div
+            aria-hidden
+            onClick={dismiss}
+            style={{ top: `calc(${sheetTop}px + var(--search-sheet, 0px) - 1.5rem)` }}
+            className={`${folding ? "search-dim-fold" : "search-dim"} fixed inset-x-0 bottom-0 -z-[2] touch-none bg-[#0a285a]/30`}
+          />
         ) : null}
         {/*
           Liquid glass, on the owner's word — the header's own recipe
           (`.glass-bar-surface` in index.css: a blur that saturates what passes
           under it, warped under a fine pointer, beneath a white tint with a
-          bright rim), with a tint of its own (`.glass-panel`, 70%) because
-          this sheet carries headings straight on the glass. The layers sit in
-          a frame round the scroller rather than inside it, or they would
-          scroll away with the content. Everything with words in it — a chip,
-          a tile, a shortcut, the results — is a plate of white over the
-          glass, which is what keeps the muted ink at 4.5:1 over the darkest
-          thing that can pass beneath (the navy Deals band, dimmed).
+          bright rim) at 70%, because this panel carries headings straight on
+          the glass. On a phone it is the header's glass itself, grown down
+          behind the sheet (the effect above), so the sheet draws none; on a
+          wide screen the panel is a card under the field with layers of its
+          own, in a frame round the scroller so they do not scroll away with
+          the content. Everything with words in it — a chip, a tile, a
+          shortcut, the results — is a plate of white over the glass, which is
+          what keeps the muted ink at 4.5:1 over the darkest thing that can
+          pass beneath (the navy Deals band).
         */}
         <div
+          ref={sheet}
           onBlur={leave}
+          inert={folding || undefined}
           style={wide ? undefined : { top: sheetTop }}
-          className={`glass-panel ${wide
-            ? "absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] w-full rounded-2xl border border-white/70 shadow-[0_18px_45px_rgba(10,40,90,.2)]"
-            : "fixed inset-x-0 z-[60] rounded-b-3xl border-b border-white/70 shadow-[0_24px_48px_rgba(10,40,90,.3)]"}`}
+          className={wide
+            ? "glass-panel search-drop absolute inset-x-0 top-[calc(100%+.5rem)] z-[60] w-full rounded-2xl border border-white/70 shadow-[0_18px_45px_rgba(10,40,90,.2)]"
+            : `${folding ? "search-sheet-fold" : "search-sheet"} fixed inset-x-0 z-[60] overflow-hidden rounded-b-3xl`}
         >
-          <span aria-hidden className="glass-bar-surface glass-bar-round">
-            <span className="glass-bar-bend" />
-            <span className="glass-bar-face" />
-          </span>
+          {wide ? (
+            <span aria-hidden className="glass-bar-surface glass-bar-round">
+              <span className="glass-bar-bend" />
+              <span className="glass-bar-face" />
+            </span>
+          ) : null}
           <div
             style={wide ? undefined : { maxHeight: sheetRoom ? `${sheetRoom}px` : `calc(100dvh - ${sheetTop}px)` }}
-            className={wide ? "max-h-[min(36rem,calc(100dvh-9rem))] overflow-y-auto overscroll-contain p-3" : "overflow-y-auto overscroll-contain px-4 pb-5 pt-3"}
+            className={wide ? "search-drop-body max-h-[min(36rem,calc(100dvh-9rem))] overflow-y-auto overscroll-contain p-3" : "search-sheet-body overflow-y-auto overscroll-contain px-4 pb-5 pt-1"}
           >
           {emptyField ? (
             <>

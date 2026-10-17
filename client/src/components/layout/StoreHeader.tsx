@@ -228,7 +228,10 @@ export function StoreHeader({ activeDepartment }: {
         below it, and a rule between the two cut one header into two strips.
         The edge comes back only once the page is moving underneath
         (`.header-edge`, drawn while the header is stuck). A phone keeps its
-        line, because nothing sits below the search row there.
+        line, because nothing sits below the search row there — except while
+        the search is open, when the header's glass grows down behind the
+        sheet (`data-search-open`, set by `LiveSearch`) and the line would cut
+        the one surface in two.
       */}
       <div ref={markerRef} aria-hidden className="pointer-events-none -mb-px h-px" />
       {/*
