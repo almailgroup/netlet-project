@@ -73,3 +73,40 @@ export function readStoredList(key: string): string[] {
     return [];
   }
 }
+
+/*
+ * `sessionStorage`, by the same rules: it throws where `localStorage` does,
+ * and for the same reasons. It holds what belongs to one tab and should end
+ * with it — the shop assistant's conversation, kept across a reload but never
+ * left on a shared computer once the tab is closed.
+ */
+
+/** Whatever this tab stored under `key`, or null — including when storage refuses. */
+export function readSession(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Store `value` for this tab if the browser allows it. */
+export function writeSession(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {
+    /* Blocked or full: the conversation holds until the page is left. */
+  }
+}
+
+/** Forget `key` for this tab. */
+export function removeSession(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {
+    /* Nothing was stored. */
+  }
+}

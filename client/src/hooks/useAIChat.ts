@@ -13,11 +13,18 @@
  * refuse — the length, and a phone number, an email or a link, by the chat's
  * own filter — so a shopper is told while typing rather than after a round
  * trip, and nothing they typed of that kind reaches a third party.
+ *
+ * `persist` keeps the conversation for the tab (`sessionStorage`, through
+ * `browserStore`): a reload or a link opened in place finds it where it was,
+ * and closing the tab ends it, so a shared computer does not hand the next
+ * person somebody's questions. An answer still arriving when the page went is
+ * kept as far as it got, marked stopped.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { TicketHolder, callGateway } from "@/lib/aiGateway";
+import { readSession, removeSession, writeSession } from "@/lib/browserStore";
 import { contactFindings, type ContactKind } from "@shared/commerce/contactFilter";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import {
@@ -49,10 +56,30 @@ export function chatDraftProblem(text: string): { kind: "empty" } | { kind: "too
   return found.length ? { kind: "contact", found } : null;
 }
 
+/** At most this many messages are kept for the tab; the gateway reads the last twelve anyway. */
+const KEPT = 40;
+
+function restore(key: string | undefined): ChatMessage[] {
+  if (!key) return [];
+  try {
+    const parsed: unknown = JSON.parse(readSession(key) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((entry): entry is ChatMessage =>
+        Boolean(entry) && (entry.role === "user" || entry.role === "assistant") && typeof entry.text === "string" && typeof entry.id === "number")
+      .map(entry => ({ ...entry, text: entry.text.slice(0, MAX_CHAT_TEXT * 4), state: entry.state === "streaming" ? "stopped" : entry.state }))
+      .slice(-KEPT);
+  } catch {
+    return [];
+  }
+}
+
 export function useAIChat(options: {
   product?: ProductBrief | null;
   /** One question at a time: each sends alone and replaces the last — the Help page's box. */
   single?: boolean;
+  /** Keep the conversation for this tab under this key. */
+  persist?: string;
 } = {}) {
   const { locale } = useTranslation();
   const available = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 });
@@ -61,13 +88,21 @@ export function useAIChat(options: {
   mintRef.current = mint.mutateAsync;
   const holder = useRef(new TicketHolder(() => mintRef.current()));
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => restore(options.persist));
   const [status, setStatus] = useState<ChatStatus>("idle");
   const [error, setError] = useState<GatewayErrorCode | null>(null);
   const controller = useRef<AbortController | null>(null);
-  const nextId = useRef(1);
+  const nextId = useRef(messages.reduce((top, message) => Math.max(top, message.id), 0) + 1);
   const product = options.product ?? null;
   const single = options.single ?? false;
+  const persist = options.persist;
+
+  /* Kept once an answer settles, not on every word of one arriving. */
+  useEffect(() => {
+    if (!persist || status !== "idle") return;
+    if (messages.length) writeSession(persist, JSON.stringify(messages.slice(-KEPT)));
+    else removeSession(persist);
+  }, [persist, messages, status]);
 
   /* Leaving the page stops the answer, and the gateway stops Gemini with it. */
   useEffect(() => () => controller.current?.abort(), []);
@@ -76,7 +111,8 @@ export function useAIChat(options: {
     setMessages(list => list.map(message => (message.id === id && message.state === "streaming" ? { ...message, state } : message)));
   }, []);
 
-  const send = useCallback(async (text: string): Promise<boolean> => {
+  /** Ask `text` after `base`, the conversation it follows. */
+  const ask = useCallback(async (text: string, base: ChatMessage[]): Promise<boolean> => {
     const problem = chatDraftProblem(text);
     if (problem) {
       if (problem.kind === "contact") setError("contact_details");
@@ -89,7 +125,7 @@ export function useAIChat(options: {
     const question: ChatMessage = { id: nextId.current++, role: "user", text: text.trim(), state: "done" };
     const answer: ChatMessage = { id: nextId.current++, role: "assistant", text: "", state: "streaming" };
     /* The conversation so far, the answers that arrived whole or in part, ending on this question. */
-    const earlier = single ? [] : messages.filter(message => message.text && message.state !== "failed");
+    const earlier = single ? [] : base.filter(message => message.text && message.state !== "failed");
     const history = [...earlier, question].slice(-MAX_CHAT_TURNS);
     while (history.length && history[0].role !== "user") history.shift();
     const body: ChatRequest = {
@@ -97,7 +133,7 @@ export function useAIChat(options: {
       messages: history.map(message => ({ role: message.role, text: message.text.slice(0, MAX_CHAT_TEXT) })),
       product,
     };
-    setMessages(list => (single ? [question, answer] : [...list, question, answer]));
+    setMessages(single ? [question, answer] : [...base, question, answer]);
     setStatus("sending");
 
     const abort = new AbortController();
@@ -143,7 +179,19 @@ export function useAIChat(options: {
       if (controller.current === abort) controller.current = null;
       setStatus("idle");
     }
-  }, [locale, messages, product, settle, single, status]);
+  }, [locale, product, settle, single, status]);
+
+  const send = useCallback((text: string) => ask(text, messages), [ask, messages]);
+
+  /**
+   * Ask the last question again, after an answer that did not come — in its
+   * place, so the conversation does not carry the failure twice.
+   */
+  const retry = useCallback(() => {
+    const at = messages.map(message => message.role).lastIndexOf("user");
+    if (at < 0 || status !== "idle") return;
+    void ask(messages[at].text, messages.slice(0, at));
+  }, [ask, messages, status]);
 
   /** Stop the answer being written; what has arrived stays. */
   const stop = useCallback(() => controller.current?.abort(), []);
@@ -161,6 +209,7 @@ export function useAIChat(options: {
     status,
     error,
     send,
+    retry,
     stop,
     reset,
     dismissError: () => setError(null),

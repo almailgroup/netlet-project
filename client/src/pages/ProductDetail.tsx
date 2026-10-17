@@ -1026,7 +1026,7 @@ export default function ProductDetail() {
   const [buyRef, buyPassed] = useBeyondScreen("top");
   /* The department row marks the product's own department, and the shop
      assistant answers about this product — its public listing, nothing else. */
-  const assistantProduct = useMemo(() => (product ? { key: product.id, brief: briefFor(product) } : null), [product]);
+  const assistantProduct = useMemo(() => (product ? { key: product.id, brief: briefFor(product), image: product.images[0]?.url ?? null } : null), [product]);
   usePageChrome({ activeDepartment: product?.productType ?? null, assistantProduct });
 
   // Built before the loading and error returns below, because a hook cannot be

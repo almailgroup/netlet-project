@@ -1,7 +1,14 @@
 /**
  * The shop assistant's button, on every shopping page, on the owner's word:
- * round and navy in the end corner — above the tab bar on a phone, at the
- * foot of the screen on a wide one.
+ * in the end corner — above the tab bar on a phone, at the foot of the screen
+ * on a wide one.
+ *
+ * **It is liquid glass round a navy mark**, the header's recipe at the search
+ * panel's 70% (`.glass-panel`), so it reads as part of the same glass as the
+ * bar and the conversation it opens. On a wide screen it carries its name,
+ * "Ask NetLet AI", because a round icon in a corner is one people learn to
+ * ignore; on a phone it is the mark alone, a thumb's size, and the name is
+ * its accessible name and tooltip.
  *
  * **It is absent until the server says the assistant is there** (`ai.available`,
  * the gateway set up and the `ai` and `assistant` switches on), the rule every
@@ -18,7 +25,7 @@
  * opened, so closing it and moving to another page loses nothing.
  */
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
-import { MessageCircle } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -26,7 +33,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 const loadPanel = () => import("@/components/assistant/ShopChatPanel");
 const ShopChatPanel = lazy(() => loadPanel().then(module => ({ default: module.ShopChatPanel })));
 
-export function ShopAssistant({ product }: { product: ProductBrief | null }) {
+export function ShopAssistant({ product, department }: {
+  product: { brief: ProductBrief; image: string | null } | null;
+  department: string | null;
+}) {
   const { t } = useTranslation();
   const available = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 });
   const [open, setOpen] = useState(false);
@@ -34,8 +44,10 @@ export function ShopAssistant({ product }: { product: ProductBrief | null }) {
   const button = useRef<HTMLButtonElement>(null);
   /*
    * Closing hands focus back to the button, once it is drawn again — it is
-   * hidden while the panel is open, and a phone never focused it when it was
-   * tapped, so the overlay's own record of the opener is the page itself.
+   * out of the page while the panel is open (merely invisible, its blur went
+   * on drawing a ghost of the pill under the panel), and a phone never
+   * focused it when it was tapped, so the overlay's own record of the opener
+   * is the page itself.
    */
   const refocus = useRef(false);
   useEffect(() => {
@@ -56,17 +68,24 @@ export function ShopAssistant({ product }: { product: ProductBrief | null }) {
         onTouchStart={() => void loadPanel()}
         onFocus={() => void loadPanel()}
         onClick={() => { setStarted(true); setOpen(true); }}
-        aria-label={t("shopChat.open")}
-        title={t("shopChat.open")}
+        aria-label={t("shopChat.launch")}
+        title={t("shopChat.launch")}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`assistant-launcher glass glass-navy fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] lg:bottom-6 lg:end-6 lg:size-14 print:hidden ${open ? "invisible" : ""}`}
+        className={`assistant-launcher glass-panel fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 items-center gap-2.5 rounded-full border border-white/70 p-1.5 shadow-[0_10px_30px_rgba(10,40,90,.22)] hover:shadow-[0_14px_36px_rgba(10,40,90,.3)] lg:bottom-6 lg:end-6 lg:pe-5 print:hidden ${open ? "hidden" : "flex"}`}
       >
-        <MessageCircle className="size-6" aria-hidden />
+        <span aria-hidden className="glass-bar-surface glass-bar-round">
+          <span className="glass-bar-bend" />
+          <span className="glass-bar-face" />
+        </span>
+        <span aria-hidden className="grid size-10 place-items-center rounded-full bg-[#0a285a] text-white lg:size-11">
+          <Sparkles className="size-5" />
+        </span>
+        <span aria-hidden className="hidden text-[15px] font-bold text-[#0a285a] lg:inline">{t("shopChat.launch")}</span>
       </button>
       {started ? (
         <Suspense fallback={null}>
-          <ShopChatPanel open={open} onClose={back => { refocus.current = back; setOpen(false); }} product={product} />
+          <ShopChatPanel open={open} onClose={back => { refocus.current = back; setOpen(false); }} product={product} department={department} />
         </Suspense>
       ) : null}
     </>

@@ -35,7 +35,7 @@ import type { ProductBrief } from "@shared/commerce/assistant";
 type Chrome = {
   activeDepartment: string | null;
   /** The product a page is about, keyed so a new object for the same one changes nothing. */
-  assistantProduct: { key: string; brief: ProductBrief } | null;
+  assistantProduct: { key: string; brief: ProductBrief; image: string | null } | null;
 };
 const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null };
 
@@ -105,7 +105,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         <div className={printed ? "contents print:hidden" : "contents"}>
           <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />
           <MobileTabBar />
-          <ShopAssistant product={chrome.assistantProduct?.brief ?? null} />
+          <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />
         </div>
       </div>
     </ChromeContext.Provider>

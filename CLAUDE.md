@@ -145,6 +145,11 @@ phone it is not a second pane but the header's own glass grown down behind
 the sheet, so there is one surface from the top of the screen to the sheet's
 foot.
 
+**So does the shop assistant, button and conversation, on the owner's word** —
+see "The shop assistant". The button is the one control on the site that wears
+the glass, and it is glass *round* a solid navy mark rather than glass behind
+words: the mark is what is pressed and read, and the glass is its frame.
+
 **Headless Chromium does not draw a backdrop blur the way a phone does.** Its
 default software compositor leaves a band unblurred along every edge of the
 blurred layer, so a short bar shows the words under it nearly crisp through a
@@ -2170,15 +2175,32 @@ past which the rail is the ranking it falls back to on any failure.
 
 ## The shop assistant
 
-**A round navy button in the end corner of every shopping page opens a
-conversation with the shop, on the owner's word** (`ShopAssistant` and
-`ShopChatPanel` in `components/assistant/`) — above the tab bar on a phone, at
-the foot of the screen on a wide one, at the left on the Arabic page. It is
-drawn only while `ai.available` says `chat`, since a chat button that can only
-apologise is worse than none, and only the button comes with the page: the
-conversation is fetched when a pointer, a finger or the keyboard reaches it,
-and kept mounted once opened, so closing it or moving to another page loses
-nothing.
+**A button in the end corner of every shopping page opens a conversation with
+the shop, on the owner's word** (`ShopAssistant` and `ShopChatPanel` in
+`components/assistant/`) — above the tab bar on a phone, at the foot of the
+screen on a wide one, at the left on the Arabic page. It is drawn only while
+`ai.available` says `chat`, since a chat button that can only apologise is worse
+than none, and only the button comes with the page: the conversation is
+fetched when a pointer, a finger or the keyboard reaches it, and kept mounted
+once opened.
+
+**Both wear the header's liquid glass, on the owner's word.** The panel is the
+search panel's recipe — `.glass-bar-surface` inside it, behind its contents,
+warped under a fine pointer, at `.glass-panel`'s even 70% — so the page shows
+through it blurred; on a phone, where it is the whole screen, the page it
+covers shows through instead. **Everything with words on it is a plate of
+white** (each answer, each starter, the box, the product's chip) except the
+title and the lines beside it, which are navy and a dark slate (`#2b3a55`):
+measured by hiding the panel's ink and reading the darkest pixel behind each
+line, scrolling the whole home page behind the wide card every 300px, they keep
+6:1 at their worst, over the navy hero. The button is glass round a navy mark,
+"Ask NetLet AI" beside it on a wide screen (a bare icon in a corner is one
+people learn to ignore) and the mark alone on a phone, the name its accessible
+name. **While the panel is open the button is out of the page, not merely
+invisible**: hidden, its blur went on drawing a ghost of the pill under the
+panel. The panel rises out of its corner by a transform and only its contents
+fade, because an opacity on the panel would make it a backdrop root and drain
+the glass to white for as long as the fade ran.
 
 **On a phone it steps aside for the page's own floating control.** The product
 page's buy bar, the cart's Checkout and a department's corner Filters sit in
@@ -2194,22 +2216,41 @@ Escape from inside it closes it. Focus goes into the box on opening and back to
 the button on closing, by the button's own ref, because a phone never focuses a
 button it taps.
 
-**It opens on what it can do** — delivery, returns, paying, finding something —
-as presses, and on a product page names that product and offers "Tell me about
-this product" first: the page hands the shell its brief through
-`usePageChrome`'s `assistantProduct`. The brief is the product assistant's
-(`briefFor`) — public catalogue text, never a price, stock or anything about
-the shopper.
+**It opens on what it can do, fitted to the page.** A welcome and four or five
+starters as presses: on a product, that product by name and photo (the page
+hands the shell its brief and first photo through `usePageChrome`'s
+`assistantProduct`) with "Tell me about this product", what it is good for and
+what to compare it with; in a department, help choosing there; anywhere,
+finding something, delivery, returns and paying. The brief is the product
+assistant's (`briefFor`) — public catalogue text, never a price, stock or
+anything about the shopper; the photo is drawn in the chip and never sent.
 
-**A search it suggests is a link to NetLet's own results, never a product it
-names.** The model writes `[[search: words]]` on a line of its own (the
-Worker's prompt says how) and `chatPieces` (`shared/ai/chatText.ts`, pure)
-turns at most three into links to `/search?q=`, drops one that is not plain
-words or carries contact details, and holds back a marker still half-written
-while the answer streams. A model naming a product could name one NetLet does
-not sell, at a price it does not charge; a search shows what is on the shelf.
-Following one on a phone puts the chat away so the results can be seen; a wide
-screen's card stays.
+**A search it suggests is NetLet's own shelf, never a product it names.** The
+model writes `[[search: words]]` on a line of its own (the Worker's prompt says
+how) and `chatPieces` (`shared/ai/chatText.ts`, pure) turns at most three into
+searches, drops one that is not plain words or carries contact details, and
+holds back a marker still half-written while the answer streams. Once the
+answer is whole, `ChatAnswer` asks NetLet's search (`search.products`) for each
+and draws its first four products as small cards — photo, name, the catalogue's
+own price — beside "See all". A model naming a product could name one NetLet
+does not sell, at a price it does not charge; the search shows what is on the
+shelf at what it costs. Following anything out of an answer on a phone puts the
+chat away so the page can be seen; a wide screen's card stays.
+
+**It keeps the conversation for the tab** (`useAIChat`'s `persist`, through
+`browserStore`'s session helpers): a reload or a page opened in place finds it,
+and closing the tab ends it, so a shared computer does not hand the next person
+somebody's questions. New chat empties it. `sessionStorage` follows
+`localStorage`'s rule — it throws where that does — and `browserStore.test.ts`
+now refuses either outside that file.
+
+**The log follows the newest words only while the reader is at the bottom.**
+Somebody who scrolled up to reread an answer is not dragged down by the next;
+a "Latest" button says there is more. **An answer that did not come says why
+and offers Try again** (`useAIChat`'s `retry`), which asks the same question in
+its place rather than adding it twice. A finished answer has Copy. The box
+grows to five lines, Enter sends, Shift+Enter breaks a line, and a count
+appears in its last 200 characters.
 
 **Every answer says it came from a model**, and the panel's header says the page
 has the final word. A message carrying a phone number, an email or a link is
@@ -2219,12 +2260,14 @@ Stop ends a streaming answer where it is.
 **`useAIChat` is all three conversations.** The panel and the product page's own
 assistant send the turns so far, at most twelve; the help page's box is
 `single` — one question, one answer — because its brief is the help page's
-answers and nothing said before matters. `ChatAnswer` draws all three:
-paragraphs and "- " lists, the suggested searches, and the line under each
-answer. Measured at 390 and 1440 in both languages against a gateway faked at
-the network: focus in and back out, axe clean open and answered, the contact
-refusal, the product's brief carrying only its five fields, the button hidden
-behind the buy bar and the corner Filters, and no sideways scroll.
+answers and nothing said before matters. `ChatAnswer` draws all three, shelves
+and Copy included. Measured at 390 and 1440 in both languages through the real
+Worker code (its handler served locally, Gemini stood in for): focus in and back
+out; axe clean on the welcome, an answer and a product page; shelves with
+products and "See all"; Copy; "Latest" while scrolled up; Try again replacing a
+502; the conversation back after a reload and gone after New chat; the
+department's and the product's starters; a product card closing the phone's
+panel and leaving the wide card; no sideways scroll.
 
 ## The discount permit
 

@@ -12,7 +12,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { readStored, readStoredList, removeStored, writeStored } from "./browserStore.js";
+import { readSession, readStored, readStoredList, removeSession, removeStored, writeSession, writeStored } from "./browserStore.js";
 
 const KEY = "netlet:test-key";
 
@@ -22,16 +22,17 @@ const KEY = "netlet:test-key";
  * would be a dependency bought for one file.
  */
 function withStorage() {
-  const store = new Map<string, string>();
+  const storage = () => {
+    const store = new Map<string, string>();
+    return {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+      removeItem: (key: string) => void store.delete(key),
+    };
+  };
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: {
-      localStorage: {
-        getItem: (key: string) => store.get(key) ?? null,
-        setItem: (key: string, value: string) => void store.set(key, value),
-        removeItem: (key: string) => void store.delete(key),
-      },
-    },
+    value: { localStorage: storage(), sessionStorage: storage() },
   });
 }
 
@@ -39,10 +40,9 @@ function withStorage() {
 function withBlockedStorage() {
   Object.defineProperty(globalThis, "window", {
     configurable: true,
-    value: Object.defineProperty({}, "localStorage", {
-      get() {
-        throw new Error("SecurityError: Access is denied for this document.");
-      },
+    value: Object.defineProperties({}, {
+      localStorage: { get() { throw new Error("SecurityError: Access is denied for this document."); } },
+      sessionStorage: { get() { throw new Error("SecurityError: Access is denied for this document."); } },
     }),
   });
 }
@@ -61,6 +61,22 @@ describe("browser storage", () => {
     expect(readStored(KEY)).toBe("kept");
     removeStored(KEY);
     expect(readStored(KEY)).toBeNull();
+  });
+
+  it("keeps a tab's own value apart from the browser's", () => {
+    withStorage();
+    writeSession(KEY, "this tab");
+    expect(readSession(KEY)).toBe("this tab");
+    expect(readStored(KEY)).toBeNull();
+    removeSession(KEY);
+    expect(readSession(KEY)).toBeNull();
+  });
+
+  it("reads a tab's storage as absent when it refuses, and drops the write", () => {
+    withBlockedStorage();
+    expect(readSession(KEY)).toBeNull();
+    expect(() => writeSession(KEY, "x")).not.toThrow();
+    expect(() => removeSession(KEY)).not.toThrow();
   });
 
   it("reads a missing key as absent", () => {
@@ -117,7 +133,7 @@ function clientSources(): [string, string][] {
   return out;
 }
 
-describe("nothing else reaches for localStorage", () => {
+describe("nothing else reaches for localStorage or sessionStorage", () => {
   it("has one place that touches it", () => {
     const offenders = clientSources()
       .filter(([file]) => !file.endsWith(`lib${path.sep}browserStore.ts`))
@@ -127,7 +143,7 @@ describe("nothing else reaches for localStorage", () => {
           // Prose discusses it by name all over this codebase.
           .replace(/\/\*[\s\S]*?\*\//g, "")
           .replace(/^[ \t]*\/\/.*$/gm, "")
-          .match(/\blocalStorage\s*\./),
+          .match(/\b(?:local|session)Storage\s*\./),
       )
       .map(([file]) => file);
     expect(offenders).toEqual([]);
