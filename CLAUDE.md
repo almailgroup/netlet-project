@@ -4004,6 +4004,25 @@ Two rules keep the RTL layout honest:
   the gradients and masks that shade toward the text, or the Arabic headline
   ends up sitting on the bright side of the hero.
 
+**Switching language fades from one into the other, on the owner's word**
+(`lib/languageSwitch.ts`, `[data-switching="language"]` in `index.css`). It was
+a cut and then a second one: the page flipped direction in a frame, and a moment
+later the product names — read from the server in the page's language — replaced
+the outlines standing in for them. Now `setLocale` runs inside the browser's own
+view transition: the old page is held while the new one is drawn underneath and
+its catalogue reads arrive (`settled`, up to `SWITCH_WAIT_MS`), then the two
+cross-fade over 340ms on one curve. The browser adds the two pictures, so a
+pixel the same in both — the navy band, a white card, the ground — holds still
+and only what moved to the other side crosses. **The wait is on timers, never
+`requestAnimationFrame`**: the browser draws no frames while a view transition
+waits, so the first version waited for a frame that never came and the page sat
+frozen until the browser gave up four seconds later; `languageSwitch.test.ts`
+holds that. A browser without view transitions, somebody who asked for less
+motion and a hidden tab switch at once, and the language a signed-in account
+brings with it is adopted without one, since nobody pressed anything. Measured
+on a production build at 390: about 0.55s from the press to the end of the fade,
+with the Arabic product names already in place when it lands.
+
 **A counted sentence takes the form its number needs** (`shared/i18n/plurals.ts`).
 Arabic counts a noun in the plural from three to ten, in the accusative singular
 from eleven to ninety-nine, in the genitive singular from a hundred, in the dual

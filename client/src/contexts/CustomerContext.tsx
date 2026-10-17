@@ -1,5 +1,7 @@
 import { readLastAddressId, zoneFromAddressBook } from "@/lib/lastAddress";
 import { readStored, readStoredList, removeStored, writeStored } from "@/lib/browserStore";
+import { switchLanguage } from "@/lib/languageSwitch";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
@@ -102,11 +104,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const deliveryZoneId = isAuthenticated ? profile.data?.deliveryZoneId ?? guestDeliveryZoneId : guestDeliveryZoneId;
   const deliveryZone = kuwaitDeliveryZones.find(zone => zone.id === deliveryZoneId);
 
+  /* A press on a language control fades from one language into the other
+     (`lib/languageSwitch`), holding the old page until the new one's words
+     have arrived. */
+  const queryClient = useQueryClient();
   const setLocale = useCallback((nextLocale: LocaleCode) => {
-    setLocaleState(nextLocale);
     writeValue(LOCALE_STORAGE_KEY, nextLocale);
     if (isAuthenticated) updateProfile.mutate({ locale: nextLocale });
-  }, [isAuthenticated, updateProfile]);
+    switchLanguage(() => setLocaleState(nextLocale), () => queryClient.isFetching() > 0);
+  }, [isAuthenticated, queryClient, updateProfile]);
 
   const toggleLocale = useCallback(() => setLocale(locale === "en" ? "ar" : "en"), [locale, setLocale]);
 

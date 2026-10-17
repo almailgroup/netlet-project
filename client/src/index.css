@@ -819,6 +819,25 @@
 }
 
 /*
+ * Switching language (`lib/languageSwitch`): the page as it was fades out
+ * while the page in the other language fades in, over the same time on the
+ * same curve. The browser adds the two pictures rather than laying one over
+ * the other, so a pixel the same in both — the navy band, a white card, the
+ * ground — stays exactly as it was, and only what moved to the other side
+ * crosses. The ground is the page's own under both, never the browser's
+ * white. Only while a language is changing, so no other view transition the
+ * shop might add inherits it.
+ */
+html[data-switching="language"]::view-transition {
+  background: var(--background);
+}
+html[data-switching="language"]::view-transition-old(root),
+html[data-switching="language"]::view-transition-new(root) {
+  animation-duration: 340ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
  * The bar across the top while a press waits for the next page's code
  * (`readyNavigation`). The brand orange as a fill, three pixels, creeping
  * towards the end and never reaching it — it is a sign of life, not a measure.
