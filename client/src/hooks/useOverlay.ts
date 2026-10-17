@@ -15,6 +15,14 @@
  */
 import { useEffect, useRef } from "react";
 
+/*
+ * The overlays open right now, oldest first. Escape closes only the one on
+ * top: the product photos open a full-screen viewer over their own list, and
+ * one Escape closing both — every listener on `window` hears the key — threw
+ * the shopper out of the photos altogether when they meant to step back one.
+ */
+const openOverlays: symbol[] = [];
+
 export function useOverlay(open: boolean, onClose: () => void) {
   const opener = useRef<HTMLElement | null>(null);
 
@@ -35,9 +43,11 @@ export function useOverlay(open: boolean, onClose: () => void) {
     if (!open) return;
 
     opener.current = document.activeElement as HTMLElement | null;
+    const self = Symbol("overlay");
+    openOverlays.push(self);
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && openOverlays[openOverlays.length - 1] === self) {
         event.stopPropagation();
         close.current();
       }
@@ -54,6 +64,7 @@ export function useOverlay(open: boolean, onClose: () => void) {
     if (gap > 0) body.style.paddingInlineEnd = `${gap}px`;
 
     return () => {
+      openOverlays.splice(openOverlays.indexOf(self), 1);
       window.removeEventListener("keydown", onKeyDown);
       body.style.overflow = previousOverflow;
       body.style.paddingInlineEnd = previousPadding;
