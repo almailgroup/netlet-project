@@ -49,7 +49,11 @@ export function chatDraftProblem(text: string): { kind: "empty" } | { kind: "too
   return found.length ? { kind: "contact", found } : null;
 }
 
-export function useAIChat(options: { product?: ProductBrief | null } = {}) {
+export function useAIChat(options: {
+  product?: ProductBrief | null;
+  /** One question at a time: each sends alone and replaces the last — the Help page's box. */
+  single?: boolean;
+} = {}) {
   const { locale } = useTranslation();
   const available = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 });
   const mint = trpc.ai.chatSession.useMutation();
@@ -63,6 +67,7 @@ export function useAIChat(options: { product?: ProductBrief | null } = {}) {
   const controller = useRef<AbortController | null>(null);
   const nextId = useRef(1);
   const product = options.product ?? null;
+  const single = options.single ?? false;
 
   /* Leaving the page stops the answer, and the gateway stops Gemini with it. */
   useEffect(() => () => controller.current?.abort(), []);
@@ -84,14 +89,15 @@ export function useAIChat(options: { product?: ProductBrief | null } = {}) {
     const question: ChatMessage = { id: nextId.current++, role: "user", text: text.trim(), state: "done" };
     const answer: ChatMessage = { id: nextId.current++, role: "assistant", text: "", state: "streaming" };
     /* The conversation so far, the answers that arrived whole or in part, ending on this question. */
-    const history = [...messages.filter(message => message.text && message.state !== "failed"), question].slice(-MAX_CHAT_TURNS);
+    const earlier = single ? [] : messages.filter(message => message.text && message.state !== "failed");
+    const history = [...earlier, question].slice(-MAX_CHAT_TURNS);
     while (history.length && history[0].role !== "user") history.shift();
     const body: ChatRequest = {
       locale,
       messages: history.map(message => ({ role: message.role, text: message.text.slice(0, MAX_CHAT_TEXT) })),
       product,
     };
-    setMessages(list => [...list, question, answer]);
+    setMessages(list => (single ? [question, answer] : [...list, question, answer]));
     setStatus("sending");
 
     const abort = new AbortController();
@@ -137,7 +143,7 @@ export function useAIChat(options: { product?: ProductBrief | null } = {}) {
       if (controller.current === abort) controller.current = null;
       setStatus("idle");
     }
-  }, [locale, messages, product, settle, status]);
+  }, [locale, messages, product, settle, single, status]);
 
   /** Stop the answer being written; what has arrived stays. */
   const stop = useCallback(() => controller.current?.abort(), []);
@@ -150,7 +156,7 @@ export function useAIChat(options: { product?: ProductBrief | null } = {}) {
 
   return {
     /** Undefined while the server is asked; draw nothing until it is true. */
-    available: available.data,
+    available: available.data?.chat,
     messages,
     status,
     error,

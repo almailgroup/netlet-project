@@ -4,6 +4,7 @@ import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ZoomViewer } from "@/components/product/ZoomViewer";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
+import { briefFor } from "@shared/commerce/assistant";
 import { useCart } from "@/contexts/CartContext";
 import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
 import { SizeGuide } from "@/components/product/SizeGuide";
@@ -1023,8 +1024,10 @@ export default function ProductDetail() {
      above the screen — never while they are in view, never before reaching
      them (`useBeyondScreen`, the rule the cart and checkout bars share). */
   const [buyRef, buyPassed] = useBeyondScreen("top");
-  /* The department row marks the product's own department. */
-  usePageChrome({ activeDepartment: product?.productType ?? null });
+  /* The department row marks the product's own department, and the shop
+     assistant answers about this product — its public listing, nothing else. */
+  const assistantProduct = useMemo(() => (product ? { key: product.id, brief: briefFor(product) } : null), [product]);
+  usePageChrome({ activeDepartment: product?.productType ?? null, assistantProduct });
 
   // Built before the loading and error returns below, because a hook cannot be
   // called conditionally. While the product is in flight the page describes
@@ -1320,7 +1323,7 @@ export default function ProductDetail() {
             {/* Under the tabs, because it answers what the tabs did not: a
                 spec block is written for somebody who already knows the
                 category. */}
-            <ProductAssistant handle={product.handle} />
+            <ProductAssistant product={product} />
           </div>
         </section>
 

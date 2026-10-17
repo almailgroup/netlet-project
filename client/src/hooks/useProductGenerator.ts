@@ -99,5 +99,5 @@ export function useProductGenerator(vendorId: number | null) {
     setStatus("idle");
   }, []);
 
-  return { available: available.data, status, draft, error, generate, cancel, reset };
+  return { available: available.data?.catalog, status, draft, error, generate, cancel, reset };
 }

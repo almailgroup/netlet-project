@@ -10,9 +10,10 @@
  *   the orders page is one press away.
  * - **The answers**, each a rule the shop applies (`HELP_GROUPS`), as
  *   disclosures a keyboard opens like a pointer does.
- * - **Ask a question**, answered by a model from those answers and nothing
- *   else, and said to be — drawn only where a model is configured and `ai` is
- *   on, and refusing to send a question that carries contact details.
+ * - **Ask a question**, answered by the shop assistant through the AI gateway
+ *   from those answers and nothing else, and said to be — drawn only while the
+ *   gateway is set up and the assistant is on, and refusing to send a question
+ *   that carries contact details.
  * - **A person**: WhatsApp and the phone when NetLet has recorded them, and a
  *   message, which needs signing in because the answer comes to the account.
  */
@@ -23,6 +24,9 @@ import { CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { gatewayErrorMessage } from "@/lib/aiGateway";
+import { useAIChat } from "@/hooks/useAIChat";
+import { ChatAnswer } from "@/components/assistant/ChatAnswer";
 import { contactFindings, type ContactKind } from "@shared/commerce/contactFilter";
 import { HELP_GROUPS, MAX_HELP_QUESTION } from "@shared/commerce/helpArticles";
 import { phoneLink, whatsappLink } from "@shared/commerce/support";
@@ -185,38 +189,33 @@ function Answers() {
 }
 
 function Ask() {
-  const { t, locale } = useTranslation();
-  const available = trpc.help.assistantAvailable.useQuery(undefined, { staleTime: 300_000 });
-  const ask = trpc.help.ask.useMutation();
+  const { t } = useTranslation();
+  /* One question at a time — the shop assistant through the AI gateway,
+     answering from these same help answers. */
+  const chat = useAIChat({ single: true });
   const [question, setQuestion] = useState("");
-  /* The server's own filter, asked as somebody types, so Ask never sends what it would refuse. */
+  /* The gateway's own filter, asked as somebody types, so Ask never sends what it would refuse. */
   const found = contactFindings(question)[0];
-  if (!available.data) return null;
-  const reply = ask.data;
+  if (!chat.available) return null;
+  const busy = chat.status !== "idle";
+  const answer = chat.messages.find(message => message.role === "assistant");
   return (
     <section aria-labelledby="ask-title" className={`${card} mt-8`}>
       <h2 id="ask-title" className="flex items-center gap-2 text-lg font-extrabold"><Sparkles className="size-5 ink-accent" aria-hidden />{t("help.askTitle")}</h2>
       <p className="mt-1 text-[13px] leading-6 ink-muted">{t("help.askNote")}</p>
-      <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={event => { event.preventDefault(); if (!found) ask.mutate({ question, locale }); }}>
+      <form className="mt-3 flex flex-col gap-2 sm:flex-row" onSubmit={event => { event.preventDefault(); if (!found && !busy) void chat.send(question); }}>
         <label className="min-w-0 flex-1">
           <span className="sr-only">{t("help.askLabel")}</span>
           <input dir="auto" value={question} onChange={event => setQuestion(event.target.value)} maxLength={MAX_HELP_QUESTION} placeholder={t("help.askLabel")} aria-invalid={Boolean(found)} aria-describedby={found ? "ask-problem" : undefined} className={`${field} mt-0`} />
         </label>
-        <button type="submit" disabled={ask.isPending || question.trim().length < 2 || Boolean(found)} className="glass glass-navy pressable inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold disabled:opacity-60">
-          {ask.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t("help.askButton")}
+        <button type="submit" disabled={busy || question.trim().length < 2 || Boolean(found)} className="glass glass-navy pressable inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[14px] font-bold disabled:opacity-60">
+          {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t("help.askButton")}
         </button>
       </form>
-      <div aria-live="polite">
+      <div aria-live="polite" aria-busy={busy}>
         {found ? <p id="ask-problem" className="mt-2 text-[13px] font-semibold text-[#8c2f22]">{t("help.askContact", { kind: t(KIND_LABEL[found]) })}</p> : null}
-        {ask.error ? <p className="mt-3 text-[13px] font-semibold text-[#8c2f22]">{isMessageKey(ask.error.message) ? t(ask.error.message) : t("help.askUnavailable")}</p> : null}
-        {reply?.kind === "answer" ? (
-          <div className="mt-4 rounded-xl bg-[#f4f7fb] p-4">
-            <p dir="auto" className="text-[14px] leading-6 text-[#0a285a]">{reply.text}</p>
-            <p className="mt-2 text-[12px] ink-muted">{t("help.askAnswerNote")}</p>
-          </div>
-        ) : reply?.kind === "unavailable" ? (
-          <p className="mt-3 text-[13px] ink-muted">{t("help.askUnavailable")}</p>
-        ) : null}
+        {chat.error && !found ? <p className="mt-3 text-[13px] font-semibold text-[#8c2f22]">{t(gatewayErrorMessage(chat.error))}</p> : null}
+        {answer?.text ? <div className="mt-4"><ChatAnswer message={answer} note="help.askAnswerNote" /></div> : null}
       </div>
     </section>
   );

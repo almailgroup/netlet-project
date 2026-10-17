@@ -40,8 +40,6 @@ import type { Product } from "./types.js";
 
 /** Long enough for a real question, short enough that the box is not a form. */
 export const MAX_QUESTION = 300;
-/** What the model is allowed to write back, in characters. */
-export const MAX_ANSWER = 700;
 /** How much of a merchant's description rides along. */
 export const MAX_DESCRIPTION = 1500;
 /** How many specification rows ride along. */
@@ -120,11 +118,6 @@ export function briefToPrompt(brief: ProductBrief): string {
 export function acceptableQuestion(question: string): boolean {
   const trimmed = question.trim();
   return trimmed.length > 0 && trimmed.length <= MAX_QUESTION;
-}
-
-/** The answer, trimmed to what the panel will show. */
-export function clipAnswer(answer: string): string {
-  return clip(answer, MAX_ANSWER);
 }
 
 /**

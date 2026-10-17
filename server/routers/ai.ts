@@ -13,10 +13,18 @@ import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import { rowId } from "../_core/schemas.js";
 import { resolveActor } from "../inventory.js";
 import { catalogSession, chatSession, gatewayAvailable } from "../aiGateway.js";
+import { featureOn } from "../features.js";
 
 export const aiRouter = router({
-  /** Whether to draw anything that uses the gateway. */
-  available: publicProcedure.query(() => gatewayAvailable()),
+  /**
+   * What to draw: the shop assistant (the chat, "Ask about this product", the
+   * help page's box) under its own switch as well as `ai`, and product
+   * drafting under `ai` alone.
+   */
+  available: publicProcedure.query(async () => {
+    const ready = await gatewayAvailable();
+    return { chat: ready && (await featureOn("assistant")), catalog: ready };
+  }),
 
   chatSession: publicProcedure.mutation(({ ctx }) => chatSession(ctx.user?.id ?? null, ctx.req.ip ?? null)),
 

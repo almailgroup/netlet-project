@@ -3,8 +3,6 @@ import {
   acceptableQuestion,
   briefFor,
   briefToPrompt,
-  clipAnswer,
-  MAX_ANSWER,
   MAX_DESCRIPTION,
   MAX_QUESTION,
   MAX_SPEC_ROWS,
@@ -105,10 +103,5 @@ describe("which presses are worth a model call", () => {
   it("refuses an essay", () => {
     expect(acceptableQuestion("a".repeat(MAX_QUESTION))).toBe(true);
     expect(acceptableQuestion("a".repeat(MAX_QUESTION + 1))).toBe(false);
-  });
-
-  it("clips an answer to what the panel shows", () => {
-    expect(clipAnswer("b".repeat(MAX_ANSWER * 2)).length).toBeLessThanOrEqual(MAX_ANSWER);
-    expect(clipAnswer("Short answer.")).toBe("Short answer.");
   });
 });

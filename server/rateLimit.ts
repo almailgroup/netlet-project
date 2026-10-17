@@ -19,8 +19,6 @@ import {
   LOOKUP_WINDOW_MS,
   MAX_FAILURES_PER_ACCOUNT,
   MAX_FAILURES_PER_ADDRESS,
-  MAX_ASSISTANT_PER_ADDRESS,
-  ASSISTANT_WINDOW_MS,
   MAX_PHOTO_SEARCH_PER_ADDRESS,
   MAX_RECOMMEND_MODEL_PER_ACCOUNT,
   MAX_SEARCH_REFINE_PER_ADDRESS,
@@ -30,8 +28,6 @@ import {
   VOUCHER_MISS_WINDOW_MS,
   MAX_ORDER_LOOKUP_MISSES_PER_ADDRESS,
   ORDER_LOOKUP_WINDOW_MS,
-  MAX_HELP_QUESTIONS_PER_ADDRESS,
-  HELP_QUESTION_WINDOW_MS,
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
@@ -51,7 +47,7 @@ import { getDb } from "./db.js";
  * there is no failure to count, and the abuse is using NetLet to mail somebody
  * else. `codeMiss` counts a wrong code, like a wrong password.
  */
-export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "assistant" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
+export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -208,44 +204,7 @@ export async function attemptCount(bucket: string): Promise<number> {
   return row?.n ?? 0;
 }
 
-/**
- * Whether this address may ask the assistant another question.
- *
- * Address only, like the gift lookup and for a related reason: the caller is
- * usually signed out, because somebody deciding whether to buy has not
- * necessarily got an account. The product being asked about is deliberately
- * *not* a bucket — throttling by the product would let one script make a
- * popular item unaskable for everybody else.
- */
-export async function checkAssistantAllowed(address: string | null | undefined): Promise<RateVerdict> {
-  const db = await getDb();
-  if (!db || !address) return ALLOWED;
-
-  const rows = await db
-    .select({ at: authAttempts.createdAt })
-    .from(authAttempts)
-    .where(
-      and(
-        eq(authAttempts.bucket, addressBucket(address)),
-        eq(authAttempts.kind, "assistant"),
-        gt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS)),
-      ),
-    );
-
-  return limitVerdict(rows.map(row => row.at), MAX_ASSISTANT_PER_ADDRESS, new Date(), ASSISTANT_WINDOW_MS);
-}
-
-/** Count one question, answered or not — a refusal costs the same money. */
-export async function recordAssistantCall(address: string | null | undefined): Promise<void> {
-  const db = await getDb();
-  if (!db || !address) return;
-  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "assistant" }]);
-  await db.delete(authAttempts).where(
-    and(eq(authAttempts.kind, "assistant"), lt(authAttempts.createdAt, new Date(Date.now() - ASSISTANT_WINDOW_MS))),
-  );
-}
-
-/** Whether this address may search with another photo (3.1.6). Address only, for the assistant's reason. */
+/** Whether this address may search with another photo (3.1.6). Address only: whoever is asking is often signed out. */
 export async function checkPhotoSearchAllowed(address: string | null | undefined): Promise<RateVerdict> {
   const db = await getDb();
   if (!db || !address) return ALLOWED;
@@ -327,15 +286,6 @@ export async function checkOrderLookupAllowed(address: string | null | undefined
 
 export async function recordOrderLookupMiss(address: string | null | undefined): Promise<void> {
   await recordInWindow(address, "orderLookupMiss", ORDER_LOOKUP_WINDOW_MS);
-}
-
-/** Whether this address may ask the help assistant once more. Every question counts. */
-export async function checkHelpQuestionAllowed(address: string | null | undefined): Promise<RateVerdict> {
-  return windowVerdict(address, "helpQuestion", MAX_HELP_QUESTIONS_PER_ADDRESS, HELP_QUESTION_WINDOW_MS);
-}
-
-export async function recordHelpQuestion(address: string | null | undefined): Promise<void> {
-  await recordInWindow(address, "helpQuestion", HELP_QUESTION_WINDOW_MS);
 }
 
 /* The two halves every per-address ceiling above writes out by hand, for the newer ones. */

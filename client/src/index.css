@@ -1247,6 +1247,31 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * The shop assistant's button steps aside on a phone while the page's own
+ * floating control is showing (`useFloatingBar` sets `data-floating-bar`):
+ * it shares their corner, and the button a page is for wins it. Hidden from
+ * the keyboard as well as the eye while it is out of the way.
+ */
+.assistant-launcher {
+  transition:
+    opacity 200ms ease,
+    translate 200ms ease,
+    visibility 0s linear 0s;
+}
+@media (max-width: 1023.98px) {
+  html[data-floating-bar] .assistant-launcher {
+    opacity: 0;
+    translate: 0 0.75rem;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 200ms ease,
+      translate 200ms ease,
+      visibility 0s linear 200ms;
+  }
+}
+
+/*
  * The search sheet is the header's glass, on the owner's word ("make it part
  * of the header — why is it separate?"). On a phone the sheet under the field
  * draws no glass of its own: `LiveSearch` sets `data-search-open` and its own

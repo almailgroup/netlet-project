@@ -16,6 +16,7 @@
  * filters, sort, the empty state — rather than on a model's answer.
  */
 import { useCatalog } from "@/hooks/useCatalog";
+import { useFloatingBar } from "@/hooks/useFloatingBar";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -263,6 +264,8 @@ export default function Category() {
    */
   const wide = useMediaQuery("(min-width: 1024px)");
   const [filtersRef, filtersPassed] = useBeyondScreen("top", 64);
+  /* The corner is the filters' while they float there; the assistant's button steps aside. */
+  useFloatingBar(!wide && filtersPassed);
   const filtersLabel = activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters");
   const sortSelect = (className: string) => (
     <Select

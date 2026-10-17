@@ -201,14 +201,10 @@ function resolve(path: string, rawInput: unknown): unknown {
        the assistant is not drawn, the branch a deployment with no key takes. */
     case "help.lookupOrder":
       return null;
-    case "help.assistantAvailable":
-      return false;
-    case "help.ask":
-      return { kind: "unavailable" };
     /* The AI gateway: absent in the demo, the branch a deployment that has not
        set AI_GATEWAY_URL takes — no backend, so nothing to sign a token. */
     case "ai.available":
-      return false;
+      return { chat: false, catalog: false };
     case "ai.chatSession":
     case "ai.catalogSession":
       return { available: false };
@@ -798,14 +794,6 @@ function resolve(path: string, rawInput: unknown): unknown {
       return [];
     case "finance.platformLicensed":
       return [];
-
-    case "assistant.available":
-      return { available: false };
-    /* Unreachable while `available` is false — the panel is never drawn — but
-       answered anyway, because a procedure the demo cannot name is a procedure
-       that throws the day somebody flips the switch above. */
-    case "assistant.ask":
-      return { kind: "unavailable" };
 
     case "reviews.forProduct":
       return { items: [], summary: null, total: 0 };

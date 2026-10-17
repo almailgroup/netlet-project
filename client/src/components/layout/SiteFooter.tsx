@@ -173,14 +173,15 @@ function ContactRow({ icon: Icon, label, detail, href, external, internal }: {
  * bar always, and on a page with a floating bar of its own — the filters
  * button, the product page's buy bar — that as well, or the last line of the
  * footer sits under it. The tab bar floats above the home indicator, so the
- * safe area is added to both.
+ * safe area is added to both. `assistant` is the shop assistant's button,
+ * which floats in the end corner at every width and wants the same room.
  *
  * `mt-auto` is half of keeping it at the bottom of the window: every page that
  * draws it is a flex column at least a screen tall, so on a short page — a
  * shop with three products, an empty Saved list — the space goes above the
  * footer instead of below it as a band of page colour.
  */
-export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall" }) {
+export function SiteFooter({ clearance = "tabs", assistant = false }: { clearance?: "tabs" | "tall"; assistant?: boolean }) {
   const { t, isArabic } = useTranslation();
   const { toggleLocale } = useCustomer();
   const wide = useMediaQuery("(min-width: 640px)");
@@ -276,7 +277,7 @@ export function SiteFooter({ clearance = "tabs" }: { clearance?: "tabs" | "tall"
   );
 
   return (
-    <footer className={`mt-auto bg-[#0a285a] pt-6 text-white sm:pt-14 lg:pb-8 ${clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
+    <footer className={`mt-auto bg-[#0a285a] pt-6 text-white sm:pt-14 ${assistant ? "lg:pb-24" : "lg:pb-8"} ${clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"}`}>
       <div className="container">
         <div className="grid gap-8 sm:grid-cols-4 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-[minmax(0,1.5fr)_repeat(4,minmax(0,1fr))] lg:gap-x-8">
           {/* A phone opens on the folded link groups, on the owner's word, with

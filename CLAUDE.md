@@ -2014,10 +2014,14 @@ the only thing that talks to Gemini (`gemini-2.5-flash`, thinking off, so the
 first word is not held behind a reasoning pass): `POST /api/ai/chat` streams the
 shop's assistant as Server-Sent Events, `POST /api/ai/catalog-assist` drafts a
 listing from a seller's notes and photos as JSON. Its `README.md` is the setup,
-`wrangler` commands included. **The eight model features that predate it still
-call Mistral from this server** (`MISTRAL_API_KEY`); moving them behind the
-gateway, for one provider, one key and one bill, is a decision of its own and
-was not made with it.
+`wrangler` commands included. **The shop's conversations run on it, on the
+owner's word** — the shop assistant, the product page's assistant and the help
+page's question box (see "The shop assistant") left this server's Mistral
+calls for it. **Six older model features still call Mistral from this server**
+(`MISTRAL_API_KEY`): search refinement, the Picked for you order, photo search,
+support drafts, the review queue's pass and the Arabic name. Each is called by
+this server and its answer checked here, so moving one means this server
+calling the gateway rather than a browser doing so — a change of its own.
 
 **CORS is not authentication, so a browser reaches the gateway only with a
 token this server signed.** CORS stops another site's page reading an answer
@@ -2065,9 +2069,9 @@ them needs a migration, shown first.
 **The address is never built into the page.** It arrives with each token, so a
 deployment sets two server variables and nothing else, the CSP names the
 gateway in `connect-src` only while it is configured, and unset is
-`ai.available: false` — the demo build's answer too. `useAIChat` and
-`useProductGenerator` are the browser's side, ready for the UI that comes once
-the gateway is deployed; nothing draws them yet.
+`ai.available` answering `chat: false, catalog: false` — the demo build's
+answer too. `useAIChat` is the browser's side of all three conversations;
+`useProductGenerator` waits for the new-product form.
 
 Measured, not assumed: the Worker's tests drive its own fetch handler against a
 stand-in Gemini (`workers/ai-gateway/src/index.test.ts`, in `pnpm test`);
@@ -2113,25 +2117,28 @@ so the worst a success buys is one wrong paragraph on one product page.
 every page view, most for somebody who came to look at the photograph, and
 would put generated text above the merchant's own words by default.
 
-**With no key the panel is absent, not broken.** Deliberately unlike voice and
-photo search, which render every state because there is a *design* to review;
-an assistant with nothing behind it has nothing to show, and a box reading "not
-configured" is noise on a shop. `available` is asked once and the section is
-skipped. The demo build answers `available: false` through the same branch a
-real deployment with no key takes, rather than a special case.
+**With no gateway the panel is absent, not broken.** Deliberately unlike voice
+and photo search, which render every state because there is a *design* to
+review; an assistant with nothing behind it has nothing to show, and a box
+reading "not configured" is noise on a shop. `ai.available` says `chat` only
+while the gateway is configured and the `ai` and `assistant` switches are on,
+and the section is skipped otherwise. The demo build answers `chat: false`
+through the same branch a real deployment with no gateway takes, rather than a
+special case.
 
 Every answer carries a line saying it came from a model and from this listing,
 on the answer rather than once in the header — a generated sentence that reads
 like the shop's own copy is one a shopper will hold the shop to.
 
-**It is throttled in Postgres, by address.** Every question spends money at a
-third party, so an endpoint open to a signed-out browser — which is who is
-deciding whether to buy — needs a ceiling that counts somewhere every instance
-shares. `MAX_ASSISTANT_PER_ADDRESS` counts every request rather than every
-failure, because a refusal costs the same as an answer, and is counted *before*
-the call: a request that times out has still spent the money. The product is
-deliberately not a bucket, or one script could make a popular item unaskable
-for everybody.
+**It is throttled at the gateway, per caller and per address.** Every question
+spends money at a third party, so an endpoint open to a signed-out browser —
+which is who is deciding whether to buy — needs a ceiling that counts somewhere
+every instance shares. That was Postgres while this server made the call; the
+browser calls the Worker now, so the count is Cloudflare's (see "The AI
+gateway"), keyed by the token's subject — an account, or a keyed hash of a
+guest's address — and taken before the body is read, because a refusal costs
+the same as an answer. The product is deliberately not a bucket, or one script
+could make a popular item unaskable for everybody.
 
 **Every model call open to the public has a ceiling.** "Refine with NetLet
 AI" (`search.refine`) was the one with none — public, no count and no deadline,
@@ -2143,6 +2150,64 @@ reordered by the model on every read, and a guest's bag was enough to make it
 personal; the model now reorders only for an account and at most
 `MAX_RECOMMEND_MODEL_PER_ACCOUNT` times an hour (`takeRecommendModelCall`),
 past which the rail is the ranking it falls back to on any failure.
+
+## The shop assistant
+
+**A round navy button in the end corner of every shopping page opens a
+conversation with the shop, on the owner's word** (`ShopAssistant` and
+`ShopChatPanel` in `components/assistant/`) — above the tab bar on a phone, at
+the foot of the screen on a wide one, at the left on the Arabic page. It is
+drawn only while `ai.available` says `chat`, since a chat button that can only
+apologise is worse than none, and only the button comes with the page: the
+conversation is fetched when a pointer, a finger or the keyboard reaches it,
+and kept mounted once opened, so closing it or moving to another page loses
+nothing.
+
+**On a phone it steps aside for the page's own floating control.** The product
+page's buy bar, the cart's Checkout and a department's corner Filters sit in
+that corner; each says so through `useFloatingBar` (`data-floating-bar` on
+`<html>`, a count, so two at once and one leaving does not bring the button
+back early), and the button fades out while any of them shows. The thing a
+page is for wins the corner. On a wide screen the footer leaves room under it.
+
+**The phone's panel is the whole screen, sized to what the keyboard leaves** —
+the visual viewport, the search sheet's rule — and is a modal there
+(`useOverlay`). A wide screen's is a card beside a page that stays usable, and
+Escape from inside it closes it. Focus goes into the box on opening and back to
+the button on closing, by the button's own ref, because a phone never focuses a
+button it taps.
+
+**It opens on what it can do** — delivery, returns, paying, finding something —
+as presses, and on a product page names that product and offers "Tell me about
+this product" first: the page hands the shell its brief through
+`usePageChrome`'s `assistantProduct`. The brief is the product assistant's
+(`briefFor`) — public catalogue text, never a price, stock or anything about
+the shopper.
+
+**A search it suggests is a link to NetLet's own results, never a product it
+names.** The model writes `[[search: words]]` on a line of its own (the
+Worker's prompt says how) and `chatPieces` (`shared/ai/chatText.ts`, pure)
+turns at most three into links to `/search?q=`, drops one that is not plain
+words or carries contact details, and holds back a marker still half-written
+while the answer streams. A model naming a product could name one NetLet does
+not sell, at a price it does not charge; a search shows what is on the shelf.
+Following one on a phone puts the chat away so the results can be seen; a wide
+screen's card stays.
+
+**Every answer says it came from a model**, and the panel's header says the page
+has the final word. A message carrying a phone number, an email or a link is
+named back and not sent (`chatDraftProblem`), and the Worker refuses it too.
+Stop ends a streaming answer where it is.
+
+**`useAIChat` is all three conversations.** The panel and the product page's own
+assistant send the turns so far, at most twelve; the help page's box is
+`single` — one question, one answer — because its brief is the help page's
+answers and nothing said before matters. `ChatAnswer` draws all three:
+paragraphs and "- " lists, the suggested searches, and the line under each
+answer. Measured at 390 and 1440 in both languages against a gateway faked at
+the network: focus in and back out, axe clean open and answered, the contact
+refusal, the product's brief carrying only its five fields, the button hidden
+behind the buy bar and the corner Filters, and no sideways scroll.
 
 ## The discount permit
 
@@ -2502,12 +2567,13 @@ phone, name or seller terms — and a miss is "not found" whichever half was
 wrong, throttled by address on misses with the voucher box's rule. The answers
 are `HELP_GROUPS` in `shared/commerce/helpArticles.ts`, message keys whose
 facts are the shop's own rules. **The help assistant knows what the page
-knows**: it is handed those answers (`helpBrief`) and the question, never an
-account or an order, every question counts against a per-address ceiling
-before the call, and a question carrying a phone number, email or link is not
-sent at all — `contactFindings` decides, on the page and on the server — because
-the shopper's details have no business at a third party. Absent with no key or
-with `ai` off, like the product assistant.
+knows**: the gateway hands it those answers (`helpBrief`) and the question,
+never an account or an order, every question counts against the gateway's
+ceilings before the call, and a question carrying a phone number, email or
+link is not sent at all — `contactFindings` decides, on the page and in the
+Worker — because the shopper's details have no business at a third party.
+Absent while the gateway is not configured or `ai` or `assistant` is off, like
+the product assistant.
 
 ## After the door: ratings and damage
 
@@ -3111,11 +3177,13 @@ guarding nothing. It answers `PRECONDITION_FAILED` / `features.off`: nobody
 lacks permission, the shop has the thing turned off. A rail answers empty
 instead, because a shelf that errors is worse than a shelf that is absent.
 
-**`ai` is the one switch over every model call** — assistant, search
+**`ai` is the one switch over every model call** — the gateway's tokens, search
 refinement, recommendation ordering, the review queue's model pass. Each
 already had a deterministic answer for "no key", and off is that branch. Every
 call spends money at a third party and sends it catalogue text, so "stop all
-of it now" has to be one control rather than four.
+of it now" has to be one control rather than four. `assistant` is the shop's
+conversations alone (its entry is `ai.chatSession`), so a shop can stop the
+chat and keep sellers' drafting.
 
 **Absent is the feature's `defaultOn`, and switches are read per call rather
 than cached.** Most features default on, so a fresh database behaves as it
@@ -4441,10 +4509,11 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It is 609 KB (178 KB) now: the
+with the whole first download 35 KB smaller. It is 657 KB (192 KB) now: the
 shop's frame, the page template and the navigation layer (see "One frame, one
 template") are on every page, so they belong in it, and so is the home page's
-front door, which is its first paint. That door's street picture is 86 KB
+front door, which is its first paint, and the shop assistant's button (4 KB
+with its words; the conversation loads when the button is reached). That door's street picture is 86 KB
 (1120 × 840, WebP) — the one image the home page fetches ahead of everything
 else, and the sign-in panel's own file, so a shopper who goes on to sign in
 already has it.

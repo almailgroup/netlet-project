@@ -16,6 +16,7 @@
  * guard shortens to nothing for somebody who asked for less.
  */
 import type { ReactNode } from "react";
+import { useFloatingBar } from "@/hooks/useFloatingBar";
 
 export function PhoneActionBar({ shown, label, overTabBar = true, children }: {
   shown: boolean;
@@ -25,6 +26,7 @@ export function PhoneActionBar({ shown, label, overTabBar = true, children }: {
   overTabBar?: boolean;
   children: ReactNode;
 }) {
+  useFloatingBar(shown);
   return (
     <div
       role="region"

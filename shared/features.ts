@@ -86,7 +86,9 @@ export type FeatureDefinition = {
 
 export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   ai: { entries: [], audience: "everyone", defaultOn: true },
-  assistant: { entries: ["assistant.ask"], audience: "shopper", defaultOn: true },
+  /* The shop assistant: the chat button, a product page's "Ask about this
+     product" and the help page's question box, all one gateway token. */
+  assistant: { entries: ["ai.chatSession"], audience: "shopper", defaultOn: true },
   recommendations: { entries: [], audience: "shopper", defaultOn: true },
   boughtTogether: { entries: [], audience: "shopper", defaultOn: true },
   /* The shopper writing is the entry; the seller answering an open thread is

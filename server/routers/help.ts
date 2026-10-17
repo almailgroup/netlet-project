@@ -1,13 +1,13 @@
 /**
- * The help page (`server/help.ts`). All three are open to a signed-out
- * browser, which is who most needs help, and each is throttled by address.
+ * The help page (`server/help.ts`): finding an order, open to a signed-out
+ * browser — which is who most needs help — and throttled by address on misses.
+ * Its question box is the shop assistant, through the AI gateway.
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc.js";
-import { askHelp, helpAssistantAvailable, lookupOrder } from "../help.js";
-import { checkHelpQuestionAllowed, checkOrderLookupAllowed, recordHelpQuestion, recordOrderLookupMiss } from "../rateLimit.js";
-import { MAX_HELP_QUESTION } from "../../shared/commerce/helpArticles.js";
+import { lookupOrder } from "../help.js";
+import { checkOrderLookupAllowed, recordOrderLookupMiss } from "../rateLimit.js";
 
 export const helpRouter = router({
   lookupOrder: publicProcedure
@@ -20,18 +20,5 @@ export const helpRouter = router({
       const found = await lookupOrder(input.reference, input.email);
       if (!found) await recordOrderLookupMiss(address);
       return found;
-    }),
-
-  assistantAvailable: publicProcedure.query(() => helpAssistantAvailable()),
-
-  ask: publicProcedure
-    .input(z.object({ question: z.string().trim().min(2).max(MAX_HELP_QUESTION), locale: z.enum(["en", "ar"]).optional() }))
-    .mutation(async ({ ctx, input }) => {
-      const address = ctx.req.ip ?? null;
-      const verdict = await checkHelpQuestionAllowed(address);
-      if (!verdict.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "help.askTooMany" });
-      /* Counted before the call: a request that times out has still spent the money. */
-      await recordHelpQuestion(address);
-      return askHelp(input.question, input.locale ?? "en");
     }),
 });

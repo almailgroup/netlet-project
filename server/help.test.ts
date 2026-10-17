@@ -57,11 +57,9 @@ describe("finding an order on the help page", () => {
   });
 });
 
-describe("the help assistant", () => {
-  it("never sends a question carrying contact details", async () => {
-    expect(await help.askHelp("call me on 99887766 about my order", "en")).toEqual({ kind: "contact", found: "phone" });
-  });
-
+/* The shop assistant answers from these; the gateway refuses a question
+   carrying contact details (workers/ai-gateway/src/index.test.ts). */
+describe("the help answers the assistant is given", () => {
   it("is given the page's answers and nothing else, in the asker's language", () => {
     const brief = helpBrief((key, params) => translate("en", key, params));
     expect(brief).toContain(`Within ${RETURN_WINDOW_DAYS} days of delivery`);

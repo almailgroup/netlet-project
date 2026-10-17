@@ -65,8 +65,6 @@ export const HELP_GROUPS: { id: string; title: MessageKey; entries: HelpEntry[] 
 
 /** Longest question the assistant is sent. */
 export const MAX_HELP_QUESTION = 300;
-/** Longest answer it may give. */
-export const MAX_HELP_ANSWER = 700;
 
 /**
  * The page's answers as one block of text, in the asker's language, for the
@@ -76,13 +74,4 @@ export function helpBrief(say: (key: MessageKey, params?: Record<string, string 
   return HELP_GROUPS.flatMap(group =>
     group.entries.map(entry => `Q: ${say(entry.question)}\nA: ${say(entry.answer, entry.params)}`),
   ).join("\n\n");
-}
-
-/** An answer cut to the ceiling at a sentence end where one is near, flattened to one paragraph. */
-export function clipHelpAnswer(text: string): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  if (flat.length <= MAX_HELP_ANSWER) return flat;
-  const cut = flat.slice(0, MAX_HELP_ANSWER);
-  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("؟ "), cut.lastIndexOf("? "));
-  return stop > MAX_HELP_ANSWER * 0.5 ? cut.slice(0, stop + 1) : `${cut.trimEnd()}…`;
 }
