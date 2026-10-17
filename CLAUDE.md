@@ -1259,7 +1259,8 @@ path on. **A delivery row names the store in the page's language**
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
-Use it for anything modal rather than re-deriving two of the three.
+Use it for anything modal rather than re-deriving two of the three. Opened over
+one another, Escape closes only the top one (a stack in the hook).
 
 **A new page starts at its top, and Back returns to where the shopper was.**
 `ScrollMemory` in `App.tsx`. Moving between pages without a reload means the
@@ -3898,6 +3899,39 @@ ref, because the buttons first exist a render or two after the hook does. Both
 are shared now: the bar is `PhoneActionBar` and the observer
 `useBeyondScreen`, which the cart and checkout bars use too (see "Measured on
 a phone").
+
+**A press on the photo opens every photo, and a press on one of those opens
+it full screen to zoom — on the owner's word.** On a phone the photo did
+nothing when pressed; the viewer was behind a 40px magnifier disc. Now a press
+on the photo (a click, never the finger lifting — a phone sends its click after
+the lift, so opening on the lift put the list under the finger and the click
+opened whichever photo landed there) opens `ImageLightbox`, which is two shapes,
+one at a time: a wide screen keeps its grid beside a stage with step zoom
+(`WideImageViewer`), and below `lg` it is `PhotoSheet` — every photo the width
+of the screen in a square frame, one under another, opening at the one being
+looked at. Square, so a photo further up that has not loaded cannot push the one
+on screen down when it does. A press on one opens `ZoomViewer`
+(`components/product/ZoomViewer.tsx`): the whole screen, white because product
+photographs are shot on white, where two fingers pinch, a double tap goes to
+2.5× at the spot and back, one finger moves a zoomed photo and a sideways swipe
+at its own size goes to the next, mirrored in Arabic. **The zoom is about the
+fingers** — the photo's point under them stays under them (`panAbout` in
+`lib/zoomMath.ts`) — and a photo moves only as far as it hangs over the screen
+(`clampPan`); the view lives in a ref as well as state, because a pinch's next
+move can arrive before React has drawn the last and a scale one frame old jumps.
+The stage owns its gestures (`touch-action: none`, Safari's `gesture*` events
+refused), so a pinch never zooms the page behind. Buttons and keys do all of it
+for anybody who cannot pinch. **Escape steps back one layer**: `useOverlay`
+keeps a stack and only the top overlay answers, since every listener on
+`window` hears the key and one Escape closed the photos altogether. Back from
+full screen, focus lands on the photo last looked at, set by the list itself — a
+phone does not focus a button it taps, so the viewer's own record of what had
+focus was not the photo. The rail of thumbnails is a group of buttons with
+`aria-current`, not a tablist: tabs with no panels, and a "+N" button inside
+them, was the one axe error left on the product page. Measured at 320 and 390
+in both languages: tap opens the list at the right photo, a photo opens full
+screen at its number, double tap, drag, pinch and swipe land where they should,
+Escape twice comes back to the page, axe clean throughout.
 
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.

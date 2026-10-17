@@ -1,6 +1,8 @@
 import { BUTTON_PRIMARY, Breadcrumbs, PageBody, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { ZoomViewer } from "@/components/product/ZoomViewer";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useCart } from "@/contexts/CartContext";
 import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
@@ -103,12 +105,115 @@ const LENS_PANE_WIDTH = 520;
 /** How far one arrow press moves a zoomed picture, in px. */
 const PAN_STEP = 60;
 
+type ViewerProps = {
+  product: Product;
+  selectedImageIndex: number;
+  onClose: () => void;
+  onSelectImage: (index: number) => void;
+  onChangeImage: (direction: "previous" | "next") => void;
+};
+
+/**
+ * The product's photos, opened from the product page: a press on the photo,
+ * the magnifier, or "+N" on the rail.
+ *
+ * Two shapes, one at a time (`useMediaQuery`, never both with one hidden). A
+ * wide screen keeps the grid beside a large stage with step zoom. Below `lg`
+ * it is `PhotoSheet` — every photo large, one under another, and a press on
+ * one opens it full screen to pinch and pan (`ZoomViewer`), on the owner's
+ * word: a phone's stage with two small zoom buttons was a desk's viewer
+ * squeezed onto a screen a thumb works.
+ */
+function ImageLightbox(props: ViewerProps) {
+  const wide = useMediaQuery("(min-width: 1024px)");
+  return wide ? <WideImageViewer {...props} /> : <PhotoSheet {...props} />;
+}
+
+/**
+ * A phone's "Images": every photo of the product, the width of the screen and
+ * square, one under another, opening at the one the shopper was looking at.
+ * Square frames, so a photo further up that has not loaded yet cannot push
+ * the one on screen down when it does. A video plays where it is; a photo is
+ * a button that opens it full screen, and closing that comes back here with
+ * the same photo in view and focus on it.
+ */
+function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage }: ViewerProps) {
+  const { t } = useTranslation();
+  useOverlay(true, onClose);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const [full, setFull] = useState(false);
+  const media = galleryOf(product);
+  useEffect(() => {
+    closeButton.current?.focus();
+    list.current?.children[selectedImageIndex]?.scrollIntoView({ block: "start", behavior: "instant" });
+    /* Once, on opening: the list does not follow the main photo afterwards. */
+  }, []);
+  /* Back from full screen, the photo last looked at is the one in view and
+     the one with focus — it may not be the one pressed, if the shopper swiped
+     along. Said here rather than left to the viewer's own return of focus,
+     because a phone does not focus a button it taps, so what the viewer saw
+     focused when it opened was not the photo. */
+  const wasFull = useRef(false);
+  useEffect(() => {
+    if (full) { wasFull.current = true; return; }
+    if (!wasFull.current) return;
+    const row = list.current?.children[selectedImageIndex];
+    row?.scrollIntoView({ block: "nearest", behavior: "instant" });
+    row?.querySelector<HTMLElement>("button, video")?.focus({ preventScroll: true });
+  }, [full]);
+
+  return (
+    <div className="fixed inset-0 z-[90] flex flex-col bg-[#f7f7f5]" role="dialog" aria-modal="true" aria-label={t("product.allImages", { name: product.title })}>
+      <div className="flex items-center justify-between gap-3 border-b border-[#e6e9ef] bg-white px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-extrabold text-[#0a285a]">{t("product.images")}</h2>
+          <p dir="auto" className="truncate text-[13px] ink-muted">{product.title}</p>
+        </div>
+        <button ref={closeButton} type="button" onClick={onClose} aria-label={t("product.closeViewer")} className="grid size-11 shrink-0 place-items-center rounded-full text-[#404553] hover:bg-[#0a285a]/[.06]">
+          <X className="size-6" aria-hidden />
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <p className="mb-3 text-[13px] font-semibold ink-muted">{t("product.photosHint")}</p>
+        <ul ref={list} className="space-y-3">
+          {media.map((item, index) => (
+            <li key={`${item.url}-${index}`} className="scroll-mt-3">
+              {item.kind === "video" ? (
+                <div className="overflow-hidden rounded-2xl border border-[#e2e5eb] bg-white">
+                  <video src={item.url} poster={item.posterUrl ?? undefined} controls playsInline preload="metadata" aria-label={item.altText ?? product.title} className="aspect-square w-full bg-black object-contain" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { onSelectImage(index); setFull(true); }}
+                  aria-label={t("product.openPhoto", { index: index + 1, total: media.length })}
+                  className="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border border-[#e2e5eb] bg-white p-4"
+                >
+                  <Thumb src={item.url} alt={item.altText ?? product.title} eager={index === selectedImageIndex} draggable={false} className="size-full object-contain" />
+                  <span aria-hidden className="absolute bottom-2.5 end-2.5 flex items-center gap-1.5 rounded-full bg-[#0a285a]/85 px-2.5 py-1 text-[12px] font-bold text-white">
+                    <ZoomIn className="size-3.5" />
+                    <bdi dir="ltr">{index + 1} / {media.length}</bdi>
+                  </span>
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+      {full ? (
+        <ZoomViewer items={media} index={selectedImageIndex} title={product.title} onIndex={onSelectImage} onClose={() => setFull(false)} />
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Full-screen viewer: every image as a grid on the left, the selected one large
  * on the right, with step zoom. This is the "inspect it properly" surface — the
  * hover lens is for a glance, this is for deciding.
  */
-function ImageLightbox({ product, selectedImageIndex, onClose, onSelectImage, onChangeImage }: {
+function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, onChangeImage }: {
   product: Product;
   selectedImageIndex: number;
   onClose: () => void;
@@ -462,7 +567,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   // changed — the rail scrolls in both axes depending on the breakpoint.
   const railRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const selected = railRef.current?.querySelector('[aria-selected="true"]');
+    const selected = railRef.current?.querySelector('[aria-current="true"]');
     selected?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [selectedImageIndex]);
 
@@ -547,14 +652,30 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
     });
   };
 
+  const swiped = useRef(false);
   const endSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
     const start = swipeStart.current;
     swipeStart.current = null;
+    swiped.current = false;
     if (!start || !hasMultipleImages) return;
     const travelled = event.clientX - start.x;
     // Ignore a mostly-vertical drag: that is the page being scrolled.
     if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
+    swiped.current = true;
     onChangeImage(swipeDirection(travelled, direction));
+  };
+  /*
+   * A press on the photo opens the photos, on the owner's word — on a phone,
+   * the list of every one, each a press from full screen. On the click, never
+   * the finger lifting: a phone sends its click after the lift, so opening on
+   * the lift put the list under the finger first and the click opened
+   * whichever photo landed there. Not after a swipe, and not on a video,
+   * whose own controls take the press.
+   */
+  const openFromPress = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (swiped.current) { swiped.current = false; return; }
+    if (isVideo || (event.target as HTMLElement).closest("video")) return;
+    onZoom();
   };
 
   const arrow = "pressable absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:size-11";
@@ -566,17 +687,17 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           <div
             ref={railRef}
             className="hide-scrollbar order-2 flex w-full min-w-0 shrink-0 gap-2.5 overflow-auto sm:order-1 sm:max-h-[460px] sm:w-[72px] sm:flex-col"
-            role="tablist"
+            role="group"
             aria-label={t("product.productImages")}
           >
             {railImages.map((item, index) => (
               <button
                 key={`${item.url}-${index}`}
-                role="tab"
+                type="button"
                 onClick={() => onSelectImage(index)}
                 onMouseEnter={() => { if (canHover) onSelectImage(index); }}
                 aria-label={t(item.kind === "video" ? "product.showVideo" : "product.showImage", { index: index + 1, total: media.length })}
-                aria-selected={selectedImageIndex === index}
+                aria-current={selectedImageIndex === index}
                 className={`pressable grid size-[62px] shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 transition-colors sm:size-[68px] ${selectedImageIndex === index ? "border-[#0a285a]" : "border-[#e2e5eb] hover:border-[#aac0da]"}`}
               >
                 {item.kind === "video" ? (
@@ -609,7 +730,8 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             onPointerDown={(event) => { swipeStart.current = { x: event.clientX, y: event.clientY }; }}
             onPointerUp={endSwipe}
             onPointerCancel={() => { swipeStart.current = null; }}
-            className="relative flex h-[340px] touch-pan-y items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-5 sm:h-[460px] sm:p-6"
+            onClick={openFromPress}
+            className={`relative flex h-[340px] touch-pan-y items-center justify-center overflow-hidden rounded-[1.25rem] border border-[#e2e5eb] bg-white p-5 sm:h-[460px] sm:p-6 ${isVideo ? "" : "cursor-zoom-in"}`}
           >
             {isVideo ? (
               /* `controls` rather than a bespoke player: the browser's own is
