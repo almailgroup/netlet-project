@@ -7,7 +7,7 @@
  * draft product cannot be recommended however well it scores, and that a
  * shopper with nothing to go on is told so rather than sold a claim.
  *
- * No `MISTRAL_API_KEY` is set here, so every one of these exercises the
+ * No AI gateway is configured here, so every one of these exercises the
  * deterministic path — which is the point: the model is an improvement on a
  * ranking that has to stand up without it.
  */

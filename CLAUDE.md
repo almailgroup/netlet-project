@@ -2013,15 +2013,30 @@ for the reason every other guard there does.
 the only thing that talks to Gemini (`gemini-2.5-flash`, thinking off, so the
 first word is not held behind a reasoning pass): `POST /api/ai/chat` streams the
 shop's assistant as Server-Sent Events, `POST /api/ai/catalog-assist` drafts a
-listing from a seller's notes and photos as JSON. Its `README.md` is the setup,
-`wrangler` commands included. **The shop's conversations run on it, on the
-owner's word** — the shop assistant, the product page's assistant and the help
-page's question box (see "The shop assistant") left this server's Mistral
-calls for it. **Six older model features still call Mistral from this server**
-(`MISTRAL_API_KEY`): search refinement, the Picked for you order, photo search,
-support drafts, the review queue's pass and the Arabic name. Each is called by
-this server and its answer checked here, so moving one means this server
-calling the gateway rather than a browser doing so — a change of its own.
+listing from a seller's notes and photos as JSON, and `POST /api/ai/generate`
+answers NetLet's own server. Its `README.md` is the setup, `wrangler` commands
+included. **Every model call NetLet makes is Gemini through it, and Mistral is
+gone, on the owner's word.** The shop's conversations moved first (see "The
+shop assistant"); then the six features this server called Mistral for —
+search refinement, the Picked for you order, photo search, support drafts, the
+review queue's pass and the Arabic name — and `MISTRAL_API_KEY` went with them.
+
+**The server's own calls use the same door with a token of their own**
+(`server/gemini.ts`). Each feature still builds its prompt and reads the answer
+by its own rules; `askModel` only carries the call, signing a `server` token for
+it — a minute long, its subject `s:<task>`, never handed out — and returning the
+text or null for every way it did not come, which each feature already had a
+deterministic answer for. **The prompt is built here, not in the Worker**,
+because these six read and write NetLet's own data and their rules live beside
+it; the Worker checks the shape and the sizes (`checkGenerateRequest`) and asks.
+It counts them **per feature and never by address** (`SERVER_LIMITER`, a
+backstop at 600 a minute): every call comes from Vercel's few addresses, and the
+per-shopper ceilings are already counted in Postgres before each call. A server
+subject only rides a server token and a server token only names a task NetLet
+has (`isClaims`), so neither can stand in for the other; `server/gemini.test.ts`
+runs `askModel` through the Worker's real handler. **The feature's deadline is
+the server's**, and the Worker is given 300ms less for Gemini, so a slow answer
+is refused there rather than abandoned here.
 
 **CORS is not authentication, so a browser reaches the gateway only with a
 token this server signed.** CORS stops another site's page reading an answer

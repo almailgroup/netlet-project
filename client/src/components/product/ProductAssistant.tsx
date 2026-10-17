@@ -15,8 +15,7 @@
  * **It answers through the AI gateway**, streamed: the listing goes as the
  * product brief (`briefFor`, the page's own public text and nothing about the
  * shopper), and the gateway's prompt holds the model to it — answer from the
- * listing, never a price, stock or a date. It was a Mistral call on NetLet's
- * server before the gateway existed; it looks the same.
+ * listing, never a price, stock or a date.
  *
  * **The panel is absent, not broken, when the gateway is not set up** or the
  * shop assistant is switched off. `available` is asked once and the whole

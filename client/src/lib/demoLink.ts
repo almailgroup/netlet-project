@@ -330,7 +330,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { products: found.slice(0, limit), total: found.length, correctedTo, elsewhere, capped: false };
     }
 
-    /* The live version asks Mistral to rewrite the query against the catalog.
+    /* The live version asks Gemini to rewrite the query against the catalog.
        There is no API key in a static build, so fall back to the shopper's own
        words — LiveSearch already filters the catalog locally with them. */
     case "search.refine": {

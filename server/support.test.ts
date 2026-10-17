@@ -36,7 +36,8 @@ beforeAll(async () => {
     }
   }
   vi.doMock("./db", async importOriginal => ({ ...(await importOriginal<typeof import("./db.js")>()), getDb: async () => db }));
-  vi.stubEnv("MISTRAL_API_KEY", "test-key-not-real");
+  vi.stubEnv("AI_GATEWAY_URL", "https://gateway.test");
+  vi.stubEnv("AI_GATEWAY_SECRET", "k".repeat(48));
   vi.doMock("./features", () => ({ featureOn: async () => true }));
   support = await import("./support.js");
   drafts = await import("./supportDraft.js");
@@ -123,11 +124,14 @@ describe("answering", () => {
 describe("drafting a reply", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  /* The AI gateway, as far as the draft can tell: one answer's text. */
   function replying(status: number, content: unknown) {
     const sent: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (_url: string, init: { body: string }) => {
-      sent.push(init.body);
-      return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => {
+      expect(url).toBe("https://gateway.test/api/ai/generate");
+      sent.push(JSON.parse(init.body).prompt);
+      const body = status === 200 ? { ok: true, data: { text: content } } : { ok: false, error: { code: "model_unavailable", message: "x" } };
+      return new Response(JSON.stringify(body), { status });
     }));
     return sent;
   }

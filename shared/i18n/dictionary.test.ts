@@ -49,7 +49,10 @@ describe("dictionary completeness", () => {
       "admin.payoutFilesNote", "admin.payoutDownloadCsv", "admin.payoutDownloadXml",
       // Names the variable an administrator sets in the deployment's settings,
       // which is spelled the same in every language — the `https` reason.
-      "features.why.noAiKey", "features.why.noGateway", "features.why.noAiService",
+      "features.why.noGateway",
+      // The model and the company that runs it, named as their makers name
+      // them on an Arabic phone — the maps' reason.
+      "search.photoConsent", "privacy.who.ai",
       // An example order number, in the format the confirmation prints and
       // the lookup box expects — a literal, like `https`.
       "help.lookupNote",

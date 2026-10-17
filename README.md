@@ -86,7 +86,7 @@ skips silently.
 | [`docs/SUPABASE.md`](docs/SUPABASE.md) | Database setup |
 | [`docs/SUPABASE-AUTH.md`](docs/SUPABASE-AUTH.md) | Authentication setup — where registered accounts live |
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
-| [`docs/MISTRAL.md`](docs/MISTRAL.md) | The search-refinement API contract |
+| [`workers/ai-gateway/README.md`](workers/ai-gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | What was asked for |
 | [`CLAUDE.md`](CLAUDE.md) | Why the code is the way it is — read this before changing it |
 

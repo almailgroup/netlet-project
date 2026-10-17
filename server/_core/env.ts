@@ -21,9 +21,9 @@ export const ENV = {
    * as products with no pictures and nothing in the log.
    */
   mediaHost: process.env.MEDIA_HOST ?? "",
-  mistralApiKey: process.env.MISTRAL_API_KEY ?? "",
   /* The AI gateway (`workers/ai-gateway/`): the Cloudflare Worker that holds
-     the Gemini key. Its address, and the secret this server signs browsers'
+     the Gemini key and answers every model call NetLet makes, from a browser
+     or from this server. Its address, and the secret this server signs
      tokens with — the same value the Worker holds. Either unset, or the
      secret under 32 characters, and nothing that uses the gateway is offered
      (`server/aiGateway.ts`). */

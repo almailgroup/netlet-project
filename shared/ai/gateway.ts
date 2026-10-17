@@ -19,21 +19,38 @@
  * scope before anything reaches the model. HMAC through Web Crypto, which all
  * three runtimes carry, and `crypto.subtle.verify`, which compares in
  * constant time.
+ *
+ * **NetLet's server uses the same door for its own model calls** — search
+ * refinement, the "Picked for you" order, photo search, support drafts, the
+ * review queue's pass and the Arabic name — with a `server` token it signs for
+ * itself and never hands out (`POST /api/ai/generate`). So the Gemini key is
+ * in one place, the Worker, and there is one provider and one bill.
  */
 import type { ProductBrief } from "../commerce/assistant.js";
 
 /** The model every route uses unless the Worker's `GEMINI_MODEL` says otherwise. */
 export const GATEWAY_MODEL = "gemini-2.5-flash";
 
-/** What a token lets its holder do: talk to the shop's assistant, or draft a product. */
-export const GATEWAY_SCOPES = ["chat", "catalog"] as const;
+/**
+ * What a token lets its holder do: talk to the shop's assistant, draft a
+ * product, or — NetLet's server only — ask for one answer of its own.
+ */
+export const GATEWAY_SCOPES = ["chat", "catalog", "server"] as const;
 export type GatewayScope = (typeof GATEWAY_SCOPES)[number];
 
 export const GATEWAY_LOCALES = ["en", "ar"] as const;
 export type GatewayLocale = (typeof GATEWAY_LOCALES)[number];
 
-/** The two routes, as the Worker serves them. */
-export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-assist" } as const;
+/** The routes, as the Worker serves them. */
+export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-assist", server: "/api/ai/generate" } as const;
+
+/**
+ * What NetLet's server asks the model for, one name per feature. A `server`
+ * token's subject is `s:<task>`, so the Worker's ceiling and its log count
+ * each feature apart, and a runaway loop in one cannot starve the others.
+ */
+export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName"] as const;
+export type ServerTask = (typeof SERVER_TASKS)[number];
 
 /**
  * Five minutes. Short, because a token is a bearer credential handed to a
@@ -55,7 +72,8 @@ export type GatewayClaims = {
   /**
    * Who the limits count against: `u:<account id>` signed in, `a:<digest>`
    * signed out, the digest being the server's keyed hash of the address so a
-   * guest cannot reset their own ceiling by asking for a new token.
+   * guest cannot reset their own ceiling by asking for a new token — and
+   * `s:<task>` for NetLet's server, which only a `server` token carries.
    */
   sub: string;
   /** For `catalog`: the store the draft is for, or null for an administrator. */
@@ -105,7 +123,10 @@ function isClaims(value: unknown): value is GatewayClaims {
   const claims = value as Record<string, unknown>;
   return claims.v === 1
     && GATEWAY_SCOPES.includes(claims.scope as GatewayScope)
-    && typeof claims.sub === "string" && /^[ua]:[A-Za-z0-9_-]{1,64}$/.test(claims.sub)
+    && typeof claims.sub === "string" && /^[uas]:[A-Za-z0-9_-]{1,64}$/.test(claims.sub)
+    /* A server subject only on a server token, and a server token only for a task. */
+    && (claims.scope === "server") === claims.sub.startsWith("s:")
+    && (claims.scope !== "server" || SERVER_TASKS.includes(claims.sub.slice(2) as ServerTask))
     && (claims.vendor === null || (Number.isInteger(claims.vendor) && (claims.vendor as number) > 0))
     && Number.isInteger(claims.exp);
 }
@@ -362,6 +383,73 @@ export function checkCatalogRequest(body: unknown, departments: readonly string[
       notes,
       department: department as string | null,
       images: (images as CatalogImage[]).map(image => ({ mimeType: image.mimeType, data: image.data })),
+    },
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* POST /api/ai/generate — NetLet's server only                              */
+/* ------------------------------------------------------------------------ */
+
+export const MAX_GENERATE_SYSTEM = 4000;
+export const MAX_GENERATE_PROMPT = 16_000;
+export const MAX_GENERATE_OUTPUT = 1024;
+/** Each feature keeps its own deadline under this; a call is never held longer. */
+export const MAX_GENERATE_MS = 20_000;
+export const MAX_GENERATE_BODY_BYTES = MAX_IMAGE_BASE64 + 64 * 1024;
+
+/**
+ * One answer for one of NetLet's own features. The prompt is built on the
+ * server from the feature's own rules — what it may send, how a shopper's or
+ * a seller's words are fenced — so the Worker carries no copy of them; it
+ * checks the shape and the sizes and passes the call on.
+ */
+export type GenerateRequest = {
+  system: string;
+  prompt: string;
+  /** A photo, for photo search: base64 without the `data:` prefix. */
+  image?: CatalogImage | null;
+  /** Asks for a JSON object back, which the server parses and holds to its own rules. */
+  json: boolean;
+  temperature: number;
+  maxOutputTokens: number;
+  timeoutMs: number;
+};
+
+/** What comes back: the model's text, which the feature reads with its own rules. */
+export type GenerateAnswer = { text: string };
+
+/** A generate body as the gateway will accept it, or the first thing wrong with it. */
+export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
+  if (!body || typeof body !== "object") return fail("body", "must be a JSON object");
+  const request = body as Record<string, unknown>;
+  if (!shortText(request.system, MAX_GENERATE_SYSTEM) || !request.system.trim()) return fail("system", `1 to ${MAX_GENERATE_SYSTEM} characters`);
+  if (!shortText(request.prompt, MAX_GENERATE_PROMPT)) return fail("prompt", `at most ${MAX_GENERATE_PROMPT} characters`);
+  const image = request.image ?? null;
+  if (image !== null) {
+    if (typeof image !== "object") return fail("image", "must be an object or null");
+    const { mimeType, data } = image as Record<string, unknown>;
+    if (!IMAGE_TYPES.includes(mimeType as ImageType)) return fail("image.mimeType", IMAGE_TYPES.join(", "));
+    if (typeof data !== "string" || !data || data.length > MAX_IMAGE_BASE64 || !BASE64.test(data)) return fail("image.data", "base64, at most about 1 MB");
+  }
+  if (!request.prompt.trim() && image === null) return fail("prompt", "a prompt or a photo");
+  if (typeof request.json !== "boolean") return fail("json", "true or false");
+  const { temperature, maxOutputTokens, timeoutMs } = request;
+  if (typeof temperature !== "number" || !(temperature >= 0 && temperature <= 1)) return fail("temperature", "0 to 1");
+  if (!Number.isInteger(maxOutputTokens) || (maxOutputTokens as number) < 1 || (maxOutputTokens as number) > MAX_GENERATE_OUTPUT) {
+    return fail("maxOutputTokens", `1 to ${MAX_GENERATE_OUTPUT}`);
+  }
+  if (!Number.isInteger(timeoutMs) || (timeoutMs as number) < 500 || (timeoutMs as number) > MAX_GENERATE_MS) return fail("timeoutMs", `500 to ${MAX_GENERATE_MS}`);
+  return {
+    ok: true,
+    value: {
+      system: request.system,
+      prompt: request.prompt,
+      image: image ? { mimeType: (image as CatalogImage).mimeType, data: (image as CatalogImage).data } : null,
+      json: request.json,
+      temperature,
+      maxOutputTokens: maxOutputTokens as number,
+      timeoutMs: timeoutMs as number,
     },
   };
 }

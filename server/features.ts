@@ -13,7 +13,6 @@
  * nothing configured has always meant.
  */
 import { eq, isNotNull, sql } from "drizzle-orm";
-import { ENV } from "./_core/env.js";
 import { gatewayConfigured } from "./_core/aiGateway.js";
 import type { MessageKey } from "../shared/i18n/dictionary.js";
 import { featureSwitches, orderItems, users } from "../drizzle/schema.js";
@@ -80,16 +79,14 @@ export async function listSwitches(actor: Actor) {
 type Readiness = { kind: "blocked" | "note"; reason: MessageKey };
 
 async function readinessOf(enabled: (key: FeatureKey) => boolean): Promise<Partial<Record<FeatureKey, Readiness>>> {
-  /* Two services answer model calls: the AI gateway (the shop assistant and
-     product drafting) and Mistral from this server (everything older). */
-  const keyed = Boolean(ENV.mistralApiKey);
+  /* Every model call goes through the AI gateway, to Gemini. */
   const gateway = gatewayConfigured();
   const modelReady = (): Readiness | null =>
-    !keyed ? { kind: "blocked", reason: "features.why.noAiKey" } : !enabled("ai") ? { kind: "blocked", reason: "features.why.aiOff" } : null;
+    !gateway ? { kind: "blocked", reason: "features.why.noGateway" } : !enabled("ai") ? { kind: "blocked", reason: "features.why.aiOff" } : null;
   const out: Partial<Record<FeatureKey, Readiness>> = {};
-  if (!keyed && !gateway) out.ai = { kind: "blocked", reason: "features.why.noAiService" };
-  if (!gateway) out.assistant = { kind: "blocked", reason: "features.why.noGateway" };
-  else if (!enabled("ai")) out.assistant = { kind: "blocked", reason: "features.why.aiOff" };
+  if (!gateway) out.ai = { kind: "blocked", reason: "features.why.noGateway" };
+  const assistant = modelReady();
+  if (assistant) out.assistant = assistant;
   const photo = modelReady();
   if (photo) out.photoSearch = photo;
   out.recommendations = { kind: "note", reason: "features.why.recommendationsWhere" };

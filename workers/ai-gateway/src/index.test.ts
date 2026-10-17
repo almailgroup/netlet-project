@@ -24,7 +24,7 @@ const token = (overrides: Partial<GatewayClaims> = {}) =>
 type Sent = { url: string; headers: Headers; body: Record<string, unknown> };
 
 /** Gemini, as far as these routes can tell: an SSE stream, or one JSON answer. */
-function fakeGemini(reply: { stream?: string[]; json?: unknown; status?: number; blocked?: boolean }) {
+function fakeGemini(reply: { stream?: string[]; json?: unknown; text?: string; status?: number; blocked?: boolean }) {
   const sent: Sent[] = [];
   const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
     sent.push({ url: String(input), headers: new Headers(init?.headers), body: JSON.parse(String(init?.body)) });
@@ -37,7 +37,7 @@ function fakeGemini(reply: { stream?: string[]; json?: unknown; status?: number;
     }
     const body = reply.blocked
       ? { promptFeedback: { blockReason: "SAFETY" } }
-      : { candidates: [{ content: { parts: [{ text: JSON.stringify(reply.json) }] }, finishReason: "STOP" }] };
+      : { candidates: [{ content: { parts: [{ text: reply.text ?? JSON.stringify(reply.json) }] }, finishReason: "STOP" }] };
     return Response.json(body);
   }) as typeof fetch;
   return { fetcher, sent };
@@ -212,6 +212,61 @@ describe("POST /api/ai/catalog-assist", () => {
     expect([blocked.status, (await blocked.json()).error.code]).toEqual([422, "model_refused"]);
     const empty = await post("/api/ai/catalog-assist", { locale: "en", notes: "x" }, { token: await catalogToken(), fetcher: fakeGemini({ json: { titleEn: "" } }).fetcher });
     expect([empty.status, (await empty.json()).error.code]).toEqual([502, "model_unavailable"]);
+  });
+});
+
+describe("POST /api/ai/generate", () => {
+  const serverToken = (task = "photoSearch") => token({ scope: "server", sub: `s:${task}` });
+  const ask = { system: "Name the product in the photo.", prompt: "", image: { mimeType: "image/jpeg", data: "/9j/4AAQ" }, json: true, temperature: 0, maxOutputTokens: 60, timeoutMs: 9000 };
+
+  it("answers NetLet's server with the model's text, photo first", async () => {
+    const { fetcher, sent } = fakeGemini({ text: '{"query":"brass lamp"}' });
+    const response = await post("/api/ai/generate", { ...ask, prompt: "In English." }, { token: await serverToken(), origin: null, fetcher });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, data: { text: '{"query":"brass lamp"}' } });
+    expect(sent[0].url).toMatch(/:generateContent$/);
+    expect(sent[0].body.generationConfig).toEqual({ temperature: 0, maxOutputTokens: 60, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: "application/json" });
+    expect((sent[0].body.systemInstruction as { parts: { text: string }[] }).parts[0].text).toBe("Name the product in the photo.");
+    expect((sent[0].body.contents as { parts: unknown[] }[])[0].parts).toEqual([{ inlineData: { mimeType: "image/jpeg", data: "/9j/4AAQ" } }, { text: "In English." }]);
+  });
+
+  it("asks for plain text when the feature wants a line rather than JSON", async () => {
+    const { fetcher, sent } = fakeGemini({ text: "مصباح نحاسي" });
+    const response = await post("/api/ai/generate", { ...ask, image: null, prompt: "Product name:\n<<<Brass lamp>>>", json: false }, { token: await serverToken("arabicName"), origin: null, fetcher });
+    expect((await response.json()).data.text).toBe("مصباح نحاسي");
+    expect(sent[0].body.generationConfig).not.toHaveProperty("responseMimeType");
+  });
+
+  it("is only for a server token, and a server token is only for this route and a task NetLet has", async () => {
+    const codes = async (response: Response) => [response.status, (await response.json()).error.code];
+    expect(await codes(await post("/api/ai/generate", ask, { token: await token(), origin: null }))).toEqual([403, "wrong_scope"]);
+    expect(await codes(await post("/api/ai/chat", question, { token: await serverToken(), origin: null }))).toEqual([403, "wrong_scope"]);
+    /* A server scope with a shopper's subject, or a shopper's scope with a server's, is not a token NetLet signs. */
+    expect(await codes(await post("/api/ai/generate", ask, { token: await token({ scope: "server", sub: "u:7" }), origin: null }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/ai/chat", question, { token: await token({ sub: "s:photoSearch" }) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/ai/generate", ask, { token: await serverToken("anything"), origin: null }))).toEqual([401, "unauthorised"]);
+  });
+
+  it("counts per feature, never by address: every call comes from the same few servers", async () => {
+    const seen: string[] = [];
+    const limiter = (allow: boolean): RateLimiter => ({ limit: async ({ key }) => { seen.push(key); return { success: allow }; } });
+    const { fetcher } = fakeGemini({ text: "{}" });
+    const ok = await post("/api/ai/generate", ask, { token: await serverToken(), origin: null, fetcher, env: env({ SERVER_LIMITER: limiter(true), ADDRESS_LIMITER: limiter(false) }), headers: { "cf-connecting-ip": "76.76.21.21" } });
+    expect(ok.status).toBe(200);
+    expect(seen).toEqual(["server:s:photoSearch"]);
+    const refused = await post("/api/ai/generate", ask, { token: await serverToken(), origin: null, fetcher, env: env({ SERVER_LIMITER: limiter(false) }) });
+    expect(refused.status).toBe(429);
+  });
+
+  it("refuses an unbounded call before asking anybody, and answers a refusal with its code", async () => {
+    const { fetcher, sent } = fakeGemini({ text: "{}" });
+    const long = await post("/api/ai/generate", { ...ask, timeoutMs: 60_000 }, { token: await serverToken(), origin: null, fetcher });
+    expect(await long.json()).toMatchObject({ ok: false, error: { code: "bad_request", field: "timeoutMs" } });
+    const empty = await post("/api/ai/generate", { ...ask, image: null }, { token: await serverToken(), origin: null, fetcher });
+    expect((await empty.json()).error.field).toBe("prompt");
+    expect(sent).toHaveLength(0);
+    const blocked = await post("/api/ai/generate", ask, { token: await serverToken(), origin: null, fetcher: fakeGemini({ text: "{}", blocked: true }).fetcher });
+    expect([blocked.status, (await blocked.json()).error.code]).toEqual([422, "model_refused"]);
   });
 });
 

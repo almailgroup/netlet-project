@@ -4,17 +4,24 @@
  * `shared/commerce/photoSearch.ts`.
  *
  * Every failure is one answer, the habit the assistant and the
- * recommendation rail already keep: no key, models switched off, a timeout, a
- * refusal, an unreadable reply. The panel has two cases to draw — words to
- * search for, or "nothing found" — and never a stack trace.
+ * recommendation rail already keep: no gateway, models switched off, a
+ * timeout, a refusal, an unreadable reply. The panel has two cases to draw —
+ * words to search for, or "nothing found" — and never a stack trace. Gemini
+ * reads the photo, through the AI gateway (`server/gemini.ts`).
  */
-import { ENV } from "./_core/env.js";
-import { featureOn } from "./features.js";
+import { askModel, modelAvailable } from "./gemini.js";
 import { queryFromModel } from "../shared/commerce/photoSearch.js";
+import type { CatalogImage } from "../shared/ai/gateway.js";
 
-/** Whether a photo can be read at all: a key, and model calls not switched off (2.3). */
+/** Whether a photo can be read at all: the gateway set up, and model calls not switched off (2.3). */
 export async function photoSearchAvailable(): Promise<boolean> {
-  return Boolean(ENV.mistralApiKey) && (await featureOn("ai"));
+  return modelAvailable();
+}
+
+/** `data:image/jpeg;base64,…` as the gateway takes a picture, or null for anything else. */
+function asImage(dataUrl: string): CatalogImage | null {
+  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl);
+  return match ? { mimeType: match[1] as CatalogImage["mimeType"], data: match[2] } : null;
 }
 
 /**
@@ -37,32 +44,20 @@ function instructionsFor(locale: "en" | "ar"): string {
 export type PhotoReply = { kind: "query"; query: string } | { kind: "nothing" } | { kind: "unavailable" };
 
 export async function describePhoto(dataUrl: string, locale: "en" | "ar"): Promise<PhotoReply> {
-  if (!(await photoSearchAvailable())) return { kind: "unavailable" };
-  try {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${ENV.mistralApiKey}`, "Content-Type": "application/json" },
-      /* Somebody is watching a scanning sweep; nine seconds is the assistant's
-         patience and the right one here. */
-      signal: AbortSignal.timeout(9000),
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        temperature: 0,
-        max_tokens: 60,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: instructionsFor(locale) },
-          { role: "user", content: [{ type: "image_url", image_url: dataUrl }] },
-        ],
-      }),
-    });
-    if (!response.ok) return { kind: "unavailable" };
-    const body = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
-    const content = body.choices?.[0]?.message?.content;
-    if (typeof content !== "string") return { kind: "unavailable" };
-    const query = queryFromModel(content);
-    return query ? { kind: "query", query } : { kind: "nothing" };
-  } catch {
-    return { kind: "unavailable" };
-  }
+  const image = asImage(dataUrl);
+  if (!image || !(await photoSearchAvailable())) return { kind: "unavailable" };
+  const content = await askModel("photoSearch", {
+    system: instructionsFor(locale),
+    prompt: "",
+    image,
+    json: true,
+    temperature: 0,
+    maxOutputTokens: 60,
+    /* Somebody is watching a scanning sweep; nine seconds is the assistant's
+       patience and the right one here. */
+    deadlineMs: 9000,
+  });
+  if (content === null) return { kind: "unavailable" };
+  const query = queryFromModel(content);
+  return query ? { kind: "query", query } : { kind: "nothing" };
 }

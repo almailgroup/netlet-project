@@ -21,7 +21,7 @@ const ROOT = path.resolve(import.meta.dirname, "../..");
  * Procedures the demo never reaches, with the reason.
  *
  * Auth is the storefront's own path and `demoLink` answers what it needs;
- * `search.refine` requires a Mistral key and falls back to local filtering by
+ * `search.refine` requires the AI gateway and falls back to local filtering by
  * design, which is behaviour worth keeping in the demo rather than faking.
  */
 const NOT_IN_DEMO = new Set([

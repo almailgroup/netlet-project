@@ -1,7 +1,7 @@
 /**
  * The Worker's only conversation with Gemini.
  *
- * Two calls — one answer as JSON, one answer as a stream — and one rule for
+ * Three calls — one answer as text, one as JSON, one as a stream — and one rule for
  * every way they fail: a refused key, a quota, a 500, a timeout, a body that
  * is not JSON all become `GeminiFailure`, and the route turns that into
  * `model_unavailable`. The browser is never shown Google's own error text,
@@ -26,6 +26,8 @@ export type GeminiCall = {
   maxOutputTokens: number;
   /** Asks for JSON held to this schema (Gemini's OpenAPI subset). */
   schema?: unknown;
+  /** Asks for a JSON object with no schema: NetLet's server holds the answer to its own rules. */
+  json?: boolean;
   timeoutMs: number;
   /** The fetch to use; the tests hand in their own. */
   fetcher?: typeof fetch;
@@ -52,7 +54,8 @@ function requestBody(call: GeminiCall): string {
       temperature: call.temperature,
       maxOutputTokens: call.maxOutputTokens,
       thinkingConfig: { thinkingBudget: 0 },
-      ...(call.schema ? { responseMimeType: "application/json", responseSchema: call.schema } : {}),
+      ...(call.schema || call.json ? { responseMimeType: "application/json" } : {}),
+      ...(call.schema ? { responseSchema: call.schema } : {}),
     },
   });
 }
@@ -88,8 +91,8 @@ function textOf(body: GeminiResponse): string {
 
 const BLOCKED = new Set(["SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "RECITATION"]);
 
-/** One answer, parsed as JSON. */
-export async function generateJson(call: GeminiCall): Promise<unknown> {
+/** One answer, as its text. */
+export async function generateText(call: GeminiCall): Promise<string> {
   const response = await post(call, ":generateContent");
   let body: GeminiResponse;
   try {
@@ -100,8 +103,14 @@ export async function generateJson(call: GeminiCall): Promise<unknown> {
   if (body.promptFeedback?.blockReason || BLOCKED.has(body.candidates?.[0]?.finishReason ?? "")) {
     throw new GeminiFailure("blocked", body.promptFeedback?.blockReason ?? body.candidates?.[0]?.finishReason ?? "blocked");
   }
+  return textOf(body);
+}
+
+/** One answer, parsed as JSON. */
+export async function generateJson(call: GeminiCall): Promise<unknown> {
+  const text = await generateText(call);
   try {
-    return JSON.parse(textOf(body));
+    return JSON.parse(text);
   } catch {
     throw new GeminiFailure("malformed", "Gemini's text was not the JSON asked for");
   }

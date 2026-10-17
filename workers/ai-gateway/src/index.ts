@@ -5,6 +5,10 @@
  *   GET  / or /healthz            whether it is configured, and which model
  *   POST /api/ai/chat             the shop's assistant, streamed as Server-Sent Events
  *   POST /api/ai/catalog-assist   a product listing drafted from notes and photos, as JSON
+ *   POST /api/ai/generate         one answer for NetLet's own server — search refinement, the
+ *                                 "Picked for you" order, photo search, support drafts, the
+ *                                 review queue's pass, the Arabic name — with a token only the
+ *                                 server signs and never hands out
  *
  * Every POST passes the same gates, in order, each answered with a code from
  * `GATEWAY_ERRORS` and its own status, never Google's text:
@@ -18,7 +22,10 @@
  *    route's scope — a shopper's chat token cannot draft products.
  * 3. **Ceilings.** Per caller (`sub`) per route, and per network address
  *    across both, through Cloudflare's rate-limiting bindings — so a guest
- *    asking for a fresh token does not get a fresh allowance.
+ *    asking for a fresh token does not get a fresh allowance. NetLet's server
+ *    is counted per feature and never by address: every call it makes comes
+ *    from the same few Vercel addresses, and each feature keeps its own
+ *    per-shopper ceiling in Postgres before it calls.
  * 4. **The body.** Size first, unread, then shape (`checkChatRequest`,
  *    `checkCatalogRequest`), then a shopper's question carrying a phone
  *    number, an email or a link is refused before it reaches a third party —
@@ -30,8 +37,10 @@ import {
   GATEWAY_STATUS,
   MAX_CATALOG_BODY_BYTES,
   MAX_CHAT_BODY_BYTES,
+  MAX_GENERATE_BODY_BYTES,
   checkCatalogRequest,
   checkChatRequest,
+  checkGenerateRequest,
   sseEvent,
   verifyGatewayToken,
   type GatewayClaims,
@@ -40,7 +49,7 @@ import {
 } from "../../../shared/ai/gateway.js";
 import { CATALOG_RESPONSE_SCHEMA, DEPARTMENT_SLUGS, draftFromModel } from "../../../shared/ai/catalogDraft.js";
 import { contactFindings } from "../../../shared/commerce/contactFilter.js";
-import { GeminiFailure, generateJson, streamText, type StreamPiece } from "./gemini.js";
+import { GeminiFailure, generateJson, generateText, streamText, type GeminiPart, type StreamPiece } from "./gemini.js";
 import { catalogContents, catalogSystem, chatContents, chatSystem } from "./prompts.js";
 
 /** Cloudflare's rate-limiting binding, as much of it as this uses. */
@@ -58,6 +67,8 @@ export interface Env {
   CHAT_LIMITER?: RateLimiter;
   CATALOG_LIMITER?: RateLimiter;
   ADDRESS_LIMITER?: RateLimiter;
+  /** NetLet's server, per feature. */
+  SERVER_LIMITER?: RateLimiter;
 }
 
 /** What the tests replace: the network and the clock. */
@@ -66,6 +77,13 @@ export type Seams = { fetcher?: typeof fetch; now?: () => number };
 const ROUTE_SCOPE: Record<string, GatewayScope> = {
   [GATEWAY_ROUTES.chat]: "chat",
   [GATEWAY_ROUTES.catalog]: "catalog",
+  [GATEWAY_ROUTES.server]: "server",
+};
+
+const BODY_LIMIT: Record<GatewayScope, number> = {
+  chat: MAX_CHAT_BODY_BYTES,
+  catalog: MAX_CATALOG_BODY_BYTES,
+  server: MAX_GENERATE_BODY_BYTES,
 };
 
 function allowedOrigins(env: Env): string[] {
@@ -108,10 +126,11 @@ async function readJson(request: Request, limit: number): Promise<{ ok: true; bo
 }
 
 async function underCeiling(env: Env, scope: GatewayScope, claims: GatewayClaims, address: string): Promise<boolean> {
-  const perCaller = scope === "chat" ? env.CHAT_LIMITER : env.CATALOG_LIMITER;
+  const perCaller = scope === "chat" ? env.CHAT_LIMITER : scope === "catalog" ? env.CATALOG_LIMITER : env.SERVER_LIMITER;
+  const counted = scope !== "server" && env.ADDRESS_LIMITER && address;
   const [caller, network] = await Promise.all([
     perCaller ? perCaller.limit({ key: `${scope}:${claims.sub}` }) : { success: true },
-    env.ADDRESS_LIMITER && address ? env.ADDRESS_LIMITER.limit({ key: address }) : { success: true },
+    counted ? env.ADDRESS_LIMITER!.limit({ key: address }) : { success: true },
   ]);
   return caller.success && network.success;
 }
@@ -201,6 +220,37 @@ async function catalog(body: unknown, env: Env, headers: Headers, seams: Seams):
   }
 }
 
+/**
+ * One answer for NetLet's server. The prompt arrives built — the feature's
+ * own rules decided what went into it on the server — so this checks sizes
+ * and shape, asks once, and hands back the text for the feature to read.
+ */
+async function generate(body: unknown, claims: GatewayClaims, env: Env, headers: Headers, seams: Seams): Promise<Response> {
+  const checked = checkGenerateRequest(body);
+  if (!checked.ok) return refuse("bad_request", checked.message, headers, checked.field);
+  const request = checked.value;
+  const parts: GeminiPart[] = [];
+  if (request.image) parts.push({ inlineData: { mimeType: request.image.mimeType, data: request.image.data } });
+  if (request.prompt.trim()) parts.push({ text: request.prompt });
+  try {
+    const text = await generateText({
+      apiKey: env.GEMINI_API_KEY!,
+      model: env.GEMINI_MODEL || GATEWAY_MODEL,
+      system: request.system,
+      contents: [{ role: "user", parts }],
+      temperature: request.temperature,
+      maxOutputTokens: request.maxOutputTokens,
+      json: request.json,
+      timeoutMs: request.timeoutMs,
+      fetcher: seams.fetcher,
+    });
+    return json(200, { ok: true, data: { text } }, headers);
+  } catch (error) {
+    console.warn("gateway generate", claims.sub, error instanceof GeminiFailure ? error.reason : "error", String(error));
+    return refuse(failureCode(error), "The model could not answer", headers);
+  }
+}
+
 export async function handle(request: Request, env: Env, seams: Seams = {}): Promise<Response> {
   const url = new URL(request.url);
   const origin = request.headers.get("origin");
@@ -239,10 +289,12 @@ export async function handle(request: Request, env: Env, seams: Seams = {}): Pro
   const address = request.headers.get("cf-connecting-ip") ?? "";
   if (!(await underCeiling(env, scope, claims, address))) return refuse("rate_limited", "Too many requests; try again in a minute", headers);
 
-  const body = await readJson(request, scope === "chat" ? MAX_CHAT_BODY_BYTES : MAX_CATALOG_BODY_BYTES);
+  const body = await readJson(request, BODY_LIMIT[scope]);
   if (!body.ok) return refuse(body.code, body.message, headers);
 
-  return scope === "chat" ? chat(body.body, env, headers, seams) : catalog(body.body, env, headers, seams);
+  if (scope === "chat") return chat(body.body, env, headers, seams);
+  if (scope === "catalog") return catalog(body.body, env, headers, seams);
+  return generate(body.body, claims, env, headers, seams);
 }
 
 export default {

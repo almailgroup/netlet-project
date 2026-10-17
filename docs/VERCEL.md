@@ -115,7 +115,8 @@ is ever exposed.
 ### Optional
 
 ```
-MISTRAL_API_KEY             # AI search refinement; without it search falls back to local filtering
+AI_GATEWAY_URL              # The AI gateway (workers/ai-gateway/README.md): every model call goes through it
+AI_GATEWAY_SECRET           # 32+ characters, the same value the Worker holds; either unset turns AI off
 VITE_ANALYTICS_ENDPOINT     # Umami; both are public, both are build-time
 VITE_ANALYTICS_WEBSITE_ID
 ```

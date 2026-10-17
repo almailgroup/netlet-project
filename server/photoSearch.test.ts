@@ -12,18 +12,21 @@ let photo: typeof import("./photoSearch.js");
 const IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==";
 
 beforeAll(async () => {
-  vi.stubEnv("MISTRAL_API_KEY", "test-key-not-real");
+  vi.stubEnv("AI_GATEWAY_URL", "https://gateway.test");
+  vi.stubEnv("AI_GATEWAY_SECRET", "k".repeat(48));
   vi.doMock("./features", () => ({ featureOn: async () => true }));
   photo = await import("./photoSearch.js");
 });
 
 afterEach(() => vi.unstubAllGlobals());
 
+/* The AI gateway, as far as the call can tell: one answer's text. */
 function replying(status: number, content: unknown) {
-  const calls: { url: string; body: Record<string, unknown> }[] = [];
-  vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => {
-    calls.push({ url, body: JSON.parse(init.body) });
-    return new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
+  const calls: { url: string; headers: Headers; body: Record<string, unknown> }[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string; headers: Record<string, string> }) => {
+    calls.push({ url, headers: new Headers(init.headers), body: JSON.parse(init.body) });
+    const body = status === 200 ? { ok: true, data: { text: content } } : { ok: false, error: { code: "model_unavailable", message: "x" } };
+    return new Response(JSON.stringify(body), { status });
   }));
   return calls;
 }
@@ -32,18 +35,18 @@ describe("reading a photo", () => {
   it("sends the photo and the instructions, and nothing about the shopper", async () => {
     const calls = replying(200, '{"query": "brass table lamp"}');
     expect(await photo.describePhoto(IMAGE, "en")).toEqual({ kind: "query", query: "brass table lamp" });
-    const messages = calls[0].body.messages as Array<{ role: string; content: unknown }>;
-    expect(messages).toHaveLength(2);
-    expect(messages[1].content).toEqual([{ type: "image_url", image_url: IMAGE }]);
-    /* The whole request: a model, its settings, the instructions and the photo. */
-    expect(Object.keys(calls[0].body).sort()).toEqual(["max_tokens", "messages", "model", "response_format", "temperature"]);
-    expect(messages.map(message => message.role)).toEqual(["system", "user"]);
+    expect(calls[0].url).toBe("https://gateway.test/api/ai/generate");
+    expect(calls[0].headers.get("authorization")).toMatch(/^Bearer v1\./);
+    expect(calls[0].body.image).toEqual({ mimeType: "image/jpeg", data: "/9j/4AAQSkZJRgABAQ==" });
+    expect(calls[0].body.prompt).toBe("");
+    /* The whole request: the instructions, the photo and the call's settings. */
+    expect(Object.keys(calls[0].body).sort()).toEqual(["image", "json", "maxOutputTokens", "prompt", "system", "temperature", "timeoutMs"]);
   });
 
   it("asks in the shopper's language", async () => {
     const calls = replying(200, '{"query": "مصباح نحاسي"}');
     expect(await photo.describePhoto(IMAGE, "ar")).toEqual({ kind: "query", query: "مصباح نحاسي" });
-    expect((calls[0].body.messages as Array<{ content: string }>)[0].content).toContain("Arabic");
+    expect(calls[0].body.system).toContain("Arabic");
   });
 
   it("says nothing was found when there is no product in frame", async () => {

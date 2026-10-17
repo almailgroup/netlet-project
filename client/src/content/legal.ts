@@ -13,7 +13,7 @@
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** When either page last changed, as a Kuwaiti calendar day. */
-export const LEGAL_UPDATED = "2026-10-14";
+export const LEGAL_UPDATED = "2026-10-17";
 
 export type LegalParagraph = {
   key: MessageKey;

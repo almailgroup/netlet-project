@@ -25,8 +25,7 @@ import { inArray } from "drizzle-orm";
 import { productImages, productVariants, products } from "../drizzle/schema.js";
 import { needsAttention, reviewProduct, type Flag } from "../shared/inventory/productReview.js";
 import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { ENV } from "./_core/env.js";
-import { featureOn } from "./features.js";
+import { askModel, modelAvailable, parseObject } from "./gemini.js";
 import { getDb } from "./db.js";
 
 export type ReviewedProduct = {
@@ -73,9 +72,13 @@ export async function reviewProducts(actor: Actor, productIds: number[]): Promis
   });
 }
 
-/** Whether the model pass can run at all. False with no key, which is ordinary, or with models switched off (2.3). */
+/**
+ * Whether the model pass can run at all. False with no AI gateway, which is
+ * ordinary, or with models switched off (2.3). Gemini reads the listing,
+ * through the gateway (`server/gemini.ts`).
+ */
 export async function modelReviewAvailable(): Promise<boolean> {
-  return Boolean(ENV.mistralApiKey) && (await featureOn("ai"));
+  return modelAvailable();
 }
 
 /**
@@ -122,39 +125,22 @@ export async function modelConcernFor(
     "<<<END LISTING>>>",
   ].filter((line): line is string => line !== null).join("\n");
 
-  try {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${ENV.mistralApiKey}`, "Content-Type": "application/json" },
-      /* Nobody is watching a spinner — this runs behind a queue an
-         administrator is reading — but a request that never returns would hold
-         the page, so it still has a deadline. */
-      signal: AbortSignal.timeout(6000),
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        temperature: 0.1,
-        max_tokens: 120,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: listing },
-        ],
-      }),
-    });
-    if (!response.ok) return null;
-
-    const body = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
-    const content = body.choices?.[0]?.message?.content;
-    const parsed = JSON.parse(typeof content === "string" ? content : "{}") as { concern?: unknown };
-    const concern = typeof parsed.concern === "string" ? parsed.concern.trim() : "";
-    if (!concern) return null;
-
-    return { finding: "modelConcern", severity: "serious", detail: concern.slice(0, 240) };
-  } catch {
-    // A timeout, a network error, a refusal, malformed JSON — one answer, and
-    // the deterministic flags are untouched.
-    return null;
-  }
+  const parsed = parseObject(await askModel("reviewConcern", {
+    system: SYSTEM_PROMPT,
+    prompt: listing,
+    json: true,
+    temperature: 0.1,
+    maxOutputTokens: 120,
+    /* Nobody is watching a spinner — this runs behind a queue an
+       administrator is reading — but a request that never returns would hold
+       the page, so it still has a deadline. */
+    deadlineMs: 6000,
+  }));
+  /* A timeout, a network error, a refusal, malformed JSON — one answer, and
+     the deterministic flags are untouched. */
+  const concern = typeof parsed?.concern === "string" ? parsed.concern.trim() : "";
+  if (!concern) return null;
+  return { finding: "modelConcern", severity: "serious", detail: concern.slice(0, 240) };
 }
 
 /** One line, so a description cannot forge its own fence. */

@@ -3,20 +3,19 @@
  *
  * The rules — what leaves NetLet, what is withheld, why the conversation is
  * fenced — are `shared/commerce/supportDraft.ts` and are pure. This is the
- * call, its deadline, and the single answer every failure lands on, in the
- * shape `assistant.ts` already keeps.
+ * call, its deadline, and the single answer every failure lands on. Gemini
+ * writes the draft, through the AI gateway (`server/gemini.ts`).
  */
-import { ENV } from "./_core/env.js";
-import { featureOn } from "./features.js";
+import { askModel, modelAvailable } from "./gemini.js";
 import { draftMaterial } from "./support.js";
 import { clipDraft, draftBrief, draftPrompt, draftable } from "../shared/commerce/supportDraft.js";
 import type { Actor } from "../shared/inventory/permissions.js";
 import { assertCan } from "../shared/inventory/permissions.js";
 
-/** Whether a draft can be asked for at all: a key, and model calls switched on (2.3). */
+/** Whether a draft can be asked for at all: the gateway set up, and model calls switched on (2.3). */
 export async function draftAvailable(actor: Actor): Promise<boolean> {
   assertCan(actor, "support.answer");
-  return Boolean(ENV.mistralApiKey) && (await featureOn("ai"));
+  return modelAvailable();
 }
 
 /**
@@ -53,28 +52,15 @@ export async function draftReply(actor: Actor, id: number): Promise<DraftReply> 
   /* The shopper has been answered already; a draft would be a second reply to nothing. */
   if (!draftable(brief.turns)) return { kind: "nothingToAnswer" };
 
-  try {
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${ENV.mistralApiKey}`, "Content-Type": "application/json" },
-      /* Pressed for and watched, like the assistant. */
-      signal: AbortSignal.timeout(12_000),
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        temperature: 0.3,
-        max_tokens: 400,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: draftPrompt(brief) },
-        ],
-      }),
-    });
-    if (!response.ok) return { kind: "unavailable" };
-    const body = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
-    const content = body.choices?.[0]?.message?.content;
-    if (typeof content !== "string" || !content.trim()) return { kind: "unavailable" };
-    return { kind: "draft", text: clipDraft(content) };
-  } catch {
-    return { kind: "unavailable" };
-  }
+  const content = await askModel("supportDraft", {
+    system: SYSTEM_PROMPT,
+    prompt: draftPrompt(brief),
+    json: false,
+    temperature: 0.3,
+    maxOutputTokens: 400,
+    /* Pressed for and watched, like the assistant. */
+    deadlineMs: 12_000,
+  });
+  if (!content?.trim()) return { kind: "unavailable" };
+  return { kind: "draft", text: clipDraft(content) };
 }

@@ -38,8 +38,8 @@ import {
 } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
 import { listProducts } from "./catalog.js";
-import { ENV } from "./_core/env.js";
 import { featureOn } from "./features.js";
+import { askModel, modelAvailable, parseObject } from "./gemini.js";
 import {
   applyModelOrder,
   buildTaste,
@@ -140,60 +140,33 @@ async function signalsFor(userId: number | null, cartId: string | null): Promise
  * given, and every failure lands on the ranking we already trusted.
  */
 async function refineWithModel(ranked: Recommendation[], terms: string[]): Promise<Recommendation[] | null> {
-  if (!ENV.mistralApiKey || ranked.length < 3 || terms.length === 0) return null;
-  if (!(await featureOn("ai"))) return null;
+  if (ranked.length < 3 || terms.length === 0) return null;
+  if (!(await modelAvailable())) return null;
 
   const menu = ranked.map(entry => `${entry.product.id}: ${entry.product.title}`).join("\n");
-
-  try {
+  const parsed = parseObject(await askModel("recommendOrder", {
+    system:
+      'You order shop recommendations for a Kuwait marketplace. Return JSON only: {"order":["id","id",...]}. ' +
+      "Use ONLY ids from the provided list, each at most once, best fit first. " +
+      "Judge fit from how well each title suits the shopper's interests. " +
+      "Never invent an id, a product, a price or a fact. Return no other keys and no prose.",
+    prompt: `Shopper interests: ${terms.join(", ")}\n\nProducts:\n${menu}`,
+    json: true,
+    temperature: 0.2,
+    maxOutputTokens: 200,
     /*
      * A short deadline, because this sits in front of a rail on the home page.
      * A recommendation that arrives after the shopper has scrolled past is
      * worth less than a slightly worse one that arrived.
      */
-    const abort = AbortSignal.timeout(2500);
-    const response = await fetch("https://api.mistral.ai/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${ENV.mistralApiKey}`, "Content-Type": "application/json" },
-      signal: abort,
-      body: JSON.stringify({
-        model: "mistral-small-latest",
-        temperature: 0.2,
-        max_tokens: 200,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              'You order shop recommendations for a Kuwait marketplace. Return JSON only: {"order":["id","id",...]}. ' +
-              "Use ONLY ids from the provided list, each at most once, best fit first. " +
-              "Judge fit from how well each title suits the shopper's interests. " +
-              "Never invent an id, a product, a price or a fact. Return no other keys and no prose.",
-          },
-          {
-            role: "user",
-            content: `Shopper interests: ${terms.join(", ")}\n\nProducts:\n${menu}`,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) return null;
-
-    const body = (await response.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
-    const content = body.choices?.[0]?.message?.content;
-    const parsed = JSON.parse(typeof content === "string" ? content : "{}") as { order?: unknown };
-    if (!Array.isArray(parsed.order)) return null;
-
-    const order = parsed.order.filter((id): id is string => typeof id === "string");
-    if (order.length === 0) return null;
-
-    // `applyModelOrder` is what drops anything we did not send it.
-    return applyModelOrder(ranked, order);
-  } catch {
-    // A timeout, a network error, a refusal, malformed JSON — all one answer.
-    return null;
-  }
+    deadlineMs: 2500,
+  }));
+  /* A timeout, a network error, a refusal, malformed JSON — all one answer. */
+  if (!Array.isArray(parsed?.order)) return null;
+  const order = parsed.order.filter((id): id is string => typeof id === "string");
+  if (order.length === 0) return null;
+  // `applyModelOrder` is what drops anything we did not send it.
+  return applyModelOrder(ranked, order);
 }
 
 /**

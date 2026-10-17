@@ -43,5 +43,15 @@ name = "ADDRESS_LIMITER"
 namespace_id = "7103"
 simple = { limit = 40, period = 60 }
 
+# NetLet's own server, per feature (search refinement, recommendations, photo
+# search, support drafts, the review queue, the Arabic name). A backstop for a
+# runaway loop rather than a per-shopper ceiling: each feature counts its
+# shoppers in Postgres before it calls, and every call comes from Vercel's
+# few addresses, so the address ceiling above never applies to these.
+[[ratelimits]]
+name = "SERVER_LIMITER"
+namespace_id = "7104"
+simple = { limit = 600, period = 60 }
+
 [observability]
 enabled = true

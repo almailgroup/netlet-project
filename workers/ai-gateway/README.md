@@ -1,9 +1,10 @@
 # NetLet AI gateway
 
 A Cloudflare Worker that holds the Gemini API key and is the only thing that
-talks to Gemini. A browser reaches it with a short-lived token that NetLet's
-own server signs, so the key never leaves Cloudflare and nobody can use the
-gateway without NetLet's say-so.
+talks to Gemini — for every model call NetLet makes. A browser reaches it with
+a short-lived token that NetLet's own server signs, and the server reaches it
+the same way for its own calls, so the key never leaves Cloudflare and nobody
+can use the gateway without NetLet's say-so.
 
 ```
 browser ── tRPC ai.gateway ──▶ NetLet server   (who is asking? may they? is `ai` on?)
@@ -12,6 +13,9 @@ browser ── tRPC ai.gateway ──▶ NetLet server   (who is asking? may the
    │
    └── POST /api/ai/chat, Authorization: Bearer <token> ──▶ this Worker ──▶ Gemini
                                     (origin, token, scope, ceilings, body, contact filter)
+
+NetLet server ── POST /api/ai/generate, a 1-minute `server` token ──▶ this Worker ──▶ Gemini
+   (search refinement, Picked for you, photo search, support drafts, the review queue, the Arabic name)
 ```
 
 | Route | Scope | Answers |
@@ -19,6 +23,7 @@ browser ── tRPC ai.gateway ──▶ NetLet server   (who is asking? may the
 | `GET /` or `/healthz` | none | `{ ok, data: { configured, model } }` — never the key |
 | `POST /api/ai/chat` | `chat` | Server-Sent Events: `{type:"delta",text}` … `{type:"done",finish}` |
 | `POST /api/ai/catalog-assist` | `catalog` | `{ ok: true, data: CatalogDraft }` |
+| `POST /api/ai/generate` | `server` | `{ ok: true, data: { text } }` — NetLet's server only; the token is never handed out |
 
 Every refusal is `{ ok: false, error: { code, message, field? } }` with the
 status in `GATEWAY_STATUS`. The request and response types, the token and the
