@@ -20,6 +20,8 @@ import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { BareHeader } from "@/components/layout/BareHeader";
 import { PAGE_SPACE, PageHeading } from "@/components/layout/Page";
+import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
+import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -68,7 +70,7 @@ function CheckoutDeliveryZone() {
   const { deliveryZone, deliveryZoneId, setDeliveryZoneId } = useCustomer();
   const { isArabic, t } = useTranslation();
   const zoneName = (zone: { label: string; labelAr: string }) => (isArabic ? zone.labelAr : zone.label);
-  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><Select value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</Select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")}</p></div></div></div>;
+  return <div className="mt-5 rounded-2xl border border-[#d5dfeb] bg-[#f3f2ed] p-4"><div className="flex items-start gap-3"><MapPin className="mt-0.5 size-4 shrink-0 ink-accent" /><div className="min-w-0 flex-1"><label className="block"><span className="type-label text-[#0a285a]">{t("checkout.governorateLabel")}</span><Select id="checkout-governorate" value={deliveryZoneId ?? ""} onChange={event => setDeliveryZoneId(event.target.value)} className={`${fieldClass} mt-2`}><option value="" disabled>{t("delivery.selectGovernorate")}</option>{kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zoneName(zone)}</option>)}</Select></label><p className="type-body mt-3 text-xs leading-5 text-[#536b8c]">{deliveryZone ? t("delivery.savedForDevice", { name: zoneName(deliveryZone) }) : t("delivery.chooseForDevice")}</p></div></div></div>;
 }
 
 
@@ -192,6 +194,57 @@ export default function Checkout() {
   );
 
   /*
+   * On a phone the summary comes after the whole form, so Place order sat at
+   * the foot of a page three screens long. While it is still below, the total
+   * and the same button float at the foot of the screen (`PhoneActionBar`),
+   * with the first thing missing above them — pressed, it takes the shopper to
+   * that field, which is where they would otherwise scroll looking for it.
+   */
+  const [placeRef, placeBelow] = useBeyondScreen("bottom");
+  /* Not while somebody is typing: with the keyboard up, a bar at the foot of
+     what is left of the screen sits over the field being filled in. */
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      const field = document.activeElement;
+      setTyping(field instanceof HTMLTextAreaElement
+        || (field instanceof HTMLInputElement && !["checkbox", "radio", "button", "submit"].includes(field.type)));
+    };
+    const settle = () => setTimeout(check, 0);
+    document.addEventListener("focusin", check);
+    document.addEventListener("focusout", settle);
+    return () => {
+      document.removeEventListener("focusin", check);
+      document.removeEventListener("focusout", settle);
+    };
+  }, []);
+  const placeNow = () => place.mutate({
+    cartId: cart!.id,
+    paymentMethod: "cod",
+    contactName: form.contactName.trim() || null,
+    contactPhone: form.contactPhone.trim() || null,
+    deliveryZoneId: deliveryZoneId ?? null,
+    addressLine: hasParts(form.parts) ? undefined : form.addressLine.trim(),
+    addressNotes: form.addressNotes.trim() || null,
+    pin: form.pin,
+    addressParts: cleanParts(form.parts),
+    usePoints,
+    voucherCode: applied || undefined,
+    affiliateCode: via.data ? affiliateCode : null,
+  });
+  const blockerField = blocker === "checkout.needGovernorate" ? "checkout-governorate"
+    : blocker === "checkout.needAddress" || blocker === "address.needsParts" ? `checkout-address-${missingParts(form.parts)[0] ?? "area"}`
+    : blocker === "checkout.needPhone" || blocker === "checkout.badPhone" ? "checkout-phone"
+    : null;
+  const goToBlocker = () => {
+    const field = blockerField ? document.getElementById(blockerField) : null;
+    if (!field) return;
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    field.scrollIntoView({ block: "center", behavior: still ? "instant" : "smooth" });
+    field.focus({ preventScroll: true });
+  };
+
+  /*
    * The loyalty balance, and what it would take off this basket (3.1.15).
    *
    * Asked for only when somebody is signed in, because points belong to an
@@ -276,7 +329,7 @@ export default function Checkout() {
 	                      type="button"
 	                      aria-pressed={picked === address.id}
 	                      onClick={() => pickAddress(address)}
-	                      className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === address.id ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
+	                      className={`pressable min-h-11 rounded-full border px-4 py-2 text-[13px] font-bold ${picked === address.id ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
 	                    >
 	                      <bdi>{address.label}</bdi>
 	                    </button>
@@ -285,7 +338,7 @@ export default function Checkout() {
 	                    type="button"
 	                    aria-pressed={picked === "new"}
 	                    onClick={() => { setPicked("new"); setForm({ contactName: user?.name ?? "", contactPhone: "", addressLine: "", addressNotes: "", pin: null, parts: {} }); }}
-	                    className={`pressable rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
+	                    className={`pressable min-h-11 rounded-full border px-4 py-2 text-[13px] font-bold ${picked === "new" ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-dashed border-[#b8c9dc] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
 	                  >
 	                    {t("checkout.newAddress")}
 	                  </button>
@@ -294,7 +347,7 @@ export default function Checkout() {
 	              </fieldset>
 	            ) : null}
 	            <CheckoutDeliveryZone />
-	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><AddressPartsFields
+	            <div className="mt-6 grid gap-4 sm:grid-cols-2"><CheckoutField label={t("checkout.fullName")}><input value={form.contactName} onChange={e => setForm(f => ({ ...f, contactName: e.target.value }))} placeholder={t("checkout.fullNamePlaceholder")} className={fieldClass} /></CheckoutField><CheckoutField label={t("checkout.mobile")}><input id="checkout-phone" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="+965" dir="ltr" inputMode="tel" className={fieldClass} /></CheckoutField><AddressPartsFields
                 parts={form.parts}
                 governorate={deliveryZoneId}
                 onChange={parts => setForm(f => ({ ...f, parts }))}
@@ -365,20 +418,8 @@ export default function Checkout() {
                 follow. */}
             {via.data ? <p className="type-label mt-4 text-[#d9e7f7]">{t("affiliate.viaDisclosure", { name: via.data.displayName })}</p> : null}
             <button
-              onClick={() => place.mutate({
-                cartId: cart!.id,
-                paymentMethod: "cod",
-                contactName: form.contactName.trim() || null,
-                contactPhone: form.contactPhone.trim() || null,
-                deliveryZoneId: deliveryZoneId ?? null,
-                addressLine: hasParts(form.parts) ? undefined : form.addressLine.trim(),
-                addressNotes: form.addressNotes.trim() || null,
-                pin: form.pin,
-                addressParts: cleanParts(form.parts),
-                usePoints,
-                voucherCode: applied || undefined,
-                affiliateCode: via.data ? affiliateCode : null,
-              })}
+              ref={placeRef}
+              onClick={placeNow}
               disabled={!canPlace || place.isPending}
               aria-describedby={blocker ? "place-blocker" : undefined}
               className="glass-accent mt-5 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-55"
@@ -402,6 +443,32 @@ export default function Checkout() {
 
         <section className="type-label mt-8 grid gap-3 border-t border-[#d5dfeb] pt-6 text-[#536b8c] sm:grid-cols-3"><div className="flex items-center gap-2"><MapPin className="size-4 ink-accent" /> {t("checkout.builtForKuwait")}</div><div className="flex items-center gap-2"><Wallet className="size-4 ink-accent" /> {t("home.payOnDelivery")}</div><div className="flex items-center gap-2"><RotateCcw className="size-4 ink-accent" /> {t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</div></section>
       </main>
+      {items.length || settling ? (
+        <PhoneActionBar shown={placeBelow && !typing} label={t("checkout.placeBar")} overTabBar={false}>
+          {blocker ? (
+            <button type="button" onClick={goToBlocker} disabled={!blockerField} className="mb-1.5 flex w-full items-start gap-1.5 rounded-lg px-1.5 py-1 text-start text-[13px] font-bold leading-5 ink-accent disabled:cursor-default">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              {t(blocker)}
+            </button>
+          ) : null}
+          <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1 px-1.5 min-[360px]:px-2">
+              <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
+              <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{settling ? <span className="inline-block h-4 w-20 animate-pulse rounded bg-[#e7edf5] align-middle" aria-hidden /> : money({ amount: payable, currencyCode: "KWD" })}</p>
+            </div>
+            {!isAuthenticated && !sessionLoading ? (
+              <button type="button" onClick={() => setAuthOpen(true)} className="glass glass-navy flex h-11 shrink-0 items-center justify-center rounded-xl px-4 text-[14px] font-bold">
+                {t("checkout.signInShort")}
+              </button>
+            ) : (
+              <button type="button" onClick={placeNow} disabled={!canPlace || place.isPending} className="glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-55 min-[360px]:px-5">
+                {place.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <PackageCheck className="size-4" aria-hidden />}
+                {t(place.isPending ? "checkout.placing" : "checkout.placeOrder")}
+              </button>
+            )}
+          </div>
+        </PhoneActionBar>
+      ) : null}
     </div>
   );
 }

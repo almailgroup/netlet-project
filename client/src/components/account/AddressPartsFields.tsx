@@ -83,6 +83,7 @@ export function AddressPartsFields({
       <div className={`${labelClass} sm:col-span-2`}>
         <span aria-hidden>{t("address.area")}</span>
         <Select
+          id={id("area")}
           aria-label={t("address.area")}
           value={typing ? OTHER : onList ? area : ""}
           onChange={event => {

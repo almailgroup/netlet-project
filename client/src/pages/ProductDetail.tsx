@@ -1,4 +1,6 @@
 import { BUTTON_PRIMARY, Breadcrumbs, PageBody, PageHeading } from "@/components/layout/Page";
+import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
+import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useCart } from "@/contexts/CartContext";
 import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
@@ -40,7 +42,7 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
@@ -896,24 +898,9 @@ export default function ProductDetail() {
      pays for what they did not ask for and did not notice. */
   const [chosenAddons, setChosenAddons] = useState<string[]>([]);
   /* The phone's buy bar appears once the page's own buttons have scrolled away
-     above the screen — never while they are in view, never before reaching them.
-     A callback ref, because the buttons first exist a render or two after this
-     hook does (the loading state comes first), and an effect keyed on the
-     product ran while there was nothing yet to watch. */
-  const [buyPassed, setBuyPassed] = useState(false);
-  const buyRef = useCallback((node: HTMLDivElement | null) => {
-    if (!node || typeof IntersectionObserver === "undefined") return;
-    /* The watched area runs from the top of the screen to far below it, so the
-       one edge that counts is the top: a jump from below the screen to above
-       it (Back, a fling, an anchor) changes the answer, where an observer of
-       the screen alone saw "not visible" twice and said nothing. */
-    const observer = new IntersectionObserver(
-      ([entry]) => setBuyPassed(!entry.isIntersecting && entry.boundingClientRect.top < 0),
-      { rootMargin: "0px 0px 100000px 0px" },
-    );
-    observer.observe(node);
-    return () => { observer.disconnect(); setBuyPassed(false); };
-  }, []);
+     above the screen — never while they are in view, never before reaching
+     them (`useBeyondScreen`, the rule the cart and checkout bars share). */
+  const [buyRef, buyPassed] = useBeyondScreen("top");
   /* The department row marks the product's own department. */
   usePageChrome({ activeDepartment: product?.productType ?? null });
 
@@ -1288,13 +1275,7 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, busy, 
   onBuy: () => void;
 }) {
   return (
-    <div
-      role="region"
-      aria-label={name}
-      aria-hidden={!shown}
-      inert={!shown}
-      className={`fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)] z-30 rounded-2xl border border-[#e6e9ef] bg-white p-2 shadow-[0_10px_30px_rgba(10,40,90,.18)] transition-[opacity,translate] duration-200 lg:hidden ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
-    >
+    <PhoneActionBar shown={shown} label={name}>
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate px-1.5 text-[15px] font-extrabold text-[#0a285a] min-[360px]:px-2 min-[360px]:text-[16px]">{price}</p>
         <button type="button" onClick={onAdd} disabled={disabled} className={`${PURCHASE_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
@@ -1306,6 +1287,6 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, busy, 
           {buyLabel}
         </button>
       </div>
-    </div>
+    </PhoneActionBar>
   );
 }

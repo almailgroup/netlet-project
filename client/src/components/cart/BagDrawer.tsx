@@ -91,13 +91,17 @@ export function BagLines() {
                       beside the address it is an exception to. */}
                   {item.destination ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
                 </div>
-                <button onClick={() => removeItem(item.lineId)} disabled={loading} aria-label={t("cart.remove", { name: title })} className="ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
+                {/* A 16px bin was a 16px target: it reaches 44px now, by
+                    `.tap-target`, without growing the row. */}
+                <button onClick={() => removeItem(item.lineId)} disabled={loading} aria-label={t("cart.remove", { name: title })} className="tap-target -m-1 grid size-8 shrink-0 place-items-center rounded-full ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
               </div>
               <div className="mt-3 flex items-center justify-between">
+                {/* A thumb's size under a coarse pointer (40px a side), the
+                    old 28px under a mouse, where the drawer is narrow. */}
                 <div className="glass inline-flex items-center rounded-full">
-                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity - 1)} aria-label={t("cart.decrease", { name: title })} className="grid size-7 place-items-center text-[#0a285a] disabled:opacity-40"><Minus className="size-3" aria-hidden /></button>
-                  <span className="min-w-7 text-center text-xs font-extrabold text-[#0a285a]">{item.quantity}</span>
-                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity + 1)} aria-label={t("cart.increase", { name: title })} className="grid size-7 place-items-center text-[#0a285a] disabled:opacity-40"><Plus className="size-3" aria-hidden /></button>
+                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity - 1)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+                  <span className="min-w-7 text-center text-[13px] font-extrabold text-[#0a285a] pointer-fine:text-xs">{item.quantity}</span>
+                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity + 1)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
                 </div>
                 <div className="text-end">
                   <p className="text-sm font-extrabold text-[#0a285a]">{money(item.lineTotal)}</p>
@@ -119,7 +123,7 @@ export function BagLines() {
 }
 
 /** Delivery per seller, the totals, and the way to checkout. */
-export function BagSummary() {
+export function BagSummary({ checkoutRef }: { checkoutRef?: (node: HTMLButtonElement | null) => void } = {}) {
   const { cart, loading, proceedToCheckout } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
@@ -152,7 +156,7 @@ export function BagSummary() {
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className="text-lg font-extrabold text-[#0a285a]">{money(cart.total)}</span></div>
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
-      <button onClick={proceedToCheckout} disabled={loading} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold disabled:opacity-60">
+      <button ref={checkoutRef} onClick={proceedToCheckout} disabled={loading} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold disabled:opacity-60">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>
     </div>
