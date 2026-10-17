@@ -3894,7 +3894,10 @@ it is an observer whose area runs from the top of the screen to far below**
 (`rootMargin` 100000px at the foot): watching the screen alone, a jump from
 below it to above it — Back, a fling, an anchor — read "not visible" twice and
 never fired, which is exactly what the first test did. And it is a callback
-ref, because the buttons first exist a render or two after the hook does.
+ref, because the buttons first exist a render or two after the hook does. Both
+are shared now: the bar is `PhoneActionBar` and the observer
+`useBeyondScreen`, which the cart and checkout bars use too (see "Measured on
+a phone").
 
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
@@ -3981,10 +3984,50 @@ shift, console errors — found four things no screenshot showed, now fixed:
   `.tap-target`, so a thumb gets 44px where the words are 13px.
 
 Left as they are, deliberately: the search field's voice and submit discs
-(36px, for the overlapping-targets reason under Chrome), the product card's
+(36px, for the overlapping-targets reason under Chrome) and the product card's
 title link (the photo above it opens the same page and is the target a thumb
-uses), and the department page's floating Filters pill, which can cover a
-card's button while it scrolls past.
+uses).
+
+**The one thing a page is for stays under the thumb, on the owner's word.** A
+second pass measured where each page's main button sat on a 390px phone, and
+three of them started off the screen. `PhoneActionBar`
+(`components/layout/PhoneActionBar.tsx`) is the one floating bar, over the tab
+bar or at the foot of a page without one, `inert` and out of the accessibility
+tree while hidden; `useBeyondScreen` is the one rule for when it shows — the
+watched area runs from one edge of the screen to far past the other, so a jump
+across still fires, and `inset` pulls the bottom edge up by the tab bar
+(`TAB_BAR_REACH`), so a button hidden behind it counts as not reached.
+
+- **The cart.** With three things in the bag, Checkout started under the tab
+  bar. While it is still below, the total and Checkout float over the tab bar,
+  and they leave as the page's own button comes up to meet them.
+- **Checkout.** Place order was the last thing on a page three screens long.
+  While it is below, the total and the same button sit at the foot of the
+  screen, with the first thing still missing above them — pressed, that line
+  takes the shopper to the field (`checkout-governorate`, the first missing
+  address part, `checkout-phone`) and focuses it. **It steps aside while a text
+  field has focus**, because with the keyboard up a bar at the foot of what is
+  left of the screen sits over the field being typed in. Signed out, its button
+  is "Sign in to order".
+- **A department or a search.** Filters were only a navy pill floating over
+  the grid, which covered the first row's Buy now the moment the page opened.
+  On a phone, Filters and Sort are one row under the title, a thumb's width
+  each (the wide screen keeps its sort beside the title, one structure at a
+  time); once that row has gone up under the header, a round button in the
+  end corner above the tab bar stands in for it, with the active filters'
+  count as a pixel badge — at the edge it covers the end of one card's button
+  rather than the middle of two.
+
+And the targets that were under a thumb's size are a thumb's size under a
+coarse pointer, keeping what they were under a mouse (`pointer-fine:`): the
+bag's minus and plus 40px (were 28), its bin a 44px target (was 16), the
+product page's stepper 44px (was 36), the card's two buttons 44px (were 40),
+checkout's saved-address chips, the account's "← Your account" and the shelves'
+"View all" 44px tall. The account card's name wraps rather than truncating —
+cut on an Arabic page a Latin name lost its first letters ("…ra Al-Sabah") —
+and the role badge goes under the email on a phone so the name has the width.
+Measured at 320 and 390 in both languages and at 1440: no sideways scroll, axe
+clean on every page changed, the bars shown and hidden where they should be.
 
 ## Languages
 
