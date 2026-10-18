@@ -2187,7 +2187,7 @@ once opened.
 **Both wear the header's liquid glass, on the owner's word.** The panel is the
 search panel's recipe — `.glass-bar-surface` inside it, behind its contents,
 warped under a fine pointer, at `.glass-panel`'s even 70% — so the page shows
-through it blurred; on a phone, where it is the whole screen, the page it
+through it blurred; on a phone, where it is a sheet over the page, the page it
 covers shows through instead. **Everything with words on it is a plate of
 white** (each answer, each starter, the box, the product's chip) except the
 title and the lines beside it, which are navy and a dark slate (`#2b3a55`):
@@ -2209,12 +2209,20 @@ that corner; each says so through `useFloatingBar` (`data-floating-bar` on
 back early), and the button fades out while any of them shows. The thing a
 page is for wins the corner. On a wide screen the footer leaves room under it.
 
-**The phone's panel is the whole screen, sized to what the keyboard leaves** —
-the visual viewport, the search sheet's rule — and is a modal there
-(`useOverlay`). A wide screen's is a card beside a page that stays usable, and
-Escape from inside it closes it. Focus goes into the box on opening and back to
-the button on closing, by the button's own ref, because a phone never focuses a
-button it taps.
+**On a phone it is a sheet that rises from the foot of the screen over the
+dimmed page**, with a gap above it and a handle, sized to what the keyboard
+leaves — the visual viewport, the search sheet's rule — and it gives the gap up
+while the keyboard is up. It goes back down on Close, Escape, a press on the
+dim, or a drag down from its top: past 110px, or flicked; a short drag springs
+back. The drag moves the sheet by `translate`, never `transform`, because the
+rise is a `transform` animation held at its end (`both`), and a held animation
+beats any inline transform. It is a modal there (`useOverlay`). A wide screen's
+is a card beside a page that stays usable, Escape from inside it closes it, and
+it can be made larger for reading (680 wide, down to the foot of the screen
+and stopping under the header's bar), remembered on the device. Focus goes into
+the box on opening and back to the button on closing, by the button's own ref,
+because a phone never focuses a button it taps. A press on a suggestion keeps a
+phone's keyboard down, because it would cover the answer being waited for.
 
 **It opens on what it can do, fitted to the page.** A welcome and four or five
 starters as presses: on a product, that product by name and photo (the page
@@ -2237,6 +2245,33 @@ does not sell, at a price it does not charge; the search shows what is on the
 shelf at what it costs. Following anything out of an answer on a phone puts the
 chat away so the page can be seen; a wide screen's card stays.
 
+**A product with nothing to choose goes in the bag from the shelf.** One
+variant in stock gets a disc on its photo's corner: a plus, and once it is in
+the bag a navy disc with how many, the press adding one more. It is the card's
+plain line (no extras, no bundle), so the number is the line the press changes,
+and it follows the card's rules — no toast, a polite live region, a toast only
+when it fails. A product with sizes or colours has no disc and opens its page,
+because a size has to be chosen before "add" means anything.
+
+**It offers the next question.** The model may end on up to three
+`[[ask: question]]` lines (the prompt asks for ten words or fewer, only
+questions it could answer under its rules), and `chatPieces` keeps a question
+only if it is under 80 characters of words and ordinary punctuation and carries
+no contact details. They are drawn as presses under the **latest** answer only
+(`ChatAnswer`'s `onAsk`), and only once nothing is being asked: an older
+answer's follow-ups are about a moment the conversation has moved past. The
+product page's own assistant draws them too; the help page's single box does
+not, and drops them.
+
+**A question can be spoken**, where voice search is on and the browser can
+listen (`useDictation`, over `lib/speech.ts`, which voice search now shares).
+What is heard is written into the box, after anything already typed, and never
+sent: it is read back and fixed before Send, voice search's rule. While it
+listens the line over the box says where the sound goes
+(`search.voicePrivacy`), the microphone is filled and breathes inside the
+box's padding (nothing under reduced motion), and pressing it again stops.
+Blocked, unheard and unsupported each say so in the same place.
+
 **It keeps the conversation for the tab** (`useAIChat`'s `persist`, through
 `browserStore`'s session helpers): a reload or a page opened in place finds it,
 and closing the tab ends it, so a shared computer does not hand the next person
@@ -2246,7 +2281,12 @@ now refuses either outside that file.
 
 **The log follows the newest words only while the reader is at the bottom.**
 Somebody who scrolled up to reread an answer is not dragged down by the next;
-a "Latest" button says there is more. **An answer that did not come says why
+a "Latest" button says there is more. A message sent or arriving rises into
+place (`.chat-rise`, opacity and a few pixels, on the message and never on the
+glass); one restored from the tab does not. **An answer that finishes while the
+panel is closed puts the pixel dot on the button** (`onAnswered`), and the
+button's name says a new answer is waiting, until it is opened — somebody who
+closed it mid-answer has no other way to know. **An answer that did not come says why
 and offers Try again** (`useAIChat`'s `retry`), which asks the same question in
 its place rather than adding it twice. A finished answer has Copy. The box
 grows to five lines, Enter sends, Shift+Enter breaks a line, and a count
@@ -2267,7 +2307,13 @@ out; axe clean on the welcome, an answer and a product page; shelves with
 products and "See all"; Copy; "Latest" while scrolled up; Try again replacing a
 502; the conversation back after a reload and gone after New chat; the
 department's and the product's starters; a product card closing the phone's
-panel and leaving the wide card; no sideways scroll.
+panel and leaving the wide card; no sideways scroll. And for the second round:
+a follow-up asking itself and the old ones gone; Add from a shelf showing "1"
+and saying so; speech (a stand-in recogniser) filling the box in the page's
+language without sending; the dot after closing mid-answer and gone on opening;
+the sheet closing on a 200px drag and on the dim, springing back from a short
+one; the larger card at 680 × 780 under the header, kept after a reload; the
+sheet's title 10.7:1 and its note 7.1:1 over the dimmed page.
 
 ## The discount permit
 
