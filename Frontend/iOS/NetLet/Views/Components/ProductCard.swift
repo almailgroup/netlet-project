@@ -11,15 +11,20 @@ struct PriceView: View {
 
     var body: some View {
         let size = large ? 24 : self.size
-        return HStack(alignment: .firstTextBaseline, spacing: 6) {
+        // Never broken inside an amount: the was-price goes to the next line
+        // when both do not fit, the web's `flex-wrap`.
+        return FlowLayout(spacing: 6) {
             Text(price.formatted(l.current))
                 .font(.inter(size, .bold))
                 .foregroundStyle(Brand.navy)
+                .fixedSize()
             if let was, was > price {
                 Text(was.formatted(l.current))
                     .font(.inter(size >= 20 ? 14 : 12))
                     .strikethrough()
                     .foregroundStyle(Brand.muted)
+                    .fixedSize()
+                    .frame(minHeight: size * 1.2)
                     .accessibilityLabel(l.t("browse.onOffer") + ", " + was.formatted(l.current))
             }
         }
