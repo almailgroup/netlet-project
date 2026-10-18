@@ -33,11 +33,11 @@ struct SavingBadge: View {
 
     var body: some View {
         Text("−\(percent)%")
-            .font(.inter(large ? 15 : 12, .bold))
+            .font(.inter(large ? 15 : 13, .bold))
             .foregroundStyle(Brand.navy)
-            .padding(.horizontal, large ? 10 : 6)
-            .padding(.vertical, large ? 4 : 2)
-            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.orange))
+            .padding(.horizontal, large ? 10 : 7)
+            .padding(.vertical, large ? 5 : 3)
+            .background(Capsule().fill(Brand.orange))
             .environment(\.layoutDirection, .leftToRight)
     }
 }
@@ -197,41 +197,46 @@ struct CardGallery: View {
 
     var body: some View {
         let photos = Array(product.images.prefix(Self.most))
-        ZStack(alignment: .bottom) {
-            if photos.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 0) {
-                        ForEach(Array(photos.enumerated()), id: \.offset) { index, photo in
-                            frame(photo)
-                                .containerRelativeFrame(.horizontal)
-                                .id(index)
+        let ratio: CGFloat = feature ? 33.0 / 20.0 : 4.0 / 5.0
+        // The card's width decides the frame and the photos fill it — never
+        // the other way round: a scroller sized by its content made every
+        // card in a grid as wide as its photos and pushed the grid off screen.
+        Color.clear
+            .aspectRatio(ratio, contentMode: .fit)
+            .overlay {
+                if photos.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 0) {
+                            ForEach(Array(photos.enumerated()), id: \.offset) { index, photo in
+                                frame(photo)
+                                    .containerRelativeFrame([.horizontal, .vertical])
+                                    .id(index)
+                            }
                         }
+                        .scrollTargetLayout()
                     }
-                    .scrollTargetLayout()
+                    .scrollTargetBehavior(.paging)
+                    .scrollPosition(id: $current)
+                    .overlay(alignment: .bottom) { dots(count: photos.count, at: current ?? 0) }
+                } else {
+                    frame(photos.first)
                 }
-                .scrollTargetBehavior(.paging)
-                .scrollPosition(id: $current)
-                dots(count: photos.count, at: current ?? 0)
-            } else {
-                frame(photos.first)
             }
-        }
-        .aspectRatio(feature ? 33.0 / 20.0 : 4.0 / 5.0, contentMode: .fit)
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 15, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 15, style: .continuous))
+            .clipShape(UnevenRoundedRectangle(topLeadingRadius: 15, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 15, style: .continuous))
     }
 
     private func frame(_ photo: ProductImage?) -> some View {
         Button {
             app.push(.product(handle: product.handle))
         } label: {
-            ZStack {
-                (feature ? Color.white : Brand.photo)
-                if let photo {
-                    RemoteImage(reference: photo.url, contentMode: feature ? .fit : .fill, label: photo.altText ?? product.title)
+            (feature ? Color.white : Brand.photo)
+                .overlay {
+                    if let photo {
+                        RemoteImage(reference: photo.url, contentMode: feature ? .fit : .fill, label: photo.altText ?? product.title)
+                    }
                 }
-            }
-            .aspectRatio(feature ? 33.0 / 20.0 : 4.0 / 5.0, contentMode: .fit)
-            .clipped()
+                .clipped()
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityHidden(true)
@@ -355,8 +360,8 @@ struct CardActions: View {
                     .font(.inter(14, .medium))
                     .foregroundStyle(Brand.muted)
                     .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photo))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                    .background(Capsule().fill(Brand.photo))
+                    .overlay(Capsule().strokeBorder(Brand.cardLine, lineWidth: 1))
                     .accessibilityLabel(l.t("product.unavailableName", ["name": product.title]))
             }
         }
@@ -426,8 +431,8 @@ struct CardActions: View {
         }
         .foregroundStyle(Brand.navy)
         .disabled(lineBusy)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+        .background(Capsule().fill(Color.white))
+        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
     }
 
     private func add(_ variant: ProductVariant, thenCheckout: Bool) {
@@ -449,8 +454,8 @@ struct CardActions: View {
 struct CardPillStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
+            .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
     }
 }
 

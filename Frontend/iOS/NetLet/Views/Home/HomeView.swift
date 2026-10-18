@@ -97,6 +97,8 @@ struct HomeHero: View {
                     .tracking(-0.6)
                     .lineSpacing(-2)
                     .fixedSize(horizontal: false, vertical: true)
+                    // `max-w-[15ch]`: the line breaks before "one cart." as it does on the web.
+                    .frame(maxWidth: 270, alignment: .leading)
                     .accessibilityLabel(l.t("home.heading") + ": " + l.t("home.heroTitle") + " " + l.t("home.heroTitleAccent"))
                     .accessibilityAddTraits(.isHeader)
                 Text(l.t("home.heroNote"))

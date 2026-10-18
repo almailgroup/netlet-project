@@ -122,12 +122,17 @@ final class OrdersViewModel {
         guard canLoadMore, !loadingMore, let shown = orders.value else { return }
         loadingMore = true
         defer { loadingMore = false }
-        if let next = try? await service.orders(page: page + 1) {
-            page += 1
-            total = next.total
-            let known = Set(shown.map(\.id))
-            orders = .loaded(shown + next.rows.filter { !known.contains($0.id) })
+        guard let next = try? await service.orders(page: page + 1) else {
+            // A page that cannot be read ends the list rather than spinning for ever.
+            total = shown.count
+            return
         }
+        page += 1
+        let known = Set(shown.map(\.id))
+        let fresh = next.rows.filter { !known.contains($0.id) }
+        orders = .loaded(shown + fresh)
+        // A page that adds nothing is the end, whatever the count said.
+        total = fresh.isEmpty ? shown.count : next.total
     }
 }
 
