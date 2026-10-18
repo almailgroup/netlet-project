@@ -4921,7 +4921,14 @@ lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the
 distribution identity in Apple's cloud and upload. The archive is built
 unsigned and signed on export, so no runner mints a development certificate
 that piles up on the team; only if Apple refuses that does it archive signed.
-The build number is the run number. `PrivacyInfo.xcprivacy` is what the
+The build number is the run number. **Both workflows build with the newest
+released Xcode 26 on the runner** (`scripts/select-xcode.sh`, through
+`DEVELOPER_DIR`), never the image's default: the first upload was refused
+because the runner's default, Xcode 16.4, builds with the iOS 18.5 SDK and App
+Store Connect takes only the iOS 26 SDK — after signing had already worked. A
+beta is skipped, since App Store Connect refuses what one builds, and the
+tests run on the same Xcode so they see the SDK a phone runs the app under.
+`PrivacyInfo.xcprivacy` is what the
 upload is checked against — no tracking, UserDefaults for the app's own
 settings (`CA92.1`), and what an account and an order collect, each linked and
 for running the shop.

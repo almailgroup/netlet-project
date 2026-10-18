@@ -37,8 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The Xcode the app ships with (testflight.yml uses the same), so the
+      # tests and the previews see the SDK a phone will run it under.
       - name: Xcode
-        run: xcodebuild -version
+        run: bash scripts/select-xcode.sh 26
 
       # The newest iPhone simulator the runner's Xcode has, chosen by id so the
       # job does not break when the image's list of devices changes.

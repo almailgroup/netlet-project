@@ -81,8 +81,10 @@ jobs:
           PLIST
           echo "Building $BUNDLE_ID, build $BUILD_NUMBER"
 
+      # App Store Connect accepts only what the current SDK built, so this is
+      # the newest released Xcode 26 on the runner, never its default.
       - name: Xcode
-        run: xcodebuild -version
+        run: bash scripts/select-xcode.sh 26
 
       # The archive is built unsigned and signed on export, where Apple's cloud
       # signing makes the distribution identity — so no runner ever has to

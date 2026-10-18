@@ -6,7 +6,7 @@ does and holds no catalogue, prices or rules of its own.
 
 ## Running it
 
-Open `NetLet.xcodeproj` in Xcode 16 or later and run the **NetLet** scheme on a
+Open `NetLet.xcodeproj` in Xcode 26 or later and run the **NetLet** scheme on a
 simulator. Nothing needs installing first: there are no packages.
 
 The app talks to the server named by `NETLET_API_BASE_URL` in
@@ -88,6 +88,10 @@ phone. It runs only when pressed (*Actions → TestFlight → Run workflow*), an
 the build number is the workflow's run number, so every run is a new build.
 No certificate or provisioning profile is kept anywhere: an App Store Connect
 API key lets `xcodebuild` make the distribution identity in Apple's cloud.
+App Store Connect accepts only builds made with the current SDK, so both this
+workflow and `ios.yml` build with the newest released Xcode 26 on the runner
+(`scripts/select-xcode.sh`) rather than its default; on a Mac of your own,
+build with Xcode 26 too.
 
 Once, in Apple's portals (a paid Apple Developer Program membership):
 
