@@ -421,6 +421,20 @@
       "when": 1791816545346,
       "tag": "0059_application_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792348056813,
+      "tag": "0060_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792348082062,
+      "tag": "0061_guides",
+      "breakpoints": true
     }
   ]
 }

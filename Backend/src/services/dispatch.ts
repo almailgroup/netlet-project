@@ -39,6 +39,7 @@ import type { FulfilmentState } from "../../../Shared/commerce/fulfilment.js";
 import { assertCan, readableCouriers, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
+import { tellOrderMoved } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -510,6 +511,8 @@ export async function moveParcel(
       inArray(orderItems.id, lines.map(line => line.lineId)),
       notInArray(orderItems.fulfilment, ["cancelled", "returned"]),
     ));
+  /* The shopper hears the parcel left, or that everything arrived. */
+  await tellOrderMoved(orderId, to);
 }
 
 /**

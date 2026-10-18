@@ -33,6 +33,7 @@ import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js"
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { violatesUnique } from "../core/describeError.js";
 import { getDb } from "./db.js";
+import { tellOfferAnswered } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -468,6 +469,7 @@ export async function answerOffer(
     .where(stillOpen(row.id, now))
     .returning({ id: priceOffers.id });
   if (written.length === 0) throw new OfferError("NOT_OPEN");
+  await tellOfferAnswered(row.id, "offered");
 }
 
 /** A refusal, with a reason if the seller gave one. */
@@ -491,6 +493,7 @@ export async function declineOffer(
     .where(stillOpen(row.id, now))
     .returning({ id: priceOffers.id });
   if (written.length === 0) throw new OfferError("NOT_OPEN");
+  await tellOfferAnswered(row.id, "declined");
 }
 
 /**

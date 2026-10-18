@@ -67,6 +67,7 @@ import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
 import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
+import { tellLineCancelled, tellOrderMoved, tellOrderPlaced, withProductAlerts } from "./notifications.js";
 import { isKept, type StillOwed } from "../../../Shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
 
@@ -805,6 +806,10 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         .catch(error => console.error(`[orders] marking order ${order.id}'s wishlist claims bought failed`, error));
     }
 
+    /* The receipt and each store's new-order bell, after the order exists and
+       never in its way (`notifications.ts`). */
+    await tellOrderPlaced(order, draft.lines.map(line => line.vendorId));
+
     return {
       order,
       lines: draft.lines,
@@ -1287,7 +1292,24 @@ export async function setLineFulfilment(
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
+  const [peek] = await db.select({ productId: orderItems.productId, fulfilment: orderItems.fulfilment }).from(orderItems).where(eq(orderItems.id, lineId)).limit(1);
+  /* A cancelled line puts its units back, which can bring a sold-out product
+     back for somebody waiting on it; a restore takes them again. */
+  const touchesStock = fulfilment === "cancelled" || peek?.fulfilment === "cancelled";
+  const moved = await withProductAlerts(touchesStock ? [peek?.productId] : [], () => moveLine(db, actor, lineId, fulfilment));
+  if (peek && peek.fulfilment !== fulfilment) {
+    if (fulfilment === "cancelled") await tellLineCancelled(lineId);
+    else await tellOrderMoved(moved.orderId, fulfilment);
+  }
+  return moved;
+}
 
+async function moveLine(
+  db: Db,
+  actor: Actor,
+  lineId: number,
+  fulfilment: (typeof orderItems.$inferSelect)["fulfilment"],
+) {
   const [line] = await db.select().from(orderItems).where(eq(orderItems.id, lineId)).limit(1);
   if (!line) throw new Error("NOT_FOUND");
 

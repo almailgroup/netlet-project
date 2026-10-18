@@ -45,6 +45,7 @@ import { AD_SLOTS, type BannerStatus } from "../../Shared/commerce/adBookings.js
 import type { DocumentKind, DocumentStatus, DocumentType } from "../../Shared/inventory/applicationDocuments.js";
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../../Shared/commerce/support.js";
 import { INBOUND_STATUSES } from "../../Shared/commerce/netletFulfilment.js";
+import type { GuideAudience, GuideStatus, GuideStep } from "../../Shared/commerce/guides.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -170,6 +171,11 @@ export const customerPreferences = pgTable(
      * it from displacing the real owner once they arrive.
      */
     wishlistPhone: varchar("wishlist_phone", { length: 24 }),
+    /**
+     * Whether NetLet emails this shopper what lands in their inbox. On unless
+     * they turn it off; the inbox itself is written whatever this says.
+     */
+    notifyEmail: boolean("notify_email").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -2900,6 +2906,96 @@ export const affiliates = pgTable(
   table => [
     uniqueIndex("affiliates_user_unique").on(table.userId),
     index("affiliates_status_idx").on(table.status, table.createdAt),
+  ],
+);
+
+/* --------------------------------------------------------- notifications --- */
+
+export const notificationChannel = pgEnum("notification_channel", ["email", "whatsapp", "sms"]);
+export const notificationDeliveryStatus = pgEnum("notification_delivery_status", ["pending", "sent", "failed", "skipped"]);
+
+/**
+ * One row per thing somebody should be told (`Shared/commerce/notices.ts`),
+ * kept as a message key and its values rather than a sentence, so it reads in
+ * whichever language its recipient uses the day they open it — the support
+ * answer's rule. `dedupe_key` is what makes telling somebody twice
+ * impossible rather than unlikely: every event names itself, and the unique
+ * index refuses the second.
+ */
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 48 }).notNull(),
+    messageKey: varchar("message_key", { length: 120 }).notNull(),
+    params: jsonb("params").$type<Record<string, string | number>>().notNull().default({}),
+    link: varchar("link", { length: 500 }),
+    dedupeKey: varchar("dedupe_key", { length: 191 }).notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("notifications_user_dedupe_idx").on(table.userId, table.dedupeKey),
+    index("notifications_user_created_idx").on(table.userId, table.createdAt, table.id),
+    index("notifications_unread_idx").on(table.userId).where(sql`${table.readAt} is null`),
+  ],
+);
+
+/**
+ * What is still to go out by email (and, once there are providers, WhatsApp
+ * or SMS), and what happened to it. A row is written only while a channel is
+ * configured, so connecting one later does not fire a backlog of old news.
+ */
+export const notificationDeliveries = pgTable(
+  "notification_deliveries",
+  {
+    id: serial("id").primaryKey(),
+    notificationId: integer("notification_id").notNull().references(() => notifications.id, { onDelete: "cascade" }),
+    channel: notificationChannel("channel").notNull(),
+    address: varchar("address", { length: 320 }).notNull(),
+    status: notificationDeliveryStatus("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("notification_deliveries_once_idx").on(table.notificationId, table.channel),
+    index("notification_deliveries_due_idx").on(table.nextAttemptAt).where(sql`${table.status} = 'pending'`),
+  ],
+);
+
+/* ---------------------------------------------------------------- guides --- */
+
+/**
+ * An illustrated guide (`Shared/commerce/guides.ts`): a model drafts it, a
+ * person publishes it. The steps are one ordered jsonb list, never a second
+ * table, because a step is meaningless outside its guide and is always read
+ * and written with it. Pictures are ordinary uploads (`media_files`), so a
+ * guide's picture is served, cached and deleted like any product photo.
+ */
+export const guides = pgTable(
+  "guides",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 120 }).notNull(),
+    audience: varchar("audience", { length: 12 }).$type<GuideAudience>().notNull().default("shopper"),
+    title: varchar("title", { length: 140 }).notNull(),
+    titleAr: varchar("title_ar", { length: 140 }).notNull(),
+    summary: varchar("summary", { length: 400 }),
+    summaryAr: varchar("summary_ar", { length: 400 }),
+    steps: jsonb("steps").$type<GuideStep[]>().notNull().default([]),
+    status: varchar("status", { length: 12 }).$type<GuideStatus>().notNull().default("draft"),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("guides_slug_unique").on(table.slug),
+    index("guides_published_idx").on(table.status, table.audience, table.publishedAt, table.id),
   ],
 );
 

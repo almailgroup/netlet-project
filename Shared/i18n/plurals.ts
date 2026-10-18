@@ -40,6 +40,20 @@ export type PluralEntry = {
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
   /* ------------------------------------------------------------ shoppers --- */
+  "notice.bagReminder": {
+    param: "count",
+    en: { one: "You left an item in your cart." },
+    ar: {
+      one: "تركت منتجاً في سلتك.",
+      two: "تركت منتجين في سلتك.",
+      many: "تركت {count} منتجاً في سلتك.",
+      other: "تركت {count} منتج في سلتك.",
+    },
+  },
+  "notices.unread": {
+    param: "count",
+    ar: { one: "إشعار واحد غير مقروء", two: "إشعاران غير مقروءين", few: "{count} إشعارات غير مقروءة", many: "{count} إشعاراً غير مقروء", other: "{count} إشعار غير مقروء" },
+  },
   "browse.countMany": {
     param: "count",
     ar: { two: "منتجان", few: "{count} منتجات", many: "{count} منتجاً" },

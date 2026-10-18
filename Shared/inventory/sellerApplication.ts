@@ -54,8 +54,13 @@ import { isValidIban, isValidKuwaitPhone, isGovernorate } from "./storeProfile.j
  * A date rather than a number, because what an administrator needs to answer
  * is "which text did they see", and a date is the one identifier that can be
  * matched against a document without a lookup table.
+ *
+ * The text is `/seller-agreement` (`SELLER_TERMS` in the web app's
+ * `content/legal.ts`). It was 2026-09-01 while there was no text to read, so
+ * the first published text is a new version: an application that ticked the
+ * old one ticked a sentence, and is asked again.
  */
-export const AGREEMENT_VERSION = "2026-09-01";
+export const AGREEMENT_VERSION = "2026-10-18";
 
 /** Where an application is. Four states, all stored: none is derived. */
 export const APPLICATION_STATES = ["draft", "submitted", "approved", "rejected"] as const;

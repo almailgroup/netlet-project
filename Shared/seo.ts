@@ -127,7 +127,16 @@ export function categoriesMeta(siteUrl: string): PageMeta {
 }
 
 /** The terms of use or the privacy policy — public and indexable, as a shop's are. */
-export function legalMeta(page: "terms" | "privacy", siteUrl: string): PageMeta {
+export function legalMeta(page: "terms" | "privacy" | "sellers", siteUrl: string): PageMeta {
+  if (page === "sellers") {
+    return {
+      title: `Seller agreement — ${SITE_NAME}`,
+      description: "The agreement a store accepts to sell on NetLet: listings, prices and permits, commission, payouts, delivery, returns and conduct.",
+      canonical: absoluteUrl(siteUrl, "/seller-agreement"),
+      image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+      type: "website",
+    };
+  }
   return page === "terms"
     ? {
         title: `Terms of use — ${SITE_NAME}`,

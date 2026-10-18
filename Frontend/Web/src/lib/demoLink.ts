@@ -606,7 +606,17 @@ function resolve(path: string, rawInput: unknown): unknown {
       };
     case "support.unread":
     case "support.waiting":
+    case "notifications.unread":
       return 0;
+    /* The demo has nobody to tell anything. */
+    case "notifications.list":
+      return { entries: [], total: 0, unread: 0, page: 1, pageSize: 20 };
+    case "notifications.email":
+      return true;
+    case "notifications.markRead":
+      return { ok: true } as const;
+    case "notifications.setEmail":
+      return Boolean((rawInput as { allows?: boolean } | undefined)?.allows);
     case "support.inbox":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "support.open":

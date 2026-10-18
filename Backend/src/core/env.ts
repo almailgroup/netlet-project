@@ -34,6 +34,16 @@ export const ENV = {
      standing order runs on its own — an administrator can still run them
      from /admin/subscriptions. */
   cronSecret: process.env.CRON_SECRET ?? "",
+  /* NetLet's own email (`Backend/src/core/email.ts`), through Resend. Both
+     are needed: the API key, and the address mail comes from — on a domain
+     verified in Resend, such as "NetLet <hello@netlet.net>". Unset, notices
+     still land in the inbox on the site and nothing is emailed or queued. */
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  notifyEmailFrom: process.env.NOTIFY_EMAIL_FROM ?? "",
+  /* The site's canonical address, for links that leave the site — an email's
+     button. A request knows its own origin; an email sent from the scheduler
+     does not. Unset, Vercel's production address is used where there is one. */
+  siteUrl: process.env.SITE_URL ?? "",
   /* Supabase Auth, where registered accounts live.
      All three must be set before it is used at all. The anon key is a public
      identifier and is only here rather than under a VITE_ name because the

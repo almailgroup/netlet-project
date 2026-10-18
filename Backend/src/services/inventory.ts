@@ -47,6 +47,7 @@ import { chartProblem, cleanChart, type SizeChart } from "../../../Shared/commer
 /* The readable part of a handle, shared so the "Add a product" form's search
    preview shows the address the server will actually make. */
 import { handleBase } from "../../../Shared/inventory/productDraft.js";
+import { tellPastBuyers, withProductAlerts, withStoreAlerts, withVariantAlerts } from "./notifications.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -1018,7 +1019,27 @@ async function offerHiddenFor(
   return verdict.allowed ? null : verdict.reason;
 }
 
+/**
+ * Followers hear when a product comes back or gets cheaper, and a store's past
+ * buyers that it has something new (`notifications.ts`) — read around the act
+ * rather than inside it, so a status change behaves exactly as it did.
+ */
 export async function setProductStatus(
+  actor: Actor,
+  productId: number,
+  target: "draft" | "published" | "archived",
+  reviewNote?: string,
+) {
+  const status = await withProductAlerts([productId], () => setProductStatusNow(actor, productId, target, reviewNote));
+  if (status === "published") {
+    const db = await getDb();
+    const [row] = db ? await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1) : [];
+    if (row) await tellPastBuyers(row.vendorId);
+  }
+  return status;
+}
+
+async function setProductStatusNow(
   actor: Actor,
   productId: number,
   target: "draft" | "published" | "archived",
@@ -1060,6 +1081,15 @@ export async function setProductStatus(
 
 /** An admin's verdict on something waiting for review. */
 export async function reviewProduct(actor: Actor, productId: number, approve: boolean, note?: string) {
+  await withProductAlerts([productId], () => reviewProductNow(actor, productId, approve, note));
+  if (approve) {
+    const db = await getDb();
+    const [row] = db ? await db.select({ vendorId: products.vendorId, status: products.status }).from(products).where(eq(products.id, productId)).limit(1) : [];
+    if (row?.status === "published") await tellPastBuyers(row.vendorId);
+  }
+}
+
+async function reviewProductNow(actor: Actor, productId: number, approve: boolean, note?: string) {
   assertCan(actor, "product.review");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -1126,6 +1156,10 @@ export async function reviewProduct(actor: Actor, productId: number, approve: bo
  * vendor who oversells wants the error now rather than a minus sign later.
  */
 export async function adjustStock(actor: Actor, variantId: number, delta: number, reason: StockReason, note?: string) {
+  return withVariantAlerts([variantId], () => adjustStockNow(actor, variantId, delta, reason, note));
+}
+
+async function adjustStockNow(actor: Actor, variantId: number, delta: number, reason: StockReason, note?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   const problem = stockMoveProblem(delta, reason);
@@ -1174,7 +1208,11 @@ export async function adjustStock(actor: Actor, variantId: number, delta: number
   return resulting;
 }
 
-export async function saveVariant(actor: Actor, input: {
+export async function saveVariant(actor: Actor, input: Parameters<typeof saveVariantNow>[1]) {
+  return withProductAlerts([input.productId], () => saveVariantNow(actor, input));
+}
+
+async function saveVariantNow(actor: Actor, input: {
   id?: number;
   productId: number;
   title: string;
@@ -1295,6 +1333,10 @@ export async function saveVariant(actor: Actor, input: {
  * audited as the editor's are.
  */
 export async function repriceProduct(actor: Actor, productId: number, percent: number) {
+  return withProductAlerts([productId], () => repriceProductNow(actor, productId, percent));
+}
+
+async function repriceProductNow(actor: Actor, productId: number, percent: number) {
   const invalid = percentProblem(percent);
   if (invalid) throw new Error(invalid);
   const db = await getDb();
@@ -2078,6 +2120,10 @@ export async function setVendorCommission(actor: Actor, vendorId: number, percen
 }
 
 export async function setVendorStatus(actor: Actor, vendorId: number, status: "pending" | "approved" | "suspended") {
+  return withStoreAlerts(vendorId, () => setVendorStatusNow(actor, vendorId, status));
+}
+
+async function setVendorStatusNow(actor: Actor, vendorId: number, status: "pending" | "approved" | "suspended") {
   assertCan(actor, "vendor.approve");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");

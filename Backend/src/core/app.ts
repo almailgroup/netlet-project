@@ -20,6 +20,7 @@ import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
 import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
+import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
 import { getDb } from "../services/db.js";
 import { sitemapEntries } from "../services/sitemap.js";
 import { robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
@@ -283,16 +284,20 @@ export function createApp(): Express {
    * not confirm it exists. Unset secret, unset feature — the rule every value
    * in `.env.example` follows.
    */
-  app.get("/api/cron/subscriptions", async (req, res) => {
+  /* Whether a request carries the scheduler's secret. */
+  const fromScheduler = (req: express.Request): boolean => {
     const expected = Buffer.from(ENV.cronSecret);
     const offered = Buffer.from((req.headers.authorization ?? "").replace(/^Bearer\s+/i, ""));
     /* Lengths in bytes, not characters: `timingSafeEqual` throws on buffers of
        different sizes, and a header as many characters long as the secret in
        wider ones reached it — an unhandled rejection in an Express 4 handler,
        which hung the request and could take the process with it. */
-    const same = expected.length > 0 && offered.length === expected.length
+    return expected.length > 0 && offered.length === expected.length
       && timingSafeEqual(offered, expected);
-    if (!same) {
+  };
+
+  app.get("/api/cron/subscriptions", async (req, res) => {
+    if (!fromScheduler(req)) {
       res.status(404).type("text/plain").send("Not found");
       return;
     }
@@ -300,6 +305,26 @@ export function createApp(): Express {
       res.json(await runDueSubscriptions());
     } catch (error) {
       console.error(`[cron] subscriptions failed: ${describeError(error)}`);
+      res.status(500).json({ error: "run failed" });
+    }
+  });
+
+  /**
+   * The inbox's daily round: a reminder for each basket an account left
+   * (3.1.17), and another try at any email that did not go. The same door
+   * and the same secret as the standing orders.
+   */
+  app.get("/api/cron/notifications", async (req, res) => {
+    if (!fromScheduler(req)) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    try {
+      const reminded = await remindAbandonedBags();
+      const emails = await sendDueEmails(200);
+      res.json({ reminded, ...emails });
+    } catch (error) {
+      console.error(`[cron] notifications failed: ${describeError(error)}`);
       res.status(500).json({ error: "run failed" });
     }
   });

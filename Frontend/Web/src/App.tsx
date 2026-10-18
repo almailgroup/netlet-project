@@ -268,6 +268,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/help", page: Help, frame: "shop" },
   { path: "/terms", page: Legal, frame: "shop" },
   { path: "/privacy", page: Legal, frame: "shop" },
+  { path: "/seller-agreement", page: Legal, frame: "shop" },
   { path: "/gifts/:token", page: GiftList, frame: "shop" },
   { path: "/gifts", page: GiftList, frame: "shop" },
   { path: "/invoices/verify/:number", page: InvoiceVerify, frame: "shop" },

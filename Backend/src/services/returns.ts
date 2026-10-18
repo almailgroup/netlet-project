@@ -34,6 +34,7 @@ import { getDb } from "./db.js";
 import { takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
+import { tellReturn, withProductAlerts } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -131,6 +132,9 @@ export async function requestReturn(
         declineReason: decision.status === "declined" ? decision.declineReason : null,
       })
       .returning({ id: returnRequests.id, status: returnRequests.status, declineReason: returnRequests.declineReason });
+    /* The store hears it was asked. The shopper has the decision on screen
+       already, so only a later one by a person is sent to them. */
+    await tellReturn(row.id, "requested");
     return row;
   } catch (error) {
     if (violatesUnique(error, "return_requests_open_unique")) throw new ReturnRefused("returns.alreadyOpen");
@@ -303,6 +307,7 @@ export async function decideReturn(
     .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, row.status)))
     .returning({ id: returnRequests.id });
   if (!moved) throw new ReturnRefused("returns.moved");
+  await tellReturn(requestId, decision.approve ? "approved" : "declined");
 }
 
 /** The item has left the shopper. */
@@ -334,6 +339,27 @@ export async function receiveReturn(
   now = new Date(),
 ): Promise<{ outcome: "refunded" | "exchanged"; refundAmount: string | null; replacementReference: string | null }> {
   const db = await handle();
+  const [peek] = await db
+    .select({ productId: orderItems.productId })
+    .from(returnRequests)
+    .innerJoin(orderItems, eq(orderItems.id, returnRequests.orderItemId))
+    .where(eq(returnRequests.id, requestId))
+    .limit(1);
+  /* Put back on the shelf, it may be back for somebody waiting on it. */
+  const result = await withProductAlerts(options.restock ? [peek?.productId] : [], () => receive(db, actor, requestId, options, now));
+  if (result.outcome === "exchanged" && result.replacementReference) {
+    await tellReturn(requestId, "exchanged", { replacementReference: result.replacementReference });
+  }
+  return result;
+}
+
+async function receive(
+  db: Awaited<ReturnType<typeof handle>>,
+  actor: Actor,
+  requestId: number,
+  options: { restock: boolean },
+  now: Date,
+): Promise<{ outcome: "refunded" | "exchanged"; refundAmount: string | null; replacementReference: string | null }> {
   const row = await loadForActor(db, actor, requestId);
   assertAction(row, actor, "receive");
 
@@ -464,8 +490,9 @@ export async function markRefundPaid(actor: Actor, requestId: number, now = new 
     .update(returnRequests)
     .set({ refundPaidAt: now })
     .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, "refunded"), sql`${returnRequests.refundPaidAt} is null`))
-    .returning({ id: returnRequests.id });
+    .returning({ id: returnRequests.id, refundAmount: returnRequests.refundAmount });
   if (!moved) throw new ReturnRefused("returns.moved");
+  await tellReturn(requestId, "refundPaid", { amount: moved.refundAmount ?? undefined });
 }
 
 /**

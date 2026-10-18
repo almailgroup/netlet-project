@@ -29,6 +29,7 @@ import { assertCan, can, type Actor } from "../../../Shared/inventory/permission
 import { checkMessageAllowed, recordMessage } from "./rateLimit.js";
 import { displayName } from "./reviews.js";
 import { getDb } from "./db.js";
+import { tellChatMessage } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -162,6 +163,7 @@ export async function sendAsShopper(user: { id: number; email: string | null }, 
     createdAt: now,
   });
   await recordMessage(user.email);
+  await tellChatMessage(thread.id, "shopper");
   return { conversationId: thread.id };
 }
 
@@ -289,6 +291,7 @@ export async function sendAsSeller(actor: Actor, conversationId: number, rawBody
   const now = new Date();
   await db.insert(conversationMessages).values({ conversationId, side: "seller", authorId: actor.userId, body, createdAt: now });
   await db.update(conversations).set({ lastMessageAt: now, vendorReadAt: now }).where(eq(conversations.id, conversationId));
+  await tellChatMessage(conversationId, "seller", now);
 }
 
 /* ------------------------------------------------------------ the thread --- */

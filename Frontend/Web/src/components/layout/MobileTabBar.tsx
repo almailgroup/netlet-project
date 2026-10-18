@@ -108,7 +108,7 @@ export function MobileTabBar() {
       active: location === "/account" || location.startsWith("/account/"),
       /* Unread replies, from sellers and from NetLet: on a phone this tab is
          the only account control there is. */
-      badge: signals.unreadMessages + signals.unreadSupport,
+      badge: signals.unreadMessages + signals.unreadSupport + signals.unreadNotices,
       href: "/account",
     },
     {

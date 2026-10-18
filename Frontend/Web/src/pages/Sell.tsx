@@ -34,7 +34,7 @@ import {
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { GOVERNORATES } from "@shared/inventory/storeProfile";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
@@ -348,6 +348,17 @@ export default function Sell() {
               <section className={`${CARD} p-5 sm:p-6`}>
                 <h2 className="text-sm font-extrabold">{t("sell.agreement")}</h2>
                 <p className="mt-2 max-w-prose text-[13px] leading-6 text-[#536b8c]">{t("sell.agreementNote")}</p>
+                {/* A new tab, because this form is half filled in when
+                    somebody stops to read what they are agreeing to. */}
+                <a
+                  href="/seller-agreement"
+                  target="_blank"
+                  rel="noopener"
+                  className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-bold text-[#0a285a] underline underline-offset-4"
+                >
+                  {t("sell.readAgreement")}
+                  <ArrowUpRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
+                </a>
                 <label className="mt-4 flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"

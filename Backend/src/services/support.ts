@@ -31,6 +31,7 @@ import { getOrderForUser } from "./orders.js";
 import { getDb } from "./db.js";
 import { translate } from "../../../Shared/i18n/dictionary.js";
 import type { DraftTurn } from "../../../Shared/commerce/supportDraft.js";
+import { tellSupportAnswered } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -288,6 +289,7 @@ export async function replyAsStaff(actor: Actor, id: number, rawBody: string, no
   await db.update(supportConversations)
     .set({ status: nextStatus(conversation.status, "staffWrote"), lastMessageAt: now, staffReadAt: now })
     .where(eq(supportConversations.id, id));
+  await tellSupportAnswered(id, now);
 }
 
 export async function resolveAsStaff(actor: Actor, id: number) {

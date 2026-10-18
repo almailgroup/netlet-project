@@ -201,8 +201,21 @@ if (supabaseAuthMissing.length === 0) {
   }
 }
 
+{
+  /* NetLet's own email (Backend/src/core/email.ts). The from address is what
+     Resend checks against a verified domain, so a bare word is refused here
+     rather than as a failed send on the first order. */
+  const key = (process.env.RESEND_API_KEY ?? "").trim();
+  const from = (process.env.NOTIFY_EMAIL_FROM ?? "").trim();
+  const address = /<([^<>\s]+@[^<>\s]+\.[^<>\s]+)>\s*$|^([^<>\s]+@[^<>\s]+\.[^<>\s]+)$/.exec(from);
+  if (key && from && address) add("ok", "Email", `RESEND_API_KEY and NOTIFY_EMAIL_FROM set — notices are emailed from ${from}`);
+  else if (key && from) add("blocked", "Email", "NOTIFY_EMAIL_FROM is not an address", "Write it as hello@netlet.net or NetLet <hello@netlet.net>, on a domain verified in Resend");
+  else if (key || from) add("blocked", "Email", `${key ? "NOTIFY_EMAIL_FROM" : "RESEND_API_KEY"} missing, so nothing is emailed`, "Both are needed: the API key from resend.com and an address on a domain verified there");
+  else add("warn", "Email", "RESEND_API_KEY and NOTIFY_EMAIL_FROM not set — notices reach the inbox on the site only", "resend.com -> API keys, and verify netlet.net under Domains");
+}
+
 if ((process.env.CRON_SECRET ?? "").trim().length >= 16) {
-  add("ok", "Standing orders", "CRON_SECRET set — the scheduler can run Subscribe & Save");
+  add("ok", "Scheduler", "CRON_SECRET set — the scheduler can run Subscribe & Save and the daily bag reminders");
 } else {
   add("warn", "Standing orders", "CRON_SECRET not set (or shorter than 16 characters) — no subscription runs on its own",
     "Set CRON_SECRET to a long random string, and the same value in Vercel; /admin/subscriptions can still run them by hand");

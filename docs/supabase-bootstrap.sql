@@ -1718,6 +1718,76 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "application_documents_application_idx" ON "application_documents" USING btree ("application_id","kind","created_at");
 
+-- ===== 0060_notifications.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."notification_channel" AS ENUM('email', 'whatsapp', 'sms');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."notification_delivery_status" AS ENUM('pending', 'sent', 'failed', 'skipped');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "notification_deliveries" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"notification_id" integer NOT NULL,
+	"channel" "notification_channel" NOT NULL,
+	"address" varchar(320) NOT NULL,
+	"status" "notification_delivery_status" DEFAULT 'pending' NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"last_error" text,
+	"next_attempt_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"sent_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "notifications" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"kind" varchar(48) NOT NULL,
+	"message_key" varchar(120) NOT NULL,
+	"params" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"link" varchar(500),
+	"dedupe_key" varchar(191) NOT NULL,
+	"read_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "customer_preferences" ADD COLUMN IF NOT EXISTS "notify_email" boolean DEFAULT true NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "notification_deliveries" ADD CONSTRAINT "notification_deliveries_notification_id_notifications_id_fk" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "notification_deliveries_once_idx" ON "notification_deliveries" USING btree ("notification_id","channel");
+CREATE INDEX IF NOT EXISTS "notification_deliveries_due_idx" ON "notification_deliveries" USING btree ("next_attempt_at") WHERE "notification_deliveries"."status" = 'pending';
+CREATE UNIQUE INDEX IF NOT EXISTS "notifications_user_dedupe_idx" ON "notifications" USING btree ("user_id","dedupe_key");
+CREATE INDEX IF NOT EXISTS "notifications_user_created_idx" ON "notifications" USING btree ("user_id","created_at","id");
+CREATE INDEX IF NOT EXISTS "notifications_unread_idx" ON "notifications" USING btree ("user_id") WHERE "notifications"."read_at" is null;
+
+-- ===== 0061_guides.sql =====
+CREATE TABLE IF NOT EXISTS "guides" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"slug" varchar(120) NOT NULL,
+	"audience" varchar(12) DEFAULT 'shopper' NOT NULL,
+	"title" varchar(140) NOT NULL,
+	"title_ar" varchar(140) NOT NULL,
+	"summary" varchar(400),
+	"summary_ar" varchar(400),
+	"steps" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"status" varchar(12) DEFAULT 'draft' NOT NULL,
+	"created_by" integer,
+	"published_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "guides" ADD CONSTRAINT "guides_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "guides_slug_unique" ON "guides" USING btree ("slug");
+CREATE INDEX IF NOT EXISTS "guides_published_idx" ON "guides" USING btree ("status","audience","published_at","id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1761,6 +1831,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  60 AS migrations_in_this_file,
+  62 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

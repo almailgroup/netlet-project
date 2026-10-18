@@ -67,6 +67,7 @@ const SERVICE: FooterLink[] = [
 const NETLET: FooterLink[] = [
   { key: "stores.title", href: "/stores" },
   { key: "footer.sellWithUs", href: "/sell" },
+  { key: "footer.sellerAgreement", href: "/seller-agreement" },
 ];
 
 /** Two brand marks lucide does not carry, as their own one-colour glyphs. */

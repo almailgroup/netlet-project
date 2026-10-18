@@ -32,6 +32,7 @@ import { chargeReference } from "../../../Shared/commerce/payoutRuns.js";
 import { assertCan, can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { getDb } from "./db.js";
+import { withShipmentAlerts } from "./notifications.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -294,6 +295,11 @@ export async function listShipments(actor: Actor, request: { status?: InboundSta
  * so two people counting the same pallet cannot both add it.
  */
 export async function receiveShipment(actor: Actor, id: number, counts: { lineId: number; received: number }[], now = new Date()): Promise<{ received: number }> {
+  /* What NetLet counted in is on the shelf: back for whoever was waiting. */
+  return withShipmentAlerts(id, () => receiveShipmentNow(actor, id, counts, now));
+}
+
+async function receiveShipmentNow(actor: Actor, id: number, counts: { lineId: number; received: number }[], now = new Date()): Promise<{ received: number }> {
   assertCan(actor, "fulfilment.operate");
   if (counts.length > MAX_INBOUND_LINES || counts.some(count => !validCount(count.received))) throw new FulfilmentProblem("fulfilment.badQuantity");
   const db = await handle();
