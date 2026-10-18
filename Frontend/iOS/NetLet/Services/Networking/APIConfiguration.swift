@@ -5,7 +5,7 @@ import Foundation
 /// The address is a build setting (`NETLET_API_BASE_URL` in
 /// `Frontend/iOS/Config/Shared.xcconfig`, written into Info.plist), and a
 /// launch argument overrides it for development — `-NetLetAPIBaseURL
-/// http://localhost:5001` points a simulator at a server on the same Mac.
+/// http://localhost:3000` points a simulator at a server on the same Mac.
 struct APIConfiguration: Sendable {
     static let fallback = URL(string: "https://netlet-project.vercel.app")!
 

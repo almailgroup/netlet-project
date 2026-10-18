@@ -69,7 +69,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-NetLetAPIBaseURL http://localhost:5001"
+            argument = "-NetLetAPIBaseURL http://localhost:3000"
             isEnabled = "NO">
          </CommandLineArgument>
       </CommandLineArguments>

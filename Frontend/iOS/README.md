@@ -15,7 +15,7 @@ two launch arguments, off by default, under *Edit Scheme → Run → Arguments*:
 
 - `-NetLetDemo YES` answers every call from the recordings in
   `NetLet/Resources/Demo/`, so the app runs with no server and no network.
-- `-NetLetAPIBaseURL http://localhost:5001` points a simulator at `pnpm dev`
+- `-NetLetAPIBaseURL http://localhost:3000` points a simulator at `pnpm dev`
   on the same Mac. A real phone needs the Mac's address on the network instead.
 
 Two more, for development and screenshots, in Debug builds only:
