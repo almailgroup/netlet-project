@@ -6,22 +6,43 @@ the passwords. Vercel runs it.
 
 ## Layout
 
-`README.md` has the directory map; two boundaries in it are load bearing.
+`README.md` has the directory map. Three top-level folders, each a
+responsibility: `Frontend/` is what runs in front of a shopper (`Web/`, the
+React app), `Backend/` is what runs on a server (`src/`, `database/`,
+`gateway/`, `scripts/`), and `Shared/` is what both import. Configuration that
+spans them stays at the root, and so does `api/`, because Vercel only finds a
+function there.
 
-**`shared/` is pure**, and that is what makes the rules checkable: permissions,
-commission, order arithmetic and the password floor each decide something that
-costs money or access, and both sides import the same function, so the UI
-cannot offer what the API refuses.
+**`Shared/` is its own folder because it belongs to neither side**, and that is
+what makes the rules checkable: permissions, commission, order arithmetic and
+the password floor each decide something that costs money or access, and both
+sides import the same function, so the UI cannot offer what the API refuses.
+It imports nothing from `Frontend/` or `Backend/`, and the Worker imports it
+too. Filed under one side, the other would reach across for its rules.
 
-**`server/_core/` is infrastructure and the rest of `server/` is the data
-layer** — app, auth, env, security, trpc and the two entry points on one side;
-inventory, orders, catalog, profile on the other. `_core` used to mean three
-different things: there was a `shared/_core/` holding one dead file and a
-`client/src/_core/hooks/` holding one hook while `client/src/hooks/` held four.
-Both are gone, so the prefix now names one idea in one place.
+**`Backend/src` is three layers.** `core/` is configuration and
+infrastructure — app, auth, env, security, tRPC and the two entry points;
+`routes/` is the API, one tRPC router per surface, with `index.ts` the app
+router; `services/` is the data layer — inventory, orders, catalog, profile —
+where the guards sit beside the queries they protect. `database/` holds the
+models (`schema.ts`) and the migrations. Before the move `core` was `_core`,
+a prefix that once meant three things — a `Shared/_core/` holding one dead file
+and a hooks folder holding one hook — before it was cut down to the one idea it
+names now.
 
-Everything under `client/src/hooks/` is a hook and everything in
-`client/src/lib/` is not; there is no second answer to where either goes.
+**The move kept every rule, and two of them needed telling.** The guards that
+read the source — `sqlFragments.test.ts`, `orderTies.test.ts`, `imports.test.ts`
+— scanned the whole of `server/`, and sitting in `services/` they would have
+scanned a third of the backend and passed; they read all of `Backend/src` now.
+A guard that finds nothing passes, so a path change to one is checked by
+counting what it reads, not by its going green.
+
+**The web app keeps React's folders, not MVVM's.** `pages/` and
+`components/` are its views, `hooks/` and `contexts/` its state, `lib/` its
+services and utilities. Renaming them to Views and ViewModels would have changed
+some fifteen hundred imports for names that describe a different framework.
+Everything under `Frontend/Web/src/hooks/` is a hook and everything in
+`Frontend/Web/src/lib/` is not; there is no second answer to where either goes.
 
 ## Design reference
 
@@ -246,7 +267,7 @@ outright: the two variables holding the same value.
 ever set: `supabase_uid`, or the local scrypt digest in `password_hash`. Two
 columns rather than one `auth_uid` and a provider name, because the column *is*
 the provider — two fields that must agree eventually do not.
-`server/_core/passwordStore.ts` is the only place that reads which, so the six
+`Backend/src/core/passwordStore.ts` is the only place that reads which, so the six
 callers that used to write their own `if (configured && uid)` now ask one
 question.
 
@@ -267,7 +288,7 @@ had happened, which is the whole reason it was not one change. That dependency
 going also took the `jwks-rsa` → `jose` trap under Deploys with it.
 
 **`DROP COLUMN` was this file's first, and it needed the generator taught.**
-`scripts/build-bootstrap.mjs` rewrites each migration into something re-runnable
+`Backend/scripts/build-bootstrap.mjs` rewrites each migration into something re-runnable
 and reports any shape it does not recognise; a drop was not one of them, so it
 would have been passed through unhandled. It is `DROP COLUMN IF EXISTS` now, and
 the column's indexes go with it rather than needing their own statement.
@@ -275,7 +296,7 @@ the column's indexes go with it rather than needing their own statement.
 That was also the moment the bootstrap started being *run* rather than only read.
 Every statement before this either created something or no-opped on a second
 pass; a drop is the first where "run it twice" and "run it on a database that
-never had the thing" are different questions. `scripts/bootstrap.test.ts` now
+never had the thing" are different questions. `Backend/scripts/bootstrap.test.ts` now
 applies the file to a real Postgres — twice on a fresh database, and again on one
 where the column has been put back — and checks all three land in the same place.
 
@@ -306,7 +327,7 @@ narrower — and it was found by writing the test rather than by reading the cod
 which is the argument for testing the adoption branch as a rule about *who is
 asking* rather than as a row update that works.
 
-Those three writes live in `server/logins.ts`, not `db.ts`, for the reason
+Those three writes live in `Backend/src/services/logins.ts`, not `db.ts`, for the reason
 `profile.ts` and `orders.ts` do: a function declared inside `db.ts` calls that
 file's module-local `getDb`, which nothing outside can redirect, so it cannot be
 pointed at a test database. That was survivable while it was one insert. It
@@ -324,7 +345,7 @@ dialog, Subscribe & Save, `/sell`), `/signin` and `/signup` draw it as a page a
 link can point at, and a signed-out `/account` *is* the form — it was a panel
 whose "Create account" button opened the dialog on signing in. Three copies is
 how a rule gets fixed in one and not the others. The page takes `?next=`,
-through `shared/auth/returnPath.ts`, which keeps it a path on this site: a
+through `Shared/auth/returnPath.ts`, which keeps it a path on this site: a
 sign-in page that went wherever its address said would be a NetLet-branded door
 onto somebody's phishing page. `/login` and `/register` answer too and are
 replaced by the real two. The page's header is checkout's bare one, because the
@@ -340,7 +361,7 @@ no gradient or blur) with three things the account does and the three facts
 every order carries, beside it on a wide screen and under it on a phone. The
 form and some notes loose on the pearl read as two things; one card reads as
 the shop's door. The department pictures were on it and the owner asked for a
-picture of the marketplace instead: `client/src/assets/auth/welcome.webp`,
+picture of the marketplace instead: `Frontend/Web/src/assets/auth/welcome.webp`,
 NetLet's own street with the van being loaded, edge to edge across the panel's
 top because its edges are the panel's navy. It is picked up at build time by
 `import.meta.glob`, so replacing it is dropping in another file, and with none
@@ -362,13 +383,13 @@ password on an account still waiting goes to the same step (GoTrue checks the
 password before the confirmation, so "unconfirmed" tells nobody anything). The
 code is one input drawn as six boxes — one field takes a paste, a phone's
 one-time-code suggestion and a screen reader whole — read left to right on
-either page, Arabic-Indic digits folded (`shared/auth/emailCode.ts`). Every code
+either page, Arabic-Indic digits folded (`Shared/auth/emailCode.ts`). Every code
 sent counts (`codeSend`) and every wrong one (`codeMiss`), in the sign-in
 ceilings' table. With no Supabase the code is written to the server log
 (`localCodes.ts`, in memory, the dev fallback and never the path).
 
 **Google's "I'm not a robot" box guards Create account**
-(`components/auth/HumanCheck.tsx`, `server/_core/captcha.ts`): reCAPTCHA v2,
+(`components/auth/HumanCheck.tsx`, `Backend/src/core/captcha.ts`): reCAPTCHA v2,
 its script fetched only on that form, in the page's language, compact under
 304px. The server asks Google before any code is sent — a form that sends email
 is a way to mail anybody — and a Google it cannot reach refuses rather than
@@ -388,12 +409,12 @@ What the form does, each for a reason:
   a phone, after Caps Lock had been said, "Create an account" took two taps.
   Found by a probe whose click did nothing, not by looking.
 - **A mistyped email domain is offered back** once typing pauses —
-  `shared/auth/emailTypo.ts`, "Did you mean …@gmail.com?" — because an account
+  `Shared/auth/emailTypo.ts`, "Did you mean …@gmail.com?" — because an account
   made at `gmial.com` has no way back in once its password is forgotten. It
   offers and never corrects: `mail.com`, `outlook.sa` and `.om` (Oman, next
   door) are somebody's real address.
 - **The password can be shown, and its rules are a checklist from the start.**
-  `shared/auth/passwordStrength.ts` returns the unmet rules, not just a score.
+  `Shared/auth/passwordStrength.ts` returns the unmet rules, not just a score.
   Only length and a common-shape check block, and are ticks; case, a number and
   a symbol are a row labelled optional, because composition rules that refuse a
   long passphrase in favour of `P@ss1` make passwords worse. `ProfileManager`'s
@@ -420,7 +441,7 @@ and password, each its own small form with its own Save. One Save across all
 three would change a password somebody opened the panel to fix a spelling in.
 **Email and password both re-ask for the current password** — a session left
 open on a shared machine should not be enough to take an account over, and
-those two are exactly what somebody doing that would reach for. `server/profile.ts`
+those two are exactly what somebody doing that would reach for. `Backend/src/services/profile.ts`
 holds the writes rather than `db.ts`, because functions inside `db.ts` call
 its module-local `getDb`, which nothing outside can redirect, so anything
 living there cannot be tested against a real database.
@@ -464,8 +485,8 @@ gives the safe answer.
 blunts a flood before it reaches application code, but its store is a `Map`
 that assumes one long-lived process: served from a pool of short-lived
 instances, each starts empty, so the real ceiling is the number times however
-many are warm and it resets whenever one recycles. `server/rateLimit.ts` counts
-in a table every instance shares, and `shared/auth/rateLimit.ts` is the policy,
+many are warm and it resets whenever one recycles. `Backend/src/services/rateLimit.ts` counts
+in a table every instance shares, and `Shared/auth/rateLimit.ts` is the policy,
 pure.
 
 Two keys, because each catches what the other cannot see: by address alone, one
@@ -798,7 +819,7 @@ didn't catch it, refused, unsupported, choosing, previewing, scanning, no
 match. Voice is the browser's own recogniser, asked in the page's language,
 and the listening panel says that in Chrome and Edge the sound goes to Google
 or Microsoft; NetLet gets the words. Photo goes through
-`shared/commerce/photoSearch.ts`: the browser's own pickers (so the page never
+`Shared/commerce/photoSearch.ts`: the browser's own pickers (so the page never
 holds a camera permission), shrunk to 768px in the browser and under the API's
 256 KB body limit rather than raising that limit for every route, shown back
 with a line saying where it goes, and sent only on the press. The model may
@@ -1086,7 +1107,7 @@ of no fixed height shrank both to the height of their words.
 called `useBuyNow()` after `if (!product) return null`, so opening the preview
 ran one more hook than the render before it and React replaced the shop with
 error #310 — on every card, on the live site, while every test passed. There is
-no lint step to catch it, so `client/src/lib/hookOrder.test.ts` reads every
+no lint step to catch it, so `Frontend/Web/src/lib/hookOrder.test.ts` reads every
 component and hook and fails on a `use…()` after the function's first
 `return`. It was checked against the broken file before the fix went in.
 
@@ -1137,7 +1158,7 @@ but the built CSS is what ships, and it is the thing to read.
 own, on the owner's word.** `heroSlides` (`lib/brandAssets.ts`) is NetLet's
 street (`streetImage`, the sign-in panel's picture, so the shop's door looks
 the same wherever a shopper meets it) and then every picture in
-`client/src/assets/hero/`, in file-name order, so a slide is added by dropping
+`Frontend/Web/src/assets/hero/`, in file-name order, so a slide is added by dropping
 in a file (that folder's README says the shape). Only the pictures change: the
 words and the buttons hold still, so nothing a shopper is reading moves. A
 picture stays `SLIDE_MS`, three seconds on the owner's word (two was tried and
@@ -1170,7 +1191,7 @@ between 46 and 111 KB.
 departments and "All departments", three to a row on a phone and six on a wide
 screen, each a link. **The tiles are white, all six alike**: a colour per
 department was offered in the mockup and the owner declined it. **The art is a
-file per department**, `client/public/departments/<slug>.webp`, so a picture is
+file per department**, `Frontend/Web/public/departments/<slug>.webp`, so a picture is
 replaced by dropping a file of the same name. Each is a few of the department's
 typical goods as soft, rounded 3D renders in their natural colours — the
 owner's choice over a version held to white, navy and orange, which read as
@@ -1183,9 +1204,9 @@ sliver of it beside the grocery basket.
 Then the paid placements, Deals, Bestsellers, Picked for you, Shop by brand,
 Stores on NetLet, the new arrivals as a grid to browse, and the footer. **A
 shelf below four products is not drawn**: `shelvesFor` in
-`client/src/content/homeLayout.ts` decides — Deals is what is actually
+`Frontend/Web/src/content/homeLayout.ts` decides — Deals is what is actually
 discounted, deepest first; Bestsellers is what sold, by units over ninety days
-(`server/homeShelves.ts`: never a cancelled or returned line, nor an exchange's
+(`Backend/src/services/homeShelves.ts`: never a cancelled or returned line, nor an exchange's
 zero-priced replacement, which is the same item counted twice); New arrivals is
 the most recent; each leaves out what a shelf above shows, and what a hidden
 shelf did not show is free for the next. Anything that points at a shelf asks
@@ -1215,7 +1236,7 @@ where the scroller then clipped the "1".
 
 **Stores on NetLet is the row that says this is a marketplace** — the one thing
 departments, shelves and a grid never said. `commerce.stores`
-(`listStoreCards` in `server/catalog.ts`) is approved stores with something
+(`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
 the same `pick` their products use. Each card opens the store's own page, and
 "See all stores" opens `/stores` (see "A store has a page"). Everything on a
@@ -1297,7 +1318,7 @@ Visit us opens the address on a map, and the line names its first part ("visit
 us in Kuwait City"). **Every contact is still a setting**: `support.channels`
 carries `SUPPORT_WHATSAPP`, `SUPPORT_PHONE`, `SUPPORT_EMAIL`,
 `SUPPORT_ADDRESS`(`_AR`), the `SOCIAL_*` profiles and the company, each through
-`shared/commerce/contact.ts`; a setting replaces a default, an empty one removes
+`Shared/commerce/contact.ts`; a setting replaces a default, an empty one removes
 it, and the rules refuse an address that is not one and a profile link that is
 not https on that platform's own host — a lookalike domain or a link pasted
 into the wrong box draws nothing rather than sending a shopper somewhere nobody
@@ -1377,7 +1398,7 @@ the side the writing direction starts from — so in English it centred and in
 Arabic it honoured `right`, putting every enlarged hit area on the site 22px
 beside its control rather than around it. Found because one of them poked 8px
 past the edge of a phone and made the product editor scroll sideways;
-`client/src/lib/tapTarget.test.ts` keeps it out. Physical centring is the one
+`Frontend/Web/src/lib/tapTarget.test.ts` keeps it out. Physical centring is the one
 place the no-physical-properties rule allows, because centring takes no side.
 
 **A grid item needs `min-w-0` when anything inside it scrolls sideways.** A grid
@@ -1492,7 +1513,7 @@ cards' own `h3`s one level below a heading.
 reference, a date, a total and a payment badge, and the badge read "awaiting
 payment" on every cash order until a driver had been to the door — the same
 yellow on every row, answering a question nobody was asking. Each row now leads
-with `orderProgress` (`shared/commerce/orderProgress.ts`, pure): received,
+with `orderProgress` (`Shared/commerce/orderProgress.ts`, pure): received,
 being prepared, on the way, "2 of 3 delivered", delivered on a date, returned,
 cancelled — read off the lines, the furthest-behind line still coming deciding,
 so an order is not "delivered" while a parcel is in a van and a cancelled line
@@ -1511,7 +1532,7 @@ went too: its two cards repeated what the Saved and Orders tiles say.
 
 ## Inventory
 
-NetLet owns its catalog. `drizzle/schema.ts` holds vendors, vendor members,
+NetLet owns its catalog. `Backend/database/schema.ts` holds vendors, vendor members,
 categories, products, variants, images and stock movements, in the Supabase
 Postgres that `DATABASE_URL` points at. Money is `numeric`, never a float — the
 dinar has three decimal places and a binary fraction cannot hold 24.375.
@@ -1526,24 +1547,24 @@ discount permit forbids showing. Every rule the shop's read applies in
 and `inputGuard.test.ts` fails if the path comes back.
 
 There is one catalog, not two. The storefront reads the same tables the
-admin portal writes: `server/catalog.ts` is the read side,
-`shared/commerce/fromInventory.ts` turns rows into the `Product` shape the
-pages are written against, and `server/storefront.e2e.test.ts` is what stops
+admin portal writes: `Backend/src/services/catalog.ts` is the read side,
+`Shared/commerce/fromInventory.ts` turns rows into the `Product` shape the
+pages are written against, and `Backend/src/services/storefront.e2e.test.ts` is what stops
 the two drifting apart again — it creates a product through the portal's
 procedures and buys it through the shop's.
 
-`shared/commerce/types.ts` is that shape and is the only commerce contract the
+`Shared/commerce/types.ts` is that shape and is the only commerce contract the
 client knows. It survived one backend already; keep it free of anything that
 smells like a table.
 
-**`shared/inventory/permissions.ts` is the whole access model, and it is pure.**
+**`Shared/inventory/permissions.ts` is the whole access model, and it is pure.**
 Two axes: *scope* (a vendor member reaches their own vendor and nothing else,
 an admin reaches everything) and *rank* (`staff` moves stock, `manager` runs
 the catalog, `owner` runs the team). Some capabilities no vendor rank can
 reach at all — commission above all, which the requirements put outside a
 vendor's control entirely.
 
-Guards live in `server/inventory.ts`, next to the query each protects, not in
+Guards live in `Backend/src/services/inventory.ts`, next to the query each protects, not in
 the router alone: a second caller added later would skip a router-level check
 silently. `assertCan` throws `FORBIDDEN:<capability>`, which the router
 translates into a 403.
@@ -1560,14 +1581,14 @@ procedures twice with a different guard at the top of each, which is the
 arrangement where a guard eventually goes missing from one copy. Every
 procedure resolves *who is asking* and the data layer refuses the rest.
 
-Commission resolves in `shared/inventory/commission.ts`, and a product's own
+Commission resolves in `Shared/inventory/commission.ts`, and a product's own
 rate overrides its vendor's. **An explicit zero is an override; an absent value
 is not** — "this product earns us nothing" and "this product has no special
 rate" are different instructions, and collapsing them loses one of them. Both
 rates are admin-only, because commission sits outside a vendor's control
 entirely.
 
-`shared/inventory/vendorHealth.ts` is the score and the badges, and both are
+`Shared/inventory/vendorHealth.ts` is the score and the badges, and both are
 pure. The score is four evenly-weighted components rather than a tuned blend,
 because the requirement is transparency: every component carries the raw counts
 it came from, and those counts are a closed `HealthDetailKey` union so that
@@ -1580,7 +1601,7 @@ seller could earn by behaving well would be saying something else.
 **And it is the only badge a person awards.** The row used to take any of
 four by hand, so "High Rating" could sit on a store nobody had reviewed and
 "Fast Shipping" on one that had never delivered. `storefrontBadges` measures
-the other two on every catalog read — `badgesFor` in `server/catalog.ts`, two
+the other two on every catalog read — `badgesFor` in `Backend/src/services/catalog.ts`, two
 grouped queries for the whole shelf: High Rating at a 4.5 average over at
 least five visible reviews, Fast Shipping when four in five of the last ninety
 days' deliveries (counted per order) arrived within 72 hours of being placed,
@@ -1594,7 +1615,7 @@ nothing measured it. The demo catalog carries none, being invented.
 globally unique, so the first shop to record "BATT-1" owned the string and every
 shop after it was refused — for a code a marketplace should expect two
 independent sellers to reach for. The index is `(product_id, sku)` now, and
-`assertSkuFree` in `server/inventory.ts` carries the grain an index cannot,
+`assertSkuFree` in `Backend/src/services/inventory.ts` carries the grain an index cannot,
 since it cannot reach through `products` to `vendor_id`: a seller reusing a code
 across two of their *own* products is a real mistake and still refused. Both
 doors check it, the editor and the spreadsheet import, for the reason
@@ -1624,8 +1645,8 @@ moment of sale and never recomputed — not the price, not the product's title,
 not the commission rate. Recomputing an old order against today's catalog is how
 a refund comes out at a different figure from the payment.
 
-`shared/commerce/order.ts` is the arithmetic and is pure: `freezeLine`,
-`draftOrder`, `sliceByVendor`, `refusalFor`. `server/orders.ts` is the part that
+`Shared/commerce/order.ts` is the arithmetic and is pure: `freezeLine`,
+`draftOrder`, `sliceByVendor`, `refusalFor`. `Backend/src/services/orders.ts` is the part that
 needs a database — reading live prices one last time, taking the stock, writing
 the order. The split is the same one commission and permissions already use, and
 for the same reason: a rule you can only exercise by placing a real order
@@ -1682,9 +1703,9 @@ teaches people not to look. It is the *first* tile, ahead of the settings:
 somebody opening their account on a shop is usually asking where a parcel is,
 not changing a display name.
 
-`server/orders.ts` had `listOrdersForUser` and `getOrderForUser` from the day
+`Backend/src/services/orders.ts` had `listOrdersForUser` and `getOrderForUser` from the day
 the tables landed and **nothing could call them** — there was no router, so the
-page had no way to ask. `server/routers/orders.ts` is that missing half. Every
+page had no way to ask. `Backend/src/routes/orders.ts` is that missing half. Every
 procedure is protected and every query is scoped by `ctx.user.id` inside the
 data layer rather than filtered in the router, because a reference is short
 enough to paste and an id is a serial: "show me order 4" has to be refused by
@@ -1694,11 +1715,11 @@ the query. Tested by handing one shopper another's reference.
 `orders.get` returned the whole row, so a shopper could read off their own
 receipt the commission NetLet took on each line, what the seller nets, the
 order's commission total, an affiliate's rate and which driver's account
-carried it. `orderForShopper` and `lineForShopper` in `server/orders.ts` are
+carried it. `orderForShopper` and `lineForShopper` in `Backend/src/services/orders.ts` are
 what the shopper's API sends now; the data layer keeps the whole row for the
 code that needs it, and `invoices.test.ts` checks the fields stay out.
 
-**`shared/commerce/returns.ts` is the window, and it is pure.** A return needs
+**`Shared/commerce/returns.ts` is the window, and it is pure.** A return needs
 *both* lifecycles to agree — the money taken and the goods arrived — and asking
 only one is how a shopper gets offered a return on a parcel still in a van.
 `RETURN_WINDOW_DAYS` is one constant so the policy is one edit. The server
@@ -1721,7 +1742,7 @@ gap in our own schema puts our problem on the shopper.
 
 The request was an email address for a long time, on the grounds that a form
 silently dropping a request is worse than an address. It is a row now —
-`return_requests` — and `shared/commerce/returnRequests.ts` is the rule, pure.
+`return_requests` — and `Shared/commerce/returnRequests.ts` is the rule, pure.
 
 **Most requests decide themselves.** Damaged, faulty, wrong or not as described
 is the seller's fault, which a shop cannot refuse inside the window, so it is
@@ -1750,7 +1771,7 @@ Three rules that were each found by doing it rather than reading it:
   outcomes and the replacement order would still read delivered for an item
   that had come back. A replacement is returned on its own order, if at all.
 - **"To do" is one filter, shared by the list and the overview count** —
-  `WAITING` in `server/returns.ts`. A refund received but not yet handed back
+  `WAITING` in `Backend/src/services/returns.ts`. A refund received but not yet handed back
   is still work, and the first version of the tab dropped it the moment the
   item arrived, so the cash owed to a shopper fell off the only page that asks
   somebody to pay it.
@@ -1776,10 +1797,10 @@ order and reading every page afterwards, not by any test:
   cancelled line takes them again under the checkout's own `WHERE stock >= n`,
   refusing with `orders.noStockToRestore` if they have since sold.
 - **The driver was told to collect the sofa.** `grand_total` is frozen and right
-  to be, but it is the obligation *as placed*. `shared/commerce/collection.ts`
+  to be, but it is the obligation *as placed*. `Shared/commerce/collection.ts`
   subtracts what is no longer coming — the line's frozen total, and a seller's
   delivery fee only once nothing of theirs is left for that door — and
-  `server/owed.ts` is the one reader, so the dispatch board, the shopper's
+  `Backend/src/services/owed.ts` is the one reader, so the dispatch board, the shopper's
   orders and the seller's desk quote one figure. Order-level reductions
   (discount, points, gift card) stay whole and the figure floors at zero.
   **`lineTotal` already carries the add-ons** (`freezeLine` folds them in); the
@@ -1817,14 +1838,14 @@ value was not returned.
 `/admin/finance` reports what the orders already froze. Almost none of this was
 new arithmetic: `order_items` has carried `lineTotal`, `commissionAmount` and
 `vendorNet` since the day orders landed, copied at the moment of sale, and
-nothing ever asked for them back. `shared/commerce/finance.ts` is the sum and
+nothing ever asked for them back. `Shared/commerce/finance.ts` is the sum and
 is pure, for the reason the order arithmetic is — the failure mode is not a
 crash, it is a shop quietly paying its sellers the wrong amount.
 
 **Nothing is recomputed, ever.** Not the rate, not the percentage, not the net.
 Re-deriving commission from today's rate would make September's report change
 in October, which is the exact failure `order_items` was built to prevent, and
-`server/finance.test.ts` moves a vendor's rate afterwards to prove the report
+`Backend/src/services/finance.test.ts` moves a vendor's rate afterwards to prove the report
 does not follow.
 
 **Gross, refunded and net are three figures, never one.** A blended number
@@ -1862,7 +1883,7 @@ at 2am on the first falls in the previous month by this reckoning; stating it
 beats a silent local-time conversion inside the arithmetic, and the fix when it
 matters is a timezone an admin chooses.
 
-`server/finance.ts` is the database half, outside `db.ts` for the reason
+`Backend/src/services/finance.ts` is the database half, outside `db.ts` for the reason
 `profile.ts` and `orders.ts` are, and it guards with `platform.viewAll` — a
 vendor sees their own figures on their own pages, and the platform's cut across
 every seller is not one of them. The router's `guard` is what turns that
@@ -1902,7 +1923,7 @@ half that went wrong: both surfaces derived the gallery for themselves while the
 index that drives them was bounded by `images.length`, so a product with a clip
 had one item the arrows and the next button could never reach, and with the clip
 first the counter and the picture named different things. `galleryOf` in
-`shared/commerce/gallery.ts` is the derivation now — one function, so a page
+`Shared/commerce/gallery.ts` is the derivation now — one function, so a page
 cannot disagree with itself about how long its own gallery is.
 
 **The full-screen viewer is a modal and owes what every modal here does.** It
@@ -1968,7 +1989,7 @@ for longer, and a state of its own would put one fact in two places.
 **A date that has already passed is shown as no date at all.** "Ships 3
 February" read in September does not inform anybody; it says the shop stopped
 paying attention. The shopper gets "ships as soon as it arrives", which is
-vaguer and true. `shared/commerce/preorder.ts` nulls it, so no display code
+vaguer and true. `Shared/commerce/preorder.ts` nulls it, so no display code
 carries a stale-date branch.
 
 `AvailabilityLine` is the one component all three surfaces use — product page,
@@ -1979,7 +2000,7 @@ has not been made yet asks the shopper to find out later.
 ## Selling by weight
 
 A supermarket has two kinds of shelf: most of it is counted, and some of it is
-measured — tomatoes by the kilo, oil by the litre. `shared/commerce/units.ts`
+measured — tomatoes by the kilo, oil by the litre. `Shared/commerce/units.ts`
 is the arithmetic for both and is pure, for the reason the order arithmetic is
 pure: a price shown per kilo and a price charged at the till that disagree is a
 shop somebody stops trusting.
@@ -1991,7 +2012,7 @@ predicate would all become floating point, and 0.1 + 0.2 is not 0.3 in any of
 them. Instead a variant declares the **step** it is sold in, and quantity counts
 steps: six 250 g steps is 1500 g is 1.5 kg, exactly, in integers, and every
 query already written keeps working untouched. It is the discipline
-`shared/money.ts` already applies to the dinar — hold the small unit as an
+`Shared/money.ts` already applies to the dinar — hold the small unit as an
 integer and derive the human number for display. Mass gets grams, volume gets
 millilitres, and nothing is ever a float.
 
@@ -2009,25 +2030,28 @@ not a unit price; it is just the price, and printing it twice is noise.
 `isValidMeasure` refuses a step that is not a whole number of base units, and
 that is the door the float would otherwise come back in through: a 0.5 g step
 would make `baseUnitsFor` round, and the arithmetic would stop being exact. The
-guard lives in `server/inventory.ts` next to the query, not in the router alone,
+guard lives in `Backend/src/services/inventory.ts` next to the query, not in the router alone,
 for the reason every other guard there does.
 
 ## The AI gateway
 
-`workers/ai-gateway/` is a Cloudflare Worker that holds the Gemini key and is
+`Backend/gateway/` is a Cloudflare Worker that holds the Gemini key and is
 the only thing that talks to Gemini (`gemini-2.5-flash`, thinking off, so the
 first word is not held behind a reasoning pass): `POST /api/ai/chat` streams the
 shop's assistant as Server-Sent Events, `POST /api/ai/catalog-assist` drafts a
 listing from a seller's notes and photos as JSON, and `POST /api/ai/generate`
 answers NetLet's own server. Its `README.md` is the setup, `wrangler` commands
-included. **Every model call NetLet makes is Gemini through it, and Mistral is
+included. Cloudflare's Workers Builds deploys it on every push from the folder
+named in the Worker's settings in Cloudflare's dashboard — `Backend/gateway`
+since the move; a folder change there is a change to make in the dashboard too,
+or the gateway silently stops deploying. **Every model call NetLet makes is Gemini through it, and Mistral is
 gone, on the owner's word.** The shop's conversations moved first (see "The
 shop assistant"); then the six features this server called Mistral for —
 search refinement, the Picked for you order, photo search, support drafts, the
 review queue's pass and the Arabic name — and `MISTRAL_API_KEY` went with them.
 
 **The server's own calls use the same door with a token of their own**
-(`server/gemini.ts`). Each feature still builds its prompt and reads the answer
+(`Backend/src/services/gemini.ts`). Each feature still builds its prompt and reads the answer
 by its own rules; `askModel` only carries the call, signing a `server` token for
 it — a minute long, its subject `s:<task>`, never handed out — and returning the
 text or null for every way it did not come, which each feature already had a
@@ -2038,7 +2062,7 @@ It counts them **per feature and never by address** (`SERVER_LIMITER`, a
 backstop at 600 a minute): every call comes from Vercel's few addresses, and the
 per-shopper ceilings are already counted in Postgres before each call. A server
 subject only rides a server token and a server token only names a task NetLet
-has (`isClaims`), so neither can stand in for the other; `server/gemini.test.ts`
+has (`isClaims`), so neither can stand in for the other; `Backend/src/services/gemini.test.ts`
 runs `askModel` through the Worker's real handler. **The feature's deadline is
 the server's**, and the Worker is given 300ms less for Gemini, so a slow answer
 is refused there rather than abandoned here.
@@ -2047,7 +2071,7 @@ is refused there rather than abandoned here.
 token this server signed.** CORS stops another site's page reading an answer
 and does nothing about a script that sets its own `Origin`; guarded by CORS
 alone the gateway would be a Gemini key anybody could spend. `ai.chatSession`
-and `ai.catalogSession` sign a five-minute HMAC token (`shared/ai/gateway.ts`,
+and `ai.catalogSession` sign a five-minute HMAC token (`Shared/ai/gateway.ts`,
 Web Crypto, the same file the Worker verifies with) with `AI_GATEWAY_SECRET`,
 which the Worker holds too. The token carries a scope — a shopper's chat token
 cannot draft products — and a subject the ceilings count against: an account
@@ -2076,7 +2100,7 @@ number, an email or a link is refused before it leaves, by the chat's filter,
 on the page (`chatDraftProblem`) and in the Worker alike.
 
 **A catalogue draft is held to the shop before a seller sees it**
-(`draftFromModel`, `shared/ai/catalogDraft.ts`): a department NetLet does not
+(`draftFromModel`, `Shared/ai/catalogDraft.ts`): a department NetLet does not
 have is none and the seller's own choice stands, a row the department does not
 ask for is dropped, a unit typed into a number comes out, an option must be
 spelled as the field spells it, and a line carrying contact details goes — the
@@ -2096,7 +2120,7 @@ answer too. `useAIChat` is the browser's side of all three conversations, and
 "Managing products").
 
 Measured, not assumed: the Worker's tests drive its own fetch handler against a
-stand-in Gemini (`workers/ai-gateway/src/index.test.ts`, in `pnpm test`);
+stand-in Gemini (`Backend/gateway/src/index.test.ts`, in `pnpm test`);
 `wrangler deploy --dry-run` bundles it (about 150 KB gzipped, the dictionary
 included); and under `wrangler dev`, with a fake key against Google's real
 endpoint, every gate answered as designed, the local rate limiter refused the
@@ -2108,7 +2132,7 @@ on: it names the project and its quota.
 
 A specification block is written for somebody who already knows the category —
 "Nine microphones total", "Apple H1 headphone chip (each ear cup)" — and the
-shopper who needs it most is the one who does not. `shared/commerce/assistant.ts`
+shopper who needs it most is the one who does not. `Shared/commerce/assistant.ts`
 is the pure half and holds the two decisions that matter, both of which are
 rules rather than plumbing.
 
@@ -2235,7 +2259,7 @@ anything about the shopper; the photo is drawn in the chip and never sent.
 
 **A search it suggests is NetLet's own shelf, never a product it names.** The
 model writes `[[search: words]]` on a line of its own (the Worker's prompt says
-how) and `chatPieces` (`shared/ai/chatText.ts`, pure) turns at most three into
+how) and `chatPieces` (`Shared/ai/chatText.ts`, pure) turns at most three into
 searches, drops one that is not plain words or carries contact details, and
 holds back a marker still half-written while the answer streams. Once the
 answer is whole, `ChatAnswer` asks NetLet's search (`search.products`) for each
@@ -2325,7 +2349,7 @@ flag. The period is the whole design.
 offer is created is the obvious thing and is not enough: a permit lapses on a
 Tuesday, no vendor saves anything, and the shop goes on advertising a
 struck-through price it is no longer permitted to advertise. `fromInventory`
-drops `compareAtPrice` when `shared/inventory/discountLicence.ts` says the
+drops `compareAtPrice` when `Shared/inventory/discountLicence.ts` says the
 permit is not valid *now*, so the strikethrough, the `−27%` badge and the
 savings line all vanish together — they all read that one field, which is what
 makes this hold by construction rather than at three call sites.
@@ -2363,7 +2387,7 @@ number twice should not be told otherwise.
 ## Asking for a price
 
 A shopper may ask a seller for a special price, and the seller answers. The
-rules are in `shared/commerce/priceOffers.ts` and are pure, for the reason the
+rules are in `Shared/commerce/priceOffers.ts` and are pure, for the reason the
 order arithmetic is: what they decide is money somebody pays.
 
 **Four stored states, two derived.** `pending`, `offered`, `declined` and
@@ -2432,11 +2456,11 @@ with none.
 
 ## Delivery
 
-Four requirements, one area, and the rules are all in `shared/` because every
+Four requirements, one area, and the rules are all in `Shared/` because every
 one of them is either money a shopper pays or a promise they decide on.
 
 **Each seller charges their own delivery and the shopper pays each.**
-`shared/commerce/delivery.ts`. A basket from three shops is three parcels from
+`Shared/commerce/delivery.ts`. A basket from three shops is three parcels from
 three warehouses, and one averaged figure charges the cheap seller's customers
 for the expensive one. Free-over is measured against *that seller's* goods and
 never across the basket, or a shopper with KWD 20 at one shop and KWD 5 at
@@ -2454,7 +2478,7 @@ still says who charged what. An agreed special price counts toward the
 threshold, because it is what the shopper actually spends.
 
 **A shipping speed is a band the seller picks, and the line says so.**
-`shared/commerce/deliverySpeed.ts`. NetLet integrates with no carrier, so
+`Shared/commerce/deliverySpeed.ts`. NetLet integrates with no carrier, so
 anything calling itself an ETA would be invented, and a shop that presents a
 seller's estimate as its own guarantee owns the complaint when it slips.
 Product overrides store in the shape the commission rate uses; null from both
@@ -2467,7 +2491,7 @@ one parcel is how a shopper believes the wrong one.
 business days across it. Plain calendar arithmetic would promise a Thursday
 order on a Saturday; a same-day order placed on a Friday goes out on Sunday.
 
-**The vehicle is derived, never a second dropdown.** `shared/commerce/vehicle.ts`.
+**The vehicle is derived, never a second dropdown.** `Shared/commerce/vehicle.ts`.
 Two fields that must agree eventually do not, and a seller can answer "how big"
 without a tape measure. A declared class beats weight because it captures shape
 — a mattress is light and needs a van — and quantity can push the answer up.
@@ -2481,7 +2505,7 @@ which companies exist in Kuwait, and the name claims nothing about tracking.
 
 ## Fulfilled by NetLet
 
-`shared/commerce/netletFulfilment.ts` is the rule, pure; `server/netletFulfilment.ts`
+`Shared/commerce/netletFulfilment.ts` is the rule, pure; `Backend/src/services/netletFulfilment.ts`
 the database half; `/admin/fulfilment` is one page with two desks, drawn by
 `can()`. It is 4.2, "built now, activated later", and **activation is a fact
 rather than a flag**: sellers can announce stock only once an administrator has
@@ -2523,7 +2547,7 @@ that adds to `stock`, not by the walk.
 
 ## Membership
 
-`shared/commerce/membership.ts` is the rule, pure; `server/membership.ts` the
+`Shared/commerce/membership.ts` is the rule, pure; `Backend/src/services/membership.ts` the
 database half; `/admin/membership` NetLet's desk. It is 4.1, "built now,
 activated later": every benefit exists, and **buying** waits on payments — so
 nothing offers a membership to anybody, and NetLet grants them, by email, in
@@ -2548,7 +2572,7 @@ member's price, never the sum, and a tie goes to whichever costs nothing to use
 so an agreed price is not spent on a figure the shopper had anyway. The bag,
 checkout's lines and checkout's free-delivery threshold each had their own
 copy, and the threshold had already drifted — it ignored a subscriber's saving
-the line took. `server/membership.test.ts` checks the bag and the order agree
+the line took. `Backend/src/services/membership.test.ts` checks the bag and the order agree
 to the fil for a member.
 
 **A bare amount is dinars.** `formatMoney` fell back to `USD` when a string came
@@ -2560,7 +2584,7 @@ one currency, so the fallback is `KWD` now. Seen in a screenshot, not a test.
 **The filter is the feature.** A chat between a shopper and a seller is, on day
 one, the easiest way to take a sale off the platform — and the order that
 leaves has no protection, no return window and no record, and NetLet is still
-who the shopper blames. `shared/commerce/contactFilter.ts` refuses a message
+who the shopper blames. `Shared/commerce/contactFilter.ts` refuses a message
 carrying a phone number, an email, a link or a handle on another platform, and
 it is pure and shared for the password floor's reason: the composer names what
 it found as somebody types and disables Send, and the server refuses the same
@@ -2614,8 +2638,8 @@ because the list was fetched before opening marked it read.
 
 ## Talking to NetLet
 
-The chat leg of the contact centre (3.5.1) — `shared/commerce/support.ts` the
-rule, pure; `server/support.ts` the database half. WhatsApp and voice are the
+The chat leg of the contact centre (3.5.1) — `Shared/commerce/support.ts` the
+rule, pure; `Backend/src/services/support.ts` the database half. WhatsApp and voice are the
 other two legs and wait on providers.
 
 **The first answer is computed, not generated.** Most of what a shop's support
@@ -2650,8 +2674,8 @@ they send it from their own phone. Unset, a channel is absent, and the page says
 the conversation happens there rather than here: bringing those messages into
 this inbox is the WhatsApp Business API, which is a provider account.
 
-**A model drafts; a person replies.** `shared/commerce/supportDraft.ts` is what
-it is given and `server/supportDraft.ts` the call. "Draft a reply" fills the
+**A model drafts; a person replies.** `Shared/commerce/supportDraft.ts` is what
+it is given and `Backend/src/services/supportDraft.ts` the call. "Draft a reply" fills the
 staff reply box and nothing more — a draft is sent only by somebody pressing
 Send, so every reply is a person's. The model sees the turns and the order's
 facts recomputed *now* (the automatic answer was true when it was given), never
@@ -2671,7 +2695,7 @@ placed with (`help.lookupOrder`): whoever holds both holds the confirmation, so
 they get the order's state and each line's and nothing else — no address,
 phone, name or seller terms — and a miss is "not found" whichever half was
 wrong, throttled by address on misses with the voucher box's rule. The answers
-are `HELP_GROUPS` in `shared/commerce/helpArticles.ts`, message keys whose
+are `HELP_GROUPS` in `Shared/commerce/helpArticles.ts`, message keys whose
 facts are the shop's own rules. **The help assistant knows what the page
 knows**: the gateway hands it those answers (`helpBrief`) and the question,
 never an account or an order, every question counts against the gateway's
@@ -2683,7 +2707,7 @@ the product assistant.
 
 ## After the door: ratings and damage
 
-`server/parcelCare.ts` is both, because both start from the same thing — a
+`Backend/src/services/parcelCare.ts` is both, because both start from the same thing — a
 parcel re-derived from the order's lines, never one the caller describes — and
 both are about the company that carried it rather than the goods.
 
@@ -2772,7 +2796,7 @@ basket, because `CartContext` already adopts the guest bag on sign-in.
 
 ## A Kuwaiti address is its parts
 
-`shared/commerce/kuwaitAddress.ts` is the rule, pure and shared;
+`Shared/commerce/kuwaitAddress.ts` is the rule, pure and shared;
 `AddressPartsFields` is the one set of boxes, drawn by the address book, the
 delivery dialog and checkout so the three cannot ask different things. Area,
 block, street, avenue, house, floor, apartment and the PACI number, in the
@@ -2813,7 +2837,7 @@ private key never does — `/api/maps/apple-token` signs a half-hour ES256 token
 for the asking origin, or passes on a ready-made one. A map that fails offers
 the other one and takes focus to it.
 
-`shared/commerce/geo.ts` is the rule, pure and shared. **A pin is optional and
+`Shared/commerce/geo.ts` is the rule, pure and shared. **A pin is optional and
 the typed address is not** — location refused, tiles that never load, or a
 shopper who would rather not say where they live must still be able to buy.
 A pin is refused only when it is not a place or is outside Kuwait, and is kept
@@ -2836,8 +2860,8 @@ screenshot of it is grey. That is the environment, not the code.
 
 ## Uploaded photos
 
-`shared/commerce/media.ts` is the rule, pure; `server/media.ts` the database
-half; `client/src/lib/preparePhoto.ts` applies the fixes on a canvas. The
+`Shared/commerce/media.ts` is the rule, pure; `Backend/src/services/media.ts` the database
+half; `Frontend/Web/src/lib/preparePhoto.ts` applies the fixes on a canvas. The
 server bundle cannot carry a native image library, so **the fixes happen in
 the seller's browser and the server trusts none of it**: the type is read from
 the file's own header and must match the declared one, sizes are checked
@@ -2857,7 +2881,7 @@ gallery accepts their `/media/...` path beside an https URL
 
 ## Manufacturer images
 
-`shared/commerce/manufacturerImages.ts` is the rule, pure; `server/manufacturerImages.ts`
+`Shared/commerce/manufacturerImages.ts` is the rule, pure; `Backend/src/services/manufacturerImages.ts`
 goes out to the internet; the panel sits beside upload in `PhotoUpload`. A
 seller pastes the maker's product page; NetLet reads the images the maker
 *declares* for the product — schema.org `Product.image` first, the share image
@@ -2885,7 +2909,7 @@ provider, and a model asked for the URL makes one up.
 
 ## Live tracking
 
-`shared/commerce/tracking.ts` is the rule, pure; `server/tracking.ts` the
+`Shared/commerce/tracking.ts` is the rule, pure; `Backend/src/services/tracking.ts` the
 database half. **A driver chooses, every time**: sharing is off whenever the
 dispatch board opens and on only when pressed. `driver_positions` is one row
 per driver, overwritten and deleted on stop — never a trail — and a position
@@ -2903,7 +2927,7 @@ seconds by a predicate in the upsert, however often the phone reports.
 
 ## Subscribe & Save
 
-`shared/commerce/subscriptions.ts` is the rule, pure; `server/subscriptions.ts`
+`Shared/commerce/subscriptions.ts` is the rule, pure; `Backend/src/services/subscriptions.ts`
 the database half. **A standing order is a promise about price**: the
 per-unit price at subscribing is frozen as `price_ceiling`, a run never
 charges above it and pauses instead, and the shopper accepts the new price on
@@ -2926,12 +2950,12 @@ throws on buffers of different sizes, and the comparison checked the
 *character* length first, so a header as many characters long as the secret
 in wider ones reached it — an unhandled rejection in an Express 4 async
 handler, which hung the request and could take the process with it.
-`server/_core/cron.test.ts` sends exactly that. Every other async route in
+`Backend/src/core/cron.test.ts` sends exactly that. Every other async route in
 `app.ts` is wrapped in its own try/catch for the same reason.
 
 ## Paid placements
 
-`shared/commerce/adBookings.ts` is the rule, pure; `server/adBookings.ts` the
+`Shared/commerce/adBookings.ts` is the rule, pure; `Backend/src/services/adBookings.ts` the
 database half. A store's owner books one product into a place by the Kuwaiti
 day — the home shelf or the top of its department — each holding a fixed
 number a day. **The fee accrues a day at a time and comes off the payout run**
@@ -2984,7 +3008,7 @@ file's one transaction but refuses to *use* the value before the commit, so
 
 ## Payout runs
 
-`shared/commerce/payoutRuns.ts` is the batch and is pure; `server/payoutRuns.ts`
+`Shared/commerce/payoutRuns.ts` is the batch and is pure; `Backend/src/services/payoutRuns.ts`
 writes the ledger. **Nobody assembles a batch**: it is every order the
 schedule says has come due and that has not been paid. **Outstanding is earned
 minus paid**, always recomputed against `payout_run_items`, and that one
@@ -3005,7 +3029,7 @@ accruing at midnight was enough. `payoutRuns.test.ts` does both between the
 two presses now. The IBAN and the seller's name are frozen on the run, and a
 store with no valid IBAN cannot be prepared.
 
-**Prepared runs go out in a bank file**, `shared/commerce/payoutFile.ts`, pure:
+**Prepared runs go out in a bank file**, `Shared/commerce/payoutFile.ts`, pure:
 ISO 20022 `pain.001.001.03` and a CSV with the same five facts. The message id
 is derived from the `payout_files` row, so downloading again gives the same id
 and the bank refuses a second upload — the one protection against paying a
@@ -3025,7 +3049,7 @@ went back to the shopper.
 
 ## Payouts and placement
 
-`shared/commerce/payouts.ts` reads what each seller is owed, week by week, off
+`Shared/commerce/payouts.ts` reads what each seller is owed, week by week, off
 the same frozen lines the finance panel uses — `vendorNet` was copied at the
 moment of sale, so a rate change today cannot rewrite last month. **A week runs
 Sunday to Saturday**, the Kuwaiti working week, and the page says so. **A refund
@@ -3055,14 +3079,14 @@ other way**: three tables answer "what is this seller owed" on one page, and
 they said 431.400, 221.400 and 221.400. Each figure was defensible alone. Every
 test passed, because the tests asserted the arithmetic that was wrong — which is
 the sharpest case yet for the habit this file keeps recommending. The assertion
-that would have caught it is in `server/finance.test.ts` now: the three agree.
+that would have caught it is in `Backend/src/services/finance.test.ts` now: the three agree.
 
 Selling under NetLet's own licence is **recorded rather than inferred from a
 blank licence number**. A seller who has not handed their paperwork in is not
 the same as one trading under ours, and collapsing the two would put NetLet's
 name behind somebody who never asked for it.
 
-`shared/commerce/placement.ts` puts sellers who are actually discounting first
+`Shared/commerce/placement.ts` puts sellers who are actually discounting first
 among equals. **Only a permitted, live saving earns it — and that is not
 checked there, because it cannot arrive there**: `fromInventory` has already
 dropped `compareAtPrice` when the Ministry permit lapsed, so an unlicensed
@@ -3075,7 +3099,7 @@ page does not shuffle under somebody reloading it.
 
 ## Specification rows
 
-`shared/commerce/attributeSchema.ts` gives each department the rows a shopper
+`Shared/commerce/attributeSchema.ts` gives each department the rows a shopper
 compares on, **in code beside the departments themselves** — a table and an
 editor for it would be a second product to maintain before anybody asked.
 
@@ -3125,7 +3149,7 @@ as a page does: paging repeats rows, but a cap decides membership.
 
 ## Affiliates
 
-`shared/commerce/affiliate.ts` is the rules and is pure; `server/affiliates.ts`
+`Shared/commerce/affiliate.ts` is the rules and is pure; `Backend/src/services/affiliates.ts`
 writes them. `docs/REQUIREMENTS.md` said from the start that 3.7 shares a ledger
 with the referral points, and it does — `point_entries`, in its own **pot**.
 
@@ -3162,7 +3186,7 @@ which is why the procedure is `affiliates.join`.
 ## Size guides
 
 A seller's chart is a range in centimetres per measurement per size;
-`shared/commerce/sizeGuide.ts` is the rule, pure and shared, so the editor's
+`Shared/commerce/sizeGuide.ts` is the rule, pure and shared, so the editor's
 Save is disabled on exactly what `setSizeChart` would refuse. Measurements are
 a closed list with translated labels, for `vendorHealth`'s reason.
 
@@ -3198,7 +3222,7 @@ each ancestor's `scrollWidth`: every one fitted, and only `<html>` did not.
 
 ## Invoices
 
-`shared/commerce/invoice.ts` is the rules and is pure; `server/invoices.ts`
+`Shared/commerce/invoice.ts` is the rules and is pure; `Backend/src/services/invoices.ts`
 writes them. An invoice is a statement made on a date, so everything about it
 is shaped by one word: **issued**.
 
@@ -3217,7 +3241,7 @@ driver's sheet cannot disagree.
 transaction that writes the invoice; the row lock orders two issues and a
 rollback gives the number back. A Postgres sequence is not transactional and
 leaves a hole every time an insert fails — the one thing an invoice series must
-not have. `server/invoices.test.ts` races three issues for one order and checks
+not have. `Backend/src/services/invoices.test.ts` races three issues for one order and checks
 the counter.
 
 **Never edited.** The whole document is frozen as JSON — issuer, sellers, buyer,
@@ -3265,7 +3289,7 @@ qualified should read the two side by side.
 ## The feature switchboard
 
 `/admin/features` turns any advanced feature off for the whole shop (2.3).
-`shared/features.ts` is the list, pure and imported by both sides, so the page
+`Shared/features.ts` is the list, pure and imported by both sides, so the page
 hides exactly what the API refuses.
 
 **A switch closes the door; it never locks anybody in the room.** Each feature
@@ -3277,7 +3301,7 @@ which is the same as not having one.
 
 **The refusal is one middleware on the base procedure, by path** — the shape
 `refuseNul` has, for its reason: a check added to each router by hand is the
-arrangement where one gets missed. `server/features.test.ts` fails on an entry
+arrangement where one gets missed. `Backend/src/services/features.test.ts` fails on an entry
 naming a procedure the router does not have, so a rename cannot leave a switch
 guarding nothing. It answers `PRECONDITION_FAILED` / `features.off`: nobody
 lacks permission, the shop has the thing turned off. A rail answers empty
@@ -3311,8 +3335,8 @@ wrong way round — and the server refuses regardless.
 
 ## Seller documents
 
-`shared/inventory/applicationDocuments.ts` is the rule, pure;
-`server/applicationDocuments.ts` the database half; the upload
+`Shared/inventory/applicationDocuments.ts` is the rule, pure;
+`Backend/src/services/applicationDocuments.ts` the database half; the upload
 (`POST /api/applications/documents`) and the download
 (`GET /api/applications/documents/:id`) are plain routes in `app.ts`, because
 a file is not JSON. An applicant uploads each paper on `/sell` — trade
@@ -3365,7 +3389,7 @@ bottom of the shipping list, which is where somebody asking "what if it breaks"
 never looks — shipping answers "when does it arrive".
 
 **The refund window comes from `RETURN_WINDOW_DAYS`**, the same constant
-`shared/commerce/returns.ts` uses to decide whether a return is actually open,
+`Shared/commerce/returns.ts` uses to decide whether a return is actually open,
 so the page cannot promise a fortnight while the API refuses on day eight. The
 old copy spelled "14 days" into both dictionaries, which put one policy in
 three places and made two of them prose.
@@ -3381,7 +3405,7 @@ seller recorded nothing the panel says exactly that, the way
 
 ## Recommendations
 
-**`shared/commerce/taste.ts` is the ranking, and it is pure.** This decides
+**`Shared/commerce/taste.ts` is the ranking, and it is pure.** This decides
 what a shopper is shown, which is the most visible thing NetLet does with what
 it knows about them — and a ranking you can only exercise by signing in as
 somebody and staring at a rail is one nobody checks. The failure mode is not a
@@ -3467,10 +3491,10 @@ rules do that work:
   onto the list rather than joined from `users`, so the lookup never touches
   that table and a gift list can say "Noura" while an invoice says otherwise.
 
-`shared/commerce/wishlist.ts` is the pure half: `normalisePhone` (which folds
+`Shared/commerce/wishlist.ts` is the pure half: `normalisePhone` (which folds
 Arabic-Indic digits, because an Arabic keyboard is the obvious way to type a
 number on an Arabic page), the claim window, and what the two views may carry.
-`server/wishlists.ts` is the database half, and there the security property is
+`Backend/src/services/wishlists.ts` is the database half, and there the security property is
 **which columns each query selects** rather than a check at the top.
 
 **The owner is told less than a stranger is, and that is the point.**
@@ -3563,7 +3587,7 @@ if the account cannot be made — a store that exists but cannot be signed into
 looks finished, so nobody goes back to fix it. The owner is optional: a store
 recorded today whose owner arrives next week is a real case.
 
-`server/_core/accounts.ts` is the one place an account gets made, for the
+`Backend/src/core/accounts.ts` is the one place an account gets made, for the
 storefront's own registration and for that page alike. The which-store branch
 used to live inside the auth router, where the second caller would either import
 a router or grow a copy — and a copy is how one of them quietly stops using the
@@ -3574,7 +3598,7 @@ A store's details are all nullable, and `missingStoreDetails` reports what is
 absent rather than the database refusing the save: an admin should not be
 blocked from recording a seller because the trade licence is on a document
 nobody has scanned. What *is* checked is what would be actively wrong — a
-payout IBAN is validated by the mod-97 rule in `shared/inventory/storeProfile.ts`,
+payout IBAN is validated by the mod-97 rule in `Shared/inventory/storeProfile.ts`,
 because a transposed pair of digits passes any length check and sends money
 to an account that does not exist.
 
@@ -3628,7 +3652,7 @@ time.
 stopped at a fixed ceiling — 500 products, 100 vendors, 100 people, 50 low-stock
 rows — and said nothing, which is the same lie `QueryGate` was built to stop: a
 table showing part of the answer looks exactly like one showing all of it.
-`shared/pagination.ts` is the arithmetic and is pure; `Pager` draws it. The
+`Shared/pagination.ts` is the arithmetic and is pure; `Pager` draws it. The
 count is rendered even on a single page, because the count is the part that
 keeps a short list honest.
 
@@ -3646,8 +3670,8 @@ test — the fixtures were too small to tie.
 wraps the whole but not each condition, so `and(scope, sql\`x or y\`)` reads
 "scope and x, or y". `/admin/stock` did exactly that and showed a vendor every
 other store's low variants; it was found while adding the waiting-shopper
-count to the same query, not by any test. `server/sqlFragments.test.ts` now
-fails on an unbracketed one anywhere in `server/`.
+count to the same query, not by any test. `Backend/src/services/sqlFragments.test.ts` now
+fails on an unbracketed one anywhere in `Backend/src/`.
 
 **And the guard itself had the hole.** It matched fragments with a regex that
 stopped at the next backtick, and a search fragment interpolates a template of
@@ -3674,7 +3698,7 @@ exist" tells an administrator to run the migration, and "something went wrong"
 does not.
 
 **The overview's business numbers are the frozen lines**
-(`shared/commerce/salesSummary.ts`, `server/salesSummary.ts`): sales, orders,
+(`Shared/commerce/salesSummary.ts`, `Backend/src/services/salesSummary.ts`): sales, orders,
 average order and returns requested for today, seven days and thirty, a bar
 for each Kuwaiti day of the last thirty, and what sold most. A cancelled line,
 a cancelled order and an exchange's zero-priced replacement are not sales;
@@ -3729,7 +3753,7 @@ so — a button labelled "Publish" that quietly produces "In review" is the kind
 of small dishonesty that makes people distrust a tool.
 
 **A store's details have one normaliser, and both doors use it.**
-`storeDetailColumns` in `server/inventory.ts` maps every detail field — blank to
+`storeDetailColumns` in `Backend/src/services/inventory.ts` maps every detail field — blank to
 null, email lowercased, IBAN compacted — for opening a store and for editing
 one. Opening a store wrote only the fields its own insert happened to list, so
 an administrator who filled in the whole form on `/admin/vendors/new` found
@@ -3750,7 +3774,7 @@ Stock moves by a delta with a reason, never by typing a new total. "We received
 else is editing. `/admin/stock` is what reads those rows back, which is the
 whole reason for recording them.
 
-**The reason and the sign agree** (`shared/inventory/stockMoves.ts`):
+**The reason and the sign agree** (`Shared/inventory/stockMoves.ts`):
 received and returned add, sold and damaged take away, a correction goes either
 way, and nothing is recorded for a change of nothing. They were chosen
 separately and checked nowhere, so the log could read "Stock received: −1",
@@ -3807,7 +3831,7 @@ rows now. The editor gained the Arabic description too: the storefront has
 read `description_ar` on the Arabic page all along and no page could write it.
 
 **The form's rules are the server's, asked early.**
-`shared/inventory/productDraft.ts` is the client half of the router's own
+`Shared/inventory/productDraft.ts` is the client half of the router's own
 refusals — the money shape, a price above zero (`assertPriced` refuses zero at
 publish anyway), a was-price that is really higher — so the message appears
 under the box while somebody types and Create never produces an error the form
@@ -3824,7 +3848,7 @@ A separate search title and description would need columns; that is a
 migration nobody has approved, so nothing pretends to store one.
 
 **Deleting is for good, and asks for the name.** Archiving hides a product;
-`server/productDeletion.ts` removes it. Nearly all of it is the schema's
+`Backend/src/services/productDeletion.ts` removes it. Nearly all of it is the schema's
 cascade (variants, images, add-ons, stock history, basket lines, price asks,
 bundle items) and every order reference is `set null` with the facts frozen
 beside it, so orders keep their copy. What no foreign key sees is done by hand
@@ -3907,7 +3931,7 @@ change.** The new-product form always draws the store for an administrator —
 it hid itself until there were two, which is a choice nobody knows they made —
 and `?vendor=` arrives from a store's "Add a product" already chosen. The
 product list filters by store in the address (`?vendor=`), which is where a
-store's "See its products" lands. And `server/productMove.ts` hands a product
+store's "See its products" lands. And `Backend/src/services/productMove.ts` hands a product
 to another store (`product.reassign`, admin-only, audited as `product.move`):
 stock, photos, reviews, saved hearts and the address go with it; the order lines
 it already sold stay with the store that sold them, because `vendor_id` and
@@ -3952,15 +3976,15 @@ row so two owners cannot demote each other at once. The store's own team page
 is audited now too; only the administrator's door onto the same rows was.
 
 **A date box's day is the whole of that day in Kuwait.** `lastDay` in
-`server/_core/schemas.ts` turns a bare `yyyy-mm-dd` into 23:59:59.999 at UTC+3
-(`shared/kuwaitDay.ts`). It was midnight UTC — three in the morning in Kuwait,
+`Backend/src/core/schemas.ts` turns a bare `yyyy-mm-dd` into 23:59:59.999 at UTC+3
+(`Shared/kuwaitDay.ts`). It was midnight UTC — three in the morning in Kuwait,
 on the day named — so a code that "ends on the 20th" stopped at 3am on the
 20th, a gift card was refused on its last day and a discount permit hid a
 store's savings from the morning it expired. A full timestamp is taken as given.
 
 **A refused input says a sentence.** tRPC's message for one is zod's issue list
 as JSON, and every page put that in a toast. `inputRefusal` in
-`server/_core/trpc.ts` answers with the schema's own message key where one was
+`Backend/src/core/trpc.ts` answers with the schema's own message key where one was
 written, or `error.invalidInput`.
 
 **A link an administrator will open is a web address or nothing.** Seller
@@ -4020,7 +4044,7 @@ Clicking a department anywhere on the site goes there; the home page is a
 shopfront of curated rails, not a filtering surface, so it holds no "active
 category" of its own.
 
-`shared/commerce/browse.ts` is all of the logic and is pure: `facetsFor`
+`Shared/commerce/browse.ts` is all of the logic and is pure: `facetsFor`
 derives the filters **from the products on the page**, so a catalog of laptops
 gets a Ram Size filter and one of shoes does not — nothing is hard-coded. A
 facet that cannot narrow is dropped (one brand, one option value, a rating
@@ -4043,7 +4067,7 @@ whole catalog. The heading is the department's name with the count under it —
 "No results for Beauty" read as a failed search.
 
 **Search ranks by where the words are, never by who sells it.**
-`shared/commerce/search.ts` weighs a word found in the title above the brand row,
+`Shared/commerce/search.ts` weighs a word found in the title above the brand row,
 the brand above the department (in both languages), tags, a variant's name and
 the description last, and a whole word above a word it only starts. **The
 seller's name is not searched**: "Phone store Hawally" sells a Philips food
@@ -4055,7 +4079,7 @@ browser over what the page had fetched — the 24 newest products for the
 header's suggestions, the 100 newest on the results page — so the 101st
 product could not be found by any search, and a shop that grew past a hundred
 quietly stopped answering for most of itself. `search.products`
-(`server/productSearch.ts`) narrows in SQL to the products whose text holds
+(`Backend/src/services/productSearch.ts`) narrows in SQL to the products whose text holds
 every word, reading only text columns, then ranks those with the same pure
 rules and loads only the winners as storefront products. **The prefilter may
 let through what the ranking drops and must never drop what it would find**,
@@ -4284,13 +4308,13 @@ Escape twice comes back to the page, axe clean throughout.
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
 
-**Related means the same department or a shared tag** (`shared/commerce/related.ts`).
+**Related means the same department or a shared tag** (`Shared/commerce/related.ts`).
 The same seller counted on its own, so a store's food processor sat on its
 phone's page, and anything scoring nothing was still drawn to fill four places.
 The seller only breaks a tie now, and the rail shows fewer, or none.
 
 **An electronics listing publishes only with its warranty stated.**
-`WARRANTY_REQUIRED_DEPARTMENTS` in `shared/inventory/productDraft.ts` is the rule,
+`WARRANTY_REQUIRED_DEPARTMENTS` in `Shared/inventory/productDraft.ts` is the rule,
 asked by the new-product form and by both doors onto the shelf
 (`setProductStatus`, the review queue), as `admin.needsWarranty`. The warranty
 is a specification row (`warranty`), shown as the seller typed it, for the
@@ -4305,12 +4329,12 @@ broke every department link on the Arabic page. A bag line's title follows the
 page too (`lineTitle`).
 
 **A new product needs its Arabic name**, and "Draft with AI" offers one
-(`server/arabicTitle.ts`): the English name and nothing else goes to the model,
+(`Backend/src/services/arabicTitle.ts`): the English name and nothing else goes to the model,
 the answer lands in the box for the seller to keep or change and is never
 saved by itself, and with no key or with `ai` off the button is absent.
 
 **A variant's options are edited where the variant is.** Each row takes
-Colour: Black, Storage: 256 GB; `shared/inventory/variantOptions.ts` is the
+Colour: Black, Storage: 256 GB; `Shared/inventory/variantOptions.ts` is the
 rule, and `choiceMode` asks the same `optionsDistinguish` the editor's notice
 does, so "shoppers will choose these by name" and the product page drawing
 names rather than chips cannot disagree. **Saving a variant without its options
@@ -4330,7 +4354,7 @@ none.
 sits at position 0, and Postgres handed back the row it had just updated last,
 so editing M put a shirt's sizes in the order S, L, XL, M. PGlite answers the
 same query through the index and keeps the order either way, so
-`server/orderTies.test.ts` reads the source instead.
+`Backend/src/services/orderTies.test.ts` reads the source instead.
 
 **A feature switched on and not showing says why.** `/admin/features` carries a
 line per switch from `readinessOf` — no model key, `ai` off, no orders yet to
@@ -4414,9 +4438,9 @@ clean on every page changed, the bars shown and hidden where they should be.
 ## Languages
 
 The storefront ships in English and Arabic, from one dictionary in
-`shared/i18n/dictionary.ts`. `ar` is typed as a complete record of the English
+`Shared/i18n/dictionary.ts`. `ar` is typed as a complete record of the English
 keys, so a missing translation is a type error rather than an English word
-appearing mid-Arabic-sentence; `shared/i18n/dictionary.test.ts` also fails on an
+appearing mid-Arabic-sentence; `Shared/i18n/dictionary.test.ts` also fails on an
 Arabic entry that is still a copy of the English, or that has drifted from its
 `{placeholder}` set.
 
@@ -4448,7 +4472,7 @@ brings with it is adopted without one, since nobody pressed anything. Measured
 on a production build at 390: about 0.55s from the press to the end of the fade,
 with the Arabic product names already in place when it lands.
 
-**A counted sentence takes the form its number needs** (`shared/i18n/plurals.ts`).
+**A counted sentence takes the form its number needs** (`Shared/i18n/plurals.ts`).
 Arabic counts a noun in the plural from three to ten, in the accusative singular
 from eleven to ninety-nine, in the genitive singular from a hundred, in the dual
 for two — and one string per key wrote every count in one of those, so a
@@ -4484,7 +4508,7 @@ shipment's reference, the delivery band's business days and the membership
 desk's "this month" all read the UTC calendar, so an order placed at 1am on a
 Kuwaiti Friday carried Thursday's date in its reference — beside a list that
 said Friday — and was promised a same-day dispatch on a day the warehouse is
-shut. `kuwaitDay` and `KUWAIT_OFFSET_MS` in `shared/kuwaitDay.ts` are the one
+shut. `kuwaitDay` and `KUWAIT_OFFSET_MS` in `Shared/kuwaitDay.ts` are the one
 rule; finance's monthly buckets stay UTC on purpose, and say so.
 
 Merchant data (product titles, spec rows) is in whatever language the merchant
@@ -4496,7 +4520,7 @@ around it.** An email, a slug, a score, a URL path: the characters read left to
 right, but the *line* is still part of an Arabic page and belongs on its side.
 `dir` on a block does both jobs, so `<p dir="ltr">` threw the address to the far
 edge with the label above it hugging the other one — visible on the account
-card, `/admin/people`, `/admin/team` and a store's header. `client/src/lib/markup.test.ts`
+card, `/admin/people`, `/admin/team` and a store's header. `Frontend/Web/src/lib/markup.test.ts`
 is what keeps it out, allowing `dir="ltr"` only on a form control (where it sets
 the typing direction), an inline run, or `pre`.
 
@@ -4555,7 +4579,7 @@ it. The image scan also tracks brace depth rather than matching to the first
 
 ## What an input may say
 
-`server/_core/schemas.ts` holds the shapes a column can actually hold, and there
+`Backend/src/core/schemas.ts` holds the shapes a column can actually hold, and there
 are two of them because both were getting written out per router and missing
 from one of them.
 
@@ -4568,7 +4592,7 @@ for something a shopper did by typing in the address bar. `/admin/products/21474
 was all it took. Every `offerId` in `routers/offers.ts` had no bound at all.
 
 A row id that travels as text gets `rowIdText`. A cart line's id is a string in
-`shared/commerce/types.ts`, so the data layer turns it back into a number, and
+`Shared/commerce/types.ts`, so the data layer turns it back into a number, and
 `Number("oops")` is `NaN` — which reaches Postgres as `NaN` and comes back the
 same way.
 
@@ -4624,7 +4648,7 @@ visitor with site data off. Three callers wrapped their access and four did not,
 and `referral.ts` had the rule written down in prose next to one of them — which
 is exactly how a rule kept beside one caller fails to reach the others.
 
-`client/src/lib/browserStore.ts` is the rule now and nothing else may touch
+`Frontend/Web/src/lib/browserStore.ts` is the rule now and nothing else may touch
 `window.localStorage`; `browserStore.test.ts` fails on anything that does. **A
 read that fails reads as absent**, which is true — there is nothing stored and
 there was never going to be — and **a write that fails is dropped in silence**.
@@ -4679,8 +4703,8 @@ visitor is not the one to make wait.
 
 ## Deploys
 
-`server/_core/app.ts` holds the routes and the security, and knows nothing
-about how it is served. Two entry points use it: `server/_core/index.ts` adds
+`Backend/src/core/app.ts` holds the routes and the security, and knows nothing
+about how it is served. Two entry points use it: `Backend/src/core/index.ts` adds
 Vite or static files and listens on a port, `api/index.ts` exports it as a
 Vercel function. One copy of the routes, so the two cannot drift.
 
@@ -4692,7 +4716,7 @@ and every call would otherwise 404 silently.
 
 **The Vercel function is bundled, not transpiled.** `api/index.ts` is a
 two-line stub that re-exports `api/app.generated.js`, which
-`scripts/build-function.mjs` produces from `server/_core/vercel.ts` with every
+`Backend/scripts/build-function.mjs` produces from `Backend/src/core/vercel.ts` with every
 dependency inlined. The stub exists because Vercel detects a function from a
 committed file in `api/`; the bundle exists because everything else about
 Vercel's own handling was a trap.
@@ -4713,8 +4737,8 @@ for `require` and `__dirname` once inside an ESM file — dotenv asking for `fs`
 is the first thing to hit it, and it fails on the first request rather than at
 load, so "it boots" is not evidence.
 
-`server/_core/imports.test.ts` still enforces no aliases and explicit `.js`
-extensions across `server/`, `shared/`, `api/` and `drizzle/`. Bundling means
+`Backend/src/core/imports.test.ts` still enforces no aliases and explicit `.js`
+extensions across `Backend/src/`, `Shared/`, `api/` and `Backend/database/`. Bundling means
 neither can break the deploy any more, but both keep `tsx` and a plain `node`
 run honest, and the rules cost nothing.
 
@@ -4746,7 +4770,7 @@ page with "Expected a JavaScript-or-Wasm module script but the server
 responded with a MIME type of text/html". The server was fine on the second
 request — the browser never made one.
 
-`client/public/asset-recovery.js` is the other half: when a built script or
+`Frontend/Web/public/asset-recovery.js` is the other half: when a built script or
 stylesheet fails, it fetches every asset on the page again with
 `cache: "reload"` — which overwrites the bad entry, something a reload cannot
 do — and reloads once; a second failure inside a minute does nothing, so a
@@ -4765,10 +4789,10 @@ fetches was one 3 KB shell — the home page's title and picture under every
 product pasted into WhatsApp, and no name or price for anything that does not
 run the script. **Product and department pages are now answered by the
 function**: `vercel.json` rewrites `/products/:handle` and `/category/:slug`
-onto `/api?__page=…`, and `server/pageShell.ts` writes the page's title,
+onto `/api?__page=…`, and `Backend/src/services/pageShell.ts` writes the page's title,
 description, canonical, share picture, Open Graph price and Product and
 breadcrumb JSON-LD into the marked region of `index.html`
-(`<!-- netlet:head -->`), using the same `shared/seo.ts` builders
+(`<!-- netlet:head -->`), using the same `Shared/seo.ts` builders
 `usePageMeta` uses, so the first response and the loaded page agree. The JSON-LD
 script carries `usePageMeta`'s id, so the page replaces it rather than adding a
 second. The function is deployed apart from the static output, so
@@ -4797,7 +4821,7 @@ list rather than a spinner in an empty screen.
 Both are generated by the app, not committed. As files they had gone stale the
 way files do: `robots.txt` pointed crawlers at a sitemap that had never existed,
 on a host spelled with a repository name the project had already renamed away
-from. `shared/sitemap.ts` is the pure serialiser and `server/sitemap.ts` reads
+from. `Shared/sitemap.ts` is the pure serialiser and `Backend/src/services/sitemap.ts` reads
 the catalog — through `publishedCatalog`, so a draft or a suspended vendor's
 product is absent from the index for the same reason it is absent from the shop.
 
@@ -4821,7 +4845,7 @@ Two traps:
 
 ## Demo mode
 
-`VITE_DEMO_MODE=true` builds a version with no backend: `client/src/lib/demoLink.ts`
+`VITE_DEMO_MODE=true` builds a version with no backend: `Frontend/Web/src/lib/demoLink.ts`
 answers every tRPC procedure from fixtures in `demoCatalog.ts`. That is what the
 Pages site runs. **The catalog is invented** — sample products and prices, with
 nothing on the page saying so since the preview banner was removed.
@@ -4856,8 +4880,8 @@ house vendor and nothing else, because a product cannot exist without a vendor
 to own it, and an invented catalog on a real deployment looks like an open
 shop. `docs/supabase-bootstrap.sql` is those two steps as one paste-able file,
 for setting a database up from the Supabase dashboard with nothing installed;
-`node scripts/build-bootstrap.mjs` regenerates it from `drizzle/*.sql` and
-`shared/commerce/departments.ts` — run that after a schema change rather than
+`node Backend/scripts/build-bootstrap.mjs` regenerates it from `Backend/database/*.sql` and
+`Shared/commerce/departments.ts` — run that after a schema change rather than
 hand-editing, which is how it ended up two migrations behind.
 
 **An index a later migration drops is never created.** Created-then-dropped
@@ -4885,7 +4909,7 @@ Postgres in-process via PGlite, applying the generated migration verbatim, so
 
 **`docs/schema-audit.sql` is the other half: did it all land?** One read-only
 statement, generated from the latest Drizzle snapshot by
-`scripts/build-schema-audit.mjs`, that names every table, column, NOT NULL,
+`Backend/scripts/build-schema-audit.mjs`, that names every table, column, NOT NULL,
 default, primary key, enum value, index and foreign key (with its delete rule)
 the database lacks, anything a later migration dropped that is still there, and
 the seed rows — and ends on a verdict row, so a clean database says "complete"

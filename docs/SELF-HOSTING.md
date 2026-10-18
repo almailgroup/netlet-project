@@ -11,7 +11,7 @@ If you are deploying to Vercel instead — which is the supported target — rea
 
 The GitHub Pages site is **not** this. Pages serves static files and cannot run
 a server, so the Pages build sets `VITE_DEMO_MODE=true` and answers every tRPC
-call in the browser from invented fixtures (`client/src/lib/demoCatalog.ts`).
+call in the browser from invented fixtures (`Frontend/Web/src/lib/demoCatalog.ts`).
 It never reaches a database — it never makes a network request at all.
 
 `DATABASE_URL` is read server-side, never under a `VITE_` name, because
@@ -205,5 +205,5 @@ launchctl kickstart -k gui/$(id -u)/com.netlet.storefront
 ## Once this is live
 
 The demo catalog exists only for the Pages preview. When the Mac mini is
-serving real products, `client/src/lib/demoCatalog.ts` and `demoLink.ts` can be
+serving real products, `Frontend/Web/src/lib/demoCatalog.ts` and `demoLink.ts` can be
 deleted along with `VITE_DEMO_MODE` — nothing else references them.

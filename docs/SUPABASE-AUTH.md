@@ -237,8 +237,8 @@ from public.users
 order by created_at desc;
 ```
 
-Exactly one of those columns is ever set. `server/_core/passwordStore.ts` is the
-only place that reads which, and `server/logins.ts` is what clears the other when
+Exactly one of those columns is ever set. `Backend/src/core/passwordStore.ts` is the
+only place that reads which, and `Backend/src/services/logins.ts` is what clears the other when
 an account moves between them.
 
 `users.firebase_uid` used to be a third: Firebase held every password until this

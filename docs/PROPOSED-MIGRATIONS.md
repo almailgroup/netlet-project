@@ -1,8 +1,8 @@
 # Migrations from the website review, October 2026
 
 **Approved and applied.** The owner approved all three on 12 October 2026. They are
-`drizzle/0057_structured_address.sql`, `drizzle/0058_home_banners.sql` and
-`drizzle/0059_application_documents.sql`, and `docs/supabase-bootstrap.sql` carries them.
+`Backend/database/0057_structured_address.sql`, `Backend/database/0058_home_banners.sql` and
+`Backend/database/0059_application_documents.sql`, and `docs/supabase-bootstrap.sql` carries them.
 **Run `docs/supabase-bootstrap.sql` again in the Supabase SQL editor before deploying the code
 that uses them**, and check for its "bootstrap complete" row at the end; `docs/schema-audit.sql`
 then ends on a "complete" row when nothing is missing.
@@ -26,7 +26,7 @@ prove too loose.
 **Why.** An address is one free-text `address_line` today. Drivers in Kuwait navigate by area,
 block, street, avenue, house; a PACI number identifies the building exactly. Checkout and the
 address book would ask for these as separate boxes, with the area chosen from a list for the
-governorate (a list kept in `shared/`, not a table).
+governorate (a list kept in `Shared/`, not a table).
 
 **Shape.** Columns on the address book, because a saved address is edited field by field. One
 frozen document on the order, because an order is an obligation: it copies the address as it

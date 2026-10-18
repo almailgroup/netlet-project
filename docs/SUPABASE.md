@@ -105,7 +105,7 @@ Worth running whenever a page fails with *"column … does not exist"*: the erro
 names one column, but a partial apply usually costs several, and fixing them one
 reload at a time is a slow way to find that out.
 
-`node scripts/build-schema-audit.mjs` regenerates it from the Drizzle snapshot
+`node Backend/scripts/build-schema-audit.mjs` regenerates it from the Drizzle snapshot
 after a schema change, and the test suite fails until it has been.
 
 ### Route B — from a clone
@@ -216,7 +216,7 @@ them:
 - **Not Supabase's client SDK.** Nothing Supabase-shaped ships to the browser.
   The server talks to Postgres over the connection string and the client only
   ever talks to our own API.
-- **Not row-level security.** Every query goes through `server/inventory.ts`,
+- **Not row-level security.** Every query goes through `Backend/src/services/inventory.ts`,
   which refuses what the actor may not do before the query runs. RLS would be a
   second, quietly divergent copy of the same rules — the connection string is a
   server-side secret and is never handed to a browser.

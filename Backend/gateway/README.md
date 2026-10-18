@@ -27,7 +27,7 @@ NetLet server ── POST /api/ai/generate, a 1-minute `server` token ──▶ 
 
 Every refusal is `{ ok: false, error: { code, message, field? } }` with the
 status in `GATEWAY_STATUS`. The request and response types, the token and the
-request checks are `shared/ai/gateway.ts`, the one file the Worker, NetLet's
+request checks are `Shared/ai/gateway.ts`, the one file the Worker, NetLet's
 server and the browser all import.
 
 ## What you need
@@ -41,7 +41,7 @@ server and the browser all import.
 
 ## 1. Sign in and make the shared secret
 
-Run these from this folder (`workers/ai-gateway`).
+Run these from this folder (`Backend/gateway`).
 
 ```sh
 npx wrangler@4 login
@@ -74,7 +74,7 @@ The Worker's tests run with NetLet's own (`pnpm test`), against a stand-in
 Gemini:
 
 ```sh
-pnpm vitest run workers shared/ai      # from the repository root
+pnpm vitest run Backend/gateway Shared/ai   # from the repository root
 ```
 
 ## 3. Deploy
@@ -96,6 +96,12 @@ curl https://netlet-ai-gateway.<your-subdomain>.workers.dev/healthz
 # {"ok":true,"data":{"configured":true,"model":"gemini-2.5-flash"}}
 ```
 
+**Deploying on every push (Workers Builds).** When the Worker is connected to
+the repository in Cloudflare's dashboard, its build settings name the folder to
+deploy from. That folder is `Backend/gateway` — it was `workers/ai-gateway`
+until the repository was reorganised — and a build pointed at a folder that no
+longer exists fails without deploying anything.
+
 `npx wrangler@4 deploy --dry-run --outdir dist` checks the configuration and
 the bundle (about 150 KB gzipped) without an account.
 
@@ -116,8 +122,8 @@ already handed out last at most five minutes.
 ## Changing things
 
 - **The prompts** are in `src/prompts.ts`. The chat's facts come from the help
-  page's own answers (`shared/commerce/helpArticles.ts`) and the catalogue's
-  departments and rows from `shared/commerce/`, so a policy change on NetLet's
+  page's own answers (`Shared/commerce/helpArticles.ts`) and the catalogue's
+  departments and rows from `Shared/commerce/`, so a policy change on NetLet's
   side reaches the gateway at its next deploy — deploy it with NetLet when
   those files change.
 - **The ceilings** are the `[[ratelimits]]` in `wrangler.toml`: per caller per

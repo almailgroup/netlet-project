@@ -11,7 +11,7 @@ Time: about ten minutes. Cost: nothing on the Hobby plan for a site this size.
 ## What changes, and what does not
 
 The client is served from Vercel's CDN. `/api/*` goes to a serverless function
-that is **the same Express app `pnpm dev` runs** — `server/_core/app.ts`, one
+that is **the same Express app `pnpm dev` runs** — `Backend/src/core/app.ts`, one
 copy of the routes, no second implementation to drift.
 
 Three things follow from that:
@@ -115,7 +115,7 @@ is ever exposed.
 ### Optional
 
 ```
-AI_GATEWAY_URL              # The AI gateway (workers/ai-gateway/README.md): every model call goes through it
+AI_GATEWAY_URL              # The AI gateway (Backend/gateway/README.md): every model call goes through it
 AI_GATEWAY_SECRET           # 32+ characters, the same value the Worker holds; either unset turns AI off
 VITE_ANALYTICS_ENDPOINT     # Umami; both are public, both are build-time
 VITE_ANALYTICS_WEBSITE_ID

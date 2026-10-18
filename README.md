@@ -44,31 +44,37 @@ boot.
 ## Layout
 
 ```
-client/          React app — Vite, wouter, Tailwind v4
-  src/pages/       one file per route, admin/ for the portal
-  src/components/  admin/ and browse/ for the two that have several
-  src/hooks/       useAuth, useCompactHeader
-  src/lib/         trpc client, formatting, demo link
-  src/contexts/    cart and customer state
-server/          Express + tRPC
-  _core/           infrastructure: app, auth, env, security, trpc, entry points
-  routers/         one router per surface
-  *.ts             the data layer — inventory, orders, catalog, profile
-shared/          imported by both sides, and pure
-  commerce/        the Product shape, browse logic, order arithmetic
-  inventory/       permissions, commission, vendor health
-  i18n/            one dictionary, English and Arabic
-  auth/            password rules, rate-limit policy
-  ai/              the AI gateway's contract: tokens, requests, the stream
-drizzle/         schema and migrations
-workers/         Cloudflare Workers, deployed on their own
-  ai-gateway/      holds the Gemini key; README.md is its setup
-docs/            setup guides and the requirements
-scripts/         setup, seed, preflight, bootstrap and smoke
-ios-app/         Expo WebView shell, with its Xcode project committed
+Frontend/
+  Web/                 React app — Vite, wouter, Tailwind v4
+    src/pages/         one file per route, admin/ for the portal
+    src/components/    the views a page is built from; admin/ and browse/ have several
+    src/hooks/         state a view reads: useAuth, useAIChat, useCatalog…
+    src/contexts/      app-wide state: the cart, the customer
+    src/lib/           services and utilities: the tRPC client, storage, formatting
+    public/            files served as they are
+Backend/
+  src/core/            configuration and infrastructure: app, auth, env, security, tRPC, entry points
+  src/routes/          the API — one tRPC router per surface; index.ts is the app router
+  src/services/        the data layer — inventory, orders, catalog, profile — with its tests
+  database/            the models (schema.ts) and the migrations
+  gateway/             the AI gateway, a Cloudflare Worker deployed on its own
+  scripts/             setup, seed, preflight, bootstrap and smoke
+Shared/                imported by both sides, and pure
+  commerce/            the Product shape, browse logic, order arithmetic
+  inventory/           permissions, commission, vendor health
+  i18n/                one dictionary, English and Arabic
+  auth/                password rules, rate-limit policy
+  ai/                  the AI gateway's contract: tokens, requests, the stream
+api/                   the Vercel entry point — a two-line stub over the bundled function
+docs/                  setup guides and the requirements
+ios-app/               Expo WebView shell, with its Xcode project committed
 ```
 
-**`shared/` is pure on purpose.** Permissions, commission, the order
+Configuration that spans the folders stays at the root: `package.json`, the
+TypeScript, Vite, Vitest and Drizzle configs, and `vercel.json` with `api/`,
+which Vercel only looks for at the project root.
+
+**`Shared/` is pure on purpose.** Permissions, commission, the order
 arithmetic, the password floor — each decides something that costs money or
 access, and a rule you can only exercise by running the whole stack is a rule
 nobody checks. The server imports the same function the client does, so the UI
@@ -86,7 +92,7 @@ skips silently.
 | [`docs/SUPABASE.md`](docs/SUPABASE.md) | Database setup |
 | [`docs/SUPABASE-AUTH.md`](docs/SUPABASE-AUTH.md) | Authentication setup — where registered accounts live |
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
-| [`workers/ai-gateway/README.md`](workers/ai-gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
+| [`Backend/gateway/README.md`](Backend/gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | What was asked for |
 | [`CLAUDE.md`](CLAUDE.md) | Why the code is the way it is — read this before changing it |
 
