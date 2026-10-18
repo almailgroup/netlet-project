@@ -14,6 +14,11 @@ on:
       - "Frontend/iOS/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
+    inputs:
+      share:
+        description: Also post small copies of the previews as check runs on the commit
+        type: boolean
+        default: false
 
 concurrency:
   group: ios-${{ github.ref }}
@@ -22,6 +27,9 @@ concurrency:
 jobs:
   test:
     runs-on: macos-15
+    permissions:
+      contents: read
+      checks: write
     timeout-minutes: 40
     defaults:
       run:
@@ -73,9 +81,7 @@ jobs:
       # A preview for anybody without a Mac: the app built above, installed on
       # the same simulator and opened on each screen in both languages,
       # answering from the demo recordings (-NetLetDemo YES). Full-size
-      # pictures go up as the ios-previews artifact; small copies are also
-      # attached to the run as notices, which the API can read without
-      # downloading an artifact.
+      # pictures go up as the ios-previews artifact.
       - name: Take previews
         id: previews
         # Pictures are a courtesy; the tests above are the verdict.
@@ -113,22 +119,51 @@ jobs:
             shot 11-new-listing "$lang" newListing shopper
           done
           ls -1 build/previews
+
+      # Run by hand with `share`, small copies are posted as neutral check runs
+      # on the commit, two to a run (a check run's summary and text hold 64 KB
+      # each), where the checks API returns them whole — for a reader who can
+      # use the API but cannot download an artifact. Never on an ordinary push,
+      # which would hang eleven extra checks on every commit.
+      - name: Share previews as check runs
+        if: steps.previews.outcome == 'success' && github.event_name == 'workflow_dispatch' && inputs.share
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
           for f in build/previews/*.png; do
-            sips -s format jpeg -s formatOptions 45 --resampleWidth 280 "$f" --out "build/small/$(basename "$f" .png).jpg" >/dev/null
+            name=$(basename "$f" .png)
+            for quality in 55 45 35 25; do
+              sips -s format jpeg -s formatOptions "$quality" --resampleWidth 390 "$f" --out "build/small/$name.jpg" >/dev/null
+              [ "$(base64 -i "build/small/$name.jpg" | wc -c)" -lt 60000 ] && break
+            done
           done
-
-      # GitHub keeps ten notices a step, so one step per language.
-      - name: Attach previews (English)
-        if: steps.previews.outcome == 'success'
-        continue-on-error: true
-        working-directory: Frontend/iOS/build/small
-        run: for f in en-*.jpg; do echo "::notice title=preview ${f%.jpg}::$(base64 -i "$f")"; done
-
-      - name: Attach previews (Arabic)
-        if: steps.previews.outcome == 'success'
-        continue-on-error: true
-        working-directory: Frontend/iOS/build/small
-        run: for f in ar-*.jpg; do echo "::notice title=preview ${f%.jpg}::$(base64 -i "$f")"; done
+          python3 - <<'PY'
+          import base64, glob, json, os, subprocess
+          files = sorted(glob.glob("build/small/*.jpg"))
+          pairs = [files[i:i + 2] for i in range(0, len(files), 2)]
+          for number, pair in enumerate(pairs, 1):
+              fields = []
+              for path in pair:
+                  name = os.path.basename(path)[:-4]
+                  fields.append(name + "\n" + base64.b64encode(open(path, "rb").read()).decode())
+              body = {
+                  "name": f"iOS preview {number} of {len(pairs)}",
+                  "head_sha": os.environ["SHA"],
+                  "status": "completed",
+                  "conclusion": "neutral",
+                  "output": {
+                      "title": " and ".join(os.path.basename(p)[:-4] for p in pair),
+                      "summary": fields[0],
+                      **({"text": fields[1]} if len(fields) > 1 else {}),
+                  },
+              }
+              subprocess.run(["gh", "api", f"repos/{os.environ['REPO']}/check-runs", "--input", "-"],
+                             input=json.dumps(body).encode(), check=True, stdout=subprocess.DEVNULL)
+          print(f"posted {len(pairs)} preview check runs")
+          PY
 
       - name: Keep the previews
         if: steps.previews.outcome == 'success'

@@ -4908,9 +4908,11 @@ outside the main actor**, so a main-actor object is made in an initialiser
 (`AppModel`'s language, the `App`'s model) — the first macOS build failed on
 exactly that. After the tests the same job installs the app and photographs
 eleven screens in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
-Debug only) as the `ios-previews` artifact, and attaches small copies to the
-run as notices, because a session working on this repository can read a check
-run's annotations through the API but cannot download its artifacts.
+Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
+posts small copies as neutral check runs on the commit, because a session
+working on this repository can read the checks API but cannot download an
+artifact; notices were tried first and the API cuts an annotation off at
+4,096 characters, a fifth of a picture.
 
 ## Checks
 

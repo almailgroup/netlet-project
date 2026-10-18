@@ -76,7 +76,9 @@ xcodebuild test -project NetLet.xcodeproj -scheme NetLet \
 this folder, then installs the app on the simulator and photographs eleven
 screens in English and Arabic from the demo recordings. Without a Mac, that is
 the preview: the **ios-previews** artifact on the workflow run, under the
-repository's Actions tab.
+repository's Actions tab. Running the workflow by hand (*Actions → iOS → Run
+workflow*) with **share** ticked also posts small copies as "iOS preview"
+checks on the commit.
 
 ## Recording the demo again
 
