@@ -113,7 +113,7 @@ describe("dictionary hygiene", () => {
    */
   it("has no key the app never asks for", () => {
     const root = path.resolve(import.meta.dirname, "../..");
-    const skip = new Set(["node_modules", "dist", ".git", "ios-app", "database"]);
+    const skip = new Set(["node_modules", "dist", ".git", "database"]);
     const sources: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {

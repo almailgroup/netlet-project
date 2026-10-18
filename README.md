@@ -67,7 +67,6 @@ Shared/                imported by both sides, and pure
   ai/                  the AI gateway's contract: tokens, requests, the stream
 api/                   the Vercel entry point — a two-line stub over the bundled function
 docs/                  setup guides and the requirements
-ios-app/               Expo WebView shell, with its Xcode project committed
 ```
 
 Configuration that spans the folders stays at the root: `package.json`, the

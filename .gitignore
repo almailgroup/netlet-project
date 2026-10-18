@@ -28,16 +28,12 @@ api/app.generated.js
 *.log
 coverage/
 
-# iOS native project.
-# ios-app/ios IS committed, so the project opens in Xcode straight from a
-# clone. These are the parts CocoaPods and Xcode regenerate, and must not be:
-# Pods/ is ~100MB of vendored source, the .xcworkspace is written by
-# `pod install`, and xcuserdata holds per-developer window state.
-ios-app/ios/Pods/
-ios-app/ios/*.xcworkspace
-ios-app/ios/.xcode.env.local
+# The native iOS app (Frontend/iOS). Xcode's per-developer state and the
+# build products xcodebuild writes beside the project are never committed.
 **/xcuserdata/
-ios-app/.expo/
+Frontend/iOS/build/
+Frontend/iOS/DerivedData/
+*.xcresult
 
 # The AI gateway's local state and its local secrets (`wrangler dev`).
 Backend/gateway/.wrangler/

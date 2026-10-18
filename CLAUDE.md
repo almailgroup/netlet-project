@@ -4852,17 +4852,10 @@ nothing on the page saying so since the preview banner was removed.
 
 ## iOS app
 
-`ios-app/` is the whole iOS side: the Expo source, the artwork, and the
-generated Xcode project in `ios-app/ios/`, which is committed so it opens from
-a clone. It is a WebView shell around the published Pages site, so it needs no
-backend running.
-
-`ios/` is generated from `app.json` by `npx expo prebuild` — hand edits to the
-Xcode project are lost the next time that runs. `ios-app/README.md` has the
-run steps and what is deliberately not committed.
-
-Expo Go cannot run it: three of its modules ship native code. `npx expo run:ios`
-is the way in.
+The Expo WebView shell that wrapped the published site was retired, on the
+owner's word, for a native SwiftUI app in `Frontend/iOS` that takes over its
+bundle identifier, `com.netlet.marketplace`. Nothing of the shell was reused
+but its icon.
 
 ## Checks
 
