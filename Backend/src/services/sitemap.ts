@@ -13,6 +13,7 @@ import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
 import type { SitemapEntry } from "../../../Shared/sitemap.js";
 import { publishedCatalog } from "./inventory.js";
 import { listStoreCards, STORE_INDEX_LIMIT } from "./catalog.js";
+import { publishedGuideSlugs } from "./guides.js";
 
 /**
  * The cap is a ceiling on work per request, not a page size.
@@ -47,6 +48,11 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
   const stores = await listStoreCards("en", STORE_INDEX_LIMIT).catch(() => []);
   if (stores.length) entries.push({ path: "/stores", priority: 0.5 });
   for (const store of stores) entries.push({ path: `/stores/${store.slug}`, priority: 0.5 });
+
+  /* Guides, likewise, only once one is published: an index of none is a page with nothing on it. */
+  const guides = await publishedGuideSlugs().catch(() => []);
+  if (guides.length) entries.push({ path: "/guides", priority: 0.4 });
+  for (const guide of guides) entries.push({ path: `/guides/${guide.slug}`, lastModified: guide.updatedAt, priority: 0.4 });
 
   return entries;
 }

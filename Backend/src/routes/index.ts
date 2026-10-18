@@ -4,6 +4,7 @@ import { subscriptionsRouter } from "./subscriptions.js";
 import { supportRouter } from "./support.js";
 import { notificationsRouter } from "./notifications.js";
 import { tryOnRouter } from "./tryOn.js";
+import { guidesRouter } from "./guides.js";
 import { fulfilmentRouter } from "./fulfilment.js";
 import { membershipRouter } from "./membership.js";
 import { affiliatesRouter } from "./affiliates.js";
@@ -37,6 +38,7 @@ export const appRouter = router({
   support: supportRouter,
   notifications: notificationsRouter,
   tryOn: tryOnRouter,
+  guides: guidesRouter,
   fulfilment: fulfilmentRouter,
   membership: membershipRouter,
   affiliates: affiliatesRouter,

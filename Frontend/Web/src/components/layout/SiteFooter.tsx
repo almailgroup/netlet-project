@@ -187,6 +187,9 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
   const { toggleLocale } = useCustomer();
   const wide = useMediaQuery("(min-width: 640px)");
   const channels = trpc.support.channels.useQuery(undefined, { staleTime: 300_000 });
+  /* Guides are listed once one is published, so the link never opens an empty page. */
+  const guides = trpc.guides.published.useQuery(undefined, { staleTime: 300_000 });
+  const service = guides.data?.length ? [SERVICE[0], { key: "guides.title", href: "/guides" } satisfies FooterLink, ...SERVICE.slice(1)] : SERVICE;
   const contact = channels.data;
   const company = contact?.company ?? null;
   const companyName = nameInSentence(company ? (isArabic && company.nameAr ? company.nameAr : company.name) : t("footer.netlet"));
@@ -272,7 +275,7 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
     <div key="groups" className="min-w-0 sm:contents">
       <Group title="footer.categories" links={departments} folded={!wide} />
       <Group title="footer.shopping" links={SHOPPING} folded={!wide} />
-      <Group title="footer.service" links={SERVICE} folded={!wide} />
+      <Group title="footer.service" links={service} folded={!wide} />
       <Group title="footer.netlet" links={NETLET} folded={!wide} />
     </div>
   );

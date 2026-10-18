@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, BadgeCheck, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -195,6 +195,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
       /* NetLet's own inbox (3.5.1); a seller's conversations are the line above. */
       { href: "/admin/support", label: "support.inboxTitle", icon: <LifeBuoy className="size-4" />, need: "support.answer" },
+      /* NetLet's how-to guides (3.5.3): what a shopper or seller reads before asking. */
+      { href: "/admin/guides", label: "guides.adminTitle", icon: <BookOpen className="size-4" />, need: "platform.configure" },
       { href: "/admin/membership", label: "membership.title", icon: <BadgeCheck className="size-4" />, need: "membership.manage" },
     ] },
     { label: "admin.navMoney", links: [

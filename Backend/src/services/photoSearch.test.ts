@@ -40,7 +40,9 @@ describe("reading a photo", () => {
     expect(calls[0].body.image).toEqual({ mimeType: "image/jpeg", data: "/9j/4AAQSkZJRgABAQ==" });
     expect(calls[0].body.prompt).toBe("");
     /* The whole request: the instructions, the photo and the call's settings. */
-    expect(Object.keys(calls[0].body).sort()).toEqual(["image", "json", "maxOutputTokens", "prompt", "system", "temperature", "timeoutMs"]);
+    expect(Object.keys(calls[0].body).sort()).toEqual(["image", "images", "json", "maxOutputTokens", "output", "prompt", "search", "system", "temperature", "timeoutMs"]);
+    /* No second picture, no search and words back: only the shopper's photo goes. */
+    expect(calls[0].body).toMatchObject({ images: [], search: false, output: "text" });
   });
 
   it("asks in the shopper's language", async () => {

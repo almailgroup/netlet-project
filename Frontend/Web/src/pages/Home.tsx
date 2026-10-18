@@ -6,7 +6,7 @@
  * it has something true to show.
  */
 import { useCatalog } from "@/hooks/useCatalog";
-import { editorialUpdates, homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
+import { homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
@@ -18,6 +18,7 @@ import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
 import { HomeHero } from "@/components/home/HomeHero";
 import { StoreShelf } from "@/components/home/StoreShelf";
+import { GuideShelf } from "@/components/home/GuideShelf";
 import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { Link, useLocation } from "wouter";
@@ -288,9 +289,7 @@ export default function Home() {
       );
     })}
 
-    {articlesOn ? (
-      <section className="border-y border-[#d5dfeb] bg-white/45 py-10 sm:py-14"><div className="container"><div className="flex items-end justify-between gap-5"><div><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.notesFrom")}</p><h2 className="font-extrabold mt-1 text-2xl text-[#0a285a] sm:text-4xl">{t("home.usefulReading")}</h2></div><button onClick={() => toast(t("home.editorialSoon"))} className="hidden items-center gap-1 text-xs font-extrabold text-[#0a285a] underline decoration-[#f2683a] decoration-2 underline-offset-4 sm:flex">{t("home.viewAll")} <ArrowRight className="size-3.5 rtl:-scale-x-100" /></button></div><div className="mt-6 grid gap-3 md:grid-cols-3">{editorialUpdates.map((entry) => <article key={entry.title} className="rounded-2xl border border-[#d5dfeb] bg-[#fffdf9] p-6"><p className="text-[12px] font-semibold ink-accent">{t(entry.date)}</p><h3 className="type-heading mt-4 text-lg tracking-[-.025em] text-[#0a285a]">{t(entry.title)}</h3><p className="type-body mt-3 text-sm leading-6 text-[#536b8c]">{t(entry.summary)}</p><button onClick={() => toast(t("home.guideSoon"))} className="mt-5 inline-flex items-center gap-1 text-[12px] font-semibold text-[#0a285a]">{t("home.readMore")} <ArrowRight className="size-3.5 ink-accent rtl:-scale-x-100" /></button></article>)}</div></div></section>
-    ) : null}
+    {articlesOn ? <GuideShelf /> : null}
 
     {/* Switched off until there is an app to download (2.3). */}
     {appBannerOn ? <section className="container pb-10"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.application")}</p><h2 className="font-extrabold mt-3 text-2xl text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[12px] font-semibold">{t("home.appUpdates")}</button></div></div></section> : null}

@@ -57,7 +57,7 @@ export function usePageMeta(meta: PageMeta, structuredData?: Record<string, unkn
     upsertMeta("property", "og:site_name", "NetLet");
     upsertMeta("property", "og:title", meta.title);
     upsertMeta("property", "og:description", meta.description);
-    upsertMeta("property", "og:type", meta.type === "product" ? "product" : "website");
+    upsertMeta("property", "og:type", meta.type);
     upsertMeta("name", "twitter:card", "summary_large_image");
     upsertMeta("name", "twitter:title", meta.title);
     upsertMeta("name", "twitter:description", meta.description);

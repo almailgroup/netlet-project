@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryRail, editorialUpdates, homeRailDefinitions, MAX_SHELF_PRODUCTS, MIN_SHELF_PRODUCTS, shelvesFor } from "./homeLayout";
+import { categoryRail, homeRailDefinitions, MAX_SHELF_PRODUCTS, MIN_SHELF_PRODUCTS, shelvesFor } from "./homeLayout";
 import { en, type MessageKey } from "@shared/i18n/dictionary";
 import type { Product } from "@shared/commerce/types";
 
@@ -25,9 +25,8 @@ describe("NetLet home layout content", () => {
     expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Deals", "Bestsellers", "New arrivals"]);
   });
 
-  it("keeps category and editorial sections available", () => {
+  it("keeps the category section available", () => {
     expect(categoryRail).toHaveLength(6);
-    expect(editorialUpdates).toHaveLength(3);
   });
 
   // Every string on the home page comes out of the dictionary, so a key that
@@ -36,7 +35,6 @@ describe("NetLet home layout content", () => {
     const keys: MessageKey[] = [
       ...categoryRail.map((category) => category.key),
       ...homeRailDefinitions.map((rail) => rail.title),
-      ...editorialUpdates.flatMap((entry) => [entry.date, entry.title, entry.summary]),
     ];
     expect(keys.filter((key) => !(key in en))).toEqual([]);
   });

@@ -42,6 +42,14 @@
       "destination": "/api?__page=/categories"
     },
     {
+      "source": "/guides/:slug",
+      "destination": "/api?__page=/guides/:slug"
+    },
+    {
+      "source": "/guides",
+      "destination": "/api?__page=/guides"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

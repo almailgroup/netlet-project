@@ -85,12 +85,6 @@ export function shelvesFor(catalog: Product[], bestsellers: Product[] = []): Rec
   return { deals, bestsellers: best, newest };
 }
 
-export const editorialUpdates = [
-  { date: "editorial.delivery.date", title: "editorial.delivery.title", summary: "editorial.delivery.summary" },
-  { date: "editorial.edit.date", title: "editorial.edit.title", summary: "editorial.edit.summary" },
-  { date: "editorial.guide.date", title: "editorial.guide.title", summary: "editorial.guide.summary" },
-] as const satisfies readonly { date: MessageKey; title: MessageKey; summary: MessageKey }[];
-
 /**
  * Footer links carry the category query they select, so "Electronics" in the
  * footer lands on the same filtered view as "Electronics" in the header rail

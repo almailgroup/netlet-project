@@ -48,8 +48,10 @@ type Choice = {
 };
 type Pick = "fixed" | "taken" | "ai";
 
-export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productName = "" }: {
+export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productName = "", fromMaker = true }: {
   onUploaded: (url: string) => void;
+  /** Offer the maker's page beside the upload — a product's, never a guide's. */
+  fromMaker?: boolean;
   /** The product's name as typed so far, for finding its maker's page by name. */
   productName?: string;
   /** What the toast says once it is in the list: the editor saves photos with a Save, the new-product form with Create. */
@@ -145,7 +147,7 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productN
         {t(busy === "preparing" ? "media.preparing" : "media.upload")}
       </button>
       <input ref={input} type="file" accept="image/*" className="hidden" tabIndex={-1} aria-hidden onChange={event => { void chosen(event.target.files?.[0]); event.target.value = ""; }} />
-      <ManufacturerImport busy={busy !== null} productName={productName} onPick={(blob, source) => void chosen(blob, source)} />
+      {fromMaker ? <ManufacturerImport busy={busy !== null} productName={productName} onPick={(blob, source) => void chosen(blob, source)} /> : null}
 
       {choice ? (
         <div className="mt-3 w-full rounded-2xl border border-[#d5dfeb] bg-white p-4 text-[12px] text-[#0a285a]">

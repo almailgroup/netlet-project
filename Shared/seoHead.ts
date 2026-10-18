@@ -57,7 +57,7 @@ export function headTags(meta: PageMeta, extras: HeadExtras = {}): string {
     `<title>${text(meta.title)}</title>`,
     `<meta name="description" content="${attr(meta.description)}" />`,
     `<meta property="og:site_name" content="NetLet" />`,
-    `<meta property="og:type" content="${meta.type === "product" ? "product" : "website"}" />`,
+    `<meta property="og:type" content="${meta.type}" />`,
     `<meta property="og:title" content="${attr(meta.title)}" />`,
     `<meta property="og:description" content="${attr(meta.description)}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,

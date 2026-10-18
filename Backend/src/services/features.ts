@@ -12,10 +12,10 @@
  * **With no database, everything is on**, which is what `pnpm dev` with
  * nothing configured has always meant.
  */
-import { eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { gatewayConfigured } from "../core/aiGateway.js";
 import type { MessageKey } from "../../../Shared/i18n/dictionary.js";
-import { featureSwitches, orderItems, users } from "../../database/schema.js";
+import { featureSwitches, guides, orderItems, users } from "../../database/schema.js";
 import { FEATURE_KEYS, FEATURES, resolveStates, type FeatureKey, type FeatureStates } from "../../../Shared/features.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { recordAudit } from "./audit.js";
@@ -104,6 +104,13 @@ async function readinessOf(enabled: (key: FeatureKey) => boolean): Promise<Parti
       .having(sql`count(distinct ${orderItems.productId}) > 1`)
       .limit(1);
     if (baskets.length === 0) out.boughtTogether = { kind: "blocked", reason: "features.why.noPairs" };
+    /* The home page's guides are drawn only once one for shoppers is published. */
+    const [guide] = await db
+      .select({ id: guides.id })
+      .from(guides)
+      .where(and(eq(guides.status, "published"), eq(guides.audience, "shopper")))
+      .limit(1);
+    if (!guide) out.articles = { kind: "blocked", reason: "features.why.noGuides" };
   }
   return out;
 }

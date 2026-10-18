@@ -50,6 +50,11 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       other: "تركت {count} منتج في سلتك.",
     },
   },
+  "guides.stepCount": {
+    param: "count",
+    en: { one: "1 step" },
+    ar: { one: "خطوة واحدة", two: "خطوتان", few: "{count} خطوات", many: "{count} خطوة", other: "{count} خطوة" },
+  },
   "notices.unread": {
     param: "count",
     ar: { one: "إشعار واحد غير مقروء", two: "إشعاران غير مقروءين", few: "{count} إشعارات غير مقروءة", many: "{count} إشعاراً غير مقروء", other: "{count} إشعار غير مقروء" },

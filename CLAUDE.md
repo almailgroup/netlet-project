@@ -1202,7 +1202,8 @@ redone as separate images: cutting the grid apart clipped a sneaker and left a
 sliver of it beside the grocery basket.
 
 Then the paid placements, Deals, Bestsellers, Picked for you, Shop by brand,
-Stores on NetLet, the new arrivals as a grid to browse, and the footer. **A
+Stores on NetLet, the new arrivals as a grid to browse, the newest three
+shoppers' guides (see "Guides") once one is published, and the footer. **A
 shelf below four products is not drawn**: `shelvesFor` in
 `Frontend/Web/src/content/homeLayout.ts` decides — Deals is what is actually
 discounted, deepest first; Bestsellers is what sold, by units over ninety days
@@ -1345,13 +1346,25 @@ Google's reCAPTCHA, the map chosen, a model provider for the assistants and
 photo search, the browser's own speech service), the one sign-in cookie, and
 asking through Help to close an account, since there is no button for it. A
 paragraph about a service the deployment does not run — the analytics tool —
-is drawn only when the build configures it. The operator is named from the
+is drawn only when the build configures it, and so are two more: email
+(Resend, only while it is configured) and the try-on (Google's image model,
+only while `tryOn` is on) — `only` on a `LegalParagraph`. The operator is named from the
 same company, and with none recorded the introduction says what NetLet is
 without "run by NetLet". **Written from the code, not by a lawyer**; somebody
 qualified in Kuwaiti consumer and data law should read both, and when a rule
 they describe changes, the sentence and `LEGAL_UPDATED` change with it. The
 three Arabic entries that name those services in Latin are allowed by the
 dictionary test, for the maps' reason.
+
+**`/seller-agreement` is the third**, the text a store accepts on `/sell`
+(`SELLER_TERMS`, same file): parties, listings and the discount permit,
+`DEFAULT_COMMISSION_PERCENT`, the payout schedule's own day counts, delivery,
+`RETURN_WINDOW_DAYS`, conduct and the contact filter, paid placements, ending
+and Kuwaiti law — every figure is the constant the code charges by, so the
+agreement cannot quote a rate the database does not. `AGREEMENT_VERSION` is the
+day the text changed, so an application records which text was accepted. It
+says nothing about who keeps delivery fees, because nobody has decided; same
+caveat as the other two about a lawyer.
 
 **The bag has a page.** `/cart` answered 404 because the bag was only a
 drawer, so nothing could link to it and Back on a phone left the shop. The page
@@ -2066,6 +2079,12 @@ has (`isClaims`), so neither can stand in for the other; `Backend/src/services/g
 runs `askModel` through the Worker's real handler. **The feature's deadline is
 the server's**, and the Worker is given 300ms less for Gemini, so a slow answer
 is refused there rather than abandoned here.
+Five tasks have joined the six since — `makerPage` (finding a maker's page,
+with search grounding), `photoCleanup`, `tryOn`, `guideImage` (all three
+drawn, see "Drawing") and `guideDraft` — each in `SERVER_TASKS`, which the
+Worker's `isClaims` reads, so a task the shop does not have cannot ride a
+server token. `askModelFor` returns the whole answer (words, a picture, the
+pages searched); `askModel` stays the words alone.
 
 **CORS is not authentication, so a browser reaches the gateway only with a
 token this server signed.** CORS stops another site's page reading an answer
@@ -2705,6 +2724,115 @@ Worker — because the shopper's details have no business at a third party.
 Absent while the gateway is not configured or `ai` or `assistant` is off, like
 the product assistant.
 
+## Notifications
+
+**An event is told once, to the people it is about, in the inbox first.**
+`Shared/commerce/notices.ts` is the rule, pure; `Backend/src/services/notifications.ts`
+writes them (migration 0060: `notifications`, `notification_deliveries`,
+`customer_preferences.notify_email`). A notice is a message key and its
+params, never English, so one written in English reads in Arabic next week —
+support's rule — and its money params are formatted on the read. **A dedupe
+key with a unique index** (`user_id`, `dedupe_key`) is what makes "once" true:
+back in stock once per return to stock, a price drop once per new low, the
+bag once per basket age, an order's step once per step, so a cron run twice or
+two sellers pressing at once tells nobody twice.
+
+**Who hears what is the shopper's own preference**, the row `/account`'s
+Preferences already had and nothing read: each kind names the preference that
+gates it (`NOTICE_RULES`) — an order's steps follow Delivery updates — and only
+the order's own confirmation is never silenced.
+**Sellers hear their store's new orders, messages and returns**, every member
+of the store (`notifyStore`).
+
+**Price drops name the new price, never the old.** "Was 40, now 32" is an
+advertised saving, which needs the store's discount permit, and a notice is
+the wrong place to make that claim. Back in stock and price drops are read
+*before and after* every act that can move them (`withProductAlerts` round
+saving a variant, a bulk reprice, stock moved, a receipt, a return restocked, a
+line cancelled or restored, a store's status), so the event is the change and
+not the act — an edit that lowers and raises a price in one save tells nobody.
+
+**Email is Resend, and only where it is configured** (`RESEND_API_KEY`,
+`NOTIFY_EMAIL_FROM`; `pnpm preflight` says which is missing). Unset, the inbox
+is the whole feature and the account's email switch is not drawn. A send is
+tried inline with a four-second deadline and never fails the act it follows;
+the daily cron (`/api/cron/notifications`, `CRON_SECRET`, `vercel.json`'s
+`0 15 * * *`) retries what failed, claimed by a predicate on the attempt count
+so two runs cannot send one twice, backing off `60s · 4^(n−1)` and giving up
+after `EMAIL_ATTEMPTS`. The same run writes the bag reminders, through
+`cartRecovery.ts`'s own window. The email names the site by `SITE_URL` (or
+Vercel's production address) and links only to paths on it (`isSiteLink`).
+
+The inbox is `/account/notifications`: a page is marked read when it is
+opened, but the "New" tag stays for that visit, so the shopper still sees what
+was new. The header's dot, the account menu and the phone's Profile badge
+count it with the rest (`useAccountSignals`).
+
+## Drawing
+
+**The gateway can draw now**, and three things use it: a seller's photo put on
+white beside the rule-fixed one (3.3.4, `/api/media/ai-clean`), a shopper
+wearing a garment from their own photo (3.1.8, `tryOn.make`), and a guide
+step's picture (3.5.3, `guides.picture`). `GenerateRequest` grew `images` (up
+to `MAX_GENERATE_IMAGES` after `image`), `search` (Google Search grounding,
+with the pages read returned as `sources`) and `output: "image"`, which the
+Worker sends to `GATEWAY_IMAGE_MODEL` (`gemini-2.5-flash-image`, IMAGE and
+TEXT out, no thinking budget and no word cap). `MAX_GENERATE_MS` is 45s so a
+picture fits and the Vercel function's `maxDuration` 60s to hold it.
+
+**Nothing drawn is stored by the server.** It carries no image library and
+keeps only the JPEG and WebP a browser made (`media.ts`), so every picture goes
+back to the browser that asked, is prepared there like any photo — its own
+bytes checked, re-encoded, shrunk — and is uploaded only when a person picks
+it; a try-on is shown and kept nowhere. What comes back is a picture **by its
+own bytes** or `drawing.failed`, so an SVG wearing a PNG's name is refused.
+Each use is counted per account per hour in `auth_attempts` *before* the call
+(`takeHourlyAllowance`: `photoClean`, `tryOn`, `guideDraw`, `guideDraft`), and
+all of it is behind `ai` like every model call. The try-on also has its own
+switch, `tryOn`, off by default; only something in the Style department
+(`TRY_ON_DEPARTMENTS`), only a published product of an approved store, only
+signed in, and the panel says where the photo goes before one is chosen.
+
+None of the three has been run against Google's live image model from this
+sandbox, which cannot reach it: every gate was driven through the Worker's own
+handler with Gemini stood in. Try each once the gateway is deployed.
+
+## Guides
+
+**3.5.3 asks for AI tutorial videos, and the owner chose illustrated guides**:
+a video model costs dollars a clip. A guide is how to do one thing, in a few
+steps, each with an optional picture, in both languages
+(`Shared/commerce/guides.ts` the rule, `Backend/src/services/guides.ts` the
+database half, migration 0061 `guides`, one jsonb list of steps rather than a
+second table, since a step is meaningless outside its guide).
+
+**A model drafts and draws; a person publishes.** `/admin/guides` is NetLet's
+desk (`platform.configure`). "Draft with AI" sends a topic, fenced, and a
+system prompt grounded in `helpBrief` and a short map of the site whose labels
+come from the dictionary (`siteFacts`), so a renamed tab is renamed in the
+prompt too; `guideFromModel` holds the answer to the shape — capped, lines
+carrying contact details dropped, no pictures — and the draft fills the form,
+asking first over anything typed. Nothing is saved until Save and nothing is
+public until Publish. **Publish asks `guideProblems` on both sides**: both
+titles, every step written in both languages, pictures only from NetLet's own
+`/media` uploads (`acceptableGuideImage`), and no phone number, email or link
+anywhere — the chat's filter, because a guide is NetLet talking. An edit that
+breaks a published guide is refused rather than half-published. A draft's
+address follows its title and a published one keeps it (`guideSlug`,
+`freeSlug`), the product handle's rule. Publishing, taking down and deleting
+are audited (`guide.setStatus`, `guide.delete`).
+
+**Shoppers meet them only once one exists**: `/guides` (shopping, then
+selling, each group drawn only when it has one), `/guides/<slug>` with its own
+head for a shared link (`guideMeta`, `og:type` article, `pageShell.ts` and the
+`vercel.json` rewrites) and in the sitemap, four on the help page, a footer
+link, and the newest three shoppers' ones on the home page — all one read,
+`guides.published`, so the four share one request. The home shelf is the
+`articles` switch, which now defaults on, since a shop with none draws nothing
+either way; `/admin/features` says when there is nothing to show. The words
+are NetLet's once published, so they carry no "written by AI" line; a drawn
+picture carries one in the editor, where the decision to use it is made.
+
 ## After the door: ratings and damage
 
 `Backend/src/services/parcelCare.ts` is both, because both start from the same thing — a
@@ -2904,8 +3032,13 @@ is a memory bomb. An image is one by its bytes, so an SVG served as
 used a preload patching `https.request` and `dns.lookup` before the module
 captured them.
 
-Finding the page from a name alone is the gap — it needs a search or catalogue
-provider, and a model asked for the URL makes one up.
+**The page is found from the product's name too** (`findMakerPages`, "Find
+it" in the panel). A model asked for a URL invents one, so this asks the
+gateway with Google Search grounding and offers only the pages the search
+actually read (`groundingMetadata`'s sources), never an address the model
+wrote: each followed by hand past Google's own redirect, resolved through
+`resolvesPublicly` and dropped if any answer is not public, at most five, the
+maker's own domain first. Picking one hands it to the pulling above.
 
 ## Live tracking
 
@@ -3319,8 +3452,9 @@ chat and keep sellers' drafting.
 than cached.** Most features default on, so a fresh database behaves as it
 always did. Voice and photo search are on and draw themselves only where they
 work (a browser that can listen; a configured model). The ones with nothing
-behind them yet — the app banner, the articles, affiliates, Subscribe & Save —
-default off: a control
+behind them yet — the app banner, affiliates, Subscribe & Save — default off,
+and so does the try-on, because switching it on sends shoppers' photos to
+Google and is a decision: a control
 answering "soon" is worse than no control, and hiding them behind the switch
 keeps the code rather than deleting it. Off, a shopper who already holds one
 (an affiliate account, a standing order) still sees that section on `/account`,
@@ -4662,7 +4796,10 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It is 664 KB (194 KB) now: the
+with the whole first download 35 KB smaller. It was 664 KB (194 KB) and is 708 KB (205 KB) now, nearly
+all of it the dictionary — the seller agreement, the notices and the guides'
+words in both languages (see the dictionary note below for why it stays one
+module): the
 shop's frame, the page template and the navigation layer (see "One frame, one
 template") are on every page, so they belong in it, and so is the home page's
 front door, which is its first paint, and the shop assistant's button (4 KB

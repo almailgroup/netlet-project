@@ -119,7 +119,18 @@ AI_GATEWAY_URL              # The AI gateway (Backend/gateway/README.md): every 
 AI_GATEWAY_SECRET           # 32+ characters, the same value the Worker holds; either unset turns AI off
 VITE_ANALYTICS_ENDPOINT     # Umami; both are public, both are build-time
 VITE_ANALYTICS_WEBSITE_ID
+RESEND_API_KEY              # Email for notifications (resend.com); unset, they reach the account's inbox only
+NOTIFY_EMAIL_FROM           # The sender, on a domain verified in Resend, e.g. NetLet <orders@netlet.net>
+CRON_SECRET                 # 16+ characters; Vercel Cron sends it to the two scheduled runs below
+SITE_URL                    # The canonical address, e.g. https://netlet.net — the links inside emails use it
 ```
+
+`vercel.json` schedules two daily runs, which Vercel Cron calls with
+`CRON_SECRET`: `/api/cron/subscriptions` (standing orders) and
+`/api/cron/notifications` (bag reminders, and retrying emails that failed). With
+no `CRON_SECRET` both answer 404, standing orders can be run by hand from
+`/admin/subscriptions`, and notifications still reach the inbox at once — only
+the bag reminders and the retries wait for the schedule.
 
 ### Do not set
 

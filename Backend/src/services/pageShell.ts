@@ -1,24 +1,27 @@
 /**
  * The HTML a crawler or a chat app receives for a page, with that page's head.
  *
- * Product, department and store pages, and the two indexes of them (stores,
- * categories): they are what gets shared and indexed, and each answer costs a
+ * Product, department, store and guide pages, and the indexes of them (stores,
+ * categories, guides): they are what gets shared and indexed, and each answer costs a
  * catalogue read at most. Everything else keeps the shell's default tags,
  * which describe the shop. A read that fails — no database, a
  * product taken down — sends the shell unchanged rather than an error, since
  * the page itself still loads and says what happened.
  */
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
-import { breadcrumbJsonLd, categoriesMeta, departmentMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../../../Shared/seo.js";
+import { breadcrumbJsonLd, categoriesMeta, departmentMeta, guideMeta, guidesMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../../../Shared/seo.js";
 import { headTags, withHead } from "../../../Shared/seoHead.js";
 import { describeError } from "../core/describeError.js";
 import { getProductByHandle, getStorePage } from "./catalog.js";
+import { guideBySlug } from "./guides.js";
 
 const PRODUCT = /^\/products\/([^/?#]+)\/?$/;
 const DEPARTMENT = /^\/category\/([^/?#]+)\/?$/;
 const STORE = /^\/stores\/([^/?#]+)\/?$/;
 const STORES = /^\/stores\/?$/;
 const CATEGORIES = /^\/categories\/?$/;
+const GUIDE = /^\/guides\/([^/?#]+)\/?$/;
+const GUIDES = /^\/guides\/?$/;
 
 /**
  * The page a request is for. On Vercel a page is rewritten onto the function
@@ -34,7 +37,7 @@ export function pagePathOf(req: { originalUrl: string; query: Record<string, unk
 
 /** Whether this address is one the server writes a head for. */
 export function hasPageHead(path: string): boolean {
-  return PRODUCT.test(path) || DEPARTMENT.test(path) || STORE.test(path) || STORES.test(path) || CATEGORIES.test(path);
+  return PRODUCT.test(path) || DEPARTMENT.test(path) || STORE.test(path) || STORES.test(path) || CATEGORIES.test(path) || GUIDE.test(path) || GUIDES.test(path);
 }
 
 export async function pageWithHead(template: string, path: string, origin: string): Promise<string> {
@@ -64,6 +67,13 @@ export async function pageWithHead(template: string, path: string, origin: strin
     }
     if (STORES.test(path)) return withHead(template, headTags(storesMeta(origin)));
     if (CATEGORIES.test(path)) return withHead(template, headTags(categoriesMeta(origin)));
+    const guide = GUIDE.exec(path);
+    if (guide) {
+      const found = await guideBySlug(decodeURIComponent(guide[1]));
+      if (!found) return template;
+      return withHead(template, headTags(guideMeta(found, origin)));
+    }
+    if (GUIDES.test(path)) return withHead(template, headTags(guidesMeta(origin)));
   } catch (error) {
     console.error(`[page head] ${path}: ${describeError(error)}`);
   }

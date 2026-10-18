@@ -573,6 +573,19 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* No server to fetch a manufacturer's page with; the upload panel is absent in the demo anyway. */
     case "media.scanPage":
       throw new Error("manufacturer.unreachable");
+    /* Finding a page, drawing and drafting all need the model the demo has none of. */
+    case "media.findPages":
+      throw new Error("manufacturer.searchOff");
+    case "tryOn.make":
+    case "guides.draft":
+    case "guides.picture":
+      throw new Error("drawing.off");
+    /* The guides desk is NetLet's, and the demo is a store's manager. */
+    case "guides.get":
+    case "guides.save":
+    case "guides.setStatus":
+    case "guides.delete":
+      throw new Error("guides.notFound");
     /* Every step of sending money is NetLet's, and the demo is a store's manager. */
     case "finance.preparePayout":
     case "finance.prepareAllPayouts":
@@ -613,10 +626,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { entries: [], total: 0, unread: 0, page: 1, pageSize: 20 };
     case "notifications.email":
       return true;
+    case "notifications.channels":
+      return { email: false };
     /* Nothing draws in the demo. */
     case "tryOn.offered":
     case "media.aiAvailable":
+    case "guides.aiAvailable":
       return false;
+    /* No guide is written for an invented shop; the pages say there are none. */
+    case "guides.published":
+      return [];
+    case "guides.bySlug":
+      return null;
+    case "guides.list":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "notifications.markRead":
       return { ok: true } as const;
     case "notifications.setEmail":

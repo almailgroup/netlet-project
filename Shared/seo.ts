@@ -16,7 +16,7 @@ export type PageMeta = {
   canonical?: string;
   /** Absolute URL of the share image. */
   image?: string;
-  type: "website" | "product";
+  type: "website" | "product" | "article";
   /** True for pages that must never appear in search results. */
   noindex?: boolean;
 };
@@ -162,6 +162,28 @@ export function storesMeta(siteUrl: string): PageMeta {
     canonical: absoluteUrl(siteUrl, "/stores"),
     image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
     type: "website",
+  };
+}
+
+/** Every published guide (3.5.3). */
+export function guidesMeta(siteUrl: string): PageMeta {
+  return {
+    title: `Guides — ${SITE_NAME}`,
+    description: "Step-by-step guides to shopping and selling on NetLet: ordering, delivery, returns, and running a store.",
+    canonical: absoluteUrl(siteUrl, "/guides"),
+    image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+    type: "website",
+  };
+}
+
+/** One guide, by its English title — the canonical text, as a product's is. */
+export function guideMeta(guide: { slug: string; title: string; summary: string; imageUrl: string | null }, siteUrl: string): PageMeta {
+  return {
+    title: `${guide.title} — ${SITE_NAME}`,
+    description: guide.summary.trim() ? toPreviewText(guide.summary) : `A step-by-step guide on NetLet: ${guide.title}.`,
+    canonical: absoluteUrl(siteUrl, `/guides/${encodeURIComponent(guide.slug)}`),
+    image: shareableImage(guide.imageUrl ?? undefined, siteUrl),
+    type: "article",
   };
 }
 

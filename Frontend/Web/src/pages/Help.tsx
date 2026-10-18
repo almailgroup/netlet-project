@@ -35,6 +35,7 @@ import { privatePageMeta } from "@shared/seo";
 import { ArrowRight, ChevronDown, LoaderCircle, MessageCircle, Phone, Search, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { GuideCard } from "@/components/guides/GuideCard";
 
 const KIND_LABEL: Record<ContactKind, MessageKey> = {
   phone: "chat.foundPhone",
@@ -57,6 +58,7 @@ export default function Help() {
         <Contact />
       </div>
       <Answers />
+      <Guides />
       <Ask />
     </PageBody>
   );
@@ -185,6 +187,27 @@ function Answers() {
         </section>
       ))}
     </div>
+  );
+}
+
+/** The step-by-step guides (3.5.3), the newest four, once one is published. */
+function Guides() {
+  const { t } = useTranslation();
+  const guides = trpc.guides.published.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const list = (guides.data ?? []).slice(0, 4);
+  if (list.length === 0) return null;
+  return (
+    <section aria-labelledby="help-guides" className="mt-8">
+      <div className="flex items-center justify-between gap-3">
+        <h2 id="help-guides" className="text-lg font-extrabold">{t("guides.helpTitle")}</h2>
+        <Link href="/guides" className="inline-flex items-center gap-1 text-[14px] font-bold ink-accent hover:underline">
+          {t("guides.all")}<ArrowRight className="size-3.5 rtl:-scale-x-100" aria-hidden />
+        </Link>
+      </div>
+      <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+        {list.map(guide => <li key={guide.slug} className="min-w-0"><GuideCard guide={guide} /></li>)}
+      </ul>
+    </section>
   );
 }
 

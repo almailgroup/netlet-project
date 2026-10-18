@@ -25,10 +25,11 @@
  * **Absent is the feature's default**, and for almost every feature that is on:
  * a fresh database behaves exactly as it did before the switchboard existed, a
  * row is written only when an administrator changes something, and it records
- * who. A few start **off** — voice and photo search, the app banner, the
- * articles, affiliates and Subscribe & Save — because nothing a shopper can use
- * is behind them yet on a shop that has not set them up: an app that is not
- * published, articles nobody has written, a scheduler nobody has configured.
+ * who. A few start **off** — the app banner, affiliates, Subscribe & Save and
+ * the try-on — because nothing a shopper can use is behind them yet on a shop
+ * that has not set them up (an app that is not published, a scheduler nobody
+ * has configured), or because switching one on is a decision (the try-on sends
+ * a shopper's photo to Google).
  * Hidden behind a switch rather than deleted, so turning one on is a press on
  * `/admin/features` rather than a release.
  *
@@ -134,8 +135,9 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   photoSearch: { entries: ["search.photo"], audience: "shopper", defaultOn: true },
   /* The home page's invitation to an app that is not yet in a store. */
   appBanner: { entries: [], audience: "shopper", defaultOn: false },
-  /* The home page's "Useful reading", until there are articles to read. */
-  articles: { entries: [], audience: "shopper", defaultOn: false },
+  /* The home page's guides (3.5.3), drawn only once one is published — so on
+     by default, since a shop with none shows nothing either way. */
+  articles: { entries: [], audience: "shopper", defaultOn: true },
   /* Trying clothes on from a photo of yourself (3.1.8): the shopper's photo
      goes to Google's model, so it starts off and is a decision to switch on. */
   tryOn: { entries: ["tryOn.make"], audience: "shopper", defaultOn: false },

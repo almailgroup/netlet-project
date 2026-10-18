@@ -63,6 +63,9 @@ export const AUDIT_ACTIONS = [
   /* NetLet's answer on a home banner: what runs on its own front page. */
   "ads.bannerApprove",
   "ads.bannerReject",
+  /* A guide published, taken down or deleted (3.5.3): NetLet speaking in public. */
+  "guide.setStatus",
+  "guide.delete",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -76,7 +79,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
