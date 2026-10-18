@@ -199,9 +199,9 @@ final class AuthViewModel {
         countdown?.cancel()
         resendWait = Self.resendWaitSeconds
         countdown = Task { [weak self] in
-            while let self, self.resendWait > 0 {
+            while true {
                 try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { return }
+                guard !Task.isCancelled, let self, self.resendWait > 0 else { return }
                 self.resendWait -= 1
             }
         }
