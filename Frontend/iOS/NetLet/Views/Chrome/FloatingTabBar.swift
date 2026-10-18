@@ -35,6 +35,7 @@ struct FloatingTabBar: View {
     private func button(_ tab: AppModel.Tab, labelSize: CGFloat) -> some View {
         let lit = app.selectedTab == tab
         return Button {
+            Haptics.tab()
             withAnimation(still ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.42)) {
                 app.select(tab)
             }

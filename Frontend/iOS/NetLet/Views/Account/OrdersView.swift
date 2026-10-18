@@ -73,7 +73,7 @@ struct AccountSection<Content: View>: View {
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .padding(.bottom, 8)
             Text(title).pageTitle()
             Text(hint)

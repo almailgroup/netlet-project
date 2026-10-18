@@ -98,7 +98,7 @@ struct LogoRow: View {
                     .frame(maxWidth: 130, maxHeight: 40, alignment: .leading)
                     .frame(height: 40)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .accessibilityLabel(l.t("header.home"))
             Spacer(minLength: 12)
             Button {
@@ -152,7 +152,7 @@ struct SearchRow: View {
             .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityLabel(l.t("header.searchAria"))
         .accessibilityAddTraits(.isSearchField)
         .padding(.horizontal, 16)

@@ -36,7 +36,7 @@ struct CategoriesView: View {
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
                         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.tap)
                     .padding(.top, 16)
                 }
             }
@@ -322,6 +322,7 @@ struct StoreView: View {
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                 }
                 .accessibilityLabel(l.t("browse.sortBy"))
+                .onChange(of: sort) { Haptics.tap() }
             }
             if departments.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -379,7 +380,7 @@ struct StoreView: View {
                 .background(Capsule().fill(on ? Brand.navy : Color.white))
                 .overlay(Capsule().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityAddTraits(on ? [.isSelected] : [])
     }
 

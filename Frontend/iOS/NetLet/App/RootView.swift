@@ -68,6 +68,7 @@ struct RootView: View {
                     }
             }
             .environment(\.layoutDirection, l.layoutDirection)
+            .buttonStyle(HapticDefaultStyle())
         }
     }
 

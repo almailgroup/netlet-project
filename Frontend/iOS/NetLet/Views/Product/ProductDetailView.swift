@@ -130,7 +130,7 @@ private struct ProductPage: View {
                                             .strokeBorder(model.imageIndex == index ? Brand.navy : Brand.line, lineWidth: model.imageIndex == index ? 2 : 1)
                                     )
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.tap)
                             .accessibilityLabel(l.t("product.showImage", ["index": "\(index + 1)", "total": "\(images.count)"]))
                             .accessibilityAddTraits(model.imageIndex == index ? [.isSelected] : [])
                         }
@@ -150,7 +150,7 @@ private struct ProductPage: View {
                         Button(l.t("browse.soldBy", ["name": vendor])) { app.push(.store(slug: slug)) }
                             .font(.inter(12, .bold))
                             .foregroundStyle(Brand.accentInk)
-                            .buttonStyle(.plain)
+                            .buttonStyle(.tap)
                     } else {
                         Text(vendor).font(.inter(12, .bold)).foregroundStyle(Brand.muted)
                     }
@@ -356,7 +356,7 @@ private struct ProductPage: View {
                             .underline()
                             .frame(minHeight: 44)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.tap)
                 }
             }
         }
@@ -513,7 +513,7 @@ private struct ProductPage: View {
                 .frame(minHeight: 52)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .accessibilityAddTraits(.isHeader)
             if shown {
                 content()
@@ -652,6 +652,7 @@ struct PurchaseButtonStyle: ButtonStyle {
             .foregroundStyle(Brand.navy)
             .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(configuration.isPressed ? Brand.pressFill : Color.white))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .pressHaptic(configuration.isPressed)
     }
 }
 
@@ -747,7 +748,7 @@ struct ChoiceChip: View {
                 .background(Capsule().fill(selected ? Brand.navy : Color.white))
                 .overlay(Capsule().strokeBorder(selected ? Brand.navy : Brand.line, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityValue(available ? "" : l.t("product.unavailable"))
     }

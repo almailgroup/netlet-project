@@ -47,6 +47,7 @@ private struct NewListingForm: View {
                 description
                 if let refusal = model.refusal { FieldProblem(key: refusal) }
                 Toggle(l.t("ios.sell.publishNow"), isOn: $model.publish).tint(Brand.navy)
+                    .onChange(of: model.publish) { Haptics.tap() }
                 Text(l.t("admin.newDraftNote")).font(.footnote).foregroundStyle(Brand.muted)
             }
             .padding(16)
@@ -138,7 +139,10 @@ private struct NewListingForm: View {
                 Text(l.t("browse.category")).font(.subheadline.weight(.semibold))
                 Menu {
                     ForEach(model.categories.value ?? []) { category in
-                        Button(category.displayName(l.current)) { model.categoryId = category.id }
+                        Button(category.displayName(l.current)) {
+                            Haptics.tap()
+                            model.categoryId = category.id
+                        }
                     }
                 } label: {
                     MenuField(

@@ -129,7 +129,7 @@ struct ProductCard: View {
                         .lineLimit(2, reservesSpace: !feature)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tap)
                 .padding(.top, 2)
                 if let rating = product.rating {
                     RatingLine(rating: rating).padding(.top, 4)
@@ -243,7 +243,7 @@ struct CardGallery: View {
                 .clipped()
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityHidden(true)
     }
 
@@ -288,7 +288,7 @@ struct HeartButton: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityLabel(l.t(saved ? "product.removeSaved" : "product.save", ["name": product.title]))
         .accessibilityAddTraits(saved ? .isSelected : [])
     }
@@ -461,6 +461,7 @@ struct CardPillStyle: ButtonStyle {
         configuration.label
             .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
             .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .pressHaptic(configuration.isPressed)
     }
 }
 

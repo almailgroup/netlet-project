@@ -157,7 +157,7 @@ struct HomeHero: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1.5))
                 .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
     }
 
     private var pictures: some View {

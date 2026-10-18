@@ -124,7 +124,7 @@ struct CartLineRow: View {
                     .overlay { RemoteImage(reference: item.image?.url, label: title) }
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink).lineLimit(2)
                 if let variant = item.variantLabel {

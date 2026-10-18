@@ -27,7 +27,7 @@ struct ShelfHeading: View {
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tap)
             }
         }
     }
@@ -385,7 +385,7 @@ struct FlowChips: View {
                         .background(Capsule().fill(Color.white.opacity(0.9)))
                         .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tap)
             }
         }
     }

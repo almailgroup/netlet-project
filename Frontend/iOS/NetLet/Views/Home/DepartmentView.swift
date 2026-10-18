@@ -66,6 +66,7 @@ private struct BrowsePage: View {
         .sheet(isPresented: $filtersOpen) {
             FilterSheet(model: model)
                 .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -151,6 +152,7 @@ private struct BrowsePage: View {
             }
             .accessibilityLabel(l.t("browse.sortBy"))
             .accessibilityValue(l.t(model.sort.labelKey))
+            .onChange(of: model.sort) { Haptics.tap() }
         }
         .background {
             GeometryReader { proxy in
@@ -178,7 +180,7 @@ private struct BrowsePage: View {
                         PixelBadge(value: model.filters.activeCount).fixedSize().offset(x: 4, y: -4)
                     }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .accessibilityLabel(filtersLabel)
             .padding(.trailing, 16)
             .padding(.bottom, 12)
@@ -236,7 +238,7 @@ private struct BrowsePage: View {
                         .frame(minHeight: 36)
                         .background(Capsule().fill(Brand.tint))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.tap)
                     .accessibilityLabel(l.t("browse.remove", ["name": chip.label]))
                 }
                 Button(l.t("browse.clearAll")) { model.clearFilters() }
@@ -321,7 +323,7 @@ private struct FilterSheet: View {
                         .overlay(Circle().strokeBorder(Brand.cardLine, lineWidth: 1))
                         .frame(width: 44, height: 44)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tap)
                 .accessibilityLabel(l.t("browse.closeFilters"))
             }
             .padding(.horizontal, 20)
@@ -428,7 +430,7 @@ private struct FilterSheet: View {
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .accessibilityAddTraits(on.wrappedValue ? [.isSelected] : [])
     }
 }

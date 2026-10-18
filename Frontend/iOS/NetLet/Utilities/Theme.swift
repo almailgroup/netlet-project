@@ -53,6 +53,7 @@ struct PrimaryButtonStyle: ButtonStyle {
                 Capsule()
                     .fill(isEnabled ? (configuration.isPressed ? Brand.navyPressed : Brand.navy) : Brand.navy.opacity(0.35))
             )
+            .pressHaptic(configuration.isPressed)
     }
 }
 
@@ -68,6 +69,7 @@ struct AccentButtonStyle: ButtonStyle {
             .padding(.horizontal, 16)
             .background(Capsule().fill(Brand.orange.opacity(isEnabled ? 1 : 0.45)))
             .overlay(Capsule().fill(Brand.navy.opacity(configuration.isPressed ? 0.06 : 0)))
+            .pressHaptic(configuration.isPressed)
     }
 }
 
@@ -81,6 +83,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .padding(.horizontal, 16)
             .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
             .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .pressHaptic(configuration.isPressed)
     }
 }
 
@@ -96,6 +99,7 @@ struct PressFillStyle: ButtonStyle {
                     .fill(Brand.navy.opacity(configuration.isPressed ? 0.06 : 0))
                     .allowsHitTesting(false)
             )
+            .pressHaptic(configuration.isPressed)
     }
 }
 

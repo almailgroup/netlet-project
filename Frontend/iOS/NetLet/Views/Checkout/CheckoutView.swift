@@ -150,7 +150,10 @@ private struct CheckoutForm: View {
             Text(l.t("address.governorate")).font(.subheadline.weight(.semibold))
             Menu {
                 ForEach(ReferenceData.shared.governorates) { governorate in
-                    Button(governorate.name(l.current)) { model.chooseGovernorate(governorate.id) }
+                    Button(governorate.name(l.current)) {
+                        Haptics.tap()
+                        model.chooseGovernorate(governorate.id)
+                    }
                 }
             } label: {
                 MenuField(text: ReferenceData.shared.governorate(id: model.governorate)?.name(l.current), placeholder: l.t("account.chooseZone"))
@@ -164,9 +167,15 @@ private struct CheckoutForm: View {
             Text(l.t("address.area")).font(.subheadline.weight(.semibold))
             Menu {
                 ForEach(model.areas, id: \.en) { area in
-                    Button(area.name(l.current)) { model.chooseArea(area) }
+                    Button(area.name(l.current)) {
+                        Haptics.tap()
+                        model.chooseArea(area)
+                    }
                 }
-                Button(l.t("address.areaOther")) { model.chooseArea(nil) }
+                Button(l.t("address.areaOther")) {
+                    Haptics.tap()
+                    model.chooseArea(nil)
+                }
             } label: {
                 let chosen = model.areas.first { $0.en == model.parts.area }
                 MenuField(text: model.typedArea ? l.t("address.areaOther") : chosen?.name(l.current), placeholder: l.t("address.areaChoose"))
@@ -255,6 +264,7 @@ struct OrderButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Brand.orange.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45))
             )
+            .pressHaptic(configuration.isPressed)
     }
 }
 

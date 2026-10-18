@@ -58,7 +58,11 @@ private struct AuthForm: View {
     @ViewBuilder
     private var form: some View {
         if model.mode != .reset {
-            Picker("", selection: $model.mode) {
+            // Ticks only when the shopper switches it, never when a refusal does.
+            Picker("", selection: Binding(get: { model.mode }, set: { mode in
+                Haptics.tap()
+                model.mode = mode
+            })) {
                 Text(l.t("auth.signInTitle")).tag(AuthViewModel.Mode.signIn)
                 Text(l.t("auth.createTitle")).tag(AuthViewModel.Mode.register)
             }

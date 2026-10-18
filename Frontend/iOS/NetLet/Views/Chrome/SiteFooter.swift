@@ -94,7 +94,7 @@ struct SiteFooter: View {
                     .frame(maxWidth: 140, maxHeight: 40, alignment: .leading)
                     .frame(height: 40)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .accessibilityLabel(l.t("header.home"))
             (Text(l.t("home.heroTitle") + " ").foregroundColor(.white) + Text(l.t("home.heroTitleAccent")).foregroundColor(Brand.accentOnDark))
                 .font(.inter(15, .semibold))
@@ -162,7 +162,7 @@ struct SiteFooter: View {
                                 .frame(width: 44, height: 44)
                                 .overlay(Circle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.tap)
                         .accessibilityLabel(l.t("footer.socialOn", ["platform": l.t("social.\(link.platform)")]))
                     }
                 }
@@ -215,7 +215,7 @@ struct SiteFooter: View {
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .environment(\.locale, l.current.other.locale)
             .accessibilityHint(l.t("header.changeLanguage"))
             .padding(.top, 16)
@@ -237,7 +237,7 @@ struct SiteFooter: View {
             }
             .font(.inter(13))
             .foregroundStyle(Self.soft)
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .frame(minHeight: 44)
             .padding(.top, 8)
         }
@@ -275,7 +275,7 @@ private struct FooterGroup: View {
                 .frame(minHeight: 56)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.tap)
             .accessibilityAddTraits(.isHeader)
             .accessibilityValue(open ? "▲" : "▼")
             if open {
@@ -288,7 +288,7 @@ private struct FooterGroup: View {
                                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.tap)
                     }
                 }
                 .padding(.bottom, 12)

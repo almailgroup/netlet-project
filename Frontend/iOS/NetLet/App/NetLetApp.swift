@@ -18,6 +18,7 @@ struct NetLetApp: App {
                 .environment(\.layoutDirection, app.language.layoutDirection)
                 .environment(\.locale, app.language.current.locale)
                 .tint(Brand.navy)
+                .buttonStyle(HapticDefaultStyle())
                 .task { await app.start() }
         }
     }

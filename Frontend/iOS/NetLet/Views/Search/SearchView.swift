@@ -95,7 +95,7 @@ private struct SearchSheet: View {
                             .foregroundStyle(Brand.muted)
                             .frame(width: 36, height: 36)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.tap)
                     .accessibilityLabel(l.t("header.searchClear"))
                 }
                 Button {
@@ -107,7 +107,7 @@ private struct SearchSheet: View {
                         .frame(width: 36, height: 36)
                         .background(Circle().fill(Brand.navy))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.tap)
                 .accessibilityLabel(l.t("header.searchSubmit"))
             }
             .padding(.leading, 8)
@@ -214,7 +214,7 @@ private struct SearchSheet: View {
             .background(Capsule().fill(Color.white.opacity(0.9)))
             .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
     }
 
     // MARK: While typing
@@ -359,7 +359,7 @@ private struct SearchSheet: View {
             .foregroundStyle(Brand.accentInk)
             .frame(minHeight: 44)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tap)
         .padding(.top, 4)
     }
 
