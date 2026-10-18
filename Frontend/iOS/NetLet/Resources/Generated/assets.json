@@ -1,0 +1,19 @@
+{
+  "logo": "brand-logo.png",
+  "footerLogo": "brand-logo-white.png",
+  "heroSlides": [
+    "hero-street.webp",
+    "hero-02-on-the-road.webp",
+    "hero-03-one-cart.webp",
+    "hero-04-unboxing.webp",
+    "hero-05-delivery.webp"
+  ],
+  "departments": {
+    "electronics": "department-electronics.webp",
+    "home-and-kitchen": "department-home-and-kitchen.webp",
+    "beauty": "department-beauty.webp",
+    "style": "department-style.webp",
+    "grocery": "department-grocery.webp",
+    "all": "department-all.webp"
+  }
+}

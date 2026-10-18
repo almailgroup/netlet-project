@@ -1,37 +1,62 @@
+import SafariServices
 import SwiftUI
 
-/// The tabs: Home, Search, Cart, Account — and Sell for somebody whose
-/// account belongs to a store, drawn only for them because the server decides
-/// (a tab a shopper can see leads to a screen refusing them).
+/// The app's frame: the web's four phone tabs — Home, Profile, Cart,
+/// Categories — each its own stack, under the floating tab bar.
+///
+/// Every stack stays alive while another tab shows, so a tab comes back where
+/// it was left. Selling is in the account, as on the web, rather than a fifth
+/// tab; searching is the header's field on every screen, grown down over the
+/// page while it is open (`SearchOverlay`).
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         @Bindable var app = app
-        TabView(selection: $app.selectedTab) {
-            NavigationStack(path: $app.homePath) { HomeView().routes() }
-                .tabItem { Label(l.t("nav.home"), systemImage: "house") }
-                .tag(AppModel.Tab.home)
-
-            NavigationStack(path: $app.searchPath) { SearchView().routes() }
-                .tabItem { Label(l.t("browse.searchCrumb"), systemImage: "magnifyingglass") }
-                .tag(AppModel.Tab.search)
-
-            CartTab()
-                .tabItem { Label(l.t("nav.cart"), systemImage: "bag") }
-                .badge(app.cart.itemCount)
-                .tag(AppModel.Tab.cart)
-
-            NavigationStack(path: $app.accountPath) { AccountView().routes() }
-                .tabItem { Label(l.t("nav.profile"), systemImage: "person") }
-                .tag(AppModel.Tab.account)
-
-            if app.session.seller?.isStoreMember == true {
-                NavigationStack(path: $app.sellPath) { SellerListingsView().routes() }
-                    .tabItem { Label(l.t("ios.sell.tab"), systemImage: "storefront") }
-                    .tag(AppModel.Tab.sell)
+        ZStack {
+            tab(.home) {
+                NavigationStack(path: $app.homePath) { HomeView().routes() }
             }
+            tab(.account) {
+                NavigationStack(path: $app.accountPath) { AccountView().routes() }
+            }
+            tab(.cart) {
+                NavigationStack(path: $app.cartPath) {
+                    CartView(path: $app.cartPath).routes(path: $app.cartPath)
+                }
+            }
+            tab(.categories) {
+                NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if app.chromeHidden == 0 {
+                FloatingTabBar()
+                    .padding(.bottom, 6)
+            }
+        }
+        .overlay {
+            if app.searchOpen {
+                SearchOverlay()
+                    .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .top) {
+            if let toast = app.toastMessage {
+                ToastView(text: toast.text)
+                    .padding(.top, 72)
+                    .padding(.horizontal, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .id(toast.id)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: app.searchOpen)
+        .animation(.easeOut(duration: 0.25), value: app.toastMessage)
+        .task(id: l.current) { await app.shelf.load(language: l.current) }
+        .sheet(item: $app.webPage) { page in
+            WebPageView(url: page.url)
+                .ignoresSafeArea()
         }
         .sheet(isPresented: $app.authPresented) {
             NavigationStack {
@@ -45,18 +70,51 @@ struct RootView: View {
             .environment(\.layoutDirection, l.layoutDirection)
         }
     }
+
+    /// One tab's stack: drawn while another shows, so it keeps its place, but
+    /// neither seen, pressed nor read out.
+    private func tab<Content: View>(_ tab: AppModel.Tab, @ViewBuilder content: () -> Content) -> some View {
+        let showing = app.selectedTab == tab
+        return content()
+            .opacity(showing ? 1 : 0)
+            .allowsHitTesting(showing)
+            .accessibilityHidden(!showing)
+            .zIndex(showing ? 1 : 0)
+    }
 }
 
-/// The cart's own stack, which checkout and the placed order push onto.
-struct CartTab: View {
-    @Environment(AppModel.self) private var app
+/// A short message, the web's toast: a white card with a soft shadow.
+private struct ToastView: View {
+    let text: String
 
     var body: some View {
-        @Bindable var app = app
-        NavigationStack(path: $app.cartPath) {
-            CartView(path: $app.cartPath).routes(path: $app.cartPath)
-        }
+        Text(text)
+            .font(.inter(14, .medium))
+            .foregroundStyle(Brand.ink)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+            .shadow(color: Brand.navy.opacity(0.12), radius: 12, x: 0, y: 6)
+            .accessibilityAddTraits(.updatesFrequently)
+            .onAppear { announce(text) }
     }
+}
+
+/// One of the website's own pages, in the system's browser sheet — help,
+/// returns, selling, the terms — with the shop's navy for its controls.
+private struct WebPageView: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> SFSafariViewController {
+        let controller = SFSafariViewController(url: url)
+        controller.preferredControlTintColor = UIColor(Brand.navy)
+        controller.dismissButtonStyle = .close
+        return controller
+    }
+
+    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
 extension View {
@@ -76,6 +134,13 @@ private struct RouteDestination: View {
         switch route {
         case .product(let handle): ProductDetailView(handle: handle)
         case .department(let slug): DepartmentView(slug: slug)
+        case .deals: DepartmentView(slug: nil, view: .deals)
+        case .newest: DepartmentView(slug: nil, view: .newest)
+        case .brand(let name): DepartmentView(slug: nil, view: .brand(name))
+        case .stores: StoresView()
+        case .search(let query): SearchResultsView(query: query)
+        case .store(let slug): StoreView(slug: slug)
+        case .saved: SavedView()
         case .checkout: CheckoutView(path: path)
         case .orderPlaced(let reference): OrderPlacedView(reference: reference, path: path)
         case .orders: OrdersView()

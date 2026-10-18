@@ -12,7 +12,7 @@ struct AuthView: View {
         ModelHost(make: { AuthViewModel(account: app.services.account) }) { model in
             AuthForm(model: model)
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationTitle(l.t("auth.signInTitle"))
         .navigationBarTitleDisplayMode(.inline)
     }

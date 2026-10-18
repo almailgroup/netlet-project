@@ -90,6 +90,15 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(found.total, found.products.count)
     }
 
+    func testTheFootersContact() async throws {
+        let contact = try await client.call(API.contact)
+        XCTAssertEqual(contact.phone, "96550808606")
+        XCTAssertEqual(ShopContact.display(contact.phone ?? ""), "+965 5080 8606")
+        XCTAssertNotNil(contact.visit)
+        // The shop's own defaults say the same before the server answers.
+        XCTAssertEqual(ShopContact.fallback.phone, contact.phone)
+    }
+
     func testTheBag() async throws {
         let cart = try await Fixtures.cart()
         XCTAssertFalse(cart.isEmpty)

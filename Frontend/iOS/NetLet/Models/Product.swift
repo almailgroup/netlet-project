@@ -114,3 +114,117 @@ struct SearchResult: Decodable, Sendable {
     let total: Int
     let correctedTo: String?
 }
+
+/// A store on the home page's row and the stores index: `StoreCard` in
+/// `Backend/src/services/catalog.ts`. Everything on it is measured — products
+/// on sale, a rating only from five visible reviews, the badges it earned.
+struct StoreCard: Decodable, Identifiable, Hashable, Sendable {
+    struct Rating: Decodable, Hashable, Sendable {
+        let average: Double
+        let count: Int
+    }
+
+    let slug: String
+    let name: String
+    let logoUrl: String?
+    let products: Int
+    let rating: Rating?
+    let badges: [String]
+
+    var id: String { slug }
+}
+
+/// A brand the shop sells and how many of its products are live.
+struct BrandCount: Decodable, Identifiable, Hashable, Sendable {
+    let name: String
+    let count: Int
+
+    var id: String { name }
+}
+
+/// How to reach a person at NetLet and who the shop is (`support.channels`):
+/// each channel a setting on the server, absent when it is not set.
+struct ShopContact: Decodable, Hashable, Sendable {
+    struct Visit: Decodable, Hashable, Sendable {
+        let address: String
+        let addressAr: String?
+    }
+
+    struct Social: Decodable, Hashable, Sendable {
+        let platform: String
+        let url: String
+    }
+
+    struct Company: Decodable, Hashable, Sendable {
+        let name: String
+        let nameAr: String?
+        let licence: String?
+        let address: String?
+    }
+
+    let whatsapp: String?
+    let phone: String?
+    let email: String?
+    let visit: Visit?
+    let social: [Social]
+    let company: Company?
+
+    /// The shop's own defaults (`NETLET_CONTACT`), until the server answers.
+    static var fallback: ShopContact {
+        let contact = ReferenceData.shared.rules.contact
+        return ShopContact(
+            whatsapp: nil,
+            phone: contact.map { $0.phone.filter(\.isNumber) },
+            email: contact?.email,
+            visit: contact.map { Visit(address: $0.address, addressAr: $0.addressAr) },
+            social: [],
+            company: nil
+        )
+    }
+
+    /// A number as the footer says it: "+965 5080 8606" for a Kuwaiti one.
+    static func display(_ digits: String) -> String {
+        guard digits.count == 11, digits.hasPrefix("965") else { return "+" + digits }
+        let local = digits.dropFirst(3)
+        return "+965 \(local.prefix(4)) \(local.suffix(4))"
+    }
+}
+
+/// One store's public page (`commerce.store`): who it is, its live shelf and
+/// its newest reviews. What the server selects is the privacy rule — no email,
+/// phone, street address, licence or IBAN ever reaches it.
+struct StorePage: Decodable, Sendable {
+    struct Profile: Decodable, Sendable {
+        struct Delivery: Decodable, Sendable {
+            let flat: String?
+            let freeOver: String?
+            let speed: String?
+            let cashOnDelivery: Bool
+        }
+
+        let slug: String
+        let name: String
+        let description: String?
+        let logoUrl: String?
+        let governorate: String?
+        let since: String
+        let products: Int
+        let rating: StoreCard.Rating?
+        let badges: [String]
+        let delivery: Delivery
+    }
+
+    struct Review: Decodable, Identifiable, Sendable {
+        let id: Int
+        let rating: Int
+        let title: String?
+        let body: String?
+        let author: String
+        let createdAt: String
+        let productTitle: String
+    }
+
+    let store: Profile
+    let products: [Product]
+    let reviews: [Review]
+}

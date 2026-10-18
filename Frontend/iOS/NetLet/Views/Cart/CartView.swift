@@ -4,70 +4,109 @@ import SwiftUI
 /// server worked out, and Checkout under the thumb.
 struct CartView: View {
     @Binding var path: NavigationPath
+    @State private var pageBottom: CGFloat = .infinity
+    @State private var buttonTop: CGFloat = 0
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
-            if app.cart.settling && app.cart.cart == nil {
-                // Never "empty" before it knows — somebody who just pressed Add would read it as a failure.
-                LoadingView().accessibilityLabel(l.t("cart.loading"))
-            } else if let cart = app.cart.cart, !cart.isEmpty {
-                filled(cart)
-            } else {
-                EmptyStateView(
-                    systemImage: "bag",
-                    title: l.t("cart.empty"),
-                    note: l.t("cart.emptyNote"),
-                    actionTitle: l.t("cart.keepBrowsing")
-                ) { app.selectedTab = .home }
+        let cart = app.cart.cart
+        ShopPage(root: true, refresh: { await app.cart.refresh() }) {
+            VStack(alignment: .leading, spacing: 0) {
+                Breadcrumbs(trail: [l.t("cart.title")])
+                Text(l.t("cart.title")).pageTitle().padding(.bottom, 24)
+                if app.cart.settling && cart == nil {
+                    // Never "empty" before it knows — somebody who just pressed Add would read it as a failure.
+                    LoadingView().accessibilityLabel(l.t("cart.loading"))
+                } else if let cart, !cart.isEmpty {
+                    filled(cart)
+                } else {
+                    EmptyStateView(
+                        systemImage: "bag",
+                        title: l.t("cart.empty"),
+                        note: l.t("cart.emptyNote"),
+                        actionTitle: l.t("cart.keepBrowsing")
+                    ) { app.goHome() }
+                    .card(padding: 0)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
+            .padding(.bottom, 48)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { pageBottom = proxy.frame(in: .global).maxY }
+                    .onChange(of: proxy.frame(in: .global).maxY) { _, bottom in pageBottom = bottom }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Brand.pearl.ignoresSafeArea())
-        .navigationTitle(l.t("cart.title"))
-        .refreshable { await app.cart.refresh() }
+        .overlay(alignment: .bottom) {
+            if let cart, !cart.isEmpty, buttonTop > pageBottom - 8 {
+                bar(cart).transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: buttonTop > pageBottom - 8)
         .task(id: l.current) { await app.cart.refresh() }
     }
 
     private func filled(_ cart: Cart) -> some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                VStack(spacing: 0) {
-                    ForEach(cart.items) { item in
-                        CartLineRow(item: item)
-                        if item.id != cart.items.last?.id { Divider().padding(.vertical, 10) }
+        VStack(spacing: 14) {
+            VStack(spacing: 0) {
+                ForEach(cart.items) { item in
+                    CartLineRow(item: item)
+                    if item.id != cart.items.last?.id { Divider().padding(.vertical, 12) }
+                }
+            }
+            .card()
+            SummaryCard(cart: cart)
+            checkoutButton(cart)
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { buttonTop = proxy.frame(in: .global).minY }
+                            .onChange(of: proxy.frame(in: .global).minY) { _, top in buttonTop = top }
                     }
                 }
-                .card()
-                SummaryCard(cart: cart)
-                Text(l.t("cart.checkoutNote"))
-                    .font(.footnote)
-                    .foregroundStyle(Brand.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(16)
+            Text(l.t("cart.checkoutNote"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(l.t("cart.total")).font(.caption).foregroundStyle(Brand.muted)
-                    Text(cart.total.formatted(l.current)).font(.headline.weight(.bold)).foregroundStyle(Brand.navy)
-                }
-                Button {
-                    path.append(Route.checkout)
-                } label: {
-                    Text(l.t("cart.checkoutShort"))
-                }
-                .buttonStyle(PrimaryButtonStyle())
+    }
+
+    private func checkoutButton(_ cart: Cart) -> some View {
+        Button {
+            path.append(Route.checkout)
+        } label: {
+            HStack(spacing: 8) {
+                Text(l.t("cart.checkoutShort"))
+                Text("·").accessibilityHidden(true)
+                Text(cart.total.formatted(l.current))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(.regularMaterial)
-            .overlay(alignment: .top) { Divider() }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(l.t("cart.bar"))
         }
+        .buttonStyle(AccentButtonStyle())
+    }
+
+    /// The total and Checkout over the tab bar while the page's own button is
+    /// still below the screen; they leave as it comes up to meet them.
+    private func bar(_ cart: Cart) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
+                Text(cart.total.formatted(l.current)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
+            }
+            Button(l.t("cart.checkoutShort")) { path.append(Route.checkout) }
+                .buttonStyle(AccentButtonStyle())
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(GlassCapsule())
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("cart.bar"))
     }
 }
 

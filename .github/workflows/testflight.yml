@@ -1,8 +1,10 @@
 name: TestFlight
 
-# Builds the iOS app for release and uploads it to TestFlight. It is run by
-# hand (Actions → TestFlight → Run workflow), and every run is a new build
-# number, so a build is never sent by accident.
+# Builds the iOS app for release and uploads it to TestFlight, on the owner's
+# word, every time the iOS workflow passes on a push to main — so a change to
+# the app reaches the phones in TestFlight without anybody pressing anything,
+# and only a change whose tests went green does. It can also be run by hand
+# (Actions → TestFlight → Run workflow). Every run is a new build number.
 #
 # Signing is Apple's own: an App Store Connect API key lets xcodebuild make
 # the distribution certificate and the profile in Apple's cloud and upload the
@@ -20,6 +22,12 @@ name: TestFlight
 # when the build should talk to another server than the one in the xcconfig.
 on:
   workflow_dispatch:
+  # After the iOS workflow (build, tests, previews) — which runs only for a
+  # push that touches Frontend/iOS — and only when it passed.
+  workflow_run:
+    workflows: [iOS]
+    types: [completed]
+    branches: [main]
 
 concurrency:
   group: testflight
@@ -27,6 +35,7 @@ concurrency:
 
 jobs:
   upload:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: macos-15
     timeout-minutes: 60
     defaults:
@@ -41,6 +50,9 @@ jobs:
       BUILD_NUMBER: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The commit the iOS workflow tested, not whatever main is by now.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Check the secrets and write the key
         env:

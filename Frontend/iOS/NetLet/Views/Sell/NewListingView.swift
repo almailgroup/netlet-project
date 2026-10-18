@@ -33,7 +33,7 @@ private struct NewListingForm: View {
                 form
             }
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .task { await model.load() }
     }
 

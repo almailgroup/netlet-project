@@ -35,7 +35,7 @@ struct SellerListingsView: View {
             .task { await model.load(vendorId: app.session.seller?.vendorId) }
         }
         .scrollContentBackground(.hidden)
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationTitle(l.t("account.sectionSelling"))
     }
 }

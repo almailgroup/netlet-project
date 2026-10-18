@@ -201,7 +201,7 @@ struct ModelHost<Model: AnyObject, Content: View>: View {
         if let model {
             content(model)
         } else {
-            Brand.pearl.ignoresSafeArea().onAppear { model = make() }
+            Brand.ground.ignoresSafeArea().onAppear { model = make() }
         }
     }
 }

@@ -1,114 +1,230 @@
 import Foundation
 import Observation
 
-/// The front of the shop: the departments with what each holds, and the newest products.
-@Observable
-@MainActor
-final class HomeViewModel {
-    private(set) var products: LoadState<[Product]> = .idle
-    /// How many products each department has on sale. Absent until asked, so
-    /// every department shows until the counts arrive — the web header's rule.
-    private(set) var counts: [String: Int] = [:]
-
-    private let catalog: CatalogServicing
-    static let shelfSize = 24
-
-    init(catalog: CatalogServicing) {
-        self.catalog = catalog
-    }
-
-    func load(language: Language) async {
-        if products.value == nil { products = .loading }
-        async let counted = try? catalog.departmentCounts()
-        do {
-            let list = try await catalog.products(first: Self.shelfSize, department: nil, language: language)
-            products = .loaded(list)
-        } catch {
-            let failure = APIError.from(error)
-            if failure != .cancelled { products = .failed(failure) }
-        }
-        counts = await counted ?? counts
-    }
-
-    /// Today's deals: what is actually discounted, deepest first. The home
-    /// page's own rule is that a shelf below four products is not drawn.
-    var deals: [Product] {
-        let discounted = (products.value ?? []).filter { $0.leadVariant?.saving != nil }
-        let sorted = discounted.sorted { ($0.leadVariant?.savingPercent ?? 0) > ($1.leadVariant?.savingPercent ?? 0) }
-        return sorted.count >= 4 ? Array(sorted.prefix(8)) : []
-    }
+/// What a shelf page shows before the shopper narrows it: everything, what is
+/// on offer (deepest first), the newest, or one brand — the web's
+/// `/category/all?offer=1`, `?sort=newest` and `?brand=`.
+enum ShelfView: Hashable {
+    case all, deals, newest
+    case brand(String)
 }
 
-/// How a department's products are ordered — the web's sort options, done on
-/// the shelf the app holds rather than by asking again.
+/// How a shelf's products are ordered — the web's sort options, done on the
+/// shelf the app holds rather than by asking again (`sortProducts`).
 enum ProductSort: String, CaseIterable, Identifiable {
-    case relevance, newest, priceLow, priceHigh, discount
+    case relevance, priceLow, priceHigh, discount, rating, newest
 
     var id: String { rawValue }
 
     var labelKey: String {
         switch self {
         case .relevance: return "browse.sort.relevance"
-        case .newest: return "browse.sort.newest"
         case .priceLow: return "browse.sort.priceLow"
         case .priceHigh: return "browse.sort.priceHigh"
         case .discount: return "browse.sort.discount"
+        case .rating: return "browse.sort.rating"
+        case .newest: return "browse.sort.newest"
         }
     }
 
     /// A stable sort: products the order does not separate keep the server's order.
     func apply(to products: [Product]) -> [Product] {
+        func price(_ product: Product) -> Int { product.priceRange.min.fils }
+        func rating(_ product: Product) -> Double { product.rating?.value ?? 0 }
         let indexed = Array(products.enumerated())
-        func price(_ product: Product) -> Int { product.leadVariant?.price.fils ?? product.priceRange.min.fils }
-        func saving(_ product: Product) -> Int { product.leadVariant?.savingPercent ?? 0 }
         let sorted: [(offset: Int, element: Product)]
         switch self {
-        case .relevance, .newest:
+        case .relevance:
             return products
+        case .newest:
+            // Newest first: the catalogue arrives oldest first.
+            return Array(products.reversed())
         case .priceLow:
             sorted = indexed.sorted { price($0.element) != price($1.element) ? price($0.element) < price($1.element) : $0.offset < $1.offset }
         case .priceHigh:
             sorted = indexed.sorted { price($0.element) != price($1.element) ? price($0.element) > price($1.element) : $0.offset < $1.offset }
         case .discount:
-            sorted = indexed.sorted { saving($0.element) != saving($1.element) ? saving($0.element) > saving($1.element) : $0.offset < $1.offset }
+            return HomeShelf.byDiscount(products)
+        case .rating:
+            sorted = indexed.sorted {
+                if rating($0.element) != rating($1.element) { return rating($0.element) > rating($1.element) }
+                if price($0.element) != price($1.element) { return price($0.element) < price($1.element) }
+                return $0.offset < $1.offset
+            }
         }
         return sorted.map(\.element)
     }
 }
 
-/// One department's shelf, or the whole catalogue when there is no department.
-@Observable
-@MainActor
-final class DepartmentViewModel {
-    let slug: String?
-    private(set) var products: LoadState<[Product]> = .idle
-    var sort: ProductSort = .relevance
-    var inStockOnly = false
+/// The filters a shopper ticks, the web's `BrowseFilters` without the price
+/// range — each a rule `applyFilters` already has.
+struct BrowseFilters: Equatable {
+    var brands: Set<String> = []
+    var sellers: Set<String> = []
+    var options: [String: Set<String>] = [:]
+    var minRating: Int?
+    var inStock = false
+    var onOffer = false
+    var express = false
 
-    private let catalog: CatalogServicing
-    static let pageSize = 60
-
-    init(slug: String?, catalog: CatalogServicing) {
-        self.slug = slug
-        self.catalog = catalog
+    /// How many are on, for "Filters (3)" and the corner button's badge.
+    var activeCount: Int {
+        brands.count + sellers.count + options.values.reduce(0) { $0 + $1.count }
+            + (minRating == nil ? 0 : 1) + (inStock ? 1 : 0) + (onOffer ? 1 : 0) + (express ? 1 : 0)
     }
 
-    var department: Department? { ReferenceData.shared.department(slug: slug) }
+    func admits(_ product: Product) -> Bool {
+        if !brands.isEmpty {
+            guard let brand = product.brand, brands.contains(brand) else { return false }
+        }
+        if !sellers.isEmpty {
+            guard let vendor = product.vendor, sellers.contains(vendor) else { return false }
+        }
+        for (name, wanted) in options where !wanted.isEmpty {
+            let values = product.options.first { $0.name == name }?.values ?? []
+            if !values.contains(where: { wanted.contains($0) }) { return false }
+        }
+        if let minRating, (product.rating?.value ?? 0) < Double(minRating) { return false }
+        if inStock && !product.isAvailable { return false }
+        if onOffer && !product.isOnOffer { return false }
+        if express && !product.isExpress { return false }
+        return true
+    }
+}
+
+/// One value a filter can take and how many products carry it.
+struct FacetValue: Hashable, Identifiable {
+    let value: String
+    let count: Int
+    var id: String { value }
+}
+
+/// The filters worth drawing, derived from the products on the page rather
+/// than declared (`facetsFor`): a group that cannot narrow anything is not drawn.
+struct Facets {
+    struct Option: Identifiable {
+        let name: String
+        let values: [FacetValue]
+        var id: String { name }
+    }
+
+    let total: Int
+    let brands: [FacetValue]
+    let sellers: [FacetValue]
+    let options: [Option]
+    let ratings: [FacetValue]
+    let inStock: Int
+    let onOffer: Int
+    let express: Int
+
+    init(_ products: [Product]) {
+        func tally(_ values: [String]) -> [FacetValue] {
+            var counts: [String: Int] = [:]
+            for value in values { counts[value, default: 0] += 1 }
+            return counts.map { FacetValue(value: $0.key, count: $0.value) }
+                .sorted { $0.count != $1.count ? $0.count > $1.count : $0.value.localizedCompare($1.value) == .orderedAscending }
+        }
+        total = products.count
+        brands = tally(products.compactMap(\.brand))
+        sellers = tally(products.compactMap { $0.vendor?.isEmpty == false ? $0.vendor : nil })
+        var names: [String] = []
+        for product in products { for option in product.options where !names.contains(option.name) { names.append(option.name) } }
+        options = names.map { name in
+            Option(name: name, values: tally(products.flatMap { product in Array(Set(product.options.first { $0.name == name }?.values ?? [])) }))
+        }
+        let count = products.count
+        ratings = [4, 3, 2, 1]
+            .map { threshold in FacetValue(value: String(threshold), count: products.filter { ($0.rating?.value ?? 0) >= Double(threshold) }.count) }
+            .filter { $0.count > 0 && $0.count < count }
+        inStock = products.filter(\.isAvailable).count
+        onOffer = products.filter(\.isOnOffer).count
+        express = products.filter(\.isExpress).count
+    }
+
+    /// `facetNarrows`: two values, or one that not every product carries.
+    func narrows(_ values: [FacetValue]) -> Bool {
+        values.count > 1 || (values.count == 1 && values[0].count < total)
+    }
+
+    /// A tick that would change something: some carry it and some do not.
+    func narrows(_ count: Int) -> Bool { count > 0 && count < total }
+}
+
+/// A shelf page — a department, the whole catalogue, a view of it, or a
+/// search's results — with the filters and the sort a phone draws.
+@Observable
+@MainActor
+final class BrowseModel {
+    enum Source: Hashable {
+        case shelf(slug: String?, view: ShelfView)
+        case search(String)
+    }
+
+    let source: Source
+    private(set) var products: LoadState<[Product]> = .idle
+    /// The catalogue's own spelling, when a search found nothing as typed.
+    private(set) var correctedTo: String?
+    var filters = BrowseFilters()
+    var sort: ProductSort = .relevance
+
+    private let catalog: CatalogServicing
+    /// The most a shelf asks for — the server's own ceiling.
+    static let pageSize = 100
+    static let searchLimit = 60
+
+    init(source: Source, catalog: CatalogServicing) {
+        self.source = source
+        self.catalog = catalog
+        if case .shelf(_, let view) = source {
+            switch view {
+            case .all: break
+            case .deals:
+                filters.onOffer = true
+                sort = .discount
+            case .newest:
+                sort = .newest
+            case .brand(let name):
+                filters.brands = [name]
+            }
+        }
+    }
+
+    var department: Department? {
+        if case .shelf(let slug, _) = source { return ReferenceData.shared.department(slug: slug) }
+        return nil
+    }
+
+    var query: String? {
+        if case .search(let words) = source { return words }
+        return nil
+    }
 
     func load(language: Language) async {
         if products.value == nil { products = .loading }
         do {
-            // The server narrows by the category's slug, which is the department's.
-            products = .loaded(try await catalog.products(first: Self.pageSize, department: department?.slug, language: language))
+            switch source {
+            case .shelf:
+                // The server narrows by the category's slug, which is the department's.
+                products = .loaded(try await catalog.products(first: Self.pageSize, department: department?.slug, language: language))
+            case .search(let words):
+                let found = try await catalog.search(words, department: nil, limit: Self.searchLimit, language: language)
+                correctedTo = found.correctedTo
+                products = .loaded(found.products)
+            }
         } catch {
             let failure = APIError.from(error)
-            if failure != .cancelled { products = .failed(failure) }
+            if failure != .cancelled, products.value == nil { products = .failed(failure) }
         }
     }
 
     var shown: [Product] {
-        let list = products.value ?? []
-        return sort.apply(to: inStockOnly ? list.filter(\.isAvailable) : list)
+        sort.apply(to: (products.value ?? []).filter(filters.admits))
+    }
+
+    var facets: Facets { Facets(products.value ?? []) }
+
+    func clearFilters() {
+        filters = BrowseFilters()
     }
 }
 
@@ -198,7 +314,7 @@ final class SearchViewModel {
     }
 
     /// Recent searches stay on this device and are never sent anywhere.
-    private func remember(_ words: String) {
+    func remember(_ words: String) {
         guard !words.isEmpty else { return }
         recent = Array(([words] + recent.filter { $0.caseInsensitiveCompare(words) != .orderedSame }).prefix(6))
         defaults.set(recent, forKey: Self.recentKey)

@@ -29,7 +29,7 @@ struct ProductDetailView: View {
                 )
             }
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .task(id: l.current) { await model.load(language: l.current) }
     }
 }

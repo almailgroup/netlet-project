@@ -20,10 +20,16 @@
 	</dict>
 	<key>NetLetAPIBaseURL</key>
 	<string>$(NETLET_API_BASE_URL)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>InterVariable.ttf</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
 		<string>AccentColor</string>
 	</dict>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

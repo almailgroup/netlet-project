@@ -21,9 +21,10 @@ two launch arguments, off by default, under *Edit Scheme → Run → Arguments*:
 Two more, for development and screenshots, in Debug builds only:
 
 - `-NetLetDemoAs shopper` makes the demo a signed-in shopper who also runs a
-  store, so the bag, checkout, orders and the Sell tab have something in them.
+  store, so the bag, checkout, orders and Selling have something in them.
 - `-NetLetOpen <screen>` starts on one screen: `department:grocery`,
-  `product:<handle>`, `search:<words>`, `cart`, `checkout`, `account`,
+  `categories`, `deals`, `stores`, `store:<slug>`, `product:<handle>`,
+  `search:<words>`, `searchOpen`, `saved`, `cart`, `checkout`, `account`,
   `orders`, `order:<reference>`, `profile`, `sell`, `newListing`.
 - `-netlet.language ar` starts in Arabic.
 
@@ -84,8 +85,11 @@ checks on the commit.
 
 `.github/workflows/testflight.yml` archives the Release build, has Apple sign
 it and uploads it to App Store Connect, from which TestFlight puts it on a
-phone. It runs only when pressed (*Actions → TestFlight → Run workflow*), and
-the build number is the workflow's run number, so every run is a new build.
+phone. It runs by itself after every push to `main` whose iOS workflow
+passed — build, tests and all — so a change to the app reaches the phones in
+TestFlight with nobody pressing anything, and a change whose tests failed never
+does. It can also be run by hand (*Actions → TestFlight → Run workflow*). The
+build number is the workflow's run number, so every run is a new build.
 No certificate or provisioning profile is kept anywhere: an App Store Connect
 API key lets `xcodebuild` make the distribution identity in Apple's cloud.
 App Store Connect accepts only builds made with the current SDK, so both this

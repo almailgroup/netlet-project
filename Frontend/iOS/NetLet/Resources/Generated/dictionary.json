@@ -3165,7 +3165,7 @@
     "ios.error.network": "NetLet could not be reached. Try again in a moment.",
     "ios.error.update": "This version of the app could not read NetLet's answer. Update the app from the App Store.",
     "ios.order.view": "View this order",
-    "ios.sell.tab": "Selling",
+    "ios.back": "Back",
     "ios.sell.stock": "{count} in stock",
     "ios.sell.publishNow": "Publish when it is created",
     "ios.sell.portalNote": "Prices, stock, orders and payouts are managed in the seller portal on the web, with the same account."
@@ -6336,7 +6336,7 @@
     "ios.error.network": "تعذّر الوصول إلى نت‑لت. حاول مرة أخرى بعد قليل.",
     "ios.error.update": "لم يتمكن هذا الإصدار من التطبيق من قراءة رد نت‑لت. حدّث التطبيق من متجر التطبيقات.",
     "ios.order.view": "عرض هذا الطلب",
-    "ios.sell.tab": "البيع",
+    "ios.back": "رجوع",
     "ios.sell.stock": "{count} في المخزون",
     "ios.sell.publishNow": "انشره عند إنشائه",
     "ios.sell.portalNote": "تُدار الأسعار والمخزون والطلبات والمدفوعات في بوابة البائع على الموقع، بالحساب نفسه."

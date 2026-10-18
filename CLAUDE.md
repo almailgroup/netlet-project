@@ -4877,6 +4877,29 @@ form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
 `kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
 refuses.
 
+**It draws the web's phone layout, not a stock iOS one, on the owner's word**
+("it just needs to be exactly like the web app"). Every shopping screen sits in
+`ShopPage`, the web's `StorefrontShell` at 390: the logo row (logo at the
+start, the language at the end) scrolls away and the search row stays pinned,
+both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
+tint); the footer follows the content and its navy runs on under the tab bar.
+`FloatingTabBar` is `MobileTabBar` — the floating pill of Home, Profile, Cart
+and Categories, the grey pill sliding between them on the web's 420ms curve,
+the cart's count a `PixelBadge` that hops every ten seconds. Checkout hides it
+(`chromeHidden`), the bare-header rule. The home page is `HomeShelf`, which is
+`shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
+four, New arrivals from one, each leaving out what a shelf above shows), under
+the hero slideshow, the six department cards, the Deals band, the ranked
+Bestsellers, the brands and stores rows from three, and the grid. The type is
+Inter from the web's own variable file (`Typography.swift`); the logo, the
+department art and the hero pictures are the web's files, copied byte for byte
+by `pnpm ios:resources` with `assets.json` naming which is which, so the
+staleness test fails until a changed web picture is copied. **A page the app
+does not draw opens the website's own in a browser sheet** (`openWeb`: help,
+returns, selling, the terms, the privacy policy, and the account sections the
+app has no screen for) rather than a dead tile — that sheet has its own cookie
+jar, so an account section opened there asks for sign-in there.
+
 **The client is typed by procedure.** The server has no REST routes, so
 `Procedures.swift` declares each tRPC procedure the app calls with its input
 and output types, and `TRPCClient` speaks superjson: a query's input in
@@ -4914,8 +4937,13 @@ working on this repository can read the checks API but cannot download an
 artifact; notices were tried first and the API cuts an annotation off at
 4,096 characters, a fifth of a picture.
 
-**TestFlight is a workflow run by hand** (`testflight.yml`), so a build is
-never sent by accident, and nothing that signs lives in the repository: an App
+**TestFlight uploads by itself after every green iOS run on a push to
+`main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was
+run by hand at first, and the owner asked for an app change to reach the
+phones without anybody pressing anything. A push whose tests failed never
+uploads, a pull request's run never does, and it checks out the commit the
+tests passed on rather than whatever `main` holds by then. Nothing that signs
+lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
 lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the
 distribution identity in Apple's cloud and upload. The archive is built

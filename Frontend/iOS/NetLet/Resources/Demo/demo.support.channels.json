@@ -1,0 +1,17 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "whatsapp": null,
+        "phone": "96550808606",
+        "email": "support@netlet.net",
+        "visit": {
+          "address": "Kuwait City, Kuwait",
+          "addressAr": "مدينة الكويت، الكويت"
+        },
+        "social": [],
+        "company": null
+      }
+    }
+  }
+}

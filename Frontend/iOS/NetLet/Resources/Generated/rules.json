@@ -16,5 +16,11 @@
     "maxEdge": 1200,
     "minEdge": 300,
     "maxUploadBytes": 1500000
+  },
+  "contact": {
+    "phone": "+965 5080 8606",
+    "email": "support@netlet.net",
+    "address": "Kuwait City, Kuwait",
+    "addressAr": "مدينة الكويت، الكويت"
   }
 }

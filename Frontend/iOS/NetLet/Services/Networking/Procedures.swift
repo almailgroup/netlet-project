@@ -24,7 +24,31 @@ enum API {
         var limit: Int?
     }
 
+    struct LocaleOnly: Encodable, Sendable {
+        let locale: String
+    }
+
+    struct StoreSlug: Encodable, Sendable {
+        let slug: String
+        let locale: String
+    }
+
+    struct StoreList: Encodable, Sendable {
+        let locale: String
+        var limit: Int?
+    }
+
     static let products = Procedure<ProductList, [Product]>(query: "commerce.products.list")
+    /// The home page's Bestsellers: units sold over the last ninety days.
+    static let bestsellers = Procedure<LocaleOnly, [Product]>(query: "commerce.bestsellers")
+    /// Stores with something on sale, the busiest first.
+    static let stores = Procedure<StoreList, [StoreCard]>(query: "commerce.stores")
+    /// One store's public page, or nil for an address no approved store answers to.
+    static let store = Procedure<StoreSlug, StorePage?>(query: "commerce.store")
+    /// The Brand rows of the live catalogue, counted.
+    static let brands = Procedure<NoInput, [BrandCount]>(query: "commerce.brands")
+    /// How to reach a person at NetLet, and who the shop is — the footer's.
+    static let contact = Procedure<NoInput, ShopContact>(query: "support.channels")
     static let product = Procedure<ProductHandle, Product?>(query: "commerce.products.byHandle")
     static let departmentCounts = Procedure<NoInput, [String: Int]>(query: "commerce.departmentCounts")
     static let search = Procedure<Search, SearchResult>(query: "search.products")
@@ -126,6 +150,16 @@ enum API {
     static let profile = Procedure<NoInput, Profile>(query: "customer.profile.get")
     static let updateProfile = Procedure<ProfileUpdate, Profile>(mutation: "customer.profile.update")
     static let addresses = Procedure<NoInput, [SavedAddress]>(query: "customer.addresses.list")
+
+    struct SavedChange: Encodable, Sendable {
+        let productId: String
+        let saved: Bool
+    }
+
+    /// The account's saved products, by the storefront's product id.
+    static let savedList = Procedure<NoInput, [String]>(query: "customer.saved.list")
+    /// Saves or unsaves one, answering the whole list as it now stands.
+    static let setSaved = Procedure<SavedChange, [String]>(mutation: "customer.saved.set")
 
     // MARK: Orders
 

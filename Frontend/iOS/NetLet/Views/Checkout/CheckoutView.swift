@@ -24,9 +24,13 @@ struct CheckoutView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationTitle(l.t("checkout.heading"))
         .navigationBarTitleDisplayMode(.inline)
+        // No tab bar on a payment page, the web's rule: every extra way out is
+        // an invitation to take it.
+        .onAppear { app.chromeHidden += 1 }
+        .onDisappear { app.chromeHidden = max(0, app.chromeHidden - 1) }
     }
 }
 
@@ -291,7 +295,7 @@ struct OrderPlacedView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationBarBackButtonHidden()
         .navigationTitle(l.t("checkout.heading"))
         .navigationBarTitleDisplayMode(.inline)

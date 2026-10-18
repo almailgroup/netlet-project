@@ -124,6 +124,17 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
     func saveLanguage(_ language: Language) async throws {}
     func addresses() async throws -> [SavedAddress] { book }
     func sellerIdentity() async throws -> SellerIdentity { SellerIdentity(kind: "customer", userId: 2, vendorId: nil, role: nil) }
+
+    var saved: [String] = []
+    var savedWrites: [(String, Bool)] = []
+
+    func savedProducts() async throws -> [String] { saved }
+
+    func setSaved(_ productId: String, saved isSaved: Bool) async throws -> [String] {
+        savedWrites.append((productId, isSaved))
+        saved = isSaved ? Array(Set(saved + [productId])).sorted() : saved.filter { $0 != productId }
+        return saved
+    }
 }
 
 /// Orders that remember what was placed.
@@ -152,6 +163,11 @@ final class FakeCatalogService: CatalogServicing, @unchecked Sendable {
     func products(first: Int, department: String?, language: Language) async throws -> [Product] { [] }
     func product(handle: String, language: Language) async throws -> Product? { nil }
     func departmentCounts() async throws -> [String: Int] { [:] }
+    func bestsellers(language: Language) async throws -> [Product] { [] }
+    func stores(language: Language) async throws -> [StoreCard] { [] }
+    func store(slug: String, language: Language) async throws -> StorePage? { nil }
+    func brands() async throws -> [BrandCount] { [] }
+    func contact() async throws -> ShopContact { ShopContact.fallback }
 
     func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult {
         asked.append(query)

@@ -21,6 +21,8 @@ protocol AccountServicing: Sendable {
     func saveLanguage(_ language: Language) async throws
     func addresses() async throws -> [SavedAddress]
     func sellerIdentity() async throws -> SellerIdentity
+    func savedProducts() async throws -> [String]
+    func setSaved(_ productId: String, saved: Bool) async throws -> [String]
 }
 
 struct AccountService: AccountServicing {
@@ -82,4 +84,10 @@ struct AccountService: AccountServicing {
     func addresses() async throws -> [SavedAddress] { try await client.call(API.addresses) }
 
     func sellerIdentity() async throws -> SellerIdentity { try await client.call(API.sellerIdentity) }
+
+    func savedProducts() async throws -> [String] { try await client.call(API.savedList) }
+
+    func setSaved(_ productId: String, saved: Bool) async throws -> [String] {
+        try await client.call(API.setSaved, .init(productId: productId, saved: saved))
+    }
 }

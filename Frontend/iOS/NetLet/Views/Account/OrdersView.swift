@@ -34,7 +34,7 @@ struct OrdersView: View {
             .refreshable { await model.load() }
             .task { await model.load() }
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationTitle(l.t("account.sectionOrders"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -114,7 +114,7 @@ struct OrderDetailView: View {
             .refreshable { await model.load() }
             .task { await model.load() }
         }
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(Brand.ground.ignoresSafeArea())
         .navigationTitle(l.t("orders.orderHeading", ["reference": reference]))
         .navigationBarTitleDisplayMode(.inline)
     }

@@ -63,12 +63,21 @@ struct Rules: Decodable, Sendable {
         let maxUploadBytes: Int
     }
 
+    /// The shop's own contact details (`NETLET_CONTACT`), the footer's defaults.
+    struct Contact: Decodable, Sendable {
+        let phone: String
+        let email: String
+        let address: String
+        let addressAr: String
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
     let returnWindowDays: Int
     let listing: Listing
     let media: Media
+    let contact: Contact?
 }
 
 /// Everything the app reads from `Shared/` rather than from the network: the
@@ -100,7 +109,8 @@ struct ReferenceData: Sendable {
             maxLineQuantity: 99,
             returnWindowDays: 14,
             listing: .init(maxTitle: 255, maxSku: 120, maxStock: 1_000_000, maxDescription: 20_000, maxPhotos: 12, warrantyRequiredDepartments: ["electronics"]),
-            media: .init(maxEdge: 1200, minEdge: 300, maxUploadBytes: 1_500_000)
+            media: .init(maxEdge: 1200, minEdge: 300, maxUploadBytes: 1_500_000),
+            contact: nil
         )
         return ReferenceData(
             departments: departments.sorted { $0.position < $1.position },
