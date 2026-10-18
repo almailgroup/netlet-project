@@ -33,6 +33,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { Camera, CameraOff, Image as ImageIcon, Keyboard, Mic, MicOff, RotateCcw, ScanLine, Search, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { recogniser } from "@/lib/speech";
 
 /*
  * Whether the two controls are drawn is a shop's decision now, on the
@@ -198,25 +199,6 @@ function SheetNotice({ icon, title, note }: { icon: ReactNode; title: MessageKey
 }
 
 /* ------------------------------------------------------------------ voice */
-
-/** The browser's recogniser, under either of the names it ships with. */
-type Recognition = {
-  lang: string;
-  interimResults: boolean;
-  maxAlternatives: number;
-  continuous: boolean;
-  start: () => void;
-  abort: () => void;
-  onresult: ((event: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
-  onerror: ((event: { error: string }) => void) | null;
-  onend: (() => void) | null;
-};
-
-function recogniser(): (new () => Recognition) | null {
-  if (typeof window === "undefined") return null;
-  const scope = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
-  return scope.SpeechRecognition ?? scope.webkitSpeechRecognition ?? null;
-}
 
 /**
  * Speaking a search.

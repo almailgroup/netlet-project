@@ -18,6 +18,7 @@ import { categorySlug } from "@shared/commerce/browse";
 import { clearRecentSearches, readRecentSearches, rememberSearch } from "@/lib/recentSearches";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Select } from "@/components/ui/Select";
+import { canListen } from "@/lib/speech";
 
 /*
  * The voice and photo sheets are fetched when a shop has switched them on, or
@@ -73,7 +74,6 @@ type LiveSearchProps = {
 };
 
 /** Whether this browser can listen at all. Firefox and the iOS app's WebView cannot. */
-const canListen = () => typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
 
 /** One thing the dropdown offers: a recent search, a department, a brand, or a product. */
 type Entry =
