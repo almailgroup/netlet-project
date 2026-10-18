@@ -76,9 +76,17 @@ struct OrderRow: View {
                     Text("·").foregroundStyle(Brand.muted)
                     Text(OrderWording.payment(status: order.status, language: l)).font(.footnote).foregroundStyle(Brand.muted)
                 }
-                Text(order.reference + " · " + OrderWording.date(order.placedAt, language: l.current))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(Brand.muted)
+                // Two runs, not one string: the reference reads left to right
+                // and an Arabic date carries its own marks, and joined into one
+                // line on the Arabic page the date came out scrambled.
+                HStack(spacing: 6) {
+                    Text(order.reference)
+                        .font(.caption.monospaced())
+                        .environment(\.layoutDirection, .leftToRight)
+                    Text(OrderWording.date(order.placedAt, language: l.current))
+                        .font(.caption)
+                }
+                .foregroundStyle(Brand.muted)
             }
         }
         .padding(.vertical, 6)

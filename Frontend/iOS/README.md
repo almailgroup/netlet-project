@@ -80,6 +80,53 @@ repository's Actions tab. Running the workflow by hand (*Actions → iOS → Run
 workflow*) with **share** ticked also posts small copies as "iOS preview"
 checks on the commit.
 
+## TestFlight
+
+`.github/workflows/testflight.yml` archives the Release build, has Apple sign
+it and uploads it to App Store Connect, from which TestFlight puts it on a
+phone. It runs only when pressed (*Actions → TestFlight → Run workflow*), and
+the build number is the workflow's run number, so every run is a new build.
+No certificate or provisioning profile is kept anywhere: an App Store Connect
+API key lets `xcodebuild` make the distribution identity in Apple's cloud.
+
+Once, in Apple's portals (a paid Apple Developer Program membership):
+
+1. **Register the App ID.** [Certificates, Identifiers & Profiles →
+   Identifiers](https://developer.apple.com/account/resources/identifiers/list)
+   → **+** → App IDs → App, explicit bundle ID `com.netlet.marketplace`, no
+   capabilities. If that identifier is taken, pick another and set it as the
+   repository variable `IOS_BUNDLE_ID`.
+2. **Create the app.** [App Store Connect → Apps](https://appstoreconnect.apple.com/apps)
+   → **+** → New App: iOS, a name nobody else on the App Store has, primary
+   language, the bundle ID from step 1, any SKU (`netlet-ios`). Full access.
+3. **Make an API key.** App Store Connect → Users and Access → Integrations →
+   App Store Connect API → Team Keys → **+**, access **Admin** (cloud signing
+   needs it). Download the `.p8` — Apple offers it once — and note the
+   **Key ID** beside it and the **Issuer ID** above the list.
+4. **Find the Team ID**: [Membership details](https://developer.apple.com/account#MembershipDetailsCard),
+   ten characters.
+
+Then in GitHub, *Settings → Secrets and variables → Actions → New repository
+secret*, four secrets:
+
+| Secret                        | Value                                                  |
+| ----------------------------- | ------------------------------------------------------ |
+| `APP_STORE_CONNECT_KEY_ID`    | the Key ID                                             |
+| `APP_STORE_CONNECT_ISSUER_ID` | the Issuer ID                                          |
+| `APP_STORE_CONNECT_KEY`       | the whole `.p8` file, its BEGIN and END lines included |
+| `APPLE_TEAM_ID`               | the Team ID                                            |
+
+The repository variable `NETLET_API_BASE_URL` (under *Variables*) points the
+build at another server than the xcconfig's; unset, it is the Vercel
+deployment.
+
+A run takes about fifteen minutes and names any secret that is missing. Apple
+then processes the build for ten to thirty minutes. In App Store Connect →
+the app → TestFlight → Internal Testing, add a group with yourself in it and
+the build; install the **TestFlight** app from the App Store on the iPhone,
+signed in with the same Apple Account, and NetLet is there. A build expires
+after ninety days; run the workflow again for a new one.
+
 ## Recording the demo again
 
 The files in `Resources/Demo/` are answers captured from a NetLet server with

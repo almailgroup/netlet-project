@@ -1,0 +1,165 @@
+name: TestFlight
+
+# Builds the iOS app for release and uploads it to TestFlight. It is run by
+# hand (Actions → TestFlight → Run workflow), and every run is a new build
+# number, so a build is never sent by accident.
+#
+# Signing is Apple's own: an App Store Connect API key lets xcodebuild make
+# the distribution certificate and the profile in Apple's cloud and upload the
+# result, so no certificate or private key lives in this repository or its
+# secrets. Four repository secrets (Settings → Secrets and variables →
+# Actions) make it work; Frontend/iOS/README.md says where each comes from:
+#
+#   APP_STORE_CONNECT_KEY_ID      the API key's Key ID
+#   APP_STORE_CONNECT_ISSUER_ID   the Issuer ID shown above the list of keys
+#   APP_STORE_CONNECT_KEY         the whole .p8 file, BEGIN and END lines included
+#   APPLE_TEAM_ID                 the ten-character Team ID from Membership details
+#
+# Two optional repository variables: IOS_BUNDLE_ID when the app is registered
+# under another identifier than com.netlet.marketplace, and NETLET_API_BASE_URL
+# when the build should talk to another server than the one in the xcconfig.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: Frontend/iOS
+    env:
+      KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      BUNDLE_ID: ${{ vars.IOS_BUNDLE_ID || 'com.netlet.marketplace' }}
+      API_BASE_URL: ${{ vars.NETLET_API_BASE_URL }}
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the secrets and write the key
+        env:
+          KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          missing=""
+          [ -n "$KEY_ID" ] || missing="$missing APP_STORE_CONNECT_KEY_ID"
+          [ -n "$ISSUER_ID" ] || missing="$missing APP_STORE_CONNECT_ISSUER_ID"
+          [ -n "$KEY" ] || missing="$missing APP_STORE_CONNECT_KEY"
+          [ -n "$TEAM_ID" ] || missing="$missing APPLE_TEAM_ID"
+          if [ -n "$missing" ]; then
+            echo "::error title=TestFlight is not set up::Add these repository secrets:$missing (see Frontend/iOS/README.md)"
+            exit 1
+          fi
+          case "$KEY" in
+            *"BEGIN PRIVATE KEY"*) ;;
+            *) echo "::error title=The API key looks wrong::APP_STORE_CONNECT_KEY must be the whole .p8 file, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----"; exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/keys" build
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+          chmod 600 "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+          echo "KEY_PATH=$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8" >> "$GITHUB_ENV"
+          # The options the export reads: App Store Connect, uploaded straight
+          # away, signed automatically by Apple with this team's identity.
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          PLIST
+          echo "Building $BUNDLE_ID, build $BUILD_NUMBER"
+
+      - name: Xcode
+        run: xcodebuild -version
+
+      # The archive is built unsigned and signed on export, where Apple's cloud
+      # signing makes the distribution identity — so no runner ever has to
+      # create a development certificate that would then pile up on the team.
+      - name: Archive
+        run: |
+          set +e
+          extra=()
+          [ -n "$API_BASE_URL" ] && extra+=("NETLET_API_BASE_URL=$API_BASE_URL")
+          xcodebuild archive \
+            -project NetLet.xcodeproj \
+            -scheme NetLet \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/NetLet.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            "${extra[@]}" \
+            2>&1 | tee build/archive.log | grep --line-buffered -E "error:|\*\* ARCHIVE"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Sign and upload
+        id: upload
+        continue-on-error: true
+        run: |
+          set +e
+          xcodebuild -exportArchive \
+            -archivePath build/NetLet.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$KEY_ID" \
+            -authenticationKeyIssuerID "$ISSUER_ID" \
+            2>&1 | tee build/upload.log | grep --line-buffered -vE "^\s*$"
+          exit "${PIPESTATUS[0]}"
+
+      # If Apple would not sign the unsigned archive, build it signed with
+      # automatic signing instead (which makes a development certificate for
+      # the runner) and upload that.
+      - name: Archive signed and upload
+        if: steps.upload.outcome == 'failure'
+        run: |
+          set +e
+          extra=()
+          [ -n "$API_BASE_URL" ] && extra+=("NETLET_API_BASE_URL=$API_BASE_URL")
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$KEY_PATH" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
+          rm -rf build/NetLet.xcarchive build/export
+          xcodebuild archive \
+            -project NetLet.xcodeproj \
+            -scheme NetLet \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/NetLet.xcarchive \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            "${extra[@]}" \
+            "${auth[@]}" \
+            2>&1 | tee build/archive-signed.log | grep --line-buffered -E "error:|\*\* ARCHIVE"
+          status=${PIPESTATUS[0]}
+          [ "$status" -eq 0 ] || exit "$status"
+          xcodebuild -exportArchive \
+            -archivePath build/NetLet.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -exportPath build/export \
+            "${auth[@]}" \
+            2>&1 | tee build/upload-signed.log | grep --line-buffered -vE "^\s*$"
+          exit "${PIPESTATUS[0]}"
+
+      - name: Uploaded
+        run: |
+          echo "::notice title=Uploaded to TestFlight::Build $BUILD_NUMBER of $BUNDLE_ID is processing in App Store Connect; it appears in TestFlight in about 10 to 30 minutes."
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

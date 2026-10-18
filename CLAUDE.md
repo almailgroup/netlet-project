@@ -4914,6 +4914,18 @@ working on this repository can read the checks API but cannot download an
 artifact; notices were tried first and the API cuts an annotation off at
 4,096 characters, a fifth of a picture.
 
+**TestFlight is a workflow run by hand** (`testflight.yml`), so a build is
+never sent by accident, and nothing that signs lives in the repository: an App
+Store Connect API key (Admin, in four repository secrets the README names)
+lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the
+distribution identity in Apple's cloud and upload. The archive is built
+unsigned and signed on export, so no runner mints a development certificate
+that piles up on the team; only if Apple refuses that does it archive signed.
+The build number is the run number. `PrivacyInfo.xcprivacy` is what the
+upload is checked against — no tracking, UserDefaults for the app's own
+settings (`CA92.1`), and what an account and an order collect, each linked and
+for running the shop.
+
 ## Checks
 
 `pnpm check` · `pnpm test` · `pnpm build` · `pnpm smoke`.
