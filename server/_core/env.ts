@@ -3,7 +3,7 @@
  * an empty environment — so each unset entry disables a feature rather than
  * preventing startup. See .env.example for what each one switches off.
  */
-import { NETLET_CONTACT } from "../../shared/commerce/contact.js";
+import { NETLET_CONTACT } from "../../Shared/commerce/contact.js";
 
 export const ENV = {
   /** Signs session cookies. Required before any sign-in can succeed. */

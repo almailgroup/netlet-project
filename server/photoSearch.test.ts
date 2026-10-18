@@ -2,7 +2,7 @@
  * The photo-search call (3.1.6), with the network faked.
  *
  * What may be sent and what a reply may become are proved pure in
- * `shared/commerce/photoSearch.test.ts`. This is the call: that it sends the
+ * `Shared/commerce/photoSearch.test.ts`. This is the call: that it sends the
  * photo and nothing about the shopper, that it asks in the shopper's language,
  * and that every failure lands on one answer.
  */

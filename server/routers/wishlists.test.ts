@@ -2,7 +2,7 @@
  * Wishlists against a real Postgres, and the privacy rules in particular.
  *
  * The pure rules — the phone key, the claim window, what may be shared — are
- * proved in `shared/commerce/wishlist.test.ts`. What only a database can prove
+ * proved in `Shared/commerce/wishlist.test.ts`. What only a database can prove
  * is everything this file is about: that a private list is invisible, that one
  * shopper cannot touch another's, that an owner is not told which of their
  * wishes somebody has claimed, and that two relatives racing for the same
@@ -19,8 +19,8 @@ import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authAttempts, customerPreferences, users, wishlistItems, type User } from "../../drizzle/schema.js";
 import type { TrpcContext } from "../_core/context.js";
-import { CLAIM_HOLD_DAYS } from "../../shared/commerce/wishlist.js";
-import { MAX_LOOKUPS_PER_ADDRESS } from "../../shared/auth/rateLimit.js";
+import { CLAIM_HOLD_DAYS } from "../../Shared/commerce/wishlist.js";
+import { MAX_LOOKUPS_PER_ADDRESS } from "../../Shared/auth/rateLimit.js";
 
 let db: ReturnType<typeof drizzle>;
 let appRouter: any;

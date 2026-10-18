@@ -13,7 +13,7 @@
  * produces "In review".
  *
  * The date is spelled out and only shown when it is in the future.
- * `shared/commerce/preorder.ts` has already nulled a date that has passed, so
+ * `Shared/commerce/preorder.ts` has already nulled a date that has passed, so
  * there is no stale-date branch here: an absent date becomes "as soon as it
  * arrives", which is vaguer and true.
  */

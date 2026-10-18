@@ -1,7 +1,7 @@
 /**
  * Sign-in throttling, against a real Postgres.
  *
- * The policy is proved pure in `shared/auth/rateLimit.test.ts`. What these
+ * The policy is proved pure in `Shared/auth/rateLimit.test.ts`. What these
  * cover is the half that cannot be: that the counts are kept somewhere every
  * instance can see, that only failures are counted, and that succeeding
  * forgives an account without forgiving the host it was tried from.
@@ -15,7 +15,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authAttempts, users } from "../../drizzle/schema.js";
 import type { TrpcContext, } from "../_core/context.js";
 import type { User } from "../../drizzle/schema.js";
-import { MAX_FAILURES_PER_ACCOUNT } from "../../shared/auth/rateLimit.js";
+import { MAX_FAILURES_PER_ACCOUNT } from "../../Shared/auth/rateLimit.js";
 
 let db: ReturnType<typeof drizzle>;
 let appRouter: any;
@@ -228,7 +228,7 @@ describe("the other ceilings in the same table", () => {
 describe("guessing at codes", () => {
   it("refuses an address after enough codes that named nothing, the real one included", async () => {
     const { discountCodes, carts } = await import("../../drizzle/schema.js");
-    const { MAX_VOUCHER_MISSES_PER_ADDRESS } = await import("../../shared/auth/rateLimit.js");
+    const { MAX_VOUCHER_MISSES_PER_ADDRESS } = await import("../../Shared/auth/rateLimit.js");
     await db.delete(discountCodes);
     await db.insert(discountCodes).values({ code: "REALONE", kind: "fixed", value: "1.000" });
     const [cart] = await db.insert(carts).values({ id: `cart-guess-${Date.now()}` }).returning();

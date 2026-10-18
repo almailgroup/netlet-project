@@ -1,7 +1,7 @@
 /**
  * Asking a seller for a special price, and the seller answering.
  *
- * Requirement 3.1.13. The rules are pure in `shared/commerce/priceOffers.ts`,
+ * Requirement 3.1.13. The rules are pure in `Shared/commerce/priceOffers.ts`,
  * the queries are in `server/offers.ts` with their guards beside them, and this
  * translates between the two and HTTP.
  *
@@ -34,7 +34,7 @@ import {
 } from "../offers.js";
 import { resolveActor } from "../inventory.js";
 import { checkOfferRequestAllowed, recordOfferRequest } from "../rateLimit.js";
-import { MAX_NOTE } from "../../shared/commerce/priceOffers.js";
+import { MAX_NOTE } from "../../Shared/commerce/priceOffers.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 
 /** Money as the client sends it: three decimal places, and nothing clever. */
@@ -54,7 +54,7 @@ const REFUSALS: Record<string, { code: "BAD_REQUEST" | "CONFLICT" | "NOT_FOUND";
  *
  * The same arrangement `server/routers/inventory.ts` uses, and for the same
  * reason: `assertCan` is pure and knows nothing about tRPC, so a 403 has to be
- * made here rather than thrown from `shared/`.
+ * made here rather than thrown from `Shared/`.
  */
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {

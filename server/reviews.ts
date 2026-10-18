@@ -1,7 +1,7 @@
 /**
  * Reviews: the part that needs a database.
  *
- * The rules are `shared/commerce/reviews.ts` and are pure. What is here is the
+ * The rules are `Shared/commerce/reviews.ts` and are pure. What is here is the
  * reading and the writing, and one thing neither of those: **proving the
  * purchase by joining rather than by trusting the caller**.
  *
@@ -21,14 +21,14 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { orderItems, orders, reviews } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
 import { violatesUnique } from "./_core/describeError.js";
-import { contactFindings } from "../shared/commerce/contactFilter.js";
+import { contactFindings } from "../Shared/commerce/contactFilter.js";
 import {
   eligibilityFor,
   isValidRating,
   summarise,
   type ReviewRefusal,
   type ReviewSummary,
-} from "../shared/commerce/reviews.js";
+} from "../Shared/commerce/reviews.js";
 
 export type ReviewError = ReviewRefusal | "notFound" | "invalidRating" | "notYours" | "offPlatform";
 

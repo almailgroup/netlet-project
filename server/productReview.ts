@@ -1,7 +1,7 @@
 /**
  * The review queue's second pair of eyes.
  *
- * Requirement 3.6.2. The checks are pure in `shared/inventory/productReview.ts`
+ * Requirement 3.6.2. The checks are pure in `Shared/inventory/productReview.ts`
  * and this is the half that cannot be: reading each waiting product with its
  * variants and images, and — when a key is configured — asking a model for the
  * one thing a regular expression cannot judge.
@@ -23,8 +23,8 @@
  */
 import { inArray } from "drizzle-orm";
 import { productImages, productVariants, products } from "../drizzle/schema.js";
-import { needsAttention, reviewProduct, type Flag } from "../shared/inventory/productReview.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { needsAttention, reviewProduct, type Flag } from "../Shared/inventory/productReview.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { askModel, modelAvailable, parseObject } from "./gemini.js";
 import { getDb } from "./db.js";
 

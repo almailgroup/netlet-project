@@ -1,7 +1,7 @@
 /**
  * Frequently bought together: the part that needs a database.
  *
- * The ranking is `shared/commerce/together.ts` and is pure. What is here is
+ * The ranking is `Shared/commerce/together.ts` and is pure. What is here is
  * gathering the baskets — and one decision that is neither: **which baskets
  * count as evidence.**
  *
@@ -37,8 +37,8 @@ import {
   type Complement,
   type PairKind,
   type Pairing,
-} from "../shared/commerce/together.js";
-import type { LocalePick } from "../shared/commerce/fromInventory.js";
+} from "../Shared/commerce/together.js";
+import type { LocalePick } from "../Shared/commerce/fromInventory.js";
 
 /**
  * How many baskets are read before ranking.

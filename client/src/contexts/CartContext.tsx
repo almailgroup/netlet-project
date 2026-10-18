@@ -23,7 +23,7 @@ import {
  *   it onto the account so a bag survives moving to another device.
  * - Exposes a tiny imperative surface to UI: addItem, updateQuantity,
  *   removeItem, openCart, proceedToCheckout. Everything is typed against
- *   `shared/commerce/types` — which store is behind it is invisible.
+ *   `Shared/commerce/types` — which store is behind it is invisible.
  */
 
 const CART_STORAGE_KEY = "commerce:cart-id";

@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { categories, followedProducts, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let inv: typeof import("./inventory");
@@ -275,14 +275,14 @@ describe("creating", () => {
 
 /*
  * Bulk upload (3.3.3). The reading and the refusing are proved pure in
- * `shared/inventory/bulkUpload.test.ts`; what is here is the half that cannot
+ * `Shared/inventory/bulkUpload.test.ts`; what is here is the half that cannot
  * be — that a file naming one title twice does not collide on the handle
  * index, that a category name is resolved to an id rather than invented, and
  * that a failure leaves the shelf exactly as it was.
  */
 /*
  * The review queue's triage (3.6.2). The checks are proved pure in
- * `shared/inventory/productReview.test.ts`; what is here is that it reads the
+ * `Shared/inventory/productReview.test.ts`; what is here is that it reads the
  * right rows — the variants' prices and the image count come from two other
  * tables, and a product with none of either is the ordinary case.
  */

@@ -4,7 +4,7 @@
  * Requirement 3.6.1. Almost all of this existed already and could not be read:
  * `order_items` has carried `lineTotal`, `commissionAmount` and `vendorNet`
  * frozen at the moment of sale since the day orders landed, and nothing asked
- * for them back. `shared/commerce/finance.ts` is the arithmetic and is pure;
+ * for them back. `Shared/commerce/finance.ts` is the arithmetic and is pure;
  * this draws it.
  *
  * **Gross, refunded and net are three figures, never one.** A single blended

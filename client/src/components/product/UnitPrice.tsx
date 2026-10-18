@@ -7,7 +7,7 @@
  * component returning null rather than the caller checking is deliberate: the
  * decision lives in one place, so a page added later cannot forget it.
  *
- * The arithmetic is `unitPrice` in `shared/`, in fils, rounded once — a per
+ * The arithmetic is `unitPrice` in `Shared/`, in fils, rounded once — a per
  * kilo figure computed in floats reads 2.4000000000000004 on a currency with
  * three decimal places.
  */

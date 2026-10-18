@@ -6,11 +6,11 @@
  * listing every product row. A draft, or a published product of a suspended
  * vendor, is not on the shelf and does not belong in the index either.
  *
- * Departments come from `shared/commerce/departments.ts` for the same reason
+ * Departments come from `Shared/commerce/departments.ts` for the same reason
  * the client reads them from there: two lists that must agree, written once.
  */
-import { DEPARTMENTS } from "../shared/commerce/departments.js";
-import type { SitemapEntry } from "../shared/sitemap.js";
+import { DEPARTMENTS } from "../Shared/commerce/departments.js";
+import type { SitemapEntry } from "../Shared/sitemap.js";
 import { publishedCatalog } from "./inventory.js";
 import { listStoreCards, STORE_INDEX_LIMIT } from "./catalog.js";
 

@@ -2,7 +2,7 @@
  * Paid placements against a real Postgres (3.3.15).
  *
  * The day arithmetic and the fee are proved pure in
- * `shared/commerce/adBookings.test.ts`. What needs a database is the half that
+ * `Shared/commerce/adBookings.test.ts`. What needs a database is the half that
  * moves money: that a store books only against what it has earned, that a
  * place holds only so many, that the shelf shows what was booked and nothing
  * the shop would not, and that the fee comes off the payout run exactly once.
@@ -33,8 +33,8 @@ import {
   vendors,
   type User,
 } from "../drizzle/schema.js";
-import { addDays, kuwaitToday } from "../shared/commerce/adBookings.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { addDays, kuwaitToday } from "../Shared/commerce/adBookings.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 import type { TrpcContext } from "./_core/context.js";
 
 let db: ReturnType<typeof drizzle>;

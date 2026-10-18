@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { askModel, modelAvailable } from "../gemini.js";
 import { publicProcedure, router } from "../_core/trpc.js";
-import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../shared/commerce/photoSearch.js";
+import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../Shared/commerce/photoSearch.js";
 import { describePhoto, photoSearchAvailable } from "../photoSearch.js";
 import { checkPhotoSearchAllowed, checkSearchRefineAllowed, recordPhotoSearch, recordSearchRefine } from "../rateLimit.js";
 import { MAX_RESULTS, searchCatalogue } from "../productSearch.js";

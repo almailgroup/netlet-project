@@ -165,7 +165,7 @@ type OrderRisk = { orderId: number; risk: RiskLevel; flags: FraudFlag[] };
  * A signal's evidence, with its money formatted.
  *
  * The signals are pure and carry figures as decimal strings, which is right —
- * `shared/` has no currency formatter and should not — but a bare "481.500" on
+ * `Shared/` has no currency formatter and should not — but a bare "481.500" on
  * a page where every other figure reads "KWD 481.500" looks like a different
  * kind of number.
  */

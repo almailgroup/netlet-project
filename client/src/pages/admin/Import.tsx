@@ -2,7 +2,7 @@
  * Loading a shelf from a spreadsheet.
  *
  * Requirements 3.3.3 and 3.3.5. The reading, the refusing and the department
- * guessing are all in `shared/inventory/bulkUpload.ts` and all pure — this
+ * guessing are all in `Shared/inventory/bulkUpload.ts` and all pure — this
  * page picks the file, shows what the importer made of it, and asks.
  *
  * **The preview is the feature.** An importer that writes on upload is one a

@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { handle, type Env, type RateLimiter } from "./index.js";
-import { createSseReader, parseChatEvent, signGatewayToken, type ChatEvent, type GatewayClaims } from "../../../shared/ai/gateway.js";
+import { createSseReader, parseChatEvent, signGatewayToken, type ChatEvent, type GatewayClaims } from "../../../Shared/ai/gateway.js";
 
 const SECRET = "k".repeat(48);
 const NOW = 1_800_000_000_000;

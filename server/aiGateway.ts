@@ -17,8 +17,8 @@
 import { ENV } from "./_core/env.js";
 import { gatewayConfigured, gatewayOrigin, guestSubject } from "./_core/aiGateway.js";
 import { featureOn } from "./features.js";
-import { can, type Actor } from "../shared/inventory/permissions.js";
-import { TOKEN_TTL_SECONDS, signGatewayToken, type GatewayScope } from "../shared/ai/gateway.js";
+import { can, type Actor } from "../Shared/inventory/permissions.js";
+import { TOKEN_TTL_SECONDS, signGatewayToken, type GatewayScope } from "../Shared/ai/gateway.js";
 
 export type GatewaySession =
   | { available: false }

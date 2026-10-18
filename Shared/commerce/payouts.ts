@@ -31,7 +31,7 @@
  * first sofa, and a week of refunds alone showed them owing NetLet money they
  * had never been sent.
  *
- * `shared/commerce/finance.ts` had it right and says so in its own header — "a
+ * `Shared/commerce/finance.ts` had it right and says so in its own header — "a
  * refunded line adds no commission and no vendor net" — and the two reports
  * render on one page, so the panel showed a seller owed 431.400 in one table
  * and 221.400 in the two beside it. Measured by rendering it, not by reading
@@ -45,7 +45,7 @@
  *
  * **A week runs Sunday to Saturday.** That is the Kuwaiti working week — the
  * weekend is Friday and Saturday — so a week that starts on Monday would cut
- * one in half. `shared/commerce/deliverySpeed.ts` makes the same call about
+ * one in half. `Shared/commerce/deliverySpeed.ts` makes the same call about
  * the weekend, for the same reason.
  *
  * **A negative week is shown, never clamped to zero.** A week of refunds

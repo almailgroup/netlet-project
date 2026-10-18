@@ -6,7 +6,7 @@
  * page — so the 101st product could not be found by any search at all, and a
  * shop that grew past a hundred quietly stopped answering for most of itself.
  * This reads every published product of an approved store, the rule
- * `publishedCatalog` keeps, and ranks it with `shared/commerce/search.ts`, the
+ * `publishedCatalog` keeps, and ranks it with `Shared/commerce/search.ts`, the
  * same rules the client used, so nothing about *what* matches changed.
  *
  * **Two steps, so a keystroke does not load the catalogue.** SQL narrows to
@@ -29,7 +29,7 @@
  */
 import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
 import { categories, products, productVariants, vendors } from "../drizzle/schema.js";
-import type { LocalePick } from "../shared/commerce/fromInventory.js";
+import type { LocalePick } from "../Shared/commerce/fromInventory.js";
 import {
   FOLD_FROM,
   FOLD_MARKS,
@@ -39,8 +39,8 @@ import {
   rankDocs,
   type QueryWord,
   type SearchDoc,
-} from "../shared/commerce/search.js";
-import type { Product } from "../shared/commerce/types.js";
+} from "../Shared/commerce/search.js";
+import type { Product } from "../Shared/commerce/types.js";
 import { listProductsByIds } from "./catalog.js";
 import { getDb } from "./db.js";
 

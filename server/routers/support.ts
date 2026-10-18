@@ -7,8 +7,8 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS, supportNumber } from "../../shared/commerce/support.js";
-import { companyDetails, contactEmail, socialLinks, visitDetails } from "../../shared/commerce/contact.js";
+import { MAX_SUPPORT_MESSAGE, SUPPORT_STATUSES, SUPPORT_TOPICS, supportNumber } from "../../Shared/commerce/support.js";
+import { companyDetails, contactEmail, socialLinks, visitDetails } from "../../Shared/commerce/contact.js";
 import { ENV } from "../_core/env.js";
 import {
   conversationForShopper,

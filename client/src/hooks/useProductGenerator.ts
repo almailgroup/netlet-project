@@ -7,7 +7,7 @@
  * person accepted (the "Draft with AI" rule for the Arabic name). The
  * gateway has already held the draft to NetLet's departments and
  * specification rows and taken out anything carrying contact details
- * (`shared/ai/catalogDraft.ts`).
+ * (`Shared/ai/catalogDraft.ts`).
  *
  * Photos go as they are handed in, so hand in what `photosForDraft` made: a
  * 768px JPEG is far under the gateway's limit, where a camera's original is

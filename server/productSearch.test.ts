@@ -1,7 +1,7 @@
 /**
  * Search over the whole catalogue, against a real Postgres.
  *
- * The ranking is proved pure in `shared/commerce/search.test.ts`. What needs a
+ * The ranking is proved pure in `Shared/commerce/search.test.ts`. What needs a
  * database: that the SQL prefilter folds Arabic exactly as `foldText` does, so
  * it never drops what the ranking would find; that the hundred-and-first
  * product can be found, which is the bug this replaced; and that nothing the
@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { categories, products, productVariants, vendors } from "../drizzle/schema.js";
-import { FOLD_FROM, FOLD_MARKS, FOLD_TO, foldText } from "../shared/commerce/search.js";
+import { FOLD_FROM, FOLD_MARKS, FOLD_TO, foldText } from "../Shared/commerce/search.js";
 
 let db: ReturnType<typeof drizzle>;
 let search: typeof import("./productSearch.js");

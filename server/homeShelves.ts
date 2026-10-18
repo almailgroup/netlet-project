@@ -18,9 +18,9 @@ import { and, asc, desc, gt, gte, isNotNull, ne, notInArray, sql } from "drizzle
 import { orderItems, orders } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
 import { listProducts, listProductsByIds } from "./catalog.js";
-import type { LocalePick } from "../shared/commerce/fromInventory.js";
-import { brandOf } from "../shared/commerce/search.js";
-import type { Product } from "../shared/commerce/types.js";
+import type { LocalePick } from "../Shared/commerce/fromInventory.js";
+import { brandOf } from "../Shared/commerce/search.js";
+import type { Product } from "../Shared/commerce/types.js";
 
 export const BESTSELLER_WINDOW_DAYS = 90;
 const BESTSELLER_LIMIT = 12;

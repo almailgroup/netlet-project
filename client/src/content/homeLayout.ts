@@ -2,7 +2,7 @@
  * Home page structure.
  *
  * The rows carry message keys rather than English sentences: the copy itself
- * lives in `shared/i18n/dictionary`, so the page reads the same in both
+ * lives in `Shared/i18n/dictionary`, so the page reads the same in both
  * languages and a missing Arabic string is a type error rather than an English
  * heading appearing on the Arabic storefront.
  */
@@ -15,7 +15,7 @@ import type { Product } from "@shared/commerce/types";
  * The departments, as the home page draws them.
  *
  * Derived rather than written out: this was a second copy of the list in
- * `shared/commerce/departments.ts`, carrying its own tints and message keys,
+ * `Shared/commerce/departments.ts`, carrying its own tints and message keys,
  * which is exactly the drift that file exists to prevent — a department added
  * in one place and missing from the other. "All" leads, because it is the
  * absence of a filter rather than a department and so is not in the list

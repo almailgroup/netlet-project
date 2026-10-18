@@ -1,7 +1,7 @@
 /**
  * The finance report, against a real Postgres.
  *
- * The arithmetic is proved pure in `shared/commerce/finance.test.ts`. What
+ * The arithmetic is proved pure in `Shared/commerce/finance.test.ts`. What
  * these cover is the half that cannot be: that the query counts the orders
  * whose money actually moved and no others, that the figures come off the
  * *frozen* line rather than today's rates, and that a vendor cannot read the
@@ -14,8 +14,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { orderItems, orders, users, vendors } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
-import { addMoney } from "../shared/money.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
+import { addMoney } from "../Shared/money.js";
 
 let db: ReturnType<typeof drizzle>;
 let finance: typeof import("./finance.js");

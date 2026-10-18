@@ -1,7 +1,7 @@
 /**
  * Frequently bought together, against a real Postgres.
  *
- * The ranking is proved in `shared/commerce/together.test.ts`. What only a
+ * The ranking is proved in `Shared/commerce/together.test.ts`. What only a
  * database can prove is the gathering: that carts alone are enough to produce
  * a rail **today**, that a paid order outweighs a cart, that an unpaid order
  * counts for nothing, and that a draft product cannot appear however many
@@ -17,7 +17,7 @@ import {
   cartItems, carts, orderItems, orders, products, productVariants, vendors,
 } from "../../drizzle/schema.js";
 import type { TrpcContext } from "../_core/context.js";
-import { MIN_SUPPORT } from "../../shared/commerce/together.js";
+import { MIN_SUPPORT } from "../../Shared/commerce/together.js";
 
 let db: ReturnType<typeof drizzle>;
 let appRouter: any;

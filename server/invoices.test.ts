@@ -1,7 +1,7 @@
 /**
  * Invoices and credit notes, through the API against a real Postgres (3.6.6).
  *
- * The arithmetic is proved pure in `shared/commerce/invoice.test.ts`. What
+ * The arithmetic is proved pure in `Shared/commerce/invoice.test.ts`. What
  * needs a database is the series — gap-free, one per order however often it is
  * asked for — that a document is issued at the moment the money moves, that a
  * refund adds a credit note rather than editing anything, and who may read one.
@@ -140,7 +140,7 @@ describe("issuing", () => {
 
     const [row] = await db.select().from(invoices);
     expect(row).toMatchObject({ number: `INV-${year}-000001`, kind: "invoice", orderId: order.id });
-    const document = row.document as import("../shared/commerce/invoice.js").InvoiceDocument;
+    const document = row.document as import("../Shared/commerce/invoice.js").InvoiceDocument;
     expect(document.paidWith.cash).toBe(order.grandTotal);
     expect(document).toMatchObject({ orderReference: order.reference, goods: "248.000", buyer: { name: "Noura Shopper" } });
     expect(document.sellers).toEqual([expect.objectContaining({ name: "Acme", nameAr: "أكمي", licence: "MOCI-77" })]);
@@ -156,7 +156,7 @@ describe("issuing", () => {
     await as("manager").orders.setFulfilment({ lineId: mug.id, fulfilment: "cancelled" });
     await collect(order.id);
     const [row] = await db.select().from(invoices);
-    const document = row.document as import("../shared/commerce/invoice.js").InvoiceDocument;
+    const document = row.document as import("../Shared/commerce/invoice.js").InvoiceDocument;
     expect(document.sellers[0].lines.map(line => line.title)).toEqual(["sofa"]);
     expect(document).toMatchObject({ goods: "240.000", total: "242.000" });
   });

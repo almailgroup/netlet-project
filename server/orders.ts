@@ -1,7 +1,7 @@
 /**
  * Placing an order, and reading orders back.
  *
- * The arithmetic is not here — `shared/commerce/order.ts` does that, purely,
+ * The arithmetic is not here — `Shared/commerce/order.ts` does that, purely,
  * so what a shopper is charged and what a vendor is owed can be argued with in
  * a test rather than discovered in production. What is here is the part that
  * needs a database: reading live prices one last time, taking the stock, and
@@ -11,7 +11,7 @@
  * inside `db.ts` call its module-local `getDb`, which nothing outside can
  * redirect, so they cannot be tested against a real database.
  */
-import { cleanParts, composeAddressLine, missingParts, partsProblems, type AddressParts } from "../shared/commerce/kuwaitAddress.js";
+import { cleanParts, composeAddressLine, missingParts, partsProblems, type AddressParts } from "../Shared/commerce/kuwaitAddress.js";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   cartItemAddons,
@@ -37,27 +37,27 @@ import {
   sliceByVendor,
   type OrderRefusal,
   type PriceableLine,
-} from "../shared/commerce/order.js";
-import type { Pool } from "../shared/commerce/preorder.js";
-import { nextStates } from "../shared/commerce/fulfilment.js";
-import { orderProgress, type OrderProgress } from "../shared/commerce/orderProgress.js";
-import { mayMoveLine } from "../shared/commerce/netletFulfilment.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { shopperPrice } from "../shared/commerce/shopperPrice.js";
-import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
-import { discountAllowed } from "../shared/inventory/discountLicence.js";
-import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../shared/commerce/delivery.js";
-import { freezeDestination, type DestinedLine } from "../shared/commerce/addresses.js";
-import { massGramsFor, type SellUnit } from "../shared/commerce/units.js";
+} from "../Shared/commerce/order.js";
+import type { Pool } from "../Shared/commerce/preorder.js";
+import { nextStates } from "../Shared/commerce/fulfilment.js";
+import { orderProgress, type OrderProgress } from "../Shared/commerce/orderProgress.js";
+import { mayMoveLine } from "../Shared/commerce/netletFulfilment.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { shopperPrice } from "../Shared/commerce/shopperPrice.js";
+import { memberPriceFor, waiveDelivery } from "../Shared/commerce/membership.js";
+import { discountAllowed } from "../Shared/inventory/discountLicence.js";
+import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../Shared/commerce/delivery.js";
+import { freezeDestination, type DestinedLine } from "../Shared/commerce/addresses.js";
+import { massGramsFor, type SellUnit } from "../Shared/commerce/units.js";
 import { destinationsForCart } from "./addresses.js";
-import { codAvailability, COD_DEFAULT } from "../shared/commerce/payment.js";
-import { pointsSpendableOn, spendValue } from "../shared/commerce/referral.js";
-import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
-import { giftCardPayment, settle } from "../shared/commerce/vouchers.js";
+import { codAvailability, COD_DEFAULT } from "../Shared/commerce/payment.js";
+import { pointsSpendableOn, spendValue } from "../Shared/commerce/referral.js";
+import { addonsTotal, type AddonKind } from "../Shared/commerce/addons.js";
+import { giftCardPayment, settle } from "../Shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
 import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
-import { addMoney, multiplyMoney, subtractMoney, toFils } from "../shared/money.js";
+import { addMoney, multiplyMoney, subtractMoney, toFils } from "../Shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
@@ -67,8 +67,8 @@ import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
 import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
-import { isKept, type StillOwed } from "../shared/commerce/collection.js";
-import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
+import { isKept, type StillOwed } from "../Shared/commerce/collection.js";
+import { pinProblem, storedPin, type Pin } from "../Shared/commerce/geo.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -98,7 +98,7 @@ export type PlaceOrderDetails = {
    *
    * It used to be a parameter, on the honest grounds that there was no rate
    * card to compute it from. There is one now — each seller's own fee, per
-   * `shared/commerce/delivery.ts` — and taking the figure from the caller
+   * `Shared/commerce/delivery.ts` — and taking the figure from the caller
    * would be letting whoever posts the order set their own postage. The same
    * reason the line prices are read one last time here rather than trusted
    * from the basket that was priced a moment ago.
@@ -344,7 +344,7 @@ async function priceableLines(
 
   /*
    * Grouped here because the grouping needs the rows the query returned; the
-   * arithmetic on top is pure and lives in `shared/commerce/delivery.ts`.
+   * arithmetic on top is pure and lives in `Shared/commerce/delivery.ts`.
    * Charged prices, not shelf prices — a personally agreed price counts toward
    * a seller's free-delivery threshold, because it is what the shopper spent.
    */
@@ -999,7 +999,7 @@ export async function listOrdersForUser(
     .offset(offsetFor(page, pageSize));
 
   /* What each one owes now — the figure the driver will ask for — rather than
-     only what it was placed for. See `shared/commerce/collection.ts`. */
+     only what it was placed for. See `Shared/commerce/collection.ts`. */
   const owed = await stillOwedFor(db, rows);
   const summaries = await summariesFor(db, rows);
   return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null, summary: summaries.get(row.id) })), total, page, pageSize };

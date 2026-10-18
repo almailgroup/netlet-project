@@ -37,25 +37,25 @@ import {
   toStorefrontCollection,
   toStorefrontProduct,
   type LocalePick,
-} from "../shared/commerce/fromInventory.js";
-import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Product } from "../shared/commerce/types.js";
-import type { Measure } from "../shared/commerce/units.js";
+} from "../Shared/commerce/fromInventory.js";
+import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Product } from "../Shared/commerce/types.js";
+import type { Measure } from "../Shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
-import { addMoney, multiplyMoney } from "../shared/money.js";
-import { addonsTotal, type AddonKind } from "../shared/commerce/addons.js";
+import { addMoney, multiplyMoney } from "../Shared/money.js";
+import { addonsTotal, type AddonKind } from "../Shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
-import { groupForDelivery, quoteDelivery, type DeliveryRule } from "../shared/commerce/delivery.js";
-import type { DestinedLine } from "../shared/commerce/addresses.js";
+import { groupForDelivery, quoteDelivery, type DeliveryRule } from "../Shared/commerce/delivery.js";
+import type { DestinedLine } from "../Shared/commerce/addresses.js";
 import { listAddresses } from "./addresses.js";
-import { codAvailability } from "../shared/commerce/payment.js";
-import { recoveryFor } from "../shared/commerce/cartRecovery.js";
+import { codAvailability } from "../Shared/commerce/payment.js";
+import { recoveryFor } from "../Shared/commerce/cartRecovery.js";
 import { liveOffersFor } from "./offers.js";
 import { freeDeliveryOver, isMemberNow } from "./membership.js";
-import { shopperPrice } from "../shared/commerce/shopperPrice.js";
-import { memberPriceFor, waiveDelivery } from "../shared/commerce/membership.js";
-import { discountAllowed } from "../shared/inventory/discountLicence.js";
-import { isDeliverySpeed, type DeliverySpeed } from "../shared/commerce/deliverySpeed.js";
+import { shopperPrice } from "../Shared/commerce/shopperPrice.js";
+import { memberPriceFor, waiveDelivery } from "../Shared/commerce/membership.js";
+import { discountAllowed } from "../Shared/inventory/discountLicence.js";
+import { isDeliverySpeed, type DeliverySpeed } from "../Shared/commerce/deliverySpeed.js";
 import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import {
   awardedBadges,
@@ -64,7 +64,7 @@ import {
   HIGH_RATING_MIN_REVIEWS,
   storefrontBadges,
   type TrustBadge,
-} from "../shared/inventory/vendorHealth.js";
+} from "../Shared/inventory/vendorHealth.js";
 
 /* ------------------------------------------------------------- the shelf --- */
 
@@ -265,7 +265,7 @@ export type StoreProfile = {
   products: number;
   rating: { average: number; count: number } | null;
   badges: TrustBadge[];
-  /** The store's own delivery terms (`shared/commerce/delivery.ts`): a fee, a free-over threshold, a band. */
+  /** The store's own delivery terms (`Shared/commerce/delivery.ts`): a fee, a free-over threshold, a band. */
   delivery: {
     flat: string | null;
     freeOver: string | null;
@@ -375,7 +375,7 @@ function shape(
       vendorDeliveryProvider: vendor?.deliveryProvider,
       vendorSubscriptionPercent: vendor?.subscriptionPercent ?? null,
       /* Checked on every read, because a permit expires on a date with nobody
-         saving anything. See `shared/inventory/discountLicence.ts`. */
+         saving anything. See `Shared/inventory/discountLicence.ts`. */
       vendorDiscountLicence: vendor
         ? { number: vendor.discountLicenceNumber, expiresAt: vendor.discountLicenceExpiresAt }
         : null,
@@ -744,7 +744,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
  * A parcel is a seller **and a destination** (3.2.6): two doors are two
  * journeys out of one warehouse, and charging once for both would hand a
  * seller's van out for free. The fold itself is pure and lives in
- * `shared/commerce/delivery.ts`, so the case worth checking — one seller, two
+ * `Shared/commerce/delivery.ts`, so the case worth checking — one seller, two
  * doors, and a threshold their combined total would have cleared — can be
  * exercised without a database.
  */

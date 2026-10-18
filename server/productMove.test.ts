@@ -26,7 +26,7 @@ import {
   vendorMembers,
   vendors,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let mover: typeof import("./productMove");

@@ -3,7 +3,7 @@
  *
  * `docs/supabase-bootstrap.sql` is what somebody pastes into the Supabase
  * dashboard to stand a database up, and its department seed is scraped out of
- * `shared/commerce/departments.ts` with a regular expression — deliberately,
+ * `Shared/commerce/departments.ts` with a regular expression — deliberately,
  * so there is one copy of that list rather than two.
  *
  * A regex over source is a fragile reader, and it broke exactly the way one
@@ -20,13 +20,13 @@ import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { DEPARTMENTS } from "../shared/commerce/departments.js";
+import { DEPARTMENTS } from "../Shared/commerce/departments.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 
 /** The same pattern `scripts/build-bootstrap.mjs` reads the list with. */
 function parseAsGeneratorDoes() {
-  const source = readFileSync(path.join(root, "shared/commerce/departments.ts"), "utf-8");
+  const source = readFileSync(path.join(root, "Shared/commerce/departments.ts"), "utf-8");
   return [...source.matchAll(
     /\{\s*slug:\s*"([^"]+)",\s*name:\s*"([^"]+)",\s*nameAr:\s*"([^"]+)",\s*position:\s*(\d+)[^}]*\}/g,
   )].map(([, slug, name, nameAr, position]) => ({ slug, name, nameAr, position: Number(position) }));

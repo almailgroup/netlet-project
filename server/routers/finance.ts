@@ -22,8 +22,8 @@ import {
   preparedPayouts,
   readyBatches,
 } from "../payoutRuns.js";
-import { PAYOUT_FORMATS } from "../../shared/commerce/payoutFile.js";
-import { MAX_BANK_REFERENCE } from "../../shared/commerce/payoutRuns.js";
+import { PAYOUT_FORMATS } from "../../Shared/commerce/payoutFile.js";
+import { MAX_BANK_REFERENCE } from "../../Shared/commerce/payoutRuns.js";
 import { rowId } from "../_core/schemas.js";
 import { TRPCError } from "@trpc/server";
 import { resolveActor } from "../inventory.js";

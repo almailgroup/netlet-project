@@ -16,7 +16,7 @@
  */
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { auditLog, users } from "../drizzle/schema.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { describeError } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 

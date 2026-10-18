@@ -55,7 +55,7 @@ import {
   verifySupabaseSignupCode,
 } from "./supabaseAuth.js";
 import { hasLocalCode, issueLocalCode, takeLocalCode } from "./localCodes.js";
-import { checkPassword } from "../../shared/auth/passwordStrength.js";
+import { checkPassword } from "../../Shared/auth/passwordStrength.js";
 import { createUser, deleteUserRow, findLoginByEmail, linkExternalUser } from "../logins.js";
 import { updateUserPasswordHash } from "../profile.js";
 import type { User } from "../../drizzle/schema.js";

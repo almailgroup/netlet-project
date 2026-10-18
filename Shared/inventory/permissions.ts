@@ -12,7 +12,7 @@
  *      warehouse staff adjust stock but cannot publish, so nobody who is only
  *      trusted to count boxes can put something in front of customers.
  *
- * Kept pure and in `shared/` so the server enforces it and the client can ask
+ * Kept pure and in `Shared/` so the server enforces it and the client can ask
  * the same question to decide what to render, without two versions of the
  * answer that can disagree.
  */

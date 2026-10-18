@@ -6,7 +6,7 @@
  * long: "vendor.update" in a list of sentences looks like a typo, not a bug.
  */
 import { describe, expect, it } from "vitest";
-import { en, ar } from "../shared/i18n/dictionary.js";
+import { en, ar } from "../Shared/i18n/dictionary.js";
 import { AUDIT_ACTIONS } from "./audit.js";
 
 describe("the audit trail's words", () => {

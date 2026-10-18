@@ -55,7 +55,7 @@ import {
   MAX_ITEMS_PER_LIST,
   VISIBILITIES,
   normalisePhone,
-} from "../../shared/commerce/wishlist.js";
+} from "../../Shared/commerce/wishlist.js";
 
 /** A refusal code becomes a 4xx with a message key the page translates. */
 function asTrpcError(error: unknown): never {

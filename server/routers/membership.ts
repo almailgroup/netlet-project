@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../shared/commerce/membership.js";
+import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../Shared/commerce/membership.js";
 import { MembershipRefused, endMembership, getTerms, grantMembership, listMemberships, myMembership, programmeReport, setTerms } from "../membership.js";
 import { resolveActor } from "../inventory.js";
 import { rowId } from "../_core/schemas.js";

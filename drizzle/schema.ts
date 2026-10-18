@@ -17,7 +17,7 @@
  * require them, but a declared width documents the field and keeps the schema
  * portable.
  */
-import type { AddressParts } from "../shared/commerce/kuwaitAddress.js";
+import type { AddressParts } from "../Shared/commerce/kuwaitAddress.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -37,14 +37,14 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
-import { notificationKinds } from "../shared/customer.js";
-import { SELL_UNITS as sellUnits } from "../shared/commerce/units.js";
-import { FULFILMENT_STATES } from "../shared/commerce/fulfilment.js";
-import type { SizeChart } from "../shared/commerce/sizeGuide.js";
-import { AD_SLOTS, type BannerStatus } from "../shared/commerce/adBookings.js";
-import type { DocumentKind, DocumentStatus, DocumentType } from "../shared/inventory/applicationDocuments.js";
-import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../shared/commerce/support.js";
-import { INBOUND_STATUSES } from "../shared/commerce/netletFulfilment.js";
+import { notificationKinds } from "../Shared/customer.js";
+import { SELL_UNITS as sellUnits } from "../Shared/commerce/units.js";
+import { FULFILMENT_STATES } from "../Shared/commerce/fulfilment.js";
+import type { SizeChart } from "../Shared/commerce/sizeGuide.js";
+import { AD_SLOTS, type BannerStatus } from "../Shared/commerce/adBookings.js";
+import type { DocumentKind, DocumentStatus, DocumentType } from "../Shared/inventory/applicationDocuments.js";
+import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../Shared/commerce/support.js";
+import { INBOUND_STATUSES } from "../Shared/commerce/netletFulfilment.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -147,7 +147,7 @@ export const customerPreferences = pgTable(
      * flipped an Arabic session to English on sign-in.
      */
     locale: localeCode("locale"),
-    /** Governorate id from `shared/customer.ts`; null until the shopper picks. */
+    /** Governorate id from `Shared/customer.ts`; null until the shopper picks. */
     deliveryZoneId: varchar("delivery_zone_id", { length: 64 }),
     /** Opaque cart token, so a bag survives across devices. */
     cartId: varchar("cart_id", { length: 255 }),
@@ -334,7 +334,7 @@ export const customerNotificationPreferences = pgTable(
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    /** Kinds come from `shared/customer.ts` so the enum cannot drift. */
+    /** Kinds come from `Shared/customer.ts` so the enum cannot drift. */
     kind: notificationKind("kind").notNull(),
     enabled: boolean("enabled").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -433,7 +433,7 @@ export const orderStatus = pgEnum("order_status", [
  * shelf and one is not. Grouping lines by vendor gives the per-vendor view
  * without a table that would then have to be kept in step with the lines.
  */
-/* The one list, from `shared/`, so the enum, the router's input and the
+/* The one list, from `Shared/`, so the enum, the router's input and the
    control that draws them cannot drift apart. */
 export const fulfilmentStatus = pgEnum("fulfilment_status", FULFILMENT_STATES);
 
@@ -473,7 +473,7 @@ export const vendors = pgTable(
      * actually issued — and the window is the part that matters: a permit
      * stops being valid on a date without anybody editing a product, so the
      * rule is applied when the storefront *reads* an offer and not only when a
-     * vendor writes one. `shared/inventory/discountLicence.ts` is the rule.
+     * vendor writes one. `Shared/inventory/discountLicence.ts` is the rule.
      *
      * Nullable, like every other store detail: an admin recording a seller
      * should not be blocked because the permit is on a document nobody has
@@ -497,7 +497,7 @@ export const vendors = pgTable(
      *
      * Per seller rather than per platform, because a NetLet basket is three
      * parcels from three warehouses and one averaged figure charges the cheap
-     * seller's customers for the expensive one. `shared/commerce/delivery.ts`
+     * seller's customers for the expensive one. `Shared/commerce/delivery.ts`
      * is the rule and is pure.
      *
      * Both nullable, and null means "not set": a seller with no fee recorded
@@ -512,7 +512,7 @@ export const vendors = pgTable(
      * A band rather than hours, because that is what a seller can honestly
      * commit to. Null says nothing, and nothing is what the page shows — a
      * default would be NetLet promising on a seller's behalf.
-     * `shared/commerce/deliverySpeed.ts` is the rule.
+     * `Shared/commerce/deliverySpeed.ts` is the rule.
      */
     deliverySpeed: varchar("delivery_speed", { length: 20 }),
     /**
@@ -581,7 +581,7 @@ export const vendors = pgTable(
     description: text("description"),
     descriptionAr: text("description_ar"),
     logoUrl: text("logo_url"),
-    /** One of the six governorates, by the id in `shared/customer.ts`. */
+    /** One of the six governorates, by the id in `Shared/customer.ts`. */
     governorate: varchar("governorate", { length: 40 }),
     addressLine: text("address_line"),
     /** Kuwait trade licence. A string, never a number — it carries leading zeros. */
@@ -698,7 +698,7 @@ export const products = pgTable(
      * "no opinion about this one" are different instructions, and a boolean
      * defaulting to false would lose the second. A seller who will move on a
      * sofa and not on batteries needs both. `negotiable()` in
-     * `shared/commerce/priceOffers.ts` resolves the pair.
+     * `Shared/commerce/priceOffers.ts` resolves the pair.
      */
     acceptsOffers: boolean("accepts_offers"),
     /**
@@ -716,7 +716,7 @@ export const products = pgTable(
      * A class the seller picks rather than dimensions, because a class is what
      * they can answer without a tape measure and it captures shape as well as
      * bulk — a mattress is light and still needs a van. Weight is the
-     * fallback where there is no class, and `shared/commerce/vehicle.ts` is
+     * fallback where there is no class, and `Shared/commerce/vehicle.ts` is
      * the rule. Null is a real answer: unknown beats guessing small, which is
      * how a sofa gets dispatched on a motorcycle.
      */
@@ -736,7 +736,7 @@ export const products = pgTable(
     /**
      * The seller's size chart (3.1.20), or null for none — which is nearly
      * every product. JSON because a chart's columns are the measurements the
-     * seller chose; `shared/commerce/sizeGuide.ts` is what may be stored here.
+     * seller chose; `Shared/commerce/sizeGuide.ts` is what may be stored here.
      */
     sizeChart: jsonb("size_chart").$type<SizeChart | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -787,7 +787,7 @@ export const productVariants = pgTable(
      *
      * The allowance is also the flag. "May be pre-ordered" and "has allowance
      * left" are one question, and two columns that must agree eventually do
-     * not. `shared/commerce/preorder.ts` is the rule.
+     * not. `Shared/commerce/preorder.ts` is the rule.
      */
     preorderStock: integer("preorder_stock").notNull().default(0),
     /** When it is expected. Null means the vendor has not committed to a date. */
@@ -797,13 +797,13 @@ export const productVariants = pgTable(
      * for the seller's own. The column is the fact — there is no separate
      * "fulfilled by" flag to disagree with it. While set, only NetLet's counts
      * change the stock, and a sale off it is NetLet's to pick and pack.
-     * `shared/commerce/netletFulfilment.ts`.
+     * `Shared/commerce/netletFulfilment.ts`.
      */
     centreId: integer("centre_id").references((): AnyPgColumn => fulfilmentCentres.id, { onDelete: "restrict" }),
     /**
      * What a member pays (4.1), set by the seller below the shelf. Null is no
      * member price. An advertised saving, so it reaches a member only while
-     * the store's discount permit is valid. `shared/commerce/membership.ts`.
+     * the store's discount permit is valid. `Shared/commerce/membership.ts`.
      */
     memberPrice: numeric("member_price", { precision: 12, scale: 3 }),
     /*
@@ -1065,7 +1065,7 @@ export const courierMembers = pgTable(
 /**
  * A conversation between a shopper and NetLet itself (3.5.1) — not a seller,
  * whose conversations are `conversations`. The rules are
- * `shared/commerce/support.ts`. Read state is a timestamp per side, so unread
+ * `Shared/commerce/support.ts`. Read state is a timestamp per side, so unread
  * is derived, the way the seller chat's is.
  */
 export const supportConversations = pgTable(
@@ -1116,7 +1116,7 @@ export const supportMessages = pgTable(
 /**
  * A NetLet membership (4.1): one row per grant, queued end to end. `source`
  * is how it was got — `granted` by NetLet today; `paid` when payments exist.
- * The rules are `shared/commerce/membership.ts`.
+ * The rules are `Shared/commerce/membership.ts`.
  */
 export const memberships = pgTable(
   "memberships",
@@ -1265,7 +1265,7 @@ export const mediaFiles = pgTable(
 /**
  * Where a driver is now (3.4.3) — one row per driver, overwritten, never a
  * trail. Written only while the driver has chosen to share from the dispatch
- * board, and deleted when they stop. The rules are `shared/commerce/tracking.ts`.
+ * board, and deleted when they stop. The rules are `Shared/commerce/tracking.ts`.
  */
 export const driverPositions = pgTable("driver_positions", {
   userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
@@ -1308,12 +1308,12 @@ export const customerAddresses = pgTable(
     contactName: varchar("contact_name", { length: 160 }),
     /** Kept as typed, including the +965: formatting a phone number loses it. */
     contactPhone: varchar("contact_phone", { length: 40 }),
-    /** One of the six governorates, by the id in `shared/customer.ts`. */
+    /** One of the six governorates, by the id in `Shared/customer.ts`. */
     governorate: varchar("governorate", { length: 32 }),
     addressLine: varchar("address_line", { length: 300 }).notNull(),
     addressNotes: varchar("address_notes", { length: 300 }),
     /*
-     * The address as its parts (`shared/commerce/kuwaitAddress.ts`): what a
+     * The address as its parts (`Shared/commerce/kuwaitAddress.ts`): what a
      * driver finds a door by. Nullable, because every address saved before
      * them has only its line; when they are given, `address_line` is composed
      * from them, so every reader of the line keeps working.
@@ -1488,7 +1488,7 @@ export const reviews = pgTable(
     vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
     /** Copied, so an old review still names what it was about. */
     productTitle: varchar("product_title", { length: 255 }).notNull(),
-    /** One to five whole stars. The floor and ceiling are in `shared/`. */
+    /** One to five whole stars. The floor and ceiling are in `Shared/`. */
     rating: integer("rating").notNull(),
     title: varchar("title", { length: 120 }),
     body: text("body"),
@@ -1518,7 +1518,7 @@ export const reviews = pgTable(
 /**
  * A return or an exchange, asked for one order line (3.2.8, 3.5.2).
  *
- * The rules are `shared/commerce/returnRequests.ts`. The row is the operation:
+ * The rules are `Shared/commerce/returnRequests.ts`. The row is the operation:
  * who asked, why, what was decided and by whom (`auto`, `seller` or `admin`),
  * when the item left the shopper, and — once it is back — what was refunded or
  * which replacement order went out. **The refund is frozen here** from the
@@ -1576,7 +1576,7 @@ export const returnRequests = pgTable(
  * default copied into every installation.
  *
  * The key is text rather than an enum: the list of features lives in
- * `shared/features.ts`, and a build that drops one should read past its row
+ * `Shared/features.ts`, and a build that drops one should read past its row
  * rather than fail on a value its enum no longer has.
  */
 export const featureSwitches = pgTable("feature_switches", {
@@ -1826,7 +1826,7 @@ export const damageClaims = pgTable(
 /**
  * A shopper asking the seller for a better price, and the seller's answer.
  *
- * Requirement 3.1.13. The rules are in `shared/commerce/priceOffers.ts` and are
+ * Requirement 3.1.13. The rules are in `Shared/commerce/priceOffers.ts` and are
  * pure; this is where the negotiation lives.
  *
  * **Four stored states, two derived.** `expired` comes from `expires_at` and
@@ -2229,7 +2229,7 @@ export const orderItems = pgTable(
  * `vendor_id` is null for one NetLet put together, which is how a bundle spans
  * two shops. A seller's own bundle carries theirs — and that is also whose
  * Ministry discount permit governs it, because a bundle price is an advertised
- * saving and `shared/commerce/bundles.ts` says so.
+ * saving and `Shared/commerce/bundles.ts` says so.
  */
 export const bundles = pgTable(
   "bundles",
@@ -2354,7 +2354,7 @@ export const vendorApplications = pgTable(
 /**
  * A document an applicant uploaded with their application (3.3.1) — the trade
  * licence, the signatory's civil ID, the bank's IBAN letter — each decided on
- * by an administrator. `shared/inventory/applicationDocuments.ts` is the rule.
+ * by an administrator. `Shared/inventory/applicationDocuments.ts` is the rule.
  *
  * **Its own table, never `/media`.** Everything under `/media` is public under
  * a random id and is a JPEG or a WebP by design; a civil ID must not be public
@@ -2583,7 +2583,7 @@ export const orderItemAddons = pgTable(
  * Who brought whom, and the points that came of it.
  *
  * Requirements 3.1.14 (two tracks) and 3.1.15 (spend the points or cash out at
- * a tenth). The arithmetic is in `shared/commerce/referral.ts` and is pure;
+ * a tenth). The arithmetic is in `Shared/commerce/referral.ts` and is pure;
  * these two tables are the record it sums.
  *
  * **A referral is a fact about the referred account, so the unique index is on
@@ -2697,7 +2697,7 @@ export const pointEntries = pgTable(
 
 /**
  * A standing order (3.1.19): this variant, this many, to this address, every
- * so many weeks. The rules are `shared/commerce/subscriptions.ts`.
+ * so many weeks. The rules are `Shared/commerce/subscriptions.ts`.
  *
  * `price_ceiling` is the per-unit price the shopper agreed to; a run never
  * charges above it and pauses instead. The address is a reference rather than
@@ -2741,7 +2741,7 @@ export const subscriptions = pgTable(
 
 /**
  * A seller's booked placement (3.3.15): one product, one place, a run of
- * Kuwaiti days. The rules are `shared/commerce/adBookings.ts`.
+ * Kuwaiti days. The rules are `Shared/commerce/adBookings.ts`.
  *
  * The rate is frozen here for the reason an order's commission rate is, and
  * the product's title beside it so the booking still reads after the product
@@ -2770,7 +2770,7 @@ export const adBookings = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     /*
      * A `home_banner` booking's picture and words, and NetLet's review of them
-     * (`shared/commerce/adBookings.ts`). Null on a shelf placement. The status
+     * (`Shared/commerce/adBookings.ts`). Null on a shelf placement. The status
      * is varchar rather than an enum because only a banner has one, and
      * `pending → approved | rejected` is the whole of it.
      */

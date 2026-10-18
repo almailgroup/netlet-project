@@ -13,9 +13,9 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { debtorProblem } from "../shared/commerce/payoutFile.js";
-import { supportNumber } from "../shared/commerce/support.js";
-import { NETLET_CONTACT, SOCIAL_PLATFORMS, contactEmail, socialLink } from "../shared/commerce/contact.js";
+import { debtorProblem } from "../Shared/commerce/payoutFile.js";
+import { supportNumber } from "../Shared/commerce/support.js";
+import { NETLET_CONTACT, SOCIAL_PLATFORMS, contactEmail, socialLink } from "../Shared/commerce/contact.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 

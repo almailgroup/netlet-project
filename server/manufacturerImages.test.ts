@@ -2,7 +2,7 @@
  * Pulling manufacturer images (3.1.10), the server half, against a fake
  * internet and a real Postgres.
  *
- * The rules are proved pure in `shared/commerce/manufacturerImages.test.ts`.
+ * The rules are proved pure in `Shared/commerce/manufacturerImages.test.ts`.
  * What needs the server is that the address check sits on the lookup the
  * connection uses, that redirects are asked again, that the ceilings hold,
  * that only an image's own bytes make it an image, and that importing is a
@@ -17,8 +17,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authAttempts } from "../drizzle/schema.js";
-import { MAX_IMPORTS_PER_ACCOUNT } from "../shared/auth/rateLimit.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { MAX_IMPORTS_PER_ACCOUNT } from "../Shared/auth/rateLimit.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let mod: typeof import("./manufacturerImages.js");

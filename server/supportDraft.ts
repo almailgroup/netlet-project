@@ -2,15 +2,15 @@
  * Asking a model to draft a support reply (3.5.1).
  *
  * The rules — what leaves NetLet, what is withheld, why the conversation is
- * fenced — are `shared/commerce/supportDraft.ts` and are pure. This is the
+ * fenced — are `Shared/commerce/supportDraft.ts` and are pure. This is the
  * call, its deadline, and the single answer every failure lands on. Gemini
  * writes the draft, through the AI gateway (`server/gemini.ts`).
  */
 import { askModel, modelAvailable } from "./gemini.js";
 import { draftMaterial } from "./support.js";
-import { clipDraft, draftBrief, draftPrompt, draftable } from "../shared/commerce/supportDraft.js";
-import type { Actor } from "../shared/inventory/permissions.js";
-import { assertCan } from "../shared/inventory/permissions.js";
+import { clipDraft, draftBrief, draftPrompt, draftable } from "../Shared/commerce/supportDraft.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
+import { assertCan } from "../Shared/inventory/permissions.js";
 
 /** Whether a draft can be asked for at all: the gateway set up, and model calls switched on (2.3). */
 export async function draftAvailable(actor: Actor): Promise<boolean> {

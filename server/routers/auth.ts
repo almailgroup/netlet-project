@@ -20,10 +20,10 @@
  * The session cookie is httpOnly, so the token is never readable from
  * JavaScript and cannot be exfiltrated by a script injected into the page.
  */
-import { COOKIE_NAME } from "../../shared/const.js";
+import { COOKIE_NAME } from "../../Shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { checkPassword } from "../../shared/auth/passwordStrength.js";
+import { checkPassword } from "../../Shared/auth/passwordStrength.js";
 import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signSession } from "../_core/auth.js";
 import { getSessionCookieOptions } from "../_core/cookies.js";
 import { ENV } from "../_core/env.js";
@@ -45,7 +45,7 @@ import {
   WeakPasswordError,
 } from "../_core/passwordStore.js";
 import { captchaSiteKey, checkCaptcha } from "../_core/captcha.js";
-import { isCodeShaped, normaliseCode } from "../../shared/auth/emailCode.js";
+import { isCodeShaped, normaliseCode } from "../../Shared/auth/emailCode.js";
 import { touchLastSignedIn } from "../db.js";
 import { loadUser, updateUserEmail, updateUserName } from "../profile.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../rateLimit.js";

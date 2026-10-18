@@ -1,6 +1,6 @@
 /**
  * Self-service placements (3.3.15), the database half. The rules are in
- * `shared/commerce/adBookings.ts`; the fee is taken by `server/payoutRuns.ts`.
+ * `Shared/commerce/adBookings.ts`; the fee is taken by `server/payoutRuns.ts`.
  *
  * Outside `db.ts` for the reason `orders.ts` and `payoutRuns.ts` are: a
  * function inside it calls that file's module-local `getDb`, which nothing
@@ -43,15 +43,15 @@ import {
   type AdSlot,
   type BookingProblem,
   type BookingState,
-} from "../shared/commerce/adBookings.js";
-import { contactFindings } from "../shared/commerce/contactFilter.js";
-import { mediaPath, type StoredType } from "../shared/commerce/media.js";
-import { discountAllowed } from "../shared/inventory/discountLicence.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { fromFils, toFils } from "../shared/money.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
-import type { LocalePick } from "../shared/commerce/fromInventory.js";
-import type { Product } from "../shared/commerce/types.js";
+} from "../Shared/commerce/adBookings.js";
+import { contactFindings } from "../Shared/commerce/contactFilter.js";
+import { mediaPath, type StoredType } from "../Shared/commerce/media.js";
+import { discountAllowed } from "../Shared/inventory/discountLicence.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { fromFils, toFils } from "../Shared/money.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
+import type { LocalePick } from "../Shared/commerce/fromInventory.js";
+import type { Product } from "../Shared/commerce/types.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { listProductsByIds } from "./catalog.js";

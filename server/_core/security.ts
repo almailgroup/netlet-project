@@ -10,8 +10,8 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import type { Express, RequestHandler } from "express";
 import { ENV } from "./env.js";
-import { COOKIE_NAME } from "../../shared/const.js";
-import { MAP_TILE_ORIGIN } from "../../shared/commerce/geo.js";
+import { COOKIE_NAME } from "../../Shared/const.js";
+import { MAP_TILE_ORIGIN } from "../../Shared/commerce/geo.js";
 import { gatewayConfigured, gatewayOrigin } from "./aiGateway.js";
 
 /**

@@ -7,8 +7,8 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { INBOUND_STATUSES, MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../shared/commerce/netletFulfilment.js";
-import { GOVERNORATES } from "../../shared/inventory/storeProfile.js";
+import { INBOUND_STATUSES, MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../Shared/commerce/netletFulfilment.js";
+import { GOVERNORATES } from "../../Shared/inventory/storeProfile.js";
 import {
   FulfilmentProblem,
   announceShipment,

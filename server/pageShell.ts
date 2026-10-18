@@ -8,9 +8,9 @@
  * product taken down — sends the shell unchanged rather than an error, since
  * the page itself still loads and says what happened.
  */
-import { DEPARTMENTS } from "../shared/commerce/departments.js";
-import { breadcrumbJsonLd, categoriesMeta, departmentMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../shared/seo.js";
-import { headTags, withHead } from "../shared/seoHead.js";
+import { DEPARTMENTS } from "../Shared/commerce/departments.js";
+import { breadcrumbJsonLd, categoriesMeta, departmentMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../Shared/seo.js";
+import { headTags, withHead } from "../Shared/seoHead.js";
 import { describeError } from "./_core/describeError.js";
 import { getProductByHandle, getStorePage } from "./catalog.js";
 

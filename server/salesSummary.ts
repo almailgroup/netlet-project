@@ -1,6 +1,6 @@
 /**
  * The overview's business numbers, from the frozen order lines
- * (`shared/commerce/salesSummary.ts` is the arithmetic).
+ * (`Shared/commerce/salesSummary.ts` is the arithmetic).
  *
  * Scoped in the query, the way payouts are: an administrator reads the whole
  * shop, a store's manager or owner reads the lines their store sold and
@@ -10,9 +10,9 @@
  */
 import { and, eq, gt, gte, ne } from "drizzle-orm";
 import { orderItems, orders, returnRequests } from "../drizzle/schema.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { kuwaitDay } from "../shared/kuwaitDay.js";
-import { summarise, summaryStart, type SalesSummary } from "../shared/commerce/salesSummary.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { kuwaitDay } from "../Shared/kuwaitDay.js";
+import { summarise, summaryStart, type SalesSummary } from "../Shared/commerce/salesSummary.js";
 import { getDb } from "./db.js";
 
 export async function salesSummary(actor: Actor, now = new Date()): Promise<SalesSummary> {

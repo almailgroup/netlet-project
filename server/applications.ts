@@ -1,7 +1,7 @@
 /**
  * Seller self-registration, the half that needs a database.
  *
- * `shared/inventory/sellerApplication.ts` is the rule set and is pure. This is
+ * `Shared/inventory/sellerApplication.ts` is the rule set and is pure. This is
  * what cannot be: keeping one open application per account race-safely, and —
  * the part that matters — turning an approved one into a real store with its
  * owner attached, in a way that leaves nothing half-made if it fails.
@@ -21,15 +21,15 @@ import {
   type ApplicationState,
   type SellerApplication,
   MAX_COMMISSION_NOTE,
-} from "../shared/inventory/sellerApplication.js";
-import { storeSlug } from "../shared/inventory/storeProfile.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+} from "../Shared/inventory/sellerApplication.js";
+import { storeSlug } from "../Shared/inventory/storeProfile.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { getDb } from "./db.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
-import { DEFAULT_COMMISSION_PERCENT } from "../shared/inventory/commission.js";
-import { documentsPending } from "../shared/inventory/applicationDocuments.js";
+import { DEFAULT_COMMISSION_PERCENT } from "../Shared/inventory/commission.js";
+import { documentsPending } from "../Shared/inventory/applicationDocuments.js";
 import { documentFactsFor, pendingCounts } from "./applicationDocuments.js";
 
 /** Every refusal is a key the router turns into a message, never a sentence. */

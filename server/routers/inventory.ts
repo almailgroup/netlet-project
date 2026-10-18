@@ -11,15 +11,15 @@
  */
 import { arabicTitleAvailable, draftArabicTitle } from "../arabicTitle.js";
 import { salesSummary } from "../salesSummary.js";
-import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, percentProblem, restockProblem } from "../../shared/inventory/productBulk.js";
-import { STOCK_REASONS } from "../../shared/inventory/stockMoves.js";
+import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, percentProblem, restockProblem } from "../../Shared/inventory/productBulk.js";
+import { STOCK_REASONS } from "../../Shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
-import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../shared/inventory/storeProfile.js";
+import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../Shared/inventory/storeProfile.js";
 import { z } from "zod";
 import { lastDay, percentSchema, rowId } from "../_core/schemas.js";
-import { MAX_SUBSCRIPTION_PERCENT } from "../../shared/commerce/subscriptions.js";
-import { acceptableImageUrl } from "../../shared/commerce/media.js";
-import { SELL_UNITS } from "../../shared/commerce/units.js";
+import { MAX_SUBSCRIPTION_PERCENT } from "../../Shared/commerce/subscriptions.js";
+import { acceptableImageUrl } from "../../Shared/commerce/media.js";
+import { SELL_UNITS } from "../../Shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
 import {
   addMemberByEmail,
@@ -65,12 +65,12 @@ import {
   updateProduct,
   vendorHealthFor,
 } from "../inventory.js";
-import { assertCan, VENDOR_ROLES } from "../../shared/inventory/permissions.js";
+import { assertCan, VENDOR_ROLES } from "../../Shared/inventory/permissions.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../audit.js";
-import { AWARDED_BADGES } from "../../shared/inventory/vendorHealth.js";
-import { DELIVERY_SPEEDS } from "../../shared/commerce/deliverySpeed.js";
-import { SIZE_CLASSES } from "../../shared/commerce/vehicle.js";
-import { ADDON_KINDS } from "../../shared/commerce/addons.js";
+import { AWARDED_BADGES } from "../../Shared/inventory/vendorHealth.js";
+import { DELIVERY_SPEEDS } from "../../Shared/commerce/deliverySpeed.js";
+import { SIZE_CLASSES } from "../../Shared/commerce/vehicle.js";
+import { ADDON_KINDS } from "../../Shared/commerce/addons.js";
 import { modelConcernFor, modelReviewAvailable, reviewProducts } from "../productReview.js";
 import {
   ApplicationError,
@@ -83,13 +83,13 @@ import {
   submitApplication,
 } from "../applications.js";
 import { DocumentRefused, deleteDocument, documentsFor, myDocuments, reviewDocument } from "../applicationDocuments.js";
-import { DOCUMENT_NOTE_MAX } from "../../shared/inventory/applicationDocuments.js";
-import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../shared/inventory/sellerApplication.js";
+import { DOCUMENT_NOTE_MAX } from "../../Shared/inventory/applicationDocuments.js";
+import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../Shared/inventory/sellerApplication.js";
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../bundles.js";
 import { deleteProduct, deletionCheck } from "../productDeletion.js";
 import { moveProductToVendor } from "../productMove.js";
-import { BULK_UPLOAD_LIMIT } from "../../shared/inventory/bulkUpload.js";
-import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../shared/commerce/sizeGuide.js";
+import { BULK_UPLOAD_LIMIT } from "../../Shared/inventory/bulkUpload.js";
+import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../Shared/commerce/sizeGuide.js";
 
 /** One size's range for one measure, in centimetres. */
 const sizeRange = z.tuple([z.number().finite(), z.number().finite()]);
@@ -205,11 +205,11 @@ export const storeDetails = {
   licenceNumber: z.string().trim().max(60).nullish(),
   payoutIban: blankOr(z.string().trim().refine(isValidIban, "admin.invalidIban")),
   /* The Ministry of Commerce discount permit. Kuwaiti law requires one before
-     a shop may advertise a saving — `shared/inventory/discountLicence.ts`. */
+     a shop may advertise a saving — `Shared/inventory/discountLicence.ts`. */
   discountLicenceNumber: z.string().trim().max(120).nullish(),
   discountLicenceExpiresAt: lastDay.nullish(),
   /* What this store charges to deliver (3.2.4). Blank or absent is free —
-     `shared/commerce/delivery.ts` treats an unset fee as no charge, which
+     `Shared/commerce/delivery.ts` treats an unset fee as no charge, which
      errs toward the shopper rather than inventing a price. */
   deliveryFlat: blankOr(moneySchema),
   deliveryFreeOver: blankOr(moneySchema),

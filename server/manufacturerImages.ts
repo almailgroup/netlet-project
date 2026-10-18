@@ -1,7 +1,7 @@
 /**
  * Pulling a manufacturer's product images (3.1.10), the half that goes out to
  * the internet. The rules — which URLs, which addresses, which images — are
- * `shared/commerce/manufacturerImages.ts`.
+ * `Shared/commerce/manufacturerImages.ts`.
  *
  * **The address is checked on the lookup the connection uses.** Resolving a
  * name, checking the answer and then connecting would resolve it twice, and a
@@ -41,8 +41,8 @@ import {
   type Candidate,
   type RemoteImageType,
   type UrlProblem,
-} from "../shared/commerce/manufacturerImages.js";
-import { can, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/manufacturerImages.js";
+import { can, type Actor } from "../Shared/inventory/permissions.js";
 import { checkImportAllowed, recordImport } from "./rateLimit.js";
 
 export type ImportProblem =

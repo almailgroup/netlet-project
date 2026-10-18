@@ -1,7 +1,7 @@
 /**
  * The finance panel's reads.
  *
- * The arithmetic is pure in `shared/commerce/finance.ts`. This is the part
+ * The arithmetic is pure in `Shared/commerce/finance.ts`. This is the part
  * that cannot be: pulling the frozen lines out of `order_items` and joining
  * them to the order that says whether the money actually moved.
  *
@@ -17,8 +17,8 @@ import {
   byVendor,
   summarise,
   type FinanceLine,
-} from "../shared/commerce/finance.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/finance.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 /**

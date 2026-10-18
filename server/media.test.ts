@@ -1,7 +1,7 @@
 /**
  * Uploaded photos against a real Postgres (3.3.4).
  *
- * What a file is and the fixes are proved pure in `shared/commerce/media.test.ts`.
+ * What a file is and the fixes are proved pure in `Shared/commerce/media.test.ts`.
  * What needs a database is who may store one, that the bytes come back exactly
  * under the name they were stored with and no other, and the hourly ceiling.
  */
@@ -11,8 +11,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mediaFiles, users, vendors } from "../drizzle/schema.js";
-import { MAX_UPLOADS_PER_HOUR } from "../shared/commerce/media.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { MAX_UPLOADS_PER_HOUR } from "../Shared/commerce/media.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let media: typeof import("./media.js");

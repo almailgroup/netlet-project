@@ -10,7 +10,7 @@
  * with the clip first in the order, the "3 / 5" counter and the picture on
  * screen stopped agreeing about which item this was.
  *
- * That is the failure `shared/commerce/types.ts` already warns about in prose:
+ * That is the failure `Shared/commerce/types.ts` already warns about in prose:
  * "the moment a video is in the set, image 4 would otherwise mean two different
  * things on the two surfaces". It happened anyway, because the derivation was
  * written out at each surface and the count was taken somewhere else. One

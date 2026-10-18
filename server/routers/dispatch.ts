@@ -1,7 +1,7 @@
 /**
  * The dispatch board's API, for the delivery company and the admin.
  *
- * `shared/commerce/parcels.ts` decides what a parcel is and what a driver may
+ * `Shared/commerce/parcels.ts` decides what a parcel is and what a driver may
  * do with one; `server/dispatch.ts` holds the queries and the guards. This is
  * only the translation layer: resolve who is asking, and turn a refusal the
  * caller can act on into a 400 carrying its message key rather than a sentence,
@@ -38,7 +38,7 @@ import {
   ParcelCareRefused,
   respondToClaim,
 } from "../parcelCare.js";
-import { MAX_CLAIM_DESCRIPTION, MAX_CLAIM_RESPONSE } from "../../shared/commerce/damageClaims.js";
+import { MAX_CLAIM_DESCRIPTION, MAX_CLAIM_RESPONSE } from "../../Shared/commerce/damageClaims.js";
 import { protectedProcedure, router } from "../_core/trpc.js";
 
 /** A parcel has no id of its own: it is named by its order and its key. */

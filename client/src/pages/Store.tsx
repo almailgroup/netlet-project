@@ -11,7 +11,7 @@
  * description, the name and the logo are what the store gave NetLet; the
  * rating counts only from five visible reviews (the High Rating floor), the
  * badges are `storefrontBadges`' and the delivery terms are the ones checkout
- * charges by (`shared/commerce/delivery.ts`). Nothing private about the store
+ * charges by (`Shared/commerce/delivery.ts`). Nothing private about the store
  * reaches the page: `getStorePage` never selects its contact details, licence
  * numbers, IBAN or commission.
  *

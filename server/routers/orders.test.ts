@@ -1,8 +1,8 @@
 /**
  * The shopper-facing orders router, against a real Postgres.
  *
- * The arithmetic is proved in `shared/commerce/order.test.ts` and the return
- * window in `shared/commerce/returns.test.ts`. What only a database can prove
+ * The arithmetic is proved in `Shared/commerce/order.test.ts` and the return
+ * window in `Shared/commerce/returns.test.ts`. What only a database can prove
  * is the part that matters most here: that one shopper cannot read another's
  * orders. An order id is a serial and a reference is short enough to try, so
  * "show me order 4" has to be refused by the query rather than by the page.

@@ -1,7 +1,7 @@
 /**
  * Gathering what a shopper has told us, and turning it into a rail.
  *
- * The ranking itself is not here — `shared/commerce/taste.ts` is pure and does
+ * The ranking itself is not here — `Shared/commerce/taste.ts` is pure and does
  * that, so it can be argued with in a test. What is here is the part that
  * needs a database (which signals exist, and which products are actually on
  * the shelf) and the part that needs the network (an optional model pass).
@@ -49,8 +49,8 @@ import {
   TASTE_FLOOR,
   type Recommendation,
   type TasteSignal,
-} from "../shared/commerce/taste.js";
-import type { LocalePick } from "../shared/commerce/fromInventory.js";
+} from "../Shared/commerce/taste.js";
+import type { LocalePick } from "../Shared/commerce/fromInventory.js";
 
 /** How wide a net the ranking casts before it is cut to the rail's length. */
 const CANDIDATE_LIMIT = 120;

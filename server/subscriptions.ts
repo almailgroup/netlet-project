@@ -1,6 +1,6 @@
 /**
  * Subscribe & Save (3.1.19), the database half. The rules are in
- * `shared/commerce/subscriptions.ts`.
+ * `Shared/commerce/subscriptions.ts`.
  *
  * **Every query is scoped by the shopper inside the data layer.** A
  * subscription id is a serial, so "pause subscription 4" has to be refused by
@@ -31,7 +31,7 @@ import {
   users,
   vendors,
 } from "../drizzle/schema.js";
-import { addDays, kuwaitToday } from "../shared/commerce/adBookings.js";
+import { addDays, kuwaitToday } from "../Shared/commerce/adBookings.js";
 import {
   MAX_SUBSCRIPTIONS,
   nextRunAfter,
@@ -43,8 +43,8 @@ import {
   type RunOutcome,
   type SubscriptionInterval,
   type SubscriptionProblem,
-} from "../shared/commerce/subscriptions.js";
-import { discountAllowed } from "../shared/inventory/discountLicence.js";
+} from "../Shared/commerce/subscriptions.js";
+import { discountAllowed } from "../Shared/inventory/discountLicence.js";
 import { getDb } from "./db.js";
 import { OrderRefused, placeOrder } from "./orders.js";
 import { violatesUnique } from "./_core/describeError.js";

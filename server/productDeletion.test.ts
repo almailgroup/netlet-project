@@ -36,7 +36,7 @@ import {
   wishlistItems,
   wishlists,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let deletion: typeof import("./productDeletion");

@@ -1,7 +1,7 @@
 /**
  * Discount codes and gift cards, the half that needs a database.
  *
- * `shared/commerce/vouchers.ts` is the rule set and is pure. This is what
+ * `Shared/commerce/vouchers.ts` is the rule set and is pure. This is what
  * cannot be: counting how often a code has been used and by whom, taking a
  * gift card's balance race-safely, and minting both.
  *
@@ -21,8 +21,8 @@ import {
   type VoucherKind,
   type VoucherRefusal,
   type VoucherRefusalGift,
-} from "../shared/commerce/vouchers.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/vouchers.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

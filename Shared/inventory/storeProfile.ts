@@ -1,7 +1,7 @@
 /**
  * A store's own details, and the rules for them.
  *
- * Pure, like the rest of `shared/inventory`, so the admin form and the server
+ * Pure, like the rest of `Shared/inventory`, so the admin form and the server
  * agree about what a valid store looks like without the form having to guess.
  *
  * Everything here is *optional* on a vendor row. An admin opening a store
@@ -12,7 +12,7 @@
  * one, because it looks done.
  */
 
-/** The six governorates, matching the delivery zones in `shared/customer.ts`. */
+/** The six governorates, matching the delivery zones in `Shared/customer.ts`. */
 export const GOVERNORATES = [
   "capital",
   "hawalli",

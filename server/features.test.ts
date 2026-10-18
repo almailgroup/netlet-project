@@ -13,7 +13,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { auditLog, featureSwitches, productVariants, products, users, vendorMembers, vendors, type User } from "../drizzle/schema.js";
-import { FEATURE_KEYS, FEATURES } from "../shared/features.js";
+import { FEATURE_KEYS, FEATURES } from "../Shared/features.js";
 import type { TrpcContext } from "./_core/context.js";
 
 let db: ReturnType<typeof drizzle>;

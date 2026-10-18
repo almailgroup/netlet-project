@@ -1,7 +1,7 @@
 /**
  * A seller's photo, fixed and made ready to store (3.3.4).
  *
- * The decisions are `shared/commerce/media.ts` — which border is uniform, where
+ * The decisions are `Shared/commerce/media.ts` — which border is uniform, where
  * the product is, whether the photo is flat — and this applies them on a
  * canvas: trim, square on the background, level, shrink to `MAX_EDGE`, and
  * re-encode, which also drops the camera's metadata, location included.

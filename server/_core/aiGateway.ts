@@ -6,7 +6,7 @@
  */
 import { createHmac } from "node:crypto";
 import { ENV } from "./env.js";
-import { MIN_SECRET_LENGTH } from "../../shared/ai/gateway.js";
+import { MIN_SECRET_LENGTH } from "../../Shared/ai/gateway.js";
 
 /**
  * The gateway's origin, if it is one a browser may be sent to: https, or

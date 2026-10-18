@@ -1,7 +1,7 @@
 /**
  * NetLet membership (4.1) against a real Postgres.
  *
- * The rules are proved pure in `shared/commerce/membership.test.ts` and
+ * The rules are proved pure in `Shared/commerce/membership.test.ts` and
  * `shopperPrice.test.ts`. What needs a database is that the bag and checkout
  * agree for a member — price, delivery and total — that the permit gate holds
  * on the read, that the order freezes what it was given, and that granting is
@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { cartItems, carts, orderItems, orders, productVariants, products, users, vendors } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let membership: typeof import("./membership.js");

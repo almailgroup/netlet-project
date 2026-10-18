@@ -1,6 +1,6 @@
 /**
  * The feature switchboard's database half (2.3). The rules are in
- * `shared/features.ts`; this reads and writes the switches.
+ * `Shared/features.ts`; this reads and writes the switches.
  *
  * **Read on every guarded call, never cached in the process.** NetLet runs as
  * a pool of short-lived instances, so a cache here would be one per instance:
@@ -14,10 +14,10 @@
  */
 import { eq, isNotNull, sql } from "drizzle-orm";
 import { gatewayConfigured } from "./_core/aiGateway.js";
-import type { MessageKey } from "../shared/i18n/dictionary.js";
+import type { MessageKey } from "../Shared/i18n/dictionary.js";
 import { featureSwitches, orderItems, users } from "../drizzle/schema.js";
-import { FEATURE_KEYS, FEATURES, resolveStates, type FeatureKey, type FeatureStates } from "../shared/features.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { FEATURE_KEYS, FEATURES, resolveStates, type FeatureKey, type FeatureStates } from "../Shared/features.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { getDb } from "./db.js";

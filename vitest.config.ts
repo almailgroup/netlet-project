@@ -8,14 +8,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(templateRoot, "client", "src"),
-      "@shared": path.resolve(templateRoot, "shared"),
+      "@shared": path.resolve(templateRoot, "Shared"),
       "@assets": path.resolve(templateRoot, "attached_assets"),
     },
   },
   test: {
     environment: "node",
     // Every layer, so a test cannot be silently skipped by living beside the
-    // code it covers. The previous server-only glob is why shared/ tests never
+    // code it covers. The previous server-only glob is why Shared/ tests never
     // ran and why unrelated suites were filed under server/.
     /*
      * `scripts/` is in the list because the things in it are code: the
@@ -26,6 +26,6 @@ export default defineConfig({
      */
     /* `workers/` holds the AI gateway, a Cloudflare Worker that is deployed
        on its own and would otherwise have no tests anybody runs. */
-    include: ["{server,shared,client,scripts,workers}/**/*.{test,spec}.{ts,tsx}"],
+    include: ["{server,Shared,client,scripts,workers}/**/*.{test,spec}.{ts,tsx}"],
   },
 });

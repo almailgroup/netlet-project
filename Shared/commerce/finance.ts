@@ -46,7 +46,7 @@ import { addMoney, fromFils, subtractMoney, toFils } from "../money.js";
 /**
  * The payment states where money actually moved.
  *
- * The same pair `shared/commerce/reviews.ts` calls paid, and for the same
+ * The same pair `Shared/commerce/reviews.ts` calls paid, and for the same
  * reason: `refunded` means it *was* paid, so the sale happened and then
  * reversed. A `pending_payment` order is an intention and belongs in no
  * financial total — counting it would report revenue from a basket somebody

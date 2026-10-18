@@ -1,8 +1,8 @@
 /**
  * After the door: rating a delivery (3.4.4) and claiming for damage (3.4.2).
  *
- * The rules are pure and live in `shared/commerce/deliveryRatings.ts` and
- * `shared/commerce/damageClaims.ts`; this is the part that needs a database.
+ * The rules are pure and live in `Shared/commerce/deliveryRatings.ts` and
+ * `Shared/commerce/damageClaims.ts`; this is the part that needs a database.
  * Outside `db.ts` for the reason every testable module is.
  *
  * **Both start from a parcel re-derived here**, never from one the caller
@@ -19,7 +19,7 @@
  */
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { couriers, damageClaims, deliveryRatings, orderItems, orders } from "../drizzle/schema.js";
-import { parcelsOf, type Parcel, type ParcelLine } from "../shared/commerce/parcels.js";
+import { parcelsOf, type Parcel, type ParcelLine } from "../Shared/commerce/parcels.js";
 import {
   cleanDeliveryComment,
   deliveryRatingState,
@@ -27,7 +27,7 @@ import {
   parcelArrivedAt,
   scoresByCarrier,
   type DeliveryRatingState,
-} from "../shared/commerce/deliveryRatings.js";
+} from "../Shared/commerce/deliveryRatings.js";
 import {
   amountRefusal,
   claimCeiling,
@@ -39,8 +39,8 @@ import {
   MAX_CLAIM_RESPONSE,
   type ClaimFiler,
   type ClaimRefusal,
-} from "../shared/commerce/damageClaims.js";
-import { assertCan, readableCouriers, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/damageClaims.js";
+import { assertCan, readableCouriers, type Actor } from "../Shared/inventory/permissions.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";

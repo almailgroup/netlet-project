@@ -1,6 +1,6 @@
 /**
  * Seller application documents (3.3.1), the database half. The rules are
- * `shared/inventory/applicationDocuments.ts`; the upload and download routes
+ * `Shared/inventory/applicationDocuments.ts`; the upload and download routes
  * are in `server/_core/app.ts`.
  *
  * **Who may read one is decided in the query.** The applicant reaches a
@@ -26,9 +26,9 @@ import {
   type DocumentProblem,
   type DocumentStatus,
   type DocumentType,
-} from "../shared/inventory/applicationDocuments.js";
-import { editableByApplicant, type ApplicationState } from "../shared/inventory/sellerApplication.js";
-import { assertCan, can, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/inventory/applicationDocuments.js";
+import { editableByApplicant, type ApplicationState } from "../Shared/inventory/sellerApplication.js";
+import { assertCan, can, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 export type DocumentRefusal =

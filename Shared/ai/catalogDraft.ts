@@ -64,7 +64,7 @@ export const CATALOG_RESPONSE_SCHEMA = {
 /**
  * The listing rule for contact details: the chat's filter, except that an
  * unbroken run of nine or more digits is a barcode or a model number in a
- * listing rather than a phone (`shared/inventory/productReview.ts`).
+ * listing rather than a phone (`Shared/inventory/productReview.ts`).
  */
 export function carriesContact(text: string): boolean {
   const productCode = /(?<!\d)\d{9,}(?!\d)/.test(text);

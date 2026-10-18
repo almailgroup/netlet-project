@@ -2,7 +2,7 @@
  * Talking to NetLet against a real Postgres (3.5.1).
  *
  * The state machine and the automatic answer are proved pure in
- * `shared/commerce/support.test.ts`. What needs a database is that the answer
+ * `Shared/commerce/support.test.ts`. What needs a database is that the answer
  * is built from the shopper's own order and nobody else's, that each side sees
  * what it should, and that answering is NetLet's alone.
  */
@@ -13,8 +13,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cartItems, carts, orderItems, orders, productVariants, products, supportConversations, supportMessages, users, vendors } from "../drizzle/schema.js";
-import { MAX_OPEN_CONVERSATIONS } from "../shared/commerce/support.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { MAX_OPEN_CONVERSATIONS } from "../Shared/commerce/support.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let support: typeof import("./support.js");

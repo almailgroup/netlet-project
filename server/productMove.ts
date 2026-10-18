@@ -45,9 +45,9 @@ import {
   productVariants,
   vendors,
 } from "../drizzle/schema.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { kuwaitToday } from "../shared/commerce/adBookings.js";
-import type { MessageKey } from "../shared/i18n/dictionary.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { kuwaitToday } from "../Shared/commerce/adBookings.js";
+import type { MessageKey } from "../Shared/i18n/dictionary.js";
 import { auditActor } from "./inventory.js";
 import { recordAudit } from "./audit.js";
 import { getDb } from "./db.js";

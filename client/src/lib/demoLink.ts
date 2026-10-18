@@ -313,7 +313,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return requireCart(String(input.cartId));
 
     /* The live search ranks the whole catalogue on the server with the rules in
-       `shared/commerce/search.ts`; here the same rules rank the fixtures. */
+       `Shared/commerce/search.ts`; here the same rules rank the fixtures. */
     case "search.products": {
       const term = String(input.q ?? "").trim();
       const department = typeof input.department === "string" && input.department ? input.department : null;

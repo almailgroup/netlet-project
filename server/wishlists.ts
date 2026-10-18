@@ -1,7 +1,7 @@
 /**
  * Wishlists: the part that needs a database.
  *
- * The rules are `shared/commerce/wishlist.ts` and are pure. What is here is
+ * The rules are `Shared/commerce/wishlist.ts` and are pure. What is here is
  * the reading and the writing, and one thing that is neither: **which columns
  * each caller is allowed to select**. That is the security property of this
  * whole feature and it is enforced in the queries rather than in the router,
@@ -46,7 +46,7 @@ import {
   type OwnerListView,
   type PublicListView,
   type Visibility,
-} from "../shared/commerce/wishlist.js";
+} from "../Shared/commerce/wishlist.js";
 
 /**
  * Why a write was refused, as a code rather than a sentence.

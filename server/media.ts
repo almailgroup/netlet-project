@@ -1,6 +1,6 @@
 /**
  * Uploaded product photos (3.3.4), the database half. The rules — what may be
- * stored and the fixes applied on the way in — are `shared/commerce/media.ts`.
+ * stored and the fixes applied on the way in — are `Shared/commerce/media.ts`.
  *
  * **The bytes are trusted for nothing.** The seller's browser has already
  * fixed and re-encoded the photo, and none of that is relied on here: the type
@@ -16,9 +16,9 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { mediaFiles } from "../drizzle/schema.js";
-import { MAX_UPLOADS_PER_HOUR, mediaPath, sniffImage, uploadProblem, type StoredType, type UploadProblem } from "../shared/commerce/media.js";
-import { urlProblem } from "../shared/commerce/manufacturerImages.js";
-import { can, type Actor } from "../shared/inventory/permissions.js";
+import { MAX_UPLOADS_PER_HOUR, mediaPath, sniffImage, uploadProblem, type StoredType, type UploadProblem } from "../Shared/commerce/media.js";
+import { urlProblem } from "../Shared/commerce/manufacturerImages.js";
+import { can, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 export class MediaError extends Error {

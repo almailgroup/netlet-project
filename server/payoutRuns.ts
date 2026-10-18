@@ -1,6 +1,6 @@
 /**
  * Payout runs (3.3.21), the database half. The rules are in
- * `shared/commerce/payoutRuns.ts`.
+ * `Shared/commerce/payoutRuns.ts`.
  *
  * **Scoped in the query.** A store's manager sees their own batch and their
  * own history; an administrator sees every store's. Recording a payout is
@@ -18,15 +18,15 @@
  */
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { adBookings, fulfilmentCharges, orderItems, orders, payoutFiles, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
-import { bookingRoom, feeAccrued, feeCeiling, kuwaitToday } from "../shared/commerce/adBookings.js";
-import { lineOutcome } from "../shared/commerce/finance.js";
-import { batchFor, chargeReference, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../shared/commerce/payoutRuns.js";
-import { debtorProblem, fileReference, kuwaitDate, MAX_FILE_TRANSFERS, pain001, payoutCsv, type DebtorProblem, type FileTransfer, type PayoutFormat } from "../shared/commerce/payoutFile.js";
-import { payoutDue } from "../shared/commerce/payoutSchedule.js";
-import { isValidIban } from "../shared/inventory/storeProfile.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { fromFils, toFils } from "../shared/money.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+import { bookingRoom, feeAccrued, feeCeiling, kuwaitToday } from "../Shared/commerce/adBookings.js";
+import { lineOutcome } from "../Shared/commerce/finance.js";
+import { batchFor, chargeReference, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../Shared/commerce/payoutRuns.js";
+import { debtorProblem, fileReference, kuwaitDate, MAX_FILE_TRANSFERS, pain001, payoutCsv, type DebtorProblem, type FileTransfer, type PayoutFormat } from "../Shared/commerce/payoutFile.js";
+import { payoutDue } from "../Shared/commerce/payoutSchedule.js";
+import { isValidIban } from "../Shared/inventory/storeProfile.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { fromFils, toFils } from "../Shared/money.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { getDb } from "./db.js";

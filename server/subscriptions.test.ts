@@ -2,7 +2,7 @@
  * Subscribe & Save against a real Postgres (3.1.19).
  *
  * The saving, the ceiling and the cadence are proved pure in
- * `shared/commerce/subscriptions.test.ts`. What needs a database is what a
+ * `Shared/commerce/subscriptions.test.ts`. What needs a database is what a
  * scheduled run actually does: place an ordinary order at the subscriber's
  * price, exactly once however often it is called, and stop — rather than
  * charge more — when the price has moved above what the shopper agreed to.
@@ -28,7 +28,7 @@ import {
   vendors,
   type User,
 } from "../drizzle/schema.js";
-import { addDays, kuwaitToday } from "../shared/commerce/adBookings.js";
+import { addDays, kuwaitToday } from "../Shared/commerce/adBookings.js";
 
 let db: ReturnType<typeof drizzle>;
 let subs: typeof import("./subscriptions.js");

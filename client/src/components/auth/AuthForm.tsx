@@ -20,7 +20,7 @@
  *   moves focus to the first one, and is never greyed out with no reason
  *   beside it.
  * - **A mistyped email domain is offered back** ("Did you mean …@gmail.com?",
- *   `shared/auth/emailTypo.ts`) once typing pauses: an account made at
+ *   `Shared/auth/emailTypo.ts`) once typing pauses: an account made at
  *   `gmial.com` has no way back in once its password is forgotten.
  * - **Nothing appears because a box lost focus.** It did, and a line arriving
  *   above a button as the pointer went down on it moved the button before the

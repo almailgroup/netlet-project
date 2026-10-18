@@ -7,9 +7,9 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { orderItems, orders, vendors } from "../drizzle/schema.js";
-import { helpBrief, HELP_GROUPS } from "../shared/commerce/helpArticles.js";
-import { RETURN_WINDOW_DAYS } from "../shared/commerce/returns.js";
-import { translate } from "../shared/i18n/dictionary.js";
+import { helpBrief, HELP_GROUPS } from "../Shared/commerce/helpArticles.js";
+import { RETURN_WINDOW_DAYS } from "../Shared/commerce/returns.js";
+import { translate } from "../Shared/i18n/dictionary.js";
 
 let db: ReturnType<typeof drizzle>;
 let help: typeof import("./help");

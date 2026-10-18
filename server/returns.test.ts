@@ -1,7 +1,7 @@
 /**
  * Returns and exchanges, through the API against a real Postgres (3.2.8).
  *
- * The decisions are proved pure in `shared/commerce/returnRequests.test.ts`.
+ * The decisions are proved pure in `Shared/commerce/returnRequests.test.ts`.
  * What needs a database is who may do what to whose return, that a refund
  * moves the money every report reads, and that an exchange really sends
  * something — so every call goes through the router as the person it is about.

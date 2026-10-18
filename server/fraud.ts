@@ -1,7 +1,7 @@
 /**
  * Gathering what the fraud signals need to judge an order.
  *
- * Requirement 3.6.5. `shared/commerce/fraudSignals.ts` is the judgement and is
+ * Requirement 3.6.5. `Shared/commerce/fraudSignals.ts` is the judgement and is
  * pure; this is the counting it cannot do — how old the account was, how many
  * other accounts have used that address, how often this one refunds.
  *
@@ -19,8 +19,8 @@
  */
 import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
 import { orderItems, orders, users } from "../drizzle/schema.js";
-import { fraudFlags, riskOf, type Flag, type RiskLevel } from "../shared/commerce/fraudSignals.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { fraudFlags, riskOf, type Flag, type RiskLevel } from "../Shared/commerce/fraudSignals.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 export type OrderRisk = { orderId: number; risk: RiskLevel; flags: Flag[] };

@@ -1,7 +1,7 @@
 /**
  * Fulfilled by NetLet (4.2) against a real Postgres.
  *
- * The rules are proved pure in `shared/commerce/netletFulfilment.test.ts`.
+ * The rules are proved pure in `Shared/commerce/netletFulfilment.test.ts`.
  * What needs a database is the part that moves stock: a receipt hands a
  * variant over and the shop sells from NetLet's shelf, a seller cannot count
  * a shelf they do not stand in front of, a sale freezes whose shelf it came
@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { cartItems, carts, couriers, orderItems, productVariants, products, stockMovements, users, vendors } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let fulfilment: typeof import("./netletFulfilment.js");

@@ -30,7 +30,7 @@
  * otherwise arrive by negotiation.
  *
  * **A personal price is not an advertised discount**, so it needs no Ministry
- * of Commerce permit — `shared/inventory/discountLicence.ts` governs what the
+ * of Commerce permit — `Shared/inventory/discountLicence.ts` governs what the
  * shop *advertises*, and this is a figure quoted to one shopper who asked for
  * it. That is also why it never sets `compareAtPrice`: the strikethrough and
  * the `−27%` badge are the machinery of a public claim, and reusing them here

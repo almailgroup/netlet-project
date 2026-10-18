@@ -18,7 +18,7 @@
  * Kept as a digest with an expiry, compared in constant time, and spent on use.
  */
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
-import { CODE_LENGTH } from "../../shared/auth/emailCode.js";
+import { CODE_LENGTH } from "../../Shared/auth/emailCode.js";
 
 /** As long as Supabase's default, so the two paths feel the same. */
 export const LOCAL_CODE_TTL_MS = 60 * 60 * 1000;

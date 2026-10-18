@@ -16,7 +16,7 @@
  *
  * **Every entry goes somewhere, and every contact is real.** WhatsApp, the
  * phone, the email and the social profiles come from the deployment's own
- * settings (`support.channels`, `shared/commerce/contact.ts`); one that is not
+ * settings (`support.channels`, `Shared/commerce/contact.ts`); one that is not
  * configured is absent rather than a link to nobody, and "Message NetLet" is
  * always there, so the block is never empty. The company line is the
  * invoices' own issuer (`INVOICE_ISSUER_*`), so the footer and the invoice

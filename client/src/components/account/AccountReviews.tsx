@@ -9,7 +9,7 @@
  * makes about an empty table reading as a working one.
  *
  * The eligibility that decides which rows get a form is `eligibilityFor` from
- * `shared/`, the same function the server refuses with — so this page cannot
+ * `Shared/`, the same function the server refuses with — so this page cannot
  * offer a review the API would reject. It sends the *resolved* verdict rather
  * than the ingredients, so the clock and the order status are the server's.
  */

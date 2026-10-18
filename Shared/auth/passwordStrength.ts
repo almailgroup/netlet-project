@@ -6,7 +6,7 @@
  * meter render them. The score exists to drive the bar; the list is the part
  * that actually helps.
  *
- * Pure and in `shared/` for the usual reason: the server enforces the floor
+ * Pure and in `Shared/` for the usual reason: the server enforces the floor
  * and the client draws the meter, and neither should be able to disagree with
  * the other about what a valid password is.
  */

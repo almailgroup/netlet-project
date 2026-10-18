@@ -3,8 +3,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { lastDay } from "./schemas.js";
-import { discountAllowed } from "../../shared/inventory/discountLicence.js";
-import { giftCardRefusal, voucherRefusal } from "../../shared/commerce/vouchers.js";
+import { discountAllowed } from "../../Shared/inventory/discountLicence.js";
+import { giftCardRefusal, voucherRefusal } from "../../Shared/commerce/vouchers.js";
 
 describe("the last day something is good for", () => {
   it("means the whole of that day in Kuwait, not its first second in UTC", () => {

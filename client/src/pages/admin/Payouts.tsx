@@ -11,7 +11,7 @@
  * steps, in this order, because the order is what keeps the ledger true:
  * **prepare** (the figure is frozen and counted as paid), **send** exactly
  * that — by hand or in a bank file — and **mark it sent** with the bank's
- * reference. Marking sent changes no amount; `shared/commerce/payoutFile.ts`
+ * reference. Marking sent changes no amount; `Shared/commerce/payoutFile.ts`
  * has why it used to matter.
  */
 import { useState } from "react";

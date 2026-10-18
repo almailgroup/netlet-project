@@ -1,6 +1,6 @@
 /**
  * Live tracking (3.4.3), the database half. The rules are
- * `shared/commerce/tracking.ts`.
+ * `Shared/commerce/tracking.ts`.
  *
  * Two doors, and each is narrow on purpose:
  *
@@ -15,9 +15,9 @@
  */
 import { and, eq, lt, ne, or } from "drizzle-orm";
 import { courierMembers, couriers, driverPositions, orderItems, orders } from "../drizzle/schema.js";
-import { pinProblem, storedPin, type Pin } from "../shared/commerce/geo.js";
-import { MIN_SHARE_INTERVAL_MS, etaFor, isFresh, type Eta } from "../shared/commerce/tracking.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { pinProblem, storedPin, type Pin } from "../Shared/commerce/geo.js";
+import { MIN_SHARE_INTERVAL_MS, etaFor, isFresh, type Eta } from "../Shared/commerce/tracking.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

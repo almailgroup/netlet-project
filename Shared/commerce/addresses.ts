@@ -61,7 +61,7 @@ export type ShippingAddress = {
   label: string;
   contactName?: string | null;
   contactPhone?: string | null;
-  /** One of the six governorates, by the id in `shared/customer.ts`. */
+  /** One of the six governorates, by the id in `Shared/customer.ts`. */
   governorate?: string | null;
   addressLine?: string | null;
   addressNotes?: string | null;

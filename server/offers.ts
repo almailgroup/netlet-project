@@ -1,7 +1,7 @@
 /**
  * The special-price negotiation's database half.
  *
- * `shared/commerce/priceOffers.ts` is the rule set and is pure. This is the
+ * `Shared/commerce/priceOffers.ts` is the rule set and is pure. This is the
  * part that cannot be — reading the shelf price one last time before a request
  * is recorded, refusing a second open request race-safely, and resolving what
  * a signed-in shopper actually pays.
@@ -28,9 +28,9 @@ import {
   resolveOffer,
   type OfferRow,
   type OfferState,
-} from "../shared/commerce/priceOffers.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+} from "../Shared/commerce/priceOffers.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 

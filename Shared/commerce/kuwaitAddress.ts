@@ -44,7 +44,7 @@ type Area = { en: string; ar: string };
 
 /**
  * The residential and commercial areas of each governorate, by the governorate
- * ids in `shared/customer.ts`. Not exhaustive by design — a shopper whose area
+ * ids in `Shared/customer.ts`. Not exhaustive by design — a shopper whose area
  * is not here chooses "another area" and types it — and kept here rather than
  * in a table, as the departments are, because it changes about once a decade.
  */

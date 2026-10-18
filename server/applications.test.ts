@@ -1,7 +1,7 @@
 /**
  * Seller self-registration, against a real Postgres.
  *
- * The rules are proved pure in `shared/inventory/sellerApplication.test.ts`.
+ * The rules are proved pure in `Shared/inventory/sellerApplication.test.ts`.
  * What is here is everything that cannot be: that one account cannot have two
  * open applications however many tabs try, that approving actually creates a
  * store with its owner attached, that a store nobody can sign into is never
@@ -14,8 +14,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { applicationDocuments, auditLog, users, vendorApplications, vendorMembers, vendors } from "../drizzle/schema.js";
-import { AGREEMENT_VERSION } from "../shared/inventory/sellerApplication.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { AGREEMENT_VERSION } from "../Shared/inventory/sellerApplication.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let apps: typeof import("./applications.js");

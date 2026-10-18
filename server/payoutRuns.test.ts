@@ -1,7 +1,7 @@
 /**
  * Payout runs, through the API against a real Postgres (3.3.21).
  *
- * The batching is proved pure in `shared/commerce/payoutRuns.test.ts`. What
+ * The batching is proved pure in `Shared/commerce/payoutRuns.test.ts`. What
  * needs a database is that a batch assembles itself from what has come due,
  * that recording it is NetLet's alone and happens once, that a refund after a
  * payout comes off the next one, and that a store sees only its own.

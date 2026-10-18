@@ -7,7 +7,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { MAX_URL_LENGTH } from "../../shared/commerce/manufacturerImages.js";
+import { MAX_URL_LENGTH } from "../../Shared/commerce/manufacturerImages.js";
 import { resolveActor } from "../inventory.js";
 import { ImportRefused, scanManufacturerPage } from "../manufacturerImages.js";
 import { protectedProcedure, router } from "../_core/trpc.js";

@@ -2,7 +2,7 @@
  * Rating a delivery (3.4.4) and claiming for damage (3.4.2), through the API
  * against a real Postgres.
  *
- * The windows and the arithmetic are proved pure in `shared/commerce/`. What
+ * The windows and the arithmetic are proved pure in `Shared/commerce/`. What
  * needs a database is who may do what to whose parcel — and that is a rule
  * about *who is asking*, so every call here goes through the router as the
  * person it is about, the way the adoption bug taught this codebase to test.

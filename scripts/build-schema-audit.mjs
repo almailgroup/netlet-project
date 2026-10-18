@@ -124,10 +124,10 @@ if (/DROP (TABLE|TYPE|CONSTRAINT)/i.test(migrationSql)) {
 }
 
 /* The departments are read the way the bootstrap generator reads them. */
-const departmentsSource = readFileSync(path.join(root, "shared/commerce/departments.ts"), "utf-8");
+const departmentsSource = readFileSync(path.join(root, "Shared/commerce/departments.ts"), "utf-8");
 const departments = [...departmentsSource.matchAll(/\{\s*slug:\s*"([^"]+)",\s*name:\s*"[^"]+",\s*nameAr:\s*"[^"]+",\s*position:\s*\d+[^}]*\}/g)]
   .map(([, slug]) => plain(slug, "department"));
-if (!departments.length) refuse("no departments parsed from shared/commerce/departments.ts.");
+if (!departments.length) refuse("no departments parsed from Shared/commerce/departments.ts.");
 
 const quote = value => `'${String(value).replace(/'/g, "''")}'`;
 const count = list => list.reduce((total, table) => total + table, 0);

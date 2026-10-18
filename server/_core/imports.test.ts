@@ -45,7 +45,7 @@ const ALIAS = /\bfrom\s+["'](@shared\/|@\/)/g;
 /** Every `from "./x"` / `from "../x"`, capturing the specifier. */
 const RELATIVE = /\bfrom\s+["'](\.[^"']*)["']/g;
 
-const SCOPE = ["server", "shared", "api", "drizzle"];
+const SCOPE = ["server", "Shared", "api", "drizzle"];
 
 function shippedFiles(): string[] {
   return SCOPE.flatMap(dir => sourceFilesUnder(path.join(ROOT, dir)));

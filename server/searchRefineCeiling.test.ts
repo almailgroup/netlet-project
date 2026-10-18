@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { authAttempts } from "../drizzle/schema.js";
-import { MAX_SEARCH_REFINE_PER_ADDRESS } from "../shared/auth/rateLimit.js";
+import { MAX_SEARCH_REFINE_PER_ADDRESS } from "../Shared/auth/rateLimit.js";
 
 let db: ReturnType<typeof drizzle>;
 let limits: typeof import("./rateLimit.js");

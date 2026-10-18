@@ -1,7 +1,7 @@
 /**
  * The special-price negotiation, against a real Postgres.
  *
- * The rules are proved pure in `shared/commerce/priceOffers.test.ts`. What is
+ * The rules are proved pure in `Shared/commerce/priceOffers.test.ts`. What is
  * here is everything that cannot be: that a second open request is refused by
  * the *index* rather than by a check two tabs can race past, that one shopper
  * cannot read or withdraw another's, that a vendor cannot answer a request
@@ -17,7 +17,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cartItems, carts, orders as ordersTable, priceOffers, products, productVariants, users, vendors,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let offers: typeof import("./offers.js");

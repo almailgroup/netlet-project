@@ -1,7 +1,7 @@
 /**
  * Fulfilled by NetLet (4.2), the database half. The rules — one shelf per
  * variant, only NetLet counts NetLet's shelf, who may move a line — are
- * `shared/commerce/netletFulfilment.ts`.
+ * `Shared/commerce/netletFulfilment.ts`.
  *
  * Three parties and three capabilities. A seller's manager **sends**
  * (`fulfilment.send`, scoped to their own store in every query); NetLet
@@ -27,10 +27,10 @@ import {
   stockMovements,
   vendors,
 } from "../drizzle/schema.js";
-import { MAX_INBOUND_LINES, inboundProblem, inboundReference, packCharge, receiptGap, validCount, validPackRate, type InboundStatus } from "../shared/commerce/netletFulfilment.js";
-import { chargeReference } from "../shared/commerce/payoutRuns.js";
-import { assertCan, can, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+import { MAX_INBOUND_LINES, inboundProblem, inboundReference, packCharge, receiptGap, validCount, validPackRate, type InboundStatus } from "../Shared/commerce/netletFulfilment.js";
+import { chargeReference } from "../Shared/commerce/payoutRuns.js";
+import { assertCan, can, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

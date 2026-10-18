@@ -1,7 +1,7 @@
 /**
  * Referrals and the points ledger, against a real Postgres.
  *
- * The arithmetic is proved pure in `shared/commerce/referral.test.ts`. What is
+ * The arithmetic is proved pure in `Shared/commerce/referral.test.ts`. What is
  * here is everything that cannot be: that one account can only be referred
  * once however many tabs try, that both tracks are paid exactly once and only
  * when money actually arrives, that a balance cannot be overdrawn by two
@@ -19,8 +19,8 @@ import {
   referrals as referralsTable, users, vendors,
   invoices,
 } from "../drizzle/schema.js";
-import { REFERRED_POINTS, REFERRER_POINTS, referralCodeFor } from "../shared/commerce/referral.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { REFERRED_POINTS, REFERRER_POINTS, referralCodeFor } from "../Shared/commerce/referral.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let referral: typeof import("./referral.js");

@@ -1,7 +1,7 @@
 /**
  * What each order is still owed, read from what it froze.
  *
- * The pure rule is `shared/commerce/collection.ts`; this is only the part that
+ * The pure rule is `Shared/commerce/collection.ts`; this is only the part that
  * needs a database — every line of each order, cancelled ones included, which a
  * parcel view leaves out. One module, so the driver's board, the shopper's
  * order and the seller's order cannot reach three different figures for one
@@ -13,8 +13,8 @@
  */
 import { inArray } from "drizzle-orm";
 import { orderItems } from "../drizzle/schema.js";
-import { stillOwed, type StillOwed } from "../shared/commerce/collection.js";
-import type { FrozenDelivery } from "../shared/commerce/delivery.js";
+import { stillOwed, type StillOwed } from "../Shared/commerce/collection.js";
+import type { FrozenDelivery } from "../Shared/commerce/delivery.js";
 import type { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

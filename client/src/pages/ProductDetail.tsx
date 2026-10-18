@@ -948,7 +948,7 @@ function WarrantyPanel({ product, t }: { product: Product; t: Translate }) {
 /**
  * The refund window, taken from the constant the server enforces.
  *
- * `RETURN_WINDOW_DAYS` is the same number `shared/commerce/returns.ts` uses to
+ * `RETURN_WINDOW_DAYS` is the same number `Shared/commerce/returns.ts` uses to
  * decide whether a return is actually open, so the page cannot promise a
  * fortnight while the API refuses on day eight. The old copy spelled "14 days"
  * into both dictionaries, which meant the policy lived in three places and two

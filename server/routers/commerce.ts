@@ -28,7 +28,7 @@ import {
   updateCartLines,
 } from "../catalog.js";
 import { publicProcedure, router } from "../_core/trpc.js";
-import { MAX_LINE_QUANTITY } from "../../shared/commerce/types.js";
+import { MAX_LINE_QUANTITY } from "../../Shared/commerce/types.js";
 import { bundlesForVariant } from "../bundles.js";
 import { publishedDepartmentCounts } from "../inventory.js";
 import { AddressError, setLineDestination } from "../addresses.js";

@@ -2,7 +2,7 @@
  * "Generate with AI" on the new-product form, on the owner's word: a few lines
  * about the product and a photo or two, and the AI gateway drafts the name in
  * both languages, both descriptions, the department, the department's
- * specification rows and tags (`useProductGenerator`, `shared/ai/catalogDraft.ts`).
+ * specification rows and tags (`useProductGenerator`, `Shared/ai/catalogDraft.ts`).
  *
  * **Nothing is filled in until the seller says so.** The draft is shown whole,
  * labelled as a model's, with what the notes and photos did not answer named,

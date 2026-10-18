@@ -1,7 +1,7 @@
 /**
  * Referrals and the points ledger, the half that needs a database.
  *
- * `shared/commerce/referral.ts` is the arithmetic and is pure. This is what
+ * `Shared/commerce/referral.ts` is the arithmetic and is pure. This is what
  * cannot be: recording who brought whom race-safely, paying both tracks
  * exactly once, and taking points off a balance that another tab may be
  * spending at the same moment.
@@ -33,10 +33,10 @@ import {
   spendValue,
   userIdFromCode,
   type PointReason,
-} from "../shared/commerce/referral.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import type { Pot } from "../shared/commerce/affiliate.js";
-import { fromFils } from "../shared/money.js";
+} from "../Shared/commerce/referral.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import type { Pot } from "../Shared/commerce/affiliate.js";
+import { fromFils } from "../Shared/money.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

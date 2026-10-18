@@ -11,7 +11,7 @@
  *
  * **Photo is a vision model, through NetLet.** The picture is shrunk in the
  * browser, sent once to turn it into a few search words, and kept by nobody;
- * `shared/commerce/photoSearch.ts` is what may be sent and what a reply may
+ * `Shared/commerce/photoSearch.ts` is what may be sent and what a reply may
  * become. With no model configured, or every model call switched off (2.3),
  * the panel stays drawn and says plainly that nothing is looking yet — the
  * line that used to sit on both panels while neither was wired.

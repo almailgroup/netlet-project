@@ -2,7 +2,7 @@
  * Browsing a category: what can be filtered, and what filtering does.
  *
  * Kept here, pure and tested, for the same reason as the rest of
- * `shared/commerce` — the page that renders a facet list should not also be
+ * `Shared/commerce` — the page that renders a facet list should not also be
  * the thing that decides what a facet is. It means a filter can be proved
  * correct against a catalog fixture rather than by clicking one.
  *

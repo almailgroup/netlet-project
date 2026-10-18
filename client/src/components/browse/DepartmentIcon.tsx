@@ -11,7 +11,7 @@
  * all of it — the opposite of recognition.
  *
  * The choice now lives on the department itself, in
- * `shared/commerce/departments.ts`, as a name of what the icon *depicts*. This
+ * `Shared/commerce/departments.ts`, as a name of what the icon *depicts*. This
  * is the only place that turns one of those names into a drawing, so the four
  * surfaces that show a department cannot disagree about it.
  *

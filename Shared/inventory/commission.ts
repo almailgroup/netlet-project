@@ -16,7 +16,7 @@
  *   nothing by accident.
  *
  * Money is a decimal string throughout — never a float. The dinar has three
- * decimal places and a binary fraction cannot hold 24.375; `shared/money.ts`
+ * decimal places and a binary fraction cannot hold 24.375; `Shared/money.ts`
  * is where that arithmetic lives, so this file decides the rule and not the
  * rounding.
  */

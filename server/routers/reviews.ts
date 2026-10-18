@@ -7,7 +7,7 @@
  * order-item id is a serial, so "review line 4" has to be refused by the query
  * and not by a check a later caller can skip.
  *
- * The eligibility rule is `shared/commerce/reviews.ts`, which the client
+ * The eligibility rule is `Shared/commerce/reviews.ts`, which the client
  * imports too — so the form cannot offer a review the API would refuse. That
  * is the same arrangement as the password floor and the return window, and it
  * matters more here than in either: the page draws "Write a review" from the
@@ -28,7 +28,7 @@ import {
 } from "../reviews.js";
 import { resolveActor } from "../inventory.js";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
-import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX, RATING_MIN } from "../../shared/commerce/reviews.js";
+import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX, RATING_MIN } from "../../Shared/commerce/reviews.js";
 
 /** A refusal becomes a 4xx carrying a message key the page translates. */
 const guard = async <T>(run: () => Promise<T>): Promise<T> => {

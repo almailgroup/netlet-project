@@ -4,7 +4,7 @@
  * The footer's "Returns" opened the orders page, which says nothing to
  * somebody deciding whether to buy and nothing about what happens next to
  * somebody who has. Every sentence here is a rule the server applies —
- * `RETURN_WINDOW_DAYS`, and `shared/commerce/returnRequests.ts`'s decisions:
+ * `RETURN_WINDOW_DAYS`, and `Shared/commerce/returnRequests.ts`'s decisions:
  * a fault on the seller's side is approved at once, a change of mind too
  * except on a perishable department, anything else waits for a person, and an
  * exchange with nothing left on the shelf becomes a refund. The button goes to

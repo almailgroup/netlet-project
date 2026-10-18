@@ -1,6 +1,6 @@
 /**
  * Talking to NetLet (3.5.1), the database half. The rules — state, the
- * automatic first answer — are `shared/commerce/support.ts`.
+ * automatic first answer — are `Shared/commerce/support.ts`.
  *
  * **A shopper's conversations are scoped by account inside every query**; an
  * id is a serial, so another shopper's is "not found". **Answering is NetLet's
@@ -13,7 +13,7 @@
  */
 import { and, asc, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { supportConversations, supportMessages, users } from "../drizzle/schema.js";
-import { RETURN_WINDOW_DAYS, returnStateFor } from "../shared/commerce/returns.js";
+import { RETURN_WINDOW_DAYS, returnStateFor } from "../Shared/commerce/returns.js";
 import {
   MAX_OPEN_CONVERSATIONS,
   MAX_SUPPORT_MESSAGES_PER_HOUR,
@@ -24,13 +24,13 @@ import {
   type AnswerPart,
   type SupportStatus,
   type SupportTopic,
-} from "../shared/commerce/support.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+} from "../Shared/commerce/support.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { getOrderForUser } from "./orders.js";
 import { getDb } from "./db.js";
-import { translate } from "../shared/i18n/dictionary.js";
-import type { DraftTurn } from "../shared/commerce/supportDraft.js";
+import { translate } from "../Shared/i18n/dictionary.js";
+import type { DraftTurn } from "../Shared/commerce/supportDraft.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 

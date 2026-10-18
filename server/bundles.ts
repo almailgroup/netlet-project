@@ -1,7 +1,7 @@
 /**
  * Bundles, the half that needs a database.
  *
- * `shared/commerce/bundles.ts` is the arithmetic and is pure — including the
+ * `Shared/commerce/bundles.ts` is the arithmetic and is pure — including the
  * part that matters, how a saving is split across two shops. This is what
  * cannot be: reading a bundle's members at their live prices, deciding whether
  * the permit behind it is valid *now*, and writing one.
@@ -20,10 +20,10 @@ import {
   separatelyTotal,
   splitBundlePrice,
   type Bundle,
-} from "../shared/commerce/bundles.js";
-import { multiplyMoney } from "../shared/money.js";
-import { discountAllowed } from "../shared/inventory/discountLicence.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/bundles.js";
+import { multiplyMoney } from "../Shared/money.js";
+import { discountAllowed } from "../Shared/inventory/discountLicence.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

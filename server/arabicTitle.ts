@@ -11,7 +11,7 @@
  * Gemini answers, through the AI gateway (`server/gemini.ts`).
  */
 import { askModel, modelAvailable } from "./gemini.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 
 const SYSTEM_PROMPT = [
   "You translate e-commerce product names from English into Modern Standard Arabic as used by shops in Kuwait.",

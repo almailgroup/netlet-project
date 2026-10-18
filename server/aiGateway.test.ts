@@ -11,8 +11,8 @@ vi.mock("./features.js", () => ({ featureOn: async (key: string) => (key === "ai
 import { ENV } from "./_core/env.js";
 import { gatewayOrigin, guestSubject } from "./_core/aiGateway.js";
 import { catalogSession, chatSession, gatewayAvailable } from "./aiGateway.js";
-import { verifyGatewayToken } from "../shared/ai/gateway.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import { verifyGatewayToken } from "../Shared/ai/gateway.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 const SECRET = "q".repeat(40);
 const saved = { url: ENV.aiGatewayUrl, secret: ENV.aiGatewaySecret };

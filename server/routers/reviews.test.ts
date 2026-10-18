@@ -2,7 +2,7 @@
  * Reviews against a real Postgres.
  *
  * The rules — who may review, what a pile of ratings averages to — are proved
- * in `shared/commerce/reviews.test.ts`. What only a database can prove is the
+ * in `Shared/commerce/reviews.test.ts`. What only a database can prove is the
  * part that matters here: that a review cannot be written against somebody
  * else's purchase, that the unique index actually holds one review per line,
  * and that the join refusing an unowned line looks identical to the line not

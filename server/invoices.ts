@@ -1,6 +1,6 @@
 /**
  * Invoices and credit notes (3.6.6), the database half. The rules are in
- * `shared/commerce/invoice.ts`.
+ * `Shared/commerce/invoice.ts`.
  *
  * ## Gap-free, by transaction
  *
@@ -41,10 +41,10 @@ import {
   type InvoiceIssuer,
   type InvoiceKind,
   type SellerDetails,
-} from "../shared/commerce/invoice.js";
-import type { FrozenDelivery } from "../shared/commerce/delivery.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+} from "../Shared/commerce/invoice.js";
+import type { FrozenDelivery } from "../Shared/commerce/delivery.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { describeError, violatesUnique } from "./_core/describeError.js";
 import { ENV } from "./_core/env.js";
 import { getDb } from "./db.js";

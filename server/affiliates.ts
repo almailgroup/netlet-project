@@ -1,6 +1,6 @@
 /**
  * Affiliate marketing (3.7), the database half. The rules are in
- * `shared/commerce/affiliate.ts`.
+ * `Shared/commerce/affiliate.ts`.
  *
  * Earnings live in the referral ledger, `point_entries`, in the `affiliate`
  * pot — one ledger, as `docs/REQUIREMENTS.md` asked from the start, so a
@@ -23,10 +23,10 @@ import {
   orderShareFils,
   userIdFromAffiliateCode,
   type AffiliateStatus,
-} from "../shared/commerce/affiliate.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { fromFils } from "../shared/money.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+} from "../Shared/commerce/affiliate.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { fromFils } from "../Shared/money.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { describeError, violatesUnique } from "./_core/describeError.js";
 import { recordAudit } from "./audit.js";
 import { featureOn } from "./features.js";

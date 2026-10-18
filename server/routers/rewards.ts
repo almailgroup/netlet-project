@@ -2,7 +2,7 @@
  * Referrals and loyalty points, as endpoints.
  *
  * Requirements 3.1.14 and 3.1.15. The arithmetic is pure in
- * `shared/commerce/referral.ts`, the queries are in `server/referral.ts` with
+ * `Shared/commerce/referral.ts`, the queries are in `server/referral.ts` with
  * their guards beside them, and this translates between the two and HTTP.
  *
  * Every procedure but the admin pair is `protectedProcedure`: a balance is a

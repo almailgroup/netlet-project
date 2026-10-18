@@ -1,12 +1,12 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '../../shared/const.js';
+import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '../../Shared/const.js';
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
 import type { TrpcContext } from "./context.js";
 import { rootCauseOf } from "./describeError.js";
-import { featureForEntry } from "../../shared/features.js";
+import { featureForEntry } from "../../Shared/features.js";
 import { featureOn } from "../features.js";
-import { isMessageKey } from "../../shared/i18n/dictionary.js";
+import { isMessageKey } from "../../Shared/i18n/dictionary.js";
 
 /**
  * What a failure says, and to whom.
@@ -111,7 +111,7 @@ const refuseNul = t.middleware(async ({ getRawInput, next }) => {
 /**
  * Refuses starting something under a feature that is switched off (2.3).
  *
- * By path, from the one list in `shared/features.ts`, on the base procedure —
+ * By path, from the one list in `Shared/features.ts`, on the base procedure —
  * so a router cannot forget it and a procedure renamed out from under its
  * switch fails `server/features.test.ts` rather than going quietly unguarded.
  * Only an entry path costs a read; browsing never does.

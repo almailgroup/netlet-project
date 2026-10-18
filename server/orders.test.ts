@@ -1,7 +1,7 @@
 /**
  * Placing an order, against a real Postgres.
  *
- * The arithmetic is proved pure in `shared/commerce/order.test.ts`. What these
+ * The arithmetic is proved pure in `Shared/commerce/order.test.ts`. What these
  * cover is the half that cannot be: that the price is read from the catalog at
  * the last moment and frozen, that stock is actually taken and actually handed
  * back when a basket cannot be served, and that one vendor cannot read
@@ -38,8 +38,8 @@ import {
   wishlists,
   wishlistItems,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
-import { addMoney } from "../shared/money.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
+import { addMoney } from "../Shared/money.js";
 
 let db: ReturnType<typeof drizzle>;
 let ordersModule: typeof import("./orders.js");
@@ -579,7 +579,7 @@ describe("moving a line through the warehouse", () => {
 
 /*
  * Optional extras (3.1.2). The arithmetic is proved pure in
- * `shared/commerce/addons.test.ts`; what is here is that a ticked extra
+ * `Shared/commerce/addons.test.ts`; what is here is that a ticked extra
  * survives the trip from the basket to a frozen order line, that the money
  * lands where it should, and — the one that matters — that the identity the
  * finance panel is tested against still holds exactly.
@@ -652,7 +652,7 @@ describe("optional extras", () => {
 
 /*
  * Discount codes and gift cards (3.2.3), against a real Postgres. The
- * arithmetic is proved pure in `shared/commerce/vouchers.test.ts`; what is
+ * arithmetic is proved pure in `Shared/commerce/vouchers.test.ts`; what is
  * here is what cannot be — that a code's use count is the rows rather than a
  * column two orders can race, that a card's balance is taken with the
  * predicate inside the write, and that all three reductions land on the order
@@ -660,7 +660,7 @@ describe("optional extras", () => {
  */
 /*
  * Bundles (3.3.11), against a real Postgres. The split is proved pure in
- * `shared/commerce/bundles.test.ts`; what is here is what cannot be — that the
+ * `Shared/commerce/bundles.test.ts`; what is here is what cannot be — that the
  * saving reaches the order lines, that it comes off *both* sellers rather than
  * one funding the other, and that taking a member out of the basket puts the
  * rest back to their own prices.
@@ -860,7 +860,7 @@ describe("codes and gift cards", () => {
 
 /*
  * Fraud signals (3.6.5), against a real Postgres. The judgement is proved pure
- * in `shared/commerce/fraudSignals.test.ts`; what is here is the counting it
+ * in `Shared/commerce/fraudSignals.test.ts`; what is here is the counting it
  * cannot do — the account's age at the moment of the order, how many *other*
  * accounts have used that address, and that a vendor is refused the lot.
  */
@@ -1052,7 +1052,7 @@ describe("pre-order", () => {
  * Different addresses for different things in one basket (3.2.6).
  *
  * The arithmetic — a parcel per seller per door, the threshold measured at
- * each — is proved pure in `shared/commerce/addresses.test.ts`. What needs a
+ * each — is proved pure in `Shared/commerce/addresses.test.ts`. What needs a
  * database is that the door is scoped to the shopper who owns it, that it is
  * *copied* onto the line rather than referenced, and that deleting the address
  * afterwards leaves the order still able to say where the parcel went.

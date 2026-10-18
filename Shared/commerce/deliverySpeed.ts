@@ -25,7 +25,7 @@
  * whole reason this is not `date + n`.
  *
  * **A pre-ordered line has no speed at all.** It ships when it arrives, and
- * `shared/commerce/preorder.ts` already carries that date — two promises about
+ * `Shared/commerce/preorder.ts` already carries that date — two promises about
  * one parcel is how a shopper ends up believing the wrong one.
  */
 import { KUWAIT_OFFSET_MS } from "../kuwaitDay.js";

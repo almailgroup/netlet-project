@@ -1,7 +1,7 @@
 /**
  * Shoppers and sellers talking (3.8), over tRPC.
  *
- * The rules are `shared/commerce/contactFilter.ts` and the scope is
+ * The rules are `Shared/commerce/contactFilter.ts` and the scope is
  * `server/chat.ts`; this is the translation layer. Every procedure is
  * protected: a message somebody cannot be answered at is not a conversation,
  * and a signed-out sender is one the throttle cannot count.
@@ -21,7 +21,7 @@ import {
   unreadForShopper,
 } from "../chat.js";
 import { resolveActor } from "../inventory.js";
-import { MAX_MESSAGE_LENGTH } from "../../shared/commerce/contactFilter.js";
+import { MAX_MESSAGE_LENGTH } from "../../Shared/commerce/contactFilter.js";
 
 /* Room for the trim: the limit is on what is stored, and a message one space
    over the limit is refused by the data layer with a key rather than here. */

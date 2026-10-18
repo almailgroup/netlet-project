@@ -26,7 +26,7 @@
  *   of any other list.
  *
  * Throttling is the fourth rule and it cannot live here because it needs a
- * database; `shared/auth/rateLimit.ts` holds the policy and the ceiling for
+ * database; `Shared/auth/rateLimit.ts` holds the policy and the ceiling for
  * this door is `MAX_LOOKUPS_PER_ADDRESS`.
  */
 import type { Product } from "./types.js";

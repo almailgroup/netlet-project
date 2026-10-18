@@ -1,7 +1,7 @@
 /**
  * The discount permit, against a real Postgres.
  *
- * The rule is proved pure in `shared/inventory/discountLicence.test.ts`. What
+ * The rule is proved pure in `Shared/inventory/discountLicence.test.ts`. What
  * these cover is the half that cannot be: that the storefront never advertises
  * a saving without a valid permit — including when a permit lapses *with nobody
  * saving anything*, the case a write-time check alone would miss — and that
@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { productVariants, products, users, vendors } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let inventory: typeof import("./inventory.js");

@@ -1,7 +1,7 @@
 /**
  * The weekly payout report's reads.
  *
- * The arithmetic is pure in `shared/commerce/payouts.ts`. This is the half
+ * The arithmetic is pure in `Shared/commerce/payouts.ts`. This is the half
  * that cannot be: pulling the frozen lines out of `order_items` and joining
  * them to the order that says whether the money moved.
  *
@@ -11,11 +11,11 @@
  */
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { orderItems, orders, payoutRunItems, payoutRuns, vendors } from "../drizzle/schema.js";
-import { payoutsByVendor, totalOwed, type PayoutLine } from "../shared/commerce/payouts.js";
-import { payoutDue } from "../shared/commerce/payoutSchedule.js";
-import { lineOutcome } from "../shared/commerce/finance.js";
-import { fromFils, toFils } from "../shared/money.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+import { payoutsByVendor, totalOwed, type PayoutLine } from "../Shared/commerce/payouts.js";
+import { payoutDue } from "../Shared/commerce/payoutSchedule.js";
+import { lineOutcome } from "../Shared/commerce/finance.js";
+import { fromFils, toFils } from "../Shared/money.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 /** The same ceiling the finance panel uses, and it says when it hit it. */

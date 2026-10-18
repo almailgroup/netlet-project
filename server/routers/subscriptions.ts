@@ -11,8 +11,8 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { MAX_SUBSCRIPTION_QUANTITY, SUBSCRIPTION_INTERVALS } from "../../shared/commerce/subscriptions.js";
-import { assertCan } from "../../shared/inventory/permissions.js";
+import { MAX_SUBSCRIPTION_QUANTITY, SUBSCRIPTION_INTERVALS } from "../../Shared/commerce/subscriptions.js";
+import { assertCan } from "../../Shared/inventory/permissions.js";
 import { changeSubscription, mySubscriptions, runDueSubscriptions, subscribe, subscriptionOverview, SubscriptionRefused } from "../subscriptions.js";
 import { ENV } from "../_core/env.js";
 import { resolveActor } from "../inventory.js";

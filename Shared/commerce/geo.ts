@@ -46,7 +46,7 @@ export const KUWAIT_BOUNDS = { south: 28.5, north: 30.15, west: 46.5, east: 48.6
 export const KUWAIT_CENTRE: Pin = { lat: 29.3759, lng: 47.9774 };
 
 /**
- * Roughly the middle of each governorate, by the ids in `shared/customer.ts`,
+ * Roughly the middle of each governorate, by the ids in `Shared/customer.ts`,
  * so choosing one moves the map there rather than leaving the shopper to pan
  * across the country.
  */

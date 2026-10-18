@@ -16,7 +16,7 @@
  * 250 g, say — and quantity counts steps. Six steps is 1.5 kg, exactly, in
  * integers, and every existing query keeps working unchanged.
  *
- * It is the same discipline `shared/money.ts` already applies to the dinar:
+ * It is the same discipline `Shared/money.ts` already applies to the dinar:
  * hold the small unit as an integer and derive the human number for display.
  * Weight gets grams, volume gets millilitres, and nothing is ever a float.
  */
@@ -84,7 +84,7 @@ export function baseUnitsFor(measure: Measure, quantity: number): number {
  * How much `quantity` steps actually weigh, in grams — or null.
  *
  * This is what decides the vehicle for a line nobody gave a size class to
- * (`shared/commerce/vehicle.ts`), so it is deliberately narrow: mass only.
+ * (`Shared/commerce/vehicle.ts`), so it is deliberately narrow: mass only.
  *
  * A litre of oil is *about* a kilo, and "about" is exactly the guess this
  * codebase refuses everywhere else it touches dispatch — a density assumption
@@ -168,7 +168,7 @@ export function isValidMeasure(measure: Measure): boolean {
 }
 
 /*
- * `shared/money.ts` imports nothing from here and this imports nothing from
+ * `Shared/money.ts` imports nothing from here and this imports nothing from
  * it, on purpose: money is used by the order arithmetic and a cycle between
  * the two would be a cycle in the part of the codebase that must stay easy to
  * reason about. These two helpers are the same three-decimal rule, locally.

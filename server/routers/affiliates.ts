@@ -8,7 +8,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { MAX_AFFILIATE_PERCENT } from "../../shared/commerce/affiliate.js";
+import { MAX_AFFILIATE_PERCENT } from "../../Shared/commerce/affiliate.js";
 import {
   AffiliateRefused,
   affiliateDashboard,

@@ -18,7 +18,7 @@
  *    `Origin` — NetLet's own server, `curl` — goes on to the token, which is
  *    the gate that actually decides.
  * 2. **Token.** `Authorization: Bearer <token>`, signed by NetLet's server
- *    with `AI_GATEWAY_SECRET` (`shared/ai/gateway.ts`), live, and for this
+ *    with `AI_GATEWAY_SECRET` (`Shared/ai/gateway.ts`), live, and for this
  *    route's scope — a shopper's chat token cannot draft products.
  * 3. **Ceilings.** Per caller (`sub`) per route, and per network address
  *    across both, through Cloudflare's rate-limiting bindings — so a guest
@@ -46,9 +46,9 @@ import {
   type GatewayClaims,
   type GatewayErrorCode,
   type GatewayScope,
-} from "../../../shared/ai/gateway.js";
-import { CATALOG_RESPONSE_SCHEMA, DEPARTMENT_SLUGS, draftFromModel } from "../../../shared/ai/catalogDraft.js";
-import { contactFindings } from "../../../shared/commerce/contactFilter.js";
+} from "../../../Shared/ai/gateway.js";
+import { CATALOG_RESPONSE_SCHEMA, DEPARTMENT_SLUGS, draftFromModel } from "../../../Shared/ai/catalogDraft.js";
+import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
 import { GeminiFailure, generateJson, generateText, streamText, type GeminiPart, type StreamPiece } from "./gemini.js";
 import { catalogContents, catalogSystem, chatContents, chatSystem } from "./prompts.js";
 

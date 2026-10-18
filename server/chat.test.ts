@@ -2,7 +2,7 @@
  * Shoppers and sellers talking (3.8), through the API against a real Postgres.
  *
  * What a message may contain is proved pure in
- * `shared/commerce/contactFilter.test.ts`. What needs a database is who can read
+ * `Shared/commerce/contactFilter.test.ts`. What needs a database is who can read
  * and write which conversation — a rule about who is asking, so every call goes
  * through the router as that person.
  */
@@ -26,7 +26,7 @@ import {
   type User,
 } from "../drizzle/schema.js";
 import type { TrpcContext } from "./_core/context.js";
-import { MAX_MESSAGES_PER_ACCOUNT } from "../shared/auth/rateLimit.js";
+import { MAX_MESSAGES_PER_ACCOUNT } from "../Shared/auth/rateLimit.js";
 
 let db: ReturnType<typeof drizzle>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

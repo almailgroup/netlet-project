@@ -1,7 +1,7 @@
 /**
  * Recommendations, against a real Postgres.
  *
- * The ranking is proved pure in `shared/commerce/taste.test.ts`. What only a
+ * The ranking is proved pure in `Shared/commerce/taste.test.ts`. What only a
  * database can prove is the half around it: that the signals are gathered from
  * the right rows, that an unpaid order is not treated as a purchase, that a
  * draft product cannot be recommended however well it scores, and that a

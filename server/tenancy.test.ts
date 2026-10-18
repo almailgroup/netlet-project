@@ -1,7 +1,7 @@
 /**
  * What one seller can reach of another's, against a real Postgres.
  *
- * The permission *rules* are proved pure in `shared/inventory/permissions.test.ts`.
+ * The permission *rules* are proved pure in `Shared/inventory/permissions.test.ts`.
  * This is the half that cannot be: that the queries actually scope, for the
  * four modules that had no test file of their own and all four of which handle
  * money — payouts, vouchers, fraud and bundles.
@@ -27,7 +27,7 @@ import {
   vendorMembers,
   vendors,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let payouts: typeof import("./payouts.js");

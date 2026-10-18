@@ -2,7 +2,7 @@
  * The dispatch board, against a real Postgres.
  *
  * What a parcel *is* and what a driver may do with one are proved pure in
- * `shared/commerce/parcels.test.ts`. What needs a database is the half that
+ * `Shared/commerce/parcels.test.ts`. What needs a database is the half that
  * cannot be: that a delivery company sees only its own work, that a parcel
  * moves whole, that a courier cannot assign work to themselves, and that a
  * suspended company stops being one work can be given to.
@@ -26,7 +26,7 @@ import {
   users,
   vendors,
 } from "../drizzle/schema.js";
-import type { Actor } from "../shared/inventory/permissions.js";
+import type { Actor } from "../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let dispatch: typeof import("./dispatch.js");

@@ -10,7 +10,7 @@
  * ## What a parcel is
  *
  * **A seller and a destination**, which is the same definition delivery pricing
- * already uses (`shared/commerce/addresses.ts`). One order from three shops to
+ * already uses (`Shared/commerce/addresses.ts`). One order from three shops to
  * two doors is not one delivery: it is parcels leaving different warehouses for
  * different addresses, and each is collected, carried and handed over on its
  * own.

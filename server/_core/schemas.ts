@@ -14,7 +14,7 @@
  * negative one reached the query and `-9007199254740991` reached Postgres.
  */
 import { z } from "zod";
-import { DAY_ONLY, endOfKuwaitDay } from "../../shared/kuwaitDay.js";
+import { DAY_ONLY, endOfKuwaitDay } from "../../Shared/kuwaitDay.js";
 
 /**
  * The largest value a Postgres `integer` holds, which is what every serial
@@ -51,7 +51,7 @@ export const percentSchema = z
 /**
  * A row id that travels as a string, which is how a cart line's does.
  *
- * `Cart` in `shared/commerce/types.ts` calls a line's id a string, so the
+ * `Cart` in `Shared/commerce/types.ts` calls a line's id a string, so the
  * router receives one and the data layer turns it back into a number — and
  * `Number("oops")` is `NaN`, which reaches Postgres as `NaN` and comes back as
  * a 500. Digits only, and within the same range a `serial` could have issued.
@@ -68,7 +68,7 @@ export const rowIdText = z
  * A pin on a map (3.2.7), or nothing.
  *
  * Only the shape here: a finite pair and no other keys. Whether it is in
- * Kuwait is `pinProblem` in `shared/commerce/geo.ts`, which the picker asks
+ * Kuwait is `pinProblem` in `Shared/commerce/geo.ts`, which the picker asks
  * too, so the refusal arrives as a message key the page already knows how to
  * say rather than as a zod sentence.
  */
@@ -92,7 +92,7 @@ export const lastDay = z.preprocess(
 );
 
 /**
- * An address as its parts (`shared/commerce/kuwaitAddress.ts`), each bounded by
+ * An address as its parts (`Shared/commerce/kuwaitAddress.ts`), each bounded by
  * its column so a long one is refused here rather than by the driver. Which
  * are required, and what a PACI number looks like, is the shared rule's to say.
  */

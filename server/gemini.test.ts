@@ -6,7 +6,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { handle } from "../workers/ai-gateway/src/index.js";
-import { verifyGatewayToken } from "../shared/ai/gateway.js";
+import { verifyGatewayToken } from "../Shared/ai/gateway.js";
 
 const SECRET = "s".repeat(48);
 let gemini: typeof import("./gemini.js");

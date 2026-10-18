@@ -6,7 +6,7 @@ import type { DeliverySpeed } from "./deliverySpeed.js";
  *
  * These shapes are the ONLY thing the frontend imports for commerce data, and
  * they expose nothing about the store behind them — no row ids typed as
- * numbers, no table names, no status enums. `shared/commerce/fromInventory.ts`
+ * numbers, no table names, no status enums. `Shared/commerce/fromInventory.ts`
  * is what turns NetLet's own inventory rows into them; a different store
  * would mean a different mapper and no change here.
  *
@@ -88,7 +88,7 @@ export type ProductVariant = {
    * off the shelf. `releaseAt` is an ISO date, or null when the vendor has
    * committed to no date — which is also what a date that has already passed
    * becomes, because a stale date reads as a shop that stopped paying
-   * attention. See `shared/commerce/preorder.ts`.
+   * attention. See `Shared/commerce/preorder.ts`.
    */
   preorder: { releaseAt: string | null } | null;
   /** The most that may be taken in one line. The two pools do not add up. */

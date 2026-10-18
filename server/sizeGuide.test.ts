@@ -1,7 +1,7 @@
 /**
  * Size charts (3.1.20), through the API against a real Postgres.
  *
- * The fitting is proved pure in `shared/commerce/sizeGuide.test.ts`. What needs
+ * The fitting is proved pure in `Shared/commerce/sizeGuide.test.ts`. What needs
  * a database is who may set a chart, that a chart the rules refuse is refused
  * by the API too, and that what was saved is what the storefront serves.
  */

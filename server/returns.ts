@@ -1,8 +1,8 @@
 /**
  * Returns and exchanges: the part that needs a database (3.2.8, 3.5.2).
  *
- * The rules are `shared/commerce/returnRequests.ts` and the window is
- * `shared/commerce/returns.ts`; this module reads the line, asks both, and
+ * The rules are `Shared/commerce/returnRequests.ts` and the window is
+ * `Shared/commerce/returns.ts`; this module reads the line, asks both, and
  * writes. Outside `db.ts` for the reason every testable module is.
  *
  * **Every request starts from a line the shopper owns**, found by the order's
@@ -25,10 +25,10 @@ import {
   type ReturnAction,
   type ReturnKind,
   type ReturnReason,
-} from "../shared/commerce/returnRequests.js";
-import { returnStateFor } from "../shared/commerce/returns.js";
-import { orderReference } from "../shared/commerce/order.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/returnRequests.js";
+import { returnStateFor } from "../Shared/commerce/returns.js";
+import { orderReference } from "../Shared/commerce/order.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { getDb } from "./db.js";
 import { takeUnits } from "./orders.js";

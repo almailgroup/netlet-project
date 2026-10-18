@@ -7,7 +7,7 @@
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { FEATURE_KEYS } from "../../shared/features.js";
+import { FEATURE_KEYS } from "../../Shared/features.js";
 import { featureStates, listSwitches, setFeature } from "../features.js";
 import { resolveActor } from "../inventory.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";

@@ -13,7 +13,7 @@ import {
   setSavedProduct,
 } from "../db.js";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc.js";
-import { kuwaitDeliveryZones, notificationKinds } from "../../shared/customer.js";
+import { kuwaitDeliveryZones, notificationKinds } from "../../Shared/customer.js";
 import { TRPCError } from "@trpc/server";
 import {
   AddressError,
@@ -22,7 +22,7 @@ import {
   removeAddress,
   updateAddress,
 } from "../addresses.js";
-import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../shared/commerce/addresses.js";
+import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../Shared/commerce/addresses.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);

@@ -9,7 +9,7 @@
  * No third-party identity provider and no new dependency: `jose` was already
  * here for signing, and password hashing uses Node's own scrypt.
  */
-import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
+import { COOKIE_NAME, ONE_YEAR_MS } from "../../Shared/const.js";
 import { parse as parseCookies } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";

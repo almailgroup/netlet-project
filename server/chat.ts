@@ -1,7 +1,7 @@
 /**
  * Shoppers and sellers talking (3.8).
  *
- * `shared/commerce/contactFilter.ts` is the rule that matters and is pure; this
+ * `Shared/commerce/contactFilter.ts` is the rule that matters and is pure; this
  * is the part that needs a database. Outside `db.ts` for the reason every
  * testable module is.
  *
@@ -24,8 +24,8 @@
  */
 import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { conversationMessages, conversations, orderItems, orders, products, users, vendors } from "../drizzle/schema.js";
-import { contactFindings, MAX_MESSAGE_LENGTH, type ContactKind } from "../shared/commerce/contactFilter.js";
-import { assertCan, can, type Actor } from "../shared/inventory/permissions.js";
+import { contactFindings, MAX_MESSAGE_LENGTH, type ContactKind } from "../Shared/commerce/contactFilter.js";
+import { assertCan, can, type Actor } from "../Shared/inventory/permissions.js";
 import { checkMessageAllowed, recordMessage } from "./rateLimit.js";
 import { displayName } from "./reviews.js";
 import { getDb } from "./db.js";

@@ -22,7 +22,7 @@
  *
  * **Business days, Kuwaiti weekend.** Friday and Saturday are not working
  * days, so fourteen calendar days lands on a Saturday two times in five.
- * `shared/commerce/deliverySpeed.ts` makes the same call for the same reason.
+ * `Shared/commerce/deliverySpeed.ts` makes the same call for the same reason.
  *
  * **A refunded line is not owed and has no due date.** Money that went back is
  * not a payout waiting to happen, and giving it one would have a seller

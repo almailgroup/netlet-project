@@ -18,7 +18,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { categories, users, vendorMembers, vendors } from "../drizzle/schema";
-import { DEPARTMENTS } from "../shared/commerce/departments";
+import { DEPARTMENTS } from "../Shared/commerce/departments";
 
 const url = process.env.DATABASE_URL?.trim();
 if (!url) {

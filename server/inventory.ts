@@ -9,11 +9,11 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
-import { openingSpecs, warrantyRequired } from "../shared/inventory/productDraft.js";
-import { merchantWarranty } from "../shared/commerce/productDetail.js";
-import { stockMoveProblem, type StockReason } from "../shared/inventory/stockMoves.js";
-import { optionPairs, optionPairsProblem, optionsRecord } from "../shared/inventory/variantOptions.js";
-import { percentProblem, scalePrice } from "../shared/inventory/productBulk.js";
+import { openingSpecs, warrantyRequired } from "../Shared/inventory/productDraft.js";
+import { merchantWarranty } from "../Shared/commerce/productDetail.js";
+import { stockMoveProblem, type StockReason } from "../Shared/inventory/stockMoves.js";
+import { optionPairs, optionPairsProblem, optionsRecord } from "../Shared/inventory/variantOptions.js";
+import { percentProblem, scalePrice } from "../Shared/inventory/productBulk.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
@@ -30,23 +30,23 @@ import {
   vendorMembers,
   vendors,
 } from "../drizzle/schema.js";
-import { assertCan, type Actor, type VendorRole } from "../shared/inventory/permissions.js";
-import { DEFAULT_COMMISSION_PERCENT } from "../shared/inventory/commission.js";
-import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../shared/commerce/addons.js";
-import { discountAllowed, isOffer } from "../shared/inventory/discountLicence.js";
+import { assertCan, type Actor, type VendorRole } from "../Shared/inventory/permissions.js";
+import { DEFAULT_COMMISSION_PERCENT } from "../Shared/inventory/commission.js";
+import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../Shared/commerce/addons.js";
+import { discountAllowed, isOffer } from "../Shared/inventory/discountLicence.js";
 import { violatesUnique } from "./_core/describeError.js";
 import { recordAudit, violationCount } from "./audit.js";
-import { memberPriceProblem } from "../shared/commerce/membership.js";
-import { isValidMeasure, type SellUnit } from "../shared/commerce/units.js";
-import { awardedBadges, vendorHealth, type HealthInputs } from "../shared/inventory/vendorHealth.js";
+import { memberPriceProblem } from "../Shared/commerce/membership.js";
+import { isValidMeasure, type SellUnit } from "../Shared/commerce/units.js";
+import { awardedBadges, vendorHealth, type HealthInputs } from "../Shared/inventory/vendorHealth.js";
 import { getDb } from "./db.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
 import { createAccount, EmailTakenError } from "./_core/accounts.js";
 import { canSendReset, deleteLogin, sendReset } from "./_core/passwordStore.js";
-import { chartProblem, cleanChart, type SizeChart } from "../shared/commerce/sizeGuide.js";
+import { chartProblem, cleanChart, type SizeChart } from "../Shared/commerce/sizeGuide.js";
 /* The readable part of a handle, shared so the "Add a product" form's search
    preview shows the address the server will actually make. */
-import { handleBase } from "../shared/inventory/productDraft.js";
+import { handleBase } from "../Shared/inventory/productDraft.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -622,7 +622,7 @@ export async function createProduct(actor: Actor, input: {
 /**
  * Create a whole shelf from a spreadsheet (3.3.3, 3.3.5).
  *
- * `shared/inventory/bulkUpload.ts` has already read the file, found the
+ * `Shared/inventory/bulkUpload.ts` has already read the file, found the
  * columns, refused the rows that cannot be products and guessed a department
  * for the ones that left it blank — all of it pure, and all of it shown to the
  * seller before this is called. What is left is the half that needs a
@@ -1285,7 +1285,7 @@ export async function saveVariant(actor: Actor, input: {
 /**
  * Every variant of a product moved by a percentage, and nothing else written.
  *
- * The list's bulk "Change price" (`shared/inventory/productBulk.ts`). It does
+ * The list's bulk "Change price" (`Shared/inventory/productBulk.ts`). It does
  * not go through `saveVariant`, because that writes a variant whole and takes
  * an absent pre-order allowance or unit as their defaults — a bulk price
  * change through it would have emptied every pre-order and turned every bag
@@ -1862,7 +1862,7 @@ export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId
  *
  * Scoped like everything else: a vendor member reads their own vendor, an
  * admin reads any. The score itself is computed by the pure function in
- * `shared/inventory/vendorHealth.ts` — this only gathers the counts, so the
+ * `Shared/inventory/vendorHealth.ts` — this only gathers the counts, so the
  * arithmetic a vendor sees is the arithmetic that is tested.
  */
 export async function vendorHealthFor(actor: Actor, vendorId?: number) {

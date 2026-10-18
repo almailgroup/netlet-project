@@ -11,17 +11,17 @@
  *
  * Everything the model reads that somebody typed — a shopper's question, a
  * seller's notes, a product listing — is fenced and labelled as data, the
- * product assistant's rule (`shared/commerce/assistant.ts`). That is
+ * product assistant's rule (`Shared/commerce/assistant.ts`). That is
  * mitigation rather than proof, and it holds because nothing here gives the
  * model a tool, an id or anything to act with: the worst a hijacked answer
  * buys is one wrong paragraph shown to the person who wrote the hijack.
  */
-import { briefToPrompt } from "../../../shared/commerce/assistant.js";
-import { helpBrief } from "../../../shared/commerce/helpArticles.js";
-import { DEPARTMENTS } from "../../../shared/commerce/departments.js";
-import { fieldsFor } from "../../../shared/commerce/attributeSchema.js";
-import { translate } from "../../../shared/i18n/dictionary.js";
-import type { CatalogAssistRequest, ChatRequest, GatewayLocale } from "../../../shared/ai/gateway.js";
+import { briefToPrompt } from "../../../Shared/commerce/assistant.js";
+import { helpBrief } from "../../../Shared/commerce/helpArticles.js";
+import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { fieldsFor } from "../../../Shared/commerce/attributeSchema.js";
+import { translate } from "../../../Shared/i18n/dictionary.js";
+import type { CatalogAssistRequest, ChatRequest, GatewayLocale } from "../../../Shared/ai/gateway.js";
 import type { GeminiContent, GeminiPart } from "./gemini.js";
 
 const LANGUAGE: Record<GatewayLocale, string> = { en: "English", ar: "Arabic (Modern Standard Arabic as used by shops in Kuwait)" };

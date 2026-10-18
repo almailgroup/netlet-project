@@ -39,7 +39,7 @@ import {
   limitVerdict,
   strictest,
   type RateVerdict,
-} from "../shared/auth/rateLimit.js";
+} from "../Shared/auth/rateLimit.js";
 import { getDb } from "./db.js";
 
 /*

@@ -1,7 +1,7 @@
 /**
  * Affiliate marketing, through the API against a real Postgres (3.7).
  *
- * The arithmetic is proved pure in `shared/commerce/affiliate.test.ts`. What
+ * The arithmetic is proved pure in `Shared/commerce/affiliate.test.ts`. What
  * needs a database is who an order may be attributed to, that the share is
  * paid once when the cash is collected and taken back once when a line is
  * refunded, and that it lives in its own pot of the referral ledger.

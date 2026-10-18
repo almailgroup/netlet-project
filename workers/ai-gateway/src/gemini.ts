@@ -12,7 +12,7 @@
  * feels as a pause and these two tasks — answering from a brief, filling a
  * form — do not need.
  */
-import { createSseReader } from "../../../shared/ai/gateway.js";
+import { createSseReader } from "../../../Shared/ai/gateway.js";
 
 export type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
 export type GeminiContent = { role: "user" | "model"; parts: GeminiPart[] };

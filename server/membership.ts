@@ -1,7 +1,7 @@
 /**
  * NetLet membership (4.1), the database half. The rules — who is a member,
  * what a member pays, what a waived delivery records — are
- * `shared/commerce/membership.ts`.
+ * `Shared/commerce/membership.ts`.
  *
  * Granting is NetLet's alone (`membership.manage`): until payments exist it is
  * the only way in, and it is NetLet spending its own money on somebody's
@@ -9,10 +9,10 @@
  */
 import { and, desc, eq, gt, gte, isNull, lte, sql } from "drizzle-orm";
 import { memberships, membershipTerms, orders, users } from "../drizzle/schema.js";
-import { MAX_GRANT_NOTE, grantWindow, memberUntil, validMonths, type MembershipRow } from "../shared/commerce/membership.js";
-import { assertCan, type Actor } from "../shared/inventory/permissions.js";
-import { clampPage, clampPageSize, offsetFor, type Page } from "../shared/pagination.js";
-import { KUWAIT_OFFSET_MS } from "../shared/kuwaitDay.js";
+import { MAX_GRANT_NOTE, grantWindow, memberUntil, validMonths, type MembershipRow } from "../Shared/commerce/membership.js";
+import { assertCan, type Actor } from "../Shared/inventory/permissions.js";
+import { clampPage, clampPageSize, offsetFor, type Page } from "../Shared/pagination.js";
+import { KUWAIT_OFFSET_MS } from "../Shared/kuwaitDay.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;

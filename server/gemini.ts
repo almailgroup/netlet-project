@@ -27,7 +27,7 @@ import {
   type GenerateAnswer,
   type GenerateRequest,
   type ServerTask,
-} from "../shared/ai/gateway.js";
+} from "../Shared/ai/gateway.js";
 
 /** Whether a model can be asked at all: the gateway set up, and model calls not switched off (2.3). */
 export async function modelAvailable(): Promise<boolean> {

@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { AD_SLOTS, BANNER_HEADLINE_MAX, BANNER_NOTE_MAX, MAX_AD_DAYS, SHELF_SLOTS } from "../../shared/commerce/adBookings.js";
+import { AD_SLOTS, BANNER_HEADLINE_MAX, BANNER_NOTE_MAX, MAX_AD_DAYS, SHELF_SLOTS } from "../../Shared/commerce/adBookings.js";
 import {
   AdRefused,
   bannersToday,

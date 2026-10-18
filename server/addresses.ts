@@ -1,7 +1,7 @@
 /**
  * The shopper's address book, and which line goes where.
  *
- * Requirement 3.2.6. `shared/commerce/addresses.ts` is the rules; this is the
+ * Requirement 3.2.6. `Shared/commerce/addresses.ts` is the rules; this is the
  * half that needs a database. Outside `db.ts` for the reason `profile.ts`,
  * `orders.ts` and `finance.ts` are: functions inside `db.ts` call its
  * module-local `getDb`, which nothing outside can redirect, so anything living
@@ -18,9 +18,9 @@ import {
   addressLineOf,
   addressProblems,
   type ShippingAddress,
-} from "../shared/commerce/addresses.js";
-import { cleanParts, type AddressParts } from "../shared/commerce/kuwaitAddress.js";
-import { storedPin } from "../shared/commerce/geo.js";
+} from "../Shared/commerce/addresses.js";
+import { cleanParts, type AddressParts } from "../Shared/commerce/kuwaitAddress.js";
+import { storedPin } from "../Shared/commerce/geo.js";
 import { cartItems, carts, customerAddresses } from "../drizzle/schema.js";
 import { getDb } from "./db.js";
 

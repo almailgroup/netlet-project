@@ -2,7 +2,7 @@
  * Area, block, street, avenue, house, floor, apartment and PACI number — the
  * boxes an address is asked for in, drawn by the address book, the delivery
  * dialog and checkout alike so the three cannot ask different things
- * (`shared/commerce/kuwaitAddress.ts` is the rule).
+ * (`Shared/commerce/kuwaitAddress.ts` is the rule).
  *
  * The area list is the governorate's, in the page's language; with no
  * governorate chosen it is every area, and choosing one chooses its

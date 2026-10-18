@@ -3,7 +3,7 @@
  *
  * Requirement 2.2 names five parties — buyer, seller, admin, the person who
  * processes orders, and the delivery company — and until this landed the fifth
- * had no interface anywhere. `shared/commerce/parcels.ts` is the rules and is
+ * had no interface anywhere. `Shared/commerce/parcels.ts` is the rules and is
  * pure; this is the part that needs a database. Outside `db.ts` for the reason
  * `orders.ts`, `finance.ts` and `profile.ts` are: functions inside `db.ts` call
  * its module-local `getDb`, so anything living there cannot be tested against a
@@ -34,9 +34,9 @@ import {
   parcelsOf,
   type Parcel,
   type ParcelLine,
-} from "../shared/commerce/parcels.js";
-import type { FulfilmentState } from "../shared/commerce/fulfilment.js";
-import { assertCan, readableCouriers, type Actor } from "../shared/inventory/permissions.js";
+} from "../Shared/commerce/parcels.js";
+import type { FulfilmentState } from "../Shared/commerce/fulfilment.js";
+import { assertCan, readableCouriers, type Actor } from "../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
 

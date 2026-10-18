@@ -1,7 +1,7 @@
 /**
  * Searching with a photo (3.1.6), the half that needs a network. The rules —
  * what may be sent and what a reply may become — are
- * `shared/commerce/photoSearch.ts`.
+ * `Shared/commerce/photoSearch.ts`.
  *
  * Every failure is one answer, the habit the assistant and the
  * recommendation rail already keep: no gateway, models switched off, a
@@ -10,8 +10,8 @@
  * reads the photo, through the AI gateway (`server/gemini.ts`).
  */
 import { askModel, modelAvailable } from "./gemini.js";
-import { queryFromModel } from "../shared/commerce/photoSearch.js";
-import type { CatalogImage } from "../shared/ai/gateway.js";
+import { queryFromModel } from "../Shared/commerce/photoSearch.js";
+import type { CatalogImage } from "../Shared/ai/gateway.js";
 
 /** Whether a photo can be read at all: the gateway set up, and model calls not switched off (2.3). */
 export async function photoSearchAvailable(): Promise<boolean> {
