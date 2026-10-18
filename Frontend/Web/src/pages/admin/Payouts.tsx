@@ -30,7 +30,7 @@ import { trpc } from "@/lib/trpc";
 import type { PayoutFormat } from "@shared/commerce/payoutFile";
 import type { Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 type Outputs = inferRouterOutputs<AppRouter>["finance"];

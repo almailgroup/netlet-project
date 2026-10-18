@@ -21,7 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { MAX_AFFILIATE_PERCENT } from "@shared/commerce/affiliate";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 type Row = inferRouterOutputs<AppRouter>["affiliates"]["list"]["rows"][number];

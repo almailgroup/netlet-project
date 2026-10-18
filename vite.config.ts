@@ -18,14 +18,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
+      "@": path.resolve(import.meta.dirname, "Frontend", "Web", "src"),
       "@shared": path.resolve(import.meta.dirname, "Shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
     },
   },
   envDir: path.resolve(import.meta.dirname),
-  root: path.resolve(import.meta.dirname, "client"),
-  publicDir: path.resolve(import.meta.dirname, "client", "public"),
+  root: path.resolve(import.meta.dirname, "Frontend", "Web"),
+  publicDir: path.resolve(import.meta.dirname, "Frontend", "Web", "public"),
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,

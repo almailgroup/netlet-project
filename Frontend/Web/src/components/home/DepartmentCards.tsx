@@ -9,7 +9,7 @@
  * The tiles are white, all six alike — the owner's word: a colour per
  * department was tried in a mockup and declined.
  *
- * **The art is a file per department**, `client/public/departments/<slug>.webp`,
+ * **The art is a file per department**, `Frontend/Web/public/departments/<slug>.webp`,
  * so a picture is replaced by dropping a file with the same name — no code
  * change. Each is a few of the department's typical goods as soft, rounded 3D
  * renders in their natural colours, on a transparent background, trimmed to

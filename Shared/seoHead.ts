@@ -15,7 +15,7 @@
  */
 import type { PageMeta } from "./seo.js";
 
-/** The marked region of `client/index.html` that a page's own head replaces. */
+/** The marked region of `Frontend/Web/index.html` that a page's own head replaces. */
 export const HEAD_START = "<!-- netlet:head -->";
 export const HEAD_END = "<!-- /netlet:head -->";
 

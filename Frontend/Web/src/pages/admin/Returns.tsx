@@ -25,7 +25,7 @@ import { trpc } from "@/lib/trpc";
 import type { Actor } from "@shared/inventory/permissions";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 type Row = inferRouterOutputs<AppRouter>["returns"]["list"][number];

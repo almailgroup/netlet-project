@@ -14,7 +14,7 @@
  * said at checkout and on the sign-in page.
  *
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
- * street, then `client/src/assets/hero/` in name order). Only the pictures
+ * street, then `Frontend/Web/src/assets/hero/` in name order). Only the pictures
  * change; the words and the buttons hold still, so nothing a shopper is
  * reading moves. A picture stays `SLIDE_MS` — three seconds, the owner's figure
  * — and the band carries no controls, also on the owner's word: it had dots

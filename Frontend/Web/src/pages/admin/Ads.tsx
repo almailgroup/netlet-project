@@ -53,7 +53,7 @@ import { ImagePlus, LoaderCircle } from "lucide-react";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import type { Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Select } from "@/components/ui/Select";
 

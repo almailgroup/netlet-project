@@ -39,7 +39,7 @@ const NOT_IN_DEMO = new Set([
 
 describe("demo mode", () => {
   it("answers every procedure it can be asked", () => {
-    const demo = readFileSync(path.join(ROOT, "client/src/lib/demoLink.ts"), "utf-8");
+    const demo = readFileSync(path.join(ROOT, "Frontend/Web/src/lib/demoLink.ts"), "utf-8");
     const exposed = Object.keys((appRouter as unknown as { _def: { procedures: Record<string, unknown> } })._def.procedures);
 
     expect(exposed.length).toBeGreaterThan(20);

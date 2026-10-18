@@ -11,7 +11,7 @@
  *
  * Two pseudo-elements cannot share one box, so the two jobs go on two
  * elements: the button is the transparent 44px target, and the disc inside it
- * is the glass. `client/src/lib/tapTarget.test.ts` refuses the two classes on
+ * is the glass. `Frontend/Web/src/lib/tapTarget.test.ts` refuses the two classes on
  * one element again. Callers keep the old footprint by pulling the button in
  * by the difference — a negative margin in a row, a smaller offset when it is
  * positioned.

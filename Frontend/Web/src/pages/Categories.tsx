@@ -6,7 +6,7 @@
  * page the shopper was on, with no address, so Back did nothing useful and a
  * department could not be sent to anybody. The owner asked for a page, and it
  * is the home page's department cards made the page's subject: the same art
- * (`client/public/departments/<slug>.webp`), larger, two to a row on a phone,
+ * (`Frontend/Web/public/departments/<slug>.webp`), larger, two to a row on a phone,
  * each saying how many products it holds, so the press goes where something is.
  *
  * **All six, always**, on the home cards' rule rather than the navigation's —

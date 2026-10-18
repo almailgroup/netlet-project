@@ -24,7 +24,7 @@ import { trpc } from "@/lib/trpc";
 import { compareMoney } from "@shared/money";
 import type { PauseReason } from "@shared/commerce/subscriptions";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 type Subscription = inferRouterOutputs<AppRouter>["subscriptions"]["mine"][number];

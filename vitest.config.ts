@@ -7,7 +7,7 @@ export default defineConfig({
   root: templateRoot,
   resolve: {
     alias: {
-      "@": path.resolve(templateRoot, "client", "src"),
+      "@": path.resolve(templateRoot, "Frontend", "Web", "src"),
       "@shared": path.resolve(templateRoot, "Shared"),
       "@assets": path.resolve(templateRoot, "attached_assets"),
     },
@@ -26,6 +26,6 @@ export default defineConfig({
      */
     /* `workers/` holds the AI gateway, a Cloudflare Worker that is deployed
        on its own and would otherwise have no tests anybody runs. */
-    include: ["{Backend,Shared,client}/**/*.{test,spec}.{ts,tsx}"],
+    include: ["{Backend,Shared,Frontend}/**/*.{test,spec}.{ts,tsx}"],
   },
 });

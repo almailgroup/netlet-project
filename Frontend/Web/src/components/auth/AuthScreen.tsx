@@ -7,7 +7,7 @@
  * actually does, each checkable on the site, and the three facts every order
  * carries — under one picture of NetLet itself when there is one.
  *
- * **The picture is a file**: `client/src/assets/auth/welcome.webp`, NetLet's
+ * **The picture is a file**: `Frontend/Web/src/assets/auth/welcome.webp`, NetLet's
  * own street — four stores and the van being loaded, the towers behind. The
  * build picks it up by name, so replacing it is dropping in another file, and
  * with none the panel is its words alone rather than an empty frame or a

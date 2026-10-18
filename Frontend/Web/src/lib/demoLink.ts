@@ -16,7 +16,7 @@ import { readStored, writeStored } from "@/lib/browserStore";
 import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
-import type { AppRouter } from "../../../Backend/src/routes";
+import type { AppRouter } from "../../../../Backend/src/routes";
 import { summarise } from "@shared/commerce/salesSummary";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";

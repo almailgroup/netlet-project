@@ -22,7 +22,7 @@ import { useFeature } from "@/hooks/useFeature";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT, RATING_MAX } from "@shared/commerce/deliveryRatings";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import type { AppRouter } from "../../../../Backend/src/routes";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { ShieldAlert, Star, Truck } from "lucide-react";
 import { useMemo, useState } from "react";
