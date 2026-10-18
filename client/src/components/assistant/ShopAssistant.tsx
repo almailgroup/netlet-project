@@ -22,10 +22,13 @@
  *
  * Only the button comes with the page. The conversation (`ShopChatPanel`) is
  * fetched when a pointer or a finger reaches the button, and kept once
- * opened, so closing it and moving to another page loses nothing.
+ * opened, so closing it and moving to another page loses nothing — and an
+ * answer still arriving when it was closed puts the shop's pixel dot on the
+ * button when it lands, until the panel is opened again.
  */
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
+import { PixelDot } from "@/components/ui/PixelBadge";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -41,6 +44,7 @@ export function ShopAssistant({ product, department }: {
   const available = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 });
   const [open, setOpen] = useState(false);
   const [started, setStarted] = useState(false);
+  const [unread, setUnread] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   /*
    * Closing hands focus back to the button, once it is drawn again — it is
@@ -67,8 +71,8 @@ export function ShopAssistant({ product, department }: {
         onPointerEnter={() => void loadPanel()}
         onTouchStart={() => void loadPanel()}
         onFocus={() => void loadPanel()}
-        onClick={() => { setStarted(true); setOpen(true); }}
-        aria-label={t("shopChat.launch")}
+        onClick={() => { setStarted(true); setOpen(true); setUnread(false); }}
+        aria-label={unread ? `${t("shopChat.launch")} · ${t("shopChat.unread")}` : t("shopChat.launch")}
         title={t("shopChat.launch")}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -78,14 +82,21 @@ export function ShopAssistant({ product, department }: {
           <span className="glass-bar-bend" />
           <span className="glass-bar-face" />
         </span>
-        <span aria-hidden className="grid size-10 place-items-center rounded-full bg-[#0a285a] text-white lg:size-11">
+        <span aria-hidden className="relative grid size-10 place-items-center rounded-full bg-[#0a285a] text-white lg:size-11">
           <Sparkles className="size-5" />
+          {unread ? <PixelDot className="absolute -end-0.5 -top-0.5" /> : null}
         </span>
         <span aria-hidden className="hidden text-[15px] font-bold text-[#0a285a] lg:inline">{t("shopChat.launch")}</span>
       </button>
       {started ? (
         <Suspense fallback={null}>
-          <ShopChatPanel open={open} onClose={back => { refocus.current = back; setOpen(false); }} product={product} department={department} />
+          <ShopChatPanel
+            open={open}
+            onClose={back => { refocus.current = back; setOpen(false); }}
+            onAnswered={() => setUnread(true)}
+            product={product}
+            department={department}
+          />
         </Suspense>
       ) : null}
     </>
