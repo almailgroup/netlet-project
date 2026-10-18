@@ -52,6 +52,9 @@ Frontend/
     src/contexts/      app-wide state: the cart, the customer
     src/lib/           services and utilities: the tRPC client, storage, formatting
     public/            files served as they are
+  iOS/                 the native app — SwiftUI, MVVM, async/await; see Frontend/iOS/README.md
+    NetLet/            Models, Services, ViewModels, Views, Utilities, Resources
+    NetLetTests/       unit tests, run on macOS by .github/workflows/ios.yml
 Backend/
   src/core/            configuration and infrastructure: app, auth, env, security, tRPC, entry points
   src/routes/          the API — one tRPC router per surface; index.ts is the app router
@@ -92,6 +95,7 @@ skips silently.
 | [`docs/SUPABASE-AUTH.md`](docs/SUPABASE-AUTH.md) | Authentication setup — where registered accounts live |
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
 | [`Backend/gateway/README.md`](Backend/gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
+| [`Frontend/iOS/README.md`](Frontend/iOS/README.md) | The iOS app — running it, its demo mode, and what it copies from `Shared/` |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | What was asked for |
 | [`CLAUDE.md`](CLAUDE.md) | Why the code is the way it is — read this before changing it |
 

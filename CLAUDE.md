@@ -4852,10 +4852,57 @@ nothing on the page saying so since the preview banner was removed.
 
 ## iOS app
 
-The Expo WebView shell that wrapped the published site was retired, on the
-owner's word, for a native SwiftUI app in `Frontend/iOS` that takes over its
-bundle identifier, `com.netlet.marketplace`. Nothing of the shell was reused
-but its icon.
+**`Frontend/iOS` is a native SwiftUI app, iOS 17 up, and it is a second client
+of the same API, not a second shop.** It replaced the Expo WebView shell, on
+the owner's word, and took its bundle identifier, `com.netlet.marketplace`;
+nothing of the shell was reused but its icon. Browsing, search, the product
+page, the bag, cash-on-delivery checkout, sign-in with the emailed code and
+the reCAPTCHA box, the account's details and orders, and a store member adding
+a product with photos are all there. Everything else a seller or an
+administrator does stays in the web portal, which the Sell tab says.
+`Frontend/iOS/README.md` is the run steps.
+
+**It holds no rule of its own that the server also holds.** Swift cannot import
+`Shared/`, and a hand-copied list of departments, governorates or sentences
+drifts the first time one side changes, so `scripts/exportShared.ts`
+(`pnpm ios:resources`) writes the dictionary with its plural forms, the
+departments, Kuwait's areas and the form limits to `NetLet/Resources/Generated/`
+as JSON, and `exportShared.test.ts`, in `pnpm test`, fails while a committed
+copy is stale. Every word on screen is a dictionary key — a sentence only the
+app needs is an `ios.*` key in both languages — and the same test fails on a
+Swift string in a dictionary namespace that is not a key. The dictionary's own
+"no key nothing uses" scan reads `.swift` too. Prices, delivery, whether cash
+is possible and what an order costs are only ever the server's answer; the
+form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
+`kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
+refuses.
+
+**The client is typed by procedure.** The server has no REST routes, so
+`Procedures.swift` declares each tRPC procedure the app calls with its input
+and output types, and `TRPCClient` speaks superjson: a query's input in
+`?input=`, percent-encoded past `&` and `+`, a mutation's as the body, dates
+read from ISO strings. A refusal arrives as the server's message key, which is
+said in the shopper's language, and anything that is not a key is described by
+its code — never the database's sentence. Money is whole fils, never a float.
+The session is NetLet's own httpOnly cookie in the system's cookie store; the
+app never holds a token.
+
+**MVVM, one way.** Each screen's state is an `@Observable @MainActor` view
+model behind protocol services, made on first appearance by `ModelHost`
+(`init` cannot read the environment); `AppModel` builds the services once and
+holds who is signed in (`SessionModel`) and the bag (`CartModel`). A load is
+`LoadState` — idle, loading, loaded or failed with Try again — so a failed read
+is never drawn as an empty list, the web's `QueryGate` rule. The bag keeps only
+its id on the device, forgets it at sign-out and adopts the account's bag on
+sign-in, as `CartContext` does.
+
+**It runs against recordings as well as a server.** `-NetLetDemo YES` answers
+every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a
+real server with the development seed, and `FixtureDecodingTests` decodes each
+one — the contract test that fails when the API changes shape under the app.
+No Swift toolchain runs on Linux here, so `.github/workflows/ios.yml` builds
+and tests on macOS for every push that touches `Frontend/iOS`; the project is
+Xcode 16's synchronized folders, so a new file needs no project edit.
 
 ## Checks
 

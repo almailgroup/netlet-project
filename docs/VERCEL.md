@@ -153,8 +153,8 @@ rewrite is not being applied and the problem is `vercel.json`, not your build.
 ## Once you are happy
 
 Turn GitHub Pages off in the repository's **Settings → Pages** so the two
-cannot drift, and point the iOS shell at the new URL:
-`MOBILE_STOREFRONT_URL` in `ios-app/src/webStorefront.ts`.
+cannot drift. The native iOS app reads its server's address from
+`NETLET_API_BASE_URL` in `Frontend/iOS/Config/Shared.xcconfig`.
 
 For a custom domain (`netlet.com` or similar): **Settings → Domains**, add it,
 and follow the DNS records Vercel gives you. TLS is automatic.
