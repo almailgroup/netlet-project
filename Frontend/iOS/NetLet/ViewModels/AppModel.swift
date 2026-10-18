@@ -31,8 +31,15 @@ final class AppModel {
     /// to go on (checkout, selling). Signed out, the Account tab is the form itself.
     var authPresented = false
     var selectedTab: Tab = .home
-    /// The cart tab's stack, held here so Buy now can open checkout from any tab.
+    /// Each tab's stack, held here so one tab can open another's screen — Buy
+    /// now opening checkout, a launch argument opening a product.
+    var homePath = NavigationPath()
+    var searchPath = NavigationPath()
     var cartPath = NavigationPath()
+    var accountPath = NavigationPath()
+    var sellPath = NavigationPath()
+    /// Words the Search tab should search for when it next appears.
+    var pendingSearch: String?
 
     enum Tab: Hashable {
         case home, search, cart, account, sell
@@ -52,7 +59,8 @@ final class AppModel {
     static func live(arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> AppModel {
         let configuration = APIConfiguration.current(defaults: defaults)
         let demo = defaults.bool(forKey: "NetLetDemo") || arguments.contains("-NetLetDemo")
-        let transport: HTTPTransport = demo ? DemoTransport() : URLSessionTransport()
+        // `-NetLetDemoAs shopper` answers as a signed-in shopper who also runs a store.
+        let transport: HTTPTransport = demo ? DemoTransport(variant: defaults.string(forKey: "NetLetDemoAs")) : URLSessionTransport()
         let client = TRPCClient(configuration: configuration, transport: transport)
         return AppModel(services: Services(client: client), isDemo: demo)
     }
@@ -63,6 +71,55 @@ final class AppModel {
         async let cart: Void = self.cart.restore()
         _ = await (session, cart)
         if self.session.isSignedIn { await linkAccount() }
+        #if DEBUG
+        openScreen(UserDefaults.standard.string(forKey: "NetLetOpen"))
+        #endif
+    }
+
+    /// A screen to start on, for development and the screenshots CI takes:
+    /// `-NetLetOpen product:basmati-rice-5kg`, `search:rice`, `checkout`,
+    /// `orders`, `newListing`… Debug builds only; a release ignores it.
+    func openScreen(_ target: String?) {
+        guard let target, !target.isEmpty else { return }
+        let parts = target.split(separator: ":", maxSplits: 1).map(String.init)
+        let value = parts.count > 1 ? parts[1] : nil
+        switch parts[0] {
+        case "department":
+            selectedTab = .home
+            homePath = NavigationPath([Route.department(slug: value)])
+        case "product":
+            guard let value else { return }
+            selectedTab = .home
+            homePath = NavigationPath([Route.product(handle: value)])
+        case "search":
+            selectedTab = .search
+            pendingSearch = value
+        case "cart":
+            selectedTab = .cart
+        case "checkout":
+            selectedTab = .cart
+            cartPath = NavigationPath([Route.checkout])
+        case "account":
+            selectedTab = .account
+        case "orders":
+            selectedTab = .account
+            accountPath = NavigationPath([Route.orders])
+        case "order":
+            guard let value else { return }
+            selectedTab = .account
+            accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
+        case "profile":
+            selectedTab = .account
+            accountPath = NavigationPath([Route.profile])
+        case "sell":
+            selectedTab = session.seller?.isStoreMember == true ? .sell : .account
+        case "newListing":
+            guard session.seller?.isStoreMember == true else { return }
+            selectedTab = .sell
+            sellPath = NavigationPath([Route.newListing])
+        default:
+            selectedTab = .home
+        }
     }
 
     /// The account just proved: it takes on its stored language, claims the

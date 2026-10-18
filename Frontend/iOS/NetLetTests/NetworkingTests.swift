@@ -128,6 +128,14 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(listings.rows.isEmpty)
     }
 
+    func testTheShopperVariantIsSignedInAndFallsBackElsewhere() async throws {
+        let shopper = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "shopper"))
+        let user = try await shopper.call(API.me)
+        XCTAssertEqual(user?.firstName, "Noura")
+        let products = try await shopper.call(API.products, .init(first: 24))
+        XCTAssertFalse(products.isEmpty, "a procedure with no variant answers from the shared recording")
+    }
+
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {
         do {
             _ = try await client.call(API.changeEmail, .init(email: "a@b.co", currentPassword: "x"))

@@ -10,11 +10,11 @@ struct RootView: View {
     var body: some View {
         @Bindable var app = app
         TabView(selection: $app.selectedTab) {
-            NavigationStack { HomeView().routes() }
+            NavigationStack(path: $app.homePath) { HomeView().routes() }
                 .tabItem { Label(l.t("nav.home"), systemImage: "house") }
                 .tag(AppModel.Tab.home)
 
-            NavigationStack { SearchView().routes() }
+            NavigationStack(path: $app.searchPath) { SearchView().routes() }
                 .tabItem { Label(l.t("browse.searchCrumb"), systemImage: "magnifyingglass") }
                 .tag(AppModel.Tab.search)
 
@@ -23,12 +23,12 @@ struct RootView: View {
                 .badge(app.cart.itemCount)
                 .tag(AppModel.Tab.cart)
 
-            NavigationStack { AccountView().routes() }
+            NavigationStack(path: $app.accountPath) { AccountView().routes() }
                 .tabItem { Label(l.t("nav.profile"), systemImage: "person") }
                 .tag(AppModel.Tab.account)
 
             if app.session.seller?.isStoreMember == true {
-                NavigationStack { SellerListingsView().routes() }
+                NavigationStack(path: $app.sellPath) { SellerListingsView().routes() }
                     .tabItem { Label(l.t("ios.sell.tab"), systemImage: "storefront") }
                     .tag(AppModel.Tab.sell)
             }

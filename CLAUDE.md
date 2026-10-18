@@ -4902,7 +4902,15 @@ real server with the development seed, and `FixtureDecodingTests` decodes each
 one — the contract test that fails when the API changes shape under the app.
 No Swift toolchain runs on Linux here, so `.github/workflows/ios.yml` builds
 and tests on macOS for every push that touches `Frontend/iOS`; the project is
-Xcode 16's synchronized folders, so a new file needs no project edit.
+Xcode 16's synchronized folders, so a new file needs no project edit. **Swift
+5 mode evaluates a default argument and a stored property's initial value
+outside the main actor**, so a main-actor object is made in an initialiser
+(`AppModel`'s language, the `App`'s model) — the first macOS build failed on
+exactly that. After the tests the same job installs the app and photographs
+eleven screens in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
+Debug only) as the `ios-previews` artifact, and prints small copies between
+`PREVIEW` markers, because this session can read a job's log but not download
+its artifacts.
 
 ## Checks
 

@@ -35,6 +35,12 @@ struct SearchView: View {
             model.language = language
             if !model.trimmed.isEmpty { Task { await model.run(model.trimmed) } }
         }
+        .task(id: app.pendingSearch) {
+            guard let words = app.pendingSearch else { return }
+            app.pendingSearch = nil
+            model.query = words
+            await model.submit()
+        }
     }
 
     @ViewBuilder

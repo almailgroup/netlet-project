@@ -18,6 +18,15 @@ two launch arguments, off by default, under *Edit Scheme → Run → Arguments*:
 - `-NetLetAPIBaseURL http://localhost:5001` points a simulator at `pnpm dev`
   on the same Mac. A real phone needs the Mac's address on the network instead.
 
+Two more, for development and screenshots, in Debug builds only:
+
+- `-NetLetDemoAs shopper` makes the demo a signed-in shopper who also runs a
+  store, so the bag, checkout, orders and the Sell tab have something in them.
+- `-NetLetOpen <screen>` starts on one screen: `department:grocery`,
+  `product:<handle>`, `search:<words>`, `cart`, `checkout`, `account`,
+  `orders`, `order:<reference>`, `profile`, `sell`, `newListing`.
+- `-netlet.language ar` starts in Arabic.
+
 Signing in sets NetLet's httpOnly session cookie in the system's cookie store,
 the way a browser keeps it; the app never holds a token or a password.
 
@@ -64,7 +73,10 @@ xcodebuild test -project NetLet.xcodeproj -scheme NetLet \
 ```
 
 `.github/workflows/ios.yml` runs the same on macOS for every push that touches
-this folder.
+this folder, then installs the app on the simulator and photographs eleven
+screens in English and Arabic from the demo recordings. Without a Mac, that is
+the preview: the **ios-previews** artifact on the workflow run, under the
+repository's Actions tab.
 
 ## Recording the demo again
 
