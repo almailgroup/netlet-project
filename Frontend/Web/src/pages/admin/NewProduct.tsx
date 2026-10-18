@@ -424,7 +424,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             {photos.length < MAX_PHOTOS ? (
               <div className="mt-4 space-y-4">
                 <div className="flex flex-wrap gap-2">
-                  <PhotoUpload onUploaded={addPhoto} addedNote="admin.newPhotoAdded" />
+                  <PhotoUpload onUploaded={addPhoto} addedNote="admin.newPhotoAdded" productName={draft.title} />
                 </div>
                 <Field label={t("admin.newPhotoLink")} error={photoLinkError && t(photoLinkError, { scheme: "https://" })}>
                   <PhotoLink value={photoLink} onChange={value => { setPhotoLink(value); setPhotoLinkError(null); }} onAdd={addLink} />

@@ -64,6 +64,7 @@ export const FEATURE_KEYS = [
   "photoSearch",
   "appBanner",
   "articles",
+  "tryOn",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -135,6 +136,9 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   appBanner: { entries: [], audience: "shopper", defaultOn: false },
   /* The home page's "Useful reading", until there are articles to read. */
   articles: { entries: [], audience: "shopper", defaultOn: false },
+  /* Trying clothes on from a photo of yourself (3.1.8): the shopper's photo
+     goes to Google's model, so it starts off and is a decision to switch on. */
+  tryOn: { entries: ["tryOn.make"], audience: "shopper", defaultOn: false },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

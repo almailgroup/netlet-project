@@ -18,7 +18,7 @@
  */
 import { fieldClass, smallButtonClass } from "@/components/admin/ui";
 import { useEffect, useRef, useState } from "react";
-import { Factory, ImagePlus, LoaderCircle } from "lucide-react";
+import { Factory, ImagePlus, LoaderCircle, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
@@ -35,11 +35,23 @@ const FIX_LABEL: Record<Fix, MessageKey> = {
   resized: "media.fixResized",
 };
 
-/** `source` is the manufacturer's image address when the photo came from one, else null. */
-type Choice = { taken: PreparedPhoto; fixed: PreparedPhoto; urls: { taken: string; fixed: string }; source: string | null };
+/**
+ * `source` is the manufacturer's image address when the photo came from one,
+ * else null. `ai` is the drawing model's clean-up (3.3.4), once asked for.
+ */
+type Choice = {
+  taken: PreparedPhoto;
+  fixed: PreparedPhoto;
+  ai: PreparedPhoto | null;
+  urls: { taken: string; fixed: string; ai: string | null };
+  source: string | null;
+};
+type Pick = "fixed" | "taken" | "ai";
 
-export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
+export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productName = "" }: {
   onUploaded: (url: string) => void;
+  /** The product's name as typed so far, for finding its maker's page by name. */
+  productName?: string;
   /** What the toast says once it is in the list: the editor saves photos with a Save, the new-product form with Create. */
   addedNote?: MessageKey;
 }) {
@@ -47,11 +59,18 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<"preparing" | "uploading" | null>(null);
   const [choice, setChoice] = useState<Choice | null>(null);
-  const [useFixed, setUseFixed] = useState(true);
+  const [pick, setPick] = useState<Pick>("fixed");
+  const [cleaning, setCleaning] = useState(false);
+  /* The clean-up needs the model; absent, the two the browser made are the choice. */
+  const modelOn = trpc.media.aiAvailable.useQuery(undefined, { enabled: choice !== null && !DEMO_MODE, staleTime: 300_000 });
 
   /* Object URLs hold the blob alive until revoked. */
   useEffect(() => () => {
-    if (choice) { URL.revokeObjectURL(choice.urls.taken); URL.revokeObjectURL(choice.urls.fixed); }
+    if (choice) {
+      URL.revokeObjectURL(choice.urls.taken);
+      URL.revokeObjectURL(choice.urls.fixed);
+      if (choice.urls.ai) URL.revokeObjectURL(choice.urls.ai);
+    }
   }, [choice]);
 
   if (DEMO_MODE) return null;
@@ -65,13 +84,36 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
       toast.error(t(typeof fixed === "string" ? fixed : (taken as MessageKey)));
       return;
     }
-    setUseFixed(fixed.fixes.some(fix => fix !== "resized"));
-    setChoice({ taken, fixed, urls: { taken: URL.createObjectURL(taken.blob), fixed: URL.createObjectURL(fixed.blob) }, source });
+    setPick(fixed.fixes.some(fix => fix !== "resized") ? "fixed" : "taken");
+    setChoice({ taken, fixed, ai: null, urls: { taken: URL.createObjectURL(taken.blob), fixed: URL.createObjectURL(fixed.blob), ai: null }, source });
+  };
+
+  /* The photo as taken goes to the drawing model; what comes back is prepared
+     like any photo, so it is stored the way every other one is. */
+  const cleanUp = async () => {
+    if (!choice) return;
+    setCleaning(true);
+    try {
+      const response = await fetch("/api/media/ai-clean", { method: "POST", headers: { "Content-Type": choice.taken.type }, body: choice.taken.blob, credentials: "same-origin" });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? "drawing.failed");
+      }
+      const prepared = await preparePhoto(await response.blob(), false);
+      if (typeof prepared === "string") throw new Error(prepared);
+      const url = URL.createObjectURL(prepared.blob);
+      setChoice(current => current && { ...current, ai: prepared, urls: { ...current.urls, ai: url } });
+      setPick("ai");
+    } catch (error) {
+      toast.error(tError(error instanceof Error ? error.message : "drawing.failed"));
+    } finally {
+      setCleaning(false);
+    }
   };
 
   const upload = async () => {
     if (!choice) return;
-    const photo = useFixed ? choice.fixed : choice.taken;
+    const photo = pick === "ai" && choice.ai ? choice.ai : pick === "fixed" ? choice.fixed : choice.taken;
     setBusy("uploading");
     try {
       const headers: Record<string, string> = { "Content-Type": photo.type };
@@ -103,7 +145,7 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
         {t(busy === "preparing" ? "media.preparing" : "media.upload")}
       </button>
       <input ref={input} type="file" accept="image/*" className="hidden" tabIndex={-1} aria-hidden onChange={event => { void chosen(event.target.files?.[0]); event.target.value = ""; }} />
-      <ManufacturerImport busy={busy !== null} onPick={(blob, source) => void chosen(blob, source)} />
+      <ManufacturerImport busy={busy !== null} productName={productName} onPick={(blob, source) => void chosen(blob, source)} />
 
       {choice ? (
         <div className="mt-3 w-full rounded-2xl border border-[#d5dfeb] bg-white p-4 text-[12px] text-[#0a285a]">
@@ -111,18 +153,31 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded" }: {
           <p className="mt-1 ink-muted">
             {meaningful.length ? t("media.fixedThese", { fixes: meaningful.map(fix => t(FIX_LABEL[fix])).join(" · ") }) : t("media.nothingToFix")}
           </p>
-          <fieldset className="mt-3 grid grid-cols-2 gap-3">
+          <fieldset className={`mt-3 grid gap-3 ${choice.ai ? "grid-cols-3" : "grid-cols-2"}`}>
             <legend className="sr-only">{t("media.chooseTitle")}</legend>
-            {([["fixed", true], ["taken", false]] as const).map(([which, fixedOne]) => (
-              <label key={which} className={`cursor-pointer rounded-xl border p-2 ${useFixed === fixedOne ? "border-[#0a285a] ring-2 ring-[#0a285a]/20" : "border-[#d5dfeb]"}`}>
-                <img src={choice.urls[which]} alt={t(fixedOne ? "media.fixedAlt" : choice.source ? "media.originalAlt" : "media.takenAlt")} loading="eager" decoding="async" className="aspect-square w-full rounded-lg bg-[#eef1f6] object-contain" />
+            {(["fixed", "taken", ...(choice.ai ? ["ai" as const] : [])] as Pick[]).map(which => (
+              <label key={which} className={`cursor-pointer rounded-xl border p-2 ${pick === which ? "border-[#0a285a] ring-2 ring-[#0a285a]/20" : "border-[#d5dfeb]"}`}>
+                <img
+                  src={choice.urls[which] ?? undefined}
+                  alt={t(which === "fixed" ? "media.fixedAlt" : which === "ai" ? "media.aiAlt" : choice.source ? "media.originalAlt" : "media.takenAlt")}
+                  loading="eager"
+                  decoding="async"
+                  className="aspect-square w-full rounded-lg bg-[#eef1f6] object-contain"
+                />
                 <span className="mt-2 flex items-center gap-2 font-bold">
-                  <input type="radio" name="photo-choice" checked={useFixed === fixedOne} onChange={() => setUseFixed(fixedOne)} className="accent-[#0a285a]" />
-                  {t(fixedOne ? "media.useFixed" : choice.source ? "media.useOriginal" : "media.useTaken")}
+                  <input type="radio" name="photo-choice" checked={pick === which} onChange={() => setPick(which)} className="accent-[#0a285a]" />
+                  {t(which === "fixed" ? "media.useFixed" : which === "ai" ? "media.useAi" : choice.source ? "media.useOriginal" : "media.useTaken")}
                 </span>
               </label>
             ))}
           </fieldset>
+          {choice.ai ? <p className="mt-2 leading-5 ink-muted">{t("media.aiNote")}</p> : null}
+          {modelOn.data && !choice.ai ? (
+            <button type="button" onClick={() => void cleanUp()} disabled={cleaning || busy !== null} className={`${smallButtonClass.secondary} mt-3`}>
+              {cleaning ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Sparkles className="size-4" aria-hidden />}
+              {t(cleaning ? "media.aiCleaning" : "media.aiClean")}
+            </button>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={() => void upload()} disabled={busy !== null} className={smallButtonClass.primary}>
               {busy === "uploading" ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}{t("media.add")}
@@ -160,10 +215,13 @@ async function fetchRemote(url: string): Promise<Blob> {
  * seller's browser fetching it directly would tell that site who is looking.
  * Three at a time, so a page of eight does not open eight connections at once.
  */
-function ManufacturerImport({ busy, onPick }: { busy: boolean; onPick: (blob: Blob, source: string) => void }) {
+function ManufacturerImport({ busy, productName, onPick }: { busy: boolean; productName: string; onPick: (blob: Blob, source: string) => void }) {
   const { t, tError } = useTranslation();
   const [open, setOpen] = useState(false);
   const [pageUrl, setPageUrl] = useState("");
+  /* Finding the page by name needs a model (3.1.10); absent, the paste box is the whole panel. */
+  const searchable = trpc.media.aiAvailable.useQuery(undefined, { enabled: open, staleTime: 300_000 });
+  const find = trpc.media.findPages.useMutation({ onError: error => toast.error(tError(error.message)) });
   const [previews, setPreviews] = useState<Record<string, Preview>>({});
   const scan = trpc.media.scanPage.useMutation({
     onSuccess: result => void loadPreviews(result.candidates),
@@ -239,6 +297,51 @@ function ManufacturerImport({ busy, onPick }: { busy: boolean; onPick: (blob: Bl
         </button>
         <button type="button" onClick={() => setOpen(false)} className={smallButtonClass.secondary}>{t("manufacturer.close")}</button>
       </form>
+
+      {searchable.data ? (
+        <div className="mt-3 rounded-xl border border-[#d5dfeb] bg-[#f7f8fb] p-3">
+          <p className="leading-5 ink-muted">{t("manufacturer.searchHint")}</p>
+          <button
+            type="button"
+            disabled={productName.trim().length < 3 || find.isPending}
+            onClick={() => find.mutate({ name: productName })}
+            className={`${smallButtonClass.secondary} mt-2`}
+          >
+            {find.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Search className="size-4" aria-hidden />}
+            {t(find.isPending ? "manufacturer.searching" : "manufacturer.search")}
+          </button>
+          {productName.trim().length < 3 ? <p className="mt-2 leading-5 ink-muted">{t("manufacturer.needName")}</p> : null}
+          <div aria-live="polite">
+            {find.data ? (
+              find.data.length === 0 ? (
+                <p className="mt-2 leading-5">{t("manufacturer.searchNone")}</p>
+              ) : (
+                <>
+                  <p className="mt-3 font-extrabold">{t("manufacturer.searchResults")}</p>
+                  <ul className="mt-2 space-y-2">
+                    {find.data.map(page => (
+                      <li key={page.url} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 py-2">
+                        <span className="min-w-0">
+                          <bdi dir="ltr" className="block font-bold">{page.host}</bdi>
+                          <span dir="auto" className="block truncate text-[12px] ink-muted">{page.title}</span>
+                        </span>
+                        <button
+                          type="button"
+                          disabled={scan.isPending}
+                          onClick={() => { setPageUrl(page.url); scan.mutate({ url: page.url }); }}
+                          className={smallButtonClass.primary}
+                        >
+                          {t("manufacturer.choose")}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div aria-live="polite">
         {result ? (

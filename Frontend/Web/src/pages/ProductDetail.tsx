@@ -8,6 +8,7 @@ import { briefFor } from "@shared/commerce/assistant";
 import { useCart } from "@/contexts/CartContext";
 import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
 import { SizeGuide } from "@/components/product/SizeGuide";
+import { TryOn } from "@/components/product/TryOn";
 import { SubscribePanel } from "@/components/product/SubscribePanel";
 import { ProductReviews } from "@/components/product/ProductReviews";
 import { BoughtTogether } from "@/components/product/BoughtTogether";
@@ -1233,17 +1234,23 @@ export default function ProductDetail() {
             <VariantPicker product={product} selected={selectedVariant} onSelect={chooseVariant} />
             {/* Beside the picker it answers (3.1.20): which size is a question
                 asked while choosing one. */}
-            {product.sizeChart ? (
-              <SizeGuide
-                productId={product.id}
-                chart={product.sizeChart}
-                availableSizes={sizesOn(product, product.sizeChart.axis)}
-                onChooseSize={size => {
-                  const variant = variantForSize(product, product.sizeChart!.axis, size, selectedVariant);
-                  if (variant) chooseVariant(variant);
-                }}
-              />
-            ) : null}
+            {/* The fitting and the try-on (3.1.8) side by side: two ways of
+                asking "will this suit me" while choosing. Each draws itself
+                only where it applies. */}
+            <div className="flex flex-wrap gap-x-5">
+              {product.sizeChart ? (
+                <SizeGuide
+                  productId={product.id}
+                  chart={product.sizeChart}
+                  availableSizes={sizesOn(product, product.sizeChart.axis)}
+                  onChooseSize={size => {
+                    const variant = variantForSize(product, product.sizeChart!.axis, size, selectedVariant);
+                    if (variant) chooseVariant(variant);
+                  }}
+                />
+              ) : null}
+              <TryOn productId={product.id} title={product.title} />
+            </div>
 
             {/* With the quantity and the buy button, because they are one
                 decision about one purchase — by the time somebody has scrolled

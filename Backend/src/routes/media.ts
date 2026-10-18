@@ -9,8 +9,23 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { MAX_URL_LENGTH } from "../../../Shared/commerce/manufacturerImages.js";
 import { resolveActor } from "../services/inventory.js";
-import { ImportRefused, scanManufacturerPage } from "../services/manufacturerImages.js";
+import { ImportRefused, findMakerPages, scanManufacturerPage } from "../services/manufacturerImages.js";
+import { modelAvailable } from "../services/gemini.js";
 import { protectedProcedure, router } from "../core/trpc.js";
+
+function refused(error: unknown): never {
+  if (error instanceof ImportRefused) {
+    const code = error.reason === "media.notAllowed"
+      ? "FORBIDDEN"
+      : error.reason === "manufacturer.tooMany"
+        ? "TOO_MANY_REQUESTS"
+        : error.reason === "manufacturer.searchOff" || error.reason === "manufacturer.searchFailed"
+          ? "PRECONDITION_FAILED"
+          : "BAD_REQUEST";
+    throw new TRPCError({ code, message: error.reason });
+  }
+  throw error;
+}
 
 export const mediaRouter = router({
   scanPage: protectedProcedure
@@ -19,11 +34,21 @@ export const mediaRouter = router({
       try {
         return await scanManufacturerPage(await resolveActor(ctx.user), input.url);
       } catch (error) {
-        if (error instanceof ImportRefused) {
-          const code = error.reason === "media.notAllowed" ? "FORBIDDEN" : error.reason === "manufacturer.tooMany" ? "TOO_MANY_REQUESTS" : "BAD_REQUEST";
-          throw new TRPCError({ code, message: error.reason });
-        }
-        throw error;
+        return refused(error);
+      }
+    }),
+  /* Whether a model can be asked at all — so finding a page and cleaning a
+     photo are drawn only where they work. */
+  aiAvailable: protectedProcedure.query(() => modelAvailable()),
+  /* A search, and so a mutation: a query is a GET a cache could keep, and
+     each of these costs a model call. */
+  findPages: protectedProcedure
+    .input(z.object({ name: z.string().max(400), brand: z.string().max(200).nullish() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await findMakerPages(await resolveActor(ctx.user), input);
+      } catch (error) {
+        return refused(error);
       }
     }),
 });

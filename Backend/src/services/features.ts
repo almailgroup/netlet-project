@@ -89,6 +89,8 @@ async function readinessOf(enabled: (key: FeatureKey) => boolean): Promise<Parti
   if (assistant) out.assistant = assistant;
   const photo = modelReady();
   if (photo) out.photoSearch = photo;
+  const tryOn = modelReady();
+  out.tryOn = tryOn ?? { kind: "note", reason: "features.why.tryOnWhere" };
   out.recommendations = { kind: "note", reason: "features.why.recommendationsWhere" };
   out.voiceSearch = { kind: "note", reason: "features.why.voiceBrowser" };
   /* "Bought together" is drawn from orders that held two different products. */

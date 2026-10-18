@@ -65,7 +65,11 @@ describe("dictionary completeness", () => {
       // The privacy policy names the services a shopper's information reaches
       // — Vercel, Supabase, Resend, Google's reCAPTCHA and the three maps — as
       // their makers write them, so a reader can look each one up: the maps' reason.
-      "privacy.who.services", "privacy.who.email", "privacy.who.google", "privacy.cookies.body",
+      "privacy.who.services", "privacy.who.email", "privacy.who.tryOn", "privacy.who.google", "privacy.cookies.body",
+      // Finding a maker's page says it searches Google, by its own name.
+      "manufacturer.searchHint",
+      // A cleaned photo says which model made it, by the maker's own name.
+      "media.aiNote", "tryOn.privacy",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

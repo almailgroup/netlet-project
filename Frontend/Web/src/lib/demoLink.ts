@@ -613,6 +613,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { entries: [], total: 0, unread: 0, page: 1, pageSize: 20 };
     case "notifications.email":
       return true;
+    /* Nothing draws in the demo. */
+    case "tryOn.offered":
+    case "media.aiAvailable":
+      return false;
     case "notifications.markRead":
       return { ok: true } as const;
     case "notifications.setEmail":

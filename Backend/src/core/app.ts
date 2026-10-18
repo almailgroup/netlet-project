@@ -21,6 +21,7 @@ import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
+import { DrawingRefused, cleanUpPhoto } from "../services/aiImages.js";
 import { getDb } from "../services/db.js";
 import { sitemapEntries } from "../services/sitemap.js";
 import { robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
@@ -161,6 +162,38 @@ export function createApp(): Express {
       }
       console.error(`[media] upload failed: ${describeError(error)}`);
       res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * A seller's photo cleaned up by the drawing model (3.3.4): the photo as
+   * taken in, the model's picture out, for the seller's browser to prepare
+   * and offer beside the others. Nothing is stored — the seller uploads the
+   * one they chose through the route above. The same body types and cookie
+   * rule as the upload, so another site cannot ask for one as somebody.
+   */
+  app.post("/api/media/ai-clean", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1100kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      const drawn = await cleanUpPhoto(await resolveActor(user), new Uint8Array(req.body));
+      res.set({
+        "Content-Type": drawn.type,
+        "Content-Length": String(drawn.bytes.length),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+      });
+      res.end(drawn.bytes);
+    } catch (error) {
+      if (error instanceof DrawingRefused) {
+        const status = error.reason === "media.notAllowed" ? 403 : error.reason === "drawing.tooMany" ? 429 : error.reason === "drawing.off" || error.reason === "drawing.failed" ? 503 : 400;
+        res.status(status).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] clean-up failed: ${describeError(error)}`);
+      res.status(500).json({ error: "drawing.failed" });
     }
   });
 

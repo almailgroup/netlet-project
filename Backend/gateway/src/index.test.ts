@@ -263,13 +263,63 @@ describe("POST /api/ai/generate", () => {
 
   it("refuses an unbounded call before asking anybody, and answers a refusal with its code", async () => {
     const { fetcher, sent } = fakeGemini({ text: "{}" });
-    const long = await post("/api/ai/generate", { ...ask, timeoutMs: 60_000 }, { token: await serverToken(), origin: null, fetcher });
+    const long = await post("/api/ai/generate", { ...ask, timeoutMs: 90_000 }, { token: await serverToken(), origin: null, fetcher });
     expect(await long.json()).toMatchObject({ ok: false, error: { code: "bad_request", field: "timeoutMs" } });
     const empty = await post("/api/ai/generate", { ...ask, image: null }, { token: await serverToken(), origin: null, fetcher });
     expect((await empty.json()).error.field).toBe("prompt");
     expect(sent).toHaveLength(0);
     const blocked = await post("/api/ai/generate", ask, { token: await serverToken(), origin: null, fetcher: fakeGemini({ text: "{}", blocked: true }).fetcher });
     expect([blocked.status, (await blocked.json()).error.code]).toEqual([422, "model_refused"]);
+  });
+
+  /* A stand-in that answers with whatever candidate a test hands it. */
+  const answering = (candidate: unknown) => {
+    const sent: Sent[] = [];
+    const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      sent.push({ url: String(input), headers: new Headers(init?.headers), body: JSON.parse(String(init?.body)) });
+      return Response.json({ candidates: [candidate] });
+    }) as typeof fetch;
+    return { fetcher, sent };
+  };
+
+  it("searches with Google and returns the pages the search read, not the words", async () => {
+    const { fetcher, sent } = answering({
+      content: { parts: [{ text: "See https://made-up.example/" }] },
+      finishReason: "STOP",
+      groundingMetadata: { groundingChunks: [{ web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/a", title: "maker.example" } }, { retrievedContext: {} }] },
+    });
+    const response = await post("/api/ai/generate", { ...ask, image: null, prompt: "Lamp 200", json: false, search: true }, { token: await serverToken("makerPage"), origin: null, fetcher });
+    expect(await response.json()).toEqual({
+      ok: true,
+      data: { text: "See https://made-up.example/", sources: [{ uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/a", title: "maker.example" }] },
+    });
+    expect(sent[0].body.tools).toEqual([{ google_search: {} }]);
+    expect(sent[0].url).toContain("/gemini-2.5-flash:");
+  });
+
+  it("draws with the drawing model, sending every photo in order, and returns the picture", async () => {
+    const { fetcher, sent } = answering({ content: { parts: [{ text: "Here it is." }, { inlineData: { mimeType: "image/png", data: "iVBORw0K" } }] }, finishReason: "STOP" });
+    const response = await post(
+      "/api/ai/generate",
+      { ...ask, prompt: "Put the jacket on the person.", json: false, output: "image", images: [{ mimeType: "image/webp", data: "UklGRg" }] },
+      { token: await serverToken("tryOn"), origin: null, fetcher },
+    );
+    expect(await response.json()).toEqual({ ok: true, data: { text: "Here it is.", image: { mimeType: "image/png", data: "iVBORw0K" } } });
+    expect(sent[0].url).toContain("/gemini-2.5-flash-image:");
+    expect(sent[0].body.generationConfig).toEqual({ temperature: 0, responseModalities: ["IMAGE", "TEXT"] });
+    expect((sent[0].body.contents as { parts: unknown[] }[])[0].parts).toEqual([
+      { inlineData: { mimeType: "image/jpeg", data: "/9j/4AAQ" } },
+      { inlineData: { mimeType: "image/webp", data: "UklGRg" } },
+      { text: "Put the jacket on the person." },
+    ]);
+  });
+
+  it("refuses a drawing that came back without a picture, and a search asked for as JSON", async () => {
+    const { fetcher } = answering({ content: { parts: [{ text: "I cannot." }] }, finishReason: "STOP" });
+    const nothing = await post("/api/ai/generate", { ...ask, json: false, output: "image" }, { token: await serverToken("photoCleanup"), origin: null, fetcher });
+    expect(nothing.status).toBeGreaterThanOrEqual(500);
+    const mixed = await post("/api/ai/generate", { ...ask, image: null, prompt: "x", json: true, search: true }, { token: await serverToken("makerPage"), origin: null, fetcher });
+    expect((await mixed.json()).error.field).toBe("search");
   });
 });
 

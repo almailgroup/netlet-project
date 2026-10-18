@@ -30,6 +30,11 @@ import type { ProductBrief } from "../commerce/assistant.js";
 
 /** The model every route uses unless the Worker's `GEMINI_MODEL` says otherwise. */
 export const GATEWAY_MODEL = "gemini-2.5-flash";
+/**
+ * The model that draws: photo clean-up (3.3.4), try-on (3.1.8) and a guide's
+ * pictures (3.5.3). A separate model because 2.5 Flash answers in words only.
+ */
+export const GATEWAY_IMAGE_MODEL = "gemini-2.5-flash-image";
 
 /**
  * What a token lets its holder do: talk to the shop's assistant, draft a
@@ -49,7 +54,7 @@ export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-
  * token's subject is `s:<task>`, so the Worker's ceiling and its log count
  * each feature apart, and a runaway loop in one cannot starve the others.
  */
-export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName"] as const;
+export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage"] as const;
 export type ServerTask = (typeof SERVER_TASKS)[number];
 
 /**
@@ -393,10 +398,15 @@ export function checkCatalogRequest(body: unknown, departments: readonly string[
 
 export const MAX_GENERATE_SYSTEM = 4000;
 export const MAX_GENERATE_PROMPT = 16_000;
-export const MAX_GENERATE_OUTPUT = 1024;
-/** Each feature keeps its own deadline under this; a call is never held longer. */
-export const MAX_GENERATE_MS = 20_000;
-export const MAX_GENERATE_BODY_BYTES = MAX_IMAGE_BASE64 + 64 * 1024;
+export const MAX_GENERATE_OUTPUT = 4096;
+/**
+ * Each feature keeps its own deadline under this; a call is never held longer.
+ * A drawing takes longer than a sentence, so the ceiling is a drawing's.
+ */
+export const MAX_GENERATE_MS = 45_000;
+/** Pictures beside `image`: a try-on is the shopper's photo and the product's. */
+export const MAX_GENERATE_IMAGES = 2;
+export const MAX_GENERATE_BODY_BYTES = (1 + MAX_GENERATE_IMAGES) * MAX_IMAGE_BASE64 + 64 * 1024;
 
 /**
  * One answer for one of NetLet's own features. The prompt is built on the
@@ -409,15 +419,28 @@ export type GenerateRequest = {
   prompt: string;
   /** A photo, for photo search: base64 without the `data:` prefix. */
   image?: CatalogImage | null;
+  /** More photos after `image`, in order — a try-on's product beside the shopper. */
+  images?: CatalogImage[];
   /** Asks for a JSON object back, which the server parses and holds to its own rules. */
   json: boolean;
+  /**
+   * Grounds the answer in a Google search, and returns the pages it read
+   * (`sources`) — the addresses the search found, never ones the model wrote.
+   * Text only: Gemini does not combine a search with a JSON answer.
+   */
+  search?: boolean;
+  /** `image` asks the drawing model for a picture back instead of words. */
+  output?: "text" | "image";
   temperature: number;
   maxOutputTokens: number;
   timeoutMs: number;
 };
 
-/** What comes back: the model's text, which the feature reads with its own rules. */
-export type GenerateAnswer = { text: string };
+/** A page a grounded answer read, as Google's search returned it. */
+export type GroundingSource = { uri: string; title: string };
+
+/** What comes back: the model's text, which the feature reads with its own rules — and a picture, or the pages searched, when asked for. */
+export type GenerateAnswer = { text: string; image?: CatalogImage | null; sources?: GroundingSource[] };
 
 /** A generate body as the gateway will accept it, or the first thing wrong with it. */
 export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
@@ -432,8 +455,22 @@ export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
     if (!IMAGE_TYPES.includes(mimeType as ImageType)) return fail("image.mimeType", IMAGE_TYPES.join(", "));
     if (typeof data !== "string" || !data || data.length > MAX_IMAGE_BASE64 || !BASE64.test(data)) return fail("image.data", "base64, at most about 1 MB");
   }
+  const images = request.images ?? [];
+  if (!Array.isArray(images) || images.length > MAX_GENERATE_IMAGES) return fail("images", `at most ${MAX_GENERATE_IMAGES}`);
+  for (const [index, extra] of images.entries()) {
+    if (!extra || typeof extra !== "object") return fail(`images.${index}`, "must be an object");
+    const { mimeType, data } = extra as Record<string, unknown>;
+    if (!IMAGE_TYPES.includes(mimeType as ImageType)) return fail(`images.${index}.mimeType`, IMAGE_TYPES.join(", "));
+    if (typeof data !== "string" || !data || data.length > MAX_IMAGE_BASE64 || !BASE64.test(data)) return fail(`images.${index}.data`, "base64, at most about 1 MB");
+  }
   if (!request.prompt.trim() && image === null) return fail("prompt", "a prompt or a photo");
   if (typeof request.json !== "boolean") return fail("json", "true or false");
+  const search = request.search ?? false;
+  if (typeof search !== "boolean") return fail("search", "true or false");
+  const output = request.output ?? "text";
+  if (output !== "text" && output !== "image") return fail("output", "text or image");
+  if (search && (request.json || output === "image")) return fail("search", "a search answers in plain text");
+  if (output === "image" && request.json) return fail("output", "a picture is not JSON");
   const { temperature, maxOutputTokens, timeoutMs } = request;
   if (typeof temperature !== "number" || !(temperature >= 0 && temperature <= 1)) return fail("temperature", "0 to 1");
   if (!Number.isInteger(maxOutputTokens) || (maxOutputTokens as number) < 1 || (maxOutputTokens as number) > MAX_GENERATE_OUTPUT) {
@@ -446,7 +483,10 @@ export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
       system: request.system,
       prompt: request.prompt,
       image: image ? { mimeType: (image as CatalogImage).mimeType, data: (image as CatalogImage).data } : null,
+      images: (images as CatalogImage[]).map(extra => ({ mimeType: extra.mimeType, data: extra.data })),
       json: request.json,
+      search,
+      output,
       temperature,
       maxOutputTokens: maxOutputTokens as number,
       timeoutMs: timeoutMs as number,

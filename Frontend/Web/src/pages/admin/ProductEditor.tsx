@@ -469,7 +469,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 It joins the list like a pasted URL and is saved with the rest. */}
             {mayEdit ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                <PhotoUpload onUploaded={url => setImages(current => [...current, { url, altText: "", kind: "image" as const, posterUrl: "" }])} />
+                <PhotoUpload productName={draft.title} onUploaded={url => setImages(current => [...current, { url, altText: "", kind: "image" as const, posterUrl: "" }])} />
               </div>
             ) : null}
           </Card>

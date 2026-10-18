@@ -61,6 +61,7 @@ export const PRIVACY: LegalSection[] = [
       { key: "privacy.who.email", only: "email" },
       { key: "privacy.who.google" },
       { key: "privacy.who.ai" },
+      { key: "privacy.who.tryOn", only: "tryOn" },
       { key: "privacy.who.drivers" },
       { key: "privacy.who.sell" },
     ],

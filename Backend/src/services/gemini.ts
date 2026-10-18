@@ -38,8 +38,14 @@ export type ModelCall = {
   system: string;
   prompt: string;
   image?: CatalogImage | null;
+  /** More pictures after `image`, in order. */
+  images?: CatalogImage[];
   /** A JSON object back, which the feature parses and holds to its own rules. */
   json: boolean;
+  /** Ground the answer in a Google search; `sources` are the pages it read. */
+  search?: boolean;
+  /** A picture back from the drawing model instead of words. */
+  output?: "text" | "image";
   temperature: number;
   maxOutputTokens: number;
   /**
@@ -53,15 +59,18 @@ export type ModelCall = {
 /** A server token lives a minute: it is made for one call and spent at once. */
 const SERVER_TOKEN_SECONDS = 60;
 
-/** The model's text, or null for every way it did not come. */
-export async function askModel(task: ServerTask, call: ModelCall): Promise<string | null> {
+/** The whole answer — words, a picture, the pages searched — or null for every way it did not come. */
+export async function askModelFor(task: ServerTask, call: ModelCall): Promise<GenerateAnswer | null> {
   const origin = gatewayOrigin();
   if (!origin || !gatewayConfigured()) return null;
   const body: GenerateRequest = {
     system: call.system,
     prompt: call.prompt,
     image: call.image ?? null,
+    images: call.images ?? [],
     json: call.json,
+    search: call.search ?? false,
+    output: call.output ?? "text",
     temperature: call.temperature,
     maxOutputTokens: call.maxOutputTokens,
     timeoutMs: Math.max(500, call.deadlineMs - 300),
@@ -77,10 +86,15 @@ export async function askModel(task: ServerTask, call: ModelCall): Promise<strin
     });
     if (!response.ok) return null;
     const answer = (await response.json()) as GatewayResponse<GenerateAnswer>;
-    return answer.ok && typeof answer.data?.text === "string" ? answer.data.text : null;
+    return answer.ok && typeof answer.data?.text === "string" ? answer.data : null;
   } catch {
     return null;
   }
+}
+
+/** The model's text, or null for every way it did not come. */
+export async function askModel(task: ServerTask, call: ModelCall): Promise<string | null> {
+  return (await askModelFor(task, call))?.text ?? null;
 }
 
 /** A model's JSON object, or null when it is not one. */

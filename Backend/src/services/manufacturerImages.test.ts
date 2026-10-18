@@ -33,6 +33,9 @@ type Reply = { status?: number; headers?: Record<string, string>; body?: Uint8Ar
 let dnsTable: Record<string, string[]>;
 let pages: Record<string, Reply>;
 let requested: string[];
+/* The grounded search, as the gateway would answer it. */
+let modelOn = true;
+let modelAnswer: unknown = null;
 
 function fakeRequest(url: string, options: { lookup: (host: string, opts: object, cb: (...args: unknown[]) => void) => void; headers: Record<string, string> }, onResponse: (response: unknown) => void) {
   const request = new EventEmitter() as EventEmitter & { end: () => void };
@@ -63,6 +66,7 @@ beforeAll(async () => {
     }
   }
   vi.doMock("./db", async importOriginal => ({ ...(await importOriginal<typeof import("./db.js")>()), getDb: async () => db }));
+  vi.doMock("./gemini", () => ({ modelAvailable: async () => modelOn, askModelFor: async () => modelAnswer }));
   mod = await import("./manufacturerImages.js");
   mod.transport.lookup = ((host: string, _options: unknown, callback: (error: Error | null, addresses: { address: string; family: number }[]) => void) => {
     const addresses = dnsTable[host];
@@ -181,3 +185,49 @@ describe("who may, and how often", () => {
     await expect(mod.scanManufacturerPage({ ...manager, userId: 9 }, "https://maker.example/lamp")).resolves.toMatchObject({ title: "Lamp 200" });
   });
 });
+
+describe("finding the maker's page by name (3.1.10)", () => {
+  const redirect = (n: number) => `https://vertexaisearch.cloud.google.com/grounding-api-redirect/r${n}`;
+
+  beforeEach(() => {
+    modelOn = true;
+    dnsTable["vertexaisearch.cloud.google.com"] = ["142.250.1.1"];
+    dnsTable["shop.example"] = ["93.184.216.50"];
+    dnsTable["inside.example"] = ["10.0.0.5"];
+    pages[redirect(1)] = { status: 302, headers: { location: "https://maker.example/lamp" } };
+    pages[redirect(2)] = { status: 302, headers: { location: "https://shop.example/p/lamp-200" } };
+    pages[redirect(3)] = { status: 302, headers: { location: "https://maker.example/lamp/" } };
+    pages[redirect(4)] = { status: 302, headers: { location: "https://inside.example/admin" } };
+    modelAnswer = {
+      text: "The official page is maker.example/lamp",
+      sources: [1, 2, 3, 4].map(n => ({ uri: redirect(n), title: n === 2 ? "Shop" : "maker.example" })),
+    };
+  });
+
+  it("offers the pages the search found, where Google's redirects land, once each", async () => {
+    expect(await mod.findMakerPages(manager, { name: "Lamp 200", brand: "Maker" })).toEqual([
+      { url: "https://maker.example/lamp", host: "maker.example", title: "maker.example" },
+      { url: "https://shop.example/p/lamp-200", host: "shop.example", title: "Shop" },
+    ]);
+    /* Only the redirects were asked for: the pages themselves are read when chosen. */
+    expect(requested.every(url => url.startsWith("https://vertexaisearch.cloud.google.com/"))).toBe(true);
+  });
+
+  it("never offers an address the model wrote, only the search's", async () => {
+    modelAnswer = { text: "https://made-up.example/lamp", sources: [] };
+    expect(await mod.findMakerPages(manager, { name: "Lamp 200" })).toEqual([]);
+  });
+
+  it("refuses a shopper, a missing name, and a shop with no model", async () => {
+    await expect(mod.findMakerPages(shopper, { name: "Lamp 200" })).rejects.toMatchObject({ reason: "media.notAllowed" });
+    await expect(mod.findMakerPages(manager, { name: "  " })).rejects.toMatchObject({ reason: "manufacturer.needName" });
+    modelOn = false;
+    await expect(mod.findMakerPages(manager, { name: "Lamp 200" })).rejects.toMatchObject({ reason: "manufacturer.searchOff" });
+  });
+
+  it("counts a search against the hour's ceiling", async () => {
+    for (let n = 0; n < MAX_IMPORTS_PER_ACCOUNT; n += 1) await mod.findMakerPages(manager, { name: "Lamp 200" });
+    await expect(mod.findMakerPages(manager, { name: "Lamp 200" })).rejects.toMatchObject({ reason: "manufacturer.tooMany" });
+  });
+});
+

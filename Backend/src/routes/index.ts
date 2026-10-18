@@ -3,6 +3,7 @@ import { mediaRouter } from "./media.js";
 import { subscriptionsRouter } from "./subscriptions.js";
 import { supportRouter } from "./support.js";
 import { notificationsRouter } from "./notifications.js";
+import { tryOnRouter } from "./tryOn.js";
 import { fulfilmentRouter } from "./fulfilment.js";
 import { membershipRouter } from "./membership.js";
 import { affiliatesRouter } from "./affiliates.js";
@@ -35,6 +36,7 @@ export const appRouter = router({
   subscriptions: subscriptionsRouter,
   support: supportRouter,
   notifications: notificationsRouter,
+  tryOn: tryOnRouter,
   fulfilment: fulfilmentRouter,
   membership: membershipRouter,
   affiliates: affiliatesRouter,

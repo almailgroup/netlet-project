@@ -435,3 +435,26 @@ export async function recordImport(userId: number): Promise<void> {
     and(eq(authAttempts.kind, "imageImport"), lt(authAttempts.createdAt, new Date(Date.now() - IMPORT_WINDOW_MS))),
   );
 }
+
+/**
+ * One use of an hourly allowance on an account, taken only if there is one
+ * left: the drawing features (3.3.4, 3.1.8, 3.5.3), each a model call that
+ * costs NetLet a few cents and is asked for by a signed-in person. Counted in
+ * the same table as every other ceiling, under a kind of its own, so pruning
+ * one never touches another.
+ */
+export async function takeHourlyAllowance(userId: number, kind: "photoClean" | "tryOn" | "guideDraw" | "guideDraft", max: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const bucket = `user:${userId}`;
+  const since = new Date(Date.now() - 60 * 60 * 1000);
+  const [counted] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(authAttempts)
+    .where(and(eq(authAttempts.bucket, bucket), eq(authAttempts.kind, kind), gt(authAttempts.createdAt, since)));
+  if ((counted?.n ?? 0) >= max) return false;
+  await db.insert(authAttempts).values([{ bucket, kind }]);
+  await db.delete(authAttempts).where(and(eq(authAttempts.kind, kind), lt(authAttempts.createdAt, since)));
+  return true;
+}
+

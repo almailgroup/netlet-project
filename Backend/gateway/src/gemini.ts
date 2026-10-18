@@ -28,6 +28,10 @@ export type GeminiCall = {
   schema?: unknown;
   /** Asks for a JSON object with no schema: NetLet's server holds the answer to its own rules. */
   json?: boolean;
+  /** Grounds the answer in a Google search (text only). */
+  search?: boolean;
+  /** Asks the drawing model for a picture: no thinking, no token cap, an image back. */
+  draw?: boolean;
   timeoutMs: number;
   /** The fetch to use; the tests hand in their own. */
   fetcher?: typeof fetch;
@@ -40,23 +44,33 @@ export class GeminiFailure extends Error {
 }
 
 type GeminiResponse = {
-  candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
+  candidates?: {
+    content?: { parts?: { text?: string; thought?: boolean; inlineData?: { mimeType?: string; data?: string } }[] };
+    finishReason?: string;
+    groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] };
+  }[];
   promptFeedback?: { blockReason?: string };
 };
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
 function requestBody(call: GeminiCall): string {
+  /* The drawing model takes no thinking budget and no word cap: a picture is
+     counted in its own tokens, and a cap on words would cut it off. */
+  const generationConfig = call.draw
+    ? { temperature: call.temperature, responseModalities: ["IMAGE", "TEXT"] }
+    : {
+        temperature: call.temperature,
+        maxOutputTokens: call.maxOutputTokens,
+        thinkingConfig: { thinkingBudget: 0 },
+        ...(call.schema || call.json ? { responseMimeType: "application/json" } : {}),
+        ...(call.schema ? { responseSchema: call.schema } : {}),
+      };
   return JSON.stringify({
     systemInstruction: { parts: [{ text: call.system }] },
     contents: call.contents,
-    generationConfig: {
-      temperature: call.temperature,
-      maxOutputTokens: call.maxOutputTokens,
-      thinkingConfig: { thinkingBudget: 0 },
-      ...(call.schema || call.json ? { responseMimeType: "application/json" } : {}),
-      ...(call.schema ? { responseSchema: call.schema } : {}),
-    },
+    ...(call.search ? { tools: [{ google_search: {} }] } : {}),
+    generationConfig,
   });
 }
 
@@ -104,6 +118,43 @@ export async function generateText(call: GeminiCall): Promise<string> {
     throw new GeminiFailure("blocked", body.promptFeedback?.blockReason ?? body.candidates?.[0]?.finishReason ?? "blocked");
   }
   return textOf(body);
+}
+
+export type GeminiParts = {
+  text: string;
+  image: { mimeType: string; data: string } | null;
+  /** The pages a grounded answer read, as the search returned them. */
+  sources: { uri: string; title: string }[];
+};
+
+/**
+ * One answer with everything in it: its words, the first picture it drew,
+ * and, for a grounded answer, the pages the search found. The sources come
+ * from `groundingMetadata` — Google's record of the search — never from the
+ * words, which a model can make up.
+ */
+export async function generateParts(call: GeminiCall): Promise<GeminiParts> {
+  const response = await post(call, ":generateContent");
+  let body: GeminiResponse;
+  try {
+    body = (await response.json()) as GeminiResponse;
+  } catch {
+    throw new GeminiFailure("malformed", "Gemini's answer was not JSON");
+  }
+  if (body.promptFeedback?.blockReason || BLOCKED.has(body.candidates?.[0]?.finishReason ?? "")) {
+    throw new GeminiFailure("blocked", body.promptFeedback?.blockReason ?? body.candidates?.[0]?.finishReason ?? "blocked");
+  }
+  const candidate = body.candidates?.[0];
+  const drawn = (candidate?.content?.parts ?? []).find(part => part.inlineData?.data && part.inlineData.mimeType?.startsWith("image/"));
+  const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
+    .flatMap(chunk => chunk.web?.uri ? [{ uri: chunk.web.uri, title: (chunk.web.title ?? "").slice(0, 200) }] : [])
+    .slice(0, 10);
+  if (call.draw && !drawn) throw new GeminiFailure("malformed", "Gemini drew nothing");
+  return {
+    text: textOf(body),
+    image: drawn?.inlineData ? { mimeType: drawn.inlineData.mimeType!, data: drawn.inlineData.data! } : null,
+    sources,
+  };
 }
 
 /** One answer, parsed as JSON. */

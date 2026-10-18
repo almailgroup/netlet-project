@@ -21,6 +21,7 @@ import { BUTTON_PLAIN, Breadcrumbs, PageBody, PageHeading } from "@/components/l
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { LEGAL_UPDATED, PRIVACY, SELLER_TERMS, TERMS, type LegalParagraph } from "@/content/legal";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFeature } from "@/hooks/useFeature";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -70,7 +71,8 @@ export default function Legal() {
   usePageChrome({ activeDepartment: null });
   const channels = trpc.support.channels.useQuery(undefined, { staleTime: 300_000 });
   const mail = trpc.notifications.channels.useQuery(undefined, { staleTime: 300_000 });
-  const running: Running = { email: mail.data?.email === true, tryOn: false };
+  const tryOnOn = useFeature("tryOn");
+  const running: Running = { email: mail.data?.email === true, tryOn: tryOnOn };
   const company = channels.data?.company ?? null;
   const operator = company ? nameInSentence(isArabic && company.nameAr ? company.nameAr : company.name) : null;
 

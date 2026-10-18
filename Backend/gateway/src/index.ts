@@ -32,7 +32,9 @@
  *    the help assistant's rule, by the chat's own filter.
  */
 import {
+  GATEWAY_IMAGE_MODEL,
   GATEWAY_MODEL,
+  IMAGE_TYPES,
   GATEWAY_ROUTES,
   GATEWAY_STATUS,
   MAX_CATALOG_BODY_BYTES,
@@ -49,7 +51,7 @@ import {
 } from "../../../Shared/ai/gateway.js";
 import { CATALOG_RESPONSE_SCHEMA, DEPARTMENT_SLUGS, draftFromModel } from "../../../Shared/ai/catalogDraft.js";
 import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
-import { GeminiFailure, generateJson, generateText, streamText, type GeminiPart, type StreamPiece } from "./gemini.js";
+import { GeminiFailure, generateJson, generateParts, streamText, type GeminiPart, type StreamPiece } from "./gemini.js";
 import { catalogContents, catalogSystem, chatContents, chatSystem } from "./prompts.js";
 
 /** Cloudflare's rate-limiting binding, as much of it as this uses. */
@@ -64,6 +66,8 @@ export interface Env {
   ALLOWED_ORIGINS?: string;
   /** Defaults to `GATEWAY_MODEL`. */
   GEMINI_MODEL?: string;
+  /** The drawing model; defaults to `GATEWAY_IMAGE_MODEL`. */
+  GEMINI_IMAGE_MODEL?: string;
   CHAT_LIMITER?: RateLimiter;
   CATALOG_LIMITER?: RateLimiter;
   ADDRESS_LIMITER?: RateLimiter;
@@ -230,21 +234,30 @@ async function generate(body: unknown, claims: GatewayClaims, env: Env, headers:
   if (!checked.ok) return refuse("bad_request", checked.message, headers, checked.field);
   const request = checked.value;
   const parts: GeminiPart[] = [];
-  if (request.image) parts.push({ inlineData: { mimeType: request.image.mimeType, data: request.image.data } });
+  for (const image of [request.image, ...(request.images ?? [])]) {
+    if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
+  }
   if (request.prompt.trim()) parts.push({ text: request.prompt });
+  const draw = request.output === "image";
   try {
-    const text = await generateText({
+    const answer = await generateParts({
       apiKey: env.GEMINI_API_KEY!,
-      model: env.GEMINI_MODEL || GATEWAY_MODEL,
+      model: draw ? env.GEMINI_IMAGE_MODEL || GATEWAY_IMAGE_MODEL : env.GEMINI_MODEL || GATEWAY_MODEL,
       system: request.system,
       contents: [{ role: "user", parts }],
       temperature: request.temperature,
       maxOutputTokens: request.maxOutputTokens,
       json: request.json,
+      search: request.search,
+      draw,
       timeoutMs: request.timeoutMs,
       fetcher: seams.fetcher,
     });
-    return json(200, { ok: true, data: { text } }, headers);
+    /* A picture only when one was asked for, and sources only for a search:
+       an answer carries what its caller can read and nothing else. */
+    const image = draw && answer.image && IMAGE_TYPES.includes(answer.image.mimeType as never) ? answer.image : null;
+    if (draw && !image) return refuse("model_unavailable", "The model drew nothing usable", headers);
+    return json(200, { ok: true, data: { text: answer.text, ...(draw ? { image } : {}), ...(request.search ? { sources: answer.sources } : {}) } }, headers);
   } catch (error) {
     console.warn("gateway generate", claims.sub, error instanceof GeminiFailure ? error.reason : "error", String(error));
     return refuse(failureCode(error), "The model could not answer", headers);
