@@ -1,0 +1,87 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": "MStxZ91Wx7yPVfDJmRjsMgjY5M8Ro-mM",
+        "checkoutUrl": "/checkout",
+        "items": [
+          {
+            "lineId": "115",
+            "variantId": "145",
+            "productHandle": "basmati-rice-5kg",
+            "productTitle": "Basmati rice 5 kg",
+            "productTitleAr": "أرز بسمتي 5 كغ",
+            "variantTitle": "Default",
+            "image": {
+              "productId": 228,
+              "url": "/departments/grocery.webp",
+              "altText": "Basmati rice 5 kg",
+              "kind": "image",
+              "posterUrl": null
+            },
+            "unitPrice": {
+              "amount": "4.750",
+              "currencyCode": "KWD"
+            },
+            "agreedFrom": null,
+            "priceReason": null,
+            "bundleName": null,
+            "destination": null,
+            "quantity": 2,
+            "measure": {
+              "unit": "each",
+              "stepAmount": 1
+            },
+            "addons": [],
+            "addonsTotal": null,
+            "lineTotal": {
+              "amount": "9.500",
+              "currencyCode": "KWD"
+            }
+          }
+        ],
+        "itemCount": 2,
+        "subtotal": {
+          "amount": "9.500",
+          "currencyCode": "KWD"
+        },
+        "recovery": {
+          "remind": false
+        },
+        "cod": {
+          "available": true
+        },
+        "addresses": [],
+        "delivery": {
+          "perVendor": [
+            {
+              "vendorId": 4,
+              "vendorName": "Gulf Grocers",
+              "vendorNameAr": "بقالة الخليج",
+              "destinationLabel": null,
+              "goods": {
+                "amount": "9.500",
+                "currencyCode": "KWD"
+              },
+              "fee": {
+                "amount": "0.750",
+                "currencyCode": "KWD"
+              },
+              "free": false,
+              "toFree": null
+            }
+          ],
+          "total": {
+            "amount": "0.750",
+            "currencyCode": "KWD"
+          },
+          "memberWaived": null
+        },
+        "total": {
+          "amount": "10.250",
+          "currencyCode": "KWD"
+        }
+      }
+    }
+  }
+}

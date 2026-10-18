@@ -1,0 +1,20 @@
+{
+  "sessionCookie": "app_session_id",
+  "maxLineQuantity": 99,
+  "returnWindowDays": 14,
+  "listing": {
+    "maxTitle": 255,
+    "maxSku": 120,
+    "maxStock": 1000000,
+    "maxDescription": 20000,
+    "maxPhotos": 12,
+    "warrantyRequiredDepartments": [
+      "electronics"
+    ]
+  },
+  "media": {
+    "maxEdge": 1200,
+    "minEdge": 300,
+    "maxUploadBytes": 1500000
+  }
+}

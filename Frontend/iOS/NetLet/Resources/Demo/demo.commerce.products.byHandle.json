@@ -1,0 +1,85 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": "216",
+        "handle": "wireless-earbuds",
+        "title": "Wireless earbuds",
+        "description": "A test product for the home page screenshots.",
+        "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+        "productType": "Electronics",
+        "vendor": "Acme Electronics",
+        "vendorSlug": "acme",
+        "vendorBadges": [
+          "fastShipping"
+        ],
+        "deliverySpeed": "next_day",
+        "deliveryProvider": "Aramex",
+        "tags": [],
+        "attributes": [],
+        "media": [
+          {
+            "url": "/departments/electronics.webp",
+            "altText": "Wireless earbuds",
+            "kind": "image",
+            "posterUrl": null
+          }
+        ],
+        "images": [
+          {
+            "url": "/departments/electronics.webp",
+            "altText": "Wireless earbuds"
+          }
+        ],
+        "priceRange": {
+          "min": {
+            "amount": "18.500",
+            "currencyCode": "KWD"
+          },
+          "max": {
+            "amount": "18.500",
+            "currencyCode": "KWD"
+          }
+        },
+        "options": [],
+        "variants": [
+          {
+            "id": "133",
+            "title": "Default",
+            "sku": null,
+            "price": {
+              "amount": "18.500",
+              "currencyCode": "KWD"
+            },
+            "compareAtPrice": {
+              "amount": "29.000",
+              "currencyCode": "KWD"
+            },
+            "memberPrice": null,
+            "availableForSale": true,
+            "preorder": null,
+            "maxQuantity": 40,
+            "measure": {
+              "unit": "each",
+              "stepAmount": 1
+            },
+            "selectedOptions": []
+          }
+        ],
+        "addons": [],
+        "sizeChart": null,
+        "subscription": {
+          "savingPercent": 10
+        }
+      },
+      "meta": {
+        "referentialEqualities": {
+          "priceRange.min": [
+            "priceRange.max",
+            "variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

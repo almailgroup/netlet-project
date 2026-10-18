@@ -1,0 +1,72 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "slug": "electronics",
+          "name": "Electronics",
+          "nameAr": "إلكترونيات",
+          "parentId": null,
+          "position": 1,
+          "createdAt": "2026-10-01T18:20:34.881Z"
+        },
+        {
+          "id": 2,
+          "slug": "home-and-kitchen",
+          "name": "Home & Kitchen",
+          "nameAr": "المنزل والمطبخ",
+          "parentId": null,
+          "position": 2,
+          "createdAt": "2026-10-01T18:20:34.881Z"
+        },
+        {
+          "id": 3,
+          "slug": "beauty",
+          "name": "Beauty",
+          "nameAr": "الجمال",
+          "parentId": null,
+          "position": 3,
+          "createdAt": "2026-10-01T18:20:34.881Z"
+        },
+        {
+          "id": 4,
+          "slug": "style",
+          "name": "Style",
+          "nameAr": "الأزياء",
+          "parentId": null,
+          "position": 4,
+          "createdAt": "2026-10-01T18:20:34.881Z"
+        },
+        {
+          "id": 5,
+          "slug": "grocery",
+          "name": "Grocery",
+          "nameAr": "البقالة",
+          "parentId": null,
+          "position": 5,
+          "createdAt": "2026-10-01T18:20:34.881Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ],
+          "2.createdAt": [
+            "Date"
+          ],
+          "3.createdAt": [
+            "Date"
+          ],
+          "4.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

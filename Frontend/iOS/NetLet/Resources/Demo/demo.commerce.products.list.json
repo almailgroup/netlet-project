@@ -1,0 +1,287 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": "228",
+          "handle": "basmati-rice-5kg",
+          "title": "Basmati rice 5 kg",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Grocery",
+          "vendor": "Gulf Grocers",
+          "vendorSlug": "gulf-grocers",
+          "vendorBadges": [],
+          "deliverySpeed": "next_day",
+          "deliveryProvider": "Aramex",
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/grocery.webp",
+              "altText": "Basmati rice 5 kg",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/grocery.webp",
+              "altText": "Basmati rice 5 kg"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "4.750",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "4.750",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "145",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "4.750",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 40,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        },
+        {
+          "id": "227",
+          "handle": "medjool-dates",
+          "title": "Medjool dates 1 kg",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Grocery",
+          "vendor": "Gulf Grocers",
+          "vendorSlug": "gulf-grocers",
+          "vendorBadges": [],
+          "deliverySpeed": "next_day",
+          "deliveryProvider": "Aramex",
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/grocery.webp",
+              "altText": "Medjool dates 1 kg",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/grocery.webp",
+              "altText": "Medjool dates 1 kg"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "6.250",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "6.250",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "144",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "6.250",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": {
+                "amount": "8.500",
+                "currencyCode": "KWD"
+              },
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 40,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        },
+        {
+          "id": "226",
+          "handle": "cotton-dishdasha",
+          "title": "Cotton dishdasha",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Style",
+          "vendor": "Souq Style",
+          "vendorSlug": "souq-style",
+          "vendorBadges": [],
+          "deliverySpeed": null,
+          "deliveryProvider": null,
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/style.webp",
+              "altText": "Cotton dishdasha",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/style.webp",
+              "altText": "Cotton dishdasha"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "19.500",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "19.500",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "143",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "19.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 40,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        },
+        {
+          "id": "225",
+          "handle": "leather-sandals",
+          "title": "Leather sandals",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Style",
+          "vendor": "Souq Style",
+          "vendorSlug": "souq-style",
+          "vendorBadges": [],
+          "deliverySpeed": null,
+          "deliveryProvider": null,
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/style.webp",
+              "altText": "Leather sandals",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/style.webp",
+              "altText": "Leather sandals"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "15.000",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "15.000",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "142",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "15.000",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 40,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        }
+      ],
+      "meta": {
+        "referentialEqualities": {
+          "0.priceRange.min": [
+            "0.priceRange.max",
+            "0.variants.0.price"
+          ],
+          "1.priceRange.min": [
+            "1.priceRange.max",
+            "1.variants.0.price"
+          ],
+          "2.priceRange.min": [
+            "2.priceRange.max",
+            "2.variants.0.price"
+          ],
+          "3.priceRange.min": [
+            "3.priceRange.max",
+            "3.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

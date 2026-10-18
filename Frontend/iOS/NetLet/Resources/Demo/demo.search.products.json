@@ -1,0 +1,131 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "products": [
+          {
+            "id": "3",
+            "handle": "smart-watch",
+            "title": "Smart watch",
+            "description": "Sporty smart watch.\n\n-- Display: 1.4 inch AMOLED\n-- Water resistant to 50 m\n• Battery: up to 7 days",
+            "descriptionHtml": "<p>Sporty smart watch.</p><p>-- Display: 1.4 inch AMOLED<br>-- Water resistant to 50 m<br>• Battery: up to 7 days</p>",
+            "productType": "Electronics",
+            "vendor": "Acme Electronics",
+            "vendorSlug": "acme",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "tags": [
+              "wearable"
+            ],
+            "attributes": [
+              {
+                "key": "brand",
+                "label": "Brand",
+                "value": "Samsung",
+                "namespace": "specs"
+              },
+              {
+                "key": "ram",
+                "label": "Memory",
+                "value": "12",
+                "namespace": "specs"
+              },
+              {
+                "key": "storage",
+                "label": "Storage",
+                "value": "256",
+                "namespace": "specs"
+              }
+            ],
+            "media": [
+              {
+                "url": "http://localhost:5000/brand/collection-tech.svg",
+                "altText": "Smart watch",
+                "kind": "image",
+                "posterUrl": null
+              },
+              {
+                "url": "/media/Qx-DrvSC50Sdcs0YZUzP7p2Y.webp",
+                "altText": "Smart watch",
+                "kind": "image",
+                "posterUrl": null
+              },
+              {
+                "url": "/media/2N9P3_HoO4LYbXQzoi16pWVV.webp",
+                "altText": "Smart watch",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "http://localhost:5000/brand/collection-tech.svg",
+                "altText": "Smart watch"
+              },
+              {
+                "url": "/media/Qx-DrvSC50Sdcs0YZUzP7p2Y.webp",
+                "altText": "Smart watch"
+              },
+              {
+                "url": "/media/2N9P3_HoO4LYbXQzoi16pWVV.webp",
+                "altText": "Smart watch"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "72.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "72.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "3",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "72.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 44,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": {
+              "savingPercent": 10
+            }
+          }
+        ],
+        "total": 1,
+        "correctedTo": null,
+        "elsewhere": 0,
+        "capped": false
+      },
+      "meta": {
+        "referentialEqualities": {
+          "products.0.priceRange.min": [
+            "products.0.priceRange.max",
+            "products.0.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

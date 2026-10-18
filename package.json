@@ -74,6 +74,7 @@
     "db:seed": "tsx Backend/scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "NODE_ENV=development tsx watch Backend/src/core/index.ts",
+    "ios:resources": "tsx Frontend/iOS/scripts/exportShared.ts",
     "format": "prettier --write .",
     "preflight": "tsx Backend/scripts/preflight.ts",
     "setup:env": "tsx Backend/scripts/setup-env.ts",

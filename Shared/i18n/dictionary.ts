@@ -3247,6 +3247,21 @@ export const en = {
   "notFound.saved": "Your saved items",
   "notFound.suggestions": "While you are here",
 
+  // --- the iOS app (Frontend/iOS), where it has no web sentence to share
+  "ios.error.signIn": "Sign in to do that.",
+  "ios.error.forbidden": "Your account cannot do that.",
+  "ios.error.notFound": "That could not be found. It may have been removed.",
+  "ios.error.tooMany": "That is a lot of requests. Wait a minute and try again.",
+  "ios.error.offline": "You are offline. Check your connection and try again.",
+  "ios.error.timedOut": "NetLet took too long to answer. Try again in a moment.",
+  "ios.error.network": "NetLet could not be reached. Try again in a moment.",
+  "ios.error.update": "This version of the app could not read NetLet's answer. Update the app from the App Store.",
+  "ios.order.view": "View this order",
+  "ios.sell.tab": "Selling",
+  "ios.sell.stock": "{count} in stock",
+  "ios.sell.publishNow": "Publish when it is created",
+  "ios.sell.portalNote": "Prices, stock, orders and payouts are managed in the seller portal on the web, with the same account.",
+
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -6455,6 +6470,21 @@ export const ar: Record<MessageKey, string> = {
   "notFound.back": "العودة إلى المتجر",
   "notFound.saved": "منتجاتك المحفوظة",
   "notFound.suggestions": "بما أنك هنا",
+
+  // --- the iOS app (Frontend/iOS), where it has no web sentence to share
+  "ios.error.signIn": "سجّل الدخول للقيام بذلك.",
+  "ios.error.forbidden": "لا يمكن لحسابك القيام بذلك.",
+  "ios.error.notFound": "لم نجد ذلك. ربما أُزيل.",
+  "ios.error.tooMany": "طلبات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.",
+  "ios.error.offline": "أنت غير متصل بالإنترنت. تحقق من الاتصال ثم حاول مرة أخرى.",
+  "ios.error.timedOut": "تأخر رد نت‑لت كثيراً. حاول مرة أخرى بعد قليل.",
+  "ios.error.network": "تعذّر الوصول إلى نت‑لت. حاول مرة أخرى بعد قليل.",
+  "ios.error.update": "لم يتمكن هذا الإصدار من التطبيق من قراءة رد نت‑لت. حدّث التطبيق من متجر التطبيقات.",
+  "ios.order.view": "عرض هذا الطلب",
+  "ios.sell.tab": "البيع",
+  "ios.sell.stock": "{count} في المخزون",
+  "ios.sell.publishNow": "انشره عند إنشائه",
+  "ios.sell.portalNote": "تُدار الأسعار والمخزون والطلبات والمدفوعات في بوابة البائع على الموقع، بالحساب نفسه.",
 
 };
 

@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "electronics",
+    "name": "Electronics",
+    "nameAr": "إلكترونيات",
+    "position": 1,
+    "label": "category.electronics",
+    "icon": "plug"
+  },
+  {
+    "slug": "home-and-kitchen",
+    "name": "Home & Kitchen",
+    "nameAr": "المنزل والمطبخ",
+    "position": 2,
+    "label": "category.homeKitchen",
+    "icon": "cooking-pot"
+  },
+  {
+    "slug": "beauty",
+    "name": "Beauty",
+    "nameAr": "الجمال",
+    "position": 3,
+    "label": "category.beauty",
+    "icon": "flower"
+  },
+  {
+    "slug": "style",
+    "name": "Style",
+    "nameAr": "الأزياء",
+    "position": 4,
+    "label": "category.style",
+    "icon": "shirt"
+  },
+  {
+    "slug": "grocery",
+    "name": "Grocery",
+    "nameAr": "البقالة",
+    "position": 5,
+    "label": "category.grocery",
+    "icon": "carrot"
+  }
+]

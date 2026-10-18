@@ -1,0 +1,278 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 218,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "bluetooth-speaker",
+            "title": "Bluetooth speaker",
+            "titleAr": "سماعة بلوتوث",
+            "description": "A test product for the home page screenshots.",
+            "descriptionAr": null,
+            "status": "published",
+            "reviewNote": null,
+            "tags": [],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-14T10:37:23.781Z",
+            "updatedAt": "2026-10-14T10:37:23.781Z",
+            "variants": [
+              {
+                "id": 135,
+                "productId": 218,
+                "sku": null,
+                "title": "Default",
+                "price": "22.000",
+                "compareAtPrice": "31.000",
+                "stock": 40,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-14T10:37:23.781Z",
+                "updatedAt": "2026-10-14T10:37:23.781Z"
+              }
+            ],
+            "images": [
+              {
+                "id": 45,
+                "productId": 218,
+                "url": "/departments/electronics.webp",
+                "altText": "Bluetooth speaker",
+                "position": 0,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-14T10:37:23.781Z"
+              },
+              {
+                "id": 56,
+                "productId": 218,
+                "url": "/departments/beauty.webp",
+                "altText": null,
+                "position": 1,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-15T20:19:49.397Z"
+              },
+              {
+                "id": 57,
+                "productId": 218,
+                "url": "/departments/grocery.webp",
+                "altText": null,
+                "position": 2,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-15T20:19:49.397Z"
+              },
+              {
+                "id": 58,
+                "productId": 218,
+                "url": "/departments/style.webp",
+                "altText": null,
+                "position": 3,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-15T20:19:49.397Z"
+              }
+            ],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 217,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "power-bank-20000",
+            "title": "Power bank 20000 mAh",
+            "titleAr": "باور بانك 20000 مللي أمبير",
+            "description": "A test product for the home page screenshots.",
+            "descriptionAr": null,
+            "status": "published",
+            "reviewNote": null,
+            "tags": [],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-14T10:37:23.781Z",
+            "updatedAt": "2026-10-14T10:37:23.781Z",
+            "variants": [
+              {
+                "id": 134,
+                "productId": 217,
+                "sku": null,
+                "title": "Default",
+                "price": "9.750",
+                "compareAtPrice": "14.500",
+                "stock": 40,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-14T10:37:23.781Z",
+                "updatedAt": "2026-10-14T10:37:23.781Z"
+              }
+            ],
+            "images": [
+              {
+                "id": 44,
+                "productId": 217,
+                "url": "/departments/electronics.webp",
+                "altText": "Power bank 20000 mAh",
+                "position": 0,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-14T10:37:23.781Z"
+              }
+            ],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 216,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "wireless-earbuds",
+            "title": "Wireless earbuds",
+            "titleAr": "سماعات لاسلكية",
+            "description": "A test product for the home page screenshots.",
+            "descriptionAr": null,
+            "status": "published",
+            "reviewNote": null,
+            "tags": [],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-14T10:37:23.781Z",
+            "updatedAt": "2026-10-14T10:37:23.781Z",
+            "variants": [
+              {
+                "id": 133,
+                "productId": 216,
+                "sku": null,
+                "title": "Default",
+                "price": "18.500",
+                "compareAtPrice": "29.000",
+                "stock": 40,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-14T10:37:23.781Z",
+                "updatedAt": "2026-10-14T10:37:23.781Z"
+              }
+            ],
+            "images": [
+              {
+                "id": 43,
+                "productId": 216,
+                "url": "/departments/electronics.webp",
+                "altText": "Wireless earbuds",
+                "position": 0,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-14T10:37:23.781Z"
+              }
+            ],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          }
+        ],
+        "total": 99,
+        "page": 1,
+        "pageSize": 3
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.updatedAt": [
+            "Date"
+          ],
+          "rows.0.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.0.images.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.images.1.createdAt": [
+            "Date"
+          ],
+          "rows.0.images.2.createdAt": [
+            "Date"
+          ],
+          "rows.0.images.3.createdAt": [
+            "Date"
+          ],
+          "rows.1.createdAt": [
+            "Date"
+          ],
+          "rows.1.updatedAt": [
+            "Date"
+          ],
+          "rows.1.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.1.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.1.images.0.createdAt": [
+            "Date"
+          ],
+          "rows.2.createdAt": [
+            "Date"
+          ],
+          "rows.2.updatedAt": [
+            "Date"
+          ],
+          "rows.2.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.2.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.2.images.0.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

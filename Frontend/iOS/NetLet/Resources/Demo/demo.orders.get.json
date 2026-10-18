@@ -1,0 +1,128 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "order": {
+          "id": 29,
+          "reference": "NL-20261012-4V89V",
+          "userId": 2,
+          "email": "noura@shop.test",
+          "status": "pending_payment",
+          "currency": "KWD",
+          "itemsTotal": "72.000",
+          "deliveryTotal": "0.000",
+          "grandTotal": "72.000",
+          "pointsSpent": 0,
+          "pointsValue": "0.000",
+          "discountCode": null,
+          "discountValue": "0.000",
+          "giftCardCode": null,
+          "giftCardValue": "0.000",
+          "subscriptionId": null,
+          "member": false,
+          "deliveryWaived": "0.000",
+          "paymentMethod": "cod",
+          "paymentCollectedAt": null,
+          "deliveryBreakdown": [
+            {
+              "fee": "0.000",
+              "vendorId": 2,
+              "vendorName": "Acme Electronics",
+              "destinationLabel": null
+            }
+          ],
+          "contactName": "Noura Al-Sabah",
+          "contactPhone": "+96550000000",
+          "deliveryZoneId": "hawalli",
+          "addressLine": "Salmiya, Block 4, Street 12, House 15, PACI 12345678",
+          "addressNotes": null,
+          "deliveryPin": null,
+          "deliveryAddressParts": {
+            "area": "Salmiya",
+            "block": "4",
+            "street": "12",
+            "building": "15",
+            "paciNumber": "12345678"
+          },
+          "placedAt": "2026-10-12T14:33:00.413Z",
+          "updatedAt": "2026-10-12T14:33:00.413Z"
+        },
+        "windowDays": 14,
+        "parcels": [
+          {
+            "key": "v2|dorder",
+            "vendorName": "Acme Electronics",
+            "destinationLabel": null,
+            "state": "pending",
+            "arrivedAt": null,
+            "lines": [
+              {
+                "lineId": 34,
+                "productTitle": "Smart watch",
+                "lineTotal": "72.000"
+              }
+            ],
+            "rating": null,
+            "ratingState": {
+              "allowed": false,
+              "reason": "delivery.notArrived"
+            },
+            "claim": null,
+            "claimRefusal": "claims.noCourier"
+          }
+        ],
+        "returns": [],
+        "documents": [],
+        "lines": [
+          {
+            "id": 34,
+            "orderId": 29,
+            "vendorId": 2,
+            "productId": 3,
+            "variantId": 3,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Smart watch",
+            "variantTitle": "Default",
+            "sku": null,
+            "unitPrice": "72.000",
+            "quantity": 1,
+            "lineTotal": "72.000",
+            "preordered": false,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "bundleId": null,
+            "bundleName": null,
+            "destination": null,
+            "sizeClass": null,
+            "weightGrams": null,
+            "fulfilment": "pending",
+            "deliveredAt": null,
+            "createdAt": "2026-10-12T14:33:00.413Z",
+            "updatedAt": "2026-10-12T14:33:00.413Z",
+            "photo": "http://localhost:5000/brand/collection-tech.svg",
+            "returnState": {
+              "returnable": false,
+              "reason": "returns.blockedUnpaid"
+            }
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "order.placedAt": [
+            "Date"
+          ],
+          "order.updatedAt": [
+            "Date"
+          ],
+          "lines.0.createdAt": [
+            "Date"
+          ],
+          "lines.0.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

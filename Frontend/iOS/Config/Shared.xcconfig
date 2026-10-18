@@ -1,0 +1,8 @@
+// Settings both of the app's configurations share.
+
+// Where the app finds NetLet's server: the deployment `docs/VERCEL.md` sets up.
+// An xcconfig reads `//` as the start of a comment, so the address is written
+// with `$()` between the slashes, which expands to nothing.
+// A launch argument overrides it for development, without editing this file:
+//   -NetLetAPIBaseURL http://localhost:5001
+NETLET_API_BASE_URL = https:/$()/netlet-project.vercel.app

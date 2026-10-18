@@ -121,7 +121,9 @@ describe("dictionary hygiene", () => {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) walk(full);
         // The dictionary defines the keys; it cannot also be what justifies them.
-        else if (/\.tsx?$/.test(entry.name) && !full.endsWith(path.join("i18n", "dictionary.ts"))) {
+        // The iOS app's Swift asks for keys too (`l.t("cart.title")`), and the
+        // JSON copy it reads is left out for the dictionary's own reason.
+        else if (/\.(tsx?|swift)$/.test(entry.name) && !full.endsWith(path.join("i18n", "dictionary.ts"))) {
           sources.push(readFileSync(full, "utf-8"));
         }
       }

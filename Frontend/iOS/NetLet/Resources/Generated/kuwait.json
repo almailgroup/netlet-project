@@ -1,0 +1,482 @@
+{
+  "governorates": [
+    {
+      "id": "capital",
+      "label": "Capital (Al Asimah)",
+      "labelAr": "العاصمة"
+    },
+    {
+      "id": "hawalli",
+      "label": "Hawalli",
+      "labelAr": "حولي"
+    },
+    {
+      "id": "farwaniya",
+      "label": "Farwaniya",
+      "labelAr": "الفروانية"
+    },
+    {
+      "id": "ahmadi",
+      "label": "Ahmadi",
+      "labelAr": "الأحمدي"
+    },
+    {
+      "id": "jahra",
+      "label": "Jahra",
+      "labelAr": "الجهراء"
+    },
+    {
+      "id": "mubarak-al-kabeer",
+      "label": "Mubarak Al-Kabeer",
+      "labelAr": "مبارك الكبير"
+    }
+  ],
+  "areas": {
+    "capital": [
+      {
+        "en": "Abdullah Al-Salem",
+        "ar": "ضاحية عبدالله السالم"
+      },
+      {
+        "en": "Adailiya",
+        "ar": "العديلية"
+      },
+      {
+        "en": "Bneid Al-Qar",
+        "ar": "بنيد القار"
+      },
+      {
+        "en": "Daiya",
+        "ar": "الدعية"
+      },
+      {
+        "en": "Dasma",
+        "ar": "الدسمة"
+      },
+      {
+        "en": "Dasman",
+        "ar": "دسمان"
+      },
+      {
+        "en": "Doha",
+        "ar": "الدوحة"
+      },
+      {
+        "en": "Faiha",
+        "ar": "الفيحاء"
+      },
+      {
+        "en": "Granada",
+        "ar": "غرناطة"
+      },
+      {
+        "en": "Jaber Al-Ahmad",
+        "ar": "جابر الأحمد"
+      },
+      {
+        "en": "Kaifan",
+        "ar": "كيفان"
+      },
+      {
+        "en": "Khaldiya",
+        "ar": "الخالدية"
+      },
+      {
+        "en": "Mansouriya",
+        "ar": "المنصورية"
+      },
+      {
+        "en": "Mirqab",
+        "ar": "المرقاب"
+      },
+      {
+        "en": "Nahdha",
+        "ar": "النهضة"
+      },
+      {
+        "en": "North West Sulaibikhat",
+        "ar": "شمال غرب الصليبيخات"
+      },
+      {
+        "en": "Nuzha",
+        "ar": "النزهة"
+      },
+      {
+        "en": "Qadsiya",
+        "ar": "القادسية"
+      },
+      {
+        "en": "Qairawan",
+        "ar": "القيروان"
+      },
+      {
+        "en": "Qibla",
+        "ar": "القبلة"
+      },
+      {
+        "en": "Qortuba",
+        "ar": "قرطبة"
+      },
+      {
+        "en": "Rawda",
+        "ar": "الروضة"
+      },
+      {
+        "en": "Salhiya",
+        "ar": "الصالحية"
+      },
+      {
+        "en": "Shamiya",
+        "ar": "الشامية"
+      },
+      {
+        "en": "Sharq",
+        "ar": "شرق"
+      },
+      {
+        "en": "Shuwaikh",
+        "ar": "الشويخ"
+      },
+      {
+        "en": "Sulaibikhat",
+        "ar": "الصليبيخات"
+      },
+      {
+        "en": "Surra",
+        "ar": "السرة"
+      },
+      {
+        "en": "Yarmouk",
+        "ar": "اليرموك"
+      }
+    ],
+    "hawalli": [
+      {
+        "en": "Bayan",
+        "ar": "بيان"
+      },
+      {
+        "en": "Bidaa",
+        "ar": "البدع"
+      },
+      {
+        "en": "Hawalli",
+        "ar": "حولي"
+      },
+      {
+        "en": "Hittin",
+        "ar": "حطين"
+      },
+      {
+        "en": "Jabriya",
+        "ar": "الجابرية"
+      },
+      {
+        "en": "Maidan Hawalli",
+        "ar": "ميدان حولي"
+      },
+      {
+        "en": "Mishref",
+        "ar": "مشرف"
+      },
+      {
+        "en": "Mubarak Al-Abdullah",
+        "ar": "مبارك العبدالله"
+      },
+      {
+        "en": "Rumaithiya",
+        "ar": "الرميثية"
+      },
+      {
+        "en": "Salam",
+        "ar": "السلام"
+      },
+      {
+        "en": "Salmiya",
+        "ar": "السالمية"
+      },
+      {
+        "en": "Salwa",
+        "ar": "سلوى"
+      },
+      {
+        "en": "Shaab",
+        "ar": "الشعب"
+      },
+      {
+        "en": "Shuhada",
+        "ar": "الشهداء"
+      },
+      {
+        "en": "Siddiq",
+        "ar": "الصديق"
+      },
+      {
+        "en": "Zahra",
+        "ar": "الزهراء"
+      }
+    ],
+    "farwaniya": [
+      {
+        "en": "Abdullah Al-Mubarak",
+        "ar": "عبدالله المبارك"
+      },
+      {
+        "en": "Abraq Khaitan",
+        "ar": "أبرق خيطان"
+      },
+      {
+        "en": "Andalous",
+        "ar": "الأندلس"
+      },
+      {
+        "en": "Ardiya",
+        "ar": "العارضية"
+      },
+      {
+        "en": "Ashbeliya",
+        "ar": "إشبيلية"
+      },
+      {
+        "en": "Dhajeej",
+        "ar": "الضجيج"
+      },
+      {
+        "en": "Farwaniya",
+        "ar": "الفروانية"
+      },
+      {
+        "en": "Firdous",
+        "ar": "الفردوس"
+      },
+      {
+        "en": "Jleeb Al-Shuyoukh",
+        "ar": "جليب الشيوخ"
+      },
+      {
+        "en": "Khaitan",
+        "ar": "خيطان"
+      },
+      {
+        "en": "Omariya",
+        "ar": "العمرية"
+      },
+      {
+        "en": "Rabiya",
+        "ar": "الرابية"
+      },
+      {
+        "en": "Rai",
+        "ar": "الري"
+      },
+      {
+        "en": "Rehab",
+        "ar": "الرحاب"
+      },
+      {
+        "en": "Riggae",
+        "ar": "الرقعي"
+      },
+      {
+        "en": "Sabah Al-Nasser",
+        "ar": "صباح الناصر"
+      }
+    ],
+    "ahmadi": [
+      {
+        "en": "Abu Halifa",
+        "ar": "أبو حليفة"
+      },
+      {
+        "en": "Ahmadi",
+        "ar": "الأحمدي"
+      },
+      {
+        "en": "Ali Sabah Al-Salem",
+        "ar": "علي صباح السالم"
+      },
+      {
+        "en": "Dhaher",
+        "ar": "الظهر"
+      },
+      {
+        "en": "Egaila",
+        "ar": "العقيلة"
+      },
+      {
+        "en": "Fahad Al-Ahmad",
+        "ar": "فهد الأحمد"
+      },
+      {
+        "en": "Fahaheel",
+        "ar": "الفحيحيل"
+      },
+      {
+        "en": "Fintas",
+        "ar": "الفنطاس"
+      },
+      {
+        "en": "Hadiya",
+        "ar": "هدية"
+      },
+      {
+        "en": "Jaber Al-Ali",
+        "ar": "جابر العلي"
+      },
+      {
+        "en": "Khairan",
+        "ar": "الخيران"
+      },
+      {
+        "en": "Mahboula",
+        "ar": "المهبولة"
+      },
+      {
+        "en": "Mangaf",
+        "ar": "المنقف"
+      },
+      {
+        "en": "Riqqa",
+        "ar": "الرقة"
+      },
+      {
+        "en": "Sabah Al-Ahmad",
+        "ar": "صباح الأحمد"
+      },
+      {
+        "en": "Sabahiya",
+        "ar": "الصباحية"
+      },
+      {
+        "en": "Wafra",
+        "ar": "الوفرة"
+      }
+    ],
+    "jahra": [
+      {
+        "en": "Abdali",
+        "ar": "العبدلي"
+      },
+      {
+        "en": "Amghara",
+        "ar": "أمغرة"
+      },
+      {
+        "en": "Jahra",
+        "ar": "الجهراء"
+      },
+      {
+        "en": "Kabd",
+        "ar": "كبد"
+      },
+      {
+        "en": "Mutlaa",
+        "ar": "المطلاع"
+      },
+      {
+        "en": "Naeem",
+        "ar": "النعيم"
+      },
+      {
+        "en": "Nasseem",
+        "ar": "النسيم"
+      },
+      {
+        "en": "Oyoun",
+        "ar": "العيون"
+      },
+      {
+        "en": "Qasr",
+        "ar": "القصر"
+      },
+      {
+        "en": "Saad Al-Abdullah",
+        "ar": "سعد العبدالله"
+      },
+      {
+        "en": "Sulaibiya",
+        "ar": "الصليبية"
+      },
+      {
+        "en": "Taima",
+        "ar": "تيماء"
+      },
+      {
+        "en": "Waha",
+        "ar": "الواحة"
+      }
+    ],
+    "mubarak-al-kabeer": [
+      {
+        "en": "Abu Al-Hasaniya",
+        "ar": "أبو الحصانية"
+      },
+      {
+        "en": "Abu Fatira",
+        "ar": "أبو فطيرة"
+      },
+      {
+        "en": "Adan",
+        "ar": "العدان"
+      },
+      {
+        "en": "Fnaitees",
+        "ar": "الفنيطيس"
+      },
+      {
+        "en": "Masayel",
+        "ar": "المسايل"
+      },
+      {
+        "en": "Messila",
+        "ar": "المسيلة"
+      },
+      {
+        "en": "Mubarak Al-Kabeer",
+        "ar": "مبارك الكبير"
+      },
+      {
+        "en": "Qurain",
+        "ar": "القرين"
+      },
+      {
+        "en": "Qusour",
+        "ar": "القصور"
+      },
+      {
+        "en": "Sabah Al-Salem",
+        "ar": "صباح السالم"
+      },
+      {
+        "en": "Wista",
+        "ar": "الوسطى"
+      }
+    ]
+  },
+  "partKeys": [
+    "area",
+    "block",
+    "street",
+    "avenue",
+    "building",
+    "floor",
+    "apartment",
+    "paciNumber"
+  ],
+  "requiredParts": [
+    "area",
+    "block",
+    "street",
+    "building"
+  ],
+  "partMax": {
+    "area": 60,
+    "block": 10,
+    "street": 120,
+    "avenue": 60,
+    "building": 60,
+    "floor": 10,
+    "apartment": 20,
+    "paciNumber": 12
+  }
+}

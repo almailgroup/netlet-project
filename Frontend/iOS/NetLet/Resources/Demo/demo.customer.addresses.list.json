@@ -1,0 +1,25 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 8,
+          "label": "البيت",
+          "contactName": null,
+          "contactPhone": null,
+          "governorate": "hawalli",
+          "addressLine": "Salmiya, Block 4, Street 12, House 15, PACI 12345678",
+          "addressNotes": null,
+          "pin": null,
+          "parts": {
+            "area": "Salmiya",
+            "block": "4",
+            "street": "12",
+            "building": "15",
+            "paciNumber": "12345678"
+          }
+        }
+      ]
+    }
+  }
+}

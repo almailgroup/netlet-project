@@ -1,0 +1,12 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "kind": "vendor",
+        "userId": 5,
+        "vendorId": 2,
+        "role": "owner"
+      }
+    }
+  }
+}
