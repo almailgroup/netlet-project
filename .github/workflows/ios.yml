@@ -73,8 +73,9 @@ jobs:
       # A preview for anybody without a Mac: the app built above, installed on
       # the same simulator and opened on each screen in both languages,
       # answering from the demo recordings (-NetLetDemo YES). Full-size
-      # pictures go up as the ios-previews artifact; small copies are printed
-      # between PREVIEW markers, which is how they can be read from the log.
+      # pictures go up as the ios-previews artifact; small copies are also
+      # attached to the run as notices, which the API can read without
+      # downloading an artifact.
       - name: Take previews
         id: previews
         # Pictures are a courtesy; the tests above are the verdict.
@@ -99,26 +100,35 @@ jobs:
             xcrun simctl io "$SIM" screenshot --type=png "build/previews/$2-$1.png" >/dev/null 2>&1
           }
           for lang in en ar; do
-            shot 1-home "$lang" home ""
-            shot 2-department "$lang" department:grocery ""
-            shot 3-product "$lang" product:basmati-rice-5kg ""
-            shot 4-search "$lang" search:rice ""
-            shot 5-sign-in "$lang" account ""
-            shot 6-cart "$lang" cart shopper
-            shot 7-checkout "$lang" checkout shopper
-            shot 8-orders "$lang" orders shopper
-            shot 9-account "$lang" account shopper
+            shot 01-home "$lang" home ""
+            shot 02-department "$lang" department:grocery ""
+            shot 03-product "$lang" product:basmati-rice-5kg ""
+            shot 04-search "$lang" search:rice ""
+            shot 05-sign-in "$lang" account ""
+            shot 06-cart "$lang" cart shopper
+            shot 07-checkout "$lang" checkout shopper
+            shot 08-orders "$lang" orders shopper
+            shot 09-account "$lang" account shopper
             shot 10-selling "$lang" sell shopper
             shot 11-new-listing "$lang" newListing shopper
           done
           ls -1 build/previews
           for f in build/previews/*.png; do
-            name=$(basename "$f" .png)
-            sips -s format jpeg -s formatOptions 50 --resampleWidth 300 "$f" --out "build/small/$name.jpg" >/dev/null
-            echo "PREVIEW-BEGIN $name"
-            base64 -i "build/small/$name.jpg" | fold -w 2000
-            echo "PREVIEW-END $name"
+            sips -s format jpeg -s formatOptions 45 --resampleWidth 280 "$f" --out "build/small/$(basename "$f" .png).jpg" >/dev/null
           done
+
+      # GitHub keeps ten notices a step, so one step per language.
+      - name: Attach previews (English)
+        if: steps.previews.outcome == 'success'
+        continue-on-error: true
+        working-directory: Frontend/iOS/build/small
+        run: for f in en-*.jpg; do echo "::notice title=preview ${f%.jpg}::$(base64 -i "$f")"; done
+
+      - name: Attach previews (Arabic)
+        if: steps.previews.outcome == 'success'
+        continue-on-error: true
+        working-directory: Frontend/iOS/build/small
+        run: for f in ar-*.jpg; do echo "::notice title=preview ${f%.jpg}::$(base64 -i "$f")"; done
 
       - name: Keep the previews
         if: steps.previews.outcome == 'success'
