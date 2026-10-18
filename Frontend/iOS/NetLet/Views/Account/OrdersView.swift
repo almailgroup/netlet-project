@@ -1,42 +1,94 @@
 import SwiftUI
 
-/// The shopper's orders, each led by what is in it and where it is.
+/// The shopper's orders, each led by what is in it and where it is — the
+/// account's Orders section, drawn as the web's section page.
 struct OrdersView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         ModelHost(make: { OrdersViewModel(service: app.services.orders) }) { model in
-            LoadStateView(state: model.orders, retry: { await model.load() }) { orders in
-                if orders.isEmpty {
-                    EmptyStateView(
-                        systemImage: "shippingbox",
-                        title: l.t("orders.emptyTitle"),
-                        note: l.t("orders.emptyBody"),
-                        actionTitle: l.t("cart.keepBrowsing")
-                    ) { app.selectedTab = .home }
-                } else {
-                    List {
-                        ForEach(orders) { order in
-                            NavigationLink(value: Route.order(reference: order.reference)) {
-                                OrderRow(order: order)
+            ShopPage(refresh: { await model.load() }) {
+                AccountSection(title: l.t("account.sectionOrders"), hint: l.t("account.hint.orders")) {
+                    LoadStateView(state: model.orders, retry: { await model.load() }) { orders in
+                        if orders.isEmpty {
+                            EmptyStateView(
+                                systemImage: "shippingbox",
+                                title: l.t("orders.emptyTitle"),
+                                note: l.t("orders.emptyBody"),
+                                actionTitle: l.t("cart.keepBrowsing")
+                            ) { app.goHome() }
+                            .card(padding: 0)
+                        } else {
+                            LazyVStack(spacing: 10) {
+                                ForEach(orders) { order in
+                                    Button {
+                                        app.push(.order(reference: order.reference))
+                                    } label: {
+                                        OrderRow(order: order)
+                                            .padding(16)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    }
+                                    .buttonStyle(PressFillStyle(cornerRadius: 16))
+                                }
+                                if model.canLoadMore {
+                                    ProgressView()
+                                        .tint(Brand.navy)
+                                        .frame(maxWidth: .infinity, minHeight: 60)
+                                        .task { await model.loadMore() }
+                                }
                             }
                         }
-                        if model.canLoadMore {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                                .task { await model.loadMore() }
-                        }
                     }
-                    .listStyle(.plain)
                 }
             }
-            .refreshable { await model.load() }
             .task { await model.load() }
         }
-        .background(Brand.ground.ignoresSafeArea())
-        .navigationTitle(l.t("account.sectionOrders"))
-        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// A section of the account as the web's phone draws one: "← Your account",
+/// the section's name and one line on what it holds, then the section.
+struct AccountSection<Content: View>: View {
+    let title: String
+    let hint: String
+    @ViewBuilder var content: () -> Content
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                app.openAccount(nil)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.backward").font(.system(size: 14, weight: .semibold))
+                    Text(l.t("account.backToAccount"))
+                }
+                .font(.inter(14, .semibold))
+                .foregroundStyle(Brand.muted)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 8)
+            Text(title).pageTitle()
+            Text(hint)
+                .font(.inter(15))
+                .lineSpacing(4)
+                .foregroundStyle(Brand.body)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+            content()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 48)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -101,22 +153,27 @@ struct OrderDetailView: View {
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
-            LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        lines(detail)
-                        totals(detail.order)
-                        delivery(detail.order)
+            ShopPage(refresh: { await model.load() }) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Breadcrumbs(trail: [l.t("account.sectionOrders"), reference])
+                    Text(l.t("orders.orderHeading", ["reference": reference]))
+                        .pageTitle()
+                        .fixedSize(horizontal: false, vertical: true)
+                    LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
+                        VStack(alignment: .leading, spacing: 16) {
+                            lines(detail)
+                            totals(detail.order)
+                            delivery(detail.order)
+                        }
                     }
-                    .padding(16)
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 24)
+                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .refreshable { await model.load() }
             .task { await model.load() }
         }
-        .background(Brand.ground.ignoresSafeArea())
-        .navigationTitle(l.t("orders.orderHeading", ["reference": reference]))
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func lines(_ detail: OrderDetail) -> some View {

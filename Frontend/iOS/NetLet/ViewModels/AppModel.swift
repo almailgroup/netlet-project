@@ -205,9 +205,10 @@ final class AppModel {
         webPage = WebPage(url: services.configuration.url(path: path))
     }
 
-    /// A screen of the account, on the Profile tab, from anywhere.
-    func openAccount(_ route: Route) {
-        accountPath = NavigationPath([route])
+    /// A screen of the account, on the Profile tab, from anywhere — or the
+    /// account's home with none.
+    func openAccount(_ route: Route?) {
+        accountPath = route.map { NavigationPath([$0]) } ?? NavigationPath()
         selectedTab = .account
     }
 

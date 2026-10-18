@@ -204,10 +204,12 @@ struct ProfileView: View {
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
-            ProfileForm(model: model)
+            ShopPage {
+                AccountSection(title: l.t("account.sectionProfile"), hint: l.t("account.hint.details")) {
+                    ProfileForm(model: model)
+                }
+            }
         }
-        .navigationTitle(l.t("account.sectionProfile"))
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -217,30 +219,25 @@ private struct ProfileForm: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                section(.name, title: "account.displayName", note: "account.displayNameNote", done: "account.nameSaved") {
-                    LabeledField(label: l.t("account.displayName"), text: $model.name, content: .name)
-                } save: {
-                    if let user = await model.saveName() { app.session.updated(user) }
-                }
-                section(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
-                    LabeledField(label: l.t("account.newEmail"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
-                    LabeledField(label: l.t("account.currentPassword"), text: $model.emailPassword, hint: l.t("account.currentPasswordWhy"), content: .password, secure: true, leftToRight: true)
-                } save: {
-                    if let user = await model.saveEmail() { app.session.updated(user) }
-                }
-                section(.password, title: "account.changePassword", note: "account.passwordNote", done: "account.passwordChanged") {
-                    LabeledField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
-                    LabeledField(label: l.t("account.newPassword"), text: $model.newPassword, hint: l.t("auth.ruleLength"), content: .newPassword, secure: true, leftToRight: true)
-                } save: {
-                    _ = await model.savePassword()
-                }
+        VStack(spacing: 16) {
+            section(.name, title: "account.displayName", note: "account.displayNameNote", done: "account.nameSaved") {
+                LabeledField(label: l.t("account.displayName"), text: $model.name, content: .name)
+            } save: {
+                if let user = await model.saveName() { app.session.updated(user) }
             }
-            .padding(16)
+            section(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
+                LabeledField(label: l.t("account.newEmail"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
+                LabeledField(label: l.t("account.currentPassword"), text: $model.emailPassword, hint: l.t("account.currentPasswordWhy"), content: .password, secure: true, leftToRight: true)
+            } save: {
+                if let user = await model.saveEmail() { app.session.updated(user) }
+            }
+            section(.password, title: "account.changePassword", note: "account.passwordNote", done: "account.passwordChanged") {
+                LabeledField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
+                LabeledField(label: l.t("account.newPassword"), text: $model.newPassword, hint: l.t("auth.ruleLength"), content: .newPassword, secure: true, leftToRight: true)
+            } save: {
+                _ = await model.savePassword()
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Brand.ground.ignoresSafeArea())
     }
 
     private func section<Fields: View>(
@@ -252,8 +249,8 @@ private struct ProfileForm: View {
         save: @escaping () async -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(l.t(title)).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-            Text(l.t(note)).font(.footnote).foregroundStyle(Brand.muted)
+            Text(l.t(title)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             fields()
             FieldProblem(key: model.problems[form])
             if model.saved == form {
