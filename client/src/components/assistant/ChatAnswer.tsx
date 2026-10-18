@@ -10,17 +10,30 @@
  * search does, from what is actually on sale, at what it actually costs. A
  * shelf is fetched once the answer is whole, not while it is still arriving.
  *
+ * **A product on a shelf can go in the bag from there**, when there is
+ * nothing to choose: one variant, in stock, added once a press, the count on
+ * the disc as the receipt (the card's own rule — no toast, a polite live
+ * region). A product with sizes or colours opens its page instead, because a
+ * size has to be chosen before "add" means anything.
+ *
+ * **The questions it offers next (`[[ask: …]]`) are presses that ask them**,
+ * drawn under the latest answer only (`onAsk`) — an older answer's follow-ups
+ * are about a moment the conversation has moved past.
+ *
  * Every answer carries the line saying a model wrote it, and a finished one a
  * Copy — somebody sending "what do I need for a car seat" to their partner
  * should not have to select a chat bubble on a phone.
  */
 import { useEffect, useState } from "react";
-import { Check, Copy, ImageOff, Search } from "lucide-react";
+import { toast } from "sonner";
+import { Check, Copy, CornerDownRight, ImageOff, LoaderCircle, Plus, Search } from "lucide-react";
 import { Link } from "wouter";
 import { Thumb } from "@/components/product/Thumb";
+import { useCart } from "@/contexts/CartContext";
 import { chatPieces } from "@shared/ai/chatText";
 import { searchPath } from "@shared/commerce/browse";
 import { descriptionBlocks } from "@shared/commerce/productDetail";
+import type { Product } from "@shared/commerce/types";
 import type { ChatMessage } from "@/hooks/useAIChat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -28,18 +41,22 @@ import { trpc } from "@/lib/trpc";
 /** How many of a search's products a shelf shows; "See all" is the rest. */
 const SHELF = 4;
 
-export function ChatAnswer({ message, onNavigate, note = "assistant.generated" }: {
+export function ChatAnswer({ message, onNavigate, onAsk, note = "assistant.generated" }: {
   message: ChatMessage;
   /** Called as a link out of the answer is followed — the chat closes itself on a phone, say. */
   onNavigate?: () => void;
+  /** Asks a follow-up the answer offered; given only for the latest answer, while nothing is being asked. */
+  onAsk?: (question: string) => void;
   note?: "assistant.generated" | "help.askAnswerNote" | "shopChat.generated";
 }) {
   const { t } = useTranslation();
   const streaming = message.state === "streaming";
   const pieces = chatPieces(message.text, { streaming });
   const searches = pieces.flatMap(piece => (piece.kind === "search" ? [piece.term] : []));
+  const asks = pieces.flatMap(piece => (piece.kind === "ask" ? [piece.question] : []));
   const words = pieces.flatMap(piece => (piece.kind === "text" ? [piece.text.trim()] : [])).filter(Boolean).join("\n\n");
   return (
+    <>
     <div className="min-w-0 max-w-full rounded-[20px] rounded-ss-md bg-white px-4 py-3 shadow-[0_1px_2px_rgba(10,40,90,.06),0_6px_18px_rgba(10,40,90,.06)] ring-1 ring-[#0a285a]/[.07]">
       <div dir="auto" className="space-y-2 text-[14px] leading-6 text-[#1f2733]">
         {descriptionBlocks(words).map((block, at) => block.kind === "paragraph"
@@ -66,6 +83,23 @@ export function ChatAnswer({ message, onNavigate, note = "assistant.generated" }
         </div>
       )}
     </div>
+    {asks.length && onAsk && !streaming ? (
+      <ul className="flex flex-wrap gap-2" aria-label={t("shopChat.followUps")}>
+        {asks.map(question => (
+          <li key={question} className="max-w-full">
+            <button
+              type="button"
+              onClick={() => onAsk(question)}
+              className="chat-rise inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-white/90 px-3.5 py-1.5 text-start text-[13px] leading-5 font-semibold text-[#0a285a] shadow-[0_2px_8px_rgba(10,40,90,.08)] ring-1 ring-[#0a285a]/10 hover:bg-[#f0f2f5] pointer-fine:min-h-9"
+            >
+              <CornerDownRight aria-hidden className="size-3.5 shrink-0 text-[#0a285a]/60 rtl:-scale-x-100" />
+              <bdi dir="auto" className="min-w-0">{question}</bdi>
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null}
+    </>
   );
 }
 
@@ -99,12 +133,12 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
       </div>
       {found.isLoading ? (
         <div aria-hidden className="mt-2 flex gap-2 overflow-hidden">
-          {[0, 1, 2].map(slot => <span key={slot} className="h-[178px] w-[128px] shrink-0 animate-pulse rounded-2xl bg-[#eef2f8]" />)}
+          {[0, 1, 2].map(slot => <span key={slot} className="h-[186px] w-[136px] shrink-0 animate-pulse rounded-2xl bg-[#eef2f8]" />)}
         </div>
       ) : products.length ? (
         <ul className="-mx-1 mt-2 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:thin]">
           {products.map(product => (
-            <li key={product.id} className="w-[128px] shrink-0 snap-start">
+            <li key={product.id} className="relative w-[136px] shrink-0 snap-start">
               <Link
                 href={`/products/${product.handle}`}
                 onClick={onNavigate}
@@ -123,11 +157,62 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
                   <span className="mt-1 block text-[13px] font-bold text-[#0a285a]">{money(product.priceRange.min)}</span>
                 </span>
               </Link>
+              <ShelfAdd product={product} />
             </li>
           ))}
         </ul>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The shelf card's Add: on the photo's corner, a white disc with a plus, and
+ * once the item is in the bag a navy one carrying how many — pressed again,
+ * one more. Only for a product with nothing to choose (`CardAction`'s plain
+ * line: the variant alone, no extras or bundle), so the count is the line the
+ * press changes.
+ */
+function ShelfAdd({ product }: { product: Product }) {
+  const { t } = useTranslation();
+  const { cart, addItem } = useCart();
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState("");
+  const variant = product.variants.length === 1 ? product.variants[0] : null;
+  if (!variant?.availableForSale) return null;
+  const line = cart?.items.find(item => item.variantId === variant.id && !item.addons?.length && !item.bundleName);
+  const name = product.title;
+  const label = line
+    ? `${t("card.addName", { name })} · ${t("card.inCart", { count: String(line.quantity) })}`
+    : t("card.addName", { name });
+  return (
+    <>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await addItem(variant.id, 1, false);
+            setSaid(t("cart.added", { name }));
+          } catch {
+            toast.error(t("cart.addFailed"));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        aria-label={label}
+        title={label}
+        className={`tap-target absolute end-1.5 top-1.5 grid size-8 place-items-center rounded-full text-[13px] font-extrabold shadow-[0_2px_8px_rgba(10,40,90,.25)] ${line
+          ? "bg-[#0a285a] text-white hover:bg-[#0d3372]"
+          : "bg-white text-[#0a285a] ring-1 ring-[#0a285a]/10 hover:bg-[#f0f2f5]"}`}
+      >
+        {busy ? <LoaderCircle aria-hidden className="size-4 animate-spin" />
+          : line ? <span aria-hidden>{line.quantity > 99 ? "99+" : line.quantity}</span>
+          : <Plus aria-hidden className="size-4" strokeWidth={2.5} />}
+      </button>
+      <span aria-live="polite" className="sr-only">{said}</span>
+    </>
   );
 }
 

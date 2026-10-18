@@ -90,7 +90,7 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
               {message.text}
             </p>
           ) : message.text ? (
-            <ChatAnswer key={message.id} message={message} />
+            <ChatAnswer key={message.id} message={message} onAsk={message === last && !busy ? send : undefined} />
           ) : message.state === "streaming" ? (
             <p key={message.id} className="flex items-center gap-2 text-[13px] ink-muted">
               <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
