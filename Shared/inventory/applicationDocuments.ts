@@ -13,7 +13,7 @@
  * said. `sniffDocument` reads the first bytes — `%PDF-`, a JPEG, a PNG or a
  * WebP — and the declared type has to agree. Nothing else is stored, so
  * nothing kept here can be a page or a script, and every one is served as an
- * attachment besides (`server/_core/app.ts`).
+ * attachment besides (`Backend/src/core/app.ts`).
  *
  * ## At most 4 MB
  *

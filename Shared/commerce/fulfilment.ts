@@ -3,7 +3,7 @@
  *
  * One list, imported by the schema's enum, the router's input and the page
  * that draws the control — so a state cannot exist in one of the three and not
- * the others. It is here rather than in `drizzle/schema.ts` because `Shared/`
+ * the others. It is here rather than in `Backend/database/schema.ts` because `Shared/`
  * is what both sides may import, and the client needs the order of these to
  * draw them in.
  *

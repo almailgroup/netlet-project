@@ -2,7 +2,7 @@
  * Terminating tRPC link for the static demo build (GitHub Pages).
  *
  * The real client posts every procedure call to `/api/trpc`, served by the
- * Express router in `server/_core/index.ts`. A static host has no such endpoint,
+ * Express router in `Backend/src/core/index.ts`. A static host has no such endpoint,
  * so this link resolves the same procedures locally against `demoCatalog`.
  *
  * It is swapped in for `httpBatchLink` in main.tsx only when the build sets
@@ -16,7 +16,7 @@ import { readStored, writeStored } from "@/lib/browserStore";
 import type { Cart, CartItem, Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
-import type { AppRouter } from "../../../server/routers";
+import type { AppRouter } from "../../../Backend/src/routes";
 import { summarise } from "@shared/commerce/salesSummary";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";

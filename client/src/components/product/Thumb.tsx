@@ -1,7 +1,7 @@
 /**
  * A picture that might not be there, drawn so that it is never a broken icon.
  *
- * Product imagery is a URL a vendor typed — `server/inventory.ts` says so, and
+ * Product imagery is a URL a vendor typed — `Backend/src/services/inventory.ts` says so, and
  * will until uploads exist — so a dead link is an ordinary state rather than an
  * edge case. Every `<img>` in the storefront handled the *absent* case and none
  * of them handled the *failing* one, which is the more likely of the two: the

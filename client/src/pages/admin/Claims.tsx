@@ -28,7 +28,7 @@ import { isMessageKey } from "@shared/i18n/dictionary";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import type { AppRouter } from "../../../../server/routers";
+import type { AppRouter } from "../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 type Claim = inferRouterOutputs<AppRouter>["dispatch"]["claims"]["list"][number];

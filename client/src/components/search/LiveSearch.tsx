@@ -156,7 +156,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
 
   /*
    * The products come from the server, over the whole catalogue
-   * (`server/productSearch.ts`), ranked by the rules the results page uses — so
+   * (`Backend/src/services/productSearch.ts`), ranked by the rules the results page uses — so
    * a suggestion is never something "See all" then leaves out, and the shelf
    * past the first page can be found from here. It was the 24 newest products,
    * searched in the browser. Asked once typing pauses; the last answer stays

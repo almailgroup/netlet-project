@@ -1,6 +1,6 @@
 /**
  * The contract between NetLet and its AI gateway — the Cloudflare Worker in
- * `workers/ai-gateway/` that holds the Gemini key and is the only thing that
+ * `Backend/gateway/` that holds the Gemini key and is the only thing that
  * talks to Gemini.
  *
  * Pure, and imported by all three parties: the Worker validates requests and

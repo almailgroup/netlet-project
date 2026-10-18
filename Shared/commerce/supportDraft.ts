@@ -2,7 +2,7 @@
  * A model drafting a support reply for a person to send (3.5.1).
  *
  * Pure and shared: what the model is given, and how what it returns is
- * trimmed. The call itself is `server/supportDraft.ts`.
+ * trimmed. The call itself is `Backend/src/services/supportDraft.ts`.
  *
  * ## A draft, never a reply
  *

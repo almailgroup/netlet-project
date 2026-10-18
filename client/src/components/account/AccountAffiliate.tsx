@@ -21,7 +21,7 @@ import { trpc } from "@/lib/trpc";
 import { ATTRIBUTION_DAYS, MIN_AFFILIATE_PAYOUT_FILS } from "@shared/commerce/affiliate";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { fromFils } from "@shared/money";
-import type { AppRouter } from "../../../../server/routers";
+import type { AppRouter } from "../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 
 const REASON: Record<string, MessageKey> = {

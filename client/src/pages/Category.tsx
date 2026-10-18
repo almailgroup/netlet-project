@@ -109,7 +109,7 @@ export default function Category() {
 
   /*
    * A search is answered by the server, over the whole catalogue
-   * (`server/productSearch.ts`). It used to run here, over the hundred newest
+   * (`Backend/src/services/productSearch.ts`). It used to run here, over the hundred newest
    * products this page had fetched, so the hundred-and-first could not be
    * found by any search. The page searches what the address says — the term
    * Enter wrote — not every keystroke in the header field, so a results page

@@ -731,7 +731,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           ) : null}
 
           {/* Which store sells it, and handing it to another (admin only).
-              `server/productMove.ts` decides what follows the product and
+              `Backend/src/services/productMove.ts` decides what follows the product and
               what stays with the store that sold it; the dialog says so
               before anybody confirms. */}
           {mayMove ? (() => {

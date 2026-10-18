@@ -1,6 +1,6 @@
 /**
  * A conversation with the shop's assistant, streamed from the AI gateway
- * (`workers/ai-gateway/`, `POST /api/ai/chat`).
+ * (`Backend/gateway/`, `POST /api/ai/chat`).
  *
  * The words arrive as they are written — Server-Sent Events read off the
  * response body, through the same `createSseReader` the gateway uses on

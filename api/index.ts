@@ -6,7 +6,7 @@
  * there is nothing in it to transpile wrongly, and defers to the bundle that
  * `pnpm vercel-build` produces beside it.
  *
- * `server/_core/vercel.ts` explains why the bundle exists.
+ * `Backend/src/core/vercel.ts` explains why the bundle exists.
  */
 import app from "./app.generated.js";
 

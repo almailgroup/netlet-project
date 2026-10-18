@@ -16,7 +16,7 @@
  * hostname rather than an address, and **every address that name resolves to
  * must be public**, checked on the resolution the connection actually uses so
  * a name cannot answer one way when checked and another when connected
- * (`server/manufacturerImages.ts`). Redirects are followed by hand and each
+ * (`Backend/src/services/manufacturerImages.ts`). Redirects are followed by hand and each
  * hop is asked again.
  *
  * ## The manufacturer's declaration, not a scrape of every picture

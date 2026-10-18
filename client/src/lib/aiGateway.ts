@@ -1,5 +1,5 @@
 /**
- * The browser's side of the AI gateway (`workers/ai-gateway/`), shared by
+ * The browser's side of the AI gateway (`Backend/gateway/`), shared by
  * `useAIChat` and `useProductGenerator`: holding a token until it lapses,
  * calling a route with it, and turning a refusal into a sentence.
  *

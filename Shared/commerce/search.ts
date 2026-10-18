@@ -2,7 +2,7 @@
  * What a search finds, in what order, and what it meant when it found nothing.
  *
  * Pure and shared: the server ranks the whole catalogue with it
- * (`server/productSearch.ts`), the demo build ranks its fixtures with it, and
+ * (`Backend/src/services/productSearch.ts`), the demo build ranks its fixtures with it, and
  * the header's suggestions and the results page read the same answers — a
  * suggestion is never something "See all results" then leaves out.
  *
@@ -26,7 +26,7 @@
  * plural ات, and an English plural off an English one, so "الساعة", "ساعه" and
  * "ساعات" all find "ساعة ذكية", and "watches" finds "Smart watch". Both sides
  * go through the same two functions, so the rule cannot drift between the
- * product and the query. `server/productSearch.ts` folds the same way in SQL.
+ * product and the query. `Backend/src/services/productSearch.ts` folds the same way in SQL.
  *
  * **Both languages, whatever the page.** A product is searched by its title in
  * either language when the seller wrote both, and through `SYNONYM_GROUPS` a
@@ -51,7 +51,7 @@ const ARABIC_LETTER = /[؀-ۿ]/;
 
 /**
  * Text as search compares it: Latin digits, lower case, Arabic letter forms
- * folded, vowel marks and tatweel gone. `server/productSearch.ts` does exactly
+ * folded, vowel marks and tatweel gone. `Backend/src/services/productSearch.ts` does exactly
  * this in SQL (`FOLD_FROM`/`FOLD_TO`/`FOLD_MARKS`), and a test holds the two to
  * the same table.
  */

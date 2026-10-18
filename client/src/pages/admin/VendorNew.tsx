@@ -94,7 +94,7 @@ function NewStore() {
   /*
    * The same rules the server applies, applied here first.
    *
-   * Not instead of the server — `server/routers/inventory.ts` runs the very
+   * Not instead of the server — `Backend/src/routes/inventory.ts` runs the very
    * same pure functions — but so a mistyped IBAN is caught beside the box
    * rather than as a toast after a round trip.
    */

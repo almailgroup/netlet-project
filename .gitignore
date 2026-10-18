@@ -40,5 +40,5 @@ ios-app/ios/.xcode.env.local
 ios-app/.expo/
 
 # The AI gateway's local state and its local secrets (`wrangler dev`).
-workers/*/.wrangler/
-workers/*/.dev.vars
+Backend/gateway/.wrangler/
+Backend/gateway/.dev.vars

@@ -89,4 +89,4 @@ jobs:
       # inside it would quietly find the project's own dependencies and pass
       # on a bundle that is missing half of itself.
       - name: Serve it with no node_modules
-        run: node scripts/smoke-function.mjs
+        run: node Backend/scripts/smoke-function.mjs

@@ -71,7 +71,7 @@ export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type FeatureDefinition = {
   /**
    * tRPC paths that start something under this feature, refused while it is
-   * off. `server/features.test.ts` fails on a path the router does not have,
+   * off. `Backend/src/services/features.test.ts` fails on a path the router does not have,
    * so a rename cannot quietly leave a switch guarding nothing.
    */
   entries: readonly string[];

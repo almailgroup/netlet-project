@@ -27,7 +27,7 @@
  * A description is typed by a merchant, so it is the one input an attacker
  * controls. Nothing here interprets it as an instruction: the checks are
  * regular expressions and counts. The optional model pass that reads it is in
- * `server/productReview.ts`, fenced the way the assistant's brief is, and it
+ * `Backend/src/services/productReview.ts`, fenced the way the assistant's brief is, and it
  * can only *add* a finding — it cannot clear one, and with no key it is simply
  * absent rather than a panel saying "not configured".
  */

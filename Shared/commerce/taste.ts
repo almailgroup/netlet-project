@@ -16,7 +16,7 @@
  * for carrying the raw counts behind its score.
  *
  * The scoring here is deliberately simple and explainable. A language model
- * may reorder what this produces — `server/recommendations.ts` is where that
+ * may reorder what this produces — `Backend/src/services/recommendations.ts` is where that
  * happens — but it never chooses the candidate set and it never invents a
  * product, because this is the floor and the floor is the thing that is
  * tested.

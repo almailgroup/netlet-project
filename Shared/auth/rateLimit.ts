@@ -2,7 +2,7 @@
  * How many failed sign-ins are too many, and for how long.
  *
  * Pure, so the thresholds can be argued with in a test rather than discovered
- * in production. The counting and the storing are `server/rateLimit.ts`; this
+ * in production. The counting and the storing are `Backend/src/services/rateLimit.ts`; this
  * decides only what a set of timestamps means.
  *
  * **Two keys, not one.** Throttling by address alone is what a shared office
