@@ -1,0 +1,80 @@
+name: iOS
+
+# Builds the SwiftUI app and runs its unit tests on a simulator. It runs when
+# the app or this file changes; a change to `Shared/` that the app copies is
+# caught on Linux by `Frontend/iOS/scripts/exportShared.test.ts`, which fails
+# until `pnpm ios:resources` has been run and its output committed here.
+on:
+  push:
+    paths:
+      - "Frontend/iOS/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "Frontend/iOS/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: Frontend/iOS
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode
+        run: xcodebuild -version
+
+      # The newest iPhone simulator the runner's Xcode has, chosen by id so the
+      # job does not break when the image's list of devices changes.
+      - name: Pick a simulator
+        id: simulator
+        run: |
+          id=$(xcrun simctl list devices available --json | python3 -c '
+          import json, re, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          def version(key):
+              match = re.search(r"iOS-(\d+)-(\d+)", key)
+              return (int(match.group(1)), int(match.group(2))) if match else (0, 0)
+          for key in sorted(runtimes, key=version, reverse=True):
+              phones = [d for d in runtimes[key] if d.get("isAvailable") and d["name"].startswith("iPhone")]
+              if version(key) >= (17, 0) and phones:
+                  print(phones[0]["udid"])
+                  break
+          ')
+          test -n "$id" || { echo "No iOS 17+ iPhone simulator available"; xcrun simctl list devices available; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Build and test
+        # The whole log is kept; what is printed is the errors, the app's own
+        # warnings and each test's verdict. The step fails with xcodebuild.
+        run: |
+          set +e
+          mkdir -p build
+          xcodebuild test \
+            -project NetLet.xcodeproj \
+            -scheme NetLet \
+            -destination "id=${{ steps.simulator.outputs.id }}" \
+            -resultBundlePath build/NetLet.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/xcodebuild.log \
+            | grep --line-buffered -E "error:|warning: .*/NetLet(Tests)?/|Test Case .* (passed|failed)|Executed|\*\* (BUILD|TEST)"
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Keep the log and results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            Frontend/iOS/build/xcodebuild.log
+            Frontend/iOS/build/NetLet.xcresult
+          retention-days: 7
