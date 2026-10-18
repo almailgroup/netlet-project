@@ -193,7 +193,7 @@ struct LabeledField: View {
 /// The services come from the environment, which a view's `init` cannot read,
 /// so the model is made on first appearance and kept in `@State` from then on.
 struct ModelHost<Model: AnyObject, Content: View>: View {
-    let make: () -> Model
+    let make: @MainActor () -> Model
     @ViewBuilder let content: (Model) -> Content
     @State private var model: Model?
 

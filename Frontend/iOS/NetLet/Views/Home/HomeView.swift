@@ -172,6 +172,7 @@ struct SectionHeader: View {
 
 /// The language control, which names the language you would get — "العربية"
 /// on the English app and "English" on the Arabic one, the web header's rule.
+@MainActor
 struct LanguageToolbarItem: ToolbarContent {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l

@@ -72,7 +72,7 @@ final class ProfileViewModel {
         return done == true
     }
 
-    private func run<Value>(_ form: Form, _ work: @escaping () async throws -> Value) async -> Value? {
+    private func run<Value>(_ form: Form, _ work: @escaping @MainActor () async throws -> Value) async -> Value? {
         problems[form] = nil
         saved = nil
         saving = form

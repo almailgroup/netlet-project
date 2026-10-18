@@ -38,9 +38,11 @@ final class AppModel {
         case home, search, cart, account, sell
     }
 
-    init(services: Services, language: LanguageSettings = LanguageSettings(), cartDefaults: UserDefaults = .standard, isDemo: Bool = false) {
+    /// `language` is optional rather than defaulted: a default argument is
+    /// evaluated outside the main actor, where `LanguageSettings` cannot be made.
+    init(services: Services, language: LanguageSettings? = nil, cartDefaults: UserDefaults = .standard, isDemo: Bool = false) {
         self.services = services
-        self.language = language
+        self.language = language ?? LanguageSettings()
         self.isDemo = isDemo
         session = SessionModel(account: services.account)
         cart = CartModel(service: services.cart, defaults: cartDefaults)

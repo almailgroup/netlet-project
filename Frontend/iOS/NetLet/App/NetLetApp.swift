@@ -2,7 +2,13 @@ import SwiftUI
 
 @main
 struct NetLetApp: App {
-    @State private var app = AppModel.live()
+    @State private var app: AppModel
+
+    // Made in the initialiser, which is on the main actor, rather than as the
+    // property's initial value, which Swift 5 mode evaluates outside it.
+    init() {
+        _app = State(initialValue: AppModel.live())
+    }
 
     var body: some Scene {
         WindowGroup {
