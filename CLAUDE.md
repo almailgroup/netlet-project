@@ -4942,7 +4942,11 @@ artifact; notices were tried first and the API cuts an annotation off at
 run by hand at first, and the owner asked for an app change to reach the
 phones without anybody pressing anything. A push whose tests failed never
 uploads, a pull request's run never does, and it checks out the commit the
-tests passed on rather than whatever `main` holds by then. Nothing that signs
+tests passed on rather than whatever `main` holds by then. **A run of the iOS
+workflow started by hand waits behind a push's rather than cancelling it**
+(`cancel-in-progress` only for a push): the first `share` run for previews,
+started while a push's tests ran, would have cancelled them — and with them
+that push's upload, since only a green push run uploads. Nothing that signs
 lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
 lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the

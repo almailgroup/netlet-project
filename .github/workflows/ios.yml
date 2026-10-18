@@ -20,9 +20,12 @@ on:
         type: boolean
         default: false
 
+# A newer push cancels an older one's run, since the newer commit is the one
+# TestFlight should get. A run started by hand never cancels anything — it
+# waits — because cancelling a push's run would also lose that push's upload.
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   test:
