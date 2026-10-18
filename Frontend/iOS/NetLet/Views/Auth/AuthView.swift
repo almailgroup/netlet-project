@@ -10,11 +10,18 @@ struct AuthView: View {
 
     var body: some View {
         ModelHost(make: { AuthViewModel(account: app.services.account) }) { model in
-            AuthForm(model: model)
+            if inSheet {
+                ScrollView { AuthForm(model: model) }
+                    .scrollDismissesKeyboard(.interactively)
+                    .background(Brand.ground.ignoresSafeArea())
+                    .navigationTitle(l.t("auth.signInTitle"))
+                    .navigationBarTitleDisplayMode(.inline)
+            } else {
+                // Signed out, the account page is the form itself, in the
+                // shop's frame like every other page.
+                ShopPage(root: true) { AuthForm(model: model) }
+            }
         }
-        .background(Brand.ground.ignoresSafeArea())
-        .navigationTitle(l.t("auth.signInTitle"))
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -29,25 +36,22 @@ private struct AuthForm: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 18) {
-                    switch model.step {
-                    case .form:
-                        form
-                    case .code(let email, _, _, let fromRegister):
-                        codeStep(email: email, fromRegister: fromRegister)
-                    case .resetSent(let email):
-                        resetSent(email: email)
-                    }
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 18) {
+                switch model.step {
+                case .form:
+                    form
+                case .code(let email, _, _, let fromRegister):
+                    codeStep(email: email, fromRegister: fromRegister)
+                case .resetSent(let email):
+                    resetSent(email: email)
                 }
-                .padding(4)
-                .card()
-                .padding(16)
-                benefits
             }
+            .padding(4)
+            .card()
+            .padding(16)
+            benefits
         }
-        .scrollDismissesKeyboard(.interactively)
         .task(id: model.mode) { await model.prepare() }
     }
 
