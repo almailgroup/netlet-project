@@ -46,6 +46,7 @@
  * past an open dialog.
  */
 import { useCatalog } from "@/hooks/useCatalog";
+import { HEADER_SHELF } from "@/lib/routeData";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { useAuth } from "@/hooks/useAuth";
 import { useLastAddressId } from "@/hooks/useLastAddressId";
@@ -64,7 +65,8 @@ import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
 import { Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { Link, useLocation, useSearch } from "wouter";
 
@@ -75,8 +77,7 @@ import { Link, useLocation, useSearch } from "wouter";
  * It is fetched once the page is idle, so the first press still opens it at
  * once; the bytes come after the first paint rather than before it.
  */
-const loadDeliveryDialog = () => import("@/components/layout/DeliveryZoneDialog");
-const DeliveryZoneDialog = lazy(() => loadDeliveryDialog().then(module => ({ default: module.DeliveryZoneDialog })));
+const DeliveryZoneDialog = lazyPage(async () => ({ default: (await import("@/components/layout/DeliveryZoneDialog")).DeliveryZoneDialog }));
 
 /** A plain bar control: an icon and a word, a tint on hover, no fill of its own. */
 const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";
@@ -112,11 +113,11 @@ export function StoreHeader({ activeDepartment }: {
   /* Only where the bar draws the delivery button: a phone has none to open. */
   useEffect(() => {
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    return whenIdle(() => void loadDeliveryDialog());
+    return whenIdle(() => void DeliveryZoneDialog.preload());
   }, []);
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
-  const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
+  const shelf = useCatalog(HEADER_SHELF, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 

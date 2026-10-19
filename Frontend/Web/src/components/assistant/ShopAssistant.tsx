@@ -26,15 +26,15 @@
  * answer still arriving when it was closed puts the shop's pixel dot on the
  * button when it lands, until the panel is opened again.
  */
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { Sparkles } from "lucide-react";
 import { PixelDot } from "@/components/ui/PixelBadge";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 
-const loadPanel = () => import("@/components/assistant/ShopChatPanel");
-const ShopChatPanel = lazy(() => loadPanel().then(module => ({ default: module.ShopChatPanel })));
+const ShopChatPanel = lazyPage(async () => ({ default: (await import("@/components/assistant/ShopChatPanel")).ShopChatPanel }));
 
 export function ShopAssistant({ product, department }: {
   product: { brief: ProductBrief; image: string | null } | null;
@@ -68,9 +68,9 @@ export function ShopAssistant({ product, department }: {
       <button
         ref={button}
         type="button"
-        onPointerEnter={() => void loadPanel()}
-        onTouchStart={() => void loadPanel()}
-        onFocus={() => void loadPanel()}
+        onPointerEnter={() => void ShopChatPanel.preload()}
+        onTouchStart={() => void ShopChatPanel.preload()}
+        onFocus={() => void ShopChatPanel.preload()}
         onClick={() => { setStarted(true); setOpen(true); setUnread(false); }}
         aria-label={unread ? `${t("shopChat.launch")} · ${t("shopChat.unread")}` : t("shopChat.launch")}
         title={t("shopChat.launch")}

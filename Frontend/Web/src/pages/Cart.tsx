@@ -28,7 +28,7 @@ import { Link } from "wouter";
 export default function Cart() {
   const { t } = useTranslation();
   const money = useMoney();
-  const { cart, settling, loading, proceedToCheckout } = useCart();
+  const { cart, settling, proceedToCheckout } = useCart();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
@@ -55,7 +55,7 @@ export default function Cart() {
               <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
               <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(cart.total)}</p>
             </div>
-            <button type="button" onClick={proceedToCheckout} disabled={loading} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold disabled:opacity-60 min-[360px]:px-5">
+            <button type="button" onClick={proceedToCheckout} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold min-[360px]:px-5">
               {t("cart.checkoutShort")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
             </button>
           </div>

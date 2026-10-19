@@ -82,7 +82,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
                    bundle's — the server is what turns that into the split
                    price, because a browser must not name what things cost. */
                 for (const member of bundle.members) {
-                  await addItem(String(member.variantId), member.quantity, false, [], bundle.id);
+                  await addItem(String(member.variantId), member.quantity, { reveal: false, bundleId: bundle.id });
                 }
                 setSaid(t("bundle.added", { name: bundle.name }));
               } catch {

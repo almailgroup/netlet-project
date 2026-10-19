@@ -6,8 +6,10 @@ import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, S
 import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { EMPTY_FILTERS, searchPath, searchWithTerm } from "@shared/commerce/browse";
-import { brandsMatching, departmentsMatching, highlightParts } from "@shared/commerce/search";
+import { EMPTY_FILTERS, productsInCategory, searchPath, searchWithTerm } from "@shared/commerce/browse";
+import { brandsMatching, departmentsMatching, highlightParts, rankBySearch } from "@shared/commerce/search";
+import { useQueryClient } from "@tanstack/react-query";
+import { shelvedProducts } from "@/hooks/useCatalog";
 import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -172,6 +174,28 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     { enabled: open && settled.length > 0, placeholderData: previous => previous, staleTime: 60_000, retry: false },
   );
   const brands = trpc.commerce.brands.useQuery(undefined, { enabled: open, staleTime: 10 * 60 * 1000 });
+  /*
+   * Until the server has answered these exact words, the products this tab
+   * already holds answer them — the header's shelf, a department's, earlier
+   * answers — ranked by the same rules (`rankBySearch`), so a suggestion is on
+   * screen with the first letter rather than a pause and a round trip after
+   * the last. The server's answer, over the whole catalogue, replaces it when
+   * it lands. The last answer for other words is shown only when nothing held
+   * matches, since it was for something else.
+   */
+  const queryClient = useQueryClient();
+  const utils = trpc.useUtils();
+  const answered = settled === typed && answer.data && !answer.isPlaceholderData
+    ? answer.data
+    : utils.search.products.getData({ q: typed, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS });
+  const held = useMemo(() => {
+    if (!open || !typed || answered) return [];
+    const shelf = shelvedProducts(queryClient, locale);
+    const known = shelf.length ? shelf : catalog;
+    return rankBySearch(scoped ? productsInCategory(known, scope) : known, typed).slice(0, SUGGESTED_PRODUCTS);
+  }, [open, typed, answered, queryClient, locale, catalog, scoped, scope]);
+  const suggested = answered?.products ?? (held.length ? held : answer.data?.products ?? []);
+  const highlightTerm = answered ? answered.correctedTo ?? typed : typed;
 
   /*
    * With nothing typed, the choices are what this device searched for lately.
@@ -184,16 +208,17 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     if (emptyField) return recent.map(term => ({ kind: "recent" as const, key: `recent:${term}`, term }));
     const departments = scoped ? [] : departmentsMatching(typed).filter(entry => inStock(entry.name)).slice(0, 2);
     const brandNames = brandsMatching(typed, (brands.data ?? []).map(brand => brand.name)).slice(0, 2);
-    const products = settled ? answer.data?.products ?? [] : [];
+    const products = suggested;
     return [
       ...departments.map(entry => ({ kind: "department" as const, key: `department:${entry.slug}`, department: entry })),
       ...brandNames.map(brand => ({ kind: "brand" as const, key: `brand:${brand}`, brand })),
       ...products.map(product => ({ kind: "product" as const, key: `product:${product.id}`, product })),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emptyField, recent, typed, scoped, brands.data, settled, answer.data]);
-  const waiting = !emptyField && (settled !== typed || (answer.isFetching && !answer.data));
-  const total = answer.data?.total ?? 0;
+  }, [emptyField, recent, typed, scoped, brands.data, suggested]);
+  /* The server has not answered these words yet; what is drawn may change. */
+  const waiting = !emptyField && !answered;
+  const total = answered?.total ?? 0;
   useEffect(() => setActiveIndex(-1), [entries.length, emptyField]);
 
   const applySearch = (query: string) => {
@@ -709,8 +734,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
               {/* The results are one white plate on the glass: their muted lines need it. */}
               <div className="rounded-2xl border border-white/80 bg-white/90 p-1 shadow-[0_1px_2px_rgba(10,40,90,.06)]">
               {/* The words as typed found nothing and the catalogue's own spelling did: said, never silently swapped. */}
-              {answer.data?.correctedTo && !waiting ? (
-                <p className="type-label px-3 pb-1 pt-1 text-[#536b8c]">{t("search.showingFor", { term: answer.data.correctedTo })}</p>
+              {answered?.correctedTo ? (
+                <p className="type-label px-3 pb-1 pt-1 text-[#536b8c]">{t("search.showingFor", { term: answered.correctedTo })}</p>
               ) : null}
               {entries.length ? (
                 <div id={listboxId} role="listbox" aria-label={t("header.matchingCatalog")} aria-busy={waiting || undefined}>
@@ -743,7 +768,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                           {/* The words searched for in bold, matched as the search matches them. */}
                           {/* Not `.type-product`: its 18px bold, forced, left nothing for the match to be bolder than. */}
                           <span dir="auto" className="block truncate text-[14px] font-medium leading-5 text-[#0a285a]">
-                            {highlightParts(product.title, answer.data?.correctedTo ?? settled).map((part, partIndex) => (
+                            {highlightParts(product.title, highlightTerm).map((part, partIndex) => (
                               part.hit ? <strong key={partIndex} className="font-extrabold">{part.text}</strong> : <span key={partIndex}>{part.text}</span>
                             ))}
                           </span>

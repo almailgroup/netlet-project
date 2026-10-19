@@ -16,6 +16,7 @@
  * filters, sort, the empty state — rather than on a model's answer.
  */
 import { useCatalog } from "@/hooks/useCatalog";
+import { DEPARTMENT_SHELF, SEARCH_LIMIT } from "@/lib/routeData";
 import { useFloatingBar } from "@/hooks/useFloatingBar";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
@@ -76,7 +77,7 @@ export default function Category() {
   const [location, navigate] = useLocation();
   const { t, locale } = useTranslation();
   const { savedIds, toggleSaved } = useCustomer();
-  const shelf = useCatalog(100);
+  const shelf = useCatalog(DEPARTMENT_SHELF);
   const catalog = shelf.data ?? [];
 
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -118,8 +119,8 @@ export default function Category() {
   const typed = term.trim();
   const searching = typed.length > 0;
   const answer = trpc.search.products.useQuery(
-    { q: typed, department: category === "all" ? null : category, locale, limit: 200 },
-    { enabled: searching, placeholderData: previous => previous },
+    { q: typed, department: category === "all" ? null : category, locale, limit: SEARCH_LIMIT },
+    { enabled: searching, placeholderData: previous => previous, staleTime: 30_000 },
   );
   const matched = useMemo(() => (searching ? answer.data?.products ?? [] : []), [searching, answer.data]);
   const isLoading = searching ? answer.isLoading : shelf.isLoading;

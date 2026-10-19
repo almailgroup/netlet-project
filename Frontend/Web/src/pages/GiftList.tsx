@@ -220,7 +220,7 @@ function GiftRow({ item, product, token, onChanged }: {
         // several presents from one list, and popping the whole bag between
         // each would mean dismissing it to get back to what they were reading.
         // The toast is the confirmation here.
-        void addItem(variant.id, item.quantity, false);
+        addItem(variant.id, item.quantity, { reveal: false, ...(product ? { product } : {}) }).catch(() => toast.error(t("cart.addFailed")));
         onChanged();
         toast.success(t("gift.claimed_toast"));
       },

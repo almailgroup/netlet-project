@@ -22,6 +22,11 @@ const LOCALE_STORAGE_KEY = "netlet:locale";
  * already wrapped and the text reader beside it was not, which is how one of a
  * pair ends up carrying the rule and the other does not.
  */
+/** The language this device last read the shop in — what the first page asks its data in. */
+export function storedLocale(): LocaleCode {
+  return readStored(LOCALE_STORAGE_KEY) === "ar" ? "ar" : "en";
+}
+
 function writeValue(key: string, value: string | string[] | null) {
   if (value === null) removeStored(key);
   else writeStored(key, Array.isArray(value) ? JSON.stringify(value) : value);
@@ -47,7 +52,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
   const [guestSavedIds, setGuestSavedIds] = useState(() => readStoredList(SAVED_STORAGE_KEY));
   const [guestDeliveryZoneId, setGuestDeliveryZoneId] = useState(() => readStored(DELIVERY_STORAGE_KEY));
-  const [locale, setLocaleState] = useState<LocaleCode>(() => readStored(LOCALE_STORAGE_KEY) === "ar" ? "ar" : "en");
+  const [locale, setLocaleState] = useState<LocaleCode>(storedLocale);
   const syncedGuestIds = useRef<string | null>(null);
   const profile = trpc.customer.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const saved = trpc.customer.saved.list.useQuery(undefined, { enabled: isAuthenticated });

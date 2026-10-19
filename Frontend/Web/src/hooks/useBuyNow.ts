@@ -31,9 +31,12 @@ export function useBuyNow() {
         toast.error(t("cart.itemUnavailable"));
         return;
       }
+      /* Checkout opens at once on the bag drawn ahead, and waits for the
+         server to have the item before an order can be placed. */
+      const added = addItem(variant.id, quantity, { reveal: false, product });
+      navigate("/checkout");
       try {
-        await addItem(variant.id, quantity, false);
-        navigate("/checkout");
+        await added;
       } catch {
         toast.error(t("cart.buyFailed"));
       }

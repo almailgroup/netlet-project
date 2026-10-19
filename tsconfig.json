@@ -1,5 +1,5 @@
 {
-  "include": ["Frontend/Web/src/**/*", "Shared/**/*", "Backend/src/**/*", "Backend/database/**/*.ts", "Backend/scripts/**/*.ts", "Backend/gateway/src/**/*", "Frontend/iOS/scripts/**/*.ts"],
+  "include": ["Frontend/Web/src/**/*", "Frontend/Web/build/**/*.ts", "Shared/**/*", "Backend/src/**/*", "Backend/database/**/*.ts", "Backend/scripts/**/*.ts", "Backend/gateway/src/**/*", "Frontend/iOS/scripts/**/*.ts"],
   "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
     "incremental": true,

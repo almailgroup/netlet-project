@@ -13,6 +13,12 @@
  * `preload` is what the shell calls when a pointer comes to rest on a link, a
  * finger lands on one, or the browser is idle — by the press, the page is
  * usually already here.
+ *
+ * Overlays use it too — the bag drawer, the address book, the shop chat, the
+ * product page's preview and viewer. Each was a plain `lazy` fetched in
+ * advance, and React holds a lazy component's first reveal for about 300ms
+ * even when its code is already here, so the first press on the cart opened
+ * the drawer a third of a second late however fast the phone.
  */
 import { createElement, lazy, type ComponentType, type ReactElement } from "react";
 

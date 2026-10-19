@@ -69,6 +69,11 @@ export function AddressPartsFields({
         maxLength={PART_MAX[key]}
         onChange={event => set(key, event.target.value)}
         inputMode={options.digits ? "numeric" : undefined}
+        /* A Kuwaiti address has no autofill names of its own — "block" and
+           "avenue" are not a street line — so a browser's guess at them is
+           turned away rather than filling a block with a street. */
+        autoComplete="off"
+        enterKeyHint="next"
         dir={options.digits ? "ltr" : "auto"}
         aria-required={required(key) || undefined}
         aria-describedby={key === "paciNumber" ? id("paci-hint") : undefined}

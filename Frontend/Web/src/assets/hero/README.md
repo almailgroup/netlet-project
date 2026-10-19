@@ -12,6 +12,11 @@ reorder them, rename them; to add one, give it the next number.
   fades into the page, so the picture's left edge and bottom should be calm.
 - **File:** WebP at quality 80, under 150 KB. A slide is fetched just before
   it is shown, but each one is still a download on a phone.
+- **A phone copy, if you can:** the same picture 960 px wide, WebP at quality
+  about 78, saved under the same name in `phone/` (`phone/02-on-the-road.webp`).
+  A phone downloads that instead — about half the bytes — and a picture with no
+  phone copy is sent whole, so leaving it out only costs a phone the download.
+  The street has one too, in `../auth/phone/welcome.webp`.
 - **No words** in a picture: the band's own line is the words, and a picture's
   words could not change with the page's language.
 

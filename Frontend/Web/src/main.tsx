@@ -8,7 +8,10 @@ import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../Backend/src/routes";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
-import App from "./App";
+import App, { preloadFirstPage } from "./App";
+import { storedLocale } from "@/contexts/CustomerContext";
+import { prefetchRouteData } from "@/lib/routeData";
+import { rememberShelves, restoreShelves } from "@/lib/shelfMemory";
 import "./index.css";
 
 /**
@@ -131,10 +134,35 @@ const trpcClient = trpc.createClient({
 
 loadAnalytics();
 
-createRoot(document.getElementById("root")!).render(
+/*
+ * Before the first page draws: today's remembered shelves into the cache, so a
+ * returning shopper opens on products (`shelfMemory`), and the address's own
+ * data asked for now, beside the page's code rather than after it
+ * (`routeData`), as is the page's own code (`preloadFirstPage`). The demo
+ * answers from fixtures and needs neither of the first two.
+ */
+const firstPage = preloadFirstPage();
+if (!DEMO_MODE) {
+  restoreShelves(queryClient);
+  rememberShelves(queryClient);
+  prefetchRouteData(trpcClient, queryClient, storedLocale());
+}
+
+/*
+ * The first draw waits a moment for the first page's code. Drawn without it,
+ * the page suspends and React shows the outline — and then holds the outline
+ * for about 300ms after the code lands, by design — so a page whose code was
+ * a few milliseconds away (preloaded with the HTML, or simply small) still
+ * spent a third of a second as grey boxes. Waiting up to `FIRST_PAGE_WAIT_MS`
+ * draws it whole instead; past that the outline is the better answer, since
+ * the frame round it is worth showing while a slow connection catches up.
+ */
+const FIRST_PAGE_WAIT_MS = 400;
+const draw = () => createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </trpc.Provider>
 );
+void Promise.race([firstPage, new Promise(resolve => window.setTimeout(resolve, FIRST_PAGE_WAIT_MS))]).then(draw);

@@ -14,6 +14,27 @@ const NUMBER_LOCALE: Record<LocaleCode, string> = {
   ar: "ar-KW-u-nu-latn",
 };
 
+/*
+ * One formatter per language, currency and shape, made once: building an
+ * `Intl.NumberFormat` costs more than using one, and a page of product cards
+ * built a fresh one for every price on it — about 40ms of the home page's
+ * first draw on a mid-range phone.
+ */
+const formatters = new Map<string, Intl.NumberFormat>();
+function formatterFor(locale: LocaleCode, currency: string, whole: boolean): Intl.NumberFormat {
+  const key = `${locale}|${currency}|${whole ? 1 : 0}`;
+  let formatter = formatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(NUMBER_LOCALE[locale], {
+      style: "currency",
+      currency,
+      ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
+    });
+    formatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 /**
  * Format a Money or raw amount string into a localized currency string.
  * Falls back to `$X` rounding if Intl rejects the currency code.
@@ -47,11 +68,7 @@ export function formatMoney(
     //
     // A whole amount still renders clean: 129, not 129.000.
     const whole = amountNum % 1 === 0;
-    return new Intl.NumberFormat(NUMBER_LOCALE[options?.locale ?? "en"], {
-      style: "currency",
-      currency: code,
-      ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
-    }).format(amountNum);
+    return formatterFor(options?.locale ?? "en", code, whole).format(amountNum);
   } catch {
     return `$${amountNum.toFixed(0)}`;
   }

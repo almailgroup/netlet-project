@@ -10,7 +10,7 @@ import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { captureAffiliate } from "@/lib/affiliate";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import { matchRoute, Route, Router as WouterRouter, Switch, useLocation, useRouter, useSearch, type RouteComponentProps } from "wouter";
 import { PageFallback, StorefrontShell } from "@/components/layout/StorefrontShell";
 import { useIntentPrefetch } from "@/hooks/useIntentPrefetch";
@@ -31,8 +31,7 @@ import Home from "./pages/Home";
  * stays eager because it is the page nearly every visit starts on, and making
  * it lazy would only add a round trip to the critical path.
  */
-const loadBagDrawer = () => import("@/components/cart/BagDrawer");
-const BagDrawer = lazy(() => loadBagDrawer().then(module => ({ default: module.BagDrawer })));
+const BagDrawer = lazyPage(async () => ({ default: (await import("@/components/cart/BagDrawer")).BagDrawer }));
 const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
 const Checkout = lazyPage(() => import("@/pages/Checkout"));
 const Account = lazyPage(() => import("@/pages/Account"));
@@ -109,7 +108,7 @@ function BagDrawerWhenWanted() {
   useEffect(() => {
     if (isOpen) setWanted(true);
   }, [isOpen]);
-  useEffect(() => whenIdle(() => void loadBagDrawer()), []);
+  useEffect(() => whenIdle(() => void BagDrawer.preload()), []);
   return wanted || isOpen ? <Suspense fallback={null}><BagDrawer /></Suspense> : null;
 }
 
@@ -349,6 +348,33 @@ function piecesFor(parser: Parameters<typeof matchRoute>[0], path: string): Prel
   const page = route?.page ?? (inPortal ? AdminNotFound : NotFound);
   const pieces: unknown[] = inPortal ? [page, AdminLayout] : [page];
   return pieces.filter(isLazy);
+}
+
+/*
+ * A route pattern as wouter reads it — `:name` one segment, `:name*` the rest —
+ * for the one match made before wouter is running: the first page's own code,
+ * asked for as the app starts (`preloadFirstPage`).
+ */
+const startupParser = (route: string) => {
+  const keys: string[] = [];
+  const source = route.replace(/\/:(\w+)(\*)?/g, (_match, key: string, rest?: string) => {
+    keys.push(key);
+    return rest ? "(?:/(.*))?" : "/([^/]+)";
+  });
+  return { pattern: new RegExp(`^${source}/?$`, "i"), keys };
+};
+
+/**
+ * The first page's code, asked for now rather than when the app first draws it.
+ * Lazy pages were fetched by that first draw, so a cold visit to the account,
+ * the bag or a guide showed the outline until a download that could have
+ * started half a second sooner had finished. Settles when every piece has
+ * arrived, or failed — a failure is the page's to say when it draws.
+ */
+export function preloadFirstPage(pathname: string = window.location.pathname): Promise<void> {
+  const path = BASE_PATH && pathname.startsWith(BASE_PATH) ? pathname.slice(BASE_PATH.length) || "/" : pathname;
+  const pieces = piecesFor(startupParser as Parameters<typeof matchRoute>[0], path);
+  return Promise.all(pieces.map(piece => piece.preload())).then(() => undefined, () => undefined);
 }
 
 /**

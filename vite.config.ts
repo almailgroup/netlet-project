@@ -1,7 +1,42 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { readFileSync } from "node:fs";
 import path from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+import type { Rollup } from "vite";
+import { routeTable, routesFromApp } from "./Frontend/Web/build/routePreloads";
+
+/**
+ * Each shopping address's code, fetched the moment the page arrives rather
+ * than once the app has started (`Frontend/Web/build/routePreloads.ts` says
+ * why). The build writes the table into the page as data, and
+ * `public/route-preload.js` — a file, because the CSP allows no inline script
+ * — preloads the one row the address matches. It replaced preloading the
+ * product and department pages on every visit, which had every page download
+ * two pages it was not.
+ */
+function routePreloads(): Plugin {
+  let base = "/";
+  return {
+    name: "netlet-route-preloads",
+    configResolved(config) { base = config.base; },
+    transformIndexHtml: {
+      order: "post",
+      handler(_html, context) {
+        const bundle = context.bundle as Rollup.OutputBundle | undefined;
+        if (!bundle) return [];
+        const chunks = Object.values(bundle).filter((item): item is Rollup.OutputChunk => item.type === "chunk");
+        const routes = routesFromApp(readFileSync(path.resolve(import.meta.dirname, "Frontend", "Web", "src", "App.tsx"), "utf8"));
+        const { table, unplaced } = routeTable(routes, chunks, base);
+        if (unplaced.length) console.warn(`[route preloads] no chunk found for ${unplaced.join(", ")}`);
+        return [
+          { tag: "script", attrs: { type: "application/json", id: "netlet-routes" }, children: JSON.stringify(table).replace(/</g, "\\u003c"), injectTo: "head-prepend" as const },
+          { tag: "script", attrs: { src: `${base}route-preload.js`, async: true }, injectTo: "head-prepend" as const },
+        ];
+      },
+    },
+  };
+}
 
 /**
  * NetLet build configuration.
@@ -15,7 +50,7 @@ export default defineConfig({
   // VITE_BASE_PATH at build time. Unset — dev, and the Express server build —
   // keeps the app at the domain root.
   base: process.env.VITE_BASE_PATH || "/",
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), routePreloads()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "Frontend", "Web", "src"),

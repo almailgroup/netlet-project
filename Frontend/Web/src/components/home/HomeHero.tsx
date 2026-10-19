@@ -122,24 +122,27 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
         <div className="relative h-[220px] sm:h-[300px] lg:absolute lg:inset-y-0 lg:end-0 lg:h-auto lg:w-[56%]">
           {/* Decorative: the words beside them say what the shop is. */}
           <div aria-hidden className="absolute inset-0">
-            {slides.map((src, slide) => fetched.has(slide) ? (
-              <img
-                key={src}
-                src={src}
-                alt=""
-                loading="eager"
-                fetchPriority={slide === 0 ? "high" : "low"}
-                decoding="async"
-                ref={image => { if (image?.complete && image.naturalWidth) markReady(slide); }}
-                onLoad={event => onLoaded(slide, event.currentTarget)}
-                /* The first picture is simply there — fading in the page's
-                   largest picture would hold back its largest paint. */
-                className={`absolute inset-0 size-full object-cover object-[center_60%] ${
-                  slide === index ? `z-[2] opacity-100${previous === null ? "" : " hero-slide-in"}`
-                  : slide === previous ? "z-[1] opacity-100"
-                  : "opacity-0"
-                }`}
-              />
+            {slides.map(({ src, phone }, slide) => fetched.has(slide) ? (
+              <picture key={src}>
+                {/* A phone's band is 390px wide; its copy is half the bytes. */}
+                {phone ? <source media="(max-width: 640px)" srcSet={phone} /> : null}
+                <img
+                  src={src}
+                  alt=""
+                  loading="eager"
+                  fetchPriority={slide === 0 ? "high" : "low"}
+                  decoding="async"
+                  ref={image => { if (image?.complete && image.naturalWidth) markReady(slide); }}
+                  onLoad={event => onLoaded(slide, event.currentTarget)}
+                  /* The first picture is simply there — fading in the page's
+                     largest picture would hold back its largest paint. */
+                  className={`absolute inset-0 size-full object-cover object-[center_60%] ${
+                    slide === index ? `z-[2] opacity-100${previous === null ? "" : " hero-slide-in"}`
+                    : slide === previous ? "z-[1] opacity-100"
+                    : "opacity-0"
+                  }`}
+                />
+              </picture>
             ) : null)}
             {/* Into the navy on the words' side: below the pictures on a
                 phone, beside them from `lg`, from the start edge in either

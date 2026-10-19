@@ -138,6 +138,8 @@ export function AddressForm({
             maxLength={MAX_LABEL}
             onChange={event => setDraft(d => ({ ...d, label: event.target.value }))}
             placeholder={t("address.labelPlaceholder")}
+            /* "Home" or "Office" — a nickname, never the shopper's own name. */
+            autoComplete="off"
             className={`${field} mt-1 font-normal`}
           />
         </label>
@@ -179,6 +181,7 @@ export function AddressForm({
             value={draft.contactName ?? ""}
             maxLength={160}
             onChange={event => setDraft(d => ({ ...d, contactName: event.target.value }))}
+            autoComplete="name"
             className={`${field} mt-1 font-normal`}
           />
         </label>
@@ -190,8 +193,10 @@ export function AddressForm({
           <input
             value={draft.contactPhone ?? ""}
             maxLength={40}
+            type="tel"
             dir="ltr"
             inputMode="tel"
+            autoComplete="tel"
             onChange={event => setDraft(d => ({ ...d, contactPhone: event.target.value }))}
             className={`${field} mt-1 font-normal`}
           />

@@ -26,7 +26,7 @@
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, CornerDownRight, ImageOff, LoaderCircle, Plus, Search } from "lucide-react";
+import { Check, Copy, CornerDownRight, ImageOff, Plus, Search } from "lucide-react";
 import { Link } from "wouter";
 import { Thumb } from "@/components/product/Thumb";
 import { useCart } from "@/contexts/CartContext";
@@ -176,7 +176,6 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
 function ShelfAdd({ product }: { product: Product }) {
   const { t } = useTranslation();
   const { cart, addItem } = useCart();
-  const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState("");
   const variant = product.variants.length === 1 ? product.variants[0] : null;
   if (!variant?.availableForSale) return null;
@@ -189,17 +188,10 @@ function ShelfAdd({ product }: { product: Product }) {
     <>
       <button
         type="button"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await addItem(variant.id, 1, false);
-            setSaid(t("cart.added", { name }));
-          } catch {
-            toast.error(t("cart.addFailed"));
-          } finally {
-            setBusy(false);
-          }
+        /* The disc changes on the press (the bag draws it ahead); a refusal toasts. */
+        onClick={() => {
+          setSaid(t("cart.added", { name }));
+          addItem(variant.id, 1, { reveal: false, product }).catch(() => toast.error(t("cart.addFailed")));
         }}
         aria-label={label}
         title={label}
@@ -207,8 +199,7 @@ function ShelfAdd({ product }: { product: Product }) {
           ? "bg-[#0a285a] text-white hover:bg-[#0d3372]"
           : "bg-white text-[#0a285a] ring-1 ring-[#0a285a]/10 hover:bg-[#f0f2f5]"}`}
       >
-        {busy ? <LoaderCircle aria-hidden className="size-4 animate-spin" />
-          : line ? <span aria-hidden>{line.quantity > 99 ? "99+" : line.quantity}</span>
+        {line ? <span aria-hidden>{line.quantity > 99 ? "99+" : line.quantity}</span>
           : <Plus aria-hidden className="size-4" strokeWidth={2.5} />}
       </button>
       <span aria-live="polite" className="sr-only">{said}</span>

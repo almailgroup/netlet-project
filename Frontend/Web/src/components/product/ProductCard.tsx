@@ -26,7 +26,7 @@ import { CardGallery } from "@/components/product/CardGallery";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
-import { Eye, Heart, LoaderCircle, Minus, Plus, ShoppingBag, Star, Trash2, Zap } from "lucide-react";
+import { Eye, Heart, Minus, Plus, ShoppingBag, Star, Trash2, Zap } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -70,7 +70,7 @@ export async function shareProduct(product: Product, t: Translate) {
  * The focus ring is the shop's own orange, drawn inside the pill so it is not
  * cut off by the card's edge.
  */
-function BuyPill({ tone, label, children, onPress, href, busy = false, step, always = false, pressRef, plusRef }: {
+function BuyPill({ tone, label, children, onPress, href, step, always = false, pressRef, plusRef }: {
   tone: "add" | "buy";
   /** The press's accessible name. It starts with the words drawn, so somebody driving the page by voice can say what they see. */
   label: string;
@@ -78,7 +78,6 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   onPress?: () => void;
   /** A press that goes to another page is a link. */
   href?: string;
-  busy?: boolean;
   step?: { name: string; less: () => void; more: () => void; canLess: boolean; canMore: boolean; lessIsRemove?: boolean };
   always?: boolean;
   pressRef?: Ref<HTMLButtonElement>;
@@ -105,7 +104,7 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
   return (
     <div role={display ? "group" : undefined} aria-label={display ? label : undefined} className={`buy-pill ${PURCHASE_TONE[tone]} flex h-11 w-full items-center rounded-xl pointer-fine:h-10 ${always ? "@container" : "px-1"}`}>
       {step ? (
-        <button type="button" onClick={step.less} disabled={busy || !step.canLess} aria-label={t(step.lessIsRemove ? "cart.remove" : "cart.decrease", { name: step.name })} className={stepClass}>
+        <button type="button" onClick={step.less} disabled={!step.canLess} aria-label={t(step.lessIsRemove ? "cart.remove" : "cart.decrease", { name: step.name })} className={stepClass}>
           {step.lessIsRemove ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}
         </button>
       ) : null}
@@ -114,12 +113,12 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
       ) : href ? (
         <Link href={href} aria-label={label} className={press}>{children}</Link>
       ) : (
-        <button ref={pressRef} type="button" onClick={onPress} disabled={busy} aria-label={label} className={press}>
+        <button ref={pressRef} type="button" onClick={onPress} aria-label={label} className={press}>
           {children}
         </button>
       )}
       {step ? (
-        <button ref={plusRef} type="button" onClick={step.more} disabled={busy || !step.canMore} aria-label={t("cart.increase", { name: step.name })} className={stepClass}>
+        <button ref={plusRef} type="button" onClick={step.more} disabled={!step.canMore} aria-label={t("cart.increase", { name: step.name })} className={stepClass}>
           <Plus className="size-4" aria-hidden />
         </button>
       ) : null}
@@ -142,9 +141,11 @@ function BuyPill({ tone, label, children, onPress, href, busy = false, step, alw
  * part of a set is something the shopper built on the product page, and a
  * card's minus should not quietly take it apart.
  *
- * Its own `busy` rather than the bag's `loading`: the bag's flag is one for the
- * whole page, and a spinner on every card in the grid while one of them adds
- * says the wrong thing about the other thirty.
+ * Nothing waits for the server: the bag draws the press at once (the card
+ * hands it the product, so its line can be drawn before it exists), the
+ * stepper follows, and only a refusal is said — in a toast, with the bag put
+ * back as the server has it. A spinner in the pill for the length of a round
+ * trip was a third of a second on every tap of a phone.
  *
  * Focus follows the press. Add is replaced by the bag's stepper and the
  * stepper's bin by Add, so the button somebody just pressed is gone by the next
@@ -155,7 +156,6 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
   const { cart, addItem, updateQuantity, removeItem } = useCart();
   const buyNow = useBuyNow();
   const [, navigate] = useLocation();
-  const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState("");
   /** How many, before the item is in the bag. */
   const [pick, setPick] = useState(1);
@@ -179,17 +179,10 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     target.focus();
   }, [line?.quantity]);
 
-  const run = async (act: () => Promise<void>, after: string, focus: "add" | "plus" | null) => {
-    setBusy(true);
-    try {
-      await act();
-      focusNext.current = focus;
-      setSaid(after);
-    } catch {
-      toast.error(t("cart.addFailed"));
-    } finally {
-      setBusy(false);
-    }
+  const run = (act: () => Promise<void>, after: string, focus: "add" | "plus" | null) => {
+    focusNext.current = focus;
+    setSaid(after);
+    act().catch(() => toast.error(t("cart.addFailed")));
   };
 
   /* The one place the shared number changes: the card's pick, or the bag's line. */
@@ -197,7 +190,7 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     const clamped = Math.max(1, Math.min(MAX_QUANTITY, next));
     if (clamped === quantity) return;
     if (line) {
-      void run(() => updateQuantity(line.lineId, clamped), t("cart.quantityShort", { count: String(clamped) }), null);
+      run(() => updateQuantity(line.lineId, clamped), t("cart.quantityShort", { count: String(clamped) }), null);
     } else {
       setPick(clamped);
       setSaid(t("cart.quantityShort", { count: String(clamped) }));
@@ -242,7 +235,6 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
       <BuyPill
         tone="add"
         always
-        busy={busy}
         label={t("cart.quantityShort", { count })}
         plusRef={plusRef}
         step={{
@@ -250,33 +242,27 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
           canLess: true,
           lessIsRemove: quantity <= 1,
           less: () => quantity <= 1
-            ? void run(() => removeItem(line.lineId), t("cart.removedName", { name }), "add")
+            ? run(() => removeItem(line.lineId), t("cart.removedName", { name }), "add")
             : setQuantity(quantity - 1),
         }}
       >
         {/* "2 in cart" where the pill has room for it beside two 40px steps,
             the number alone on a narrow phone card — never a word cut short. */}
-        {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : (
-          <>
-            <span className="tabular-nums @min-[11rem]:hidden">{count}</span>
-            <span className="hidden truncate tabular-nums @min-[11rem]:inline">{t("card.inCart", { count })}</span>
-          </>
-        )}
+        <span className="tabular-nums @min-[11rem]:hidden">{count}</span>
+        <span className="hidden truncate tabular-nums @min-[11rem]:inline">{t("card.inCart", { count })}</span>
       </BuyPill>
     ) : (
       <BuyPill
         tone="add"
-        busy={busy}
         pressRef={addRef}
         label={t(preorder ? (quantity > 1 ? "card.preorderCountName" : "card.preorderName") : (quantity > 1 ? "card.addCountName" : "card.addName"), { count, name })}
-        onPress={() => void run(
-          async () => { await addItem(variant.id, pick, false); setPick(1); },
-          t("cart.added", { name }),
-          "plus",
-        )}
+        onPress={() => {
+          setPick(1);
+          run(() => addItem(variant.id, pick, { reveal: false, product }), t("cart.added", { name }), "plus");
+        }}
         step={shared}
       >
-        {busy ? <LoaderCircle className="size-4 shrink-0 animate-spin" aria-hidden /> : <ShoppingBag className="size-4 shrink-0" aria-hidden />}
+        <ShoppingBag className="size-4 shrink-0" aria-hidden />
         <span className="truncate">{t(preorder ? (quantity > 1 ? "product.preorderCount" : "product.preorder") : (quantity > 1 ? "product.addToCartCount" : "product.addToCart"), { count })}</span>
       </BuyPill>
     );
@@ -285,12 +271,11 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
         {add}
         <BuyPill
           tone="buy"
-          busy={busy}
           label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
           /* Already in the bag at this number: checkout is the whole of what is left. */
           onPress={() => line
             ? navigate("/checkout")
-            : void run(() => buyNow(product, pick, variant.id), t("cart.added", { name }), null)}
+            : run(() => buyNow(product, pick, variant.id), t("cart.added", { name }), null)}
           step={shared}
         >
           <Zap className="size-4 shrink-0 fill-current" aria-hidden />

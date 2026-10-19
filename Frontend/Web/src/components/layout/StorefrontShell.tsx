@@ -28,7 +28,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { useTranslation } from "@/hooks/useTranslation";
-import { createContext, Suspense, useCallback, useContext, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import type { ProductBrief } from "@shared/commerce/assistant";
 
@@ -70,8 +70,34 @@ const pageOf = (path: string) => (path.startsWith("/account/") ? "/account" : pa
 /* A document: the chrome is not printed with it. */
 const PRINTED = /^\/invoices\/(?!verify\/)/;
 
+/* Whether this tab has drawn a page in the frame yet. */
+let framePainted = false;
+
 export function StorefrontShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  /*
+   * On the first load the frame paints, and the page the frame after.
+   * The page arrives with its data more often than not now — remembered from
+   * an earlier visit today, or asked for as the app started — and drawn in
+   * the same first frame as the header, a product page or a band of product
+   * cards held the whole first paint back by a quarter of a second on a
+   * phone. Its code is already here (`preloadFirstPage`), so the next frame
+   * draws it whole; moving between pages afterwards is not held at all. An
+   * ordinary update, not a transition: as a transition the page waited behind
+   * every answer arriving for the header, and painted half a second late.
+   *
+   * Not the home page: its first screen is the front door and the departments,
+   * which need no data and draw at once, and holding it only put the header's
+   * paint and a frame in front of the hero — measured, the hero's picture
+   * 260ms later.
+   */
+  const [held, setHeld] = useState(() => !framePainted && location !== "/");
+  useEffect(() => {
+    framePainted = true;
+    if (!held) return;
+    const frame = requestAnimationFrame(() => setHeld(false));
+    return () => cancelAnimationFrame(frame);
+  }, [held]);
   const [chrome, setChrome] = useState<Chrome>(NO_CHROME);
   const report = useCallback((next: Chrome) => {
     setChrome(current => (
@@ -99,13 +125,13 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         </div>
         <main id="main" tabIndex={-1} className="flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0">
           <Suspense fallback={<PageFallback />}>
-            <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>
+            {held ? null : <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>}
           </Suspense>
         </main>
         <div className={printed ? "contents print:hidden" : "contents"}>
-          <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />
+          {held ? null : <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />}
           <MobileTabBar />
-          <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />
+          {held ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
         </div>
       </div>
     </ChromeContext.Provider>

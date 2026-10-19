@@ -12,6 +12,7 @@ import { lineTitle, storeName } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
 import { MeasureLabel } from "@/components/product/UnitPrice";
+import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
@@ -49,9 +50,12 @@ export function BagEmpty({ onBrowse, heading = "h3" }: { onBrowse: () => void; h
   );
 }
 
-/** The lines, each with its stepper and its remove. */
+/**
+ * The lines, each with its stepper and its remove. Never greyed out while the
+ * server answers: the bag changes on the press and sends the presses in order.
+ */
 export function BagLines() {
-  const { cart, loading, updateQuantity, removeItem } = useCart();
+  const { cart, updateQuantity, removeItem } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   if (!cart) return null;
@@ -93,15 +97,15 @@ export function BagLines() {
                 </div>
                 {/* A 16px bin was a 16px target: it reaches 44px now, by
                     `.tap-target`, without growing the row. */}
-                <button onClick={() => removeItem(item.lineId)} disabled={loading} aria-label={t("cart.remove", { name: title })} className="tap-target -m-1 grid size-8 shrink-0 place-items-center rounded-full ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
+                <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="tap-target -m-1 grid size-8 shrink-0 place-items-center rounded-full ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
               </div>
               <div className="mt-3 flex items-center justify-between">
                 {/* A thumb's size under a coarse pointer (40px a side), the
                     old 28px under a mouse, where the drawer is narrow. */}
                 <div className="glass inline-flex items-center rounded-full">
-                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity - 1)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+                  <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(() => undefined)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
                   <span className="min-w-7 text-center text-[13px] font-extrabold text-[#0a285a] pointer-fine:text-xs">{item.quantity}</span>
-                  <button disabled={loading} onClick={() => updateQuantity(item.lineId, item.quantity + 1)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+                  <button disabled={item.quantity >= MAX_QUANTITY} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
                 </div>
                 <div className="text-end">
                   <p className="text-sm font-extrabold text-[#0a285a]">{money(item.lineTotal)}</p>
@@ -122,14 +126,19 @@ export function BagLines() {
   );
 }
 
-/** Delivery per seller, the totals, and the way to checkout. */
+/**
+ * Delivery per seller, the totals, and the way to checkout. While a press is
+ * on its way the delivery and the total are the server's last, so they are
+ * drawn fainter and the region says it is busy until the answer lands.
+ */
 export function BagSummary({ checkoutRef }: { checkoutRef?: (node: HTMLButtonElement | null) => void } = {}) {
-  const { cart, loading, proceedToCheckout } = useCart();
+  const { cart, syncing, proceedToCheckout } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   if (!cart) return null;
+  const updating = syncing ? "opacity-50" : "";
   return (
-    <div>
+    <div aria-busy={syncing}>
       {/* Delivery per seller (3.2.4), each named. A basket from three shops
           is three parcels, and one blended figure hides which seller is
           expensive. Sellers who charge nothing are left out entirely —
@@ -137,7 +146,7 @@ export function BagSummary({ checkoutRef }: { checkoutRef?: (node: HTMLButtonEle
       {cart.delivery.perVendor.filter(row => !row.free || row.toFree).map(row => (
         <div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}`} className="mb-2 flex items-baseline justify-between gap-3 text-[12px]">
           <span className="ink-muted" dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryFrom", { name: storeName(row, isArabic) })}</span>
-          <span className="shrink-0 font-bold text-[#0a285a]">{row.free ? t("cart.deliveryFree") : money(row.fee)}</span>
+          <span className={`shrink-0 font-bold text-[#0a285a] transition-opacity ${updating}`}>{row.free ? t("cart.deliveryFree") : money(row.fee)}</span>
         </div>
       ))}
       {/* The nudge, only while it is one: a threshold nobody can see is just
@@ -151,12 +160,12 @@ export function BagSummary({ checkoutRef }: { checkoutRef?: (node: HTMLButtonEle
         </p>
       ))}
       <div className="flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")}</span><span className="font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
-      <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className="font-bold text-[#0a285a]">{money(cart.delivery.total)}</span></div>
+      <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
-      <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className="text-lg font-extrabold text-[#0a285a]">{money(cart.total)}</span></div>
+      <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
-      <button ref={checkoutRef} onClick={proceedToCheckout} disabled={loading} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold disabled:opacity-60">
+      <button ref={checkoutRef} onClick={proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>
     </div>

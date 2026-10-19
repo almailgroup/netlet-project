@@ -2,7 +2,6 @@ import { BUTTON_PRIMARY, Breadcrumbs, PageBody, PageHeading } from "@/components
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { ZoomViewer } from "@/components/product/ZoomViewer";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { briefFor } from "@shared/commerce/assistant";
 import { useCart } from "@/contexts/CartContext";
@@ -10,9 +9,6 @@ import { useCatalog, useProductByHandle } from "@/hooks/useCatalog";
 import { SizeGuide } from "@/components/product/SizeGuide";
 import { TryOn } from "@/components/product/TryOn";
 import { SubscribePanel } from "@/components/product/SubscribePanel";
-import { ProductReviews } from "@/components/product/ProductReviews";
-import { BoughtTogether } from "@/components/product/BoughtTogether";
-import { ProductAssistant } from "@/components/product/ProductAssistant";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
 import { ProductInfo } from "@/components/product/ProductInfo";
 import { AskSeller } from "@/components/product/AskSeller";
@@ -21,7 +17,6 @@ import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { AddonPicker } from "@/components/product/AddonPicker";
 import { BundleOffer } from "@/components/product/BundleOffer";
-import { QuickView } from "@/components/product/QuickView";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
@@ -45,8 +40,27 @@ import { categorySlug } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, LoaderCircle, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
+import { whenIdle } from "@/lib/idle";
+import { Later } from "@/components/layout/Later";
+
+/*
+ * What a shopper reaches after deciding — the photos full screen, the preview
+ * of another product, the assistant, what goes with it and the reviews — is
+ * fetched apart from the page, so the first download is the buy box and
+ * nothing it does not draw. Each is drawn the frame after the page (`Later`),
+ * or when it is opened.
+ */
+const ZoomViewer = lazyPage(async () => ({ default: (await import("@/components/product/ZoomViewer")).ZoomViewer }));
+const ProductReviews = lazyPage(async () => ({ default: (await import("@/components/product/ProductReviews")).ProductReviews }));
+const BoughtTogether = lazyPage(async () => ({ default: (await import("@/components/product/BoughtTogether")).BoughtTogether }));
+const ProductAssistant = lazyPage(async () => ({ default: (await import("@/components/product/ProductAssistant")).ProductAssistant }));
+const QuickView = lazyPage(async () => ({ default: (await import("@/components/product/QuickView")).QuickView }));
+/* Asked for beside the page rather than when each is first drawn, so the
+   sections that follow the buy box are already here when it has painted. */
+const AFTER_THE_BUY_BOX = [ZoomViewer, ProductReviews, BoughtTogether, ProductAssistant, QuickView];
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
@@ -204,7 +218,9 @@ function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage }: Vie
         </ul>
       </div>
       {full ? (
-        <ZoomViewer items={media} index={selectedImageIndex} title={product.title} onIndex={onSelectImage} onClose={() => setFull(false)} />
+        <Suspense fallback={null}>
+          <ZoomViewer items={media} index={selectedImageIndex} title={product.title} onIndex={onSelectImage} onClose={() => setFull(false)} />
+        </Suspense>
       ) : null}
     </div>
   );
@@ -1006,7 +1022,7 @@ export default function ProductDetail() {
   const handle = params?.handle ?? "";
   const { data: product, isLoading, error } = useProductByHandle(handle);
   const { data: catalog = [] } = useCatalog(24);
-  const { addItem, loading: cartLoading, cart, openCart } = useCart();
+  const { addItem, cart, openCart } = useCart();
   const { savedIds, toggleSaved, deliveryZone } = useCustomer();
   const { direction, t, isArabic: isArabicPage } = useTranslation();
   const deliveryArea = deliveryZone ? (isArabicPage ? deliveryZone.labelAr : deliveryZone.label) : null;
@@ -1029,6 +1045,7 @@ export default function ProductDetail() {
      assistant answers about this product — its public listing, nothing else. */
   const assistantProduct = useMemo(() => (product ? { key: product.id, brief: briefFor(product), image: product.images[0]?.url ?? null } : null), [product]);
   usePageChrome({ activeDepartment: product?.productType ?? null, assistantProduct });
+  useEffect(() => whenIdle(() => { for (const part of AFTER_THE_BUY_BOX) void part.preload(); }), []);
 
   // Built before the loading and error returns below, because a hook cannot be
   // called conditionally. While the product is in flight the page describes
@@ -1088,8 +1105,9 @@ export default function ProductDetail() {
      owner's word. A failure still says so. */
   const addToCart = async () => {
     if (!product || !selectedVariant?.availableForSale) return;
+    /* The drawer opens on the line drawn ahead; only a refusal waits to be said. */
     try {
-      await addItem(selectedVariant.id, quantity, true, chosenAddons);
+      await addItem(selectedVariant.id, quantity, { addonIds: chosenAddons, product });
     } catch {
       toast.error(t("cart.addFailed"));
     }
@@ -1102,9 +1120,10 @@ export default function ProductDetail() {
    */
   const buyNow = async () => {
     if (!product || !selectedVariant?.availableForSale) return;
+    const added = addItem(selectedVariant.id, quantity, { reveal: false, addonIds: chosenAddons, product });
+    navigate("/checkout");
     try {
-      await addItem(selectedVariant.id, quantity, false, chosenAddons);
-      navigate("/checkout");
+      await added;
     } catch {
       toast.error(t("cart.buyFailed"));
     }
@@ -1265,7 +1284,7 @@ export default function ProductDetail() {
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
               {/* The shared control: the card grew the same thing, and two
                   copies is how one clamps at 1 and the other at 0. */}
-              <QuantityStepper value={quantity} onChange={setQuantity} disabled={cartLoading} />
+              <QuantityStepper value={quantity} onChange={setQuantity} />
               {/* What the bag already holds of this option, in every line of it
                   (plain, with extras, in a set): the stepper is "how many more",
                   and showing 1 beside a bag of 5 read as the bag being wrong. */}
@@ -1278,13 +1297,13 @@ export default function ProductDetail() {
 
             <div ref={buyRef}>
             <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.add} pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}>{cartLoading ? <LoaderCircle className="size-[18px] animate-spin" /> : <ShoppingBag className="size-[18px]" />}{t(buyLabelFor(selectedVariant))}</button>
+              <button onClick={() => void addToCart()} disabled={!inStock} className={`${PURCHASE_TONE.add} pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><ShoppingBag className="size-[18px]" />{t(buyLabelFor(selectedVariant))}</button>
               <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
             </div>
             {/* Under the bag button, in the shop's one Buy now: the orange the
                 card and the preview use, so "which button buys" has the same
                 answer everywhere (`PURCHASE_TONE`). */}
-            <button onClick={() => void buyNow()} disabled={!inStock || cartLoading} className={`${PURCHASE_TONE.buy} pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
+            <button onClick={() => void buyNow()} disabled={!inStock} className={`${PURCHASE_TONE.buy} pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
             </div>
 
             {selectedVariant?.preorder
@@ -1330,7 +1349,9 @@ export default function ProductDetail() {
             {/* Under the tabs, because it answers what the tabs did not: a
                 spec block is written for somebody who already knows the
                 category. */}
-            <ProductAssistant product={product} />
+            <Later reserve={0}>
+              <Suspense fallback={null}><ProductAssistant product={product} /></Suspense>
+            </Later>
           </div>
         </section>
 
@@ -1340,16 +1361,20 @@ export default function ProductDetail() {
           the phone is the most useful next thing, what other buyers said is
           the second, and four more products to consider instead is the least.
         */}
-        <BoughtTogether
-          productId={product.id}
-          saved={savedIds}
-          onSave={id => toggleSaved(id)}
-          onQuickView={setQuickProduct}
-        />
+        <Later>
+          <Suspense fallback={null}>
+            <BoughtTogether
+              productId={product.id}
+              saved={savedIds}
+              onSave={id => toggleSaved(id)}
+              onQuickView={setQuickProduct}
+            />
 
-        <div className="mt-14">
-          <ProductReviews productId={product.id} productTitle={product.title} />
-        </div>
+            <div className="mt-14">
+              <ProductReviews productId={product.id} productTitle={product.title} />
+            </div>
+          </Suspense>
+        </Later>
 
         {/* The same card every shelf uses, and nothing at all when there is
             nothing related: a placeholder promising products "as more arrive"
@@ -1367,7 +1392,7 @@ export default function ProductDetail() {
           </section>
         ) : null}
       </PageBody>
-      <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
+      {quickProduct ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
       <StickyBuyBar
         shown={buyPassed}
@@ -1375,8 +1400,7 @@ export default function ProductDetail() {
         price={money(price)}
         addLabel={t(buyLabelFor(selectedVariant))}
         buyLabel={t("product.buyNow")}
-        disabled={!inStock || cartLoading}
-        busy={cartLoading}
+        disabled={!inStock}
         onAdd={() => void addToCart()}
         onBuy={() => void buyNow()}
       />
@@ -1395,14 +1419,13 @@ export default function ProductDetail() {
  * Hidden, it is `inert` and out of the accessibility tree, so a keyboard or a
  * screen reader never meets two sets of the same buttons at once.
  */
-function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, busy, onAdd, onBuy }: {
+function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd, onBuy }: {
   shown: boolean;
   name: string;
   price: string;
   addLabel: string;
   buyLabel: string;
   disabled: boolean;
-  busy: boolean;
   onAdd: () => void;
   onBuy: () => void;
 }) {
@@ -1411,7 +1434,7 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, busy, 
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate px-1.5 text-[15px] font-extrabold text-[#0a285a] min-[360px]:px-2 min-[360px]:text-[16px]">{price}</p>
         <button type="button" onClick={onAdd} disabled={disabled} className={`${PURCHASE_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
-          {busy ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <ShoppingBag className="hidden size-4 min-[380px]:block" aria-hidden />}
+          <ShoppingBag className="hidden size-4 min-[380px]:block" aria-hidden />
           {addLabel}
         </button>
         <button type="button" onClick={onBuy} disabled={disabled} className={`${PURCHASE_TONE.buy} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>

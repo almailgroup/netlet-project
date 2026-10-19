@@ -935,6 +935,27 @@ polite live region says it to a screen reader where no drawer opens (the card,
 the bundle). A failed add still toasts, because a failure nobody is told about
 reads as a success.
 
+**A press on the bag changes it at once, and the server's answer settles it**
+(`lib/bagOps.ts` the rule, pure; `CartContext` the queue). Add, plus, minus and
+the bin each waited for the round trip — a spinner in the pill, the stepper
+greyed, the header's count still the old number — so on a phone every tap took
+a third of a second to be believed. Now each change joins one queue and is sent
+in order, one at a time, so two fast presses on plus cannot land the wrong way
+round, and presses not yet sent on one line are folded into one; what is drawn
+is the server's last answer with every waiting press applied over it. A card
+hands Add its product, so the plain line is drawn in the bag before it exists
+(a `pending:` line id that a press on it follows to the real line); an extra or
+a set is priced by the server, so it moves the count and appears with the
+answer. Only what the press decides is guessed — the quantity, the line total
+and the subtotal from the bag's own unit prices — and the delivery and the
+total stay the server's last, drawn faint while `syncing`; checkout will not
+place an order until it clears. A refusal drops that press, reads the bag
+again (a dropped connection may have half-happened) and still rejects, so the
+caller's toast is unchanged. Buy now opens checkout at once on the bag drawn
+ahead. Measured on a throttled phone: Add to the tab bar's count 67–90ms and
+plus 56–65ms, where both were 330–550ms; six fast presses landed as six; a
+refused press came back with a toast.
+
 The bag is server-side, in `carts` and `cart_items`. Its id is a random token
 rather than a serial, because it is handed to an anonymous browser and is the
 only thing separating one shopper's bag from another's — and every cart query
@@ -1045,9 +1066,11 @@ one), the count, plus — the way the delivery apps people here use every day
 work, and that stepper is drawn always, because "how many have I got" is a state
 rather than an offer. `CardAction` reads the *plain* line for that variant, no extras and no
 bundle, because that is the only line a card makes, so a card's minus never
-takes apart something built on the product page. It keeps its own `busy` rather
-than the bag's `loading`: one bag-wide flag put a spinner on every card in the
-grid while one of them added. **Adding from a card does not open the drawer**;
+takes apart something built on the product page. Nothing on it waits for the
+server (see "A press on the bag changes it at once"): it kept a spinner of its
+own for the length of the round trip, which replaced a bag-wide one that had
+spun on every card in the grid while one of them added. **Adding from a card
+does not open the drawer**;
 the header's count is the receipt, a live region says it, and focus moves to the
 plus, because the button pressed is gone by the next frame and the keyboard
 would otherwise land on `<body>`.
@@ -1185,7 +1208,10 @@ end of its own fade. Measured on a production build: one change every 3.0s,
 the band fully covered on every frame, the incoming picture about half drawn
 500ms into its one-second fade. The four that follow the street are the owner's, in the order they
 sent them — on the road, one cart, unboxing, at the door — 1600 × 900 WebP
-between 46 and 111 KB.
+between 46 and 111 KB. **Each has a phone copy**, 960 wide at about half the
+bytes (`hero/phone/`, and `auth/phone/` for the street), which a `<picture>`
+hands a screen up to 640px wide; a picture with no copy is sent whole, so a
+missing copy costs a phone the download and nothing else.
 
 `DepartmentCards` follows under a heading of its own — six tiles, the five
 departments and "All departments", three to a row on a phone and six on a wide
@@ -1479,7 +1505,11 @@ what a shopper gets):
   browser is idle (about 23 KB gzipped together), since nearly every visit goes
   on to one. `lazyPage` keeps a module once it arrives and renders it directly,
   because `React.lazy` suspends on its first render even when the code is
-  already in the browser — prefetching into plain `lazy` still flashed.
+  already in the browser — prefetching into plain `lazy` still flashed. The
+  overlays use it too (the bag drawer, the address book, the shop chat, the
+  product page's preview and viewer): React holds a lazy component's first
+  reveal about 300ms, so the first press on the cart opened the drawer a third
+  of a second late on any machine — 319ms unthrottled, 19ms after.
 - **A product opens from the shelf's own copy.** A card's product is the same
   `shape()` on the server as `byHandle`'s, so `useProductByHandle` starts from
   whichever list already holds it (`shelvedProduct`: the catalogue, bestsellers,
@@ -2922,6 +2952,15 @@ succeeds, never instead of it, so a refusal from the book's own rules costs the
 shopper nothing they asked for. Signing in happens on the page and keeps the
 basket, because `CartContext` already adopts the guest bag on sign-in.
 
+**The browser fills what it knows, and only that.** The name and the number
+carry `autoComplete` `name` and `tel` (and `type="tel"`, so a phone opens its
+dial pad), at checkout and in the address book. The address parts are turned
+away from autofill (`autoComplete="off"`): no autofill name means "block" or
+"avenue", and a browser's guess put a whole street line into the block. The
+block, floor and PACI boxes open the number keypad, the address label is never
+filled with the shopper's own name, and the code box neither autocorrects nor
+autofills.
+
 ## A Kuwaiti address is its parts
 
 `Shared/commerce/kuwaitAddress.ts` is the rule, pure and shared;
@@ -4257,8 +4296,15 @@ stays in the field and the highlighted option is named through
 screen reader could hear; a polite status says how many there are once typing
 settles. **Escape closes the list and keeps the field focused** (it dropped the
 keyboard on `<body>`); a second Escape empties it. The server is asked once
-typing pauses for 120ms, and the last answer stays on screen while the next
-arrives. A suggestion's title is not `.type-product`: that class forces 18px
+typing pauses for 120ms. **Until it has answered those exact words, the
+products this tab already holds answer them** — the header's shelf, a
+department's, earlier answers (`shelvedProducts`) — ranked by the same
+`rankBySearch`, so a suggestion is on screen with the first letter (60–115ms
+on a throttled phone) rather than about 0.8s after the last; the server's
+answer over the whole catalogue replaces it when it lands, and an answer it
+already gave for the same words is drawn at once. A misspelling is the
+server's to correct, so it waits. The last answer for other words is shown
+only when nothing held matches. A suggestion's title is not `.type-product`: that class forces 18px
 bold, which left nothing for the match to be bolder than.
 **A department search that finds nothing offers the whole shop**, with the
 count: on the Beauty page "no phone" is not "NetLet sells no phones".
@@ -4796,7 +4842,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB) and is 708 KB (205 KB) now, nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), and is 716 KB (209 KB) now — the bag's queue, the search box's own suggestions and the shelf memory — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -4831,6 +4877,89 @@ already has it.
 - **One font file.** Inter as one variable file for 400 to 700, not eight
   static styles with italics nothing used. 800 was never requested, so
   `font-extrabold` has always rendered at 700 and still does.
+
+**A first visit asks for what it needs at once, not one thing after
+another.** A phone opening a shared link waited for three downloads in a row
+— the main bundle, then the page's own code, then the page's data — because
+each was asked for only once the one before had arrived and run, and the page
+then spent most of a second as an outline. Each piece is now asked for the
+moment something knows it will be wanted:
+
+- **The page's code, as the HTML arrives.** The build reads `App.tsx`'s
+  `ROUTES` (`Frontend/Web/build/routePreloads.ts`) and writes into the page a
+  table of each shopping route's chunk and what it imports beyond the main
+  bundle; `public/route-preload.js` preloads the row the address matches. A
+  file, because the CSP allows no inline script, and async so it holds
+  nothing up. The product page's code arrived at 963ms and arrives at 334ms;
+  the account page's thirty-eight files went from a chain of round trips to
+  one wave. It replaced preloading the product and department pages on every
+  visit. **Rollup leaves a page chunk's facade null when it has merged shared
+  code into it** — the product page's — so a chunk is also found by the
+  modules it holds, and the build warns about any route it cannot place: the
+  first version silently had no row for products.
+- **The page's data, as the app starts** (`lib/routeData.ts`): the header's
+  shelf, the departments' counts, the switches, the session check, and the
+  product, department, search, store or guides the address names — built by
+  the inputs the pages' own queries use, so the page finds its answer in
+  flight. The session check is there because, with the first draw held for
+  the page's code, it was what the account page ended up waiting for. The
+  first data request went from about 1200ms to about 800ms.
+- **The first draw waits up to 400ms for the page's code**
+  (`FIRST_PAGE_WAIT_MS`, `preloadFirstPage`), so it draws the page rather
+  than an outline React then holds for 300ms. **And the frame paints a frame
+  before the page** on the first load (`StorefrontShell`'s `held`, not on the
+  home page): with its data already here, a product page drawn in the same
+  first frame as the header held the whole first paint back. As a transition
+  the page waited behind every answer arriving for the header; it is an
+  ordinary update. The home page is exempt, because its first screen needs
+  no data and holding it put the hero's picture 260ms later.
+- **A returning shopper opens on what they were shown** (`lib/shelfMemory.ts`):
+  the public shelves — the catalogue lists, products opened, the departments'
+  counts, bestsellers, brands, stores, guides, the switches — are kept in
+  `browserStore` and drawn at once, and asked for again behind it. **For the
+  Kuwaiti day they were read on and no longer**, because a store's discount
+  permit ends with the day and a remembered saving must not outlive it;
+  capped at 24 single products and 1.5M characters, written when the page is
+  idle, and nothing about the shopper — no bag, order, account or search.
+  A product unpublished since can be drawn for the moment before the answer
+  lands; the bag and checkout ask the server, which refuses it.
+- **A read is fresh for 30 seconds** (`FRESH_MS`), so a page moved back to
+  draws what it has rather than asking again.
+- **Below the first screen waits a frame** (`components/layout/Later.tsx`):
+  on home everything after the departments — the banners, sponsored shelf,
+  Deals and the rest — and on the product page the reviews, bought-together
+  and the assistant, which are their own chunks now, preloaded while idle.
+  Home's shelves read a deferred copy of the catalogue (`useDeferredValue`),
+  so building thirty cards never blocks a tap.
+- **The logos are the size they are drawn**: `/brand/*.webp`, 480 wide and
+  15 KB each, where the PNGs were 144 KB and 111 KB. The PNGs stay for the
+  iOS app's export. The hero's pictures have phone copies (see the home page).
+
+Measured side by side on one machine, the previous build and this one
+alternating run by run (`.scratch/ux-ab.mjs`: 390 × 844, four times slower
+CPU, 9 Mbps and 60ms), median milliseconds until nothing on the screen is a
+placeholder:
+
+| Page | First visit, before → after | Visited earlier today, before → after |
+|---|---|---|
+| Home | 1103 → 1140 | 815 → 857 |
+| Department | 1894 → 1506 | 1385 → 1210 |
+| Product | 1975 → 1641 | 1766 → 1440 |
+| Search results | 1783 → 1556 | 1349 → 1088 |
+| Cart | 1327 → 1323 | 1184 → 952 |
+| Account | 1723 → 1507 | 1439 → 1179 |
+| Guides | 1404 → 1232 | 1377 → 1101 |
+
+The first paint stayed where it was (within 50ms either way) on a first
+visit; the home page, whose first screen never waited on data, is level. In
+the page, on the same phone: Add to the tab bar's count 199 → 82ms, plus
+150 → 56ms, the first drawer 372 → 103ms, and a product suggestion from about
+300ms after the last key to about 80ms after the first. **Measure this way or
+not at all**: single runs on this machine wander by 300ms, a "before" taken
+in another hour of the day is a different machine, and an in-page probe that
+reads `innerText` every frame costs a busy page a tenth of a second itself —
+the first comparison here, made against numbers from earlier in the day,
+showed regressions that two alternating runs did not.
 
 **The dictionary is deliberately still one module.** Both languages are about
 a fifth of what is left, and splitting them would put a second request in

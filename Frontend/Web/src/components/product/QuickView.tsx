@@ -20,7 +20,7 @@ import { isExpressEligible, productRating, savingsPercent } from "@shared/commer
 import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import type { Product } from "@shared/commerce/types";
-import { ArrowRight, LoaderCircle, ShoppingBag, Star, X, Zap } from "lucide-react";
+import { ArrowRight, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { FollowProduct } from "@/components/product/FollowProduct";
@@ -31,7 +31,7 @@ import { Select } from "@/components/ui/Select";
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
-  const { addItem, loading } = useCart();
+  const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
@@ -65,12 +65,13 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
     if (thenCheckout) return buyNow(product, quantity, variant.id);
-    /* The drawer opening is the confirmation; no toast (see the product page). */
+    /* The drawer opening is the confirmation; no toast (see the product page).
+       It opens on the line drawn ahead, so the preview closes on the press. */
+    onClose();
     try {
-      await addItem(variant.id, quantity);
-      onClose();
+      await addItem(variant.id, quantity, { product });
     } catch {
-      toast.error(t(thenCheckout ? "cart.buyFailed" : "cart.addFailed"));
+      toast.error(t("cart.addFailed"));
     }
   };
 
@@ -174,7 +175,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             {inStock ? (
               <div className="mt-4 flex items-center gap-3">
                 <span className="text-[12px] font-semibold ink-muted">{t("product.quantity")}</span>
-                <QuantityStepper value={quantity} onChange={setQuantity} disabled={loading} />
+                <QuantityStepper value={quantity} onChange={setQuantity} />
               </div>
             ) : (
               // Out of stock is the moment a back-in-stock alert is worth
@@ -185,15 +186,15 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
                 onClick={() => void add(false)}
-                disabled={!inStock || loading}
+                disabled={!inStock}
                 className={`${PURCHASE_TONE.add} pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed sm:flex-1 disabled:opacity-50`}
               >
-                {loading ? <LoaderCircle className="size-4 animate-spin" /> : <ShoppingBag className="size-4" />}
+                <ShoppingBag className="size-4" />
                 {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
               </button>
               <button
                 onClick={() => void add(true)}
-                disabled={!inStock || loading}
+                disabled={!inStock}
                 className={`${PURCHASE_TONE.buy} pressable flex h-11 w-full items-center justify-center gap-2 rounded-xl disabled:cursor-not-allowed sm:flex-1 disabled:opacity-50`}
               >
                 <Zap className="size-4 fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}

@@ -6,12 +6,13 @@
  * it has something true to show.
  */
 import { useCatalog } from "@/hooks/useCatalog";
+import { HEADER_SHELF } from "@/lib/routeData";
 import { homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
-import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
@@ -19,6 +20,7 @@ import { HomeBanners } from "@/components/home/HomeBanners";
 import { HomeHero } from "@/components/home/HomeHero";
 import { StoreShelf } from "@/components/home/StoreShelf";
 import { GuideShelf } from "@/components/home/GuideShelf";
+import { Later } from "@/components/layout/Later";
 import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { Link, useLocation } from "wouter";
@@ -215,6 +217,9 @@ function DealsBand({ products, saved, onSave, onQuickView }: Pick<RailProps, "pr
   );
 }
 
+/* One empty list, so "nothing yet" is the same value from render to render. */
+const NO_PRODUCTS: Product[] = [];
+
 export default function Home() {
   // One dialog for the whole page: three rails and the deals surface all open
   // the same overlay, the way the drawer is mounted once in `App`.
@@ -223,7 +228,14 @@ export default function Home() {
   usePageMeta(homeMeta(SITE_URL));
   const { t, locale } = useTranslation();
   const { savedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
-  const { data: catalog = [], isLoading: catalogLoading, error: catalogError } = useCatalog(24);
+  const { data: catalogNow = NO_PRODUCTS, isLoading: catalogFetching, error: catalogError } = useCatalog(HEADER_SHELF);
+  /* The shelves are rebuilt from a deferred copy, so thirty cards arriving at
+     once are drawn in pieces rather than in one stretch a tap cannot get
+     through; until then the shelves show what they showed. */
+  const catalog = useDeferredValue(catalogNow);
+  /* Still loading while the deferred copy catches up, so a shelf keeps its
+     outline for that moment rather than vanishing and coming back. */
+  const catalogLoading = catalogFetching || catalog !== catalogNow;
   const bestsellers = trpc.commerce.bestsellers.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
@@ -233,34 +245,7 @@ export default function Home() {
 
   const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
 
-  /* The header, the footer and the tab bar are the shop's frame
-     (`StorefrontShell`), drawn once for every page — Home included, which
-     kept a header of its own for a long time and drifted from the rest. */
-  return <>
-
-    {/* The front door: the street, one line, the facts, two ways in. It
-        carries the page's h1, the shop's name first for a screen reader. */}
-    <HomeHero dealsDrawn={shelves.deals.length > 0} />
-
-    {/* The departments, as big cards. */}
-    <DepartmentCards />
-
-    {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
-    <HomeBanners />
-
-    {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
-    <SponsoredShelf
-      slot="home"
-      layout="rail"
-      saved={saved}
-      onSave={product => toggleSaved(product.id, product.title)}
-      onQuickView={setQuickProduct}
-    />
-
-    {/* Deals, drawn from four discounted products up, then every other live
-        product as New arrivals (`shelvesFor`). While the catalog loads the
-        first draws its skeleton, so the page does not jump. */}
-    {homeRailDefinitions.map((rail, index) => {
+  const renderRail = (rail: (typeof homeRailDefinitions)[number], index: number) => {
       const products = shelves[rail.id];
       const viewAll = rail.select === "offers" ? () => navigate("/category/all?offer=1&sort=discount")
         : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
@@ -287,9 +272,43 @@ export default function Home() {
             : rail.layout === "grid" ? <ProductGrid {...shared} /> : <ProductRail {...shared} />}
         </Fragment>
       );
-    })}
+  };
 
-    {articlesOn ? <GuideShelf /> : null}
+  /* The header, the footer and the tab bar are the shop's frame
+     (`StorefrontShell`), drawn once for every page — Home included, which
+     kept a header of its own for a long time and drifted from the rest. */
+  return <>
+
+    {/* The front door: the street, one line, the facts, two ways in. It
+        carries the page's h1, the shop's name first for a screen reader. */}
+    <HomeHero dealsDrawn={shelves.deals.length > 0} />
+
+    {/* The departments, as big cards. */}
+    <DepartmentCards />
+
+    {/* The rest is below the first screen: drawn the frame after the first
+        paint, in pieces a tap can get between (`Later`). The Deals band was
+        drawn with the first paint, and with remembered shelves that put a
+        dozen product cards in front of it on every returning visit. */}
+    <Later>
+      {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
+      <HomeBanners />
+
+      {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
+      <SponsoredShelf
+        slot="home"
+        layout="rail"
+        saved={saved}
+        onSave={product => toggleSaved(product.id, product.title)}
+        onQuickView={setQuickProduct}
+      />
+
+      {/* Deals, drawn from four discounted products up, then every other live
+          product as New arrivals (`shelvesFor`). While the catalog loads the
+          first draws its skeleton, so the page does not jump. */}
+      {homeRailDefinitions.map((rail, index) => renderRail(rail, index))}
+      {articlesOn ? <GuideShelf /> : null}
+    </Later>
 
     {/* Switched off until there is an app to download (2.3). */}
     {appBannerOn ? <section className="container pb-10"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.application")}</p><h2 className="font-extrabold mt-3 text-2xl text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[12px] font-semibold">{t("home.appUpdates")}</button></div></div></section> : null}
