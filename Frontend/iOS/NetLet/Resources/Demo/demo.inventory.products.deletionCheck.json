@@ -1,0 +1,19 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 218,
+        "title": "Bluetooth speaker",
+        "variants": 1,
+        "images": 4,
+        "unitsOnHand": 39,
+        "inCarts": 0,
+        "savedBy": 0,
+        "openOrderLines": 1,
+        "bundles": 0,
+        "subscriptions": 0,
+        "blockers": []
+      }
+    }
+  }
+}

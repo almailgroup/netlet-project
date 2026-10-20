@@ -21,7 +21,7 @@ export const VENDOR_ROLES = ["staff", "manager", "owner"] as const;
 export type VendorRole = (typeof VENDOR_ROLES)[number];
 
 /** Rank order. Higher clears everything a lower rank clears. */
-const RANK: Record<VendorRole, number> = { staff: 0, manager: 1, owner: 2 };
+export const RANK: Record<VendorRole, number> = { staff: 0, manager: 1, owner: 2 };
 
 export type Actor =
   /** A platform administrator. Not scoped to any vendor. */
@@ -153,7 +153,7 @@ export type Capability =
   | "membership.manage";
 
 /** The lowest vendor rank that clears each capability. */
-const NEEDS: Partial<Record<Capability, VendorRole>> = {
+export const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "product.view": "staff",
   "stock.adjust": "staff",
   "vendor.viewMembers": "staff",
@@ -180,7 +180,7 @@ const NEEDS: Partial<Record<Capability, VendorRole>> = {
  * absent from NEEDS, and this list says so out loud rather than leaving it to
  * be inferred from an omission.
  */
-const ADMIN_ONLY: Capability[] = [
+export const ADMIN_ONLY: Capability[] = [
   /* Who carries a parcel is NetLet's arrangement with a company, not a
      decision either the seller or the driver gets to make. */
   "delivery.assign",
@@ -209,6 +209,9 @@ const ADMIN_ONLY: Capability[] = [
  * actor could do it to anything at all, which is how a UI decides whether to
  * show a control before a specific product is in hand.
  */
+/** All a delivery company's people may do: see their board and move its parcels. */
+export const COURIER_CAPABILITIES: Capability[] = ["delivery.view", "delivery.move"];
+
 export function can(actor: Actor, capability: Capability, vendorId?: number): boolean {
   if (actor.kind === "admin") return true;
   if (actor.kind === "customer") return false;
@@ -218,7 +221,7 @@ export function can(actor: Actor, capability: Capability, vendorId?: number): bo
    * queries by `actor.courierId`, exactly as a vendor's rows are: a check up
    * here would be one a second caller could skip.
    */
-  if (actor.kind === "courier") return capability === "delivery.view" || capability === "delivery.move";
+  if (actor.kind === "courier") return COURIER_CAPABILITIES.includes(capability);
   if (ADMIN_ONLY.includes(capability)) return false;
 
   // Scope first: rank inside another vendor means nothing here.

@@ -59,9 +59,10 @@ struct SellerIdentity: Decodable, Hashable, Sendable {
     let userId: Int
     let vendorId: Int?
     let role: String?
+    /// A delivery company's member's company.
+    var courierId: Int? = nil
 
-    /// The app's Sell tab is for somebody who belongs to a store; an
-    /// administrator runs the shop from the web portal.
+    /// Somebody who belongs to a store.
     var isStoreMember: Bool { kind == "vendor" && vendorId != nil }
 }
 

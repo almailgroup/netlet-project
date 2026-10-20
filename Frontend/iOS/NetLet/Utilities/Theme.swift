@@ -53,6 +53,22 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+/// An act that cannot be taken back — deleting for good: white on the shop's
+/// red, the web's danger button, only ever behind a confirmation.
+struct DangerButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(15, .bold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .padding(.horizontal, 16)
+            .background(Capsule().fill(Brand.danger.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.35)))
+            .pressHaptic(configuration.isPressed)
+    }
+}
+
 /// The orange action, with navy words on it (4.65:1): Place order, Today's deals.
 struct AccentButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled

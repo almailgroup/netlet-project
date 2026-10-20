@@ -308,7 +308,7 @@ private struct ApplicationForm: View {
         case "approved":
             VStack(alignment: .leading, spacing: 10) {
                 Label(l.t("sell.approved"), systemImage: "checkmark.circle").font(.inter(14, .semibold)).foregroundStyle(Brand.success)
-                Button(l.t("sell.openPortal")) { app.open(.listings) }
+                Button(l.t("sell.openPortal")) { app.open(.portal("/admin")) }
                     .buttonStyle(PrimaryButtonStyle())
             }
             .card()

@@ -53,6 +53,8 @@ enum Route: Hashable {
     case invoice(number: String)
     /// Is a printed document genuine? `/invoices/verify/<number>?code=`.
     case verifyInvoice(number: String, code: String)
+    /// A page of the seller and admin portal, by its web address (`/admin/...`).
+    case portal(String)
 
     /// The screen a link on the site names — a notice's link, an answer's,
     /// the footer's — or nil for one the app has no screen for. Nothing
@@ -81,6 +83,9 @@ enum Route: Hashable {
         case ("sell"?, _): return .sell
         case ("invoices"?, 3) where segments[1] == "verify": return .verifyInvoice(number: segments[2], code: query["code"] ?? "")
         case ("invoices"?, 2): return .invoice(number: segments[1])
+        case ("admin"?, _):
+            let path = components.path.hasSuffix("/") && components.path.count > 1 ? String(components.path.dropLast()) : components.path
+            return .portal(path + (components.percentEncodedQuery.map { "?" + $0 } ?? ""))
         case ("account"?, 1): return nil
         case ("account"?, _):
             switch segments[1] {
@@ -97,7 +102,7 @@ enum Route: Hashable {
             case "rewards": return .rewards
             case "affiliate": return .affiliate
             case "subscriptions": return .subscriptions
-            case "selling": return .listings
+            case "selling": return .portal("/admin")
             default: return nil
             }
         default: return nil
@@ -289,7 +294,12 @@ final class AppModel {
             accountPath = NavigationPath([Route.profile])
         case "sell":
             selectedTab = .account
-            if session.seller?.isStoreMember == true { accountPath = NavigationPath([Route.listings]) }
+            if session.seller?.inPortal == true { accountPath = NavigationPath([Route.portal("/admin")]) }
+        case "portal":
+            // `portal:/admin/orders` — a page of the portal, over its front page.
+            selectedTab = .account
+            let page = value ?? "/admin"
+            accountPath = NavigationPath(page == "/admin" ? [Route.portal("/admin")] : [Route.portal("/admin"), Route.portal(page)])
         case "newListing":
             guard session.seller?.isStoreMember == true else { return }
             selectedTab = .account
@@ -348,7 +358,7 @@ final class AppModel {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
              .reviews, .messages, .sellerThread, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing,
-             .invoice:
+             .invoice, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
         case .checkout:
             openCheckout()

@@ -29,6 +29,12 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
         let id: Int
         let price: Money
         let stock: Int
+        var sku: String? = nil
+    }
+
+    struct Image: Decodable, Hashable, Sendable {
+        let url: String
+        var kind: String? = nil
     }
 
     let id: Int
@@ -38,6 +44,15 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
     let status: String
     let reviewNote: String?
     let variants: [Variant]
+    var vendorId: Int? = nil
+    var vendorName: String? = nil
+    var categoryName: String? = nil
+    var images: [Image]? = nil
+
+    /// The first still picture, never the video.
+    var cover: String? { images?.first { $0.kind != "video" }?.url }
+    /// The lowest price among the variants.
+    var cheapest: Money? { variants.min { $0.price.fils < $1.price.fils }?.price }
 
     func displayTitle(_ language: Language) -> String {
         if language == .ar, let titleAr, !titleAr.isEmpty { return titleAr }

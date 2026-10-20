@@ -143,7 +143,7 @@ struct AccountView: View {
     private var entries: [AccountEntry] {
         AccountEntry.all.filter { entry in
             switch entry.id {
-            case "selling": return app.session.seller?.isStoreMember == true
+            case "selling": return app.session.seller?.inPortal == true
             case "subscriptions": return app.features.isOn("subscriptions") || holdings.subscriptions
             case "affiliate": return app.features.isOn("affiliates") || holdings.affiliate
             default: return true
@@ -257,7 +257,7 @@ struct AccountEntry: Identifiable, Hashable {
         case "details": return .profile
         case "addresses": return .addresses
         case "preferences": return .preferences
-        case "selling": return .listings
+        case "selling": return .portal("/admin")
         default: return nil
         }
     }

@@ -58,6 +58,9 @@ import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shar
 import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
 import { DEPARTMENT_QUESTIONS, MAX_DESCRIPTION as MAX_BRIEF_DESCRIPTION, MAX_QUESTION, MAX_SPEC_ROWS, MAX_SUGGESTIONS } from "../../../Shared/commerce/assistant.js";
 import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS } from "../../../Shared/ai/gateway.js";
+import { ADMIN_ONLY, COURIER_CAPABILITIES, NEEDS, RANK } from "../../../Shared/inventory/permissions.js";
+import { ADMIN_MENU } from "../../Web/src/content/adminMenu.js";
+import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from "../../../Shared/inventory/productBulk.js";
 import { MAX_PHOTO_CHARS, PHOTO_MAX_EDGE } from "../../../Shared/commerce/photoSearch.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
@@ -222,6 +225,10 @@ export function buildResources(): Record<string, string> {
     }),
     "assets.json": json(buildAssets().manifest),
     "content.json": json(buildContent()),
+    /* The portal's menu and the permission model it is filtered by
+       (`can`), so the app's portal offers the pages the web's does. */
+    "portal.json": json({ menu: ADMIN_MENU, ranks: RANK, needs: NEEDS, adminOnly: ADMIN_ONLY, courier: COURIER_CAPABILITIES,
+      bulk: { actions: BULK_ACTIONS, limit: BULK_LIMIT, minPercent: MIN_PERCENT, maxPercent: MAX_PERCENT, maxRestock: MAX_RESTOCK } }),
   };
 }
 

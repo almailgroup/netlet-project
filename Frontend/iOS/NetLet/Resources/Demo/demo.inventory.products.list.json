@@ -32,7 +32,7 @@
                 "title": "Default",
                 "price": "22.000",
                 "compareAtPrice": "31.000",
-                "stock": 40,
+                "stock": 39,
                 "lowStockAt": null,
                 "preorderStock": 0,
                 "preorderReleaseAt": null,
@@ -43,7 +43,7 @@
                 "options": {},
                 "position": 0,
                 "createdAt": "2026-10-14T10:37:23.781Z",
-                "updatedAt": "2026-10-14T10:37:23.781Z"
+                "updatedAt": "2026-10-19T17:43:56.827Z"
               }
             ],
             "images": [
@@ -180,7 +180,7 @@
                 "title": "Default",
                 "price": "18.500",
                 "compareAtPrice": "29.000",
-                "stock": 40,
+                "stock": 37,
                 "lowStockAt": null,
                 "preorderStock": 0,
                 "preorderReleaseAt": null,
@@ -191,7 +191,7 @@
                 "options": {},
                 "position": 0,
                 "createdAt": "2026-10-14T10:37:23.781Z",
-                "updatedAt": "2026-10-14T10:37:23.781Z"
+                "updatedAt": "2026-10-20T12:56:22.019Z"
               }
             ],
             "images": [
@@ -209,11 +209,1407 @@
             "addons": [],
             "vendorName": "Acme Electronics",
             "categoryName": "Electronics"
+          },
+          {
+            "id": 1,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-36",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "probe",
+            "descriptionAr": "probe",
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [],
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000",
+            "acceptsOffers": true,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-01T18:22:27.265Z",
+            "updatedAt": "2026-10-11T20:39:06.878Z",
+            "variants": [
+              {
+                "id": 1,
+                "productId": 1,
+                "sku": null,
+                "title": "Default",
+                "price": "39.500",
+                "compareAtPrice": null,
+                "stock": 84,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-01T18:22:27.268Z",
+                "updatedAt": "2026-10-11T20:37:37.548Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 3,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "smart-watch",
+            "title": "Smart watch",
+            "titleAr": "ساعة ذكية",
+            "description": "Sporty smart watch.\n\n-- Display: 1.4 inch AMOLED\n-- Water resistant to 50 m\n• Battery: up to 7 days",
+            "descriptionAr": null,
+            "status": "published",
+            "reviewNote": null,
+            "tags": [
+              "wearable"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [
+              {
+                "key": "brand",
+                "label": "Brand",
+                "value": "Samsung",
+                "namespace": "specs"
+              },
+              {
+                "key": "ram",
+                "label": "Memory",
+                "value": "12",
+                "namespace": "specs"
+              },
+              {
+                "key": "storage",
+                "label": "Storage",
+                "value": "256",
+                "namespace": "specs"
+              }
+            ],
+            "sizeChart": null,
+            "createdAt": "2026-10-01T18:22:27.411Z",
+            "updatedAt": "2026-10-05T10:17:45.050Z",
+            "variants": [
+              {
+                "id": 3,
+                "productId": 3,
+                "sku": null,
+                "title": "Default",
+                "price": "72.000",
+                "compareAtPrice": null,
+                "stock": 41,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-01T18:22:27.413Z",
+                "updatedAt": "2026-10-19T17:43:56.820Z"
+              }
+            ],
+            "images": [
+              {
+                "id": 20,
+                "productId": 3,
+                "url": "http://localhost:5000/brand/collection-tech.svg",
+                "altText": "Smart watch",
+                "position": 0,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-04T07:30:05.437Z"
+              },
+              {
+                "id": 21,
+                "productId": 3,
+                "url": "/media/Qx-DrvSC50Sdcs0YZUzP7p2Y.webp",
+                "altText": null,
+                "position": 1,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-04T07:30:05.437Z"
+              },
+              {
+                "id": 22,
+                "productId": 3,
+                "url": "/media/2N9P3_HoO4LYbXQzoi16pWVV.webp",
+                "altText": null,
+                "position": 2,
+                "kind": "image",
+                "posterUrl": null,
+                "createdAt": "2026-10-04T07:30:05.437Z"
+              }
+            ],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 190,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-35",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.743Z",
+            "updatedAt": "2026-10-03T18:03:42.743Z",
+            "variants": [
+              {
+                "id": 107,
+                "productId": 190,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.745Z",
+                "updatedAt": "2026-10-03T18:03:42.745Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 189,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-34",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.727Z",
+            "updatedAt": "2026-10-03T18:03:42.727Z",
+            "variants": [
+              {
+                "id": 106,
+                "productId": 189,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.728Z",
+                "updatedAt": "2026-10-03T18:03:42.728Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 188,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-fkm",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "9999999999999999999999999999999999999999",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.709Z",
+            "updatedAt": "2026-10-03T18:03:42.709Z",
+            "variants": [
+              {
+                "id": 104,
+                "productId": 188,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.711Z",
+                "updatedAt": "2026-10-03T18:03:42.711Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 187,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-var",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "1e999",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.709Z",
+            "updatedAt": "2026-10-03T18:03:42.709Z",
+            "variants": [
+              {
+                "id": 103,
+                "productId": 187,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.711Z",
+                "updatedAt": "2026-10-03T18:03:42.711Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 186,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-ezw",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "-0",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.708Z",
+            "updatedAt": "2026-10-03T18:03:42.708Z",
+            "variants": [
+              {
+                "id": 105,
+                "productId": 186,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.710Z",
+                "updatedAt": "2026-10-03T18:03:42.710Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 182,
+            "vendorId": 2,
+            "categoryId": null,
+            "handle": "probe-33",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.704Z",
+            "updatedAt": "2026-10-03T18:03:42.704Z",
+            "variants": [
+              {
+                "id": 102,
+                "productId": 182,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.708Z",
+                "updatedAt": "2026-10-03T18:03:42.708Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": null
+          },
+          {
+            "id": 177,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-32",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "-1.000",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.700Z",
+            "updatedAt": "2026-10-03T18:03:42.700Z",
+            "variants": [
+              {
+                "id": 101,
+                "productId": 177,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.702Z",
+                "updatedAt": "2026-10-03T18:03:42.702Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 176,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-qw2",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.680Z",
+            "updatedAt": "2026-10-03T18:03:42.680Z",
+            "variants": [
+              {
+                "id": 100,
+                "productId": 176,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.683Z",
+                "updatedAt": "2026-10-03T18:03:42.683Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 175,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-2cb",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "' OR 1=1 --",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.680Z",
+            "updatedAt": "2026-10-03T18:03:42.680Z",
+            "variants": [
+              {
+                "id": 99,
+                "productId": 175,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.682Z",
+                "updatedAt": "2026-10-03T18:03:42.682Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 174,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-27e",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "مرحبا",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.679Z",
+            "updatedAt": "2026-10-03T18:03:42.679Z",
+            "variants": [
+              {
+                "id": 98,
+                "productId": 174,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.681Z",
+                "updatedAt": "2026-10-03T18:03:42.681Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 173,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-2ie",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "Infinity",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.678Z",
+            "updatedAt": "2026-10-03T18:03:42.678Z",
+            "variants": [
+              {
+                "id": 97,
+                "productId": 173,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.680Z",
+                "updatedAt": "2026-10-03T18:03:42.680Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 172,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-23s",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "👍🏽🇰🇼",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.677Z",
+            "updatedAt": "2026-10-03T18:03:42.677Z",
+            "variants": [
+              {
+                "id": 96,
+                "productId": 172,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.680Z",
+                "updatedAt": "2026-10-03T18:03:42.680Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 166,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-31",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "NaN",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.674Z",
+            "updatedAt": "2026-10-03T18:03:42.674Z",
+            "variants": [
+              {
+                "id": 95,
+                "productId": 166,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.676Z",
+                "updatedAt": "2026-10-03T18:03:42.676Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 160,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-30",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "<img src=x onerror=alert(1)>",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.669Z",
+            "updatedAt": "2026-10-03T18:03:42.669Z",
+            "variants": [
+              {
+                "id": 94,
+                "productId": 160,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.673Z",
+                "updatedAt": "2026-10-03T18:03:42.673Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 158,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-qmp",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "1",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.655Z",
+            "updatedAt": "2026-10-03T18:03:42.655Z",
+            "variants": [
+              {
+                "id": 93,
+                "productId": 158,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.657Z",
+                "updatedAt": "2026-10-03T18:03:42.657Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 157,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-3u8",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": " ",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.654Z",
+            "updatedAt": "2026-10-03T18:03:42.654Z",
+            "variants": [
+              {
+                "id": 92,
+                "productId": 157,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.656Z",
+                "updatedAt": "2026-10-03T18:03:42.656Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 154,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-29",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": "",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.651Z",
+            "updatedAt": "2026-10-03T18:03:42.651Z",
+            "variants": [
+              {
+                "id": 91,
+                "productId": 154,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.653Z",
+                "updatedAt": "2026-10-03T18:03:42.653Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 150,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-28",
+            "title": "probe",
+            "titleAr": "probe",
+            "description": null,
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.647Z",
+            "updatedAt": "2026-10-03T18:03:42.647Z",
+            "variants": [
+              {
+                "id": 90,
+                "productId": 150,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.650Z",
+                "updatedAt": "2026-10-03T18:03:42.650Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 149,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-n5a",
+            "title": "probe",
+            "titleAr": "👍🏽🇰🇼",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.624Z",
+            "updatedAt": "2026-10-03T18:03:42.624Z",
+            "variants": [
+              {
+                "id": 87,
+                "productId": 149,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 148,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-grg",
+            "title": "probe",
+            "titleAr": "Infinity",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.623Z",
+            "updatedAt": "2026-10-03T18:03:42.623Z",
+            "variants": [
+              {
+                "id": 89,
+                "productId": 148,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 144,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-cq9",
+            "title": "probe",
+            "titleAr": "9999999999999999999999999999999999999999",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.623Z",
+            "updatedAt": "2026-10-03T18:03:42.623Z",
+            "variants": [
+              {
+                "id": 88,
+                "productId": 144,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 147,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-d7a",
+            "title": "probe",
+            "titleAr": "1e999",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.623Z",
+            "updatedAt": "2026-10-03T18:03:42.623Z",
+            "variants": [
+              {
+                "id": 86,
+                "productId": 147,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 146,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-m41",
+            "title": "probe",
+            "titleAr": "-0",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.623Z",
+            "updatedAt": "2026-10-03T18:03:42.623Z",
+            "variants": [
+              {
+                "id": 84,
+                "productId": 146,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 145,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-0h7",
+            "title": "probe",
+            "titleAr": "مرحبا",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.622Z",
+            "updatedAt": "2026-10-03T18:03:42.622Z",
+            "variants": [
+              {
+                "id": 85,
+                "productId": 145,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.628Z",
+                "updatedAt": "2026-10-03T18:03:42.628Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
+          },
+          {
+            "id": 137,
+            "vendorId": 2,
+            "categoryId": 1,
+            "handle": "probe-27",
+            "title": "probe",
+            "titleAr": "NaN",
+            "description": "probe",
+            "descriptionAr": null,
+            "status": "draft",
+            "reviewNote": null,
+            "tags": [
+              "probe"
+            ],
+            "commissionPercent": null,
+            "commissionFixed": null,
+            "acceptsOffers": null,
+            "deliverySpeed": null,
+            "sizeClass": null,
+            "attributes": [],
+            "sizeChart": null,
+            "createdAt": "2026-10-03T18:03:42.617Z",
+            "updatedAt": "2026-10-03T18:03:42.617Z",
+            "variants": [
+              {
+                "id": 83,
+                "productId": 137,
+                "sku": null,
+                "title": "Default",
+                "price": "0.000",
+                "compareAtPrice": null,
+                "stock": 50,
+                "lowStockAt": null,
+                "preorderStock": 0,
+                "preorderReleaseAt": null,
+                "centreId": null,
+                "memberPrice": null,
+                "unit": "each",
+                "stepAmount": "1.000",
+                "options": {},
+                "position": 0,
+                "createdAt": "2026-10-03T18:03:42.622Z",
+                "updatedAt": "2026-10-03T18:03:42.622Z"
+              }
+            ],
+            "images": [],
+            "addons": [],
+            "vendorName": "Acme Electronics",
+            "categoryName": "Electronics"
           }
         ],
         "total": 99,
         "page": 1,
-        "pageSize": 3
+        "pageSize": 30
       },
       "meta": {
         "values": {
@@ -269,6 +1665,339 @@
             "Date"
           ],
           "rows.2.images.0.createdAt": [
+            "Date"
+          ],
+          "rows.3.createdAt": [
+            "Date"
+          ],
+          "rows.3.updatedAt": [
+            "Date"
+          ],
+          "rows.3.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.3.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.4.createdAt": [
+            "Date"
+          ],
+          "rows.4.updatedAt": [
+            "Date"
+          ],
+          "rows.4.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.4.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.4.images.0.createdAt": [
+            "Date"
+          ],
+          "rows.4.images.1.createdAt": [
+            "Date"
+          ],
+          "rows.4.images.2.createdAt": [
+            "Date"
+          ],
+          "rows.5.createdAt": [
+            "Date"
+          ],
+          "rows.5.updatedAt": [
+            "Date"
+          ],
+          "rows.5.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.5.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.6.createdAt": [
+            "Date"
+          ],
+          "rows.6.updatedAt": [
+            "Date"
+          ],
+          "rows.6.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.6.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.7.createdAt": [
+            "Date"
+          ],
+          "rows.7.updatedAt": [
+            "Date"
+          ],
+          "rows.7.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.7.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.8.createdAt": [
+            "Date"
+          ],
+          "rows.8.updatedAt": [
+            "Date"
+          ],
+          "rows.8.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.8.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.9.createdAt": [
+            "Date"
+          ],
+          "rows.9.updatedAt": [
+            "Date"
+          ],
+          "rows.9.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.9.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.10.createdAt": [
+            "Date"
+          ],
+          "rows.10.updatedAt": [
+            "Date"
+          ],
+          "rows.10.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.10.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.11.createdAt": [
+            "Date"
+          ],
+          "rows.11.updatedAt": [
+            "Date"
+          ],
+          "rows.11.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.11.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.12.createdAt": [
+            "Date"
+          ],
+          "rows.12.updatedAt": [
+            "Date"
+          ],
+          "rows.12.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.12.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.13.createdAt": [
+            "Date"
+          ],
+          "rows.13.updatedAt": [
+            "Date"
+          ],
+          "rows.13.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.13.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.14.createdAt": [
+            "Date"
+          ],
+          "rows.14.updatedAt": [
+            "Date"
+          ],
+          "rows.14.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.14.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.15.createdAt": [
+            "Date"
+          ],
+          "rows.15.updatedAt": [
+            "Date"
+          ],
+          "rows.15.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.15.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.16.createdAt": [
+            "Date"
+          ],
+          "rows.16.updatedAt": [
+            "Date"
+          ],
+          "rows.16.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.16.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.17.createdAt": [
+            "Date"
+          ],
+          "rows.17.updatedAt": [
+            "Date"
+          ],
+          "rows.17.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.17.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.18.createdAt": [
+            "Date"
+          ],
+          "rows.18.updatedAt": [
+            "Date"
+          ],
+          "rows.18.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.18.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.19.createdAt": [
+            "Date"
+          ],
+          "rows.19.updatedAt": [
+            "Date"
+          ],
+          "rows.19.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.19.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.20.createdAt": [
+            "Date"
+          ],
+          "rows.20.updatedAt": [
+            "Date"
+          ],
+          "rows.20.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.20.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.21.createdAt": [
+            "Date"
+          ],
+          "rows.21.updatedAt": [
+            "Date"
+          ],
+          "rows.21.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.21.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.22.createdAt": [
+            "Date"
+          ],
+          "rows.22.updatedAt": [
+            "Date"
+          ],
+          "rows.22.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.22.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.23.createdAt": [
+            "Date"
+          ],
+          "rows.23.updatedAt": [
+            "Date"
+          ],
+          "rows.23.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.23.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.24.createdAt": [
+            "Date"
+          ],
+          "rows.24.updatedAt": [
+            "Date"
+          ],
+          "rows.24.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.24.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.25.createdAt": [
+            "Date"
+          ],
+          "rows.25.updatedAt": [
+            "Date"
+          ],
+          "rows.25.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.25.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.26.createdAt": [
+            "Date"
+          ],
+          "rows.26.updatedAt": [
+            "Date"
+          ],
+          "rows.26.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.26.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.27.createdAt": [
+            "Date"
+          ],
+          "rows.27.updatedAt": [
+            "Date"
+          ],
+          "rows.27.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.27.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.28.createdAt": [
+            "Date"
+          ],
+          "rows.28.updatedAt": [
+            "Date"
+          ],
+          "rows.28.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.28.variants.0.updatedAt": [
+            "Date"
+          ],
+          "rows.29.createdAt": [
+            "Date"
+          ],
+          "rows.29.updatedAt": [
+            "Date"
+          ],
+          "rows.29.variants.0.createdAt": [
+            "Date"
+          ],
+          "rows.29.variants.0.updatedAt": [
             "Date"
           ]
         }

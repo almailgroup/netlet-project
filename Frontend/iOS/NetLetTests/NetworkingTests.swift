@@ -315,6 +315,51 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertNil(Route.from(link: "/somewhere/else"))
     }
 
+    func testThePortal() async throws {
+        let actor = try await client.call(API.portalIdentity, .init())
+        XCTAssertEqual(actor.kind, "vendor")
+        XCTAssertTrue(actor.inPortal)
+        let counts = try await client.call(API.portalCounts, .init())
+        XCTAssertGreaterThan(counts.published, 0)
+        let health = try await client.call(API.storeHealth, .init())
+        XCTAssertEqual(health?.components.map(\.key), ["catalog", "stock", "compliance", "rating"])
+        let sales = try await client.call(API.sales)
+        XCTAssertEqual(sales.daily.count, 30, "a bar for each of the last thirty Kuwaiti days")
+        XCTAssertNotNil(sales.periods["week"])
+        let waiting = try await client.call(API.offersWaiting, .init(vendorId: actor.vendorId))
+        XCTAssertEqual(waiting, 0)
+        let page = try await client.call(API.sellerProducts, .init(vendorId: actor.vendorId, page: 1, pageSize: 30))
+        XCTAssertGreaterThanOrEqual(page.total, page.rows.count)
+        XCTAssertNotNil(page.rows.first?.vendorName)
+        XCTAssertNotNil(page.rows.first?.cover, "a row is drawn with its first still picture")
+        let check = try await client.call(API.deletionCheck, .init(id: page.rows[0].id))
+        XCTAssertEqual(check.id, page.rows[0].id)
+        XCTAssertTrue(check.blockers.isEmpty)
+    }
+
+    func testThePortalOffersWhatThePersonMayUse() {
+        let rules = PortalRules.shared
+        let owner = SellerIdentity(kind: "vendor", userId: 5, vendorId: 2, role: "owner")
+        let staff = SellerIdentity(kind: "vendor", userId: 6, vendorId: 2, role: "staff")
+        let admin = SellerIdentity(kind: "admin", userId: 1, vendorId: nil, role: nil)
+        let courier = SellerIdentity(kind: "courier", userId: 7, vendorId: nil, role: nil, courierId: 1)
+        XCTAssertTrue(rules.can(owner, "product.edit", vendorId: 2))
+        XCTAssertFalse(rules.can(owner, "product.edit", vendorId: 3), "a store's people reach their own store and nothing else")
+        XCTAssertFalse(rules.can(owner, "vendor.setCommission", vendorId: 2), "commission is outside a vendor's control at any rank")
+        XCTAssertTrue(rules.can(staff, "stock.adjust", vendorId: 2))
+        XCTAssertFalse(rules.can(staff, "product.publish", vendorId: 2), "staff move stock and publish nothing")
+        XCTAssertTrue(rules.can(admin, "platform.manageUsers"))
+        XCTAssertTrue(rules.can(courier, "delivery.view"))
+        XCTAssertFalse(rules.can(courier, "product.view"))
+        XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/products" })
+        XCTAssertFalse(rules.menu(for: courier).flatMap(\.links).contains { $0.href == "/admin/products" })
+        XCTAssertTrue(rules.menu(for: admin).flatMap(\.links).allSatisfy { PortalPage.draws($0.href) }, "the menu offers only pages the app draws")
+        XCTAssertEqual(PortalPage("/admin/products?vendor=4"), .products(vendorId: 4))
+        XCTAssertEqual(PortalPage("/admin/products/new"), .newProduct(vendorId: nil))
+        XCTAssertNil(PortalPage("/account"))
+        XCTAssertEqual(Route.from(link: "/admin/products?vendor=4"), .portal("/admin/products?vendor=4"))
+    }
+
     func testTheShopperVariantIsSignedInAndFallsBackElsewhere() async throws {
         let shopper = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "shopper"))
         let user = try await shopper.call(API.me)

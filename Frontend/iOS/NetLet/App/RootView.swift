@@ -166,6 +166,7 @@ private struct RouteDestination: View {
         case .gifts: GiftLookupView()
         case .gift(let token): GiftListView(token: token)
         case .invoice(let number): InvoiceView(number: number)
+        case .portal(let path): PortalRouter(path: path)
         case .verifyInvoice(let number, let code): InvoiceVerifyView(number: number, code: code)
         case .sell: SellView()
         }

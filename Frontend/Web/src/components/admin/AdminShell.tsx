@@ -28,6 +28,7 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
 import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
@@ -55,6 +56,40 @@ export function roleLabelKey(actor: Actor): MessageKey {
   if (actor.kind === "courier") return "admin.roleCourier";
   return ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
 }
+
+/** Each menu link's icon, by the page it opens. */
+const MENU_ICONS: Record<string, ReactNode> = {
+  "/admin": <Gauge className="size-4" />,
+  "/admin/products": <LayoutGrid className="size-4" />,
+  "/admin/stock": <PackageSearch className="size-4" />,
+  "/admin/import": <Upload className="size-4" />,
+  "/admin/bundles": <Boxes className="size-4" />,
+  "/admin/review": <ClipboardCheck className="size-4" />,
+  "/admin/orders": <Receipt className="size-4" />,
+  "/admin/dispatch": <Truck className="size-4" />,
+  "/admin/fulfilment": <Warehouse className="size-4" />,
+  "/admin/returns": <RotateCcw className="size-4" />,
+  "/admin/claims": <ShieldAlert className="size-4" />,
+  "/admin/couriers": <Building2 className="size-4" />,
+  "/admin/offers": <Handshake className="size-4" />,
+  "/admin/messages": <MessagesSquare className="size-4" />,
+  "/admin/support": <LifeBuoy className="size-4" />,
+  "/admin/guides": <BookOpen className="size-4" />,
+  "/admin/membership": <BadgeCheck className="size-4" />,
+  "/admin/finance": <Coins className="size-4" />,
+  "/admin/payouts": <Landmark className="size-4" />,
+  "/admin/invoices": <FileText className="size-4" />,
+  "/admin/promotions": <Ticket className="size-4" />,
+  "/admin/ads": <Sparkles className="size-4" />,
+  "/admin/affiliates": <Megaphone className="size-4" />,
+  "/admin/team": <Users className="size-4" />,
+  "/admin/vendors": <Store className="size-4" />,
+  "/admin/applications": <ClipboardList className="size-4" />,
+  "/admin/people": <ShieldCheck className="size-4" />,
+  "/admin/audit": <ScrollText className="size-4" />,
+  "/admin/subscriptions": <Repeat className="size-4" />,
+  "/admin/features": <ToggleRight className="size-4" />,
+};
 
 function canAny(actor: Actor, need: Capability | Capability[], vendorId?: number): boolean {
   return (Array.isArray(need) ? need : [need]).some(one => can(actor, one, vendorId));
@@ -160,65 +195,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
 
-  /*
-   * Grouped, because the flat list had grown to twenty-eight links in one
-   * column — the order a feature was built in, not the order anybody works.
-   * Each group is what one kind of task reaches for, and a group a person
-   * cannot use any of disappears with its heading.
-   */
-  const groups = ([
-    { label: null, links: [
-      { href: "/admin", label: "admin.overview", icon: <Gauge className="size-4" />, need: "product.view" },
-    ] },
-    { label: "admin.navCatalogue", links: [
-      { href: "/admin/products", label: "admin.products", icon: <LayoutGrid className="size-4" />, need: "product.view" },
-      { href: "/admin/stock", label: "admin.stock", icon: <PackageSearch className="size-4" />, need: "product.view" },
-      { href: "/admin/import", label: "admin.import", icon: <Upload className="size-4" />, need: "product.create" },
-      { href: "/admin/bundles", label: "admin.bundles", icon: <Boxes className="size-4" />, need: "product.view" },
-      { href: "/admin/review", label: "admin.review", icon: <ClipboardCheck className="size-4" />, need: "product.review" },
-    ] },
-    /* What a seller opens the portal to do most days is pack what somebody
-       bought, so this group comes straight after the shelf. */
-    { label: "admin.navOrders", links: [
-      { href: "/admin/orders", label: "admin.orders", icon: <Receipt className="size-4" />, need: "product.view" },
-      /* The delivery company's own board (2.2, 3.4.2). A courier clears
-         `delivery.view` and nothing else, so this is the only link they see. */
-      { href: "/admin/dispatch", label: "admin.dispatch", icon: <Truck className="size-4" />, need: "delivery.view" },
-      /* Stock NetLet holds (4.2): a manager sends it, NetLet runs the floor. */
-      { href: "/admin/fulfilment", label: "fulfilment.title", icon: <Warehouse className="size-4" />, need: ["fulfilment.send", "fulfilment.operate"] },
-      { href: "/admin/returns", label: "admin.returns", icon: <RotateCcw className="size-4" />, need: "returns.handle" },
-      { href: "/admin/claims", label: "admin.claims", icon: <ShieldAlert className="size-4" />, need: ["delivery.view", "delivery.fileClaim"] },
-      { href: "/admin/couriers", label: "admin.couriers", icon: <Building2 className="size-4" />, need: "delivery.assign" },
-    ] },
-    { label: "admin.navCustomers", links: [
-      { href: "/admin/offers", label: "admin.offers", icon: <Handshake className="size-4" />, need: "offer.answer" },
-      { href: "/admin/messages", label: "admin.messages", icon: <MessagesSquare className="size-4" />, need: "chat.answer" },
-      /* NetLet's own inbox (3.5.1); a seller's conversations are the line above. */
-      { href: "/admin/support", label: "support.inboxTitle", icon: <LifeBuoy className="size-4" />, need: "support.answer" },
-      /* NetLet's how-to guides (3.5.3): what a shopper or seller reads before asking. */
-      { href: "/admin/guides", label: "guides.adminTitle", icon: <BookOpen className="size-4" />, need: "platform.configure" },
-      { href: "/admin/membership", label: "membership.title", icon: <BadgeCheck className="size-4" />, need: "membership.manage" },
-    ] },
-    { label: "admin.navMoney", links: [
-      { href: "/admin/finance", label: "admin.finance", icon: <Coins className="size-4" />, need: "platform.viewAll" },
-      /* A store's manager reaches this one too: when their money comes is theirs to know. */
-      { href: "/admin/payouts", label: "admin.payoutsPage", icon: <Landmark className="size-4" />, need: "payouts.view" },
-      { href: "/admin/invoices", label: "admin.invoices", icon: <FileText className="size-4" />, need: "platform.viewAll" },
-      { href: "/admin/promotions", label: "admin.promotions", icon: <Ticket className="size-4" />, need: "platform.viewAll" },
-      /* A store's owner books here; an administrator sees every store's bookings. */
-      { href: "/admin/ads", label: "admin.ads", icon: <Sparkles className="size-4" />, need: "ads.book" },
-      { href: "/admin/affiliates", label: "admin.affiliates", icon: <Megaphone className="size-4" />, need: "affiliate.manage" },
-    ] },
-    { label: "admin.navPlatform", links: [
-      { href: "/admin/team", label: "admin.team", icon: <Users className="size-4" />, need: "vendor.viewMembers" },
-      { href: "/admin/vendors", label: "admin.vendors", icon: <Store className="size-4" />, need: "platform.viewAll" },
-      { href: "/admin/applications", label: "admin.applications", icon: <ClipboardList className="size-4" />, need: "platform.manageUsers" },
-      { href: "/admin/people", label: "admin.people", icon: <ShieldCheck className="size-4" />, need: "platform.manageUsers" },
-      { href: "/admin/audit", label: "admin.audit", icon: <ScrollText className="size-4" />, need: "platform.viewAll" },
-      { href: "/admin/subscriptions", label: "subscriptions.adminTitle", icon: <Repeat className="size-4" />, need: "platform.configure" },
-      { href: "/admin/features", label: "admin.features", icon: <ToggleRight className="size-4" />, need: "platform.configure" },
-    ] },
-  ] satisfies { label: MessageKey | null; links: { href: string; label: MessageKey; icon: ReactNode; need: Capability | Capability[] }[] }[])
+  /* The menu is `ADMIN_MENU` (`content/adminMenu.ts`), which the iOS app
+     reads too; this frame adds each link's icon. */
+  const groups = ADMIN_MENU
+    .map(group => ({ ...group, links: group.links.map(link => ({ ...link, icon: MENU_ICONS[link.href] })) }))
     .map(group => ({ ...group, links: group.links.filter(link => canAny(actor, link.need)) }))
     .filter(group => group.links.length > 0);
 

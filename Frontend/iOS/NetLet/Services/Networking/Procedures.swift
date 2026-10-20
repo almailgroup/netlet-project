@@ -243,6 +243,11 @@ enum API {
         var vendorId: Int?
         var page: Int?
         var pageSize: Int?
+        var query: String?
+        var status: String?
+        var categoryId: Int?
+        /// "out" or "low".
+        var stock: String?
     }
 
     struct NewListing: Encodable, Sendable {

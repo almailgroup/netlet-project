@@ -1,0 +1,50 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "vendorId": 2,
+        "inputs": {
+          "published": 7,
+          "pendingReview": 0,
+          "rejections": 0,
+          "outOfStock": 0,
+          "variants": 10,
+          "rating": null
+        },
+        "score": 100,
+        "band": "good",
+        "components": [
+          {
+            "key": "catalog",
+            "score": 100,
+            "detail": {
+              "published": 7,
+              "pendingReview": 0
+            }
+          },
+          {
+            "key": "stock",
+            "score": 100,
+            "detail": {
+              "outOfStock": 0,
+              "variants": 10
+            }
+          },
+          {
+            "key": "compliance",
+            "score": 100,
+            "detail": {
+              "rejections": 0,
+              "suspendAt": 3
+            }
+          },
+          {
+            "key": "rating",
+            "score": 100,
+            "detail": {}
+          }
+        ]
+      }
+    }
+  }
+}

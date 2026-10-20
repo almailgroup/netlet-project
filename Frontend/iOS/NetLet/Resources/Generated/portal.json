@@ -1,0 +1,246 @@
+{
+  "menu": [
+    {
+      "label": null,
+      "links": [
+        {
+          "href": "/admin",
+          "label": "admin.overview",
+          "need": "product.view"
+        }
+      ]
+    },
+    {
+      "label": "admin.navCatalogue",
+      "links": [
+        {
+          "href": "/admin/products",
+          "label": "admin.products",
+          "need": "product.view"
+        },
+        {
+          "href": "/admin/stock",
+          "label": "admin.stock",
+          "need": "product.view"
+        },
+        {
+          "href": "/admin/import",
+          "label": "admin.import",
+          "need": "product.create"
+        },
+        {
+          "href": "/admin/bundles",
+          "label": "admin.bundles",
+          "need": "product.view"
+        },
+        {
+          "href": "/admin/review",
+          "label": "admin.review",
+          "need": "product.review"
+        }
+      ]
+    },
+    {
+      "label": "admin.navOrders",
+      "links": [
+        {
+          "href": "/admin/orders",
+          "label": "admin.orders",
+          "need": "product.view"
+        },
+        {
+          "href": "/admin/dispatch",
+          "label": "admin.dispatch",
+          "need": "delivery.view"
+        },
+        {
+          "href": "/admin/fulfilment",
+          "label": "fulfilment.title",
+          "need": [
+            "fulfilment.send",
+            "fulfilment.operate"
+          ]
+        },
+        {
+          "href": "/admin/returns",
+          "label": "admin.returns",
+          "need": "returns.handle"
+        },
+        {
+          "href": "/admin/claims",
+          "label": "admin.claims",
+          "need": [
+            "delivery.view",
+            "delivery.fileClaim"
+          ]
+        },
+        {
+          "href": "/admin/couriers",
+          "label": "admin.couriers",
+          "need": "delivery.assign"
+        }
+      ]
+    },
+    {
+      "label": "admin.navCustomers",
+      "links": [
+        {
+          "href": "/admin/offers",
+          "label": "admin.offers",
+          "need": "offer.answer"
+        },
+        {
+          "href": "/admin/messages",
+          "label": "admin.messages",
+          "need": "chat.answer"
+        },
+        {
+          "href": "/admin/support",
+          "label": "support.inboxTitle",
+          "need": "support.answer"
+        },
+        {
+          "href": "/admin/guides",
+          "label": "guides.adminTitle",
+          "need": "platform.configure"
+        },
+        {
+          "href": "/admin/membership",
+          "label": "membership.title",
+          "need": "membership.manage"
+        }
+      ]
+    },
+    {
+      "label": "admin.navMoney",
+      "links": [
+        {
+          "href": "/admin/finance",
+          "label": "admin.finance",
+          "need": "platform.viewAll"
+        },
+        {
+          "href": "/admin/payouts",
+          "label": "admin.payoutsPage",
+          "need": "payouts.view"
+        },
+        {
+          "href": "/admin/invoices",
+          "label": "admin.invoices",
+          "need": "platform.viewAll"
+        },
+        {
+          "href": "/admin/promotions",
+          "label": "admin.promotions",
+          "need": "platform.viewAll"
+        },
+        {
+          "href": "/admin/ads",
+          "label": "admin.ads",
+          "need": "ads.book"
+        },
+        {
+          "href": "/admin/affiliates",
+          "label": "admin.affiliates",
+          "need": "affiliate.manage"
+        }
+      ]
+    },
+    {
+      "label": "admin.navPlatform",
+      "links": [
+        {
+          "href": "/admin/team",
+          "label": "admin.team",
+          "need": "vendor.viewMembers"
+        },
+        {
+          "href": "/admin/vendors",
+          "label": "admin.vendors",
+          "need": "platform.viewAll"
+        },
+        {
+          "href": "/admin/applications",
+          "label": "admin.applications",
+          "need": "platform.manageUsers"
+        },
+        {
+          "href": "/admin/people",
+          "label": "admin.people",
+          "need": "platform.manageUsers"
+        },
+        {
+          "href": "/admin/audit",
+          "label": "admin.audit",
+          "need": "platform.viewAll"
+        },
+        {
+          "href": "/admin/subscriptions",
+          "label": "subscriptions.adminTitle",
+          "need": "platform.configure"
+        },
+        {
+          "href": "/admin/features",
+          "label": "admin.features",
+          "need": "platform.configure"
+        }
+      ]
+    }
+  ],
+  "ranks": {
+    "staff": 0,
+    "manager": 1,
+    "owner": 2
+  },
+  "needs": {
+    "product.view": "staff",
+    "stock.adjust": "staff",
+    "vendor.viewMembers": "staff",
+    "delivery.fileClaim": "staff",
+    "chat.answer": "staff",
+    "returns.handle": "manager",
+    "product.create": "manager",
+    "product.edit": "manager",
+    "product.publish": "manager",
+    "product.delete": "manager",
+    "offer.answer": "manager",
+    "payouts.view": "manager",
+    "vendor.editProfile": "owner",
+    "vendor.manageMembers": "owner",
+    "ads.book": "owner",
+    "fulfilment.send": "manager"
+  },
+  "adminOnly": [
+    "delivery.assign",
+    "delivery.decideClaims",
+    "vendor.setCommission",
+    "vendor.approve",
+    "product.review",
+    "product.reassign",
+    "platform.viewAll",
+    "platform.manageUsers",
+    "platform.configure",
+    "affiliate.manage",
+    "payouts.record",
+    "support.answer",
+    "fulfilment.operate",
+    "membership.manage"
+  ],
+  "courier": [
+    "delivery.view",
+    "delivery.move"
+  ],
+  "bulk": {
+    "actions": [
+      "publish",
+      "archive",
+      "draft",
+      "reprice",
+      "restock"
+    ],
+    "limit": 100,
+    "minPercent": -90,
+    "maxPercent": 1000,
+    "maxRestock": 100000
+  }
+}
