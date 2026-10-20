@@ -2,6 +2,7 @@ import { BUTTON_PRIMARY, Breadcrumbs, PageBody, PageHeading } from "@/components
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useStickyFoot } from "@/hooks/useStickyFoot";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { briefFor } from "@shared/commerce/assistant";
 import { useCart } from "@/contexts/CartContext";
@@ -41,7 +42,7 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { Later } from "@/components/layout/Later";
@@ -531,6 +532,27 @@ function swipeDirection(travelled: number, direction: "ltr" | "rtl"): "previous"
  * a vertical rail scrolled out of view is the only other clue that image four
  * of nine is showing. The hover magnifier stays mouse-only.
  */
+/** How far under the top of the screen the photo column sticks while it fits: the header's height. */
+const GALLERY_STICK_TOP = 150;
+
+/**
+ * The photo column on a wide screen: sticky beside the buy box, with the
+ * assistant under the photo. It was the photo alone, stuck at the header's
+ * foot; with the assistant in it the column can be taller than the screen, and
+ * stuck there its box would be off the bottom for as long as the buy box
+ * scrolled. `useStickyFoot` sticks it at the header's foot while it fits and
+ * otherwise with its foot just above the bottom of the screen.
+ */
+function GalleryColumn({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const top = useStickyFoot(ref, GALLERY_STICK_TOP);
+  return (
+    <div ref={ref} style={{ "--gallery-top": `${top}px` } as CSSProperties} className="min-w-0 lg:sticky lg:top-[var(--gallery-top)] lg:z-20 lg:self-start">
+      {children}
+    </div>
+  );
+}
+
 function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom, onShare, onToggleSaved, isSaved }: {
   product: Product;
   selectedImageIndex: number;
@@ -699,7 +721,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   const arrow = "pressable absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:size-11";
 
   return (
-    <div className="min-w-0 lg:sticky lg:top-[150px] lg:z-20 lg:self-start">
+    <div className="min-w-0">
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
         {hasMultipleImages ? (
           <div
@@ -1041,6 +1063,9 @@ export default function ProductDetail() {
      above the screen — never while they are in view, never before reaching
      them (`useBeyondScreen`, the rule the cart and checkout bars share). */
   const [buyRef, buyPassed] = useBeyondScreen("top");
+  /* Where the product assistant goes: under the photo from `lg`, after the
+     buy buttons below it. */
+  const wide = useMediaQuery("(min-width: 1024px)");
   /* The department row marks the product's own department, and the shop
      assistant answers about this product — its public listing, nothing else. */
   const assistantProduct = useMemo(() => (product ? { key: product.id, brief: briefFor(product), image: product.images[0]?.url ?? null } : null), [product]);
@@ -1181,7 +1206,18 @@ export default function ProductDetail() {
         />
 
         <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
-          <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
+          <GalleryColumn>
+            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
+            {/* Under the photo, where somebody looking at the thing wonders
+                about it — on a wide screen. A phone draws it after the buy
+                buttons instead (below), so it never pushes the price and Add
+                to cart off the first screen. One place at a time. */}
+            {wide ? (
+              <Later reserve={0}>
+                <Suspense fallback={null}><ProductAssistant product={product} className="mt-5" /></Suspense>
+              </Later>
+            ) : null}
+          </GalleryColumn>
 
           {/* `min-w-0`, because a grid item's minimum is its content's: the
               tab strip below, when it scrolled sideways inside itself on a
@@ -1331,6 +1367,14 @@ export default function ProductDetail() {
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
 
+            {/* A phone's place for the assistant: after everything that buys,
+                before the four policy sections it used to sit under. */}
+            {wide ? null : (
+              <Later reserve={0}>
+                <Suspense fallback={null}><ProductAssistant product={product} className="mt-6" /></Suspense>
+              </Later>
+            )}
+
             {/* The details come after the decision, not before it. The tabs and
                 the assistant sat between the price and the buttons, which put
                 Quantity, Add to cart and Buy now below the fold on a laptop. */}
@@ -1346,12 +1390,6 @@ export default function ProductDetail() {
               ]}
             />
 
-            {/* Under the tabs, because it answers what the tabs did not: a
-                spec block is written for somebody who already knows the
-                category. */}
-            <Later reserve={0}>
-              <Suspense fallback={null}><ProductAssistant product={product} /></Suspense>
-            </Later>
           </div>
         </section>
 

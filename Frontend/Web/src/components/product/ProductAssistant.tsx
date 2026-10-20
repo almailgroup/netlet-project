@@ -6,11 +6,25 @@
  * cup)" — and the shopper who needs it most is the one who does not. This
  * turns the listing into an answer to the question they actually have.
  *
+ * **It sits under the photo, where somebody looking at the thing wonders
+ * about it** — on a wide screen; on a phone it follows the buy buttons, so it
+ * never pushes the price and Add to cart below the first screen (see
+ * ProductDetail). It was the last thing in the buy box, under four policy
+ * sections, and the owner could not find it.
+ *
+ * **It is one card: a line saying what it is, the questions to start from,
+ * and one field.** It had an icon tile, a two-line explanation and a send
+ * disc beside the box. The explanation is one short line now — every answer
+ * still says it came from a model, on the answer — and the send button sits
+ * inside the field, the way the search box's does.
+ *
  * **It does nothing until it is pressed.** Summarising every product on load
  * would spend a model call on every page view, most of them for somebody who
  * came to look at the photograph — and it would put a paragraph of generated
- * text above the merchant's own words by default. The openers make the first
- * press one tap rather than a blank box.
+ * text above the merchant's own words by default. The suggestions make the
+ * first press one tap rather than a blank box, and are fitted to the product
+ * (`suggestedQuestions`); after an answer the model's own follow-ups take
+ * their place, under the latest answer.
  *
  * **It answers through the AI gateway**, streamed: the listing goes as the
  * product brief (`briefFor`, the page's own public text and nothing about the
@@ -19,32 +33,36 @@
  *
  * **The panel is absent, not broken, when the gateway is not set up** or the
  * shop assistant is switched off. `available` is asked once and the whole
- * section is skipped if the server says no. That
- * is deliberately unlike voice and photo search, which render every state
- * because there is a *design* to review; an assistant with nothing behind it
- * has nothing to show, and a box reading "not configured" is noise on a shop.
- *
- * Answers carry a line saying they came from a model and from this listing.
- * The same argument the recommendation rail makes for its badge: a generated
- * sentence that looks like the shop's own copy is a sentence a shopper will
- * hold the shop to.
+ * section is skipped if the server says no. That is deliberately unlike voice
+ * and photo search, which render every state because there is a *design* to
+ * review; an assistant with nothing behind it has nothing to show, and a box
+ * reading "not configured" is noise on a shop.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
-import { LoaderCircle, Send, Sparkles, Square } from "lucide-react";
-import { ASSISTANT_OPENERS, MAX_QUESTION, acceptableQuestion, briefFor } from "@shared/commerce/assistant";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { ArrowUp, LoaderCircle, Sparkles, Square } from "lucide-react";
+import { MAX_QUESTION, acceptableQuestion, briefFor, suggestedQuestions } from "@shared/commerce/assistant";
 import type { Product } from "@shared/commerce/types";
-import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChatAnswer } from "@/components/assistant/ChatAnswer";
+import { CARD } from "@/components/layout/Page";
 import { chatDraftProblem, useAIChat } from "@/hooks/useAIChat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { gatewayErrorMessage } from "@/lib/aiGateway";
 
-export function ProductAssistant({ product }: { product: Pick<Product, "title" | "productType" | "vendor" | "description" | "attributes"> }) {
+export function ProductAssistant({ product, className = "" }: {
+  product: Pick<Product, "title" | "productType" | "vendor" | "description" | "attributes">;
+  className?: string;
+}) {
   const { t } = useTranslation();
+  const headingId = useId();
   const brief = useMemo(() => briefFor(product), [product]);
+  const suggestions = useMemo(() => suggestedQuestions(brief), [brief]);
   const chat = useAIChat({ product: brief });
   const [draft, setDraft] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
+  /* A press on a suggestion takes the suggestions away, so focus goes to the
+     conversation rather than to <body>; never into the box, whose keyboard on
+     a phone would cover the answer being waited for. */
+  const focusLog = useRef(false);
   const contact = chatDraftProblem(draft)?.kind === "contact";
   const busy = chat.status !== "idle";
 
@@ -52,7 +70,13 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
      follow leaves the answer somebody asked for below the fold. */
   const last = chat.messages[chat.messages.length - 1];
   useEffect(() => {
-    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+    const log = logRef.current;
+    if (!log) return;
+    log.scrollTo({ top: log.scrollHeight });
+    if (focusLog.current) {
+      focusLog.current = false;
+      log.focus({ preventScroll: true });
+    }
   }, [chat.messages.length, last?.text]);
 
   if (!chat.available) return null;
@@ -64,14 +88,14 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
   };
 
   return (
-    <section className="mt-8 rounded-[1.25rem] border border-[#d5dfeb] bg-white/60 p-5 sm:p-6">
-      <div className="flex items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]">
-          <Sparkles className="size-4" aria-hidden />
+    <section aria-labelledby={headingId} className={`${CARD} p-4 sm:p-5 ${className}`}>
+      <div className="flex items-center gap-3">
+        <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-[#fdeee8] ink-accent">
+          <Sparkles className="size-4" />
         </span>
-        <div>
-          <h2 className="text-sm font-extrabold text-[#0a285a]">{t("assistant.heading")}</h2>
-          <p className="text-[12px] leading-5 ink-muted">{t("assistant.note")}</p>
+        <div className="min-w-0">
+          <h2 id={headingId} className="text-[15px] font-extrabold leading-5 text-[#0a285a]">{t("assistant.heading")}</h2>
+          <p className="mt-0.5 text-[12px] leading-4 ink-muted">{t("assistant.note")}</p>
         </div>
       </div>
 
@@ -79,14 +103,15 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
         <div
           ref={logRef}
           role="log"
+          tabIndex={-1}
           /* Busy while an answer streams, so a screen reader reads it once,
              whole, rather than a word at a time. */
           aria-busy={busy}
           aria-label={t("assistant.heading")}
-          className="hide-scrollbar mt-4 max-h-[340px] space-y-3 overflow-y-auto"
+          className="hide-scrollbar mt-4 max-h-[360px] space-y-3 overflow-y-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30"
         >
           {chat.messages.map(message => message.role === "user" ? (
-            <p key={message.id} dir="auto" className="ms-auto w-fit max-w-[85%] rounded-2xl bg-[#0a285a] px-3.5 py-2 text-[13px] font-semibold text-white">
+            <p key={message.id} dir="auto" className="ms-auto w-fit max-w-[85%] rounded-2xl rounded-ee-md bg-[#0a285a] px-3.5 py-2 text-[14px] leading-6 text-white">
               {message.text}
             </p>
           ) : message.text ? (
@@ -99,18 +124,20 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
           ) : null)}
         </div>
       ) : (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {ASSISTANT_OPENERS.map(key => (
-            <button
-              key={key}
-              onClick={() => send(t(key as MessageKey))}
-              disabled={busy}
-              className="glass pressable rounded-full border border-[#0a285a]/12 px-3.5 py-2 text-[12px] font-bold text-[#0a285a] disabled:opacity-50"
-            >
-              {t(key as MessageKey)}
-            </button>
+        <ul aria-label={t("assistant.suggestions")} className="mt-4 flex flex-wrap gap-2">
+          {suggestions.map(key => (
+            <li key={key} className="max-w-full">
+              <button
+                type="button"
+                onClick={() => { focusLog.current = true; send(t(key)); }}
+                disabled={busy}
+                className="inline-flex min-h-11 max-w-full items-center rounded-full border border-[#d5dfeb] bg-white px-3.5 text-start text-[13px] leading-5 font-semibold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-9"
+              >
+                {t(key)}
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       <div aria-live="polite">
@@ -118,39 +145,44 @@ export function ProductAssistant({ product }: { product: Pick<Product, "title" |
         {chat.error && !contact ? <p className="mt-3 text-[13px] font-semibold text-[#8c2f22]">{t(gatewayErrorMessage(chat.error))}</p> : null}
       </div>
 
-      <form
-        onSubmit={event => { event.preventDefault(); send(draft); }}
-        className="mt-4 flex items-center gap-2"
-      >
-        <input
-          dir="auto"
-          value={draft}
-          maxLength={MAX_QUESTION}
-          onChange={event => { setDraft(event.target.value); if (chat.error) chat.dismissError(); }}
-          placeholder={t("assistant.placeholder")}
-          aria-label={t("assistant.inputLabel")}
-          aria-invalid={contact || undefined}
-          className="type-body h-11 min-w-0 flex-1 rounded-full border border-[#d5dfeb] bg-white px-4 text-[13px] text-[#0a285a] outline-none focus:border-[#f2683a]"
-        />
-        {busy ? (
-          <button
-            type="button"
-            onClick={chat.stop}
-            aria-label={t("assistant.stop")}
-            className="glass glass-navy pressable grid size-11 shrink-0 place-items-center rounded-full"
-          >
-            <Square className="size-3.5 fill-current" aria-hidden />
-          </button>
-        ) : (
-          <button
-            type="submit"
-            disabled={!acceptableQuestion(draft) || contact}
-            aria-label={t("assistant.send")}
-            className="glass glass-navy pressable grid size-11 shrink-0 place-items-center rounded-full disabled:opacity-50"
-          >
-            <Send className="size-4 rtl:-scale-x-100" aria-hidden />
-          </button>
-        )}
+      {/* One field with its button inside, the search box's shape. The rim is
+          a wrapper in the page's direction and the field inside it takes the
+          question's own (`dir="auto"`): padding on the field itself resolved
+          against that, so on the Arabic page an empty box put its room on the
+          wrong side and the words ran under the button. The shop chat's box
+          has the same shape for the same reason. */}
+      <form onSubmit={event => { event.preventDefault(); send(draft); }} className="mt-3">
+        <div className="flex items-center gap-2 rounded-full border border-[#d5dfeb] bg-white p-1.5 ps-4 focus-within:border-[#0a285a] focus-within:ring-2 focus-within:ring-[#0a285a]/20">
+          <input
+            dir="auto"
+            value={draft}
+            maxLength={MAX_QUESTION}
+            onChange={event => { setDraft(event.target.value); if (chat.error) chat.dismissError(); }}
+            placeholder={t("assistant.placeholder")}
+            aria-label={t("assistant.inputLabel")}
+            aria-invalid={contact || undefined}
+            className="type-body h-9 min-w-0 flex-1 bg-transparent text-[14px] text-[#0a285a] outline-none placeholder:text-[#5b6b82]"
+          />
+          {busy ? (
+            <button
+              type="button"
+              onClick={chat.stop}
+              aria-label={t("assistant.stop")}
+              className="glass glass-navy grid size-9 shrink-0 place-items-center rounded-full"
+            >
+              <Square className="size-3 fill-current" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!acceptableQuestion(draft) || contact}
+              aria-label={t("assistant.send")}
+              className="glass glass-navy grid size-9 shrink-0 place-items-center rounded-full disabled:opacity-40"
+            >
+              <ArrowUp className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
       </form>
     </section>
   );

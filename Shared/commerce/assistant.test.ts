@@ -6,6 +6,8 @@ import {
   MAX_DESCRIPTION,
   MAX_QUESTION,
   MAX_SPEC_ROWS,
+  MAX_SUGGESTIONS,
+  suggestedQuestions,
 } from "./assistant.js";
 
 const product = {
@@ -103,5 +105,33 @@ describe("which presses are worth a model call", () => {
   it("refuses an essay", () => {
     expect(acceptableQuestion("a".repeat(MAX_QUESTION))).toBe(true);
     expect(acceptableQuestion("a".repeat(MAX_QUESTION + 1))).toBe(false);
+  });
+});
+
+describe("the questions offered before anybody types", () => {
+  it("adds the two a department's shoppers ask first, and the rows when there are some", () => {
+    expect(suggestedQuestions(briefFor(product))).toEqual([
+      "assistant.openerWhat", "assistant.askSize", "assistant.askClean", "assistant.openerSpecs",
+    ]);
+  });
+
+  it("asks who it is for when there are no rows to explain", () => {
+    expect(suggestedQuestions({ category: "Beauty", specs: [] })).toEqual([
+      "assistant.openerWhat", "assistant.askUse", "assistant.askSkin", "assistant.openerWho",
+    ]);
+  });
+
+  /* A seller's own type is not a department, so it gets the general three. */
+  it("falls back to the general questions outside a department", () => {
+    expect(suggestedQuestions({ category: "Gadgets", specs: ["Weight: 1 kg"] })).toEqual([
+      "assistant.openerWhat", "assistant.openerSpecs", "assistant.openerWho",
+    ]);
+    expect(suggestedQuestions({ category: null, specs: [] })).toEqual(["assistant.openerWhat", "assistant.openerWho"]);
+  });
+
+  it("never offers more than fit on a phone's two lines", () => {
+    for (const category of ["Electronics", "Home & Kitchen", "Beauty", "Style", "Grocery", null]) {
+      expect(suggestedQuestions({ category, specs: ["Colour: Black"] }).length).toBeLessThanOrEqual(MAX_SUGGESTIONS);
+    }
   });
 });

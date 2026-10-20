@@ -37,6 +37,7 @@
  * on one product page.
  */
 import type { Product } from "./types.js";
+import type { MessageKey } from "../i18n/dictionary.js";
 
 /** Long enough for a real question, short enough that the box is not a form. */
 export const MAX_QUESTION = 300;
@@ -121,14 +122,36 @@ export function acceptableQuestion(question: string): boolean {
 }
 
 /**
- * The openers offered before anybody types.
+ * The questions offered before anybody types, fitted to the product.
  *
  * Message keys, not sentences, because they are rendered in two languages —
  * and they are questions about *this* product rather than about the shop, so
- * the first press is answered from the listing rather than from nothing.
+ * the first press is answered from the listing rather than from nothing. Three
+ * openers were the same for a sofa and a face cream; a department now adds the
+ * two things somebody shopping in it asks first (what is in the box, how a
+ * shirt runs, what is in the jar), and "Explain the specifications" is offered
+ * only when the listing has rows to explain. Every one is a question the
+ * listing can answer or the model can say it does not — never a price, a stock
+ * level or a delivery date, which the prompt refuses and the page already says.
  */
-export const ASSISTANT_OPENERS = [
-  "assistant.openerWhat",
-  "assistant.openerWho",
-  "assistant.openerSpecs",
-] as const;
+const DEPARTMENT_QUESTIONS: Record<string, readonly [MessageKey, MessageKey]> = {
+  "electronics": ["assistant.askBox", "assistant.askConnect"],
+  "home & kitchen": ["assistant.askSize", "assistant.askClean"],
+  "beauty": ["assistant.askUse", "assistant.askSkin"],
+  "style": ["assistant.askMaterial", "assistant.askFit"],
+  "grocery": ["assistant.askIngredients", "assistant.askStore"],
+};
+
+/** At most this many, so the row stays one or two lines on a phone. */
+export const MAX_SUGGESTIONS = 4;
+
+export function suggestedQuestions(brief: Pick<ProductBrief, "category" | "specs">): MessageKey[] {
+  const department = DEPARTMENT_QUESTIONS[(brief.category ?? "").trim().toLowerCase()] ?? [];
+  const keys: MessageKey[] = [
+    "assistant.openerWhat",
+    ...department,
+    ...(brief.specs.length ? ["assistant.openerSpecs" as const] : []),
+    "assistant.openerWho",
+  ];
+  return keys.slice(0, MAX_SUGGESTIONS);
+}

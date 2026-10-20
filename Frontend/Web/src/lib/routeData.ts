@@ -49,6 +49,10 @@ export function prefetchRouteData(
     ask(utils.commerce.products.list.prefetch(catalogInput(HEADER_SHELF, locale)));
     ask(utils.commerce.departmentCounts.prefetch());
     ask(utils.features.states.prefetch());
+    /* Whether the assistants can answer: the corner button on every page and
+       the product page's panel under its photo, which otherwise appeared a
+       round trip after the page and moved what was under it. */
+    ask(utils.ai.available.prefetch());
   }
 
   const product = /^\/products\/([^/?#]+)\/?$/.exec(path);

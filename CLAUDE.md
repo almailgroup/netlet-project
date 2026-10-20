@@ -2212,6 +2212,33 @@ so the worst a success buys is one wrong paragraph on one product page.
 every page view, most for somebody who came to look at the photograph, and
 would put generated text above the merchant's own words by default.
 
+**It sits under the photo, on the owner's word**, who could not find it as
+the last thing in the buy box under four policy sections. On a wide screen it
+is in the photo's column, which is sticky beside the buy box; with the panel
+in it that column can be taller than the screen, so `useStickyFoot` sticks it
+at the header's foot while it fits and otherwise with its foot just above the
+bottom of the screen — stuck at the usual offset, the box would have been off
+the bottom for as long as the buy box scrolled. **On a phone it follows
+everything that buys** (after Ask the seller, before the policy sections):
+under the photo it would push the price and Add to cart off the first screen.
+One place at a time (`useMediaQuery`), never both with one hidden.
+
+**It is one card, and its questions are fitted to the product.** A line saying
+what it is and that the answers are a model's from this listing, the
+suggestions, and one field with its button inside — the rim on a wrapper in
+the page's direction and the field in the question's own (`dir="auto"`), the
+shop chat's shape, because padding on a `dir="auto"` field put its room on the
+wrong side of an empty Arabic box and the words ran under the button.
+`suggestedQuestions` (`Shared/commerce/assistant.ts`) is "What is this?", the
+two questions a department's shoppers ask first (what is in the box, how a
+shirt's size runs, what is in the jar, how to store it), "Explain the
+specifications" only when the listing has rows, and "Who is it for?" — at most
+four. After an answer, the model's own follow-ups take their place under the
+latest one. A press on a suggestion moves focus to the conversation, since the
+suggestion is gone by the next frame — never into the box, whose keyboard
+would cover the answer on a phone. `ai.available` is asked as the app starts
+(`routeData`), so the panel comes with the page rather than a round trip later.
+
 **With no gateway the panel is absent, not broken.** Deliberately unlike voice
 and photo search, which render every state because there is a *design* to
 review; an assistant with nothing behind it has nothing to show, and a box
@@ -4455,8 +4482,9 @@ sitemap while the store has something on sale.
 
 **What decides the purchase sits above the fold on a wide screen.** The tabs
 and the assistant came between the price and Add to cart, so at 1366×768 the
-buttons were below the first screen; they follow the buy box now, after the
-express note. On a phone the photo comes first and the buy box directly after
+buttons were below the first screen; the tabs follow the buy box now, after the
+express note, and the assistant is under the photo (see "The product
+assistant"). On a phone the photo comes first and the buy box directly after
 it — a square photo is most of a 390px screen, so "above the fold" is a
 wide-screen promise there and not one a phone can keep.
 
