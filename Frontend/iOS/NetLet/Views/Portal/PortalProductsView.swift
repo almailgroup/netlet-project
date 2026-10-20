@@ -407,7 +407,7 @@ struct StoreRow: Decodable, Hashable, Sendable {
     let name: String
 }
 
-struct StorePage: Decodable, Sendable {
+struct StoreRows: Decodable, Sendable {
     let rows: [StoreRow]
     let total: Int
 }
@@ -417,7 +417,7 @@ extension API {
         let pageSize: Int
     }
 
-    static let vendorRows = Procedure<PageSize, StorePage>(query: "inventory.vendors.list")
+    static let vendorRows = Procedure<PageSize, StoreRows>(query: "inventory.vendors.list")
 }
 
 /// Deleting for good, which asks for the name: the list is a column of

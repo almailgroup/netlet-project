@@ -136,11 +136,7 @@ extension API {
         var amount: Int?
     }
 
-    struct ProductId: Encodable, Sendable {
-        let id: Int
-    }
-
     static let bulkProducts = Procedure<Bulk, BulkResult>(mutation: "inventory.products.bulk")
-    static let deletionCheck = Procedure<ProductId, DeletionCheck>(query: "inventory.products.deletionCheck")
-    static let deleteProduct = Procedure<ProductId, DeletedProduct>(mutation: "inventory.products.delete")
+    static let deletionCheck = Procedure<RowId, DeletionCheck>(query: "inventory.products.deletionCheck")
+    static let deleteProduct = Procedure<RowId, DeletedProduct>(mutation: "inventory.products.delete")
 }
