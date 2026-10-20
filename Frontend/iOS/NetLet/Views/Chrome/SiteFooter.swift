@@ -54,27 +54,33 @@ struct SiteFooter: View {
     }
 
     private var shoppingLinks: [FooterLink] {
-        [
+        var links = [
             FooterLink(title: l.t("footer.allProducts")) { app.push(.department(slug: nil)) },
             FooterLink(title: l.t("footer.newArrivals")) { app.push(.newest) },
             FooterLink(title: l.t("footer.onOffer")) { app.push(.deals) },
             FooterLink(title: l.t("footer.savedItems")) { app.push(.saved) },
         ]
+        // Finding somebody's list, while lists are switched on.
+        if app.features.isOn("wishlists") { links.append(FooterLink(title: l.t("gift.title")) { app.push(.gifts) }) }
+        return links
     }
 
     private var serviceLinks: [FooterLink] {
-        [
-            FooterLink(title: l.t("footer.helpCentre")) { app.openWeb("/help") },
+        var links = [
+            FooterLink(title: l.t("footer.helpCentre")) { app.push(.helpCentre) },
             FooterLink(title: l.t("footer.yourOrders")) { app.openAccount(.orders) },
-            FooterLink(title: l.t("footer.returns")) { app.openWeb("/returns") },
+            FooterLink(title: l.t("footer.returns")) { app.push(.returnsPolicy) },
             FooterLink(title: l.t("footer.account")) { app.select(.account) },
         ]
+        if app.features.isOn("articles") { links.insert(FooterLink(title: l.t("guides.title")) { app.push(.guides) }, at: 1) }
+        return links
     }
 
     private var netletLinks: [FooterLink] {
         [
             FooterLink(title: l.t("stores.title")) { app.push(.stores) },
-            FooterLink(title: l.t("footer.sellWithUs")) { app.openWeb("/sell") },
+            FooterLink(title: l.t("footer.sellWithUs")) { app.push(.sell) },
+            FooterLink(title: l.t("footer.sellerAgreement")) { app.push(.legal(.sellers)) },
         ]
     }
 
@@ -139,10 +145,10 @@ struct SiteFooter: View {
                     }
                 }
                 ContactRow(symbol: "bubble.left.and.bubble.right", label: l.t("help.contactMessage")) {
-                    app.openWeb("/account/help")
+                    if app.session.isSignedIn { app.open(.help) } else { app.authPresented = true }
                 }
                 ContactRow(symbol: "lifepreserver", label: l.t("footer.helpCentre")) {
-                    app.openWeb("/help")
+                    app.push(.helpCentre)
                 }
             }
             .padding(.top, 16)
@@ -232,8 +238,8 @@ struct SiteFooter: View {
             .foregroundStyle(Self.soft)
             .padding(.top, 24)
             HStack(spacing: 20) {
-                Button(l.t("footer.terms")) { app.openWeb("/terms") }
-                Button(l.t("footer.privacy")) { app.openWeb("/privacy") }
+                Button(l.t("footer.terms")) { app.push(.legal(.terms)) }
+                Button(l.t("footer.privacy")) { app.push(.legal(.privacy)) }
             }
             .font(.inter(13))
             .foregroundStyle(Self.soft)

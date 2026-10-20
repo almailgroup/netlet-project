@@ -132,6 +132,11 @@ jobs:
             shot 19-help "$lang" supportThread:1 shopper
             shot 20-rewards "$lang" section:rewards shopper
             shot 21-affiliate "$lang" section:affiliate shopper
+            shot 22-help "$lang" page:help ""
+            shot 23-terms "$lang" page:terms ""
+            shot 24-guide "$lang" page:guides/how-to-return-an-item ""
+            shot 25-gift-list "$lang" page:gifts/3Uw_z-D7MEV5zRx9dULTA3MyjvZLZnm9 ""
+            shot 26-sell "$lang" page:sell shopper
           done
           ls -1 build/previews
 

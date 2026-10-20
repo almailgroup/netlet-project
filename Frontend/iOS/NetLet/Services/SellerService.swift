@@ -8,6 +8,7 @@ protocol SellerServicing: Sendable {
     func create(_ listing: API.NewListing) async throws -> CreatedListing
     func publish(id: Int) async throws -> String
     func upload(jpeg: Data) async throws -> UploadedPhoto
+    func uploadDocument(kind: String, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
 }
 
 struct SellerService: SellerServicing {
@@ -37,6 +38,26 @@ struct SellerService: SellerServicing {
         request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = jpeg
+        return try await send(request, fallback: "media.failed")
+    }
+
+    /// A paper for a store application goes up on its own route too
+    /// (`POST /api/applications/documents`), never to `/media`: a civil ID must
+    /// not be public at any address. The server reads what the file is from
+    /// its first bytes and refuses one that is not what it says.
+    func uploadDocument(kind: String, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument {
+        var request = URLRequest(url: client.configuration.url(path: "/api/applications/documents"))
+        request.httpMethod = "POST"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue(kind, forHTTPHeaderField: "X-NetLet-Document-Kind")
+        request.setValue(fileName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "document", forHTTPHeaderField: "X-NetLet-File-Name")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = data
+        return try await send(request, fallback: "documents.failed")
+    }
+
+    /// Sends a raw upload and reads its answer, or the key it was refused with.
+    private func send<Answer: Decodable>(_ request: URLRequest, fallback: String) async throws -> Answer {
         let answer: (Data, HTTPURLResponse)
         do {
             answer = try await client.transport.send(request)
@@ -46,13 +67,18 @@ struct SellerService: SellerServicing {
         let (data, response) = answer
         if (200..<300).contains(response.statusCode) {
             do {
-                return try JSONDecoder().decode(UploadedPhoto.self, from: data)
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .custom { decoder in
+                    let text = try decoder.singleValueContainer().decode(String.self)
+                    return ISO8601.withFraction.date(from: text) ?? ISO8601.plain.date(from: text) ?? Date()
+                }
+                return try decoder.decode(Answer.self, from: data)
             } catch {
                 throw APIError.decoding(String(describing: error))
             }
         }
         struct Refusal: Decodable { let error: String }
-        let reason = (try? JSONDecoder().decode(Refusal.self, from: data))?.error ?? "media.failed"
+        let reason = (try? JSONDecoder().decode(Refusal.self, from: data))?.error ?? fallback
         let code = response.statusCode == 401 ? "UNAUTHORIZED" : response.statusCode == 403 ? "FORBIDDEN" : response.statusCode == 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST"
         throw APIError.server(code: code, message: reason, status: response.statusCode)
     }

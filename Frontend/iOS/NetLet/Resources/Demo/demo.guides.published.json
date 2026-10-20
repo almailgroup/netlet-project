@@ -1,0 +1,40 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "slug": "how-to-add-your-first-product",
+          "audience": "seller",
+          "title": "How to add your first product",
+          "titleAr": "كيف تضيف منتجك الأول",
+          "summary": "From the portal's Products page to a listing on the shop.",
+          "summaryAr": "من صفحة المنتجات في البوابة إلى منتج معروض في المتجر.",
+          "imageUrl": "/media/CdpICfnfQ6AIAmo5reyjlitV.webp",
+          "stepCount": 2,
+          "publishedAt": "2026-10-18T19:37:29.746Z"
+        },
+        {
+          "slug": "how-to-return-an-item",
+          "audience": "shopper",
+          "title": "How to return an item",
+          "titleAr": "كيف تُرجع منتجاً",
+          "summary": "Start a return from your orders in three short steps, within 14 days of delivery.",
+          "summaryAr": "ابدأ الإرجاع من طلباتك في ثلاث خطوات قصيرة، خلال 14 يوماً من التوصيل.",
+          "imageUrl": "/media/LbtfvtL9lnOShrXz_N_cCXYF.webp",
+          "stepCount": 3,
+          "publishedAt": "2026-10-18T19:37:29.685Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.publishedAt": [
+            "Date"
+          ],
+          "1.publishedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

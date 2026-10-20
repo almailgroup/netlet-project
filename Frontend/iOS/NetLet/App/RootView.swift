@@ -1,4 +1,3 @@
-import SafariServices
 import SwiftUI
 
 /// The app's frame: the web's four phone tabs — Home, Profile, Cart,
@@ -61,10 +60,6 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.2), value: app.searchOpen)
         .animation(.easeOut(duration: 0.25), value: app.toastMessage)
         .task(id: l.current) { await app.shelf.load(language: l.current) }
-        .sheet(item: $app.webPage) { page in
-            WebPageView(url: page.url)
-                .ignoresSafeArea()
-        }
         .sheet(isPresented: $app.authPresented) {
             NavigationStack {
                 AuthView(inSheet: true)
@@ -113,21 +108,6 @@ private struct ToastView: View {
     }
 }
 
-/// One of the website's own pages, in the system's browser sheet — help,
-/// returns, selling, the terms — with the shop's navy for its controls.
-private struct WebPageView: UIViewControllerRepresentable {
-    let url: URL
-
-    func makeUIViewController(context: Context) -> SFSafariViewController {
-        let controller = SFSafariViewController(url: url)
-        controller.preferredControlTintColor = UIColor(Brand.navy)
-        controller.dismissButtonStyle = .close
-        return controller
-    }
-
-    func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
-}
-
 extension View {
     /// Every screen a `Route` names, so any stack can open any of them.
     func routes(path: Binding<NavigationPath>? = nil) -> some View {
@@ -173,6 +153,14 @@ private struct RouteDestination: View {
         case .rewards: RewardsView()
         case .affiliate: AffiliateView()
         case .subscriptions: SubscriptionsView()
+        case .helpCentre: HelpCentreView()
+        case .returnsPolicy: ReturnsPolicyView()
+        case .legal(let document): LegalView(document: document)
+        case .guides: GuidesView()
+        case .guide(let slug): GuideView(slug: slug)
+        case .gifts: GiftLookupView()
+        case .gift(let token): GiftListView(token: token)
+        case .sell: SellView()
         }
     }
 }

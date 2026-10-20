@@ -109,7 +109,8 @@ final class CheckoutViewModel: AddressPartsEditing {
             contactPhone: PhoneNumber.normalise(contactPhone),
             deliveryZoneId: governorate,
             addressNotes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            addressParts: cleaned
+            addressParts: cleaned,
+            giftClaims: HeldClaims.all(defaults).map { API.GiftClaim(token: $0.token, productId: $0.productId) }.nilIfEmpty
         )
         do {
             let placed = try await orders.place(order)

@@ -190,7 +190,37 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(standing.isEmpty)
     }
 
+    func testTheFootersPages() async throws {
+        let content = try XCTUnwrap(SiteContent.shared, "content.json is bundled")
+        XCTAssertFalse(content.help.groups.isEmpty)
+        XCTAssertEqual(content.legal.figures["days"], "\(ReferenceData.shared.rules.returnWindowDays)")
+        XCTAssertNotNil(content.legal.documents["terms"])
+        XCTAssertNotNil(content.legal.documents["sellers"])
+        XCTAssertTrue(content.selling.documentTypes.contains("application/pdf"))
+
+        let guides = try await client.call(API.guides)
+        let guide = try await client.call(API.guide, .init(slug: try XCTUnwrap(guides.first { $0.audience == "shopper" }).slug))
+        XCTAssertEqual(guide?.steps.count, guides.first { $0.slug == guide?.slug }?.stepCount)
+        XCTAssertEqual(pickGuideText(.ar, en: "Return", ar: "").language, .en, "an Arabic page falls back to the English that was written")
+
+        let list = try await client.call(API.giftList, .init(token: "3Uw_z-D7MEV5zRx9dULTA3MyjvZLZnm9"))
+        XCTAssertEqual(list?.items.first?.state, "available")
+        let byPhone = try await client.call(API.giftListsByPhone, .init(phone: "+96555001122"))
+        XCTAssertEqual(byPhone.first?.token, list?.token)
+
+        let found = try await client.call(API.lookupOrder, .init(reference: "NL-20261019-GNVRV", email: "noura@shop.test"))
+        XCTAssertFalse(try XCTUnwrap(found).lines.isEmpty)
+
+        let application = try await client.call(API.myApplication)
+        XCTAssertNil(application)
+        _ = try await client.call(API.applicationDocuments)
+    }
+
     func testALinkOnTheSiteOpensItsScreen() {
+        XCTAssertEqual(Route.from(link: "/help"), .helpCentre)
+        XCTAssertEqual(Route.from(link: "/seller-agreement"), .legal(.sellers))
+        XCTAssertEqual(Route.from(link: "/guides/how-to-return-an-item"), .guide(slug: "how-to-return-an-item"))
+        XCTAssertEqual(Route.from(link: "/gifts/abc12345"), .gift(token: "abc12345"))
         XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
         XCTAssertEqual(Route.from(link: "/account/messages"), .messages)
         XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))

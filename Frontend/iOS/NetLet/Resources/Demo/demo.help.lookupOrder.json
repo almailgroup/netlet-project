@@ -1,0 +1,48 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "reference": "NL-20261019-GNVRV",
+        "placedAt": "2026-10-19T17:43:56.836Z",
+        "status": "pending_payment",
+        "lines": [
+          {
+            "title": "Smart watch",
+            "variantTitle": "Default",
+            "quantity": 3,
+            "fulfilment": "pending",
+            "deliveredAt": null
+          },
+          {
+            "title": "Wireless earbuds",
+            "variantTitle": "Default",
+            "quantity": 1,
+            "fulfilment": "pending",
+            "deliveredAt": null
+          },
+          {
+            "title": "Bluetooth speaker",
+            "variantTitle": "Default",
+            "quantity": 1,
+            "fulfilment": "pending",
+            "deliveredAt": null
+          },
+          {
+            "title": "Ceramic mug set of four",
+            "variantTitle": "Default",
+            "quantity": 1,
+            "fulfilment": "pending",
+            "deliveredAt": null
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "placedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

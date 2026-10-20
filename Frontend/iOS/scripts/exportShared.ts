@@ -47,6 +47,12 @@ import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../.
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { MAX_MESSAGE_LENGTH } from "../../../Shared/commerce/contactFilter.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
+import { HELP_GROUPS, MAX_HELP_QUESTION } from "../../../Shared/commerce/helpArticles.js";
+import { LEGAL_UPDATED, PRIVACY, SELLER_TERMS, TERMS } from "../../Web/src/content/legal.js";
+import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
+import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
+import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
+import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "../../../Shared/inventory/applicationDocuments.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -181,6 +187,44 @@ export function buildResources(): Record<string, string> {
       },
     }),
     "assets.json": json(buildAssets().manifest),
+    "content.json": json(buildContent()),
+  };
+}
+
+/**
+ * The pages that are words: the help page's answers, the three legal
+ * documents and the seller application's rules — message keys and the
+ * figures their sentences are drawn with, never the sentences themselves,
+ * so the app's terms cannot quote a rate or a window the code does not use.
+ */
+export function buildContent() {
+  return {
+    help: { groups: HELP_GROUPS, maxQuestion: MAX_HELP_QUESTION },
+    legal: {
+      updated: LEGAL_UPDATED,
+      /* What `pages/Legal.tsx` draws every sentence with. */
+      figures: {
+        days: RETURN_WINDOW_DAYS,
+        commission: Number(DEFAULT_COMMISSION_PERCENT),
+        codDays: SETTLEMENT_DAYS.cod.min,
+        askDays: ASK_WINDOW_DAYS,
+        offerDays: OFFER_WINDOW_DAYS,
+        version: AGREEMENT_VERSION,
+      },
+      documents: {
+        terms: { title: "terms.title", intro: "terms.intro", plain: "terms.introPlain", sections: TERMS },
+        privacy: { title: "privacy.title", intro: "privacy.intro", plain: "privacy.introPlain", sections: PRIVACY },
+        sellers: { title: "sellerTerms.title", intro: "sellerTerms.intro", plain: "sellerTerms.introPlain", sections: SELLER_TERMS },
+      },
+    },
+    selling: {
+      agreementVersion: AGREEMENT_VERSION,
+      defaultCommission: DEFAULT_COMMISSION_PERCENT,
+      maxCommissionNote: MAX_COMMISSION_NOTE,
+      documentKinds: DOCUMENT_KINDS,
+      documentTypes: DOCUMENT_TYPES,
+      maxDocumentBytes: MAX_DOCUMENT_BYTES,
+    },
   };
 }
 

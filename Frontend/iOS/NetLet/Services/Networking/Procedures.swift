@@ -182,6 +182,8 @@ enum API {
         var deliveryZoneId: String?
         var addressNotes: String?
         var addressParts: AddressParts?
+        /// The presents a guest took on this phone, so the order marks them bought.
+        var giftClaims: [GiftClaim]?
     }
 
     static let orders = Procedure<OrderList, OrderPage>(query: "orders.list")

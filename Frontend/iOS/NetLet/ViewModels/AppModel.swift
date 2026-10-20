@@ -40,6 +40,15 @@ enum Route: Hashable {
     case rewards
     case affiliate
     case subscriptions
+    // The pages the footer leads to.
+    case helpCentre
+    case returnsPolicy
+    case legal(LegalDocument)
+    case guides
+    case guide(slug: String)
+    case gifts
+    case gift(token: String)
+    case sell
 
     /// The screen a link on the site names — a notice's link, an answer's,
     /// the footer's — or nil for one the app has no screen for. Nothing
@@ -56,6 +65,16 @@ enum Route: Hashable {
         case ("search"?, _): return .search(query: query["q"] ?? "")
         case ("saved"?, _): return .saved
         case ("checkout"?, _): return .checkout
+        case ("help"?, _): return .helpCentre
+        case ("returns"?, _): return .returnsPolicy
+        case ("terms"?, _): return .legal(.terms)
+        case ("privacy"?, _): return .legal(.privacy)
+        case ("seller-agreement"?, _): return .legal(.sellers)
+        case ("guides"?, 1): return .guides
+        case ("guides"?, 2): return .guide(slug: segments[1])
+        case ("gifts"?, 1): return .gifts
+        case ("gifts"?, 2): return .gift(token: segments[1])
+        case ("sell"?, _): return .sell
         case ("account"?, 1): return nil
         case ("account"?, _):
             switch segments[1] {
@@ -114,15 +133,6 @@ final class AppModel {
     let signals: AccountSignals
     /// The one short message showing, top-centre under the header (`sonner`).
     private(set) var toastMessage: Toast?
-    /// A page the app does not draw itself — help, returns, selling, the
-    /// terms — shown from the website in a sheet over the app.
-    var webPage: WebPage?
-
-    struct WebPage: Identifiable {
-        let url: URL
-        var id: String { url.absoluteString }
-    }
-
     struct Toast: Identifiable, Equatable {
         let id = UUID()
         let text: String
@@ -240,6 +250,11 @@ final class AppModel {
             guard let id = value.flatMap(Int.init) else { return }
             accountPath = NavigationPath([Route.messages, Route.sellerThread(id: id)])
             selectedTab = .account
+        case "page":
+            // `page:help`, `page:terms`, `page:guides/how-to-return-an-item` — a footer page, by its web address.
+            guard let value, let route = Route.from(link: "/\(value)") else { return }
+            selectedTab = .home
+            homePath = NavigationPath([route])
         case "supportThread":
             guard let id = value.flatMap(Int.init) else { return }
             accountPath = NavigationPath([Route.help, Route.supportThread(id: id)])
@@ -269,12 +284,6 @@ final class AppModel {
             try? await Task.sleep(for: .seconds(2.6))
             if toastMessage == shown { toastMessage = nil }
         }
-    }
-
-    /// Opens one of the website's own pages over the app: what the app does
-    /// not draw itself is still a press away, never a dead link.
-    func openWeb(_ path: String) {
-        webPage = WebPage(url: services.configuration.url(path: path))
     }
 
     /// A link on the site, opened in the app: an account screen on the Profile
