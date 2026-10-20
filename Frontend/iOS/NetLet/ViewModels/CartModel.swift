@@ -73,6 +73,31 @@ final class CartModel {
         }
     }
 
+    /// Adds lines that carry extras or belong to a set — one call, so a set
+    /// goes in whole or not at all.
+    @discardableResult
+    func add(lines: [API.CartLine]) async -> Bool {
+        lastError = nil
+        let first = cart == nil
+        if first { settling = true }
+        defer { if first { settling = false } }
+        do {
+            if let id = cartId, let updated = try await service.addLines(id, lines: lines) {
+                store(updated)
+                return true
+            }
+            if cartId != nil { forget() }
+            if let made = try await service.addLines(nil, lines: lines) {
+                store(made)
+                return true
+            }
+            return false
+        } catch {
+            lastError = APIError.from(error)
+            return false
+        }
+    }
+
     /// Sets a line's quantity; zero takes it out.
     func setQuantity(lineId: String, to quantity: Int) async {
         guard let id = cartId else { return }

@@ -271,3 +271,77 @@ extension API {
     static let standingOrders = Procedure<NoInput, [StandingOrder]>(query: "subscriptions.mine")
     static let changeStandingOrder = Procedure<StandingOrderChange, Acknowledged>(mutation: "subscriptions.change")
 }
+
+/// The product page's own calls, beyond the product itself.
+extension API {
+    struct ProductReviewsInput: Encodable, Sendable {
+        let productId: String
+        let limit: Int
+    }
+
+    struct ProductId: Encodable, Sendable {
+        let productId: String
+    }
+
+    struct TogetherInput: Encodable, Sendable {
+        let productId: String
+        let limit: Int
+        let locale: String
+    }
+
+    struct VariantIds: Encodable, Sendable {
+        let variantIds: [Int]
+    }
+
+    struct VariantId: Encodable, Sendable {
+        let variantId: Int
+    }
+
+    struct VariantText: Encodable, Sendable {
+        let variantId: String
+    }
+
+    struct AskPrice: Encodable, Sendable {
+        let variantId: Int
+        let askedPrice: String
+        let quantity: Int
+        let note: String?
+
+        private enum CodingKeys: String, CodingKey { case variantId, askedPrice, quantity, note }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(variantId, forKey: .variantId)
+            try container.encode(askedPrice, forKey: .askedPrice)
+            try container.encode(quantity, forKey: .quantity)
+            try container.encode(note, forKey: .note)
+        }
+    }
+
+    struct Follow: Encodable, Sendable {
+        let productId: String
+        var priceDrop: Bool?
+        var backInStock: Bool?
+    }
+
+    struct Subscribe: Encodable, Sendable {
+        let variantId: Int
+        let quantity: Int
+        let intervalWeeks: Int
+        let addressId: Int
+        let firstRunOn: String
+    }
+
+    static let productReviews = Procedure<ProductReviewsInput, ProductReviewsPage>(query: "reviews.forProduct")
+    static let boughtTogether = Procedure<TogetherInput, [Complement]>(query: "together.forProduct")
+    static let bundles = Procedure<VariantText, [ProductBundle]>(query: "commerce.bundlesForVariant")
+    /// Which of these variants take price requests.
+    static let priceRequestsOpen = Procedure<VariantIds, [Int]>(query: "offers.openOn")
+    static let myPriceRequest = Procedure<VariantId, HeldPriceRequest?>(query: "offers.mine")
+    static let askForPrice = Procedure<AskPrice, Acknowledged>(mutation: "offers.request")
+    static let follows = Procedure<NoInput, [ProductFollow]>(query: "customer.follows.list")
+    static let setFollow = Procedure<Follow, Acknowledged>(mutation: "customer.follows.set")
+    static let followers = Procedure<ProductId, Int>(query: "customer.follows.demand")
+    static let fit = Procedure<ProductId, FitFeedback>(query: "returns.fit")
+    static let subscribe = Procedure<Subscribe, StartedSubscription>(mutation: "subscriptions.create")
+}

@@ -58,6 +58,10 @@ enum API {
     struct CartLine: Encodable, Sendable {
         let variantId: String
         let quantity: Int
+        /// The extras ticked on this line, by id; their price is the catalogue's.
+        var addonIds: [String]? = nil
+        /// The set that put this line here; the server splits its price.
+        var bundleId: Int? = nil
     }
 
     struct CartCreate: Encodable, Sendable {

@@ -77,9 +77,13 @@ struct SellerService: SellerServicing {
                 throw APIError.decoding(String(describing: error))
             }
         }
-        struct Refusal: Decodable { let error: String }
-        let reason = (try? JSONDecoder().decode(Refusal.self, from: data))?.error ?? fallback
+        let reason = (try? JSONDecoder().decode(UploadRefusal.self, from: data))?.error ?? fallback
         let code = response.statusCode == 401 ? "UNAUTHORIZED" : response.statusCode == 403 ? "FORBIDDEN" : response.statusCode == 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST"
         throw APIError.server(code: code, message: reason, status: response.statusCode)
     }
+}
+
+/// What an upload route answers when it refuses: `{ "error": "media.…" }`.
+private struct UploadRefusal: Decodable {
+    let error: String
 }

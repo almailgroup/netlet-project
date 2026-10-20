@@ -21,6 +21,15 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let variants: [ProductVariant]
     let deliverySpeed: String?
     let deliveryProvider: String?
+    /// Optional extras, a size chart and Subscribe & Save, where the seller offers them.
+    let addons: [ProductAddon]?
+    let sizeChart: SizeChart?
+    let subscription: SubscriptionOffer?
+
+    struct SubscriptionOffer: Decodable, Hashable, Sendable {
+        /// Already zero when the store's discount permit is not valid.
+        let savingPercent: Double
+    }
 
     /// The first variant that can be bought, or the first at all: what a card
     /// adds and what the price on a card describes.

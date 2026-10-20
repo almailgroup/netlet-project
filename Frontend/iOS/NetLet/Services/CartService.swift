@@ -8,6 +8,25 @@ protocol CartServicing: Sendable {
     /// Nil when the server no longer has the bag.
     func add(_ cartId: String, variantId: String, quantity: Int) async throws -> Cart?
     func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart?
+    /// Lines with their extras or their set: into the bag, or a new bag with them.
+    func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart?
+}
+
+extension CartServicing {
+    /// A stand-in that knows only plain lines adds them one at a time.
+    func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart? {
+        var current: Cart?
+        var id = cartId
+        for line in lines {
+            if let id {
+                current = try await add(id, variantId: line.variantId, quantity: line.quantity)
+            } else {
+                current = try await create(variantId: line.variantId, quantity: line.quantity)
+            }
+            id = current?.id
+        }
+        return current
+    }
 }
 
 struct CartService: CartServicing {
@@ -27,5 +46,10 @@ struct CartService: CartServicing {
 
     func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart? {
         try await client.call(API.updateCart, .init(cartId: cartId, lines: [.init(lineId: lineId, quantity: quantity)]))
+    }
+
+    func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart? {
+        if let cartId { return try await client.call(API.addToCart, .init(cartId: cartId, lines: lines)) }
+        return try await client.call(API.createCart, .init(lines: lines))
     }
 }
