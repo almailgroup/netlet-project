@@ -1,0 +1,278 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "variantId": 20,
+          "productTitle": "Bluetooth speaker",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 69,
+          "productTitle": "Bluetooth speaker",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 30,
+          "productTitle": "-0",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 76,
+          "productTitle": "-0",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 29,
+          "productTitle": "-1.000",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 74,
+          "productTitle": "-1.000",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 19,
+          "productTitle": "1",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 65,
+          "productTitle": "1",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 26,
+          "productTitle": "1e999",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 72,
+          "productTitle": "1e999",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 27,
+          "productTitle": "9999999999999999999999999999999999999999",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 73,
+          "productTitle": "9999999999999999999999999999999999999999",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 21,
+          "productTitle": "<img src=x onerror=alert(1)>",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 67,
+          "productTitle": "<img src=x onerror=alert(1)>",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 135,
+          "productTitle": "Bluetooth speaker",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 39,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 4,
+          "productTitle": "Gaming console (pre-order)",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 25
+        },
+        {
+          "variantId": 23,
+          "productTitle": "Infinity",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 70,
+          "productTitle": "Infinity",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 10,
+          "productTitle": "Linen shirt",
+          "variantTitle": "S",
+          "sku": "SHIRT-S",
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 11,
+          "productTitle": "Linen shirt",
+          "variantTitle": "M",
+          "sku": "SHIRT-M",
+          "stock": 42,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 12,
+          "productTitle": "Linen shirt",
+          "variantTitle": "L",
+          "sku": "SHIRT-L",
+          "stock": 49,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 13,
+          "productTitle": "Linen shirt",
+          "variantTitle": "XL",
+          "sku": "SHIRT-XL",
+          "stock": 49,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 22,
+          "productTitle": null,
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 66,
+          "productTitle": null,
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 134,
+          "productTitle": "Power bank 20000 mAh",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 40,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 3,
+          "productTitle": "Smart watch",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 41,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 2,
+          "productTitle": "USB-C charger 65W",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 35,
+          "centreId": 1,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 133,
+          "productTitle": "Wireless earbuds",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 37,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 1,
+          "productTitle": "Bluetooth speaker",
+          "variantTitle": "Default",
+          "sku": null,
+          "stock": 84,
+          "centreId": null,
+          "preorderStock": 0
+        },
+        {
+          "variantId": 14,
+          "productTitle": "Bluetooth speaker",
+          "variantTitle": "Default",
+          "sku": "Bluetooth speaker",
+          "stock": 50,
+          "centreId": null,
+          "preorderStock": 0
+        }
+      ]
+    }
+  }
+}

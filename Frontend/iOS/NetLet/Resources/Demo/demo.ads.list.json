@@ -1,0 +1,80 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 6,
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Smart watch",
+            "productHandle": "smart-watch",
+            "slot": "home_banner",
+            "departmentName": null,
+            "departmentNameAr": null,
+            "startsOn": "2026-10-12",
+            "endsOn": "2026-10-19",
+            "cancelledOn": null,
+            "dailyRate": "25.000",
+            "total": "175.000",
+            "state": "ended",
+            "accrued": "200.000",
+            "deducted": "0.000",
+            "cancellable": false,
+            "banner": {
+              "status": "approved",
+              "imageUrl": "/media/-VdqcZ9h3bSNMcTqQ2jMdpqu.webp",
+              "headline": "Brighter evenings, half the bill",
+              "headlineAr": "أمسيات أكثر إشراقاً بنصف التكلفة",
+              "note": null,
+              "permit": "valid"
+            }
+          },
+          {
+            "id": 5,
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Smart watch",
+            "productHandle": "smart-watch",
+            "slot": "department",
+            "departmentName": "Electronics",
+            "departmentNameAr": "إلكترونيات",
+            "startsOn": "2026-10-04",
+            "endsOn": "2026-10-04",
+            "cancelledOn": null,
+            "dailyRate": "3.000",
+            "total": "3.000",
+            "state": "ended",
+            "accrued": "3.000",
+            "deducted": "3.000",
+            "cancellable": false,
+            "banner": null
+          },
+          {
+            "id": 4,
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Smart watch",
+            "productHandle": "smart-watch",
+            "slot": "home",
+            "departmentName": null,
+            "departmentNameAr": null,
+            "startsOn": "2026-10-04",
+            "endsOn": "2026-10-04",
+            "cancelledOn": null,
+            "dailyRate": "10.000",
+            "total": "10.000",
+            "state": "ended",
+            "accrued": "10.000",
+            "deducted": "10.000",
+            "cancellable": false,
+            "banner": null
+          }
+        ],
+        "total": 3,
+        "page": 1,
+        "pageSize": 20
+      }
+    }
+  }
+}

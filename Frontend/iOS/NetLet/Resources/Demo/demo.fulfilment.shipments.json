@@ -1,0 +1,537 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 39,
+            "reference": "IN-20261011-X9ZCF",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": null,
+            "createdAt": "2026-10-11T20:37:31.450Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 39,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 38,
+            "reference": "IN-20261011-D84EM",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "-1.000",
+            "createdAt": "2026-10-11T20:37:31.450Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 37,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 37,
+            "reference": "IN-20261011-MUPZ3",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "9999999999999999999999999999999999999999",
+            "createdAt": "2026-10-11T20:37:31.450Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 38,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 36,
+            "reference": "IN-20261011-JPVR2",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "-0",
+            "createdAt": "2026-10-11T20:37:31.449Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 34,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 35,
+            "reference": "IN-20261011-H8VTK",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "1e999",
+            "createdAt": "2026-10-11T20:37:31.449Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 35,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 33,
+            "reference": "IN-20261011-EBFUM",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "مرحبا",
+            "createdAt": "2026-10-11T20:37:31.449Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 33,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 32,
+            "reference": "IN-20261011-9PTYC",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "👍🏽🇰🇼",
+            "createdAt": "2026-10-11T20:37:31.449Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 32,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 34,
+            "reference": "IN-20261011-A6FFX",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "Infinity",
+            "createdAt": "2026-10-11T20:37:31.448Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 36,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 29,
+            "reference": "IN-20261011-8HAFG",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "Bluetooth speaker",
+            "createdAt": "2026-10-11T20:37:31.430Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 28,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 30,
+            "reference": "IN-20261011-8XDZE",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": null,
+            "createdAt": "2026-10-11T20:37:31.429Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 31,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 28,
+            "reference": "IN-20261011-UR3J3",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "<img src=x onerror=alert(1)>",
+            "createdAt": "2026-10-11T20:37:31.429Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 29,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 31,
+            "reference": "IN-20261011-NY6ZZ",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "1",
+            "createdAt": "2026-10-11T20:37:31.428Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 30,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 27,
+            "reference": "IN-20261011-494T6",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": null,
+            "createdAt": "2026-10-11T20:37:31.427Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 27,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 26,
+            "reference": "IN-20261011-TBRJ3",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": null,
+            "createdAt": "2026-10-11T20:37:31.410Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 26,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 25,
+            "reference": "IN-20261011-7H4P7",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "Bluetooth speaker",
+            "createdAt": "2026-10-11T20:37:31.369Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 25,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 24,
+            "reference": "IN-20261011-8X7B9",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "Bluetooth speaker",
+            "createdAt": "2026-10-11T20:37:31.312Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 24,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 23,
+            "reference": "IN-20261011-J2GBP",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "Bluetooth speaker",
+            "createdAt": "2026-10-11T20:37:31.293Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 23,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 22,
+            "reference": "IN-20261004-9W93A",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "-0",
+            "createdAt": "2026-10-04T16:36:57.325Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 22,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 20,
+            "reference": "IN-20261004-QHHVF",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "👍🏽🇰🇼",
+            "createdAt": "2026-10-04T16:36:57.325Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 20,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          },
+          {
+            "id": 19,
+            "reference": "IN-20261004-WGCAP",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "centreName": "Shuwaikh centre",
+            "status": "announced",
+            "note": "1e999",
+            "createdAt": "2026-10-04T16:36:57.324Z",
+            "receivedAt": null,
+            "lines": [
+              {
+                "id": 19,
+                "productTitle": "Bluetooth speaker",
+                "variantTitle": "Default",
+                "sku": null,
+                "expected": 1,
+                "received": null,
+                "short": 0,
+                "over": 0
+              }
+            ]
+          }
+        ],
+        "total": 39,
+        "page": 1,
+        "pageSize": 20
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.1.createdAt": [
+            "Date"
+          ],
+          "rows.2.createdAt": [
+            "Date"
+          ],
+          "rows.3.createdAt": [
+            "Date"
+          ],
+          "rows.4.createdAt": [
+            "Date"
+          ],
+          "rows.5.createdAt": [
+            "Date"
+          ],
+          "rows.6.createdAt": [
+            "Date"
+          ],
+          "rows.7.createdAt": [
+            "Date"
+          ],
+          "rows.8.createdAt": [
+            "Date"
+          ],
+          "rows.9.createdAt": [
+            "Date"
+          ],
+          "rows.10.createdAt": [
+            "Date"
+          ],
+          "rows.11.createdAt": [
+            "Date"
+          ],
+          "rows.12.createdAt": [
+            "Date"
+          ],
+          "rows.13.createdAt": [
+            "Date"
+          ],
+          "rows.14.createdAt": [
+            "Date"
+          ],
+          "rows.15.createdAt": [
+            "Date"
+          ],
+          "rows.16.createdAt": [
+            "Date"
+          ],
+          "rows.17.createdAt": [
+            "Date"
+          ],
+          "rows.18.createdAt": [
+            "Date"
+          ],
+          "rows.19.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

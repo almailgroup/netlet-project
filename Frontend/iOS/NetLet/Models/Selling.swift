@@ -30,6 +30,13 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
         let price: Money
         let stock: Int
         var sku: String? = nil
+        var title: String? = nil
+
+        /// Its own name, unless it is the "Default" a single-variant product has.
+        var option: String? {
+            guard let title, !title.isEmpty, title != "Default" else { return nil }
+            return title
+        }
     }
 
     struct Image: Decodable, Hashable, Sendable {

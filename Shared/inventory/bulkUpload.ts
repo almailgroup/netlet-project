@@ -261,7 +261,7 @@ export function planUpload(text: string, categories: string[] = DEPARTMENTS.map(
  * Arabic is here because half this catalog is typed in it, and an importer
  * that only understands English titles auto-categorises half a shop.
  */
-const DEPARTMENT_WORDS: Record<string, string[]> = {
+export const DEPARTMENT_WORDS: Record<string, string[]> = {
   electronics: [
     "laptop", "phone", "mobile", "tablet", "camera", "headphone", "earbud", "speaker", "tv", "television",
     "monitor", "charger", "cable", "console", "router", "printer", "watch", "smart",

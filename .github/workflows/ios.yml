@@ -143,6 +143,9 @@ jobs:
             shot 30-portal-products "$lang" portal:/admin/products shopper
             shot 31-portal-orders "$lang" portal:/admin/orders shopper
             shot 32-portal-payouts "$lang" portal:/admin/payouts shopper
+            shot 33-portal-editor "$lang" portal:/admin/products/10 shopper
+            shot 34-portal-fulfilment "$lang" portal:/admin/fulfilment shopper
+            shot 35-portal-ads "$lang" portal:/admin/ads shopper
           done
           ls -1 build/previews
 

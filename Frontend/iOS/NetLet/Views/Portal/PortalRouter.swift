@@ -20,6 +20,12 @@ struct PortalRouter: View {
         case .returns: PortalReturnsView()
         case .team: PortalTeamView()
         case .payouts: PortalPayoutsView()
+        case .bundles: PortalBundlesView()
+        case .importProducts: PortalImportView()
+        case .dispatch: PortalDispatchView()
+        case .claims: PortalClaimsView()
+        case .fulfilment: PortalFulfilmentView()
+        case .ads: PortalAdsView()
         }
     }
 }

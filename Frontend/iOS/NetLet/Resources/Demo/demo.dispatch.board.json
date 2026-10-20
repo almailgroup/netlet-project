@@ -1,0 +1,177 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "parcels": [
+          {
+            "key": "v2|dorder|c1",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "destination": null,
+            "lines": [
+              {
+                "lineId": 18,
+                "orderId": 16,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "USB-C charger 65W",
+                "variantTitle": "Default",
+                "quantity": 2,
+                "fulfilment": "preparing",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": null,
+                "centreId": 1
+              }
+            ],
+            "state": "preparing",
+            "vehicle": null,
+            "courierId": null,
+            "items": 2,
+            "centreId": 1,
+            "orderId": 16,
+            "reference": "NL-20261004-8QYKQ",
+            "placedAt": "2026-10-04T16:35:52.573Z",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "orderTotal": "19.500",
+            "courierName": null,
+            "collectFrom": {
+              "name": "Shuwaikh centre",
+              "addressLine": "Street 12, Block 3",
+              "governorate": "capital"
+            },
+            "member": false,
+            "orderAddress": {
+              "contactName": "Noura",
+              "contactPhone": "+96550000000",
+              "governorate": "hawalli",
+              "addressLine": "Block 4, Street 2",
+              "addressNotes": null,
+              "pin": null
+            }
+          },
+          {
+            "key": "v2|dorder|c1",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "destination": null,
+            "lines": [
+              {
+                "lineId": 17,
+                "orderId": 15,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "USB-C charger 65W",
+                "variantTitle": "Default",
+                "quantity": 2,
+                "fulfilment": "preparing",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": null,
+                "centreId": 1
+              }
+            ],
+            "state": "preparing",
+            "vehicle": null,
+            "courierId": null,
+            "items": 2,
+            "centreId": 1,
+            "orderId": 15,
+            "reference": "NL-20261004-CZEN8",
+            "placedAt": "2026-10-04T16:35:15.712Z",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "orderTotal": "19.500",
+            "courierName": null,
+            "collectFrom": {
+              "name": "Shuwaikh centre",
+              "addressLine": "Street 12, Block 3",
+              "governorate": "capital"
+            },
+            "member": false,
+            "orderAddress": {
+              "contactName": "Noura",
+              "contactPhone": "+96550000000",
+              "governorate": "hawalli",
+              "addressLine": "Block 4, Street 2",
+              "addressNotes": null,
+              "pin": null
+            }
+          },
+          {
+            "key": "v2|dorder|c1",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "destination": null,
+            "lines": [
+              {
+                "lineId": 15,
+                "orderId": 13,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "USB-C charger 65W",
+                "variantTitle": "Default",
+                "quantity": 2,
+                "fulfilment": "preparing",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": null,
+                "centreId": 1
+              }
+            ],
+            "state": "preparing",
+            "vehicle": null,
+            "courierId": null,
+            "items": 2,
+            "centreId": 1,
+            "orderId": 13,
+            "reference": "NL-20261004-YFQU4",
+            "placedAt": "2026-10-04T16:33:08.005Z",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "orderTotal": "19.500",
+            "courierName": null,
+            "collectFrom": {
+              "name": "Shuwaikh centre",
+              "addressLine": "Street 12, Block 3",
+              "governorate": "capital"
+            },
+            "member": false,
+            "orderAddress": {
+              "contactName": "Noura",
+              "contactPhone": "+96550000000",
+              "governorate": "hawalli",
+              "addressLine": "Block 4, Street 2",
+              "addressNotes": null,
+              "pin": null
+            }
+          }
+        ],
+        "truncated": false
+      },
+      "meta": {
+        "values": {
+          "parcels.0.placedAt": [
+            "Date"
+          ],
+          "parcels.1.placedAt": [
+            "Date"
+          ],
+          "parcels.2.placedAt": [
+            "Date"
+          ]
+        },
+        "referentialEqualities": {
+          "parcels.0.collectFrom": [
+            "parcels.1.collectFrom",
+            "parcels.2.collectFrom"
+          ]
+        }
+      }
+    }
+  }
+}

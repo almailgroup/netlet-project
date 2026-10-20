@@ -431,6 +431,68 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(try TRPCClient.encodeInput(untouched).contains("sku"), "a field not given is left alone")
     }
 
+    func testTheWarehouseAndPlacementsDecode() async throws {
+        let board = try await client.call(API.dispatchBoard, .init(state: "waiting"))
+        XCTAssertFalse(board.parcels.isEmpty)
+        XCTAssertEqual(board.parcels.first?.courierMoves, ["shipped"], "a parcel being prepared is collected next")
+        XCTAssertNotNil(board.parcels.first?.collectFrom, "NetLet's shelf names the centre to collect from")
+        let companies = try await client.call(API.deliveryCompanies)
+        XCTAssertEqual(companies.first?.name, "Gulf Couriers")
+        _ = try await client.call(API.deliveryScores)
+        _ = try await client.call(API.claimLedger)
+        _ = try await client.call(API.damageClaims, .init(status: "open"))
+        let open = try await client.call(API.fulfilmentOpen)
+        XCTAssertTrue(open)
+        let centres = try await client.call(API.centres)
+        XCTAssertEqual(centres.first?.packFeePerUnit, "0.250")
+        _ = try await client.call(API.sendable, .init(query: ""))
+        let held = try await client.call(API.heldStock, .init(page: 1))
+        XCTAssertEqual(held.rows.first?.centreName, "Shuwaikh centre")
+        let shipments = try await client.call(API.shipments, .init(page: 1))
+        XCTAssertNil(shipments.rows.first?.note, "a note that was never written is no note")
+        _ = try await client.call(API.packingCharges, .init(page: 1))
+        let picks = try await client.call(API.pickList)
+        XCTAssertFalse(picks.orders.isEmpty)
+        let ads = try await client.call(API.adBookings, .init(page: 1))
+        XCTAssertEqual(ads.rows.first?.banner?.permit, "valid")
+        let bundles = try await client.call(API.bundleRows)
+        XCTAssertEqual(bundles.count, 0)
+    }
+
+    func testASpreadsheetIsReadOnThePhoneFirst() {
+        let csv = "\u{FEFF}Name,Price,Qty,SKU,Description\r\n"
+            + "Brass lamp,24.500,12,LAMP-01,\"A warm lamp, for a side table\"\r\n"
+            + ",3.000,1,,\r\n"
+            + "Kettle,free,1,,\r\n"
+            + "Second lamp,20,2,lamp-01,\r\n"
+            + "Basmati rice 5kg,4.750,,,\r\n"
+        let plan = UploadPlan.plan(csv)
+        XCTAssertEqual(plan.products.map(\.title), ["Brass lamp", "Basmati rice 5kg"])
+        XCTAssertEqual(plan.products.first?.description, "A warm lamp, for a side table", "a quoted comma is part of the field")
+        XCTAssertEqual(plan.problems.map(\.reason), ["bulk.noTitle", "bulk.badPrice", "bulk.duplicateSku"])
+        XCTAssertEqual(plan.problems.map(\.line), [3, 4, 5])
+        XCTAssertEqual(plan.products.last?.category, "Grocery", "rice is guessed into the grocery department")
+        XCTAssertTrue(plan.products.last?.categoryGuessed == true)
+        XCTAssertEqual(plan.products.last?.stock, 0, "an empty stock is none")
+        XCTAssertEqual(UploadPlan.plan("title\nOnly a title").problems.first?.reason, "bulk.missingColumns")
+        XCTAssertFalse(WarehouseRules.shared.upload.template.isEmpty)
+    }
+
+    func testWarehouseAndBannerRules() {
+        let rules = WarehouseRules.shared
+        XCTAssertEqual(rules.inboundProblem([]), "fulfilment.noLines")
+        XCTAssertEqual(rules.inboundProblem([(variantId: 1, quantity: 0)]), "fulfilment.badQuantity")
+        XCTAssertEqual(rules.inboundProblem([(variantId: 1, quantity: 2), (variantId: 1, quantity: 3)]), "fulfilment.duplicateLine")
+        XCTAssertNil(rules.inboundProblem([(variantId: 1, quantity: 2)]))
+        XCTAssertEqual(rules.headlineProblem("  ", required: true), "ads.bannerNeedsHeadline")
+        XCTAssertNil(rules.headlineProblem("", required: false))
+        XCTAssertEqual(rules.headlineProblem("Call 99887766 today", required: true), "ads.bannerContact", "a phone number on the front page is refused")
+        XCTAssertEqual(AdWords.approvalStart("2026-10-01", today: "2026-10-05"), "2026-10-05")
+        XCTAssertEqual(AdWords.addDays("2026-10-30", 3), "2026-11-02")
+        XCTAssertEqual(PortalPage("/admin/import"), .importProducts)
+        XCTAssertEqual(PortalPage("/admin/fulfilment"), .fulfilment)
+    }
+
     func testALineMovesOnlyWhereTheServerWouldTakeIt() {
         let rules = PortalRules.shared
         XCTAssertEqual(rules.nextStates("returned"), [], "a returned line is over")

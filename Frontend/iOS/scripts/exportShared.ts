@@ -72,6 +72,12 @@ import { DELIVERY_SPEEDS } from "../../../Shared/commerce/deliverySpeed.js";
 import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX } from "../../../Shared/inventory/variantOptions.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Shared/commerce/sizeGuide.js";
+import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
+import { MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../../Shared/commerce/netletFulfilment.js";
+import { MAX_CLAIM_RESPONSE } from "../../../Shared/commerce/damageClaims.js";
+import {
+  AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
+} from "../../../Shared/commerce/adBookings.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -253,6 +259,16 @@ export function buildResources(): Record<string, string> {
         canonical: CANONICAL, stockReasons: STOCK_REASONS, sizeClasses: SIZE_CLASSES, vehicleByClass: BY_CLASS,
         deliverySpeeds: DELIVERY_SPEEDS, addonKinds: ADDON_KINDS, optionNameMax: OPTION_NAME_MAX, optionValueMax: OPTION_VALUE_MAX,
         measures: MEASURES, measureBounds: MEASURE_BOUNDS, maxSizes: MAX_SIZES, maxSizeLabel: MAX_SIZE_LABEL,
+      },
+      /* The spreadsheet import's columns, its department words and its
+         template; NetLet's warehouse limits; and the placements' rates,
+         room and banner shape. */
+      upload: { columns: COLUMNS, departmentWords: DEPARTMENT_WORDS, limit: BULK_UPLOAD_LIMIT, template: templateCsv() },
+      inbound: { maxLines: MAX_INBOUND_LINES, maxUnits: MAX_INBOUND_UNITS },
+      maxClaimResponse: MAX_CLAIM_RESPONSE,
+      ads: {
+        slots: AD_SLOTS, rates: AD_RATES, capacity: AD_CAPACITY, maxDays: MAX_AD_DAYS, maxLeadDays: MAX_AD_LEAD_DAYS,
+        headlineMax: BANNER_HEADLINE_MAX, noteMax: BANNER_NOTE_MAX, bannerAspect: BANNER_ASPECT, bannerMinWidth: BANNER_MIN_WIDTH, bannerMaxWidth: BANNER_MAX_WIDTH,
       } }),
   };
 }

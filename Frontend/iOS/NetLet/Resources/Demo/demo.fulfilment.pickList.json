@@ -1,0 +1,35 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "orders": [
+          {
+            "orderId": 14,
+            "reference": "NL-20261004-YF4QB",
+            "placedAt": "2026-10-04T16:34:06.852Z",
+            "centreId": 1,
+            "centreName": "Shuwaikh centre",
+            "lines": [
+              {
+                "lineId": 16,
+                "vendorName": "Acme Electronics",
+                "productTitle": "USB-C charger 65W",
+                "variantTitle": "Default",
+                "sku": null,
+                "quantity": 2
+              }
+            ]
+          }
+        ],
+        "truncated": false
+      },
+      "meta": {
+        "values": {
+          "orders.0.placedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}
