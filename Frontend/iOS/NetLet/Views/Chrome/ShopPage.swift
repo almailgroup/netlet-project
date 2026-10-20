@@ -9,7 +9,7 @@ import UIKit
 /// somebody four screens in still has the one way to look for something. Both
 /// sit on the header's liquid glass, and so does the strip under the status
 /// bar. A page draws its content and nothing else; the footer follows it, and
-/// the tab bar floats over it all (`FloatingTabBar`, drawn once by `RootView`).
+/// the system's tab bar sits over it all (drawn once by `RootView`).
 ///
 /// A screen pushed onto a stack gets a back chevron before the logo: the web
 /// leaves going back to the browser, and the app has no browser around it.

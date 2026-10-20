@@ -55,9 +55,6 @@ final class AppModel {
     /// The header's search, grown down over the page while it is open.
     var searchOpen = false
     var searchText = ""
-    /// Screens drawn without the tab bar — checkout, as on the web, where
-    /// every extra way out of a payment page is an invitation to take it.
-    var chromeHidden = 0
     /// The one short message showing, top-centre under the header (`sonner`).
     private(set) var toastMessage: Toast?
     /// A page the app does not draw itself — help, returns, selling, the

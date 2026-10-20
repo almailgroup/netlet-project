@@ -29,8 +29,7 @@ struct CheckoutView: View {
         .navigationBarTitleDisplayMode(.inline)
         // No tab bar on a payment page, the web's rule: every extra way out is
         // an invitation to take it.
-        .onAppear { app.chromeHidden += 1 }
-        .onDisappear { app.chromeHidden = max(0, app.chromeHidden - 1) }
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 

@@ -33,8 +33,6 @@ enum Brand {
     static let photo = Color(red: 244 / 255, green: 246 / 255, blue: 249 / 255)
     /// The hover and press fill on white (#f0f2f5).
     static let pressFill = Color(red: 240 / 255, green: 242 / 255, blue: 245 / 255)
-    /// The tab bar's current-tab pill (#ececef).
-    static let tabPill = Color(red: 236 / 255, green: 236 / 255, blue: 239 / 255)
     static let star = Color(red: 255 / 255, green: 184 / 255, blue: 0 / 255)
     static let chevron = Color(red: 138 / 255, green: 160 / 255, blue: 189 / 255)
 }

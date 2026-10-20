@@ -9,7 +9,7 @@ import UIKit
 /// "System Haptics" switch silences it, as it does every app's.
 @MainActor
 enum Haptics {
-    /// The floating tab bar's (`FloatingTabBar`).
+    /// The tab bar's (the system's own, in `RootView`).
     static let tabStrength: CGFloat = 0.5
     /// Every other button's.
     static let buttonStrength: CGFloat = 0.1

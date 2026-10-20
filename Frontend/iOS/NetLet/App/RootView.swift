@@ -2,7 +2,18 @@ import SafariServices
 import SwiftUI
 
 /// The app's frame: the web's four phone tabs — Home, Profile, Cart,
-/// Categories — each its own stack, under the floating tab bar.
+/// Categories — each its own stack, in the system's own tab bar.
+///
+/// **The tab bar is Apple's, on the owner's word**, not a copy of the web's
+/// floating pill: a `TabView` built with the iOS 26 SDK is drawn in Liquid
+/// Glass on iOS 26 — floating, refracting what scrolls under it, the selected
+/// tab lit in the shop's navy — and as the standard tab bar on iOS 17 and 18,
+/// so it is the bar every other app on the phone has. Its badge is the
+/// system's, its order follows the page's direction, and VoiceOver reads it
+/// as a tab bar. A press still ticks at the tab bar's strength, and pressing
+/// the tab you are on takes you to its top, both through the selection's own
+/// setter, which the system calls for a press and never for the app's own
+/// changes.
 ///
 /// Every stack stays alive while another tab shows, so a tab comes back where
 /// it was left. Selling is in the account, as on the web, rather than a fifth
@@ -14,28 +25,24 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var app = app
-        ZStack {
-            tab(.home) {
-                NavigationStack(path: $app.homePath) { HomeView().routes() }
+        TabView(selection: selection) {
+            NavigationStack(path: $app.homePath) { HomeView().routes() }
+                .tabItem { Label(l.t("nav.home"), systemImage: "house") }
+                .tag(AppModel.Tab.home)
+            NavigationStack(path: $app.accountPath) { AccountView().routes() }
+                .tabItem { Label(l.t("nav.profile"), systemImage: "person") }
+                .tag(AppModel.Tab.account)
+            NavigationStack(path: $app.cartPath) {
+                CartView(path: $app.cartPath).routes(path: $app.cartPath)
             }
-            tab(.account) {
-                NavigationStack(path: $app.accountPath) { AccountView().routes() }
-            }
-            tab(.cart) {
-                NavigationStack(path: $app.cartPath) {
-                    CartView(path: $app.cartPath).routes(path: $app.cartPath)
-                }
-            }
-            tab(.categories) {
-                NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
-            }
+            .tabItem { Label(l.t("nav.cart"), systemImage: "cart") }
+            .badge(app.cart.itemCount)
+            .tag(AppModel.Tab.cart)
+            NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
+                .tabItem { Label(l.t("nav.categories"), systemImage: "square.grid.2x2") }
+                .tag(AppModel.Tab.categories)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if app.chromeHidden == 0 {
-                FloatingTabBar()
-                    .padding(.bottom, 6)
-            }
-        }
+        .tint(Brand.navy)
         .overlay {
             if app.searchOpen {
                 SearchOverlay()
@@ -72,15 +79,18 @@ struct RootView: View {
         }
     }
 
-    /// One tab's stack: drawn while another shows, so it keeps its place, but
-    /// neither seen, pressed nor read out.
-    private func tab<Content: View>(_ tab: AppModel.Tab, @ViewBuilder content: () -> Content) -> some View {
-        let showing = app.selectedTab == tab
-        return content()
-            .opacity(showing ? 1 : 0)
-            .allowsHitTesting(showing)
-            .accessibilityHidden(!showing)
-            .zIndex(showing ? 1 : 0)
+    /// The tab bar's selection. The system sets it only for a press — the
+    /// tab you are on included, which `select` answers by going to its top —
+    /// so this is where a press ticks; the app's own moves set `selectedTab`
+    /// directly and stay silent.
+    private var selection: Binding<AppModel.Tab> {
+        Binding(
+            get: { app.selectedTab },
+            set: { tab in
+                Haptics.tab()
+                app.select(tab)
+            }
+        )
     }
 }
 

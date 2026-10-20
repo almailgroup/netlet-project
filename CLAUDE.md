@@ -5251,10 +5251,15 @@ refuses.
 start, the language at the end) scrolls away and the search row stays pinned,
 both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
 tint); the footer follows the content and its navy runs on under the tab bar.
-`FloatingTabBar` is `MobileTabBar` — the floating pill of Home, Profile, Cart
-and Categories, the grey pill sliding between them on the web's 420ms curve,
-the cart's count a `PixelBadge` that hops every ten seconds. Checkout hides it
-(`chromeHidden`), the bare-header rule. The home page is `HomeShelf`, which is
+**The tab bar is the one place it is not the web's, on the owner's word**: it
+was `FloatingTabBar`, a copy of `MobileTabBar`'s floating pill, and the owner
+asked for Apple's own Liquid Glass instead. It is a system `TabView` in
+`RootView` — Home, Profile, Cart and Categories, SF Symbols, the selected tab
+in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
+Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. A press ticks
+and pressing the current tab goes to its top, both in the selection binding's
+setter, which the system calls only for a press. Checkout hides it with
+`.toolbar(.hidden, for: .tabBar)`, the bare-header rule. The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked
@@ -5274,8 +5279,8 @@ generator so the two are steps on one scale. Every button style the app has
 ticks the moment a finger comes down (`pressHaptic`), `.tap` is the app's plain
 button in place of the system's `.plain`, and a button with no style of its own
 gets the tick from `HapticDefaultStyle`, set at the root and on each sheet's
-content — so a new button is silent only if it asks for `.plain`, which only the
-tab bar does, ticking at its own strength in its action. A menu's choices tick
+content — so a new button is silent only if it asks for `.plain`. The tab bar
+is the system's, and ticks at its own strength from its selection's setter. A menu's choices tick
 in their own actions, being the system's items and wearing no style; the
 sign-in switch ticks through its binding, so a refusal that switches it does
 not. The website has none of this: Safari on an iPhone lets no page vibrate.
