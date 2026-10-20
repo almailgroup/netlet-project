@@ -635,6 +635,7 @@ private struct ProductPage: View {
             announce(l.t("cart.added", ["name": product.title]))
             if openCheckout { app.openCheckout() }
         } else {
+            Haptics.refused()
             failure = openCheckout ? "cart.buyFailed" : "cart.addFailed"
         }
     }
@@ -652,7 +653,7 @@ struct PurchaseButtonStyle: ButtonStyle {
             .foregroundStyle(Brand.navy)
             .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(configuration.isPressed ? Brand.pressFill : Color.white))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
-            .pressHaptic(configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }
 

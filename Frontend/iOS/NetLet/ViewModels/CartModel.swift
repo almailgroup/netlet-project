@@ -85,6 +85,8 @@ final class CartModel {
                 forget()
             }
         } catch {
+            // The press was felt; that it did not take is felt too.
+            Haptics.refused()
             lastError = APIError.from(error)
         }
     }

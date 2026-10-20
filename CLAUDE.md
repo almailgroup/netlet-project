@@ -5281,9 +5281,16 @@ returns, selling, the terms, the privacy policy, and the account sections the
 app has no screen for) rather than a dead tile — that sheet has its own cookie
 jar, so an account section opened there asks for sign-in there.
 
-**A press is felt, at the owner's two strengths**: the tab bar at half
+**A press is felt, at the owner's strengths**: the tab bar at half
 (`Haptics.tab`) and every other button at a tenth (`Haptics.tap`), from one
-generator so the two are steps on one scale. Every button style the app has
+generator so they are steps on one scale. **A press that does something to a
+product is felt at the tab bar's half, on the owner's word** — Add to cart,
+Buy now, a step of the quantity on a card, the product page or the bag, the
+bin, the heart and Place order (`Haptics.action`, through
+`pressHaptic(_:strength:)` and the borderless `.action` style) — so a shopper
+knows the act took; a placed order answers with the system's success pattern
+and a refused add or quantity change with its error pattern
+(`Haptics.succeeded`, `Haptics.refused`). Every button style the app has
 ticks the moment a finger comes down (`pressHaptic`), `.tap` is the app's plain
 button in place of the system's `.plain`, and a button with no style of its own
 gets the tick from `HapticDefaultStyle`, set at the root and on each sheet's

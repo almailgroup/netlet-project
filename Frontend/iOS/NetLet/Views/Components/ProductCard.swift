@@ -65,6 +65,7 @@ struct QuantityStepper: View {
                 Image(systemName: quantity <= 1 ? "trash" : "minus")
                     .frame(width: 44, height: 44)
             }
+            .buttonStyle(.action)
             .accessibilityLabel(quantity <= 1 ? l.t("cart.remove", ["name": name]) : l.t("cart.decrease", ["name": name]))
             Group {
                 if busy { ProgressView().tint(Brand.navy) } else { Text("\(quantity)").font(.inter(16, .bold)).monospacedDigit() }
@@ -77,6 +78,7 @@ struct QuantityStepper: View {
                 Image(systemName: "plus")
                     .frame(width: 44, height: 44)
             }
+            .buttonStyle(.action)
             .disabled(quantity >= maximum)
             .accessibilityLabel(l.t("cart.increase", ["name": name]))
         }
@@ -288,7 +290,7 @@ struct HeartButton: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.tap)
+        .buttonStyle(.action)
         .accessibilityLabel(l.t(saved ? "product.removeSaved" : "product.save", ["name": product.title]))
         .accessibilityAddTraits(saved ? .isSelected : [])
     }
@@ -409,6 +411,7 @@ struct CardActions: View {
                     .font(.system(size: 14, weight: .medium))
                     .frame(width: 40, height: 44)
             }
+            .buttonStyle(.action)
             .accessibilityLabel(l.t(count <= 1 ? "cart.remove" : "cart.decrease", ["name": product.title]))
             Group {
                 if lineBusy {
@@ -431,6 +434,7 @@ struct CardActions: View {
                     .font(.system(size: 14, weight: .medium))
                     .frame(width: 40, height: 44)
             }
+            .buttonStyle(.action)
             .disabled(count >= variant.maxQuantity)
             .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
         }
@@ -449,6 +453,7 @@ struct CardActions: View {
                 announce(l.t("cart.added", ["name": product.title]))
                 if thenCheckout { app.openCheckout() }
             } else {
+                Haptics.refused()
                 app.toast(l.t("cart.addFailed"))
             }
         }
@@ -461,7 +466,7 @@ struct CardPillStyle: ButtonStyle {
         configuration.label
             .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
             .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
-            .pressHaptic(configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }
 

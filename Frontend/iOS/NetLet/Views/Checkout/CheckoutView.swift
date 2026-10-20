@@ -222,7 +222,11 @@ private struct CheckoutForm: View {
     }
 
     private func place() async {
-        guard let placed = await model.place(cart: app.cart.cart) else { return }
+        guard let placed = await model.place(cart: app.cart.cart) else {
+            Haptics.refused()
+            return
+        }
+        Haptics.succeeded()
         await app.cart.refresh()
         if let path {
             path.wrappedValue = NavigationPath([Route.orderPlaced(reference: placed.reference)])
@@ -263,7 +267,7 @@ struct OrderButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .fill(Brand.orange.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45))
             )
-            .pressHaptic(configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }
 
