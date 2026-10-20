@@ -1,0 +1,15 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "userId": 5,
+          "role": "owner",
+          "email": "vendor@acme.test",
+          "name": "Acme Owner"
+        }
+      ]
+    }
+  }
+}

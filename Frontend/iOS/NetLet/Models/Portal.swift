@@ -49,6 +49,19 @@ struct PortalRules: Decodable, Sendable {
     let adminOnly: [String]
     let courier: [String]
     var bulk: Bulk?
+    /// Where a line may move from each state (`nextStates`).
+    var fulfilment: [String: [String]]?
+    var settlement: Settlement?
+    var maxBankReference: Int?
+
+    /// How long after the sale a seller's money comes due (`SETTLEMENT_DAYS`).
+    struct Settlement: Decodable, Sendable {
+        let cod: Int
+        let cardMin: Int
+        let cardMax: Int
+    }
+
+    func nextStates(_ state: String) -> [String] { fulfilment?[state] ?? [] }
 
     static let shared: PortalRules = {
         let data = Bundle.main.resource("portal", "json")
@@ -100,6 +113,16 @@ enum PortalPage: Hashable, Sendable {
     case home
     case products(vendorId: Int?)
     case newProduct(vendorId: Int?)
+    case orders
+    case stock
+    case offers
+    case messages
+    /// One shopper's conversation with the store — the app's own address for
+    /// what the web opens beside the list.
+    case thread(Int)
+    case returns
+    case team
+    case payouts
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -118,6 +141,20 @@ enum PortalPage: Hashable, Sendable {
         case 0: self = .home
         case 1 where rest[0] == "products": self = .products(vendorId: vendor)
         case 2 where rest[0] == "products" && rest[1] == "new": self = .newProduct(vendorId: vendor)
+        case 2 where rest[0] == "messages":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .thread(id)
+        case 1:
+            switch rest[0] {
+            case "orders": self = .orders
+            case "stock": self = .stock
+            case "offers": self = .offers
+            case "messages": self = .messages
+            case "returns": self = .returns
+            case "team": self = .team
+            case "payouts": self = .payouts
+            default: return nil
+            }
         default: return nil
         }
     }

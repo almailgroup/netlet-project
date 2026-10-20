@@ -1,0 +1,270 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 7,
+          "orderId": 28,
+          "reference": "NL-20261012-9VY2Z",
+          "orderItemId": 33,
+          "productTitle": "Smart watch",
+          "variantTitle": "Default",
+          "quantity": 1,
+          "lineTotal": "72.000",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "damaged",
+          "note": null,
+          "status": "refunded",
+          "decidedBy": "auto",
+          "declineReason": null,
+          "collectedAt": "2026-10-12T14:17:27.510Z",
+          "receivedAt": "2026-10-12T14:17:27.522Z",
+          "restocked": true,
+          "refundAmount": "72.000",
+          "refundPaidAt": "2026-10-12T14:17:27.548Z",
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Fahad",
+          "contactPhone": "+96555512345",
+          "addressLine": "Block 2, Street 5, House 9",
+          "createdAt": "2026-10-12T14:17:24.466Z",
+          "actions": []
+        },
+        {
+          "id": 6,
+          "orderId": 27,
+          "reference": "NL-20261012-3NJA9",
+          "orderItemId": 32,
+          "productTitle": "Smart watch",
+          "variantTitle": "Default",
+          "quantity": 1,
+          "lineTotal": "72.000",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "damaged",
+          "note": null,
+          "status": "refunded",
+          "decidedBy": "auto",
+          "declineReason": null,
+          "collectedAt": "2026-10-12T14:15:40.204Z",
+          "receivedAt": "2026-10-12T14:15:40.216Z",
+          "restocked": true,
+          "refundAmount": "72.000",
+          "refundPaidAt": "2026-10-12T14:15:40.249Z",
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Fahad",
+          "contactPhone": "+96555512345",
+          "addressLine": "Block 2, Street 5, House 9",
+          "createdAt": "2026-10-12T14:15:37.108Z",
+          "actions": []
+        },
+        {
+          "id": 5,
+          "orderId": 4,
+          "reference": "NL-20261002-3WQ6P",
+          "orderItemId": 6,
+          "productTitle": "Linen shirt",
+          "variantTitle": "S",
+          "quantity": 2,
+          "lineTotal": "25.000",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "tooSmall",
+          "note": null,
+          "status": "declined",
+          "decidedBy": null,
+          "declineReason": null,
+          "collectedAt": null,
+          "receivedAt": null,
+          "restocked": false,
+          "refundAmount": null,
+          "refundPaidAt": null,
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Noura",
+          "contactPhone": null,
+          "addressLine": "Block 4, Street 12, House 7",
+          "createdAt": "2026-10-03T17:57:08.070Z",
+          "actions": []
+        },
+        {
+          "id": 4,
+          "orderId": 6,
+          "reference": "NL-20261003-QTX83",
+          "orderItemId": 8,
+          "productTitle": "Linen shirt",
+          "variantTitle": "M",
+          "quantity": 1,
+          "lineTotal": "12.500",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "tooSmall",
+          "note": null,
+          "status": "declined",
+          "decidedBy": null,
+          "declineReason": null,
+          "collectedAt": null,
+          "receivedAt": null,
+          "restocked": false,
+          "refundAmount": null,
+          "refundPaidAt": null,
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Fahad",
+          "contactPhone": "+96555512345",
+          "addressLine": "Block 2, Street 5, House 9",
+          "createdAt": "2026-10-03T17:57:08.070Z",
+          "actions": []
+        },
+        {
+          "id": 3,
+          "orderId": 5,
+          "reference": "NL-20261003-3F93G",
+          "orderItemId": 7,
+          "productTitle": "Linen shirt",
+          "variantTitle": "M",
+          "quantity": 1,
+          "lineTotal": "12.500",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "tooSmall",
+          "note": null,
+          "status": "declined",
+          "decidedBy": null,
+          "declineReason": null,
+          "collectedAt": null,
+          "receivedAt": null,
+          "restocked": false,
+          "refundAmount": null,
+          "refundPaidAt": null,
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Fahad",
+          "contactPhone": "+96555512345",
+          "addressLine": "Block 2, Street 5, House 9",
+          "createdAt": "2026-10-03T17:57:08.070Z",
+          "actions": []
+        },
+        {
+          "id": 2,
+          "orderId": 4,
+          "reference": "NL-20261002-3WQ6P",
+          "orderItemId": 6,
+          "productTitle": "Linen shirt",
+          "variantTitle": "S",
+          "quantity": 2,
+          "lineTotal": "25.000",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "tooSmall",
+          "note": null,
+          "status": "declined",
+          "decidedBy": null,
+          "declineReason": null,
+          "collectedAt": null,
+          "receivedAt": null,
+          "restocked": false,
+          "refundAmount": null,
+          "refundPaidAt": null,
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "Noura",
+          "contactPhone": null,
+          "addressLine": "Block 4, Street 12, House 7",
+          "createdAt": "2026-10-03T17:57:08.070Z",
+          "actions": []
+        },
+        {
+          "id": 1,
+          "orderId": 1,
+          "reference": "NL-20261001-TUP6F",
+          "orderItemId": 1,
+          "productTitle": "Noise-cancelling headphones",
+          "variantTitle": "Default",
+          "quantity": 1,
+          "lineTotal": "39.500",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "kind": "refund",
+          "reason": "damaged",
+          "note": null,
+          "status": "refunded",
+          "decidedBy": "auto",
+          "declineReason": null,
+          "collectedAt": "2026-10-02T11:51:48.102Z",
+          "receivedAt": "2026-10-02T11:51:48.135Z",
+          "restocked": true,
+          "refundAmount": "39.500",
+          "refundPaidAt": "2026-10-02T12:32:29.192Z",
+          "replacementReference": null,
+          "destination": null,
+          "contactName": "shopperA",
+          "contactPhone": "+96555512345",
+          "addressLine": "Block 4, Street 12, House 7",
+          "createdAt": "2026-10-02T11:51:47.225Z",
+          "actions": []
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.collectedAt": [
+            "Date"
+          ],
+          "0.receivedAt": [
+            "Date"
+          ],
+          "0.refundPaidAt": [
+            "Date"
+          ],
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.collectedAt": [
+            "Date"
+          ],
+          "1.receivedAt": [
+            "Date"
+          ],
+          "1.refundPaidAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ],
+          "2.createdAt": [
+            "Date"
+          ],
+          "3.createdAt": [
+            "Date"
+          ],
+          "4.createdAt": [
+            "Date"
+          ],
+          "5.createdAt": [
+            "Date"
+          ],
+          "6.collectedAt": [
+            "Date"
+          ],
+          "6.receivedAt": [
+            "Date"
+          ],
+          "6.refundPaidAt": [
+            "Date"
+          ],
+          "6.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

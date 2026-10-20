@@ -242,5 +242,41 @@
     "minPercent": -90,
     "maxPercent": 1000,
     "maxRestock": 100000
-  }
+  },
+  "fulfilment": {
+    "pending": [
+      "preparing",
+      "shipped",
+      "delivered",
+      "cancelled"
+    ],
+    "preparing": [
+      "pending",
+      "shipped",
+      "delivered",
+      "cancelled"
+    ],
+    "shipped": [
+      "pending",
+      "preparing",
+      "delivered",
+      "cancelled"
+    ],
+    "delivered": [
+      "pending",
+      "preparing",
+      "shipped",
+      "cancelled"
+    ],
+    "cancelled": [
+      "pending"
+    ],
+    "returned": []
+  },
+  "settlement": {
+    "cod": 14,
+    "cardMin": 1,
+    "cardMax": 3
+  },
+  "maxBankReference": 80
 }

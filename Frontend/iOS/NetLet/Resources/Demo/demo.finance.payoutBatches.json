@@ -1,0 +1,47 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "iban": "KW•••• 0101",
+          "total": "33.275",
+          "payable": true,
+          "lines": [
+            {
+              "orderId": 26,
+              "reference": "NL-20261012-XFJNG",
+              "amount": "198.275",
+              "kind": "payout"
+            },
+            {
+              "orderId": 31,
+              "reference": "NL-HOMESEED-2",
+              "amount": "10.000",
+              "kind": "payout"
+            },
+            {
+              "orderId": 37,
+              "reference": "NL-HOMESEED-8",
+              "amount": "15.000",
+              "kind": "payout"
+            },
+            {
+              "orderId": 39,
+              "reference": "NL-HOMESEED-10",
+              "amount": "10.000",
+              "kind": "payout"
+            },
+            {
+              "orderId": null,
+              "reference": "AD-6",
+              "amount": "-200.000",
+              "kind": "fee"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

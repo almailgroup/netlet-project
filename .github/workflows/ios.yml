@@ -141,6 +141,8 @@ jobs:
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""
             shot 30-portal-products "$lang" portal:/admin/products shopper
+            shot 31-portal-orders "$lang" portal:/admin/orders shopper
+            shot 32-portal-payouts "$lang" portal:/admin/payouts shopper
           done
           ls -1 build/previews
 

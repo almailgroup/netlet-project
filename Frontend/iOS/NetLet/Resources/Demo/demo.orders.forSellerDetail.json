@@ -1,0 +1,168 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "order": {
+          "id": 43,
+          "reference": "NL-20261020-8BG3E",
+          "status": "pending_payment",
+          "placedAt": "2026-10-20T12:56:22.022Z",
+          "contactName": "Fahad",
+          "paymentMethod": "cod",
+          "deliveryZoneId": "hawalli",
+          "addressLine": "Block 2, Street 5, House 9",
+          "addressNotes": null,
+          "deliveryPin": null,
+          "subscriptionId": null
+        },
+        "lines": [
+          {
+            "id": 52,
+            "orderId": 43,
+            "vendorId": 2,
+            "productId": 10,
+            "variantId": 11,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Linen shirt",
+            "variantTitle": "M",
+            "sku": "SHIRT-M",
+            "unitPrice": "12.500",
+            "quantity": 1,
+            "lineTotal": "12.500",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000",
+            "commissionAmount": "2.250",
+            "vendorNet": "10.250",
+            "preordered": false,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "bundleId": null,
+            "bundleName": null,
+            "destination": null,
+            "courierId": null,
+            "carriedBy": null,
+            "sizeClass": null,
+            "weightGrams": null,
+            "fulfilment": "pending",
+            "deliveredAt": null,
+            "createdAt": "2026-10-20T12:56:22.022Z",
+            "updatedAt": "2026-10-20T12:56:22.022Z",
+            "addons": []
+          },
+          {
+            "id": 53,
+            "orderId": 43,
+            "vendorId": 2,
+            "productId": 216,
+            "variantId": 133,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Wireless earbuds",
+            "variantTitle": "Default",
+            "sku": null,
+            "unitPrice": "18.500",
+            "quantity": 1,
+            "lineTotal": "18.500",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000",
+            "commissionAmount": "2.850",
+            "vendorNet": "15.650",
+            "preordered": false,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "bundleId": null,
+            "bundleName": null,
+            "destination": null,
+            "courierId": null,
+            "carriedBy": null,
+            "sizeClass": null,
+            "weightGrams": null,
+            "fulfilment": "pending",
+            "deliveredAt": null,
+            "createdAt": "2026-10-20T12:56:22.022Z",
+            "updatedAt": "2026-10-20T12:56:22.022Z",
+            "addons": []
+          }
+        ],
+        "slice": {
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "lines": [
+            {
+              "variantId": 11,
+              "productId": 10,
+              "vendorId": 2,
+              "vendorName": "Acme Electronics",
+              "productTitle": "Linen shirt",
+              "variantTitle": "M",
+              "sku": "SHIRT-M",
+              "unitPrice": "12.500",
+              "quantity": 1,
+              "addons": [],
+              "addonsTotal": "0.000",
+              "bundleId": null,
+              "bundleName": null,
+              "destination": null,
+              "sizeClass": null,
+              "weightGrams": null,
+              "lineTotal": "12.500",
+              "commissionPercent": "10.00",
+              "commissionFixed": "1.000",
+              "commissionAmount": "2.250",
+              "vendorNet": "10.250",
+              "preordered": false,
+              "preorderReleaseAt": null
+            },
+            {
+              "variantId": 133,
+              "productId": 216,
+              "vendorId": 2,
+              "vendorName": "Acme Electronics",
+              "productTitle": "Wireless earbuds",
+              "variantTitle": "Default",
+              "sku": null,
+              "unitPrice": "18.500",
+              "quantity": 1,
+              "addons": [],
+              "addonsTotal": "0.000",
+              "bundleId": null,
+              "bundleName": null,
+              "destination": null,
+              "sizeClass": null,
+              "weightGrams": null,
+              "lineTotal": "18.500",
+              "commissionPercent": "10.00",
+              "commissionFixed": "1.000",
+              "commissionAmount": "2.850",
+              "vendorNet": "15.650",
+              "preordered": false,
+              "preorderReleaseAt": null
+            }
+          ],
+          "itemsTotal": "31.000",
+          "commissionTotal": "5.100",
+          "vendorNet": "25.900"
+        },
+        "scope": "vendor"
+      },
+      "meta": {
+        "values": {
+          "order.placedAt": [
+            "Date"
+          ],
+          "lines.0.createdAt": [
+            "Date"
+          ],
+          "lines.0.updatedAt": [
+            "Date"
+          ],
+          "lines.1.createdAt": [
+            "Date"
+          ],
+          "lines.1.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

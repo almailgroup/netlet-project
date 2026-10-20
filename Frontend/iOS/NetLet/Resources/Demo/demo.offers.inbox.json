@@ -1,0 +1,43 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 1,
+            "state": "offered",
+            "variantId": 2,
+            "productId": 2,
+            "productHandle": "usb-c-charger-65w",
+            "productTitle": "USB-C charger 65W",
+            "variantTitle": "Default",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "listPrice": "8.750",
+            "askedPrice": "7.500",
+            "offeredPrice": "8.000",
+            "quantity": 2,
+            "shopperNote": "Would you take 7.500 each for two?",
+            "vendorNote": "8.000 each is the best I can do for two.",
+            "expiresAt": "2026-10-23T21:46:01.980Z",
+            "createdAt": "2026-10-20T21:45:53.966Z",
+            "shopperName": null
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.expiresAt": [
+            "Date"
+          ],
+          "rows.0.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

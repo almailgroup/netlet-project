@@ -1,0 +1,551 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "orderId": 43,
+          "reference": "NL-20261020-8BG3E",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 42,
+          "reference": "NL-20261020-24F63",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 41,
+          "reference": "NL-20261019-GNVRV",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 29,
+          "reference": "NL-20261012-4V89V",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 28,
+          "reference": "NL-20261012-9VY2Z",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "refunded"
+          }
+        },
+        {
+          "orderId": 27,
+          "reference": "NL-20261012-3NJA9",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "refunded"
+          }
+        },
+        {
+          "orderId": 26,
+          "reference": "NL-20261012-XFJNG",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "198.275",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-22T00:00:00.000Z",
+              "to": "2026-09-22T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 31,
+          "reference": "NL-HOMESEED-2",
+          "vendorId": 2,
+          "vendorName": "Store",
+          "owed": "10.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-10-13T00:00:00.000Z",
+              "to": "2026-10-15T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 25,
+          "reference": "NL-20261012-FWAT6",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 24,
+          "reference": "NL-20261012-WG3W4",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 23,
+          "reference": "NL-20261012-3TF47",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 22,
+          "reference": "NL-20261011-JAXUN",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 20,
+          "reference": "NL-20261011-4AXZR",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 19,
+          "reference": "NL-20261011-FBUR8",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 18,
+          "reference": "NL-20261011-WVZ7R",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 17,
+          "reference": "NL-20261011-DJD9H",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 37,
+          "reference": "NL-HOMESEED-8",
+          "vendorId": 2,
+          "vendorName": "Store",
+          "owed": "15.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-10-07T00:00:00.000Z",
+              "to": "2026-10-11T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 16,
+          "reference": "NL-20261004-8QYKQ",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 15,
+          "reference": "NL-20261004-CZEN8",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 14,
+          "reference": "NL-20261004-YF4QB",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 13,
+          "reference": "NL-20261004-YFQU4",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 39,
+          "reference": "NL-HOMESEED-10",
+          "vendorId": 2,
+          "vendorName": "Store",
+          "owed": "10.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-10-05T00:00:00.000Z",
+              "to": "2026-10-07T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 12,
+          "reference": "NL-20261003-JPJR2",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 11,
+          "reference": "NL-20261003-X7Q3K",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "unpaid"
+          }
+        },
+        {
+          "orderId": 10,
+          "reference": "NL-20261003-W6334",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 9,
+          "reference": "NL-20261003-7FY6R",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 8,
+          "reference": "NL-20261003-6HXTD",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 7,
+          "reference": "NL-20261003-42QA7",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 6,
+          "reference": "NL-20261003-QTX83",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 5,
+          "reference": "NL-20261003-3F93G",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "10.250",
+          "paid": "10.250",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 4,
+          "reference": "NL-20261002-3WQ6P",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "22.000",
+          "paid": "22.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 2,
+          "reference": "NL-20261001-J7MWY",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "23.100",
+          "paid": "23.100",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        },
+        {
+          "orderId": 1,
+          "reference": "NL-20261001-TUP6F",
+          "vendorId": 2,
+          "vendorName": "Acme Electronics",
+          "owed": "0.000",
+          "paid": "0.000",
+          "sending": "0.000",
+          "due": {
+            "state": "due",
+            "window": {
+              "from": "2026-09-14T00:00:00.000Z",
+              "to": "2026-09-14T00:00:00.000Z"
+            },
+            "overdue": true
+          }
+        }
+      ],
+      "meta": {
+        "values": {
+          "6.due.window.from": [
+            "Date"
+          ],
+          "6.due.window.to": [
+            "Date"
+          ],
+          "7.due.window.from": [
+            "Date"
+          ],
+          "7.due.window.to": [
+            "Date"
+          ],
+          "16.due.window.from": [
+            "Date"
+          ],
+          "16.due.window.to": [
+            "Date"
+          ],
+          "21.due.window.from": [
+            "Date"
+          ],
+          "21.due.window.to": [
+            "Date"
+          ],
+          "24.due.window.from": [
+            "Date"
+          ],
+          "24.due.window.to": [
+            "Date"
+          ],
+          "25.due.window.from": [
+            "Date"
+          ],
+          "25.due.window.to": [
+            "Date"
+          ],
+          "26.due.window.from": [
+            "Date"
+          ],
+          "26.due.window.to": [
+            "Date"
+          ],
+          "27.due.window.from": [
+            "Date"
+          ],
+          "27.due.window.to": [
+            "Date"
+          ],
+          "28.due.window.from": [
+            "Date"
+          ],
+          "28.due.window.to": [
+            "Date"
+          ],
+          "29.due.window.from": [
+            "Date"
+          ],
+          "29.due.window.to": [
+            "Date"
+          ],
+          "30.due.window.from": [
+            "Date"
+          ],
+          "30.due.window.to": [
+            "Date"
+          ],
+          "31.due.window.from": [
+            "Date"
+          ],
+          "31.due.window.to": [
+            "Date"
+          ],
+          "32.due.window.from": [
+            "Date"
+          ],
+          "32.due.window.to": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 1,
+        "vendorId": 2,
+        "vendorName": "Acme Electronics",
+        "shopperName": "Noura A.",
+        "messages": [
+          {
+            "id": 1,
+            "side": "shopper",
+            "body": "Does it come with a warranty?",
+            "createdAt": "2026-10-20T21:45:47.073Z",
+            "productId": 2,
+            "productTitle": "USB-C charger 65W",
+            "orderReference": null
+          },
+          {
+            "id": 2,
+            "side": "seller",
+            "body": "Yes, a one-year warranty from Acme, and returns within 14 days.",
+            "createdAt": "2026-10-20T21:46:10.406Z",
+            "productId": null,
+            "productTitle": null,
+            "orderReference": null
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "messages.0.createdAt": [
+            "Date"
+          ],
+          "messages.1.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

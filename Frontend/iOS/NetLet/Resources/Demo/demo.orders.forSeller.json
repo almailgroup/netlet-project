@@ -1,0 +1,425 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 43,
+            "reference": "NL-20261020-8BG3E",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-20T12:56:22.022Z",
+            "vendorCount": 1,
+            "orderTotal": "31.000"
+          },
+          {
+            "id": 42,
+            "reference": "NL-20261020-24F63",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-20T12:55:24.624Z",
+            "vendorCount": 1,
+            "orderTotal": "31.000"
+          },
+          {
+            "id": 41,
+            "reference": "NL-20261019-GNVRV",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-19T17:43:56.836Z",
+            "vendorCount": 2,
+            "orderTotal": "256.500"
+          },
+          {
+            "id": 29,
+            "reference": "NL-20261012-4V89V",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-12T14:33:00.413Z",
+            "vendorCount": 1,
+            "orderTotal": "72.000"
+          },
+          {
+            "id": 28,
+            "reference": "NL-20261012-9VY2Z",
+            "status": "refunded",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-12T14:17:00.271Z",
+            "vendorCount": 1,
+            "orderTotal": "0.000"
+          },
+          {
+            "id": 27,
+            "reference": "NL-20261012-3NJA9",
+            "status": "refunded",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-12T14:15:12.968Z",
+            "vendorCount": 1,
+            "orderTotal": "0.000"
+          },
+          {
+            "id": 26,
+            "reference": "NL-20261012-XFJNG",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-12T14:14:35.072Z",
+            "vendorCount": 2,
+            "orderTotal": "224.750"
+          },
+          {
+            "id": 31,
+            "reference": "NL-HOMESEED-2",
+            "status": "paid",
+            "paymentMethod": null,
+            "placedAt": "2026-10-12T10:37:23.788Z",
+            "vendorCount": 1,
+            "orderTotal": "10.000"
+          },
+          {
+            "id": 25,
+            "reference": "NL-20261012-FWAT6",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T22:29:31.432Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 24,
+            "reference": "NL-20261012-WG3W4",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T22:29:20.186Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 23,
+            "reference": "NL-20261012-3TF47",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T22:29:14.372Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 22,
+            "reference": "NL-20261011-JAXUN",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:11:27.640Z",
+            "vendorCount": 1,
+            "orderTotal": "0.000"
+          },
+          {
+            "id": 21,
+            "reference": "NL-20261011-Z2KQ8",
+            "status": "cancelled",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:10:44.733Z",
+            "vendorCount": 1,
+            "orderTotal": "0.000"
+          },
+          {
+            "id": 20,
+            "reference": "NL-20261011-4AXZR",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:09:11.494Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 19,
+            "reference": "NL-20261011-FBUR8",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:09:05.728Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 18,
+            "reference": "NL-20261011-WVZ7R",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:08:58.338Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 17,
+            "reference": "NL-20261011-DJD9H",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-11T21:08:52.623Z",
+            "vendorCount": 1,
+            "orderTotal": "25.000"
+          },
+          {
+            "id": 37,
+            "reference": "NL-HOMESEED-8",
+            "status": "paid",
+            "paymentMethod": null,
+            "placedAt": "2026-10-06T10:37:23.788Z",
+            "vendorCount": 1,
+            "orderTotal": "15.000"
+          },
+          {
+            "id": 16,
+            "reference": "NL-20261004-8QYKQ",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-04T16:35:52.573Z",
+            "vendorCount": 1,
+            "orderTotal": "17.500"
+          },
+          {
+            "id": 15,
+            "reference": "NL-20261004-CZEN8",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-04T16:35:15.712Z",
+            "vendorCount": 1,
+            "orderTotal": "17.500"
+          },
+          {
+            "id": 14,
+            "reference": "NL-20261004-YF4QB",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-04T16:34:06.852Z",
+            "vendorCount": 1,
+            "orderTotal": "17.500"
+          },
+          {
+            "id": 13,
+            "reference": "NL-20261004-YFQU4",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-04T16:33:08.005Z",
+            "vendorCount": 1,
+            "orderTotal": "17.500"
+          },
+          {
+            "id": 39,
+            "reference": "NL-HOMESEED-10",
+            "status": "paid",
+            "paymentMethod": null,
+            "placedAt": "2026-10-04T10:37:23.788Z",
+            "vendorCount": 1,
+            "orderTotal": "10.000"
+          },
+          {
+            "id": 12,
+            "reference": "NL-20261003-JPJR2",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T21:44:03.526Z",
+            "vendorCount": 1,
+            "orderTotal": "64.800"
+          },
+          {
+            "id": 11,
+            "reference": "NL-20261003-X7Q3K",
+            "status": "pending_payment",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T21:43:20.383Z",
+            "vendorCount": 1,
+            "orderTotal": "64.800"
+          },
+          {
+            "id": 10,
+            "reference": "NL-20261003-W6334",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T20:54:02.094Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 9,
+            "reference": "NL-20261003-7FY6R",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T20:53:50.860Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 8,
+            "reference": "NL-20261003-6HXTD",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T20:53:18.380Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 7,
+            "reference": "NL-20261003-42QA7",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T17:41:39.044Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 6,
+            "reference": "NL-20261003-QTX83",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T17:41:27.659Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 5,
+            "reference": "NL-20261003-3F93G",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-03T17:41:21.893Z",
+            "vendorCount": 1,
+            "orderTotal": "12.500"
+          },
+          {
+            "id": 4,
+            "reference": "NL-20261002-3WQ6P",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-02T12:23:17.081Z",
+            "vendorCount": 1,
+            "orderTotal": "25.000"
+          },
+          {
+            "id": 2,
+            "reference": "NL-20261001-J7MWY",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-01T18:22:28.239Z",
+            "vendorCount": 1,
+            "orderTotal": "26.250"
+          },
+          {
+            "id": 1,
+            "reference": "NL-20261001-TUP6F",
+            "status": "paid",
+            "paymentMethod": "cod",
+            "placedAt": "2026-10-01T18:22:28.199Z",
+            "vendorCount": 1,
+            "orderTotal": "0.000"
+          }
+        ],
+        "total": 34,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.placedAt": [
+            "Date"
+          ],
+          "rows.1.placedAt": [
+            "Date"
+          ],
+          "rows.2.placedAt": [
+            "Date"
+          ],
+          "rows.3.placedAt": [
+            "Date"
+          ],
+          "rows.4.placedAt": [
+            "Date"
+          ],
+          "rows.5.placedAt": [
+            "Date"
+          ],
+          "rows.6.placedAt": [
+            "Date"
+          ],
+          "rows.7.placedAt": [
+            "Date"
+          ],
+          "rows.8.placedAt": [
+            "Date"
+          ],
+          "rows.9.placedAt": [
+            "Date"
+          ],
+          "rows.10.placedAt": [
+            "Date"
+          ],
+          "rows.11.placedAt": [
+            "Date"
+          ],
+          "rows.12.placedAt": [
+            "Date"
+          ],
+          "rows.13.placedAt": [
+            "Date"
+          ],
+          "rows.14.placedAt": [
+            "Date"
+          ],
+          "rows.15.placedAt": [
+            "Date"
+          ],
+          "rows.16.placedAt": [
+            "Date"
+          ],
+          "rows.17.placedAt": [
+            "Date"
+          ],
+          "rows.18.placedAt": [
+            "Date"
+          ],
+          "rows.19.placedAt": [
+            "Date"
+          ],
+          "rows.20.placedAt": [
+            "Date"
+          ],
+          "rows.21.placedAt": [
+            "Date"
+          ],
+          "rows.22.placedAt": [
+            "Date"
+          ],
+          "rows.23.placedAt": [
+            "Date"
+          ],
+          "rows.24.placedAt": [
+            "Date"
+          ],
+          "rows.25.placedAt": [
+            "Date"
+          ],
+          "rows.26.placedAt": [
+            "Date"
+          ],
+          "rows.27.placedAt": [
+            "Date"
+          ],
+          "rows.28.placedAt": [
+            "Date"
+          ],
+          "rows.29.placedAt": [
+            "Date"
+          ],
+          "rows.30.placedAt": [
+            "Date"
+          ],
+          "rows.31.placedAt": [
+            "Date"
+          ],
+          "rows.32.placedAt": [
+            "Date"
+          ],
+          "rows.33.placedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

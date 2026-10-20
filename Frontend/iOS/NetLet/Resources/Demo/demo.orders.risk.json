@@ -1,0 +1,36 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "orderId": 40,
+          "risk": "low",
+          "flags": []
+        },
+        {
+          "orderId": 41,
+          "risk": "watch",
+          "flags": [
+            {
+              "signal": "highValueCash",
+              "serious": false,
+              "detail": {
+                "total": "268.750"
+              }
+            }
+          ]
+        },
+        {
+          "orderId": 42,
+          "risk": "low",
+          "flags": []
+        },
+        {
+          "orderId": 43,
+          "risk": "low",
+          "flags": []
+        }
+      ]
+    }
+  }
+}

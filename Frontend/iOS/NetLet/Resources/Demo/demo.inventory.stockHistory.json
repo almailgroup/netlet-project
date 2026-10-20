@@ -1,0 +1,522 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 108,
+          "delta": 1,
+          "resulting": 84,
+          "reason": "received",
+          "note": "1e999",
+          "createdAt": "2026-10-11T20:37:37.549Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 107,
+          "delta": 1,
+          "resulting": 83,
+          "reason": "received",
+          "note": "-0",
+          "createdAt": "2026-10-11T20:37:37.548Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 106,
+          "delta": 1,
+          "resulting": 82,
+          "reason": "received",
+          "note": "-1.000",
+          "createdAt": "2026-10-11T20:37:37.547Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 105,
+          "delta": 1,
+          "resulting": 81,
+          "reason": "received",
+          "note": "9999999999999999999999999999999999999999",
+          "createdAt": "2026-10-11T20:37:37.545Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 104,
+          "delta": 1,
+          "resulting": 80,
+          "reason": "received",
+          "note": "NaN",
+          "createdAt": "2026-10-11T20:37:37.531Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 103,
+          "delta": 1,
+          "resulting": 79,
+          "reason": "received",
+          "note": "' OR 1=1 --",
+          "createdAt": "2026-10-11T20:37:37.530Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 102,
+          "delta": 1,
+          "resulting": 78,
+          "reason": "received",
+          "note": "👍🏽🇰🇼",
+          "createdAt": "2026-10-11T20:37:37.529Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 101,
+          "delta": 1,
+          "resulting": 77,
+          "reason": "received",
+          "note": "مرحبا",
+          "createdAt": "2026-10-11T20:37:37.526Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 100,
+          "delta": 1,
+          "resulting": 76,
+          "reason": "received",
+          "note": "Infinity",
+          "createdAt": "2026-10-11T20:37:37.525Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 99,
+          "delta": 1,
+          "resulting": 75,
+          "reason": "received",
+          "note": "<img src=x onerror=alert(1)>",
+          "createdAt": "2026-10-11T20:37:37.523Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 98,
+          "delta": 1,
+          "resulting": 74,
+          "reason": "received",
+          "note": " ",
+          "createdAt": "2026-10-11T20:37:37.507Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 97,
+          "delta": 1,
+          "resulting": 73,
+          "reason": "received",
+          "note": "1",
+          "createdAt": "2026-10-11T20:37:37.506Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 96,
+          "delta": 1,
+          "resulting": 72,
+          "reason": "received",
+          "note": "",
+          "createdAt": "2026-10-11T20:37:37.505Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 95,
+          "delta": 0,
+          "resulting": 71,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.462Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 94,
+          "delta": 1,
+          "resulting": 71,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.448Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 93,
+          "delta": -1,
+          "resulting": 70,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.447Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 92,
+          "delta": 1,
+          "resulting": 71,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.425Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 91,
+          "delta": 1,
+          "resulting": 70,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.397Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 90,
+          "delta": 1,
+          "resulting": 69,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.384Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "vendor@acme.test",
+          "actorName": "Acme Owner"
+        },
+        {
+          "id": 89,
+          "delta": 1,
+          "resulting": 68,
+          "reason": "received",
+          "note": "probe",
+          "createdAt": "2026-10-11T20:37:37.375Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "noura@shop.test",
+          "actorName": "Noura Al-Sabah"
+        },
+        {
+          "id": 65,
+          "delta": 1,
+          "resulting": 67,
+          "reason": "received",
+          "note": "9999999999999999999999999999999999999999",
+          "createdAt": "2026-10-04T16:36:58.881Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 64,
+          "delta": 1,
+          "resulting": 66,
+          "reason": "received",
+          "note": "1e999",
+          "createdAt": "2026-10-04T16:36:58.880Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 63,
+          "delta": 1,
+          "resulting": 65,
+          "reason": "received",
+          "note": "-1.000",
+          "createdAt": "2026-10-04T16:36:58.879Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 62,
+          "delta": 1,
+          "resulting": 64,
+          "reason": "received",
+          "note": "-0",
+          "createdAt": "2026-10-04T16:36:58.878Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 61,
+          "delta": 1,
+          "resulting": 63,
+          "reason": "received",
+          "note": "👍🏽🇰🇼",
+          "createdAt": "2026-10-04T16:36:58.867Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 60,
+          "delta": 1,
+          "resulting": 62,
+          "reason": "received",
+          "note": "Infinity",
+          "createdAt": "2026-10-04T16:36:58.864Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 59,
+          "delta": 1,
+          "resulting": 61,
+          "reason": "received",
+          "note": "<img src=x onerror=alert(1)>",
+          "createdAt": "2026-10-04T16:36:58.863Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 58,
+          "delta": 1,
+          "resulting": 60,
+          "reason": "received",
+          "note": "NaN",
+          "createdAt": "2026-10-04T16:36:58.862Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 57,
+          "delta": 1,
+          "resulting": 59,
+          "reason": "received",
+          "note": "مرحبا",
+          "createdAt": "2026-10-04T16:36:58.861Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        },
+        {
+          "id": 56,
+          "delta": 1,
+          "resulting": 58,
+          "reason": "received",
+          "note": "' OR 1=1 --",
+          "createdAt": "2026-10-04T16:36:58.860Z",
+          "variantId": 1,
+          "variantTitle": "Default",
+          "productId": 1,
+          "productTitle": "probe",
+          "actorEmail": "owner@netlet.test",
+          "actorName": "NetLet Owner"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ],
+          "2.createdAt": [
+            "Date"
+          ],
+          "3.createdAt": [
+            "Date"
+          ],
+          "4.createdAt": [
+            "Date"
+          ],
+          "5.createdAt": [
+            "Date"
+          ],
+          "6.createdAt": [
+            "Date"
+          ],
+          "7.createdAt": [
+            "Date"
+          ],
+          "8.createdAt": [
+            "Date"
+          ],
+          "9.createdAt": [
+            "Date"
+          ],
+          "10.createdAt": [
+            "Date"
+          ],
+          "11.createdAt": [
+            "Date"
+          ],
+          "12.createdAt": [
+            "Date"
+          ],
+          "13.createdAt": [
+            "Date"
+          ],
+          "14.createdAt": [
+            "Date"
+          ],
+          "15.createdAt": [
+            "Date"
+          ],
+          "16.createdAt": [
+            "Date"
+          ],
+          "17.createdAt": [
+            "Date"
+          ],
+          "18.createdAt": [
+            "Date"
+          ],
+          "19.createdAt": [
+            "Date"
+          ],
+          "20.createdAt": [
+            "Date"
+          ],
+          "21.createdAt": [
+            "Date"
+          ],
+          "22.createdAt": [
+            "Date"
+          ],
+          "23.createdAt": [
+            "Date"
+          ],
+          "24.createdAt": [
+            "Date"
+          ],
+          "25.createdAt": [
+            "Date"
+          ],
+          "26.createdAt": [
+            "Date"
+          ],
+          "27.createdAt": [
+            "Date"
+          ],
+          "28.createdAt": [
+            "Date"
+          ],
+          "29.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

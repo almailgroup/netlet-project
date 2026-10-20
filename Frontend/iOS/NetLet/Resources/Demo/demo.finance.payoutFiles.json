@@ -1,0 +1,66 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 5,
+            "reference": "NLPAY-20261005-000005",
+            "createdAt": "2026-10-05T12:52:32.943Z",
+            "waiting": 1,
+            "sent": 0,
+            "cancelled": 0,
+            "total": "223.125"
+          },
+          {
+            "id": 4,
+            "reference": "NLPAY-20261005-000004",
+            "createdAt": "2026-10-05T12:51:35.794Z",
+            "waiting": 0,
+            "sent": 0,
+            "cancelled": 1,
+            "total": "0.000"
+          },
+          {
+            "id": 3,
+            "reference": "NLPAY-20261005-000003",
+            "createdAt": "2026-10-05T12:50:56.077Z",
+            "waiting": 0,
+            "sent": 0,
+            "cancelled": 1,
+            "total": "0.000"
+          },
+          {
+            "id": 1,
+            "reference": "NLPAY-20261005-000001",
+            "createdAt": "2026-10-05T12:48:26.742Z",
+            "waiting": 0,
+            "sent": 1,
+            "cancelled": 0,
+            "total": "4.508"
+          }
+        ],
+        "total": 4,
+        "page": 1,
+        "pageSize": 20,
+        "pain001": "payouts.noDebtorName"
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.1.createdAt": [
+            "Date"
+          ],
+          "rows.2.createdAt": [
+            "Date"
+          ],
+          "rows.3.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

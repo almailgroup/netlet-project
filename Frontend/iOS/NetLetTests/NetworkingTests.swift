@@ -337,6 +337,49 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(check.blockers.isEmpty)
     }
 
+    func testTheSellersDesk() async throws {
+        let orders = try await client.call(API.deskOrders, .init(page: 1))
+        XCTAssertFalse(orders.rows.isEmpty)
+        let detail = try await client.call(API.deskOrder, .init(orderId: orders.rows[0].id))
+        XCTAssertEqual(detail?.order.reference, orders.rows[0].reference)
+        XCTAssertTrue(detail?.order.mayRecordCash == true, "a cash order still owed records its cash once")
+        let risk = try await client.call(API.orderRisk, .init(ids: [41]))
+        XCTAssertTrue(risk.contains { $0.flags.contains { $0.signal == "highValueCash" } })
+        let moves = try await client.call(API.stockHistory, .init(limit: 30))
+        XCTAssertFalse(moves.isEmpty)
+        let low = try await client.call(API.lowStock, .init(page: 1))
+        XCTAssertGreaterThanOrEqual(low.total, low.rows.count)
+        let asks = try await client.call(API.askInbox, .init(page: 1, open: false))
+        XCTAssertEqual(asks.rows.first?.askedPrice, Money(fils: 7500))
+        let conversations = try await client.call(API.storeConversations)
+        XCTAssertEqual(conversations.first?.counterpart, "Noura A.")
+        let thread = try await client.call(API.storeThread, .init(conversationId: 1))
+        XCTAssertEqual(thread.messages.count, 2)
+        let returns = try await client.call(API.deskReturns, .init(open: false))
+        XCTAssertFalse(returns.isEmpty)
+        let members = try await client.call(API.storeMembers, .init(vendorId: 2))
+        XCTAssertEqual(members.first?.role, "owner")
+        let batches = try await client.call(API.payoutBatches)
+        XCTAssertTrue(batches.first?.lines.contains { $0.kind == "fee" && $0.amount.fils < 0 } == true, "a placement fee comes off the batch")
+        let files = try await client.call(API.payoutFiles, .init())
+        XCTAssertNotNil(files.pain001)
+        let prepared = try await client.call(API.preparedPayouts, .init())
+        XCTAssertEqual(prepared.unfiled, 0)
+        let due = try await client.call(API.payoutsDue, .init())
+        XCTAssertTrue(due.contains { $0.due.state == "due" && $0.due.window != nil })
+        let history = try await client.call(API.payoutHistory, .init(page: 1))
+        XCTAssertFalse(history.rows.isEmpty)
+    }
+
+    func testALineMovesOnlyWhereTheServerWouldTakeIt() {
+        let rules = PortalRules.shared
+        XCTAssertEqual(rules.nextStates("returned"), [], "a returned line is over")
+        XCTAssertEqual(rules.nextStates("cancelled"), ["pending"], "a cancelled line can only be restored")
+        XCTAssertFalse(rules.nextStates("pending").contains("returned"), "returning is the return's, never a button")
+        XCTAssertEqual(PortalPage("/admin/messages/3"), .thread(3))
+        XCTAssertEqual(PortalPage("/admin/payouts"), .payouts)
+    }
+
     func testThePortalOffersWhatThePersonMayUse() {
         let rules = PortalRules.shared
         let owner = SellerIdentity(kind: "vendor", userId: 5, vendorId: 2, role: "owner")

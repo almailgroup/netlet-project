@@ -11,6 +11,14 @@ struct PortalRouter: View {
         case .home: PortalHomeView()
         case .products(let vendorId): PortalProductsView(vendorId: vendorId)
         case .newProduct: NewListingView()
+        case .orders: PortalOrdersView()
+        case .stock: PortalStockView()
+        case .offers: PortalOffersView()
+        case .messages: PortalMessagesView()
+        case .thread(let id): PortalThreadView(conversationId: id)
+        case .returns: PortalReturnsView()
+        case .team: PortalTeamView()
+        case .payouts: PortalPayoutsView()
         }
     }
 }
