@@ -174,7 +174,6 @@ struct AddressFormSheet: View {
 private struct AddressFormBody: View {
     @Bindable var model: AddressFormModel
     let onSaved: (SavedAddress) -> Void
-    @State private var picking = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -201,7 +200,7 @@ private struct AddressFormBody: View {
                     leftToRight: true
                 )
                 LabeledField(label: l.t("address.notes"), text: $model.notes, axis: .vertical)
-                pinSection
+                PinField(pin: $model.pin, governorate: model.governorate)
                 if model.showsProblems {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(model.problems, id: \.self) { FieldProblem(key: $0) }
@@ -219,44 +218,6 @@ private struct AddressFormBody: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Brand.ground.ignoresSafeArea())
-        .fullScreenCover(isPresented: $picking) {
-            PinPickerSheet(start: model.pin ?? startingPin) { pin in model.pin = pin }
-        }
-    }
-
-    /// Where the map opens: the pin, or the middle of the governorate, or of Kuwait.
-    private var startingPin: Pin {
-        let reference = ReferenceData.shared
-        return model.governorate.flatMap { reference.governorateCentres[$0] } ?? reference.centre
-    }
-
-    private var pinSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if model.pin != nil {
-                Label(l.t("pin.pinned"), systemImage: "mappin.circle.fill")
-                    .font(.inter(14, .semibold))
-                    .foregroundStyle(Brand.success)
-                HStack(spacing: 10) {
-                    Button(l.t("pin.move")) { picking = true }
-                        .buttonStyle(SecondaryButtonStyle())
-                    Button(l.t("pin.remove")) { model.pin = nil }
-                        .buttonStyle(SecondaryButtonStyle())
-                }
-            } else {
-                Button {
-                    picking = true
-                } label: {
-                    Label(l.t("pin.drop"), systemImage: "mappin.and.ellipse")
-                }
-                .buttonStyle(SecondaryButtonStyle())
-                Text(l.t("pin.why"))
-                    .font(.footnote)
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.tint.opacity(0.6)))
     }
 
     private func save() async {

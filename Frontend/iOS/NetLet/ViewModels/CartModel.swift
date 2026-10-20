@@ -116,6 +116,23 @@ final class CartModel {
         }
     }
 
+    /// Sends one line to a saved address, or back where the order goes —
+    /// the web's `ItemDestinations`. Each seller's delivery is then priced
+    /// per door.
+    @discardableResult
+    func setDestination(lineId: String, addressId: Int?) async -> Bool {
+        guard let id = cartId else { return false }
+        busyLine = lineId
+        defer { busyLine = nil }
+        do {
+            if let found = try await service.setDestination(id, lineId: lineId, addressId: addressId) { cart = found }
+            return true
+        } catch {
+            lastError = APIError.from(error)
+            return false
+        }
+    }
+
     /// Reads the bag again — after an order, which empties it on the server.
     func refresh() async {
         guard let id = cartId else { return }

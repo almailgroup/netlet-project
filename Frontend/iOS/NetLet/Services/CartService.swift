@@ -10,9 +10,16 @@ protocol CartServicing: Sendable {
     func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart?
     /// Lines with their extras or their set: into the bag, or a new bag with them.
     func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart?
+    /// Sends one line to a saved address, or back where the order goes with nil.
+    func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart?
 }
 
 extension CartServicing {
+    /// A stand-in with no address book keeps the bag as it is.
+    func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart? {
+        try await get(cartId)
+    }
+
     /// A stand-in that knows only plain lines adds them one at a time.
     func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart? {
         var current: Cart?
@@ -51,5 +58,9 @@ struct CartService: CartServicing {
     func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart? {
         if let cartId { return try await client.call(API.addToCart, .init(cartId: cartId, lines: lines)) }
         return try await client.call(API.createCart, .init(lines: lines))
+    }
+
+    func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart? {
+        try await client.call(API.setLineDestination, .init(cartId: cartId, lineId: lineId, addressId: addressId))
     }
 }

@@ -134,12 +134,15 @@ struct Rules: Decodable, Sendable {
         let maxDeliveryComment: Int
         let claimWindowDays: Int
         let maxClaimDescription: Int
+        /// What one referral point is worth spent, in fils (`FILS_PER_POINT`).
+        let filsPerPoint: Int
 
         static let fallback = Orders(
             returnKinds: ["refund", "exchange"],
             returnReasons: ["damaged", "defective", "wrongItem", "notAsDescribed", "tooSmall", "tooLarge", "changedMind", "other"],
             openReturnStatuses: ["requested", "approved", "collected"],
-            maxReturnNote: 1000, ratingWindowDays: 30, maxDeliveryComment: 500, claimWindowDays: 7, maxClaimDescription: 2000
+            maxReturnNote: 1000, ratingWindowDays: 30, maxDeliveryComment: 500, claimWindowDays: 7, maxClaimDescription: 2000,
+            filsPerPoint: 1
         )
     }
 

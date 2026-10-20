@@ -176,3 +176,27 @@ final class DescriptionAndSortTests: XCTestCase {
         XCTAssertEqual(ProductSort.relevance.apply(to: products).map(\.id), products.map(\.id))
     }
 }
+
+final class TillTests: XCTestCase {
+    private func money(_ text: String) -> Money { Money(amount: text)! }
+
+    func testEachReductionIsCappedAtWhatIsStillOwed() {
+        // The web's `settle`: code, then points, then the card, none below zero.
+        let bill = Till.settle(goods: money("20.000"), delivery: money("1.500"), discount: money("5.000"), points: money("30.000"), giftCard: money("4.000"))
+        XCTAssertEqual(bill.discount, money("5.000"))
+        XCTAssertEqual(bill.points, money("16.500"), "points pay at most what the code left")
+        XCTAssertEqual(bill.giftCard, .zero)
+        XCTAssertEqual(bill.payable, .zero)
+        let card = Till.settle(goods: money("10.000"), delivery: .zero, giftCard: money("3.250"))
+        XCTAssertEqual(card.payable, money("6.750"))
+    }
+
+    func testPointsAreADiscountNotADeposit() {
+        XCTAssertEqual(Till.pointsSpendable(500, on: money("0.200")), 200)
+        XCTAssertEqual(Till.pointsSpendable(150, on: money("10.000")), 150)
+        XCTAssertEqual(Till.pointsSpendable(-5, on: money("10.000")), 0)
+        XCTAssertEqual(Till.spendValue(150), money("0.150"))
+        XCTAssertEqual(Till.giftCardPayment(remaining: money("2.000"), owed: money("5.000")), money("2.000"))
+        XCTAssertEqual(Till.giftCardPayment(remaining: money("9.000"), owed: money("5.000")), money("5.000"))
+    }
+}

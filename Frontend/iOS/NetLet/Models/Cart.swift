@@ -13,6 +13,8 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     let delivery: CartDelivery
     let cod: CashOnDelivery
     let total: Money
+    /// The signed-in shopper's address book, for sending a line elsewhere.
+    var addresses: [CartAddress]? = nil
 
     var isEmpty: Bool { items.isEmpty }
 
@@ -36,6 +38,8 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     let lineTotal: Money
     let bundleName: String?
     let addons: [CartAddon]?
+    /// The saved address this line goes to, when not where the order goes.
+    var destination: CartAddress? = nil
 
     var id: String { lineId }
 
@@ -59,6 +63,14 @@ struct CartAddon: Decodable, Hashable, Sendable {
 struct CartDelivery: Decodable, Hashable, Sendable {
     let perVendor: [CartDeliveryLine]
     let total: Money
+    /// Delivery NetLet carries for a member, said rather than hidden.
+    var memberWaived: Money? = nil
+}
+
+/// A saved address as the bag names it: enough to choose one by.
+struct CartAddress: Decodable, Hashable, Identifiable, Sendable {
+    let id: Int
+    let label: String
 }
 
 /// One seller's delivery: each seller charges their own, and the shopper pays each.
@@ -69,6 +81,8 @@ struct CartDeliveryLine: Decodable, Hashable, Sendable {
     let fee: Money
     let free: Bool
     let toFree: Money?
+    /// The door this delivery goes to, when a line was sent elsewhere.
+    var destinationLabel: String? = nil
 
     func storeName(_ language: Language) -> String {
         if language == .ar, let arabic = vendorNameAr, !arabic.isEmpty { return arabic }

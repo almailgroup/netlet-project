@@ -2,6 +2,54 @@ import CoreLocation
 import MapKit
 import SwiftUI
 
+/// The optional pin under an address form: drop one, move it or take it
+/// away — the same row in the address book and at checkout.
+struct PinField: View {
+    @Binding var pin: Pin?
+    let governorate: String?
+    @State private var picking = false
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if pin != nil {
+                Label(l.t("pin.pinned"), systemImage: "mappin.circle.fill")
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.success)
+                HStack(spacing: 10) {
+                    Button(l.t("pin.move")) { picking = true }
+                        .buttonStyle(SecondaryButtonStyle())
+                    Button(l.t("pin.remove")) { pin = nil }
+                        .buttonStyle(SecondaryButtonStyle())
+                }
+            } else {
+                Button {
+                    picking = true
+                } label: {
+                    Label(l.t("pin.drop"), systemImage: "mappin.and.ellipse")
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                Text(l.t("pin.why"))
+                    .font(.footnote)
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.tint.opacity(0.6)))
+        .fullScreenCover(isPresented: $picking) {
+            PinPickerSheet(start: pin ?? startingPin) { picked in pin = picked }
+        }
+    }
+
+    /// Where the map opens: the pin, or the middle of the governorate, or of Kuwait.
+    private var startingPin: Pin {
+        let reference = ReferenceData.shared
+        return governorate.flatMap { reference.governorateCentres[$0] } ?? reference.centre
+    }
+}
+
 /// Where the door is, on Apple's own map — the web's `PinPicker`.
 ///
 /// **The map moves under a still pin**, the web's rule: one instruction serves

@@ -92,6 +92,25 @@ enum API {
     static let cart = Procedure<CartId, Cart?>(query: "commerce.cart.get")
     /// Both answer null for a bag the server no longer has.
     static let addToCart = Procedure<CartAdd, Cart?>(mutation: "commerce.cart.addLines")
+
+    /// One line to another door; `addressId` nil sends it back to the order's.
+    struct LineDestination: Encodable, Sendable {
+        let cartId: String
+        let lineId: String
+        let addressId: Int?
+
+        // The server takes an explicit null to mean "the order's address".
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(cartId, forKey: .cartId)
+            try container.encode(lineId, forKey: .lineId)
+            try container.encode(addressId, forKey: .addressId)
+        }
+
+        private enum CodingKeys: String, CodingKey { case cartId, lineId, addressId }
+    }
+
+    static let setLineDestination = Procedure<LineDestination, Cart?>(mutation: "commerce.cart.setDestination")
     static let updateCart = Procedure<CartUpdate, Cart?>(mutation: "commerce.cart.updateLines")
 
     // MARK: Accounts
@@ -188,7 +207,30 @@ enum API {
         var addressParts: AddressParts?
         /// The presents a guest took on this phone, so the order marks them bought.
         var giftClaims: [GiftClaim]?
+        /// Where the door is on the map, when the shopper pinned it.
+        var pin: Pin?
+        /// Spend the referral balance on this order, capped at what it owes.
+        var usePoints: Bool?
+        /// A discount code or a gift card, as typed and quoted.
+        var voucherCode: String?
     }
+
+    /// What a code would do to this bag (`orders.quoteVoucher`): a discount
+    /// off the goods, or a gift card paying toward what is left, or why not.
+    struct VoucherQuote: Decodable, Hashable, Sendable {
+        let ok: Bool
+        let kind: String?
+        let amount: Money?
+        let remaining: Money?
+        let reason: String?
+    }
+
+    struct VoucherAsk: Encodable, Sendable {
+        let cartId: String
+        let code: String
+    }
+
+    static let quoteVoucher = Procedure<VoucherAsk, VoucherQuote>(query: "orders.quoteVoucher")
 
     static let orders = Procedure<OrderList, OrderPage>(query: "orders.list")
     static let order = Procedure<Reference, OrderDetail>(query: "orders.get")

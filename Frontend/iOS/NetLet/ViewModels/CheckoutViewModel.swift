@@ -19,6 +19,21 @@ final class CheckoutViewModel: AddressPartsEditing {
     /// True when the shopper picked "Another area" and types it.
     var typedArea = false
     var notes = ""
+    /// Where the door is on the map; optional, the typed address is not.
+    var pin: Pin?
+    /// Keep a new address in the book once the order has gone through.
+    var saveForNext = true
+    /// Spend the referral balance on this order.
+    var usePoints = false
+    /// The code box as typed, and the code last asked about.
+    var codeInput = ""
+    private(set) var appliedCode = ""
+    private(set) var quote: API.VoucherQuote?
+    /// Why the code does nothing — a message key — once asked.
+    private(set) var codeRefusal: String?
+    private(set) var quoting = false
+    /// The referral balance, in points; zero hides the choice.
+    private(set) var balance = 0
 
     /// Set once Place order has been pressed, so a problem is said only after
     /// it is asked about — the web's rule that nothing appears because a box lost focus.
@@ -28,13 +43,15 @@ final class CheckoutViewModel: AddressPartsEditing {
 
     private let orders: OrderServicing
     private let account: AccountServicing
+    private let api: APICalling?
     private let defaults: UserDefaults
     let reference: ReferenceData
     static let lastAddressKey = "netlet.lastAddressId"
 
-    init(orders: OrderServicing, account: AccountServicing, defaults: UserDefaults = .standard, reference: ReferenceData = .shared) {
+    init(orders: OrderServicing, account: AccountServicing, api: APICalling? = nil, defaults: UserDefaults = .standard, reference: ReferenceData = .shared) {
         self.orders = orders
         self.account = account
+        self.api = api
         self.defaults = defaults
         self.reference = reference
     }
@@ -43,6 +60,7 @@ final class CheckoutViewModel: AddressPartsEditing {
     func load(user: User?) async {
         if contactName.isEmpty { contactName = user?.name ?? "" }
         guard user != nil else { return }
+        if let api, let rewards = try? await api.call(API.rewards) { balance = rewards.balance }
         addresses = .loading
         do {
             let book = try await account.addresses()
@@ -64,6 +82,7 @@ final class CheckoutViewModel: AddressPartsEditing {
         if let name = address.contactName, !name.isEmpty { contactName = name }
         if let phone = address.contactPhone, !phone.isEmpty { contactPhone = phone }
         notes = address.addressNotes ?? ""
+        pin = address.pin
     }
 
     func startNewAddress() {
@@ -71,6 +90,33 @@ final class CheckoutViewModel: AddressPartsEditing {
         parts = AddressParts()
         typedArea = false
         notes = ""
+        pin = nil
+    }
+
+    /// Asks what a code would do to this bag. Only a code naming nothing
+    /// counts against the guesses' ceiling, and asking again about the same
+    /// wrong code counts again — so it is asked on the press, never on its own.
+    func applyCode(cartId: String) async {
+        let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty, let api else { return }
+        quoting = true
+        defer { quoting = false }
+        appliedCode = code
+        quote = nil
+        codeRefusal = nil
+        do {
+            let answer = try await api.call(API.quoteVoucher, .init(cartId: cartId, code: code))
+            quote = answer
+            if !answer.ok { codeRefusal = answer.reason ?? "voucher.unknown" }
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled { codeRefusal = failure.messageKey(knownKey: Phrasebook.shared.has) }
+        }
+    }
+
+    /// What this bag comes to with the code, the points and the card taken off.
+    func bill(for cart: Cart) -> Till.Bill {
+        Till.bill(for: cart, quote: quote, balance: balance, usePoints: usePoints)
     }
 
     /// The first thing still missing, first reason first — said under the
@@ -93,7 +139,7 @@ final class CheckoutViewModel: AddressPartsEditing {
 
     /// Places the order. Nil when something is missing or the server refused;
     /// the reason is then on `refusal` or `blocker(for:)`.
-    func place(cart: Cart?) async -> PlacedOrder? {
+    func place(cart: Cart?, savedLabel: String = "") async -> PlacedOrder? {
         attempted = true
         refusal = nil
         guard let cart, blocker(for: cart) == nil else { return nil }
@@ -110,15 +156,37 @@ final class CheckoutViewModel: AddressPartsEditing {
             deliveryZoneId: governorate,
             addressNotes: trimmedNotes.isEmpty ? nil : trimmedNotes,
             addressParts: cleaned,
-            giftClaims: HeldClaims.all(defaults).map { API.GiftClaim(token: $0.token, productId: $0.productId) }.nilIfEmpty
+            giftClaims: HeldClaims.all(defaults).map { API.GiftClaim(token: $0.token, productId: $0.productId) }.nilIfEmpty,
+            pin: pin,
+            usePoints: usePoints && balance > 0 ? true : nil,
+            voucherCode: appliedCode.isEmpty ? nil : appliedCode
         )
         do {
             let placed = try await orders.place(order)
             if let chosenAddress { defaults.set(chosenAddress, forKey: Self.lastAddressKey) }
+            await keepNewAddress(cleaned, name: name, notes: trimmedNotes, label: savedLabel)
             return placed
         } catch {
             refusal = APIError.from(error)
             return nil
+        }
+    }
+
+    /// A first address goes in the book *after* the order succeeds, never
+    /// instead of it, so a refusal from the book's own rules costs nothing.
+    private func keepNewAddress(_ parts: AddressParts, name: String, notes: String, label: String) async {
+        guard chosenAddress == nil, saveForNext, !parts.isEmpty, let api else { return }
+        let input = API.AddressInput(
+            label: label.isEmpty ? governorate ?? "" : label,
+            contactName: name.isEmpty ? nil : name,
+            contactPhone: PhoneNumber.normalise(contactPhone),
+            governorate: governorate,
+            addressNotes: notes.isEmpty ? nil : notes,
+            pin: pin,
+            parts: parts
+        )
+        if let saved = try? await api.call(API.addAddress, input) {
+            defaults.set(saved.id, forKey: Self.lastAddressKey)
         }
     }
 }

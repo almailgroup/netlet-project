@@ -42,7 +42,7 @@ import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
 import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX } from "../../../Shared/commerce/reviews.js";
 import { ATTRIBUTION_DAYS, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
-import { MIN_CASH_OUT_POINTS } from "../../../Shared/commerce/referral.js";
+import { FILS_PER_POINT, MIN_CASH_OUT_POINTS } from "../../../Shared/commerce/referral.js";
 import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { MAX_MESSAGE_LENGTH } from "../../../Shared/commerce/contactFilter.js";
@@ -197,6 +197,7 @@ export function buildResources(): Record<string, string> {
         maxDeliveryComment: MAX_DELIVERY_COMMENT,
         claimWindowDays: CLAIM_WINDOW_DAYS,
         maxClaimDescription: MAX_CLAIM_DESCRIPTION,
+        filsPerPoint: Number(FILS_PER_POINT),
       },
     }),
     "assets.json": json(buildAssets().manifest),

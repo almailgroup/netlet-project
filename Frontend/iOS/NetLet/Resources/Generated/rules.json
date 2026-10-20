@@ -109,6 +109,7 @@
     "ratingWindowDays": 30,
     "maxDeliveryComment": 500,
     "claimWindowDays": 7,
-    "maxClaimDescription": 2000
+    "maxClaimDescription": 2000,
+    "filsPerPoint": 1
   }
 }
