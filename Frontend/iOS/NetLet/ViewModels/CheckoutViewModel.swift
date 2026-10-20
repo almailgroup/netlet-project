@@ -8,7 +8,7 @@ import Observation
 /// takes the stock and freezes the order.
 @Observable
 @MainActor
-final class CheckoutViewModel {
+final class CheckoutViewModel: AddressPartsEditing {
     private(set) var addresses: LoadState<[SavedAddress]> = .idle
     private(set) var chosenAddress: Int?
 
@@ -29,7 +29,7 @@ final class CheckoutViewModel {
     private let orders: OrderServicing
     private let account: AccountServicing
     private let defaults: UserDefaults
-    private let reference: ReferenceData
+    let reference: ReferenceData
     static let lastAddressKey = "netlet.lastAddressId"
 
     init(orders: OrderServicing, account: AccountServicing, defaults: UserDefaults = .standard, reference: ReferenceData = .shared) {
@@ -60,9 +60,7 @@ final class CheckoutViewModel {
     /// Fills the form from a saved address; changes after it are for this order only.
     func use(_ address: SavedAddress) {
         chosenAddress = address.id
-        governorate = address.governorate
-        parts = address.parts ?? AddressParts()
-        typedArea = parts.area.map { area in !(reference.areas[address.governorate ?? ""] ?? []).contains { $0.en == area } } ?? false
+        adopt(parts: address.parts, governorate: address.governorate)
         if let name = address.contactName, !name.isEmpty { contactName = name }
         if let phone = address.contactPhone, !phone.isEmpty { contactPhone = phone }
         notes = address.addressNotes ?? ""
@@ -73,32 +71,6 @@ final class CheckoutViewModel {
         parts = AddressParts()
         typedArea = false
         notes = ""
-    }
-
-    /// The governorate's own areas, in the order the web lists them — or every
-    /// governorate's, while none is chosen, so picking an area can choose it.
-    var areas: [Area] {
-        if let governorate { return reference.areas[governorate] ?? [] }
-        return reference.governorates.flatMap { reference.areas[$0.id] ?? [] }
-    }
-
-    /// Choosing an area with no governorate chosen chooses its governorate too,
-    /// since that is what prices delivery.
-    func chooseArea(_ area: Area?) {
-        if let area {
-            typedArea = false
-            parts.area = area.en
-            if governorate == nil { governorate = reference.governorate(ofArea: area.en) }
-        } else {
-            typedArea = true
-            parts.area = nil
-        }
-    }
-
-    func chooseGovernorate(_ id: String) {
-        guard id != governorate else { return }
-        governorate = id
-        if !typedArea, let area = parts.area, !areas.contains(where: { $0.en == area }) { parts.area = nil }
     }
 
     /// The first thing still missing, first reason first — said under the

@@ -1,0 +1,16 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 24,
+          "title": "Noura's birthday",
+          "visibility": "public",
+          "itemCount": 3,
+          "phone": "+96555001122",
+          "updatedAt": "2026-10-20T12:56:04.585Z"
+        }
+      ]
+    }
+  }
+}

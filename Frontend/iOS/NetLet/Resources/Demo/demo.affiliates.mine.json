@@ -1,0 +1,23 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "status": "active",
+        "code": "AFAAAC",
+        "displayName": "Noura's picks",
+        "channel": "instagram.com/nourapicks",
+        "ratePercent": "3.00",
+        "paidOrders": 0,
+        "waitingOrders": 0,
+        "earned": "0.000",
+        "reversed": "0.000",
+        "balance": "0.000",
+        "payout": {
+          "ok": false,
+          "shortBy": "5.000"
+        },
+        "entries": []
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "userId": 2,
+          "kind": "price_drop",
+          "enabled": true,
+          "createdAt": "2026-10-02T12:30:47.336Z",
+          "updatedAt": "2026-10-11T20:37:28.164Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "0.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

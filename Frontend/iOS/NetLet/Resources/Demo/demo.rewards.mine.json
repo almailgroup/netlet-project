@@ -1,0 +1,20 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "code": "NLAAAC",
+        "balance": 0,
+        "spendValue": "0.000",
+        "cashOutValue": "0.000",
+        "cashOut": {
+          "ok": false,
+          "shortBy": 1000
+        },
+        "minimumCashOut": 1000,
+        "invited": 0,
+        "qualified": 0,
+        "entries": []
+      }
+    }
+  }
+}

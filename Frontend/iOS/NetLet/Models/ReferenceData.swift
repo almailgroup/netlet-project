@@ -71,6 +71,58 @@ struct Rules: Decodable, Sendable {
         let addressAr: String
     }
 
+    /// What the account's sections hold a form to, and the choices they offer.
+    struct Account: Decodable, Sendable {
+        /// One kind of notice a shopper can switch off (`notificationKinds`).
+        struct NoticeKind: Decodable, Hashable, Sendable {
+            let kind: String
+            /// The dictionary key of its name.
+            let label: String
+            let enabledByDefault: Bool
+        }
+
+        let maxAddresses: Int
+        let maxAddressLabel: Int
+        let maxAddressLine: Int
+        let maxAddressNotes: Int
+        let notificationKinds: [NoticeKind]
+        /// The params of a notice that hold an amount, drawn as money.
+        let moneyParams: [String]
+        let supportTopics: [String]
+        let maxSupportMessage: Int
+        let maxOpenConversations: Int
+        let ratingMax: Int
+        let maxReviewTitle: Int
+        let maxReviewBody: Int
+        let attributionDays: Int
+        let minAffiliatePayoutFils: Int
+        let minCashOutPoints: Int
+        let maxLists: Int
+        let maxListItems: Int
+        let claimHoldDays: Int
+        let askWindowDays: Int
+        let offerWindowDays: Int
+        let maxOfferNote: Int
+        let maxMessage: Int
+        let subscriptionIntervals: [Int]
+
+        static let fallback = Account(
+            maxAddresses: 12, maxAddressLabel: 40, maxAddressLine: 300, maxAddressNotes: 300,
+            notificationKinds: [
+                .init(kind: "price_drop", label: "notification.priceDrop", enabledByDefault: true),
+                .init(kind: "bag_reminder", label: "notification.bagReminder", enabledByDefault: false),
+                .init(kind: "new_arrival", label: "notification.newArrival", enabledByDefault: true),
+                .init(kind: "delivery_update", label: "notification.deliveryUpdate", enabledByDefault: true),
+            ],
+            moneyParams: ["price", "amount", "total"],
+            supportTopics: ["order", "delivery", "return", "payment", "account", "other"],
+            maxSupportMessage: 2000, maxOpenConversations: 5, ratingMax: 5, maxReviewTitle: 120, maxReviewBody: 2000,
+            attributionDays: 30, minAffiliatePayoutFils: 5000, minCashOutPoints: 1000, maxLists: 12, maxListItems: 200,
+            claimHoldDays: 14, askWindowDays: 7, offerWindowDays: 3, maxOfferNote: 400, maxMessage: 2000,
+            subscriptionIntervals: [1, 2, 4, 8]
+        )
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
@@ -78,6 +130,10 @@ struct Rules: Decodable, Sendable {
     let listing: Listing
     let media: Media
     let contact: Contact?
+    let account: Account?
+
+    /// The account's rules, or the same numbers when the file predates them.
+    var accountRules: Account { account ?? .fallback }
 }
 
 /// Everything the app reads from `Shared/` rather than from the network: the
@@ -89,6 +145,22 @@ struct ReferenceData: Sendable {
         let areas: [String: [Area]]
         let requiredParts: [String]
         let partMax: [String: Int]
+        let partLabels: [String: [String: String]]?
+        let bounds: Bounds?
+        let centre: Pin?
+        let governorateCentres: [String: Pin]?
+    }
+
+    /// The rectangle a pin must fall in to be in Kuwait (`KUWAIT_BOUNDS`).
+    struct Bounds: Decodable, Sendable {
+        let south: Double
+        let north: Double
+        let west: Double
+        let east: Double
+
+        func contains(_ pin: Pin) -> Bool {
+            pin.lat >= south && pin.lat <= north && pin.lng >= west && pin.lng <= east
+        }
     }
 
     let departments: [Department]
@@ -96,6 +168,11 @@ struct ReferenceData: Sendable {
     let areas: [String: [Area]]
     let requiredParts: [String]
     let partMax: [String: Int]
+    /// The words an address line is composed with, per language (`PART_LABEL_EN`).
+    let partLabels: [String: [String: String]]
+    let bounds: Bounds
+    let centre: Pin
+    let governorateCentres: [String: Pin]
     let rules: Rules
 
     static let shared: ReferenceData = load(from: .main)
@@ -110,7 +187,8 @@ struct ReferenceData: Sendable {
             returnWindowDays: 14,
             listing: .init(maxTitle: 255, maxSku: 120, maxStock: 1_000_000, maxDescription: 20_000, maxPhotos: 12, warrantyRequiredDepartments: ["electronics"]),
             media: .init(maxEdge: 1200, minEdge: 300, maxUploadBytes: 1_500_000),
-            contact: nil
+            contact: nil,
+            account: nil
         )
         return ReferenceData(
             departments: departments.sorted { $0.position < $1.position },
@@ -118,6 +196,10 @@ struct ReferenceData: Sendable {
             areas: kuwait?.areas ?? [:],
             requiredParts: kuwait?.requiredParts ?? ["area", "block", "street", "building"],
             partMax: kuwait?.partMax ?? [:],
+            partLabels: kuwait?.partLabels ?? [:],
+            bounds: kuwait?.bounds ?? Bounds(south: 28.5, north: 30.15, west: 46.5, east: 48.6),
+            centre: kuwait?.centre ?? Pin(lat: 29.3759, lng: 47.9774),
+            governorateCentres: kuwait?.governorateCentres ?? [:],
             rules: rules
         )
     }
@@ -130,6 +212,12 @@ struct ReferenceData: Sendable {
     func department(named name: String?) -> Department? {
         guard let name else { return nil }
         return departments.first { $0.name.caseInsensitiveCompare(name) == .orderedSame || $0.nameAr == name }
+    }
+
+    /// An area's name in the page's language, by its stored English name.
+    func areaName(_ stored: String, language: Language) -> String {
+        for list in areas.values { if let area = list.first(where: { $0.en == stored }) { return area.name(language) } }
+        return stored
     }
 
     func governorate(id: String?) -> Governorate? {

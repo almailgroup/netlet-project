@@ -7,6 +7,14 @@ struct AccountView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var confirmingSignOut = false
+    /// Whether the shopper holds a standing order or an affiliate account,
+    /// asked only while that feature is switched off.
+    @State private var holdings = Holdings()
+
+    struct Holdings {
+        var subscriptions = false
+        var affiliate = false
+    }
 
     var body: some View {
         switch app.session.state {
@@ -64,6 +72,15 @@ struct AccountView: View {
             .padding(.bottom, 48)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .task {
+            await app.signals.refresh()
+            if !app.features.isOn("subscriptions") {
+                holdings.subscriptions = !((try? await app.services.api.call(API.standingOrders)) ?? []).isEmpty
+            }
+            if !app.features.isOn("affiliates") {
+                holdings.affiliate = ((try? await app.services.api.call(API.affiliate)) ?? nil) != nil
+            }
+        }
         // Signing out asks first; the confirm button carries the verb and Cancel is the safe answer.
         .confirmationDialog(l.t("account.signOutTitle"), isPresented: $confirmingSignOut, titleVisibility: .visible) {
             Button(l.t("header.signOut"), role: .destructive) {
@@ -119,9 +136,31 @@ struct AccountView: View {
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
     }
 
-    /// The sections this account has: selling only for somebody in a store.
+    /// The sections this account has — the web's rule: selling only for
+    /// somebody in a store, and Subscribe & Save and the affiliate programme
+    /// while they are switched on or the shopper already holds one, because a
+    /// switch closes the door and never hides what somebody already has.
     private var entries: [AccountEntry] {
-        AccountEntry.all.filter { $0.id != "selling" || app.session.seller?.isStoreMember == true }
+        AccountEntry.all.filter { entry in
+            switch entry.id {
+            case "selling": return app.session.seller?.isStoreMember == true
+            case "subscriptions": return app.features.isOn("subscriptions") || holdings.subscriptions
+            case "affiliate": return app.features.isOn("affiliates") || holdings.affiliate
+            default: return true
+            }
+        }
+    }
+
+    /// What is waiting, said on the tile (`useAccountSignals`).
+    private func badge(_ entry: AccountEntry) -> String? {
+        let signals = app.signals
+        switch entry.id {
+        case "orders" where signals.onTheWay > 0: return l.t("header.onTheWay", ["count": "\(signals.onTheWay)"])
+        case "notifications" where signals.unreadNotices > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadNotices)"])
+        case "messages" where signals.unreadMessages > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadMessages)"])
+        case "help" where signals.unreadSupport > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadSupport)"])
+        default: return nil
+        }
     }
 
     /// One way into the account: an icon, what it is, one line on what it holds.
@@ -144,6 +183,15 @@ struct AccountView: View {
                         .font(.inter(13))
                         .foregroundStyle(Brand.muted)
                         .fixedSize(horizontal: false, vertical: true)
+                    if let waiting = badge(entry) {
+                        Text(waiting)
+                            .font(.inter(12, .bold))
+                            .foregroundStyle(Brand.navy)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Brand.orange))
+                            .padding(.top, 2)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.forward")
@@ -158,16 +206,9 @@ struct AccountView: View {
         .buttonStyle(PressFillStyle(cornerRadius: 16))
     }
 
-    /// The sections the app draws itself open here; the rest open the
-    /// account's own page on the website, signed in there by its own form.
+    /// Every section is a screen of the app's own.
     private func open(_ entry: AccountEntry) {
-        switch entry.id {
-        case "orders": app.push(.orders)
-        case "saved": app.push(.saved)
-        case "details": app.push(.profile)
-        case "selling": app.push(.listings)
-        default: app.openWeb("/account/\(entry.id)")
-        }
+        if let route = entry.route { app.push(route) }
     }
 }
 
@@ -183,18 +224,43 @@ struct AccountEntry: Identifiable, Hashable {
 
     static let all: [AccountEntry] = [
         AccountEntry(id: "orders", label: "account.sectionOrders", hint: "account.hint.orders", symbol: "shippingbox", group: "account.groupShopping"),
+        AccountEntry(id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions", symbol: "repeat", group: "account.groupShopping"),
         AccountEntry(id: "saved", label: "footer.savedItems", hint: "account.hint.saved", symbol: "heart", group: "account.groupShopping"),
         AccountEntry(id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists", symbol: "gift", group: "account.groupShopping"),
         AccountEntry(id: "offers", label: "offers.mine", hint: "account.hint.offers", symbol: "tag", group: "account.groupShopping"),
         AccountEntry(id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", symbol: "star", group: "account.groupShopping"),
+        AccountEntry(id: "notifications", label: "notices.title", hint: "notices.tile", symbol: "bell", group: "account.groupConversations"),
         AccountEntry(id: "messages", label: "chat.sectionMessages", hint: "account.hint.messages", symbol: "message", group: "account.groupConversations"),
         AccountEntry(id: "help", label: "support.section", hint: "account.hint.help", symbol: "lifepreserver", group: "account.groupConversations"),
         AccountEntry(id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", symbol: "person.2", group: "account.groupRewards"),
+        AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
     ]
+
+    /// The screen the tile opens.
+    var route: Route? {
+        switch id {
+        case "orders": return .orders
+        case "subscriptions": return .subscriptions
+        case "saved": return .saved
+        case "wishlists": return .wishlists
+        case "offers": return .offers
+        case "reviews": return .reviews
+        case "notifications": return .notifications
+        case "messages": return .messages
+        case "help": return .help
+        case "rewards": return .rewards
+        case "affiliate": return .affiliate
+        case "details": return .profile
+        case "addresses": return .addresses
+        case "preferences": return .preferences
+        case "selling": return .listings
+        default: return nil
+        }
+    }
 }
 
 /// Display name, sign-in email and password, each its own small form.

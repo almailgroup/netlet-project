@@ -1,0 +1,78 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "topic": "delivery",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "resolved",
+          "lastMessageAt": "2026-10-11T20:39:14.675Z",
+          "unread": false
+        },
+        {
+          "id": 7,
+          "topic": "order",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "waiting",
+          "lastMessageAt": "2026-10-04T16:11:20.802Z",
+          "unread": true
+        },
+        {
+          "id": 6,
+          "topic": "order",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "waiting",
+          "lastMessageAt": "2026-10-04T16:11:09.921Z",
+          "unread": true
+        },
+        {
+          "id": 5,
+          "topic": "order",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "open",
+          "lastMessageAt": "2026-10-04T16:10:12.339Z",
+          "unread": false
+        },
+        {
+          "id": 4,
+          "topic": "order",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "open",
+          "lastMessageAt": "2026-10-04T16:09:40.125Z",
+          "unread": false
+        },
+        {
+          "id": 2,
+          "topic": "delivery",
+          "orderReference": "NL-20261002-3WQ6P",
+          "status": "resolved",
+          "lastMessageAt": "2026-10-04T07:41:46.692Z",
+          "unread": false
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.lastMessageAt": [
+            "Date"
+          ],
+          "1.lastMessageAt": [
+            "Date"
+          ],
+          "2.lastMessageAt": [
+            "Date"
+          ],
+          "3.lastMessageAt": [
+            "Date"
+          ],
+          "4.lastMessageAt": [
+            "Date"
+          ],
+          "5.lastMessageAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

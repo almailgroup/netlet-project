@@ -124,6 +124,14 @@ jobs:
             shot 11-new-listing "$lang" newListing shopper
             shot 12-categories "$lang" categories ""
             shot 13-search-sheet "$lang" searchOpen ""
+            shot 14-addresses "$lang" section:addresses shopper
+            shot 15-preferences "$lang" section:preferences shopper
+            shot 16-notifications "$lang" section:notifications shopper
+            shot 17-wishlist "$lang" wishlist:24 shopper
+            shot 18-messages "$lang" sellerThread:1 shopper
+            shot 19-help "$lang" supportThread:1 shopper
+            shot 20-rewards "$lang" section:rewards shopper
+            shot 21-affiliate "$lang" section:affiliate shopper
           done
           ls -1 build/previews
 

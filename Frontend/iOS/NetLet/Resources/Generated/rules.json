@@ -22,5 +22,67 @@
     "email": "support@netlet.net",
     "address": "Kuwait City, Kuwait",
     "addressAr": "مدينة الكويت، الكويت"
+  },
+  "account": {
+    "maxAddresses": 12,
+    "maxAddressLabel": 40,
+    "maxAddressLine": 300,
+    "maxAddressNotes": 300,
+    "notificationKinds": [
+      {
+        "kind": "price_drop",
+        "label": "notification.priceDrop",
+        "enabledByDefault": true
+      },
+      {
+        "kind": "bag_reminder",
+        "label": "notification.bagReminder",
+        "enabledByDefault": false
+      },
+      {
+        "kind": "new_arrival",
+        "label": "notification.newArrival",
+        "enabledByDefault": true
+      },
+      {
+        "kind": "delivery_update",
+        "label": "notification.deliveryUpdate",
+        "enabledByDefault": true
+      }
+    ],
+    "moneyParams": [
+      "price",
+      "amount",
+      "total"
+    ],
+    "supportTopics": [
+      "order",
+      "delivery",
+      "return",
+      "payment",
+      "account",
+      "other"
+    ],
+    "maxSupportMessage": 2000,
+    "maxOpenConversations": 5,
+    "ratingMax": 5,
+    "maxReviewTitle": 120,
+    "maxReviewBody": 2000,
+    "attributionDays": 30,
+    "minAffiliatePayoutFils": 5000,
+    "minCashOutPoints": 1000,
+    "maxLists": 12,
+    "maxListItems": 200,
+    "claimHoldDays": 14,
+    "askWindowDays": 7,
+    "offerWindowDays": 3,
+    "maxOfferNote": 400,
+    "maxMessage": 2000,
+    "subscriptionIntervals": [
+      1,
+      2,
+      4,
+      8
+    ]
   }
 }

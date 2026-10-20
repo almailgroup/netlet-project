@@ -478,5 +478,59 @@
     "floor": 10,
     "apartment": 20,
     "paciNumber": 12
+  },
+  "partLabels": {
+    "en": {
+      "block": "Block",
+      "street": "Street",
+      "avenue": "Avenue",
+      "building": "House",
+      "floor": "Floor",
+      "apartment": "Apartment"
+    },
+    "ar": {
+      "block": "قطعة",
+      "street": "شارع",
+      "avenue": "جادة",
+      "building": "منزل",
+      "floor": "الدور",
+      "apartment": "شقة"
+    }
+  },
+  "bounds": {
+    "south": 28.5,
+    "north": 30.15,
+    "west": 46.5,
+    "east": 48.6
+  },
+  "centre": {
+    "lat": 29.3759,
+    "lng": 47.9774
+  },
+  "governorateCentres": {
+    "capital": {
+      "lat": 29.3697,
+      "lng": 47.9783
+    },
+    "hawalli": {
+      "lat": 29.3328,
+      "lng": 48.0286
+    },
+    "farwaniya": {
+      "lat": 29.2775,
+      "lng": 47.9585
+    },
+    "ahmadi": {
+      "lat": 29.0769,
+      "lng": 48.0838
+    },
+    "jahra": {
+      "lat": 29.3375,
+      "lng": 47.6581
+    },
+    "mubarak-al-kabeer": {
+      "lat": 29.1859,
+      "lng": 48.0612
+    }
   }
 }

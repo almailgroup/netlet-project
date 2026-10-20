@@ -27,7 +27,8 @@ import path from "node:path";
 import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
-import { AREAS, PART_KEYS, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
+import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
+import { GOVERNORATE_CENTRES, KUWAIT_BOUNDS, KUWAIT_CENTRE } from "../../../Shared/commerce/geo.js";
 import { kuwaitDeliveryZones } from "../../../Shared/customer.js";
 import { MAX_LINE_QUANTITY } from "../../../Shared/commerce/types.js";
 import { MAX_DESCRIPTION, MAX_PHOTOS, MAX_SKU, MAX_STOCK, MAX_TITLE, WARRANTY_REQUIRED_DEPARTMENTS } from "../../../Shared/inventory/productDraft.js";
@@ -35,9 +36,44 @@ import { MAX_EDGE, MAX_UPLOAD_BYTES, MIN_EDGE } from "../../../Shared/commerce/m
 import { RETURN_WINDOW_DAYS } from "../../../Shared/commerce/returns.js";
 import { COOKIE_NAME } from "../../../Shared/const.js";
 import { NETLET_CONTACT } from "../../../Shared/commerce/contact.js";
+import { MAX_ADDRESSES, MAX_LABEL, MAX_LINE, MAX_NOTES as MAX_ADDRESS_NOTES } from "../../../Shared/commerce/addresses.js";
+import { defaultNotificationPreferences, notificationKinds, notificationLabelKeys } from "../../../Shared/customer.js";
+import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
+import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
+import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX } from "../../../Shared/commerce/reviews.js";
+import { ATTRIBUTION_DAYS, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
+import { MIN_CASH_OUT_POINTS } from "../../../Shared/commerce/referral.js";
+import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
+import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
+import { MAX_MESSAGE_LENGTH } from "../../../Shared/commerce/contactFilter.js";
+import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
+const RESOURCES = path.resolve(import.meta.dirname, "../NetLet/Resources");
+const INFO_PLIST = path.resolve(import.meta.dirname, "../Config/Info.plist");
+
+/**
+ * Why the app asks for a permission, in both languages: iOS shows the
+ * `Info.plist` sentence, translated by each `.lproj`'s `InfoPlist.strings`.
+ * The sentences are dictionary keys like every other word on screen.
+ */
+const PERMISSIONS = { NSLocationWhenInUseUsageDescription: "ios.permission.location" } as const;
+
+export function buildPermissionStrings(): Record<string, string> {
+  const escape = (text: string) => text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  const strings = (dictionary: Record<string, string>) =>
+    Object.entries(PERMISSIONS).map(([name, key]) => `"${name}" = "${escape(dictionary[key])}";\n`).join("");
+  return { "en.lproj/InfoPlist.strings": strings(en), "ar.lproj/InfoPlist.strings": strings(ar) };
+}
+
+/** The permissions `Info.plist` lacks, or carries in other words than the dictionary's English. */
+function plistPermissionsStale(): string[] {
+  const plist = readFileSync(INFO_PLIST, "utf-8");
+  return Object.entries(PERMISSIONS)
+    .filter(([name, key]) => !plist.includes(`<key>${name}</key>\n\t<string>${en[key]}</string>`))
+    .map(([name]) => `Config/Info.plist (${name})`);
+}
 const WEB = path.resolve(import.meta.dirname, "../../Web");
 
 /** A picture file the web draws, as the web finds it. */
@@ -91,6 +127,12 @@ export function buildResources(): Record<string, string> {
       partKeys: PART_KEYS,
       requiredParts: REQUIRED_PARTS,
       partMax: PART_MAX,
+      /* The words an address line is composed with (`composeAddressLine`). */
+      partLabels: { en: PART_LABEL_EN, ar: PART_LABEL_AR },
+      /* Where a pin may be, and where the map opens (`Shared/commerce/geo.ts`). */
+      bounds: KUWAIT_BOUNDS,
+      centre: KUWAIT_CENTRE,
+      governorateCentres: GOVERNORATE_CENTRES,
     }),
     "rules.json": json({
       sessionCookie: COOKIE_NAME,
@@ -107,6 +149,36 @@ export function buildResources(): Record<string, string> {
       media: { maxEdge: MAX_EDGE, minEdge: MIN_EDGE, maxUploadBytes: MAX_UPLOAD_BYTES },
       /* The footer's contact block before the server has answered, and in the demo. */
       contact: NETLET_CONTACT,
+      /* What the account's sections hold a form to, and the choices they offer. */
+      account: {
+        maxAddresses: MAX_ADDRESSES,
+        maxAddressLabel: MAX_LABEL,
+        maxAddressLine: MAX_LINE,
+        maxAddressNotes: MAX_ADDRESS_NOTES,
+        notificationKinds: notificationKinds.map(kind => ({
+          kind,
+          label: notificationLabelKeys[kind],
+          enabledByDefault: defaultNotificationPreferences[kind],
+        })),
+        moneyParams: MONEY_PARAMS,
+        supportTopics: SUPPORT_TOPICS,
+        maxSupportMessage: MAX_SUPPORT_MESSAGE,
+        maxOpenConversations: MAX_OPEN_CONVERSATIONS,
+        ratingMax: RATING_MAX,
+        maxReviewTitle: MAX_REVIEW_TITLE,
+        maxReviewBody: MAX_REVIEW_BODY,
+        attributionDays: ATTRIBUTION_DAYS,
+        minAffiliatePayoutFils: Number(MIN_AFFILIATE_PAYOUT_FILS),
+        minCashOutPoints: MIN_CASH_OUT_POINTS,
+        maxLists: MAX_LISTS_PER_SHOPPER,
+        maxListItems: MAX_ITEMS_PER_LIST,
+        claimHoldDays: CLAIM_HOLD_DAYS,
+        askWindowDays: ASK_WINDOW_DAYS,
+        offerWindowDays: OFFER_WINDOW_DAYS,
+        maxOfferNote: MAX_OFFER_NOTE,
+        maxMessage: MAX_MESSAGE_LENGTH,
+        subscriptionIntervals: SUBSCRIPTION_INTERVALS,
+      },
     }),
     "assets.json": json(buildAssets().manifest),
   };
@@ -135,7 +207,16 @@ export function staleResources(): string[] {
     .map(([name]) => `Web/${name}`);
   /* A picture the web no longer has is one the app should not keep drawing. */
   const leftover = listed(ASSET_DIR).filter(name => !(name in files)).map(name => `Web/${name} (no longer on the web)`);
-  return [...texts, ...pictures, ...leftover];
+  const permissions = Object.entries(buildPermissionStrings())
+    .filter(([name, text]) => {
+      try {
+        return readFileSync(path.join(RESOURCES, name), "utf-8") !== text;
+      } catch {
+        return true;
+      }
+    })
+    .map(([name]) => name);
+  return [...texts, ...pictures, ...leftover, ...permissions, ...plistPermissionsStale()];
 }
 
 function listed(dir: string): string[] {
@@ -164,6 +245,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
     mkdirSync(OUT_DIR, { recursive: true });
     for (const [name, text] of Object.entries(buildResources())) writeFileSync(path.join(OUT_DIR, name), text);
     writeAssets();
+    for (const [name, text] of Object.entries(buildPermissionStrings())) {
+      mkdirSync(path.dirname(path.join(RESOURCES, name)), { recursive: true });
+      writeFileSync(path.join(RESOURCES, name), text);
+    }
+    for (const stale of plistPermissionsStale()) console.warn(`${stale} should say the dictionary's English — edit it by hand.`);
     console.log(`Wrote ${Object.keys(buildResources()).length} files to ${path.relative(process.cwd(), OUT_DIR)} and ${Object.keys(buildAssets().files).length} pictures to ${path.relative(process.cwd(), ASSET_DIR)}`);
   }
 }

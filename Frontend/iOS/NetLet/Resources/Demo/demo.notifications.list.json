@@ -1,0 +1,64 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "entries": [
+          {
+            "id": 9,
+            "kind": "seller_message",
+            "messageKey": "notice.sellerMessage",
+            "params": {
+              "store": "Acme Electronics",
+              "storeAr": "أكمي للإلكترونيات"
+            },
+            "link": "/account/messages",
+            "read": false,
+            "createdAt": "2026-10-20T21:46:10.414Z"
+          },
+          {
+            "id": 8,
+            "kind": "offer_answered",
+            "messageKey": "notice.offerAnswered",
+            "params": {
+              "store": "Acme Electronics",
+              "product": "USB-C charger 65W",
+              "storeAr": "أكمي للإلكترونيات",
+              "productAr": "شاحن 65 واط"
+            },
+            "link": "/account/offers",
+            "read": false,
+            "createdAt": "2026-10-20T21:46:01.987Z"
+          },
+          {
+            "id": 1,
+            "kind": "order_placed",
+            "messageKey": "notice.orderPlaced",
+            "params": {
+              "reference": "NL-20261019-GNVRV"
+            },
+            "link": "/account/orders?order=NL-20261019-GNVRV",
+            "read": true,
+            "createdAt": "2026-10-19T17:43:56.853Z"
+          }
+        ],
+        "total": 3,
+        "unread": 2,
+        "page": 1,
+        "pageSize": 20
+      },
+      "meta": {
+        "values": {
+          "entries.0.createdAt": [
+            "Date"
+          ],
+          "entries.1.createdAt": [
+            "Date"
+          ],
+          "entries.2.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

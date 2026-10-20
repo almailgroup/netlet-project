@@ -137,6 +137,67 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(listings.rows.isEmpty)
     }
 
+    func testTheAccountSections() async throws {
+        let features = try await client.call(API.features)
+        XCTAssertTrue(features.isOn("wishlists"))
+        XCTAssertFalse(features.isOn("subscriptions"))
+        XCTAssertTrue(features.isOn("a switch the server never named"), "an unnamed switch reads as on")
+
+        let inbox = try await client.call(API.notices, .init(page: 1))
+        XCTAssertEqual(inbox.entries.count, inbox.total)
+        let offer = try XCTUnwrap(inbox.entries.first { $0.kind == "offer_answered" })
+        XCTAssertEqual(offer.values(.ar)["store"], "أكمي للإلكترونيات", "an Arabic twin is used on the Arabic page")
+        XCTAssertEqual(offer.values(.en)["store"], "Acme Electronics")
+        XCTAssertNil(offer.values(.en)["storeAr"])
+        XCTAssertNotNil(Route.from(link: inbox.entries[0].link ?? ""))
+        _ = try await client.call(API.noticeChannels)
+        _ = try await client.call(API.noticePreferences)
+        _ = try await client.call(API.unreadNotices)
+        _ = try await client.call(API.onTheWay)
+
+        let lists = try await client.call(API.wishlists)
+        let list = try XCTUnwrap(lists.first)
+        let detail = try await client.call(API.wishlist, .init(listId: list.id))
+        XCTAssertEqual(detail.items.count, list.itemCount)
+        let products = try await client.call(API.productsByIds, .init(ids: detail.items.map(\.productId), locale: "en"))
+        XCTAssertTrue(detail.items.allSatisfy { item in products.contains { $0.id == item.productId } })
+        let token = try await client.call(API.wishlistShareToken, .init(listId: list.id))
+        XCTAssertNotNil(token)
+        let phone = try await client.call(API.wishlistPhone)
+        XCTAssertEqual(phone.map(PhoneNumber.display), "5500 1122")
+
+        let offers = try await client.call(API.priceRequests)
+        XCTAssertEqual(offers.first?.state, "offered")
+        XCTAssertLessThan(try XCTUnwrap(offers.first?.offeredPrice), try XCTUnwrap(offers.first?.listPrice))
+
+        let reviewable = try await client.call(API.reviewableLines)
+        XCTAssertFalse(reviewable.isEmpty)
+
+        let conversations = try await client.call(API.sellerConversations)
+        let thread = try await client.call(API.sellerThread, .init(conversationId: try XCTUnwrap(conversations.first).id))
+        XCTAssertFalse(thread.messages.isEmpty)
+
+        let help = try await client.call(API.supportConversations)
+        let opened = try await client.call(API.supportThread, .init(id: try XCTUnwrap(help.first).id))
+        let automatic = try XCTUnwrap(opened.messages.first { $0.author == "automatic" })
+        XCTAssertEqual(automatic.answer?.first?.params["reference"], opened.orderReference, "a number param is read as text")
+
+        let rewards = try await client.call(API.rewards)
+        XCTAssertFalse(rewards.code.isEmpty)
+        let affiliate = try await client.call(API.affiliate)
+        XCTAssertEqual(affiliate?.status, "active")
+        let standing = try await client.call(API.standingOrders)
+        XCTAssertTrue(standing.isEmpty)
+    }
+
+    func testALinkOnTheSiteOpensItsScreen() {
+        XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
+        XCTAssertEqual(Route.from(link: "/account/messages"), .messages)
+        XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))
+        XCTAssertEqual(Route.from(link: "/category/all"), .department(slug: nil))
+        XCTAssertNil(Route.from(link: "/somewhere/else"))
+    }
+
     func testTheShopperVariantIsSignedInAndFallsBackElsewhere() async throws {
         let shopper = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "shopper"))
         let user = try await shopper.call(API.me)

@@ -31,6 +31,7 @@ struct RootView: View {
                 .tag(AppModel.Tab.home)
             NavigationStack(path: $app.accountPath) { AccountView().routes() }
                 .tabItem { Label(l.t("nav.profile"), systemImage: "person") }
+                .badge(app.signals.total)
                 .tag(AppModel.Tab.account)
             NavigationStack(path: $app.cartPath) {
                 CartView(path: $app.cartPath).routes(path: $app.cartPath)
@@ -158,6 +159,20 @@ private struct RouteDestination: View {
         case .profile: ProfileView()
         case .listings: SellerListingsView()
         case .newListing: NewListingView()
+        case .addresses: AddressBookView()
+        case .preferences: PreferencesView()
+        case .notifications: NotificationsView()
+        case .wishlists: WishlistsView()
+        case .wishlist(let id): WishlistDetailView(listId: id)
+        case .offers: PriceRequestsView()
+        case .reviews: ReviewsView()
+        case .messages: SellerMessagesView()
+        case .sellerThread(let id): SellerThreadView(conversationId: id)
+        case .help: SupportView()
+        case .supportThread(let id): SupportThreadView(conversationId: id)
+        case .rewards: RewardsView()
+        case .affiliate: AffiliateView()
+        case .subscriptions: SubscriptionsView()
         }
     }
 }

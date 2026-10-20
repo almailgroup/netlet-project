@@ -1,0 +1,29 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ai": true,
+        "assistant": true,
+        "recommendations": true,
+        "boughtTogether": true,
+        "chat": true,
+        "priceOffers": true,
+        "returns": true,
+        "deliveryRatings": true,
+        "damageClaims": true,
+        "wishlists": true,
+        "giftCards": true,
+        "affiliates": false,
+        "ads": true,
+        "subscriptions": false,
+        "fulfilment": true,
+        "membership": true,
+        "voiceSearch": true,
+        "photoSearch": true,
+        "appBanner": false,
+        "articles": true,
+        "tryOn": false
+      }
+    }
+  }
+}

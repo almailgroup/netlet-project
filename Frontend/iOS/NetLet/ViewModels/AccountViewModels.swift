@@ -202,6 +202,26 @@ enum OrderWording {
         }
     }
 
+    /// A day and a time, in Kuwait's time — the web's `useDateTimeFormat`.
+    static func dateTime(_ date: Date, language: Language) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = language == .ar ? Locale(identifier: "ar_KW@numbers=latn") : Locale(identifier: "en_GB")
+        formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    /// A day the server sends as `yyyy-mm-dd`, which is a Kuwaiti day already.
+    static func day(_ text: String, language: Language) -> String {
+        let reader = DateFormatter()
+        reader.dateFormat = "yyyy-MM-dd"
+        reader.locale = Locale(identifier: "en_US_POSIX")
+        reader.timeZone = TimeZone(identifier: "Asia/Kuwait")
+        guard let parsed = reader.date(from: String(text.prefix(10))) else { return text }
+        return date(parsed, language: language)
+    }
+
     /// Every date in Kuwait's time, whoever is reading — the web's `SHOP_TIME_ZONE`.
     static func date(_ date: Date, language: Language) -> String {
         let formatter = DateFormatter()

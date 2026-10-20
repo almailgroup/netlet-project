@@ -1,0 +1,435 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": "216",
+          "handle": "wireless-earbuds",
+          "title": "Wireless earbuds",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Electronics",
+          "vendor": "Acme Electronics",
+          "vendorSlug": "acme",
+          "vendorBadges": [
+            "fastShipping"
+          ],
+          "deliverySpeed": "next_day",
+          "deliveryProvider": "Aramex",
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/electronics.webp",
+              "altText": "Wireless earbuds",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/electronics.webp",
+              "altText": "Wireless earbuds"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "18.500",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "18.500",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "133",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "18.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": {
+                "amount": "29.000",
+                "currencyCode": "KWD"
+              },
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 37,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": {
+            "savingPercent": 10
+          }
+        },
+        {
+          "id": "10",
+          "handle": "linen-shirt",
+          "title": "Linen shirt",
+          "description": "",
+          "descriptionHtml": "",
+          "productType": null,
+          "vendor": "Acme Electronics",
+          "vendorSlug": "acme",
+          "vendorBadges": [
+            "fastShipping"
+          ],
+          "deliverySpeed": "next_day",
+          "deliveryProvider": "Aramex",
+          "tags": [],
+          "attributes": [],
+          "media": [],
+          "images": [],
+          "priceRange": {
+            "min": {
+              "amount": "12.500",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "12.500",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [
+            {
+              "name": "Size",
+              "values": [
+                "S",
+                "M",
+                "L",
+                "XL"
+              ]
+            }
+          ],
+          "variants": [
+            {
+              "id": "10",
+              "title": "S",
+              "sku": "SHIRT-S",
+              "price": {
+                "amount": "12.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 50,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": [
+                {
+                  "name": "Size",
+                  "value": "S"
+                }
+              ]
+            },
+            {
+              "id": "11",
+              "title": "M",
+              "sku": "SHIRT-M",
+              "price": {
+                "amount": "12.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": {
+                "amount": "11.000",
+                "currencyCode": "KWD"
+              },
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 42,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": [
+                {
+                  "name": "Size",
+                  "value": "M"
+                }
+              ]
+            },
+            {
+              "id": "12",
+              "title": "L",
+              "sku": "SHIRT-L",
+              "price": {
+                "amount": "12.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 49,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": [
+                {
+                  "name": "Size",
+                  "value": "L"
+                }
+              ]
+            },
+            {
+              "id": "13",
+              "title": "XL",
+              "sku": "SHIRT-XL",
+              "price": {
+                "amount": "12.500",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 49,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": [
+                {
+                  "name": "Size",
+                  "value": "XL"
+                }
+              ]
+            }
+          ],
+          "addons": [],
+          "sizeChart": {
+            "axis": "Size",
+            "rows": [
+              {
+                "size": "S",
+                "ranges": {
+                  "chest": [
+                    86,
+                    91
+                  ],
+                  "waist": [
+                    71,
+                    76
+                  ]
+                }
+              },
+              {
+                "size": "M",
+                "ranges": {
+                  "chest": [
+                    92,
+                    97
+                  ],
+                  "waist": [
+                    77,
+                    82
+                  ]
+                }
+              },
+              {
+                "size": "L",
+                "ranges": {
+                  "chest": [
+                    98,
+                    103
+                  ],
+                  "waist": [
+                    83,
+                    88
+                  ]
+                }
+              },
+              {
+                "size": "XL",
+                "ranges": {
+                  "chest": [
+                    104,
+                    109
+                  ],
+                  "waist": [
+                    89,
+                    94
+                  ]
+                }
+              }
+            ],
+            "measures": [
+              "chest",
+              "waist"
+            ]
+          },
+          "subscription": {
+            "savingPercent": 10
+          }
+        },
+        {
+          "id": "223",
+          "handle": "oud-perfume",
+          "title": "Oud perfume 100 ml",
+          "description": "A test product for the home page screenshots.",
+          "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
+          "productType": "Beauty",
+          "vendor": "Rose Beauty",
+          "vendorSlug": "rose-beauty",
+          "vendorBadges": [],
+          "deliverySpeed": null,
+          "deliveryProvider": null,
+          "tags": [],
+          "attributes": [],
+          "media": [
+            {
+              "url": "/departments/beauty.webp",
+              "altText": "Oud perfume 100 ml",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "/departments/beauty.webp",
+              "altText": "Oud perfume 100 ml"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "24.000",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "24.000",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "140",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "24.000",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 40,
+              "measure": {
+                "unit": "each",
+                "stepAmount": 1
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        },
+        {
+          "id": "8",
+          "handle": "tomatoes",
+          "title": "Tomatoes",
+          "description": "Tomatoes. Sold by a NetLet seller; specification rows below.",
+          "descriptionHtml": "<p>Tomatoes. Sold by a NetLet seller; specification rows below.</p>",
+          "productType": "Grocery",
+          "vendor": "Gulf Grocers",
+          "vendorSlug": "gulf-grocers",
+          "vendorBadges": [],
+          "deliverySpeed": "next_day",
+          "deliveryProvider": "Aramex",
+          "tags": [
+            "fresh"
+          ],
+          "attributes": [],
+          "media": [
+            {
+              "url": "http://localhost:5000/brand/collection-home.svg",
+              "altText": "Tomatoes",
+              "kind": "image",
+              "posterUrl": null
+            }
+          ],
+          "images": [
+            {
+              "url": "http://localhost:5000/brand/collection-home.svg",
+              "altText": "Tomatoes"
+            }
+          ],
+          "priceRange": {
+            "min": {
+              "amount": "0.350",
+              "currencyCode": "KWD"
+            },
+            "max": {
+              "amount": "0.350",
+              "currencyCode": "KWD"
+            }
+          },
+          "options": [],
+          "variants": [
+            {
+              "id": "8",
+              "title": "Default",
+              "sku": null,
+              "price": {
+                "amount": "0.350",
+                "currencyCode": "KWD"
+              },
+              "compareAtPrice": null,
+              "memberPrice": null,
+              "availableForSale": true,
+              "preorder": null,
+              "maxQuantity": 399,
+              "measure": {
+                "unit": "g",
+                "stepAmount": 250
+              },
+              "selectedOptions": []
+            }
+          ],
+          "addons": [],
+          "sizeChart": null,
+          "subscription": null
+        }
+      ],
+      "meta": {
+        "referentialEqualities": {
+          "0.priceRange.min": [
+            "0.priceRange.max",
+            "0.variants.0.price"
+          ],
+          "1.priceRange.min": [
+            "1.priceRange.max",
+            "1.variants.0.price"
+          ],
+          "2.priceRange.min": [
+            "2.priceRange.max",
+            "2.variants.0.price"
+          ],
+          "3.priceRange.min": [
+            "3.priceRange.max",
+            "3.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -3463,6 +3463,7 @@ export const en = {
   "ios.sell.stock": "{count} in stock",
   "ios.sell.publishNow": "Publish when it is created",
   "ios.sell.portalNote": "Prices, stock, orders and payouts are managed in the seller portal on the web, with the same account.",
+  "ios.permission.location": "NetLet uses your location only to move the map to where you are, so you can pin your door for the driver.",
 
 } as const;
 
@@ -6889,6 +6890,7 @@ export const ar: Record<MessageKey, string> = {
   "ios.sell.stock": "{count} في المخزون",
   "ios.sell.publishNow": "انشره عند إنشائه",
   "ios.sell.portalNote": "تُدار الأسعار والمخزون والطلبات والمدفوعات في بوابة البائع على الموقع، بالحساب نفسه.",
+  "ios.permission.location": "يستخدم نت‑لت موقعك فقط لتحريك الخريطة إلى مكانك، لتحدد بابك للسائق.",
 
 };
 

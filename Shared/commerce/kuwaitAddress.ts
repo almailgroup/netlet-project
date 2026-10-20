@@ -228,10 +228,10 @@ export function missingParts(parts: AddressParts | null | undefined): PartKey[] 
   return REQUIRED_PARTS.filter(key => !clean[key]);
 }
 
-const PART_LABEL_EN: Record<Exclude<PartKey, "area" | "paciNumber">, string> = {
+export const PART_LABEL_EN: Record<Exclude<PartKey, "area" | "paciNumber">, string> = {
   block: "Block", street: "Street", avenue: "Avenue", building: "House", floor: "Floor", apartment: "Apartment",
 };
-const PART_LABEL_AR: Record<Exclude<PartKey, "area" | "paciNumber">, string> = {
+export const PART_LABEL_AR: Record<Exclude<PartKey, "area" | "paciNumber">, string> = {
   block: "قطعة", street: "شارع", avenue: "جادة", building: "منزل", floor: "الدور", apartment: "شقة",
 };
 

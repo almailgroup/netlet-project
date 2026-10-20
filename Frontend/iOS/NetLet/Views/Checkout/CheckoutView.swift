@@ -116,81 +116,11 @@ private struct CheckoutForm: View {
                 content: .telephoneNumber,
                 leftToRight: true
             )
-            governoratePicker
-            areaPicker
-            HStack(spacing: 10) {
-                partField("address.block", \.block, keyboard: .numbersAndPunctuation)
-                partField("address.street", \.street)
-            }
-            HStack(spacing: 10) {
-                partField("address.avenue", \.avenue)
-                partField("address.building", \.building)
-            }
-            HStack(spacing: 10) {
-                partField("address.floor", \.floor, keyboard: .numbersAndPunctuation)
-                partField("address.apartment", \.apartment)
-            }
-            LabeledField(
-                label: l.t("address.paci"),
-                text: Binding(get: { model.parts.paciNumber ?? "" }, set: { model.parts.paciNumber = $0 }),
-                hint: l.t("address.paciHint"),
-                problem: problem(["address.badPaci"]),
-                keyboard: .numberPad,
-                leftToRight: true
-            )
+            AddressPartsFields(model: model, problem: problem)
             FieldProblem(key: problem(["checkout.needAddress"]))
             LabeledField(label: l.t("checkout.notes"), text: $model.notes, placeholder: l.t("checkout.notesPlaceholder"), axis: .vertical)
         }
         .card()
-    }
-
-    private var governoratePicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(l.t("address.governorate")).font(.subheadline.weight(.semibold))
-            Menu {
-                ForEach(ReferenceData.shared.governorates) { governorate in
-                    Button(governorate.name(l.current)) {
-                        Haptics.tap()
-                        model.chooseGovernorate(governorate.id)
-                    }
-                }
-            } label: {
-                MenuField(text: ReferenceData.shared.governorate(id: model.governorate)?.name(l.current), placeholder: l.t("account.chooseZone"))
-            }
-            FieldProblem(key: problem(["checkout.needGovernorate"]))
-        }
-    }
-
-    private var areaPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(l.t("address.area")).font(.subheadline.weight(.semibold))
-            Menu {
-                ForEach(model.areas, id: \.en) { area in
-                    Button(area.name(l.current)) {
-                        Haptics.tap()
-                        model.chooseArea(area)
-                    }
-                }
-                Button(l.t("address.areaOther")) {
-                    Haptics.tap()
-                    model.chooseArea(nil)
-                }
-            } label: {
-                let chosen = model.areas.first { $0.en == model.parts.area }
-                MenuField(text: model.typedArea ? l.t("address.areaOther") : chosen?.name(l.current), placeholder: l.t("address.areaChoose"))
-            }
-            if model.typedArea {
-                LabeledField(label: l.t("address.areaTyped"), text: Binding(get: { model.parts.area ?? "" }, set: { model.parts.area = $0 }))
-            }
-        }
-    }
-
-    private func partField(_ key: String, _ part: WritableKeyPath<AddressParts, String?>, keyboard: UIKeyboardType = .default) -> some View {
-        LabeledField(
-            label: l.t(key),
-            text: Binding(get: { model.parts[keyPath: part] ?? "" }, set: { model.parts[keyPath: part] = $0 }),
-            keyboard: keyboard
-        )
     }
 
     private func paymentCard(_ cart: Cart?) -> some View {

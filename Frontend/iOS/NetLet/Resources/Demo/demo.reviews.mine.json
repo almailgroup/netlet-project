@@ -1,0 +1,176 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "orderItemId": 49,
+          "orderReference": "NL-20261019-GNVRV",
+          "productId": "219",
+          "productTitle": "Ceramic mug set of four",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 48,
+          "orderReference": "NL-20261019-GNVRV",
+          "productId": "218",
+          "productTitle": "Bluetooth speaker",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 47,
+          "orderReference": "NL-20261019-GNVRV",
+          "productId": "216",
+          "productTitle": "Wireless earbuds",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 46,
+          "orderReference": "NL-20261019-GNVRV",
+          "productId": "3",
+          "productTitle": "Smart watch",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 45,
+          "orderReference": "NL-20261018-YNTM9",
+          "productId": "228",
+          "productTitle": "Basmati rice 5 kg",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 34,
+          "orderReference": "NL-20261012-4V89V",
+          "productId": "3",
+          "productTitle": "Smart watch",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 18,
+          "orderReference": "NL-20261004-8QYKQ",
+          "productId": "2",
+          "productTitle": "USB-C charger 65W",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 17,
+          "orderReference": "NL-20261004-CZEN8",
+          "productId": "2",
+          "productTitle": "USB-C charger 65W",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 16,
+          "orderReference": "NL-20261004-YF4QB",
+          "productId": "2",
+          "productTitle": "USB-C charger 65W",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 15,
+          "orderReference": "NL-20261004-YFQU4",
+          "productId": "2",
+          "productTitle": "USB-C charger 65W",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notPaid"
+          }
+        },
+        {
+          "orderItemId": 6,
+          "orderReference": "NL-20261002-3WQ6P",
+          "productId": "10",
+          "productTitle": "Linen shirt",
+          "deliveredAt": null,
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": false,
+            "reason": "notDelivered"
+          }
+        },
+        {
+          "orderItemId": 2,
+          "orderReference": "NL-20261001-J7MWY",
+          "productId": "2",
+          "productTitle": "USB-C charger 65W",
+          "deliveredAt": "2026-10-01T11:48:53.750Z",
+          "reviewId": null,
+          "myRating": null,
+          "eligibility": {
+            "allowed": true
+          }
+        },
+        {
+          "orderItemId": 1,
+          "orderReference": "NL-20261001-TUP6F",
+          "productId": "1",
+          "productTitle": "Noise-cancelling headphones",
+          "deliveredAt": "2026-10-01T11:48:53.750Z",
+          "reviewId": 2,
+          "myRating": 1,
+          "eligibility": {
+            "allowed": false,
+            "reason": "alreadyReviewed"
+          }
+        }
+      ]
+    }
+  }
+}

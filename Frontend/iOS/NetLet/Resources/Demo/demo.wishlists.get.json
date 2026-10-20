@@ -1,0 +1,34 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "list": {
+          "id": 24,
+          "title": "Noura's birthday",
+          "visibility": "public",
+          "ownerName": null
+        },
+        "items": [
+          {
+            "id": 9,
+            "productId": "216",
+            "note": null,
+            "quantity": 1
+          },
+          {
+            "id": 10,
+            "productId": "10",
+            "note": "Size M please",
+            "quantity": 1
+          },
+          {
+            "id": 11,
+            "productId": "223",
+            "note": null,
+            "quantity": 1
+          }
+        ]
+      }
+    }
+  }
+}

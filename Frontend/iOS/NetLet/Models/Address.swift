@@ -26,6 +26,49 @@ struct AddressParts: Codable, Hashable, Sendable {
         )
     }
 
+    /// Whether anything was given as parts (`hasParts`).
+    var isEmpty: Bool {
+        let clean = cleaned()
+        return [clean.area, clean.block, clean.street, clean.avenue, clean.building, clean.floor, clean.apartment, clean.paciNumber]
+            .allSatisfy { $0 == nil }
+    }
+
+    /// The parts as one line, in the order a driver reads them — the web's
+    /// `composeAddressLine`, the area in the page's language.
+    func line(_ language: Language, reference: ReferenceData = .shared) -> String {
+        let clean = cleaned()
+        let labels = reference.partLabels[language.rawValue] ?? reference.partLabels["en"] ?? [:]
+        var pieces: [String] = []
+        if let area = clean.area { pieces.append(reference.areaName(area, language: language)) }
+        for key in ["block", "street", "avenue", "building", "floor", "apartment"] {
+            if let value = clean.value(for: key) { pieces.append("\(labels[key] ?? key) \(value)") }
+        }
+        if let paci = clean.paciNumber { pieces.append("PACI \(paci)") }
+        return pieces.joined(separator: language == .ar ? "، " : ", ")
+    }
+
+    /// What is actively wrong with the parts given (`partsProblems`).
+    func problems(reference: ReferenceData = .shared) -> [String] {
+        let clean = cleaned()
+        var found: [String] = []
+        for key in ["area", "block", "street", "avenue", "building", "floor", "apartment", "paciNumber"] {
+            if let value = clean.value(for: key), let max = reference.partMax[key], value.count > max {
+                found.append("address.partTooLong")
+                break
+            }
+        }
+        if let paci = clean.paciNumber, !(paci.count == 8 && paci.allSatisfy { $0.isASCII && $0.isNumber }) {
+            found.append("address.badPaci")
+        }
+        return found
+    }
+
+    /// The parts a driver needs that are still empty (`missingParts`).
+    func missing(reference: ReferenceData = .shared) -> [String] {
+        let clean = cleaned()
+        return reference.requiredParts.filter { clean.value(for: $0) == nil }
+    }
+
     func value(for key: String) -> String? {
         switch key {
         case "area": return area
@@ -41,6 +84,24 @@ struct AddressParts: Codable, Hashable, Sendable {
     }
 }
 
+/// A point on the map, to five decimals (`Shared/commerce/geo.ts`): one
+/// value, never two columns, because half a coordinate is not a place.
+struct Pin: Codable, Hashable, Sendable {
+    var lat: Double
+    var lng: Double
+
+    /// Kept to five decimals, about a metre — the web's `roundPin`.
+    var rounded: Pin {
+        Pin(lat: (lat * 100_000).rounded() / 100_000, lng: (lng * 100_000).rounded() / 100_000)
+    }
+
+    /// Why this pin cannot be kept, or nil (`pinProblem`).
+    func problem(reference: ReferenceData = .shared) -> String? {
+        guard lat.isFinite, lng.isFinite else { return "address.badPin" }
+        return reference.bounds.contains(self) ? nil : "address.pinOutsideKuwait"
+    }
+}
+
 /// A saved address in the shopper's book (`customer.addresses.list`).
 struct SavedAddress: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
@@ -51,6 +112,23 @@ struct SavedAddress: Decodable, Identifiable, Hashable, Sendable {
     let addressLine: String?
     let addressNotes: String?
     let parts: AddressParts?
+    var pin: Pin? = nil
+
+    /// The line drawn on a page: composed from the parts when it has them,
+    /// else the line as it was typed (`addressLineIn`).
+    func line(_ language: Language) -> String {
+        if let parts, !parts.isEmpty { return parts.line(language) }
+        return (addressLine ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// What is merely missing, for the card to say (`missingFromAddress`).
+    var gaps: [String] {
+        var missing: [String] = []
+        if (governorate ?? "").trimmingCharacters(in: .whitespaces).isEmpty { missing.append("address.noZone") }
+        if (contactPhone ?? "").trimmingCharacters(in: .whitespaces).isEmpty { missing.append("address.noPhone") }
+        if (contactName ?? "").trimmingCharacters(in: .whitespaces).isEmpty { missing.append("address.noName") }
+        return missing
+    }
 }
 
 /// A Kuwaiti mobile number, read the way people type one.
@@ -69,6 +147,13 @@ enum PhoneNumber {
             default: return Character(scalar)
             }
         })
+    }
+
+    /// A stored `+965…` number as people read one: "5500 1122" (`formatPhone`).
+    static func display(_ canonical: String) -> String {
+        let local = canonical.replacingOccurrences(of: "+\(countryCode)", with: "")
+        guard local.count == localDigits else { return canonical }
+        return "\(local.prefix(4)) \(local.dropFirst(4))"
     }
 
     /// `normalisePhone` in `Shared/commerce/wishlist.ts`: `+965` and eight

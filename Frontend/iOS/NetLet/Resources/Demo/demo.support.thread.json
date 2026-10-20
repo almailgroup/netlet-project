@@ -1,0 +1,63 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 1,
+        "topic": "delivery",
+        "orderReference": "NL-20261002-3WQ6P",
+        "status": "resolved",
+        "shopperName": null,
+        "messages": [
+          {
+            "id": 1,
+            "author": "shopper",
+            "body": "When will my order arrive?",
+            "answer": null,
+            "createdAt": "2026-10-04T07:40:40.922Z"
+          },
+          {
+            "id": 2,
+            "author": "automatic",
+            "body": null,
+            "answer": [
+              {
+                "key": "support.answerOrderStatus",
+                "params": {
+                  "total": "1",
+                  "onTheWay": "0",
+                  "delivered": "0",
+                  "preparing": "1",
+                  "reference": "NL-20261002-3WQ6P"
+                }
+              },
+              {
+                "key": "support.answerPerson"
+              }
+            ],
+            "createdAt": "2026-10-04T07:40:40.923Z"
+          },
+          {
+            "id": 3,
+            "author": "staff",
+            "body": "It goes out this evening.",
+            "answer": null,
+            "createdAt": "2026-10-04T07:40:50.746Z"
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "messages.0.createdAt": [
+            "Date"
+          ],
+          "messages.1.createdAt": [
+            "Date"
+          ],
+          "messages.2.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

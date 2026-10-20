@@ -25,6 +25,59 @@ enum Route: Hashable {
     case profile
     case listings
     case newListing
+    // The account's sections, each the web's `/account/<section>`.
+    case addresses
+    case preferences
+    case notifications
+    case wishlists
+    case wishlist(id: Int)
+    case offers
+    case reviews
+    case messages
+    case sellerThread(id: Int)
+    case help
+    case supportThread(id: Int)
+    case rewards
+    case affiliate
+    case subscriptions
+
+    /// The screen a link on the site names — a notice's link, an answer's,
+    /// the footer's — or nil for one the app has no screen for. Nothing
+    /// opens a browser: a link the app cannot draw goes nowhere.
+    static func from(link: String) -> Route? {
+        guard let components = URLComponents(string: link) else { return nil }
+        let segments = components.path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
+        let query = Dictionary((components.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+        switch (segments.first, segments.count) {
+        case ("products"?, 2): return .product(handle: segments[1])
+        case ("category"?, 2): return segments[1] == "all" ? .department(slug: nil) : .department(slug: segments[1])
+        case ("stores"?, 1): return .stores
+        case ("stores"?, 2): return .store(slug: segments[1])
+        case ("search"?, _): return .search(query: query["q"] ?? "")
+        case ("saved"?, _): return .saved
+        case ("checkout"?, _): return .checkout
+        case ("account"?, 1): return nil
+        case ("account"?, _):
+            switch segments[1] {
+            case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
+            case "details": return .profile
+            case "addresses": return .addresses
+            case "preferences": return .preferences
+            case "notifications": return .notifications
+            case "wishlists": return .wishlists
+            case "offers": return .offers
+            case "reviews": return .reviews
+            case "messages": return .messages
+            case "help": return .help
+            case "rewards": return .rewards
+            case "affiliate": return .affiliate
+            case "subscriptions": return .subscriptions
+            case "selling": return .listings
+            default: return nil
+            }
+        default: return nil
+        }
+    }
 }
 
 /// The app's one composition root: the services, the language, who is signed
@@ -55,6 +108,10 @@ final class AppModel {
     /// The header's search, grown down over the page while it is open.
     var searchOpen = false
     var searchText = ""
+    /// Which of the shop's switchable features are on (`features.states`).
+    private(set) var features = FeatureStates.unknown
+    /// What is waiting in the account: unread notices and messages, parcels on the way.
+    let signals: AccountSignals
     /// The one short message showing, top-centre under the header (`sonner`).
     private(set) var toastMessage: Toast?
     /// A page the app does not draw itself — help, returns, selling, the
@@ -85,6 +142,7 @@ final class AppModel {
         cart = CartModel(service: services.cart, defaults: cartDefaults)
         saved = SavedModel(account: services.account, defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog)
+        signals = AccountSignals(api: services.api)
     }
 
     /// The real server, or the recorded demo when launched with `-NetLetDemo YES`.
@@ -101,7 +159,8 @@ final class AppModel {
     func start() async {
         async let session: Void = self.session.restore()
         async let cart: Void = self.cart.restore()
-        _ = await (session, cart)
+        async let features: Void = loadFeatures()
+        _ = await (session, cart, features)
         if self.session.isSignedIn { await linkAccount() }
         #if DEBUG
         openScreen(UserDefaults.standard.string(forKey: "NetLetOpen"))
@@ -169,6 +228,22 @@ final class AppModel {
             guard session.seller?.isStoreMember == true else { return }
             selectedTab = .account
             accountPath = NavigationPath([Route.listings, Route.newListing])
+        case "section":
+            // `section:addresses` — any account section, by its web address.
+            guard let value, let route = Route.from(link: "/account/\(value)") else { return }
+            openAccount(route)
+        case "wishlist":
+            guard let id = value.flatMap(Int.init) else { return }
+            accountPath = NavigationPath([Route.wishlists, Route.wishlist(id: id)])
+            selectedTab = .account
+        case "sellerThread":
+            guard let id = value.flatMap(Int.init) else { return }
+            accountPath = NavigationPath([Route.messages, Route.sellerThread(id: id)])
+            selectedTab = .account
+        case "supportThread":
+            guard let id = value.flatMap(Int.init) else { return }
+            accountPath = NavigationPath([Route.help, Route.supportThread(id: id)])
+            selectedTab = .account
         default:
             selectedTab = .home
         }
@@ -200,6 +275,20 @@ final class AppModel {
     /// not draw itself is still a press away, never a dead link.
     func openWeb(_ path: String) {
         webPage = WebPage(url: services.configuration.url(path: path))
+    }
+
+    /// A link on the site, opened in the app: an account screen on the Profile
+    /// tab, a shopping screen on the tab that is showing.
+    func open(_ route: Route) {
+        switch route {
+        case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
+             .reviews, .messages, .sellerThread, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing:
+            if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
+        case .checkout:
+            openCheckout()
+        default:
+            push(route)
+        }
     }
 
     /// A screen of the account, on the Profile tab, from anywhere — or the
@@ -254,7 +343,14 @@ final class AppModel {
         selectedTab = .cart
     }
 
+    /// The switches, asked at launch; a switch that cannot be read stays on,
+    /// since the server refuses regardless.
+    func loadFeatures() async {
+        if let states = try? await services.api.call(API.features) { features = states }
+    }
+
     func signOut() async {
+        signals.clear()
         await session.signOut()
         cart.forget()
         saved.signedOut()
@@ -277,5 +373,6 @@ final class AppModel {
             await cart.adopt(cartId: profile.cartId)
         }
         await saved.adoptAccount()
+        await signals.refresh()
     }
 }
