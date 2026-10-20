@@ -70,7 +70,10 @@ struct SelectedOption: Decodable, Hashable, Sendable {
     let value: String
 }
 
-struct ProductAttribute: Decodable, Hashable, Sendable {
+/// A specification row as stored (`Attribute`): a namespace so it cannot
+/// collide with the review score, a stable key, an English label for any
+/// reader that knows nothing of the schema, and the value.
+struct ProductAttribute: Codable, Hashable, Sendable {
     let namespace: String
     let key: String
     let label: String

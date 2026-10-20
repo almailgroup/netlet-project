@@ -1,0 +1,215 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 10,
+        "vendorId": 2,
+        "categoryId": null,
+        "handle": "linen-shirt",
+        "title": "Linen shirt",
+        "titleAr": "قميص كتان",
+        "description": null,
+        "descriptionAr": null,
+        "status": "published",
+        "reviewNote": null,
+        "tags": [],
+        "commissionPercent": null,
+        "commissionFixed": null,
+        "acceptsOffers": null,
+        "deliverySpeed": null,
+        "sizeClass": null,
+        "attributes": [],
+        "sizeChart": {
+          "axis": "Size",
+          "rows": [
+            {
+              "size": "S",
+              "ranges": {
+                "chest": [
+                  86,
+                  91
+                ],
+                "waist": [
+                  71,
+                  76
+                ]
+              }
+            },
+            {
+              "size": "M",
+              "ranges": {
+                "chest": [
+                  92,
+                  97
+                ],
+                "waist": [
+                  77,
+                  82
+                ]
+              }
+            },
+            {
+              "size": "L",
+              "ranges": {
+                "chest": [
+                  98,
+                  103
+                ],
+                "waist": [
+                  83,
+                  88
+                ]
+              }
+            },
+            {
+              "size": "XL",
+              "ranges": {
+                "chest": [
+                  104,
+                  109
+                ],
+                "waist": [
+                  89,
+                  94
+                ]
+              }
+            }
+          ],
+          "measures": [
+            "chest",
+            "waist"
+          ]
+        },
+        "createdAt": "2026-10-02T12:03:01.893Z",
+        "updatedAt": "2026-10-02T12:06:17.024Z",
+        "variants": [
+          {
+            "id": 10,
+            "productId": 10,
+            "sku": "SHIRT-S",
+            "title": "S",
+            "price": "12.500",
+            "compareAtPrice": null,
+            "stock": 50,
+            "lowStockAt": null,
+            "preorderStock": 0,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "memberPrice": null,
+            "unit": "each",
+            "stepAmount": "1.000",
+            "options": {
+              "Size": "S"
+            },
+            "position": 0,
+            "createdAt": "2026-10-02T12:03:01.935Z",
+            "updatedAt": "2026-10-02T12:23:17.078Z"
+          },
+          {
+            "id": 11,
+            "productId": 10,
+            "sku": "SHIRT-M",
+            "title": "M",
+            "price": "12.500",
+            "compareAtPrice": null,
+            "stock": 42,
+            "lowStockAt": null,
+            "preorderStock": 0,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "memberPrice": "11.000",
+            "unit": "each",
+            "stepAmount": "1.000",
+            "options": {
+              "Size": "M"
+            },
+            "position": 0,
+            "createdAt": "2026-10-02T12:03:01.973Z",
+            "updatedAt": "2026-10-20T12:56:22.017Z"
+          },
+          {
+            "id": 12,
+            "productId": 10,
+            "sku": "SHIRT-L",
+            "title": "L",
+            "price": "12.500",
+            "compareAtPrice": null,
+            "stock": 49,
+            "lowStockAt": null,
+            "preorderStock": 0,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "memberPrice": null,
+            "unit": "each",
+            "stepAmount": "1.000",
+            "options": {
+              "Size": "L"
+            },
+            "position": 0,
+            "createdAt": "2026-10-02T12:03:02.019Z",
+            "updatedAt": "2026-10-11T22:29:20.184Z"
+          },
+          {
+            "id": 13,
+            "productId": 10,
+            "sku": "SHIRT-XL",
+            "title": "XL",
+            "price": "12.500",
+            "compareAtPrice": null,
+            "stock": 49,
+            "lowStockAt": null,
+            "preorderStock": 0,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "memberPrice": null,
+            "unit": "each",
+            "stepAmount": "1.000",
+            "options": {
+              "Size": "XL"
+            },
+            "position": 0,
+            "createdAt": "2026-10-02T12:03:02.067Z",
+            "updatedAt": "2026-10-11T22:29:31.430Z"
+          }
+        ],
+        "images": [],
+        "addons": [],
+        "offerHidden": null
+      },
+      "meta": {
+        "values": {
+          "createdAt": [
+            "Date"
+          ],
+          "updatedAt": [
+            "Date"
+          ],
+          "variants.0.createdAt": [
+            "Date"
+          ],
+          "variants.0.updatedAt": [
+            "Date"
+          ],
+          "variants.1.createdAt": [
+            "Date"
+          ],
+          "variants.1.updatedAt": [
+            "Date"
+          ],
+          "variants.2.createdAt": [
+            "Date"
+          ],
+          "variants.2.updatedAt": [
+            "Date"
+          ],
+          "variants.3.createdAt": [
+            "Date"
+          ],
+          "variants.3.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

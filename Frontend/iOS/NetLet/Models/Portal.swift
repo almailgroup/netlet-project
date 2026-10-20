@@ -113,6 +113,7 @@ enum PortalPage: Hashable, Sendable {
     case home
     case products(vendorId: Int?)
     case newProduct(vendorId: Int?)
+    case product(Int)
     case orders
     case stock
     case offers
@@ -141,6 +142,9 @@ enum PortalPage: Hashable, Sendable {
         case 0: self = .home
         case 1 where rest[0] == "products": self = .products(vendorId: vendor)
         case 2 where rest[0] == "products" && rest[1] == "new": self = .newProduct(vendorId: vendor)
+        case 2 where rest[0] == "products":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .product(id)
         case 2 where rest[0] == "messages":
             guard let id = Int(rest[1]) else { return nil }
             self = .thread(id)

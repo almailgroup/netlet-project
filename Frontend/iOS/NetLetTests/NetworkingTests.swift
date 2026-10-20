@@ -371,6 +371,66 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(history.rows.isEmpty)
     }
 
+    func testTheProductEditorReadsTheWholeProduct() async throws {
+        let product = try await client.call(API.editableProduct, .init(id: 10))
+        XCTAssertEqual(product?.variants.first?.options?["Size"], "S")
+        XCTAssertEqual(product?.sizeChart?.measures, ["chest", "waist"])
+        XCTAssertEqual(product?.variants.first?.step, 1)
+    }
+
+    func testTheEditorsRulesAreTheShopsOwn() throws {
+        let rules = ListingRules.shared
+        XCTAssertEqual(rules.fields("electronics").map(\.key), ["brand", "model", "ram", "storage", "warranty"])
+        let existing = [
+            ProductAttribute(namespace: "spec", key: "brand", label: "Brand", value: "Old"),
+            ProductAttribute(namespace: "spec", key: "colourway", label: "Colourway", value: "Teal"),
+            ProductAttribute(namespace: "reviews", key: "score", label: "Score", value: "4.5"),
+        ]
+        let merged = rules.mergeAttributes(existing, departmentSlug: "electronics", values: ["brand": "Acme", "ram": " "])
+        XCTAssertEqual(merged.first?.namespace, "reviews", "the review score stays where it was")
+        XCTAssertTrue(merged.contains { $0.key == "brand" && $0.value == "Acme" })
+        XCTAssertFalse(merged.contains { $0.key == "ram" }, "a blank clears its row rather than storing nothing")
+        XCTAssertTrue(merged.contains { $0.key == "colourway" }, "a row the schema does not know is kept")
+
+        XCTAssertEqual(rules.optionProblem([.init(name: "Size", value: "")]), "admin.optionHalf")
+        XCTAssertEqual(rules.optionProblem([.init(name: "Colour", value: "Red"), .init(name: "colour", value: "Blue")]), "admin.optionDuplicate")
+        XCTAssertNil(rules.optionProblem([.init(name: "", value: ""), .init(name: "Size", value: "M")]))
+        XCTAssertEqual(rules.optionsRecord([.init(name: " Size ", value: "M "), .init(name: "", value: "")]), ["Size": "M"])
+        XCTAssertTrue(ListingRules.optionsDistinguish([["Size": "S"], ["Size": "M"]]))
+        XCTAssertFalse(ListingRules.optionsDistinguish([["Size": "S"], ["Size": "S"]]))
+
+        XCTAssertEqual(ListingRules.stockMoveProblem(0, reason: "correction"), "stock.zeroChange")
+        XCTAssertEqual(ListingRules.stockMoveProblem(-1, reason: "received"), "stock.wrongDirection")
+        XCTAssertNil(ListingRules.stockMoveProblem(-2, reason: "correction"))
+
+        XCTAssertTrue(rules.isValidMeasure(unit: "g", step: 250))
+        XCTAssertFalse(rules.isValidMeasure(unit: "g", step: 0.5), "half a gram would put the float back in")
+        XCTAssertFalse(rules.isValidMeasure(unit: "each", step: 2))
+        let perKilo = rules.unitPrice(Money(fils: 600), unit: "g", step: 250)
+        XCTAssertEqual(perKilo?.price, Money(fils: 2400))
+        XCTAssertEqual(perKilo?.unit, "kg")
+        XCTAssertNil(rules.unitPrice(Money(fils: 600), unit: "each", step: 1), "a counted product's unit price is just its price")
+
+        XCTAssertEqual(rules.vehicle(forSizeClass: "large"), "van")
+        XCTAssertEqual(memberPriceProblem(list: Money(fils: 10_000), member: "10.000"), "membership.priceNotBelow")
+        XCTAssertEqual(memberPriceProblem(list: Money(fils: 10_000), member: "0"), "membership.priceZero")
+        XCTAssertNil(memberPriceProblem(list: Money(fils: 10_000), member: ""))
+
+        let good = SizeChart(axis: "Size", measures: ["chest"], rows: [.init(size: "S", ranges: ["chest": [86, 91]])])
+        XCTAssertNil(rules.chartProblem(good))
+        let backwards = SizeChart(axis: "Size", measures: ["chest"], rows: [.init(size: "S", ranges: ["chest": [91, 86]])])
+        XCTAssertEqual(rules.chartProblem(backwards), "sizeGuide.badRange")
+        XCTAssertEqual(PortalPage("/admin/products/12"), .product(12))
+        XCTAssertEqual(PortalPage("/admin/products/new?vendor=3"), .newProduct(vendorId: 3))
+    }
+
+    func testAnEmptiedBoxIsSentAsNull() throws {
+        let input = API.ProductSpeed(productId: 4, speed: OrNull(nil))
+        XCTAssertEqual(try TRPCClient.encodeInput(input), #"{"json":{"productId":4,"speed":null}}"#)
+        let untouched = API.VariantInput(productId: 4, title: "M", price: "1.000")
+        XCTAssertFalse(try TRPCClient.encodeInput(untouched).contains("sku"), "a field not given is left alone")
+    }
+
     func testALineMovesOnlyWhereTheServerWouldTakeIt() {
         let rules = PortalRules.shared
         XCTAssertEqual(rules.nextStates("returned"), [], "a returned line is over")
