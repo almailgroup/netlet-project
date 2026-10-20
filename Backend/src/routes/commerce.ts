@@ -22,13 +22,14 @@ import {
   getStorePage,
   listCollections,
   listProducts,
+  listProductsByIds,
   listStoreCards,
   removeCartLines,
   STORE_INDEX_LIMIT,
   updateCartLines,
 } from "../services/catalog.js";
 import { publicProcedure, router } from "../core/trpc.js";
-import { MAX_LINE_QUANTITY } from "../../../Shared/commerce/types.js";
+import { MAX_LINE_QUANTITY, MAX_PRODUCTS_BY_ID } from "../../../Shared/commerce/types.js";
 import { bundlesForVariant } from "../services/bundles.js";
 import { publishedDepartmentCounts } from "../services/inventory.js";
 import { AddressError, setLineDestination } from "../services/addresses.js";
@@ -78,6 +79,20 @@ export const commerceRouter = router({
       .input(z.object({ handle: z.string().min(1), locale: localeSchema }))
       .query(async ({ input }) => {
         return getProductByHandle(input.handle, input.locale ?? "en");
+      }),
+    /**
+     * Named products, in the order named — what a wishlist, a gift list and
+     * Saved draw. They held storefront ids and looked them up in the newest
+     * hundred (Saved in the newest sixty), so anything older read as gone.
+     * Only what the shop would show comes back; an id that is not a row id —
+     * a saved heart from before the catalogue was NetLet's own — is dropped
+     * rather than refusing the rest.
+     */
+    byIds: publicProcedure
+      .input(z.object({ ids: z.array(z.string().min(1).max(191)).max(MAX_PRODUCTS_BY_ID), locale: localeSchema }))
+      .query(({ input }) => {
+        const ids = [...new Set(input.ids.filter(id => rowIdText.safeParse(id).success).map(Number))];
+        return listProductsByIds(ids, input.locale ?? "en");
       }),
   }),
   /** Products on sale per department, so the navigation can leave out an empty one. */

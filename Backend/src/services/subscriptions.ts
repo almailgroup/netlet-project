@@ -20,6 +20,7 @@
  */
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, lte, ne, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import {
   cartItems,
   carts,
@@ -196,7 +197,7 @@ export async function mySubscriptions(userId: number): Promise<SubscriptionView[
       sub: subscriptions,
       handle: products.handle,
       addressLabel: customerAddresses.label,
-      image: sql<string | null>`(select ${productImages.url} from ${productImages} where ${productImages.productId} = ${subscriptions.productId} and ${productImages.kind} = 'image' order by ${productImages.position}, ${productImages.id} limit 1)`,
+      image: sql<string | null>`(select ${productImages.url} from ${productImages} where ${productImages.productId} = ${outer(subscriptions.productId)} and ${productImages.kind} = 'image' order by ${productImages.position}, ${productImages.id} limit 1)`,
     })
     .from(subscriptions)
     .leftJoin(products, eq(subscriptions.productId, products.id))

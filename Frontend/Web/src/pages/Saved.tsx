@@ -9,7 +9,7 @@
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
  */
-import { useCatalog } from "@/hooks/useCatalog";
+import { useProductsByIds } from "@/hooks/useCatalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
@@ -21,7 +21,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
 import { ArrowRight, Heart } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 
@@ -30,19 +30,20 @@ export default function Saved() {
   const { savedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  const { data: catalog = [], isLoading } = useCatalog(60);
+  /* By id, so a heart on something older than the newest sixty products is
+     still a card — it used to be counted as no longer available. */
+  const saved = useProductsByIds(savedIds);
+  const isLoading = saved.waiting;
 
   // Ordered by the saved list rather than by catalog order, so the most
   // recently saved item is where the shopper left it.
-  const savedProducts = useMemo(() => {
-    const byId = new Map(catalog.map((product) => [product.id, product]));
-    return savedIds.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
-  }, [catalog, savedIds]);
+  const savedProducts = saved.products;
 
   // A saved id with no product behind it means the item left the catalog while
   // it was on the list. Counted rather than hidden: "two items are no longer
   // available" is information; silently showing fewer cards is a bug report.
-  const missingCount = savedIds.length - savedProducts.length;
+  // Only once the server has answered: the shelves' copy is not the catalogue.
+  const missingCount = saved.missing;
 
   return (
     <>
@@ -69,6 +70,9 @@ export default function Saved() {
             ))}
           </div>
         ) : savedProducts.length ? (
+          <>
+          {/* The cards are h3s under the page's h1: the department grid's rung. */}
+          <h2 className="sr-only">{t("browse.resultsRegion")}</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {savedProducts.map((product) => (
               <ProductCard
@@ -83,6 +87,7 @@ export default function Saved() {
               />
             ))}
           </div>
+          </>
         ) : (
           <EmptyState icon={<Heart className="size-6" />} title={t("saved.emptyTitle")} note={t("saved.emptyNote")}>
             <Link href="/" className={BUTTON_PRIMARY}>

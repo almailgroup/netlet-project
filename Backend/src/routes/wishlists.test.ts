@@ -152,6 +152,22 @@ describe("putting things on a list", () => {
     expect(after.items.map((i: { productId: string }) => i.productId)).toContain("777");
   });
 
+  /*
+   * The count beside each list is a correlated subquery, and Drizzle wrote its
+   * outer column bare, so it counted items whose own id matched the list's —
+   * every list read "0 items" on the account page however full it was.
+   */
+  it("counts what is on each list", async () => {
+    const noura = asShopper("noura");
+    const [list] = await noura.wishlists.mine();
+    await noura.wishlists.addItem({ listId: list.id, productId: "778" });
+    const { items } = await noura.wishlists.get({ listId: list.id });
+    const [counted] = await noura.wishlists.mine();
+    expect(items.length).toBeGreaterThan(1);
+    expect(counted.itemCount).toBe(items.length);
+    await noura.wishlists.removeItem({ listId: list.id, itemId: items.find((i: { productId: string }) => i.productId === "778").id });
+  });
+
   it("is idempotent: pressing add twice does not throw or duplicate", async () => {
     const noura = asShopper("noura");
     const [list] = await noura.wishlists.mine();

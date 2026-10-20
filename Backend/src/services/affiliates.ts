@@ -13,6 +13,7 @@
  * collected" twice, or receiving a return twice, cannot pay twice.
  */
 import { and, desc, eq, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import { affiliates, orderItems, orders, pointEntries, users } from "../../database/schema.js";
 import {
   acceptableRate,
@@ -299,8 +300,8 @@ export async function listAffiliates(actor: Actor, request: { page?: number; pag
       status: affiliates.status,
       ratePercent: affiliates.ratePercent,
       createdAt: affiliates.createdAt,
-      paidOrders: sql<string>`(select count(*) from ${orders} where ${orders.affiliateId} = ${affiliates.id} and ${orders.status} in ('paid', 'refunded'))`,
-      earned: sql<string>`(select coalesce(sum(${pointEntries.points}), 0) from ${pointEntries} where ${pointEntries.userId} = ${affiliates.userId} and ${pointEntries.pot} = 'affiliate' and ${pointEntries.reason} in ('affiliate_commission', 'affiliate_reversal'))`,
+      paidOrders: sql<string>`(select count(*) from ${orders} where ${orders.affiliateId} = ${outer(affiliates.id)} and ${orders.status} in ('paid', 'refunded'))`,
+      earned: sql<string>`(select coalesce(sum(${pointEntries.points}), 0) from ${pointEntries} where ${pointEntries.userId} = ${outer(affiliates.userId)} and ${pointEntries.pot} = 'affiliate' and ${pointEntries.reason} in ('affiliate_commission', 'affiliate_reversal'))`,
     })
     .from(affiliates)
     .innerJoin(users, eq(users.id, affiliates.userId))

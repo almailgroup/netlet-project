@@ -22,6 +22,12 @@ import type { DeliverySpeed } from "./deliverySpeed.js";
  */
 export const MAX_LINE_QUANTITY = 99;
 
+/**
+ * The most products one `commerce.products.byIds` read names: a wishlist's
+ * ceiling (`MAX_ITEMS_PER_LIST`), and more saved hearts than a page shows.
+ */
+export const MAX_PRODUCTS_BY_ID = 200;
+
 export type Money = {
   amount: string; // decimal string, e.g. "385.00"
   currencyCode: string; // ISO 4217, e.g. "USD"

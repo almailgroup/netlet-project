@@ -185,6 +185,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     }
     case "commerce.products.byHandle":
       return demoProductByHandle(String(input.handle ?? ""));
+    case "commerce.products.byIds": {
+      const ids: string[] = Array.isArray(input.ids) ? input.ids.map(String) : [];
+      return ids.flatMap(id => demoCatalog.filter(product => product.id === id));
+    }
 
     case "commerce.departmentCounts": {
       /* Counted from the invented catalogue the same way the server counts its own. */

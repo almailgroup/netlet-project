@@ -30,7 +30,8 @@
  * against a real database.
  */
 import { randomBytes } from "node:crypto";
-import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import {
   customerPreferences,
   wishlistItems,
@@ -39,9 +40,11 @@ import {
 import { getDb } from "./db.js";
 import {
   CLAIM_HOLD_DAYS,
+  MAX_HELD_CLAIMS,
   MAX_ITEMS_PER_LIST,
   MAX_LISTS_PER_SHOPPER,
   claimStateFor,
+  type HeldClaim,
   normalisePhone,
   type OwnerListView,
   type PublicListView,
@@ -94,7 +97,7 @@ export async function listMine(userId: number): Promise<OwnerListView[]> {
       title: wishlists.title,
       visibility: wishlists.visibility,
       updatedAt: wishlists.updatedAt,
-      itemCount: sql<number>`(select count(*)::int from ${wishlistItems} where ${wishlistItems.wishlistId} = ${wishlists.id})`,
+      itemCount: sql<number>`(select count(*)::int from ${wishlistItems} where ${wishlistItems.wishlistId} = ${outer(wishlists.id)})`,
     })
     .from(wishlists)
     .where(eq(wishlists.userId, userId))
@@ -501,20 +504,44 @@ export async function claimItem(
  * item this account holds a claim on for a product in it, a claim that has
  * lapsed included, as long as nobody else has claimed it since.
  *
- * Only a signed-in giver's claim can be matched — checkout needs an account,
- * and a claim made signed out names nobody. That one still lapses, which is
- * the cost already written down beside `releaseClaim`.
+ * A claim made signed out names nobody, so it is matched by what the device
+ * that made it remembers (`heldHere`, see `HeldClaim`): the list's token and
+ * the product, and only while that claim still stands, still names nobody,
+ * and is for something in this order. It then names this account, so the
+ * purchase has a name like any other. Matched only when it is still standing,
+ * because a lapsed one may have been taken since by somebody else's device.
  */
-export async function markClaimsBought(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, userId: number, productIds: string[]): Promise<void> {
+export async function markClaimsBought(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId: number,
+  productIds: string[],
+  heldHere: HeldClaim[] = [],
+): Promise<void> {
   if (productIds.length === 0) return;
+  const now = new Date();
   await database
     .update(wishlistItems)
-    .set({ boughtAt: new Date() })
+    .set({ boughtAt: now })
     .where(and(
       eq(wishlistItems.claimedBy, userId),
       inArray(wishlistItems.productId, productIds),
       isNull(wishlistItems.boughtAt),
     ));
+
+  const inOrder = new Set(productIds);
+  const lapsed = new Date(now.getTime() - CLAIM_HOLD_DAYS * 24 * 60 * 60 * 1000);
+  for (const held of heldHere.filter(claim => inOrder.has(claim.productId)).slice(0, MAX_HELD_CLAIMS)) {
+    await database
+      .update(wishlistItems)
+      .set({ boughtAt: now, claimedBy: userId })
+      .where(and(
+        inArray(wishlistItems.wishlistId, database.select({ id: wishlists.id }).from(wishlists).where(eq(wishlists.shareToken, held.token))),
+        eq(wishlistItems.productId, held.productId),
+        isNull(wishlistItems.claimedBy),
+        isNull(wishlistItems.boughtAt),
+        gte(wishlistItems.claimedAt, lapsed),
+      ));
+  }
 }
 
 /**

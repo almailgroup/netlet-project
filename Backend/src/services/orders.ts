@@ -67,6 +67,7 @@ import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
 import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
+import type { HeldClaim } from "../../../Shared/commerce/wishlist.js";
 import { tellLineCancelled, tellOrderMoved, tellOrderPlaced, withProductAlerts } from "./notifications.js";
 import { isKept, type StillOwed } from "../../../Shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
@@ -121,6 +122,11 @@ export type PlaceOrderDetails = {
    * only the browser saw the click.
    */
   affiliateCode?: string | null;
+  /**
+   * Presents this device claimed off somebody's list while signed out, so the
+   * ones in this order are marked bought (`markClaimsBought`).
+   */
+  giftClaims?: HeldClaim[];
   /**
    * Whether to spend the shopper's loyalty points on this order (3.1.15).
    *
@@ -802,7 +808,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
        thing than an order that fails to exist. */
     if (details.userId) {
       const productIds = [...new Set(draft.lines.map(line => String(line.productId)))];
-      await markClaimsBought(db, details.userId, productIds)
+      await markClaimsBought(db, details.userId, productIds, details.giftClaims ?? [])
         .catch(error => console.error(`[orders] marking order ${order.id}'s wishlist claims bought failed`, error));
     }
 

@@ -12,7 +12,7 @@
  */
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import type { Product } from "@shared/commerce/types";
+import { MAX_PRODUCTS_BY_ID, type Product } from "@shared/commerce/types";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { LocaleCode } from "@shared/i18n/dictionary";
 
@@ -43,7 +43,7 @@ export function useCatalog(first: number, options: { enabled?: boolean; staleTim
  * Reads that answer with whole storefront products — the same `shape` on the
  * server as `byHandle`'s, so a product found in one of them is the product.
  */
-const SHELVES = new Set(["commerce.products.list", "commerce.bestsellers", "search.products"]);
+const SHELVES = new Set(["commerce.products.list", "commerce.products.byIds", "commerce.bestsellers", "search.products"]);
 
 /**
  * The product as a shelf already holds it, and when that shelf was read.
@@ -97,4 +97,42 @@ export function useProductByHandle(handle: string) {
     initialDataUpdatedAt: () => (handle ? shelvedProduct(client, handle, locale)?.at : undefined),
   });
   return query;
+}
+
+/**
+ * Products named by id, in the order named — a wishlist, a gift list, Saved.
+ *
+ * They looked their ids up in the newest hundred products (Saved in the newest
+ * sixty), so a list holding anything older showed a bare number for its name
+ * and a giver could not buy it. This asks for exactly those ids. While it does,
+ * whatever the shelves in this tab already hold is drawn as a placeholder, so
+ * a list somebody reached from the shop draws at once; `isPlaceholderData`
+ * says when the answer is not the server's yet, which is when "no longer
+ * available" must not be counted.
+ */
+export function useProductsByIds(ids: string[], options: { enabled?: boolean } = {}) {
+  const { locale } = useTranslation();
+  const client = useQueryClient();
+  const wanted = [...new Set(ids)].slice(0, MAX_PRODUCTS_BY_ID);
+  const query = trpc.commerce.products.byIds.useQuery({ ids: wanted, locale }, {
+    staleTime: FRESH_MS,
+    enabled: (options.enabled ?? true) && wanted.length > 0,
+    placeholderData: previous => {
+      const held = new Map(shelvedProducts(client, locale).map(product => [product.id, product]));
+      for (const product of previous ?? []) held.set(product.id, product);
+      return wanted.flatMap(id => held.get(id) ?? []);
+    },
+  });
+  const products = wanted.length === 0 ? [] : query.data ?? [];
+  return {
+    query,
+    products,
+    byId: new Map(products.map(product => [product.id, product])),
+    /** Every id has the server's answer, so one with no product really is gone. */
+    settled: wanted.length === 0 || (query.isSuccess && !query.isPlaceholderData),
+    /** How many of the ids the shop no longer shows — counted only once settled. */
+    missing: query.isSuccess && !query.isPlaceholderData ? wanted.length - products.length : 0,
+    /** Nothing the shelves held could stand in for every id, so the page has to wait. */
+    waiting: wanted.length > 0 && !query.isError && (query.isPending || (query.isPlaceholderData && products.length < wanted.length)),
+  };
 }

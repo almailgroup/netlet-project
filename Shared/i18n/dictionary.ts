@@ -3283,6 +3283,10 @@ export const en = {
   "wish.shownAsNote": "Leave this empty and the page just says “This list”.",
   "wish.copyLink": "Copy link",
   "wish.linkCopied": "Link copied.",
+  "wish.shareLink": "Share link",
+  "wish.linkLabel": "Link to this list",
+  "wish.viewAsVisitor": "See what visitors see",
+  "wish.onList": "On the list",
   "wish.open": "Open list",
   "wish.back": "Back to your lists",
   "wish.addFromSaved": "Add from your saved items",
@@ -3329,6 +3333,10 @@ export const en = {
   "gift.secret": "They cannot see who took what — it stays a surprise.",
   "gift.emptyList": "There is nothing on this list yet.",
   "gift.backToLookup": "Look up another number",
+  "gift.loadFailed": "This list could not be loaded just now.",
+  "gift.yours": "You are getting this",
+  "gift.chooseFirst": "Choose which one first.",
+  "gift.signInToRelease": "Signed in, you can change your mind about something you choose. Signed out, it stays held for you for two weeks.",
 
   /* Refusals. The server sends the key and the page reads it, so a refusal
      arrives in Arabic without the server knowing there is an Arabic. */
@@ -6695,6 +6703,10 @@ export const ar: Record<MessageKey, string> = {
   "wish.shownAsNote": "اتركه فارغًا وستكتفي الصفحة بعبارة «هذه القائمة».",
   "wish.copyLink": "نسخ الرابط",
   "wish.linkCopied": "تم نسخ الرابط.",
+  "wish.shareLink": "مشاركة الرابط",
+  "wish.linkLabel": "رابط هذه القائمة",
+  "wish.viewAsVisitor": "اعرض ما يراه الزوار",
+  "wish.onList": "في القائمة",
   "wish.open": "فتح القائمة",
   "wish.back": "العودة إلى قوائمك",
   "wish.addFromSaved": "أضف من محفوظاتك",
@@ -6738,6 +6750,10 @@ export const ar: Record<MessageKey, string> = {
   "gift.secret": "لا يستطيع صاحب القائمة معرفة من أخذ ماذا — تبقى مفاجأة.",
   "gift.emptyList": "لا شيء في هذه القائمة بعد.",
   "gift.backToLookup": "ابحث عن رقم آخر",
+  "gift.loadFailed": "تعذّر تحميل هذه القائمة الآن.",
+  "gift.yours": "أنت من سيحضر هذا",
+  "gift.chooseFirst": "اختر أيّها أولاً.",
+  "gift.signInToRelease": "إن سجّلت الدخول يمكنك التراجع عمّا تختاره، ومن دون تسجيل الدخول يبقى محجوزاً لك أسبوعين.",
 
   "wishlist.notFound": "هذه القائمة غير متاحة.",
   "wishlist.tooManyLists": "وصلت إلى الحد الأقصى لعدد القوائم.",

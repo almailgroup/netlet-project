@@ -16,6 +16,7 @@ import { optionPairs, optionPairsProblem, optionsRecord } from "../../../Shared/
 import { percentProblem, scalePrice } from "../../../Shared/inventory/productBulk.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import {
   categories,
   followedProducts,
@@ -1637,7 +1638,7 @@ export async function lowStock(actor: Actor, request: PageRequest = {}) {
       productTitle: products.title,
       productStatus: products.status,
       vendorName: vendors.name,
-      waiting: sql<number>`(select count(*)::int from ${followedProducts} where ${followedProducts.productId} = ${products.id}::text and ${followedProducts.backInStock})`,
+      waiting: sql<number>`(select count(*)::int from ${followedProducts} where ${followedProducts.productId} = ${outer(products.id)}::text and ${followedProducts.backInStock})`,
     })
     .from(productVariants)
     .innerJoin(products, eq(productVariants.productId, products.id))

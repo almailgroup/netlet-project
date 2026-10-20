@@ -22,6 +22,7 @@
  * exists.
  */
 import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import { adBookings, categories, mediaFiles, payoutRunItems, products, vendors } from "../../database/schema.js";
 import {
   AD_CAPACITY,
@@ -453,7 +454,7 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
       productHandle: products.handle,
       departmentName: categories.name,
       departmentNameAr: categories.nameAr,
-      deducted: sql<string | null>`(select sum(${payoutRunItems.amount}) from ${payoutRunItems} where ${payoutRunItems.bookingId} = ${adBookings.id})`,
+      deducted: sql<string | null>`(select sum(${payoutRunItems.amount}) from ${payoutRunItems} where ${payoutRunItems.bookingId} = ${outer(adBookings.id)})`,
       mediaType: mediaFiles.contentType,
       permitNumber: vendors.discountLicenceNumber,
       permitExpires: vendors.discountLicenceExpiresAt,

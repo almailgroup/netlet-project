@@ -38,6 +38,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useFeature } from "@/hooks/useFeature";
 import { footerLogoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
@@ -190,6 +191,10 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
   /* Guides are listed once one is published, so the link never opens an empty page. */
   const guides = trpc.guides.published.useQuery(undefined, { staleTime: 300_000 });
   const service = guides.data?.length ? [SERVICE[0], { key: "guides.title", href: "/guides" } satisfies FooterLink, ...SERVICE.slice(1)] : SERVICE;
+  /* The gift lookup had no way in but a link somebody sent: a relative who
+     came to buy from a list had nothing on the site to press. */
+  const gifts = useFeature("wishlists");
+  const shopping = gifts ? [...SHOPPING, { key: "gift.title", href: "/gifts" } satisfies FooterLink] : SHOPPING;
   const contact = channels.data;
   const company = contact?.company ?? null;
   const companyName = nameInSentence(company ? (isArabic && company.nameAr ? company.nameAr : company.name) : t("footer.netlet"));
@@ -274,7 +279,7 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
   const groups = (
     <div key="groups" className="min-w-0 sm:contents">
       <Group title="footer.categories" links={departments} folded={!wide} />
-      <Group title="footer.shopping" links={SHOPPING} folded={!wide} />
+      <Group title="footer.shopping" links={shopping} folded={!wide} />
       <Group title="footer.service" links={service} folded={!wide} />
       <Group title="footer.netlet" links={NETLET} folded={!wide} />
     </div>

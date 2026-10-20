@@ -345,6 +345,71 @@ describe("placing an order", () => {
     await db.delete(wishlists);
   });
 
+  /*
+   * A claim made signed out names nobody, and checkout needs an account, so
+   * the order is matched to it only by what the device remembers. It used to
+   * be matched by nothing, and read as free again once the hold ran out.
+   */
+  it("marks a claim made signed out as bought when this device's order names it", async () => {
+    const token = `tok-guest-${Date.now()}`;
+    const [list] = await db.insert(wishlists).values({
+      userId: ids.admin, title: "Eid", visibility: "public", shareToken: token,
+    }).returning();
+    const [held] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.lamp), claimedAt: new Date(), claimedBy: null,
+    }).returning();
+    /* Somebody signed in holds this one: a device naming it cannot take it over. */
+    const [named] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.kettle), claimedAt: new Date(), claimedBy: ids.acmeOwner,
+    }).returning();
+
+    await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }], ids.shopper),
+      {
+        ...DETAILS,
+        userId: ids.shopper,
+        giftClaims: [{ token, productId: String(ids.lamp) }, { token, productId: String(ids.kettle) }],
+      },
+    );
+    const [after] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, held.id));
+    expect(after.boughtAt).not.toBeNull();
+    expect(after.claimedBy).toBe(ids.shopper);
+    const [other] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, named.id));
+    expect(other.boughtAt).toBeNull();
+    expect(other.claimedBy).toBe(ids.acmeOwner);
+    await db.delete(wishlistItems);
+    await db.delete(wishlists);
+  });
+
+  it("matches a device's claim only while it still stands, and only for what the order bought", async () => {
+    const token = `tok-lapsed-${Date.now()}`;
+    const [list] = await db.insert(wishlists).values({
+      userId: ids.admin, title: "Graduation", visibility: "public", shareToken: token,
+    }).returning();
+    const lapsed = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [old] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.lamp), claimedAt: lapsed, claimedBy: null,
+    }).returning();
+    const [notBought] = await db.insert(wishlistItems).values({
+      wishlistId: list.id, productId: String(ids.kettle), claimedAt: new Date(), claimedBy: null,
+    }).returning();
+
+    await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper),
+      {
+        ...DETAILS,
+        userId: ids.shopper,
+        giftClaims: [{ token, productId: String(ids.lamp) }, { token, productId: String(ids.kettle) }],
+      },
+    );
+    for (const row of [old, notBought]) {
+      const [after] = await db.select().from(wishlistItems).where(eq(wishlistItems.id, row.id));
+      expect(after.boughtAt).toBeNull();
+    }
+    await db.delete(wishlistItems);
+    await db.delete(wishlists);
+  });
+
   it("gives every order a reference nobody can count", async () => {
     const first = await ordersModule.placeOrder(
       await basket([{ variantId: ids.lampVariant, quantity: 1 }]), DETAILS);
@@ -1215,6 +1280,26 @@ describe("a discount code's ceiling", () => {
     expect((refused[0] as PromiseRejectedResult).reason.message).toBe("order.voucherGone");
     expect(redemptions).toHaveLength(1);
     expect(discounted).toHaveLength(1);
+  });
+
+  /*
+   * The voucher desk's count of uses was a subquery whose outer column Drizzle
+   * wrote bare, so it compared each redemption's code with the redemption's
+   * own id — one figure for every code, whatever each had been used.
+   */
+  it("is counted per code on the voucher desk", async () => {
+    const [often, never] = await db.insert(discountCodes).values([
+      { code: "OFTEN", kind: "percent", value: "5.00", active: true },
+      { code: "NEVER", kind: "percent", value: "5.00", active: true },
+    ]).returning();
+    await db.insert(discountRedemptions).values([
+      { codeId: often.id, userId: ids.shopper, amount: "1.000" },
+      { codeId: often.id, userId: ids.shopper, amount: "1.000" },
+      { codeId: often.id, userId: ids.shopper, amount: "1.000" },
+    ]);
+    const { codes } = await (await import("./vouchers.js")).listVouchers(adminActor());
+    expect(Number(codes.find(code => code.id === often.id)?.used)).toBe(3);
+    expect(Number(codes.find(code => code.id === never.id)?.used)).toBe(0);
   });
 
   it("is not exceeded one shopper at a time either", async () => {

@@ -40,6 +40,7 @@ import { riskForOrders } from "../services/fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouchers.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
+import { MAX_HELD_CLAIMS } from "../../../Shared/commerce/wishlist.js";
 import { FULFILMENT_STATES } from "../../../Shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
@@ -231,6 +232,12 @@ export const ordersRouter = router({
       /* The affiliate link this browser arrived through in the last thirty
          days (3.7). A claim the server checks, never an instruction. */
       affiliateCode: z.string().trim().max(16).nullish(),
+      /* Presents claimed off a list on this device while signed out: marked
+         bought if they are in the order and the hold still names nobody. */
+      giftClaims: z.array(z.object({
+        token: z.string().min(8).max(64),
+        productId: z.string().min(1).max(191),
+      })).max(MAX_HELD_CLAIMS).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -248,6 +255,7 @@ export const ordersRouter = router({
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
           affiliateCode: input.affiliateCode ?? null,
+          giftClaims: input.giftClaims ?? [],
         });
         return {
           reference: placed.order.reference,

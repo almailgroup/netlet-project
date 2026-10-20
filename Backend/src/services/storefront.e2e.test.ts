@@ -124,6 +124,17 @@ describe("a product's journey from the admin portal to the shop", () => {
     variantId = listed.variants[0].id;
   });
 
+  /* What a wishlist, a gift list and Saved draw: named products, in order,
+     and nothing the shop would not show — a draft's id reads as nothing. */
+  it("is read by id, in the order named, and a draft or a stray id is left out", async () => {
+    const listed = await shopper.commerce.products.byHandle({ handle });
+    const draft = await caller.inventory.products.create({ vendorId: ids.vendor, title: "Not yet", categoryId: ids.category });
+    const read = await shopper.commerce.products.byIds({ ids: ["probe", String(draft.id), listed.id, listed.id, "99999"], locale: "ar" });
+    expect(read.map((p: any) => p.id)).toEqual([listed.id]);
+    expect(read[0].title).toBe("سماعات لاسلكية");
+    await caller.inventory.products.delete({ id: draft.id });
+  });
+
   it("reads back in Arabic when the shop asks in Arabic", async () => {
     const listed = await shopper.commerce.products.byHandle({ handle, locale: "ar" });
     expect(listed.title).toBe("سماعات لاسلكية");

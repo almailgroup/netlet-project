@@ -36,6 +36,7 @@ import { useEffect, useState } from "react";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
 import { currentAffiliate } from "@/lib/affiliate";
+import { heldClaims } from "@/lib/giftClaims";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Info, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
@@ -231,6 +232,7 @@ export default function Checkout() {
     usePoints,
     voucherCode: applied || undefined,
     affiliateCode: via.data ? affiliateCode : null,
+    giftClaims: heldClaims(),
   });
   const blockerField = blocker === "checkout.needGovernorate" ? "checkout-governorate"
     : blocker === "checkout.needAddress" || blocker === "address.needsParts" ? `checkout-address-${missingParts(form.parts)[0] ?? "area"}`

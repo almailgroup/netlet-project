@@ -18,6 +18,7 @@
  * against a real database.
  */
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import { orderItems, orders, reviews } from "../../database/schema.js";
 import { getDb } from "./db.js";
 import { violatesUnique } from "../core/describeError.js";
@@ -261,7 +262,7 @@ export async function reviewsForProduct(
       createdAt: reviews.createdAt,
       vendorReply: reviews.vendorReply,
       vendorRepliedAt: reviews.vendorRepliedAt,
-      authorName: sql<string | null>`(select "name" from "users" where "users"."id" = ${reviews.userId})`,
+      authorName: sql<string | null>`(select "name" from "users" where "users"."id" = ${outer(reviews.userId)})`,
     })
     .from(reviews)
     .where(and(eq(reviews.productId, productId), isNull(reviews.hiddenAt)))
@@ -311,7 +312,7 @@ export async function recentReviewsForStore(vendorId: number, limit = STORE_PAGE
       body: reviews.body,
       productTitle: reviews.productTitle,
       createdAt: reviews.createdAt,
-      authorName: sql<string | null>`(select "name" from "users" where "users"."id" = ${reviews.userId})`,
+      authorName: sql<string | null>`(select "name" from "users" where "users"."id" = ${outer(reviews.userId)})`,
     })
     .from(reviews)
     .where(and(eq(reviews.vendorId, vendorId), isNull(reviews.hiddenAt)))

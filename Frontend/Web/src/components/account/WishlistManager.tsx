@@ -28,13 +28,18 @@
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Thumb } from "@/components/product/Thumb";
+import { appPath } from "@/lib/basePath";
+import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useProductsByIds } from "@/hooks/useCatalog";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
-import { Check, Gift, Link2, Lock, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { ArrowLeft, Check, Eye, Gift, Link2, Lock, Plus, Share2, ShoppingBag, Trash2 } from "lucide-react";
 import type { Product } from "@shared/commerce/types";
 import { useState } from "react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 import { DiscButton } from "@/components/ui/DiscButton";
 
@@ -188,19 +193,45 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
       onError: error => toast.error(t(error.message as "wishlist.notFound")),
     });
 
-  const copy = async () => {
-    if (!link.data) return;
-    await navigator.clipboard.writeText(`${window.location.origin}/gifts/${link.data}`);
-    toast.success(t("wish.linkCopied"));
+  /*
+   * A phone hands the link to its own share sheet — WhatsApp, Messages — which
+   * is where a family list is sent; a computer copies it. Either way the
+   * address carries the site's base path, which the first version left off,
+   * and a browser that refuses the clipboard is shown the link to copy by hand
+   * rather than told nothing.
+   */
+  const touch = useMediaQuery("(pointer: coarse)");
+  const canShare = touch && typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const [showLink, setShowLink] = useState(false);
+  const url = link.data ? `${window.location.origin}${appPath(`/gifts/${link.data}`)}` : "";
+  const share = async () => {
+    if (!url) return;
+    if (canShare) {
+      try {
+        await navigator.share({ title: list.title, url });
+        return;
+      } catch (error) {
+        /* Closing the sheet is an answer, not a failure. */
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t("wish.linkCopied"));
+    } catch {
+      setShowLink(true);
+    }
   };
 
   return (
     <li className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <button onClick={onOpen} className="text-start">
-            <h3 dir="auto" className="type-product text-lg text-[#0a285a] hover:text-[#a44a2b]">{list.title}</h3>
-          </button>
+          {/* The heading holds the button, never the other way round: a
+              heading inside a button is no heading to a screen reader. */}
+          <h3 dir="auto" className="type-product text-lg text-[#0a285a]">
+            <button type="button" onClick={onOpen} className="text-start hover:text-[#a44a2b]">{list.title}</button>
+          </h3>
           <p className="mt-0.5 text-xs ink-muted">
             {list.itemCount === 1 ? t("wish.itemCountOne") : t("wish.itemCount", { count: list.itemCount })}
           </p>
@@ -228,12 +259,22 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
         {published ? (
           <>
             <button
-              onClick={copy}
+              onClick={share}
               disabled={!link.data}
               className="glass pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold disabled:opacity-60"
             >
-              <Link2 className="size-3.5" aria-hidden />{t("wish.copyLink")}
+              {canShare
+                ? <><Share2 className="size-3.5" aria-hidden />{t("wish.shareLink")}</>
+                : <><Link2 className="size-3.5" aria-hidden />{t("wish.copyLink")}</>}
             </button>
+            {link.data ? (
+              <Link
+                href={`/gifts/${link.data}`}
+                className="glass pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold"
+              >
+                <Eye className="size-3.5" aria-hidden />{t("wish.viewAsVisitor")}
+              </Link>
+            ) : null}
             <button
               onClick={() => setConfirming("unpublish")}
               className="glass pressable rounded-full px-4 py-2 text-xs font-extrabold"
@@ -258,6 +299,19 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
           <Trash2 className="size-3.5" aria-hidden />{t("wish.deleteList")}
         </button>
       </div>
+      {showLink && url ? (
+        <label className="mt-3 block">
+          <span className="block text-[12px] font-semibold ink-muted">{t("wish.linkLabel")}</span>
+          <input
+            readOnly
+            value={url}
+            /* dir on a form control sets the typing direction — allowed. */
+            dir="ltr"
+            onFocus={event => event.currentTarget.select()}
+            className="glass-field mt-1 w-full rounded-full px-4 py-2.5 text-sm"
+          />
+        </label>
+      ) : null}
 
       <ConfirmDialog
         open={confirming === "unpublish"}
@@ -332,22 +386,22 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
   const drop = trpc.wishlists.removeItem.useMutation();
 
   /*
-   * Saved is a list of ids and the catalog is where the titles live, the same
-   * pairing `/saved` makes. Resolving here rather than adding a
-   * products-by-id procedure keeps the wishlist from inventing a second way to
-   * read the catalog for one screen.
+   * Saved is a list of ids, and so is the list. Both are read by id, in one
+   * request — they were looked up in the newest hundred products, so anything
+   * older showed its number where its name belonged.
    */
   const savedIds = trpc.customer.saved.list.useQuery();
-  const catalog = trpc.commerce.products.list.useQuery({ first: 100, locale });
-  const byId = new Map((catalog.data ?? []).map(product => [product.id, product]));
-  const savedProducts = (savedIds.data ?? []).map(id => byId.get(id)).filter(Boolean) as Product[];
+  const items = detail.data?.items ?? [];
+  const products = useProductsByIds([...items.map(item => item.productId), ...(savedIds.data ?? [])]);
+  const savedProducts = (savedIds.data ?? []).flatMap(id => products.byId.get(id) ?? []);
+  const nameOf = (productId: string) => products.byId.get(productId)?.title ?? (products.settled ? t("product.unavailable") : "");
 
-  const onList = new Set((detail.data?.items ?? []).map(item => item.productId));
+  const onList = new Set(items.map(item => item.productId));
 
   return (
     <div className="space-y-5">
       <button onClick={onBack} className="glass pressable inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-extrabold">
-        <X className="size-3.5" aria-hidden />{t("wish.back")}
+        <ArrowLeft className="size-3.5 rtl:-scale-x-100" aria-hidden />{t("wish.back")}
       </button>
 
       <QueryGate audience="shopper" queries={[detail]}>
@@ -357,36 +411,48 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
 
             <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
               <h3 dir="auto" className="type-product text-lg text-[#0a285a]">{detail.data?.list.title}</h3>
-              {(detail.data?.items ?? []).length === 0 ? (
+              {items.length === 0 ? (
                 <p className="mt-2 text-sm ink-muted">{t("wish.listEmpty")}</p>
               ) : (
                 <ul className="mt-3 divide-y divide-[#e7edf5]">
-                  {(detail.data?.items ?? []).map(item => (
-                    <li key={item.id} className="flex items-start justify-between gap-3 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-extrabold text-[#0a285a]">
-                          {byId.get(item.productId)?.title ?? item.productId}
-                        </p>
-                        {on ? (
-                          <NoteField
-                            listId={listId}
-                            productId={item.productId}
-                            current={item.note}
-                            onSaved={() => void detail.refetch()}
-                          />
-                        ) : item.note ? <p dir="auto" className="mt-1 text-xs ink-muted">{item.note}</p> : null}
-                      </div>
-                      <DiscButton
-                        onClick={() => drop.mutate({ listId, itemId: item.id }, {
-                          onSuccess: () => { void detail.refetch(); toast.success(t("wish.removed")); },
-                        })}
-                        aria-label={t("wish.removeItem", { name: byId.get(item.productId)?.title ?? item.productId })}
-                        className="-m-1.5"
-                      >
-                        <Trash2 className="size-3.5" aria-hidden />
-                      </DiscButton>
-                    </li>
-                  ))}
+                  {items.map(item => {
+                    const product = products.byId.get(item.productId) ?? null;
+                    const href = product ? `/products/${encodeURIComponent(product.handle)}` : null;
+                    return (
+                      <li key={item.id} className="flex items-start gap-3 py-3">
+                        <ItemPhoto product={product} href={href} waiting={!product && !products.settled} />
+                        <div className="min-w-0 flex-1">
+                          {href ? (
+                            <Link href={href} dir="auto" className="line-clamp-2 text-sm font-extrabold text-[#0a285a] hover:text-[#a44a2b]">
+                              {product?.title}
+                            </Link>
+                          ) : (
+                            <p className={`text-sm font-extrabold ${products.settled ? "ink-muted" : "text-[#0a285a]"}`}>{nameOf(item.productId) || "\u00a0"}</p>
+                          )}
+                          {product ? (
+                            <p className="text-xs font-semibold text-[#0a285a]">{formatMoney(product.priceRange.min, { locale })}</p>
+                          ) : null}
+                          {on ? (
+                            <NoteField
+                              listId={listId}
+                              productId={item.productId}
+                              current={item.note}
+                              onSaved={() => void detail.refetch()}
+                            />
+                          ) : item.note ? <p dir="auto" className="mt-1 text-xs ink-muted">{item.note}</p> : null}
+                        </div>
+                        <DiscButton
+                          onClick={() => drop.mutate({ listId, itemId: item.id }, {
+                            onSuccess: () => { void detail.refetch(); toast.success(t("wish.removed")); },
+                          })}
+                          aria-label={t("wish.removeItem", { name: nameOf(item.productId) || item.productId })}
+                          className="-m-1.5"
+                        >
+                          <Trash2 className="size-3.5" aria-hidden />
+                        </DiscButton>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -395,34 +461,42 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
               <h3 className="text-sm font-extrabold text-[#0a285a]">{t("wish.addFromSaved")}</h3>
               <p className="mt-1 max-w-prose text-xs leading-5 ink-muted">{t("wish.addFromSavedNote")}</p>
 
-              {savedProducts.length === 0 ? (
+              {products.waiting && (savedIds.data ?? []).length > 0 ? (
+                <div aria-hidden className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {[0, 1].map(index => <div key={index} className="h-[4.25rem] animate-pulse rounded-2xl bg-[#f3f5f9]" />)}
+                </div>
+              ) : savedProducts.length === 0 ? (
                 <p className="mt-3 text-sm ink-muted">{t("wish.nothingSaved")}</p>
               ) : (
                 <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {savedProducts.map(product => (
-                    <li key={product.id} className="flex items-center gap-3 rounded-2xl border border-[#e7edf5] p-2.5">
-                      <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-[#e7edf5]">
-                        <Thumb
-                          src={product.images[0]?.url}
-                          alt={product.images[0]?.altText ?? product.title}
-                          className="size-full object-cover"
-                          icon={<ShoppingBag className="size-4" />}
-                        />
-                      </div>
-                      <p dir="auto" className="min-w-0 flex-1 truncate text-sm font-extrabold text-[#0a285a]">{product.title}</p>
-                      <button
-                        onClick={() => add.mutate({ listId, productId: product.id }, {
-                          onSuccess: () => { void detail.refetch(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },
-                          onError: error => toast.error(t(error.message as "wishlist.listFull")),
-                        })}
-                        disabled={onList.has(product.id) || add.isPending}
-                        className="glass pressable inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold disabled:opacity-50"
-                      >
-                        {onList.has(product.id) ? <Check className="size-3.5" aria-hidden /> : <Plus className="size-3.5" aria-hidden />}
-                        {t("wish.add")}
-                      </button>
-                    </li>
-                  ))}
+                  {savedProducts.map(product => {
+                    const already = onList.has(product.id);
+                    return (
+                      <li key={product.id} className="flex min-w-0 items-center gap-3 rounded-2xl border border-[#e7edf5] p-2.5">
+                        <div className="size-12 shrink-0 overflow-hidden rounded-xl bg-[#e7edf5]">
+                          <Thumb
+                            src={product.images[0]?.url}
+                            alt={product.images[0]?.altText ?? product.title}
+                            className="size-full object-cover"
+                            icon={<ShoppingBag className="size-4" />}
+                          />
+                        </div>
+                        <p dir="auto" className="min-w-0 flex-1 truncate text-sm font-extrabold text-[#0a285a]">{product.title}</p>
+                        <button
+                          onClick={() => add.mutate({ listId, productId: product.id }, {
+                            onSuccess: () => { void detail.refetch(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },
+                            onError: error => toast.error(t(error.message as "wishlist.listFull")),
+                          })}
+                          disabled={already || add.isPending}
+                          aria-label={already ? undefined : `${t("wish.add")}: ${product.title}`}
+                          className={`pressable inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-3 text-[12px] font-extrabold ${already ? "bg-[#d8ead8] text-[#2f5d33]" : "glass disabled:opacity-50"}`}
+                        >
+                          {already ? <Check className="size-3.5" aria-hidden /> : <Plus className="size-3.5" aria-hidden />}
+                          {t(already ? "wish.onList" : "wish.add")}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div> : null}
@@ -430,6 +504,25 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
         )}
       </QueryGate>
     </div>
+  );
+}
+
+/** The item's photo, opening its page; a quiet box while it is read or once it has gone. */
+function ItemPhoto({ product, href, waiting }: { product: Product | null; href: string | null; waiting: boolean }) {
+  const box = "size-12 shrink-0 overflow-hidden rounded-xl bg-[#e7edf5]";
+  if (!product || !href) {
+    return <div aria-hidden className={`${box} grid place-items-center text-[#8a9bb4] ${waiting ? "animate-pulse" : ""}`}>{waiting ? null : <ShoppingBag className="size-4" />}</div>;
+  }
+  /* The title is the link a screen reader hears; the photo is the same page for a finger. */
+  return (
+    <Link href={href} tabIndex={-1} aria-hidden className={box}>
+      <Thumb
+        src={product.images[0]?.url}
+        alt={product.images[0]?.altText ?? product.title}
+        className="size-full object-cover"
+        icon={<ShoppingBag className="size-4" />}
+      />
+    </Link>
   );
 }
 
@@ -451,7 +544,12 @@ function NoteField({ listId, productId, current, onSaved }: {
 
   const commit = () => {
     if (value.trim() === (current ?? "")) return;
-    save.mutate({ listId, productId, note: value.trim() || null }, { onSuccess: onSaved });
+    save.mutate({ listId, productId, note: value.trim() || null }, {
+      /* Saved on leaving the box, so it says so — a field that saves with no
+         word leaves somebody pressing around for a Save that is not there. */
+      onSuccess: () => { onSaved(); toast.success(t("wish.savedToast")); },
+      onError: error => toast.error(t(error.message as "wishlist.notFound")),
+    });
   };
 
   return (
@@ -461,6 +559,7 @@ function NoteField({ listId, productId, current, onSaved }: {
         value={value}
         onChange={event => setValue(event.target.value)}
         onBlur={commit}
+        onKeyDown={event => { if (event.key === "Enter") event.currentTarget.blur(); }}
         maxLength={280}
         dir="auto"
         placeholder={t("wish.notePlaceholder")}

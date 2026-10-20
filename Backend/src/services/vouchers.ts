@@ -11,6 +11,7 @@
  * real database.
  */
 import { and, desc, eq, sql } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import { randomBytes } from "node:crypto";
 import { discountCodes, discountRedemptions, giftCardUses, giftCards } from "../../database/schema.js";
 import {
@@ -332,7 +333,7 @@ export async function listVouchers(actor: Actor, limit = 100): Promise<VoucherLi
       endsAt: discountCodes.endsAt,
       maxRedemptions: discountCodes.maxRedemptions,
       perShopper: discountCodes.perShopper,
-      used: sql<string>`(select count(*) from ${discountRedemptions} where ${discountRedemptions.codeId} = ${discountCodes.id})`,
+      used: sql<string>`(select count(*) from ${discountRedemptions} where ${discountRedemptions.codeId} = ${outer(discountCodes.id)})`,
     })
     .from(discountCodes)
     .orderBy(desc(discountCodes.createdAt), desc(discountCodes.id))

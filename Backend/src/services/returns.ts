@@ -15,6 +15,7 @@
  * collection rather than half-cancelling a parcel already in a van.
  */
 import { and, desc, eq, inArray, isNull, sql, notInArray } from "drizzle-orm";
+import { outer } from "./sqlRefs.js";
 import { categories, orderItems, orders, productVariants, products, returnRequests, vendors } from "../../database/schema.js";
 import {
   automaticDecision,
@@ -156,7 +157,7 @@ export async function returnsForShopperOrder(userId: number, orderId: number) {
       declineReason: returnRequests.declineReason,
       refundAmount: returnRequests.refundAmount,
       refundPaidAt: returnRequests.refundPaidAt,
-      replacementReference: sql<string | null>`(select ${orders.reference} from ${orders} where ${orders.id} = ${returnRequests.replacementOrderId})`,
+      replacementReference: sql<string | null>`(select ${orders.reference} from ${orders} where ${orders.id} = ${outer(returnRequests.replacementOrderId)})`,
       createdAt: returnRequests.createdAt,
     })
     .from(returnRequests)
@@ -220,7 +221,7 @@ export async function listReturns(actor: Actor, filter: { open?: boolean } = {})
       restocked: returnRequests.restocked,
       refundAmount: returnRequests.refundAmount,
       refundPaidAt: returnRequests.refundPaidAt,
-      replacementReference: sql<string | null>`(select o2.reference from ${orders} o2 where o2.id = ${returnRequests.replacementOrderId})`,
+      replacementReference: sql<string | null>`(select o2.reference from ${orders} o2 where o2.id = ${outer(returnRequests.replacementOrderId)})`,
       /* Where to collect it from: the line's own door, or the order's. */
       destination: orderItems.destination,
       contactName: orders.contactName,

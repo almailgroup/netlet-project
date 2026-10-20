@@ -3686,7 +3686,45 @@ so two aunts racing cannot both be told they have it. A claim lapses at
 so a week after somebody claimed and bought a present it read as free again.
 Placing an order now marks every item the buyer holds a claim on for a product
 in it as bought (`markClaimsBought`), a lapsed claim included unless somebody
-else has claimed since. A claim made signed out names nobody and still lapses.
+else has claimed since.
+
+**A claim made signed out is the device's to remember** (`lib/giftClaims.ts`).
+It names nobody, so the gift page told a guest "Someone is getting this" over
+the present they had just taken, and since checkout needs an account the order
+that bought it matched nothing — two weeks later it read as free again for the
+next relative. The browser keeps the list's token and the product for
+`CLAIM_HOLD_DAYS`, draws "You are getting this" from it, and sends it with the
+order (`giftClaims`, `HeldClaim`); the server marks one bought only while the
+hold still stands, still names nobody, and the order has that product. Only a
+signed-in claim can be let go, which the card says before the press.
+
+**A present with sizes asks which before it is claimed.** It put the first
+variant in stock in the bag, so a shirt wished for in M went out in S. The row
+draws the shop's `Select` of the variants (sold-out ones disabled) under the
+owner's note, shown whole rather than cut, and a press without a choice says
+so and focuses the list. The note is still the only way the owner says which —
+recording a variant on the item would need a column.
+
+**List and gift items are read by id** (`commerce.products.byIds`,
+`useProductsByIds`). Both pages looked their ids up in the newest hundred
+products and Saved in the newest sixty, so anything older showed its number
+where its name belonged and could not be bought. The hook draws whatever the
+shelves in the tab already hold while it asks, and counts "no longer available"
+only once the server has answered. The owner's rows carry the photo, the price
+and a link; a saved item already on the list reads "On the list".
+
+**The count beside each list was always 0** — a correlated subquery whose
+outer column Drizzle wrote bare; see "A selected subquery names its outer
+column" under Admin portal. Found on the account page after adding three
+things to a list, not by any test.
+
+The link is shared rather than only copied on a phone (`navigator.share`, the
+WhatsApp a family list goes to), carries the base path, and falls back to the
+link in a box when the clipboard refuses; "See what visitors see" opens the
+gift page. The phone lookup is asked only on Find — never again on window
+focus, which spent one of the hourly sixty each time a giver came back from
+their messages — and the footer has the way in ("Find a wishlist"), which only
+a link somebody sent used to be.
 
 **Unpublishing mints a new share token.** Otherwise "make this private" would
 only stop *new* people finding it by phone and would leave every link already
@@ -3845,6 +3883,18 @@ wraps the whole but not each condition, so `and(scope, sql\`x or y\`)` reads
 other store's low variants; it was found while adding the waiting-shopper
 count to the same query, not by any test. `Backend/src/services/sqlFragments.test.ts` now
 fails on an unbracketed one anywhere in `Backend/src/`.
+
+**A selected subquery names its outer column through `outer()`**
+(`Backend/src/services/sqlRefs.ts`). Drizzle writes a column bare in the
+selected fields of a query over one table with no join, so
+`(select count(*) from ${items} where ${items.listId} = ${lists.id})` became
+`where list_id = id` — the inner table's own id. Valid SQL answering another
+question: every wishlist read "0 items" and the voucher desk counted each
+code's uses as one figure for all of them. A join makes Drizzle qualify the
+same fragment, which is why it was right in some queries and wrong in others,
+and two more only worked because the inner table happened to lack the column.
+`sqlFragments.test.ts` refuses a `name: sql\`(select …)\`` naming another
+table's column without it, and counts the fragments it read.
 
 **And the guard itself had the hole.** It matched fragments with a regex that
 stopped at the next backtick, and a search fragment interpolates a template of

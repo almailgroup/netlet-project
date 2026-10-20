@@ -117,6 +117,21 @@ export const MAX_ITEMS_PER_LIST = 200;
  */
 export const CLAIM_HOLD_DAYS = 14;
 
+/**
+ * A claim made signed out, as the device that made it remembers it.
+ *
+ * A signed-out claim names nobody, so nothing on the server can say whose it
+ * is — but the browser that pressed the button knows, and checkout needs an
+ * account anyway. So the device keeps the list's token and the product, and
+ * sends them with the order: the server marks one bought only if nobody is
+ * named on it, the hold is still standing, and the order has that product in
+ * it. The token is the same capability the gift page already holds.
+ */
+export type HeldClaim = { token: string; productId: string };
+
+/** The most held claims one order may carry — far more than a family buys at once. */
+export const MAX_HELD_CLAIMS = 50;
+
 export type ClaimState = "available" | "claimed" | "bought";
 
 export type WishlistItemFacts = {
