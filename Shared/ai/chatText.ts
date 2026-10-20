@@ -70,3 +70,27 @@ export function chatPieces(answer: string, options: { streaming?: boolean } = {}
     .map((piece): ChatPiece => (piece.kind === "text" ? { kind: "text", text: piece.text.replace(/\n{3,}/g, "\n\n").trim() } : piece))
     .filter(piece => piece.kind !== "text" || piece.text);
 }
+
+/** A turn of a conversation, as far as what to offer next is concerned. */
+export type ChatTurn = { role: "user" | "assistant"; text: string; state?: string };
+
+/**
+ * What a conversation offers to ask next — one row of presses above its box,
+ * the same in every chat. Before anything is asked, the starters fitted to the
+ * page. After an answer, the questions that answer offered; when it offered
+ * none, or only ones already asked, the starters nobody has asked yet, at most
+ * `MAX_ASKS` of either. Nothing while an answer is still arriving: a question
+ * about an answer that is not there yet is not one to offer.
+ */
+export function nextQuestions(turns: readonly ChatTurn[], starters: readonly string[]): { questions: string[]; followUps: boolean } {
+  const last = turns[turns.length - 1];
+  if (!last) return { questions: [...starters], followUps: false };
+  if (last.role !== "assistant" || last.state === "streaming") return { questions: [], followUps: false };
+  const asked = new Set(turns.flatMap(turn => (turn.role === "user" ? [turn.text.trim().toLowerCase()] : [])));
+  const fresh = (question: string) => !asked.has(question.trim().toLowerCase());
+  const offered = last.state === undefined || last.state === "done"
+    ? chatPieces(last.text).flatMap(piece => (piece.kind === "ask" && fresh(piece.question) ? [piece.question] : []))
+    : [];
+  if (offered.length) return { questions: offered, followUps: true };
+  return { questions: starters.filter(fresh).slice(0, MAX_ASKS), followUps: false };
+}

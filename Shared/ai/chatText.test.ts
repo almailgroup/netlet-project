@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ASKS, MAX_SEARCHES, chatPieces } from "./chatText.js";
+import { MAX_ASKS, MAX_SEARCHES, chatPieces, nextQuestions } from "./chatText.js";
 
 describe("chatPieces", () => {
   it("turns search markers into buttons and keeps the words around them", () => {
@@ -63,5 +63,42 @@ describe("chatPieces", () => {
 
   it("holds back a question still being written", () => {
     expect(chatPieces("Yes.\n[[ask: Does it", { streaming: true })).toEqual([{ kind: "text", text: "Yes." }]);
+  });
+});
+
+describe("nextQuestions", () => {
+  const starters = ["What is this?", "What comes in the box?", "Who is it for?", "Explain the specifications"];
+  const answer = (text: string, state = "done") => ({ role: "assistant" as const, text, state });
+  const asked = (text: string) => ({ role: "user" as const, text });
+
+  it("offers the starters before anything is asked, all of them", () => {
+    expect(nextQuestions([], starters)).toEqual({ questions: starters, followUps: false });
+  });
+
+  it("offers nothing while a question waits or an answer arrives", () => {
+    expect(nextQuestions([asked("What is this?")], starters).questions).toEqual([]);
+    expect(nextQuestions([asked("What is this?"), answer("A watch. [[ask: Is it", "streaming")], starters).questions).toEqual([]);
+  });
+
+  it("offers the answer's own questions once it is whole", () => {
+    expect(nextQuestions([asked("What is this?"), answer("A watch.\n[[ask: Is it waterproof?]]\n[[ask: Does it work with an iPhone?]]")], starters))
+      .toEqual({ questions: ["Is it waterproof?", "Does it work with an iPhone?"], followUps: true });
+  });
+
+  it("never offers a question already asked, in any case", () => {
+    const turns = [asked("Is it waterproof?"), answer("Yes.\n[[ask: is it waterproof?]]\n[[ask: How long does the battery last?]]")];
+    expect(nextQuestions(turns, starters).questions).toEqual(["How long does the battery last?"]);
+  });
+
+  it("falls back to the starters not yet asked, at most three, when the answer offers nothing new", () => {
+    const turns = [asked("What is this?"), answer("A watch.\n[[ask: What is this?]]")];
+    expect(nextQuestions(turns, starters)).toEqual({ questions: starters.slice(1, 1 + MAX_ASKS), followUps: false });
+  });
+
+  it("takes no follow-ups from an answer that was stopped, blocked or lost", () => {
+    for (const state of ["stopped", "blocked", "failed"]) {
+      const turns = [asked("What is this?"), answer("A watch.\n[[ask: Is it waterproof?]]", state)];
+      expect(nextQuestions(turns, starters).followUps).toBe(false);
+    }
   });
 });

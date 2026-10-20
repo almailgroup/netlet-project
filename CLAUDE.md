@@ -2233,10 +2233,11 @@ wrong side of an empty Arabic box and the words ran under the button.
 two questions a department's shoppers ask first (what is in the box, how a
 shirt's size runs, what is in the jar, how to store it), "Explain the
 specifications" only when the listing has rows, and "Who is it for?" — at most
-four. After an answer, the model's own follow-ups take their place under the
-latest one. A press on a suggestion moves focus to the conversation, since the
-suggestion is gone by the next frame — never into the box, whose keyboard
-would cover the answer on a phone. `ai.available` is asked as the app starts
+four. After an answer, the model's own follow-ups take their place, in the same
+row directly above the box (see "The questions to ask are one row above the
+box" under the shop assistant). A press on any of them moves focus to the
+conversation, since the row is gone while the answer comes — never into the
+box, whose keyboard would cover the answer on a phone. `ai.available` is asked as the app starts
 (`routeData`), so the panel comes with the page rather than a round trip later.
 
 **With no gateway the panel is absent, not broken.** Deliberately unlike voice
@@ -2324,12 +2325,15 @@ the box on opening and back to the button on closing, by the button's own ref,
 because a phone never focuses a button it taps. A press on a suggestion keeps a
 phone's keyboard down, because it would cover the answer being waited for.
 
-**It opens on what it can do, fitted to the page.** A welcome and four or five
-starters as presses: on a product, that product by name and photo (the page
-hands the shell its brief and first photo through `usePageChrome`'s
+**It opens on what it can do, fitted to the page.** A short welcome in the
+middle of the log, and four or five starters as presses in the row above the
+box: on a product, that product by name and photo at the top of the log (the
+page hands the shell its brief and first photo through `usePageChrome`'s
 `assistantProduct`) with "Tell me about this product", what it is good for and
 what to compare it with; in a department, help choosing there; anywhere,
-finding something, delivery, returns and paying. The brief is the product
+finding something, delivery, returns and paying. They were a list of rows with
+an icon and a chevron each, and are the same plain presses as the product
+assistant's now, on the owner's word ("do the same for the shop assistant"). The brief is the product
 assistant's (`briefFor`) — public catalogue text, never a price, stock or
 anything about the shopper; the photo is drawn in the chip and never sent.
 
@@ -2357,11 +2361,31 @@ because a size has to be chosen before "add" means anything.
 `[[ask: question]]` lines (the prompt asks for ten words or fewer, only
 questions it could answer under its rules), and `chatPieces` keeps a question
 only if it is under 80 characters of words and ordinary punctuation and carries
-no contact details. They are drawn as presses under the **latest** answer only
-(`ChatAnswer`'s `onAsk`), and only once nothing is being asked: an older
-answer's follow-ups are about a moment the conversation has moved past. The
-product page's own assistant draws them too; the help page's single box does
-not, and drops them.
+no contact details. Only the **latest** answer's are offered, and only once
+nothing is being asked: an older answer's follow-ups are about a moment the
+conversation has moved past. The product page's own assistant offers them too;
+the help page's single box does not, and drops them.
+
+**The questions to ask are one row above the box, never at the foot of the
+log, on the owner's word** — who sent a picture of the product assistant with
+its follow-ups cut off at the bottom of its scrolling log and running into the
+box. They were drawn under the latest answer inside the log, and appeared only
+once the answer was whole, after the log had already scrolled to the words, so
+they landed below what it showed: measured, 0% of each was on screen after a
+second answer. `ChatSuggestions` is that row in both chats, and `nextQuestions`
+(`Shared/ai/chatText.ts`, pure and tested) is what it holds: the starters
+before anything is asked; after an answer, its own follow-ups less anything
+already asked; when that leaves none, the starters not yet asked, at most
+three; and nothing while an answer is coming. It wraps rather than scrolling
+sideways, so a question is never cut at an edge, and it sits 12px from the log
+and from the box in both. The log follows the newest words again when the
+answer ends, since the row arriving makes the shop chat's log that much
+shorter and a finished answer gains its note and Copy; the product
+assistant's log has a few pixels of room inside its edge, so an answer's rim
+is not cut by the scroll. Measured at 390 and 1440 in both languages
+(`.scratch/chat-layout.mjs`): every chip whole on screen, no two controls over
+each other (the shelf card's add disc on its photo is meant to be), axe clean
+before and after an answer.
 
 **A question can be spoken**, where voice search is on and the browser can
 listen (`useDictation`, over `lib/speech.ts`, which voice search now shares).

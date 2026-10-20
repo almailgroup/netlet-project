@@ -24,7 +24,9 @@
  * text above the merchant's own words by default. The suggestions make the
  * first press one tap rather than a blank box, and are fitted to the product
  * (`suggestedQuestions`); after an answer the model's own follow-ups take
- * their place, under the latest answer.
+ * their place, in the same row above the box (`ChatSuggestions`) — never at
+ * the foot of the scrolling log, where they arrived after it had scrolled and
+ * were cut off.
  *
  * **It answers through the AI gateway**, streamed: the listing goes as the
  * product brief (`briefFor`, the page's own public text and nothing about the
@@ -42,7 +44,9 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowUp, LoaderCircle, Sparkles, Square } from "lucide-react";
 import { MAX_QUESTION, acceptableQuestion, briefFor, suggestedQuestions } from "@shared/commerce/assistant";
 import type { Product } from "@shared/commerce/types";
+import { nextQuestions } from "@shared/ai/chatText";
 import { ChatAnswer } from "@/components/assistant/ChatAnswer";
+import { ChatSuggestions } from "@/components/assistant/ChatSuggestions";
 import { CARD } from "@/components/layout/Page";
 import { chatDraftProblem, useAIChat } from "@/hooks/useAIChat";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -67,7 +71,8 @@ export function ProductAssistant({ product, className = "" }: {
   const busy = chat.status !== "idle";
 
   /* The newest turn, not the top: a log that grows downward and does not
-     follow leaves the answer somebody asked for below the fold. */
+     follow leaves the answer somebody asked for below the fold. Again when it
+     finishes, since a finished answer gains its note and Copy. */
   const last = chat.messages[chat.messages.length - 1];
   useEffect(() => {
     const log = logRef.current;
@@ -77,7 +82,8 @@ export function ProductAssistant({ product, className = "" }: {
       focusLog.current = false;
       log.focus({ preventScroll: true });
     }
-  }, [chat.messages.length, last?.text]);
+  }, [chat.messages.length, last?.text, last?.state]);
+  const offer = nextQuestions(chat.messages, suggestions.map(key => t(key)));
 
   if (!chat.available) return null;
 
@@ -108,14 +114,15 @@ export function ProductAssistant({ product, className = "" }: {
              whole, rather than a word at a time. */
           aria-busy={busy}
           aria-label={t("assistant.heading")}
-          className="hide-scrollbar mt-4 max-h-[360px] space-y-3 overflow-y-auto rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30"
+          /* Room inside the edge, so an answer's rim is not cut by the scroll. */
+          className="hide-scrollbar -mx-1 mt-3 max-h-[360px] space-y-3 overflow-y-auto rounded-xl px-1 py-1 outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30"
         >
           {chat.messages.map(message => message.role === "user" ? (
             <p key={message.id} dir="auto" className="ms-auto w-fit max-w-[85%] rounded-2xl rounded-ee-md bg-[#0a285a] px-3.5 py-2 text-[14px] leading-6 text-white">
               {message.text}
             </p>
           ) : message.text ? (
-            <ChatAnswer key={message.id} message={message} onAsk={message === last && !busy ? send : undefined} />
+            <ChatAnswer key={message.id} message={message} />
           ) : message.state === "streaming" ? (
             <p key={message.id} className="flex items-center gap-2 text-[13px] ink-muted">
               <LoaderCircle className="size-3.5 animate-spin" aria-hidden />
@@ -123,21 +130,17 @@ export function ProductAssistant({ product, className = "" }: {
             </p>
           ) : null)}
         </div>
-      ) : (
-        <ul aria-label={t("assistant.suggestions")} className="mt-4 flex flex-wrap gap-2">
-          {suggestions.map(key => (
-            <li key={key} className="max-w-full">
-              <button
-                type="button"
-                onClick={() => { focusLog.current = true; send(t(key)); }}
-                disabled={busy}
-                className="inline-flex min-h-11 max-w-full items-center rounded-full border border-[#d5dfeb] bg-white px-3.5 text-start text-[13px] leading-5 font-semibold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-9"
-              >
-                {t(key)}
-              </button>
-            </li>
-          ))}
-        </ul>
+      ) : null}
+
+      {/* The questions to start from, then each answer's own: one row above the box. */}
+      {busy ? null : (
+        <ChatSuggestions
+          questions={offer.questions}
+          label={t(offer.followUps ? "shopChat.followUps" : "assistant.suggestions")}
+          onAsk={question => { focusLog.current = true; send(question); }}
+          rise={chat.messages.length > 0}
+          className={chat.messages.length ? "mt-3" : "mt-4"}
+        />
       )}
 
       <div aria-live="polite">

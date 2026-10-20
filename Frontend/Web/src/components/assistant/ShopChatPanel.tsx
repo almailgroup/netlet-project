@@ -32,10 +32,14 @@
  * back and fixed before Send (`useDictation`), and the line under the box says
  * where the sound goes while it listens.
  *
- * It opens on what it can do, as presses fitted to the page: on a product,
- * that product by name and photo with questions about it; in a department,
- * help choosing there; anywhere, delivery, returns, paying and finding
- * something. A search the model offers is NetLet's own shelf for those words
+ * It opens on a short welcome, and the questions to start from are a row of
+ * presses directly above the box, fitted to the page: on a product, that
+ * product (named, with its photo, at the top of the log) and questions about
+ * it; in a department, help choosing there; anywhere, finding something,
+ * delivery, returns and paying. After each answer the same row holds the
+ * questions that answer offered (`ChatSuggestions`, `nextQuestions`) — they
+ * were drawn under the answer inside the log once, and landed below what it
+ * showed. A search the model offers is NetLet's own shelf for those words
  * (`ChatAnswer`), and following anything out of the answer on a phone puts the
  * chat away so the page can be seen.
  *
@@ -49,9 +53,10 @@
  * (`onAnswered`), since somebody who closed it mid-answer has no other way to
  * know it is there.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
-import { ArrowDown, ChevronRight, LayoutGrid, Maximize2, Mic, Minimize2, Package, RotateCcw, Search, Send, Sparkles, Square, Truck, Undo2, Wallet, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { ArrowDown, Maximize2, Mic, Minimize2, Package, RotateCcw, Send, Sparkles, Square, X } from "lucide-react";
 import { ChatAnswer } from "@/components/assistant/ChatAnswer";
+import { ChatSuggestions } from "@/components/assistant/ChatSuggestions";
 import { Thumb } from "@/components/product/Thumb";
 import { chatDraftProblem, useAIChat } from "@/hooks/useAIChat";
 import { useDictation } from "@/hooks/useDictation";
@@ -64,8 +69,8 @@ import { readStored, writeStored } from "@/lib/browserStore";
 import { canListen } from "@/lib/speech";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import { departmentByName } from "@shared/commerce/departments";
+import { nextQuestions } from "@shared/ai/chatText";
 import { MAX_CHAT_TEXT } from "@shared/ai/gateway";
-import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** The tab's conversation, in `sessionStorage`. */
 const CHAT_KEY = "netlet:shop-chat";
@@ -79,8 +84,6 @@ const DRAG_CLOSE = 110;
 const LEAVE_MS = 220;
 
 const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-
-type Starter = { key: MessageKey; params?: Record<string, string>; icon: ReactNode };
 
 /** A round navy mark with the sparkle, which is the assistant wherever it speaks. */
 function Mark({ size }: { size: "sm" | "md" | "lg" }) {
@@ -189,12 +192,14 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
     };
   }, [open, wide]);
 
-  /* Follow the newest words while the reader is at the bottom; otherwise say there are more. */
+  /* Follow the newest words while the reader is at the bottom; otherwise say
+     there are more. Again as the answer ends, when the row of questions
+     arrives above the box and the log is that much shorter. */
   useEffect(() => {
     if (!open) return;
     if (pinned.current) log.current?.scrollTo({ top: log.current.scrollHeight });
     else if (chat.messages.length) setBehind(true);
-  }, [chat.messages.length, last?.text, last?.state, open]);
+  }, [chat.messages.length, last?.text, last?.state, busy, open]);
 
   const toLatest = () => {
     pinned.current = true;
@@ -223,6 +228,18 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
     setBehind(false);
     void chat.send(text);
     if (wide || document.activeElement === field.current) field.current?.focus({ preventScroll: true });
+  };
+
+  /*
+   * A press on a question in the row: the row is gone while the answer comes,
+   * so on a phone focus goes to the conversation rather than to <body> — not
+   * into the box, whose keyboard would cover the answer — unless the box had
+   * it already.
+   */
+  const ask = (question: string) => {
+    const typing = document.activeElement === field.current;
+    send(question);
+    if (!wide && !typing) log.current?.focus({ preventScroll: true });
   };
 
   /* Following something out of an answer on a phone puts the chat away so the page shows. */
@@ -259,20 +276,11 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
   };
 
   const shown = department ? departmentByName(department) : null;
-  const starters: Starter[] = product
-    ? [
-        { key: "shopChat.askProduct", icon: <Package className="size-4" /> },
-        { key: "shopChat.askUse", icon: <Sparkles className="size-4" /> },
-        { key: "shopChat.askCompare", icon: <Search className="size-4" /> },
-        { key: "shopChat.askDelivery", icon: <Truck className="size-4" /> },
-      ]
-    : [
-        ...(department ? [{ key: "shopChat.askDepartment" as MessageKey, params: { department: shown ? t(shown.label) : department }, icon: <LayoutGrid className="size-4" /> }] : []),
-        { key: "shopChat.askFind", icon: <Search className="size-4" /> },
-        { key: "shopChat.askDelivery", icon: <Truck className="size-4" /> },
-        { key: "shopChat.askReturns", icon: <Undo2 className="size-4" /> },
-        { key: "shopChat.askPay", icon: <Wallet className="size-4" /> },
-      ];
+  const starters = (product
+    ? ["shopChat.askProduct", "shopChat.askUse", "shopChat.askCompare", "shopChat.askDelivery"] as const
+    : [...(department ? ["shopChat.askDepartment"] as const : []), "shopChat.askFind", "shopChat.askDelivery", "shopChat.askReturns", "shopChat.askPay"] as const
+  ).map(key => t(key, key === "shopChat.askDepartment" ? { department: shown ? t(shown.label) : department ?? "" } : undefined));
+  const offer = nextQuestions(chat.messages, starters);
 
   const titleId = "shop-chat-title";
   const iconButton = "grid size-10 shrink-0 place-items-center rounded-full bg-white/70 text-[#0a285a] ring-1 ring-white/80 hover:bg-[#f0f2f5]";
@@ -360,6 +368,7 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
           <div
             ref={log}
             role="log"
+            tabIndex={-1}
             aria-busy={busy}
             aria-label={t("shopChat.title")}
             onScroll={event => {
@@ -368,47 +377,19 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
               pinned.current = near;
               if (near) setBehind(false);
             }}
-            className="absolute inset-0 space-y-4 overflow-y-auto overscroll-contain px-4 py-4"
+            className="absolute inset-0 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 outline-none"
           >
-            {product ? (
-              <p className="flex items-center gap-2.5 rounded-2xl bg-white/90 p-2 pe-3 ring-1 ring-white">
-                <span className="size-10 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
-                  <Thumb src={product.image} alt="" className="size-full object-cover" icon={<Package className="size-4 text-[#536b8c]" />} />
-                </span>
-                <span className="min-w-0 text-[12px] leading-4">
-                  <span className="block font-semibold ink-muted">{t("shopChat.aboutProduct")}</span>
-                  <bdi dir="auto" className="block truncate text-[13px] font-bold text-[#0a285a]">{product.brief.title}</bdi>
-                </span>
-              </p>
-            ) : null}
-
             {chat.messages.length === 0 ? (
-              <>
-                <div className="flex flex-col items-center px-2 pt-3 text-center">
+              /* The welcome, in the middle of what the log has to spare. */
+              <div className="flex min-h-full flex-col gap-4">
+                {product ? <ProductChip brief={product.brief} image={product.image} /> : null}
+                <div className="my-auto flex flex-col items-center px-2 py-4 text-center">
                   <Mark size="lg" />
                   <p className="mt-3 text-[19px] leading-7 font-extrabold text-[#0a285a]">{t("shopChat.welcome")}</p>
                   <p className="mt-1 max-w-[34ch] text-[14px] leading-6 font-medium text-[#2b3a55]">{t("shopChat.greeting")}</p>
                 </div>
-                <div>
-                  <p className="mb-2 px-1 text-[12px] font-bold text-[#2b3a55]">{t("shopChat.suggestions")}</p>
-                  <ul className="grid gap-2">
-                    {starters.map(starter => (
-                      <li key={starter.key}>
-                        <button
-                          type="button"
-                          onClick={() => send(t(starter.key, starter.params))}
-                          className="flex min-h-12 w-full items-center gap-3 rounded-2xl bg-white/90 px-3 py-2 text-start text-[14px] font-semibold text-[#0a285a] ring-1 ring-white hover:bg-[#f0f2f5]"
-                        >
-                          <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">{starter.icon}</span>
-                          <span className="min-w-0 flex-1">{t(starter.key, starter.params)}</span>
-                          <ChevronRight aria-hidden className="size-4 shrink-0 text-[#0a285a]/50 rtl:-scale-x-100" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            ) : null}
+              </div>
+            ) : product ? <ProductChip brief={product.brief} image={product.image} /> : null}
 
             {chat.messages.map(message => message.role === "user" ? (
               <p key={message.id} dir="auto" className={`ms-auto w-fit max-w-[85%] whitespace-pre-line rounded-[20px] rounded-se-md bg-[#0a285a] px-4 py-2.5 text-[14px] leading-6 font-medium text-white shadow-[0_4px_12px_rgba(10,40,90,.2)] ${settled.current?.has(message.id) ? "" : "chat-rise"}`}>
@@ -420,12 +401,7 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
                 <div className="min-w-0 flex-1 space-y-2">
                   <span className="sr-only">{t("shopChat.them")}</span>
                   {message.text ? (
-                    <ChatAnswer
-                      message={message}
-                      note="shopChat.generated"
-                      onNavigate={leave}
-                      onAsk={message === last && !busy ? send : undefined}
-                    />
+                    <ChatAnswer message={message} note="shopChat.generated" onNavigate={leave} />
                   ) : message.state === "streaming" ? (
                     <span className="inline-flex gap-1 rounded-[20px] rounded-ss-md bg-white px-4 py-3.5 ring-1 ring-[#0a285a]/[.07]" aria-hidden>
                       {[0, 1, 2].map(dot => <span key={dot} className="size-1.5 animate-pulse rounded-full bg-[#0a285a]/45" style={{ animationDelay: `${dot * 160}ms` }} />)}
@@ -455,9 +431,20 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
           ) : null}
         </div>
 
+        {/* The questions to start from, then each answer's own: one row above the box. */}
+        {busy ? null : (
+          <ChatSuggestions
+            questions={offer.questions}
+            label={t(offer.followUps ? "shopChat.followUps" : "shopChat.suggestions")}
+            onAsk={ask}
+            rise={chat.messages.length > 0}
+            className="px-3 pt-3"
+          />
+        )}
+
         <form
           onSubmit={event => { event.preventDefault(); send(draft); }}
-          className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 lg:pb-3"
+          className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:pb-3"
         >
           <div aria-live="polite">
             {problem?.kind === "contact" || problem?.kind === "tooLong" || (chat.error && !failed && !problem) ? (
@@ -536,5 +523,21 @@ export function ShopChatPanel({ open, onClose, onAnswered, product, department }
       </div>
       </div>
     </>
+  );
+}
+
+/** The product the page is on, at the top of the log: what "this product" means. */
+function ProductChip({ brief, image }: { brief: ProductBrief; image: string | null }) {
+  const { t } = useTranslation();
+  return (
+    <p className="flex items-center gap-2.5 rounded-2xl bg-white/90 p-2 pe-3 ring-1 ring-white">
+      <span className="size-10 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
+        <Thumb src={image} alt="" className="size-full object-cover" icon={<Package className="size-4 text-[#536b8c]" />} />
+      </span>
+      <span className="min-w-0 text-[12px] leading-4">
+        <span className="block font-semibold ink-muted">{t("shopChat.aboutProduct")}</span>
+        <bdi dir="auto" className="block truncate text-[13px] font-bold text-[#0a285a]">{brief.title}</bdi>
+      </span>
+    </p>
   );
 }

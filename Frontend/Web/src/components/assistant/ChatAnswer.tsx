@@ -16,9 +16,10 @@
  * region). A product with sizes or colours opens its page instead, because a
  * size has to be chosen before "add" means anything.
  *
- * **The questions it offers next (`[[ask: …]]`) are presses that ask them**,
- * drawn under the latest answer only (`onAsk`) — an older answer's follow-ups
- * are about a moment the conversation has moved past.
+ * The questions it offers next (`[[ask: …]]`) are not drawn here: a chat
+ * draws them as the row above its box (`ChatSuggestions`, `nextQuestions`),
+ * for the latest answer only. Drawn under the answer, inside the log, they
+ * arrived after the log had scrolled and were cut off at its foot.
  *
  * Every answer carries the line saying a model wrote it, and a finished one a
  * Copy — somebody sending "what do I need for a car seat" to their partner
@@ -26,7 +27,7 @@
  */
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, CornerDownRight, ImageOff, Plus, Search } from "lucide-react";
+import { Check, Copy, ImageOff, Plus, Search } from "lucide-react";
 import { Link } from "wouter";
 import { Thumb } from "@/components/product/Thumb";
 import { useCart } from "@/contexts/CartContext";
@@ -41,22 +42,18 @@ import { trpc } from "@/lib/trpc";
 /** How many of a search's products a shelf shows; "See all" is the rest. */
 const SHELF = 4;
 
-export function ChatAnswer({ message, onNavigate, onAsk, note = "assistant.generated" }: {
+export function ChatAnswer({ message, onNavigate, note = "assistant.generated" }: {
   message: ChatMessage;
   /** Called as a link out of the answer is followed — the chat closes itself on a phone, say. */
   onNavigate?: () => void;
-  /** Asks a follow-up the answer offered; given only for the latest answer, while nothing is being asked. */
-  onAsk?: (question: string) => void;
   note?: "assistant.generated" | "help.askAnswerNote" | "shopChat.generated";
 }) {
   const { t } = useTranslation();
   const streaming = message.state === "streaming";
   const pieces = chatPieces(message.text, { streaming });
   const searches = pieces.flatMap(piece => (piece.kind === "search" ? [piece.term] : []));
-  const asks = pieces.flatMap(piece => (piece.kind === "ask" ? [piece.question] : []));
   const words = pieces.flatMap(piece => (piece.kind === "text" ? [piece.text.trim()] : [])).filter(Boolean).join("\n\n");
   return (
-    <>
     <div className="min-w-0 max-w-full rounded-[20px] rounded-ss-md bg-white px-4 py-3 shadow-[0_1px_2px_rgba(10,40,90,.06),0_6px_18px_rgba(10,40,90,.06)] ring-1 ring-[#0a285a]/[.07]">
       <div dir="auto" className="space-y-2 text-[14px] leading-6 text-[#1f2733]">
         {descriptionBlocks(words).map((block, at) => block.kind === "paragraph"
@@ -83,23 +80,6 @@ export function ChatAnswer({ message, onNavigate, onAsk, note = "assistant.gener
         </div>
       )}
     </div>
-    {asks.length && onAsk && !streaming ? (
-      <ul className="flex flex-wrap gap-2" aria-label={t("shopChat.followUps")}>
-        {asks.map(question => (
-          <li key={question} className="max-w-full">
-            <button
-              type="button"
-              onClick={() => onAsk(question)}
-              className="chat-rise inline-flex min-h-11 max-w-full items-center gap-2 rounded-full bg-white/90 px-3.5 py-1.5 text-start text-[13px] leading-5 font-semibold text-[#0a285a] shadow-[0_2px_8px_rgba(10,40,90,.08)] ring-1 ring-[#0a285a]/10 hover:bg-[#f0f2f5] pointer-fine:min-h-9"
-            >
-              <CornerDownRight aria-hidden className="size-3.5 shrink-0 text-[#0a285a]/60 rtl:-scale-x-100" />
-              <bdi dir="auto" className="min-w-0">{question}</bdi>
-            </button>
-          </li>
-        ))}
-      </ul>
-    ) : null}
-    </>
   );
 }
 
