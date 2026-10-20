@@ -3,15 +3,15 @@
     "data": {
       "json": {
         "order": {
-          "id": 29,
-          "reference": "NL-20261012-4V89V",
+          "id": 2,
+          "reference": "NL-20261001-J7MWY",
           "userId": 2,
           "email": "noura@shop.test",
-          "status": "pending_payment",
+          "status": "paid",
           "currency": "KWD",
-          "itemsTotal": "72.000",
+          "itemsTotal": "26.250",
           "deliveryTotal": "0.000",
-          "grandTotal": "72.000",
+          "grandTotal": "26.250",
           "pointsSpent": 0,
           "pointsValue": "0.000",
           "discountCode": null,
@@ -22,7 +22,7 @@
           "member": false,
           "deliveryWaived": "0.000",
           "paymentMethod": "cod",
-          "paymentCollectedAt": null,
+          "paymentCollectedAt": "2026-08-24T21:11:15.998Z",
           "deliveryBreakdown": [
             {
               "fee": "0.000",
@@ -31,21 +31,15 @@
               "destinationLabel": null
             }
           ],
-          "contactName": "Noura Al-Sabah",
-          "contactPhone": "+96550000000",
+          "contactName": "shopperA",
+          "contactPhone": "+96555512345",
           "deliveryZoneId": "hawalli",
-          "addressLine": "Salmiya, Block 4, Street 12, House 15, PACI 12345678",
+          "addressLine": "Block 4, Street 12, House 7",
           "addressNotes": null,
           "deliveryPin": null,
-          "deliveryAddressParts": {
-            "area": "Salmiya",
-            "block": "4",
-            "street": "12",
-            "building": "15",
-            "paciNumber": "12345678"
-          },
-          "placedAt": "2026-10-12T14:33:00.413Z",
-          "updatedAt": "2026-10-12T14:33:00.413Z"
+          "deliveryAddressParts": null,
+          "placedAt": "2026-10-01T18:22:28.239Z",
+          "updatedAt": "2026-10-02T11:49:17.593Z"
         },
         "windowDays": 14,
         "parcels": [
@@ -53,40 +47,47 @@
             "key": "v2|dorder",
             "vendorName": "Acme Electronics",
             "destinationLabel": null,
-            "state": "pending",
-            "arrivedAt": null,
+            "state": "delivered",
+            "arrivedAt": "2026-10-17T22:33:45.311Z",
             "lines": [
               {
-                "lineId": 34,
-                "productTitle": "Smart watch",
-                "lineTotal": "72.000"
+                "lineId": 2,
+                "productTitle": "USB-C charger 65W",
+                "lineTotal": "26.250"
               }
             ],
             "rating": null,
             "ratingState": {
-              "allowed": false,
-              "reason": "delivery.notArrived"
+              "allowed": true,
+              "closesAt": "2026-11-16T22:33:45.311Z"
             },
             "claim": null,
             "claimRefusal": "claims.noCourier"
           }
         ],
         "returns": [],
-        "documents": [],
+        "documents": [
+          {
+            "number": "INV-2026-000002",
+            "kind": "invoice",
+            "total": "26.250",
+            "issuedAt": "2026-10-02T11:49:17.598Z"
+          }
+        ],
         "lines": [
           {
-            "id": 34,
-            "orderId": 29,
+            "id": 2,
+            "orderId": 2,
             "vendorId": 2,
-            "productId": 3,
-            "variantId": 3,
+            "productId": 2,
+            "variantId": 2,
             "vendorName": "Acme Electronics",
-            "productTitle": "Smart watch",
+            "productTitle": "USB-C charger 65W",
             "variantTitle": "Default",
             "sku": null,
-            "unitPrice": "72.000",
-            "quantity": 1,
-            "lineTotal": "72.000",
+            "unitPrice": "8.750",
+            "quantity": 3,
+            "lineTotal": "26.250",
             "preordered": false,
             "preorderReleaseAt": null,
             "centreId": null,
@@ -95,30 +96,49 @@
             "destination": null,
             "sizeClass": null,
             "weightGrams": null,
-            "fulfilment": "pending",
-            "deliveredAt": null,
-            "createdAt": "2026-10-12T14:33:00.413Z",
-            "updatedAt": "2026-10-12T14:33:00.413Z",
+            "fulfilment": "delivered",
+            "deliveredAt": "2026-10-17T22:33:45.311Z",
+            "createdAt": "2026-10-01T18:22:28.241Z",
+            "updatedAt": "2026-10-01T18:22:28.241Z",
             "photo": "http://localhost:5000/brand/collection-tech.svg",
             "returnState": {
-              "returnable": false,
-              "reason": "returns.blockedUnpaid"
+              "returnable": true,
+              "closesAt": "2026-10-31T22:33:45.311Z",
+              "daysLeft": 11
             }
           }
         ]
       },
       "meta": {
         "values": {
+          "order.paymentCollectedAt": [
+            "Date"
+          ],
           "order.placedAt": [
             "Date"
           ],
           "order.updatedAt": [
             "Date"
           ],
+          "parcels.0.arrivedAt": [
+            "Date"
+          ],
+          "parcels.0.ratingState.closesAt": [
+            "Date"
+          ],
+          "documents.0.issuedAt": [
+            "Date"
+          ],
+          "lines.0.deliveredAt": [
+            "Date"
+          ],
           "lines.0.createdAt": [
             "Date"
           ],
           "lines.0.updatedAt": [
+            "Date"
+          ],
+          "lines.0.returnState.closesAt": [
             "Date"
           ]
         }

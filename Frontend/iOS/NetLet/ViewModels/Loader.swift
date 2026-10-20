@@ -38,7 +38,7 @@ extension AppModel {
     /// refusal said in their words (the server's message key, or `fallback`),
     /// and `done` said on success when given. Answers whether it worked.
     @discardableResult
-    func attempt(done: String? = nil, fallback: String = "account.preferenceFailed", _ work: () async throws -> Void) async -> Bool {
+    func attempt(done: String? = nil, fallback: String = "account.preferenceFailed", params: [String: String] = [:], _ work: () async throws -> Void) async -> Bool {
         do {
             try await work()
             Haptics.succeeded()
@@ -49,7 +49,7 @@ extension AppModel {
             if failure == .cancelled { return false }
             Haptics.refused()
             let key = failure.messageKey(knownKey: Phrasebook.shared.has)
-            toast(language.t(key == "error.serverProblem" ? fallback : key))
+            toast(language.t(key == "error.serverProblem" ? fallback : key, params))
             return false
         }
     }

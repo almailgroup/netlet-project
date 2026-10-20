@@ -128,6 +128,51 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(placed.reference.hasPrefix("NL-"))
     }
 
+    func testWhatCanBeDoneAboutAnOrder() async throws {
+        let detail = try await client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
+        let line = try XCTUnwrap(detail.lines.first)
+        XCTAssertEqual(line.returnState?.returnable, true)
+        XCTAssertTrue(detail.mayAskReturn(for: line), "a delivered line in its window with nothing asked may be sent back")
+        XCTAssertEqual(detail.windowDays, ReferenceData.shared.rules.returnWindowDays)
+        let parcel = try XCTUnwrap(detail.caredFor.first, "an arrived parcel has a card")
+        XCTAssertTrue(parcel.ratingState.allowed)
+        XCTAssertEqual(parcel.ceiling([line.id]), line.lineTotal, "a claim is capped by what the lines were sold for")
+        XCTAssertEqual(parcel.ceiling([]), .zero)
+        XCTAssertEqual(detail.documents.first?.isCredit, false)
+
+        let invoice = try await client.call(API.invoice, .init(number: try XCTUnwrap(detail.documents.first).number))
+        XCTAssertEqual(invoice.document.orderReference, detail.order.reference)
+        XCTAssertEqual(invoice.document.sellers.flatMap(\.lines).reduce(Money.zero) { $0 + $1.lineTotal }, invoice.document.goods)
+        XCTAssertEqual(invoice.document.paidWith.cash, invoice.document.total)
+        let checked = try await client.call(API.verifyInvoice, .init(number: invoice.document.number, code: invoice.verifyCode))
+        XCTAssertEqual(checked?.total, invoice.document.total)
+        _ = try await client.call(API.tracking, .init(reference: detail.order.reference))
+
+        // A line that has had its refund is not offered a second.
+        let refunded = ReturnRequest(id: 1, orderItemId: line.id, kind: "refund", reason: "damaged", status: "refunded", decidedBy: "auto",
+                                     declineReason: nil, refundAmount: line.lineTotal, refundPaidAt: Date(), replacementReference: nil, createdAt: Date())
+        XCTAssertFalse(refunded.isOpen)
+        XCTAssertFalse(refunded.mayWithdraw)
+        let data = Data(#"{"order":{},"lines":[]}"#.utf8)
+        XCTAssertThrowsError(try JSONDecoder().decode(OrderDetail.self, from: data), "an order without its record is not an order")
+    }
+
+    func testAnInvoiceIsCheckableAndDatedInBothCalendars() throws {
+        XCTAssertTrue(InvoiceWording.isNumber("INV-2026-000002"))
+        XCTAssertTrue(InvoiceWording.isNumber("CRN-2026-000010"))
+        XCTAssertFalse(InvoiceWording.isNumber("INV-26-2"))
+        let url = InvoiceWording.verifyURL(base: try XCTUnwrap(URL(string: "https://netlet.example/")), number: "INV-2026-000002", code: "ABC123")
+        XCTAssertEqual(url.absoluteString, "https://netlet.example/invoices/verify/INV-2026-000002?code=ABC123")
+        XCTAssertEqual(Route.from(link: url.absoluteString), .verifyInvoice(number: "INV-2026-000002", code: "ABC123"))
+        XCTAssertEqual(Route.from(link: "/invoices/INV-2026-000002"), .invoice(number: "INV-2026-000002"))
+        XCTAssertNotNil(InvoiceWording.qr(url.absoluteString))
+        // October 2026 falls in 1448 by Umm al-Qura.
+        let issued = try XCTUnwrap(ISO8601.withFraction.date(from: "2026-10-02T11:49:17.598Z"))
+        XCTAssertTrue(InvoiceWording.gregorian(issued, .en).contains("2026"))
+        XCTAssertTrue(InvoiceWording.hijri(issued, .en).contains("1448"))
+        XCTAssertFalse(InvoiceWording.hijri(issued, .ar).contains("٤"), "Latin digits on the Arabic page, as the web writes them")
+    }
+
     func testSelling() async throws {
         let identity = try await client.call(API.sellerIdentity)
         XCTAssertTrue(identity.isStoreMember)
@@ -214,6 +259,39 @@ final class FixtureDecodingTests: XCTestCase {
         let application = try await client.call(API.myApplication)
         XCTAssertNil(application)
         _ = try await client.call(API.applicationDocuments)
+    }
+
+    func testTheProductPagesPanels() async throws {
+        let reviews = try await client.call(API.productReviews, .init(productId: "1", limit: 20))
+        XCTAssertEqual(reviews.summary?.distribution["5"], reviews.total)
+        let together = try await client.call(API.boughtTogether, .init(productId: "2", limit: 4, locale: "en"))
+        XCTAssertFalse(together.isEmpty)
+        let open = try await client.call(API.priceRequestsOpen, .init(variantIds: [2]))
+        XCTAssertEqual(open, [2])
+        let held = try await client.call(API.myPriceRequest, .init(variantId: 2))
+        XCTAssertEqual(held?.state, "offered")
+        _ = try await client.call(API.follows)
+        _ = try await client.call(API.followers, .init(productId: "2"))
+        _ = try await client.call(API.bundles, .init(variantId: "2"))
+        let fit = try await client.call(API.fit, .init(productId: "10"))
+        XCTAssertEqual(fit.tendency, "runsSmall", "four returns all too small is a tendency")
+    }
+
+    func testTheSizeGuideShowsItsWorking() {
+        let chart = SizeChart(axis: "Size", measures: ["chest"], rows: [
+            .init(size: "S", ranges: ["chest": [86, 91]]),
+            .init(size: "M", ranges: ["chest": [92, 97]]),
+            .init(size: "L", ranges: ["chest": [98, 104]]),
+        ])
+        XCTAssertEqual(SizeAnswer.recommend(chart, measurements: ["chest": 94]).size, "M")
+        XCTAssertEqual(SizeAnswer.recommend(chart, measurements: [:]), .nothingToCompare)
+        XCTAssertEqual(SizeAnswer.recommend(chart, measurements: ["chest": 70]), .belowChart)
+        XCTAssertEqual(SizeAnswer.recommend(chart, measurements: ["chest": 120]), .aboveChart)
+        // Between sizes it takes the nearer, and on a tie the larger: a little loose is worn.
+        XCTAssertEqual(SizeAnswer.recommend(chart, measurements: ["chest": 91.5]).size, "M")
+        let runsSmall = FitFeedback(tooSmall: 4, tooLarge: 0)
+        XCTAssertEqual(runsSmall.advice(chart, answer: SizeAnswer.recommend(chart, measurements: ["chest": 96])), "L")
+        XCTAssertNil(runsSmall.advice(chart, answer: SizeAnswer.recommend(chart, measurements: ["chest": 92])))
     }
 
     func testALinkOnTheSiteOpensItsScreen() {

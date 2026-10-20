@@ -1,0 +1,33 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "total": 1,
+        "summary": {
+          "count": 1,
+          "average": 5,
+          "distribution": {
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0,
+            "5": 1
+          }
+        },
+        "items": [
+          {
+            "id": 2,
+            "rating": 5,
+            "title": "Cooks beautifully",
+            "body": "Long grains that stay separate, and the bag arrived sealed. Will order again.",
+            "author": "Noura A.",
+            "createdAt": "2026-10-03T18:06:41.378Z",
+            "vendorReply": null,
+            "vendorRepliedAt": null,
+            "verifiedPurchase": true
+          }
+        ]
+      }
+    }
+  }
+}

@@ -4,6 +4,143 @@
       "json": {
         "rows": [
           {
+            "id": 41,
+            "reference": "NL-20261019-GNVRV",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "pending_payment",
+            "currency": "KWD",
+            "itemsTotal": "263.750",
+            "deliveryTotal": "5.000",
+            "grandTotal": "268.750",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "deliveryBreakdown": [
+              {
+                "fee": "0.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              },
+              {
+                "fee": "5.000",
+                "vendorId": 3,
+                "vendorName": "Dar Home",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura Al-Sabah",
+            "contactPhone": "99887766",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Salmiya, Block 4, Street 12, House 15, PACI 12345678",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": {
+              "area": "Salmiya",
+              "block": "4",
+              "street": "12",
+              "building": "15",
+              "paciNumber": "12345678"
+            },
+            "placedAt": "2026-10-19T17:43:56.836Z",
+            "updatedAt": "2026-10-19T17:43:56.836Z",
+            "owed": {
+              "owed": "268.750",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 4,
+              "first": {
+                "title": "Smart watch",
+                "variant": "Default"
+              },
+              "photos": [
+                "http://localhost:5000/brand/collection-tech.svg",
+                "/departments/electronics.webp",
+                "/departments/home-and-kitchen.webp"
+              ],
+              "progress": {
+                "kind": "received",
+                "preordered": false
+              }
+            }
+          },
+          {
+            "id": 40,
+            "reference": "NL-20261018-YNTM9",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "pending_payment",
+            "currency": "KWD",
+            "itemsTotal": "9.500",
+            "deliveryTotal": "0.750",
+            "grandTotal": "10.250",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "deliveryBreakdown": [
+              {
+                "fee": "0.750",
+                "vendorId": 4,
+                "vendorName": "Gulf Grocers",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura",
+            "contactPhone": "+96550808606",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Salmiya, Block 10, Street Salem Al-Mubarak, House 12",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": {
+              "area": "Salmiya",
+              "block": "10",
+              "street": "Salem Al-Mubarak",
+              "building": "12"
+            },
+            "placedAt": "2026-10-18T08:56:39.656Z",
+            "updatedAt": "2026-10-18T08:56:39.656Z",
+            "owed": {
+              "owed": "10.250",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "Basmati rice 5 kg",
+                "variant": "Default"
+              },
+              "photos": [
+                "/departments/grocery.webp"
+              ],
+              "progress": {
+                "kind": "received",
+                "preordered": false
+              }
+            }
+          },
+          {
             "id": 29,
             "reference": "NL-20261012-4V89V",
             "userId": 2,
@@ -33,7 +170,7 @@
               }
             ],
             "contactName": "Noura Al-Sabah",
-            "contactPhone": "+96550000000",
+            "contactPhone": "+96550123456",
             "deliveryZoneId": "hawalli",
             "addressLine": "Salmiya, Block 4, Street 12, House 15, PACI 12345678",
             "addressNotes": null,
@@ -125,11 +262,358 @@
                 "kind": "preparing"
               }
             }
+          },
+          {
+            "id": 15,
+            "reference": "NL-20261004-CZEN8",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "pending_payment",
+            "currency": "KWD",
+            "itemsTotal": "17.500",
+            "deliveryTotal": "2.000",
+            "grandTotal": "19.500",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "deliveryBreakdown": [
+              {
+                "fee": "2.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura",
+            "contactPhone": "+96550000000",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Block 4, Street 2",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-04T16:35:15.712Z",
+            "updatedAt": "2026-10-04T16:35:15.712Z",
+            "owed": {
+              "owed": "19.500",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "USB-C charger 65W",
+                "variant": "Default"
+              },
+              "photos": [
+                "http://localhost:5000/brand/collection-tech.svg"
+              ],
+              "progress": {
+                "kind": "preparing"
+              }
+            }
+          },
+          {
+            "id": 14,
+            "reference": "NL-20261004-YF4QB",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "pending_payment",
+            "currency": "KWD",
+            "itemsTotal": "17.500",
+            "deliveryTotal": "2.000",
+            "grandTotal": "19.500",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "deliveryBreakdown": [
+              {
+                "fee": "2.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura",
+            "contactPhone": "+96550000000",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Block 4, Street 2",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-04T16:34:06.852Z",
+            "updatedAt": "2026-10-04T16:34:06.852Z",
+            "owed": {
+              "owed": "19.500",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "USB-C charger 65W",
+                "variant": "Default"
+              },
+              "photos": [
+                "http://localhost:5000/brand/collection-tech.svg"
+              ],
+              "progress": {
+                "kind": "received",
+                "preordered": false
+              }
+            }
+          },
+          {
+            "id": 13,
+            "reference": "NL-20261004-YFQU4",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "pending_payment",
+            "currency": "KWD",
+            "itemsTotal": "17.500",
+            "deliveryTotal": "2.000",
+            "grandTotal": "19.500",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "deliveryBreakdown": [
+              {
+                "fee": "2.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura",
+            "contactPhone": "+96550000000",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Block 4, Street 2",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-04T16:33:08.005Z",
+            "updatedAt": "2026-10-04T16:33:08.005Z",
+            "owed": {
+              "owed": "19.500",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "USB-C charger 65W",
+                "variant": "Default"
+              },
+              "photos": [
+                "http://localhost:5000/brand/collection-tech.svg"
+              ],
+              "progress": {
+                "kind": "preparing"
+              }
+            }
+          },
+          {
+            "id": 4,
+            "reference": "NL-20261002-3WQ6P",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "paid",
+            "currency": "KWD",
+            "itemsTotal": "25.000",
+            "deliveryTotal": "2.000",
+            "grandTotal": "27.000",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": "2026-08-24T21:11:15.998Z",
+            "deliveryBreakdown": [
+              {
+                "fee": "2.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "Noura",
+            "contactPhone": null,
+            "deliveryZoneId": null,
+            "addressLine": "Block 4, Street 12, House 7",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-02T12:23:17.081Z",
+            "updatedAt": "2026-10-02T12:23:27.192Z",
+            "owed": {
+              "owed": "27.000",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "Linen shirt",
+                "variant": "S"
+              },
+              "photos": [],
+              "progress": {
+                "kind": "received",
+                "preordered": false
+              }
+            }
+          },
+          {
+            "id": 2,
+            "reference": "NL-20261001-J7MWY",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "paid",
+            "currency": "KWD",
+            "itemsTotal": "26.250",
+            "deliveryTotal": "0.000",
+            "grandTotal": "26.250",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": "2026-08-24T21:11:15.998Z",
+            "deliveryBreakdown": [
+              {
+                "fee": "0.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "shopperA",
+            "contactPhone": "+96555512345",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Block 4, Street 12, House 7",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-01T18:22:28.239Z",
+            "updatedAt": "2026-10-02T11:49:17.593Z",
+            "owed": {
+              "owed": "26.250",
+              "droppedGoods": "0.000",
+              "droppedDelivery": "0.000",
+              "reduced": false
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "USB-C charger 65W",
+                "variant": "Default"
+              },
+              "photos": [
+                "http://localhost:5000/brand/collection-tech.svg"
+              ],
+              "progress": {
+                "kind": "delivered",
+                "at": "2026-10-17T22:33:45.311Z"
+              }
+            }
+          },
+          {
+            "id": 1,
+            "reference": "NL-20261001-TUP6F",
+            "userId": 2,
+            "email": "noura@shop.test",
+            "status": "paid",
+            "currency": "KWD",
+            "itemsTotal": "39.500",
+            "deliveryTotal": "0.000",
+            "grandTotal": "39.500",
+            "pointsSpent": 0,
+            "pointsValue": "0.000",
+            "discountCode": null,
+            "discountValue": "0.000",
+            "giftCardCode": null,
+            "giftCardValue": "0.000",
+            "subscriptionId": null,
+            "member": false,
+            "deliveryWaived": "0.000",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": "2026-08-24T21:11:15.998Z",
+            "deliveryBreakdown": [
+              {
+                "fee": "0.000",
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "destinationLabel": null
+              }
+            ],
+            "contactName": "shopperA",
+            "contactPhone": "+96555512345",
+            "deliveryZoneId": "hawalli",
+            "addressLine": "Block 4, Street 12, House 7",
+            "addressNotes": null,
+            "deliveryPin": null,
+            "deliveryAddressParts": null,
+            "placedAt": "2026-10-01T18:22:28.199Z",
+            "updatedAt": "2026-10-02T11:51:48.149Z",
+            "owed": {
+              "owed": "0.000",
+              "droppedGoods": "39.500",
+              "droppedDelivery": "0.000",
+              "reduced": true
+            },
+            "summary": {
+              "lineCount": 1,
+              "first": {
+                "title": "Noise-cancelling headphones",
+                "variant": "Default"
+              },
+              "photos": [],
+              "progress": {
+                "kind": "returned"
+              }
+            }
           }
         ],
-        "total": 8,
+        "total": 10,
         "page": 1,
-        "pageSize": 2
+        "pageSize": 50
       },
       "meta": {
         "values": {
@@ -143,6 +627,63 @@
             "Date"
           ],
           "rows.1.updatedAt": [
+            "Date"
+          ],
+          "rows.2.placedAt": [
+            "Date"
+          ],
+          "rows.2.updatedAt": [
+            "Date"
+          ],
+          "rows.3.placedAt": [
+            "Date"
+          ],
+          "rows.3.updatedAt": [
+            "Date"
+          ],
+          "rows.4.placedAt": [
+            "Date"
+          ],
+          "rows.4.updatedAt": [
+            "Date"
+          ],
+          "rows.5.placedAt": [
+            "Date"
+          ],
+          "rows.5.updatedAt": [
+            "Date"
+          ],
+          "rows.6.placedAt": [
+            "Date"
+          ],
+          "rows.6.updatedAt": [
+            "Date"
+          ],
+          "rows.7.paymentCollectedAt": [
+            "Date"
+          ],
+          "rows.7.placedAt": [
+            "Date"
+          ],
+          "rows.7.updatedAt": [
+            "Date"
+          ],
+          "rows.8.paymentCollectedAt": [
+            "Date"
+          ],
+          "rows.8.placedAt": [
+            "Date"
+          ],
+          "rows.8.updatedAt": [
+            "Date"
+          ],
+          "rows.9.paymentCollectedAt": [
+            "Date"
+          ],
+          "rows.9.placedAt": [
+            "Date"
+          ],
+          "rows.9.updatedAt": [
             "Date"
           ]
         }

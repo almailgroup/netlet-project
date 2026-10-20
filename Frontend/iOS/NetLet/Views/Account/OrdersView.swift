@@ -112,10 +112,8 @@ struct OrderRow: View {
                             .padding(3)
                     }
                 }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(OrderWording.progress(order.summary.progress, language: l))
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Brand.navy)
+            VStack(alignment: .leading, spacing: 5) {
+                OrderProgressPill(progress: order.summary.progress)
                 if let first = order.summary.first {
                     let more = order.summary.lineCount - 1
                     Text(first.title + (more > 0 ? " " + l.t("orders.andMore", ["count": "\(more)"]) : ""))
@@ -124,9 +122,14 @@ struct OrderRow: View {
                         .lineLimit(2)
                 }
                 HStack(spacing: 6) {
-                    Text(order.grandTotal.formatted(l.current)).font(.subheadline.weight(.semibold))
-                    Text("·").foregroundStyle(Brand.muted)
-                    Text(OrderWording.payment(status: order.status, language: l)).font(.footnote).foregroundStyle(Brand.muted)
+                    Text(order.shownTotal.formatted(l.current)).font(.subheadline.weight(.semibold))
+                    if let how = payment {
+                        Text("·").foregroundStyle(Brand.muted)
+                        Text(how).font(.footnote).foregroundStyle(order.status == "paid" ? Brand.success : Brand.muted)
+                    }
+                }
+                if !order.isOver, order.owed?.reduced == true {
+                    Text(l.t("orders.cancelledNotCharged")).font(.caption).foregroundStyle(Brand.muted)
                 }
                 // Two runs, not one string: the reference reads left to right
                 // and an Arabic date carries its own marks, and joined into one
@@ -143,9 +146,41 @@ struct OrderRow: View {
         }
         .padding(.vertical, 6)
     }
+
+    /// How it is paid, said only where it tells somebody something (`OrderTotal`).
+    private var payment: String? {
+        switch order.status {
+        case "paid": return l.t("orders.statusPaid")
+        case "refunded": return l.t("orders.statusRefunded")
+        case "pending_payment" where order.shownTotal.fils > 0: return l.t("orders.payOnDelivery")
+        default: return nil
+        }
+    }
 }
 
-/// One order: where each line is, what it cost, and where it is going.
+/// Where an order is, as a pill with its icon — the web's `ProgressPill`.
+struct OrderProgressPill: View {
+    let progress: OrderProgress
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let look: (String, OrderTone) = {
+            switch progress.kind {
+            case "preparing": return ("shippingbox", .preparing)
+            case "onTheWay", "partlyDelivered": return ("truck.box", .shipped)
+            case "delivered": return ("checkmark.circle", .done)
+            case "cancelled": return ("xmark.circle", .stopped)
+            case "returned": return ("arrow.uturn.backward", .over)
+            default: return ("clock", .waiting)
+            }
+        }()
+        StatusPill(label: OrderWording.progress(progress, language: l), tone: look.1, systemImage: look.0)
+    }
+}
+
+/// One order: where each line is and what can be done about it — a return,
+/// a delivery rating, a damage report, the driver on a map, the invoice —
+/// then what it cost and where it is going. The web's opened order.
 struct OrderDetailView: View {
     let reference: String
     @Environment(AppModel.self) private var app
@@ -161,7 +196,10 @@ struct OrderDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                         VStack(alignment: .leading, spacing: 16) {
-                            lines(detail)
+                            lines(detail, reload: { await model.load() })
+                            OrderDocumentsList(documents: detail.documents)
+                            if detail.hasShipped { TrackingPanel(reference: reference) }
+                            ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
                             totals(detail.order)
                             delivery(detail.order)
                         }
@@ -176,40 +214,66 @@ struct OrderDetailView: View {
         }
     }
 
-    private func lines(_ detail: OrderDetail) -> some View {
+    private func lines(_ detail: OrderDetail, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(OrderWording.date(detail.order.placedAt, language: l.current)).font(.footnote).foregroundStyle(Brand.muted)
             ForEach(detail.lines) { line in
-                HStack(alignment: .top, spacing: 12) {
-                    Color.clear
-                        .frame(width: 56, height: 56)
-                        .overlay { RemoteImage(reference: line.photo) }
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
-                        if let variant = line.variantLabel {
-                            Text(variant).font(.caption).foregroundStyle(Brand.muted)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Color.clear
+                            .frame(width: 56, height: 56)
+                            .overlay { RemoteImage(reference: line.photo) }
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
+                            if let variant = line.variantLabel {
+                                Text(variant).font(.caption).foregroundStyle(Brand.muted)
+                            }
+                            if let vendor = line.vendorName {
+                                Text(l.t("browse.soldBy", ["name": vendor])).font(.caption).foregroundStyle(Brand.muted)
+                            }
+                            if let destination = line.destination {
+                                Text(l.t("address.lineWent", ["label": destination.label])).font(.caption).foregroundStyle(Brand.muted)
+                            }
+                            Text(l.t("orders.quantityAndPrice", ["quantity": "\(line.quantity)", "price": line.unitPrice.formatted(l.current)]))
+                                .font(.caption)
+                                .foregroundStyle(Brand.muted)
+                            StatusPill(label: OrderWording.line(line.fulfilment, language: l), tone: OrderTone.line(line.fulfilment))
+                            returnWindow(line)
                         }
-                        if let vendor = line.vendorName {
-                            Text(l.t("browse.soldBy", ["name": vendor])).font(.caption).foregroundStyle(Brand.muted)
-                        }
-                        Text(l.t("orders.quantityAndPrice", ["quantity": "\(line.quantity)", "price": line.unitPrice.formatted(l.current)]))
-                            .font(.caption)
-                            .foregroundStyle(Brand.muted)
-                        Text(OrderWording.line(line.fulfilment, language: l))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(line.fulfilment == "cancelled" || line.fulfilment == "returned" ? Brand.danger : Brand.navy)
+                        Spacer()
+                        Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
                     }
-                    Spacer()
-                    Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
+                    LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload)
                 }
-                if line.id != detail.lines.last?.id { Divider() }
+                Divider()
             }
+            Text(l.t(app.features.isOn("returns") ? "returns.howTo" : "returns.howToPaused", ["days": "\(detail.windowDays)"]))
+                .font(.footnote)
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
             if detail.lines.contains(where: { $0.fulfilment == "cancelled" }) {
                 Text(l.t("orders.cancelledNotCharged")).font(.footnote).foregroundStyle(Brand.muted)
             }
         }
         .card()
+    }
+
+    /// Whether the line can still go back, and until when — or why not.
+    @ViewBuilder
+    private func returnWindow(_ line: OrderLine) -> some View {
+        if let state = line.returnState {
+            if state.returnable, let closes = state.closesAt {
+                Label(
+                    l.t("returns.openUntil", ["date": OrderWording.date(closes, language: l.current), "days": "\(state.daysLeft ?? 0)"]),
+                    systemImage: "arrow.uturn.backward"
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Brand.success)
+            } else if let reason = state.reason {
+                Text(l.t(reason)).font(.caption).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func totals(_ order: OrderRecord) -> some View {

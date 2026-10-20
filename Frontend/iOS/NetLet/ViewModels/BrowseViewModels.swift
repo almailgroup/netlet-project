@@ -333,6 +333,8 @@ final class ProductDetailViewModel {
     private(set) var variant: ProductVariant?
     var quantity = 1
     var imageIndex = 0
+    /// The optional extras ticked for this line, by id.
+    var addons: Set<String> = []
     private(set) var adding = false
 
     private let catalog: CatalogServicing
@@ -412,6 +414,19 @@ final class ProductDetailViewModel {
         guard let variant, variant.availableForSale else { return false }
         adding = true
         defer { adding = false }
+        // A line with extras is its own line, priced by the server; a plain one joins the plain line.
+        if !addons.isEmpty {
+            return await cart.add(lines: [API.CartLine(variantId: variant.id, quantity: quantity, addonIds: addons.sorted())])
+        }
         return await cart.add(variantId: variant.id, quantity: quantity)
+    }
+
+    /// The size guide's answer, chosen: the variant whose size it names.
+    func choose(size: String, axis: String, in product: Product) {
+        if choosesByOption(product), product.options.contains(where: { $0.name == axis }) {
+            select(option: axis, value: size, in: product)
+        } else if let match = product.variants.first(where: { $0.title.caseInsensitiveCompare(size) == .orderedSame || $0.value(of: axis)?.caseInsensitiveCompare(size) == .orderedSame }) {
+            choose(match)
+        }
     }
 }

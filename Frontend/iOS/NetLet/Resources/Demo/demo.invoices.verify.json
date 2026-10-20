@@ -1,0 +1,19 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "number": "INV-2026-000002",
+        "kind": "invoice",
+        "issuedAt": "2026-10-02T11:49:17.598Z",
+        "total": "26.250",
+        "currency": "KWD",
+        "issuerName": "NetLet",
+        "issuerLicence": null,
+        "sellers": [
+          "Acme Electronics"
+        ],
+        "corrected": false
+      }
+    }
+  }
+}

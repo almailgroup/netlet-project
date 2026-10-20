@@ -31,6 +31,22 @@ struct OrderSummary: Decodable, Identifiable, Hashable, Sendable {
     let grandTotal: Money
     let placedAt: Date
     let summary: Summary
+    /// What is still owed, less any line no longer coming (`stillOwed`).
+    var owed: Owed? = nil
+
+    struct Owed: Decodable, Hashable, Sendable {
+        let owed: Money
+        let reduced: Bool
+    }
+
+    /// The figure the row leads with: what an order that is over came to,
+    /// otherwise what is still to pay — "KWD 0" over a refund read as an
+    /// order that cost nothing.
+    var shownTotal: Money {
+        isOver ? grandTotal : owed?.owed ?? grandTotal
+    }
+
+    var isOver: Bool { status == "refunded" || status == "cancelled" }
 }
 
 /// Where an order is, read off its lines on the server (`orderProgress`).
@@ -42,10 +58,44 @@ struct OrderProgress: Decodable, Hashable, Sendable {
     let of: Int?
 }
 
-/// One order opened (`orders.get`).
+/// One order opened (`orders.get`): its lines, and what can be done about
+/// it now — each line's return, each parcel's rating and claim, the invoice.
 struct OrderDetail: Decodable, Sendable {
     let order: OrderRecord
     let lines: [OrderLine]
+    let windowDays: Int
+    let parcels: [Parcel]
+    let returns: [ReturnRequest]
+    let documents: [OrderDocument]
+
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        order = try container.decode(OrderRecord.self, forKey: .order)
+        lines = try container.decode([OrderLine].self, forKey: .lines)
+        windowDays = try container.decodeIfPresent(Int.self, forKey: .windowDays) ?? ReferenceData.shared.rules.returnWindowDays
+        parcels = try container.decodeIfPresent([Parcel].self, forKey: .parcels) ?? []
+        returns = try container.decodeIfPresent([ReturnRequest].self, forKey: .returns) ?? []
+        documents = try container.decodeIfPresent([OrderDocument].self, forKey: .documents) ?? []
+    }
+
+    /// The newest return asked for on a line, if any.
+    func latestReturn(for line: OrderLine) -> ReturnRequest? {
+        returns.first { $0.orderItemId == line.id }
+    }
+
+    /// Whether a line may be sent back now: the window is open and nothing
+    /// is already open, refunded or exchanged on it (`LineReturn`'s `mayAsk`).
+    func mayAskReturn(for line: OrderLine) -> Bool {
+        guard line.returnState?.returnable == true else { return false }
+        return !returns.contains { $0.orderItemId == line.id && ($0.isOpen || $0.status == "refunded" || $0.status == "exchanged") }
+    }
+
+    /// The parcels worth a card: arrived, or carrying a claim.
+    var caredFor: [Parcel] { parcels.filter { $0.arrivedAt != nil || $0.claim != nil } }
+
+    var hasShipped: Bool { lines.contains { $0.fulfilment == "shipped" } }
 }
 
 struct OrderRecord: Decodable, Hashable, Sendable {
@@ -77,6 +127,13 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     let lineTotal: Money
     let fulfilment: String
     let photo: String?
+    var returnState: ReturnState? = nil
+    var destination: Destination? = nil
+
+    /// Where a line went when the order went to more than one door.
+    struct Destination: Decodable, Hashable, Sendable {
+        let label: String
+    }
 
     var variantLabel: String? {
         variantTitle == "Default" || variantTitle.isEmpty ? nil : variantTitle

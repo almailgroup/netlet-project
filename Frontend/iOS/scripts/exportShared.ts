@@ -53,6 +53,9 @@ import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "../../../Shared/inventory/applicationDocuments.js";
+import { MAX_RETURN_NOTE, OPEN_RETURN_STATUSES, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
+import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
+import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -184,6 +187,16 @@ export function buildResources(): Record<string, string> {
         maxOfferNote: MAX_OFFER_NOTE,
         maxMessage: MAX_MESSAGE_LENGTH,
         subscriptionIntervals: SUBSCRIPTION_INTERVALS,
+      },
+      orders: {
+        returnKinds: RETURN_KINDS,
+        returnReasons: RETURN_REASONS,
+        openReturnStatuses: OPEN_RETURN_STATUSES,
+        maxReturnNote: MAX_RETURN_NOTE,
+        ratingWindowDays: DELIVERY_RATING_WINDOW_DAYS,
+        maxDeliveryComment: MAX_DELIVERY_COMMENT,
+        claimWindowDays: CLAIM_WINDOW_DAYS,
+        maxClaimDescription: MAX_CLAIM_DESCRIPTION,
       },
     }),
     "assets.json": json(buildAssets().manifest),

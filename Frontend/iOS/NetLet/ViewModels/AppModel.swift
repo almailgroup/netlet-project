@@ -49,6 +49,10 @@ enum Route: Hashable {
     case gifts
     case gift(token: String)
     case sell
+    /// An invoice or credit note as issued, the web's `/invoices/<number>`.
+    case invoice(number: String)
+    /// Is a printed document genuine? `/invoices/verify/<number>?code=`.
+    case verifyInvoice(number: String, code: String)
 
     /// The screen a link on the site names — a notice's link, an answer's,
     /// the footer's — or nil for one the app has no screen for. Nothing
@@ -75,6 +79,8 @@ enum Route: Hashable {
         case ("gifts"?, 1): return .gifts
         case ("gifts"?, 2): return .gift(token: segments[1])
         case ("sell"?, _): return .sell
+        case ("invoices"?, 3) where segments[1] == "verify": return .verifyInvoice(number: segments[2], code: query["code"] ?? "")
+        case ("invoices"?, 2): return .invoice(number: segments[1])
         case ("account"?, 1): return nil
         case ("account"?, _):
             switch segments[1] {
@@ -291,7 +297,8 @@ final class AppModel {
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .messages, .sellerThread, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing:
+             .reviews, .messages, .sellerThread, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing,
+             .invoice:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
         case .checkout:
             openCheckout()

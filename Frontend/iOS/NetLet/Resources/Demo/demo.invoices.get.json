@@ -1,0 +1,62 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "document": {
+          "kind": "invoice",
+          "buyer": {
+            "name": "shopperA",
+            "email": "noura@shop.test",
+            "phone": "+96555512345",
+            "address": "Block 4, Street 12, House 7"
+          },
+          "goods": "26.250",
+          "total": "26.250",
+          "issuer": {
+            "name": "NetLet",
+            "nameAr": null,
+            "address": null,
+            "licence": null
+          },
+          "number": "INV-2026-000002",
+          "credits": null,
+          "sellers": [
+            {
+              "name": "Acme Electronics",
+              "lines": [
+                {
+                  "sku": null,
+                  "title": "USB-C charger 65W",
+                  "titleAr": "شاحن 65 واط",
+                  "quantity": 3,
+                  "lineTotal": "26.250",
+                  "unitPrice": "8.750",
+                  "variantTitle": "Default"
+                }
+              ],
+              "nameAr": "أكمي للإلكترونيات",
+              "licence": "CR-445566",
+              "delivery": "0.000",
+              "vendorId": 2,
+              "underPlatformLicence": false
+            }
+          ],
+          "version": 1,
+          "currency": "KWD",
+          "delivery": "0.000",
+          "discount": "0.000",
+          "issuedAt": "2026-10-02T11:49:17.598Z",
+          "paidWith": {
+            "cash": "26.250",
+            "points": "0.000",
+            "giftCard": "0.000"
+          },
+          "paymentMethod": "cod",
+          "orderReference": "NL-20261001-J7MWY"
+        },
+        "credits": [],
+        "verifyCode": "NJXXRZ7GE8"
+      }
+    }
+  }
+}

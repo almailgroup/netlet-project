@@ -84,5 +84,31 @@
       4,
       8
     ]
+  },
+  "orders": {
+    "returnKinds": [
+      "refund",
+      "exchange"
+    ],
+    "returnReasons": [
+      "damaged",
+      "defective",
+      "wrongItem",
+      "notAsDescribed",
+      "tooSmall",
+      "tooLarge",
+      "changedMind",
+      "other"
+    ],
+    "openReturnStatuses": [
+      "requested",
+      "approved",
+      "collected"
+    ],
+    "maxReturnNote": 1000,
+    "ratingWindowDays": 30,
+    "maxDeliveryComment": 500,
+    "claimWindowDays": 7,
+    "maxClaimDescription": 2000
   }
 }

@@ -160,6 +160,8 @@ private struct RouteDestination: View {
         case .guide(let slug): GuideView(slug: slug)
         case .gifts: GiftLookupView()
         case .gift(let token): GiftListView(token: token)
+        case .invoice(let number): InvoiceView(number: number)
+        case .verifyInvoice(let number, let code): InvoiceVerifyView(number: number, code: code)
         case .sell: SellView()
         }
     }

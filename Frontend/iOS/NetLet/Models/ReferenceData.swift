@@ -123,6 +123,26 @@ struct Rules: Decodable, Sendable {
         )
     }
 
+    /// What an order's own forms are held to: a return, a delivery rating and
+    /// a damage claim (`returnRequests.ts`, `deliveryRatings.ts`, `damageClaims.ts`).
+    struct Orders: Decodable, Sendable {
+        let returnKinds: [String]
+        let returnReasons: [String]
+        let openReturnStatuses: [String]
+        let maxReturnNote: Int
+        let ratingWindowDays: Int
+        let maxDeliveryComment: Int
+        let claimWindowDays: Int
+        let maxClaimDescription: Int
+
+        static let fallback = Orders(
+            returnKinds: ["refund", "exchange"],
+            returnReasons: ["damaged", "defective", "wrongItem", "notAsDescribed", "tooSmall", "tooLarge", "changedMind", "other"],
+            openReturnStatuses: ["requested", "approved", "collected"],
+            maxReturnNote: 1000, ratingWindowDays: 30, maxDeliveryComment: 500, claimWindowDays: 7, maxClaimDescription: 2000
+        )
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
@@ -131,9 +151,11 @@ struct Rules: Decodable, Sendable {
     let media: Media
     let contact: Contact?
     let account: Account?
+    let orders: Orders?
 
     /// The account's rules, or the same numbers when the file predates them.
     var accountRules: Account { account ?? .fallback }
+    var orderRules: Orders { orders ?? .fallback }
 }
 
 /// Everything the app reads from `Shared/` rather than from the network: the
@@ -188,7 +210,8 @@ struct ReferenceData: Sendable {
             listing: .init(maxTitle: 255, maxSku: 120, maxStock: 1_000_000, maxDescription: 20_000, maxPhotos: 12, warrantyRequiredDepartments: ["electronics"]),
             media: .init(maxEdge: 1200, minEdge: 300, maxUploadBytes: 1_500_000),
             contact: nil,
-            account: nil
+            account: nil,
+            orders: nil
         )
         return ReferenceData(
             departments: departments.sorted { $0.position < $1.position },

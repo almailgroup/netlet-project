@@ -1,0 +1,162 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "product": {
+            "id": "8",
+            "handle": "tomatoes",
+            "title": "Tomatoes",
+            "description": "Tomatoes. Sold by a NetLet seller; specification rows below.",
+            "descriptionHtml": "<p>Tomatoes. Sold by a NetLet seller; specification rows below.</p>",
+            "productType": "Grocery",
+            "vendor": "Gulf Grocers",
+            "vendorSlug": "gulf-grocers",
+            "vendorBadges": [],
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "tags": [
+              "fresh"
+            ],
+            "attributes": [],
+            "media": [
+              {
+                "url": "http://localhost:5000/brand/collection-home.svg",
+                "altText": "Tomatoes",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "http://localhost:5000/brand/collection-home.svg",
+                "altText": "Tomatoes"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "0.350",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "0.350",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "8",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "0.350",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 399,
+                "measure": {
+                  "unit": "g",
+                  "stepAmount": 250
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null
+          },
+          "lift": 7.31578947368421,
+          "confidence": 0.15789473684210525,
+          "crossVendor": true
+        },
+        {
+          "product": {
+            "id": "9",
+            "handle": "olive-oil",
+            "title": "Olive oil",
+            "description": "Olive oil. Sold by a NetLet seller; specification rows below.",
+            "descriptionHtml": "<p>Olive oil. Sold by a NetLet seller; specification rows below.</p>",
+            "productType": "Grocery",
+            "vendor": "Gulf Grocers",
+            "vendorSlug": "gulf-grocers",
+            "vendorBadges": [],
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "tags": [
+              "pantry"
+            ],
+            "attributes": [],
+            "media": [
+              {
+                "url": "http://localhost:5000/brand/collection-home.svg",
+                "altText": "Olive oil",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "http://localhost:5000/brand/collection-home.svg",
+                "altText": "Olive oil"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "4.900",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "4.900",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "9",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "4.900",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 78,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null
+          },
+          "lift": 3.657894736842105,
+          "confidence": 0.15789473684210525,
+          "crossVendor": true
+        }
+      ],
+      "meta": {
+        "referentialEqualities": {
+          "0.product.priceRange.min": [
+            "0.product.priceRange.max",
+            "0.product.variants.0.price"
+          ],
+          "1.product.priceRange.min": [
+            "1.product.priceRange.max",
+            "1.product.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -3466,6 +3466,7 @@ export const en = {
   "ios.permission.location": "NetLet uses your location only to move the map to where you are, so you can pin your door for the driver.",
   "ios.documents.fromFiles": "Choose a file",
   "ios.documents.fromPhotos": "Choose a photo",
+  "ios.tooLong": "That is too long. Keep it under {max} characters.",
 
 } as const;
 
@@ -6895,6 +6896,7 @@ export const ar: Record<MessageKey, string> = {
   "ios.permission.location": "يستخدم نت‑لت موقعك فقط لتحريك الخريطة إلى مكانك، لتحدد بابك للسائق.",
   "ios.documents.fromFiles": "اختر ملفاً",
   "ios.documents.fromPhotos": "اختر صورة",
+  "ios.tooLong": "النص طويل جداً. اجعله أقل من {max} حرف.",
 
 };
 

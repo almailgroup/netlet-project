@@ -62,6 +62,9 @@ private struct ProductPage: View {
                     .padding(.top, 8)
                 buyBox
                     .padding(.top, 24)
+                ReviewsSection(product: product)
+                    .padding(.top, 40)
+                BoughtTogetherShelf(product: product)
                 related
             }
             .padding(.horizontal, 16)
@@ -215,6 +218,15 @@ private struct ProductPage: View {
                 }
             }
             choices.padding(.top, 8)
+            if let chart = product.sizeChart {
+                SizeGuideButton(product: product, chart: chart) { size in
+                    model.choose(size: size, axis: chart.axis, in: product)
+                }
+                .padding(.top, 8)
+            }
+            if let addons = product.addons, !addons.isEmpty {
+                AddonPicker(addons: addons, chosen: $model.addons).padding(.top, 16)
+            }
             quantity.padding(.top, 24)
             buttons
                 .padding(.top, 24)
@@ -230,6 +242,19 @@ private struct ProductPage: View {
                     .foregroundStyle(Brand.muted)
                     .padding(.top, 12)
             }
+            VStack(alignment: .leading, spacing: 12) {
+                FollowButton(product: product)
+                if let variant = model.variant, variant.availableForSale, variant.preorder == nil,
+                   product.subscription != nil, app.features.isOn("subscriptions") {
+                    SubscribePanel(product: product, variant: variant, quantity: model.quantity)
+                }
+                if let variant = model.variant ?? product.leadVariant {
+                    BundlesPanel(variantId: variant.id)
+                    PriceRequestPanel(variant: variant)
+                }
+                AskSellerPanel(product: product)
+            }
+            .padding(.top, 16)
             if product.isExpress {
                 Label(l.t("product.expressNote"), systemImage: "checkmark.seal")
                     .font(.inter(12, .semibold))

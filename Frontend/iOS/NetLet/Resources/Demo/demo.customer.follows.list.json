@@ -1,0 +1,28 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "userId": 2,
+          "productId": "216",
+          "priceDrop": true,
+          "backInStock": true,
+          "lastNotifiedPrice": null,
+          "createdAt": "2026-10-02T12:30:47.094Z",
+          "updatedAt": "2026-10-11T20:37:27.972Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "0.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}
