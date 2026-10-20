@@ -146,6 +146,28 @@ struct Rules: Decodable, Sendable {
         )
     }
 
+    /// What the assistants send the gateway and how much (`Shared/ai/gateway.ts`,
+    /// `Shared/commerce/assistant.ts`, `Shared/commerce/photoSearch.ts`).
+    struct AI: Decodable, Sendable {
+        let chatPath: String
+        let maxChatTurns: Int
+        let maxChatText: Int
+        let maxQuestion: Int
+        let maxBriefDescription: Int
+        let maxSpecRows: Int
+        let maxSuggestions: Int
+        /// The two questions a department's shoppers ask first, as message keys.
+        let departmentQuestions: [String: [String]]
+        let photoMaxEdge: Int
+        let maxPhotoChars: Int
+
+        static let fallback = AI(
+            chatPath: "/api/ai/chat", maxChatTurns: 12, maxChatText: 1000, maxQuestion: 300,
+            maxBriefDescription: 1500, maxSpecRows: 24, maxSuggestions: 4, departmentQuestions: [:],
+            photoMaxEdge: 768, maxPhotoChars: 240_000
+        )
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
@@ -155,10 +177,12 @@ struct Rules: Decodable, Sendable {
     let contact: Contact?
     let account: Account?
     let orders: Orders?
+    let ai: AI?
 
     /// The account's rules, or the same numbers when the file predates them.
     var accountRules: Account { account ?? .fallback }
     var orderRules: Orders { orders ?? .fallback }
+    var aiRules: AI { ai ?? .fallback }
 }
 
 /// Everything the app reads from `Shared/` rather than from the network: the
@@ -214,7 +238,8 @@ struct ReferenceData: Sendable {
             media: .init(maxEdge: 1200, minEdge: 300, maxUploadBytes: 1_500_000),
             contact: nil,
             account: nil,
-            orders: nil
+            orders: nil,
+            ai: nil
         )
         return ReferenceData(
             departments: departments.sorted { $0.position < $1.position },

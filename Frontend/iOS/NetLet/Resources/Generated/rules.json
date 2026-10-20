@@ -111,5 +111,38 @@
     "claimWindowDays": 7,
     "maxClaimDescription": 2000,
     "filsPerPoint": 1
+  },
+  "ai": {
+    "chatPath": "/api/ai/chat",
+    "maxChatTurns": 12,
+    "maxChatText": 1000,
+    "maxQuestion": 300,
+    "maxBriefDescription": 1500,
+    "maxSpecRows": 24,
+    "maxSuggestions": 4,
+    "departmentQuestions": {
+      "electronics": [
+        "assistant.askBox",
+        "assistant.askConnect"
+      ],
+      "home & kitchen": [
+        "assistant.askSize",
+        "assistant.askClean"
+      ],
+      "beauty": [
+        "assistant.askUse",
+        "assistant.askSkin"
+      ],
+      "style": [
+        "assistant.askMaterial",
+        "assistant.askFit"
+      ],
+      "grocery": [
+        "assistant.askIngredients",
+        "assistant.askStore"
+      ]
+    },
+    "photoMaxEdge": 768,
+    "maxPhotoChars": 240000
   }
 }

@@ -70,6 +70,7 @@ struct HelpCentreView: View {
     var body: some View {
         InfoPage(title: l.t("help.title"), note: l.t("help.intro")) {
             VStack(alignment: .leading, spacing: 16) {
+                HelpAskBox()
                 OrderLookupCard()
                 ContactCard()
                 if let groups = SiteContent.shared?.help.groups {

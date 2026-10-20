@@ -134,7 +134,7 @@ export function acceptableQuestion(question: string): boolean {
  * listing can answer or the model can say it does not — never a price, a stock
  * level or a delivery date, which the prompt refuses and the page already says.
  */
-const DEPARTMENT_QUESTIONS: Record<string, readonly [MessageKey, MessageKey]> = {
+export const DEPARTMENT_QUESTIONS: Record<string, readonly [MessageKey, MessageKey]> = {
   "electronics": ["assistant.askBox", "assistant.askConnect"],
   "home & kitchen": ["assistant.askSize", "assistant.askClean"],
   "beauty": ["assistant.askUse", "assistant.askSkin"],

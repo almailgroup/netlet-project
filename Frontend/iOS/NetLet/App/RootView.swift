@@ -60,6 +60,11 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.2), value: app.searchOpen)
         .animation(.easeOut(duration: 0.25), value: app.toastMessage)
         .task(id: l.current) { await app.shelf.load(language: l.current) }
+        .sheet(isPresented: $app.chatOpen) {
+            ShopChatSheet()
+                .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
+        }
         .sheet(isPresented: $app.authPresented) {
             NavigationStack {
                 AuthView(inSheet: true)

@@ -26,8 +26,17 @@ struct SearchOverlay: View {
 private struct SearchSheet: View {
     @Bindable var model: SearchViewModel
     @FocusState private var focused: Bool
+    @State private var dictation: Dictation
+    @State private var photoOpen = false
+    @State private var photoReady = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    init(model: SearchViewModel) {
+        _model = Bindable(wrappedValue: model)
+        // Made here, not as the property's initial value, for the main actor's sake.
+        _dictation = State(initialValue: Dictation())
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -38,6 +47,16 @@ private struct SearchSheet: View {
                 .accessibilityHidden(true)
             VStack(spacing: 0) {
                 field
+                if dictation.listening || dictation.problem != nil {
+                    Text(dictation.listening ? l.t("search.voiceListening") + " " + l.t("ios.voice.privacy") : l.t(Dictation.messageKey(dictation.problem ?? "")))
+                        .font(.inter(12))
+                        .foregroundStyle(dictation.listening ? Brand.body : Brand.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.updatesFrequently)
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         if model.trimmed.isEmpty { suggestions } else { results }
@@ -63,6 +82,20 @@ private struct SearchSheet: View {
             model.language = l.current
             focused = true
         }
+        .task {
+            photoReady = (try? await app.services.api.call(API.photoAvailable))?.available ?? false
+        }
+        .onChange(of: dictation.listening) { _, listening in
+            // What was heard is shown back in the field before anything is searched.
+            if !listening { focused = true }
+        }
+        .sheet(isPresented: $photoOpen) {
+            PhotoSearchSheet { words in
+                model.query = words
+                focused = true
+            }
+        }
+        .onDisappear { dictation.cancel() }
         .onChange(of: model.query) { model.queryChanged() }
         .onChange(of: l.current) { _, language in
             model.language = language
@@ -85,7 +118,50 @@ private struct SearchSheet: View {
                     .textInputAutocapitalization(.never)
                     .padding(.horizontal, 12)
                     .accessibilityLabel(l.t("header.searchAria"))
-                if !model.query.isEmpty {
+                if model.query.isEmpty && !dictation.listening {
+                    // Speaking or pointing is instead of typing, so the pair shares
+                    // the clear button's place: on an empty field only.
+                    if app.features.isOn("voiceSearch") && Dictation.isAvailable {
+                        Button {
+                            focused = false
+                            dictation.start(language: l.current) { heard in model.query = heard }
+                        } label: {
+                            Image(systemName: "mic")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Brand.navy)
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityLabel(l.t("search.voice"))
+                    }
+                    if app.features.isOn("photoSearch") && photoReady {
+                        Button {
+                            focused = false
+                            photoOpen = true
+                        } label: {
+                            Image(systemName: "camera")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Brand.navy)
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityLabel(l.t("search.photo"))
+                    }
+                }
+                if dictation.listening {
+                    Button {
+                        dictation.stop()
+                    } label: {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Brand.accentInk))
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(l.t("shopChat.stopListening"))
+                }
+                if !model.query.isEmpty && !dictation.listening {
                     Button {
                         model.query = ""
                         app.searchText = ""

@@ -200,3 +200,50 @@ final class TillTests: XCTestCase {
         XCTAssertEqual(Till.giftCardPayment(remaining: money("9.000"), owed: money("5.000")), money("5.000"))
     }
 }
+
+/// The web's `chatText.test.ts`, the parts the app draws from.
+final class ChatTextTests: XCTestCase {
+    func testAnAnswerSplitsIntoWordsSearchesAndQuestions() {
+        let answer = "Here are some kettles.\n[[search: electric kettle]]\n[[ask: Which one boils fastest?]]"
+        XCTAssertEqual(ChatText.pieces(answer), [.text("Here are some kettles."), .search("electric kettle"), .ask("Which one boils fastest?")])
+    }
+
+    func testAHalfWrittenMarkerIsHeldBackWhileItStreams() {
+        XCTAssertEqual(ChatText.pieces("Try these [[sea", streaming: true), [.text("Try these")])
+    }
+
+    func testASuggestionCarryingContactDetailsIsDropped() {
+        XCTAssertEqual(ChatText.pieces("[[search: call 99887766]]"), [])
+        XCTAssertEqual(ChatText.pieces("[[search: kettle]] [[search: Kettle]]"), [.search("kettle")], "the same search twice is one")
+    }
+
+    func testTheRowOffersStartersThenFollowUpsThenWhatIsLeft() {
+        let starters = ["How can I pay?", "How do returns work?"]
+        XCTAssertEqual(ChatText.nextQuestions([], starters: starters).questions, starters)
+        let asked = ChatText.Turn(fromShopper: true, text: "How can I pay?", state: "done")
+        XCTAssertEqual(ChatText.nextQuestions([asked], starters: starters).questions, [], "nothing while an answer is coming")
+        let answered = ChatText.Turn(fromShopper: false, text: "Cash at the door.\n[[ask: Can I pay by card?]]", state: "done")
+        let offer = ChatText.nextQuestions([asked, answered], starters: starters)
+        XCTAssertEqual(offer.questions, ["Can I pay by card?"])
+        XCTAssertTrue(offer.followUps)
+        let plain = ChatText.Turn(fromShopper: false, text: "Cash at the door.", state: "done")
+        XCTAssertEqual(ChatText.nextQuestions([asked, plain], starters: starters).questions, ["How do returns work?"], "the starters not yet asked")
+    }
+
+    func testTheStreamIsReadLineByLine() {
+        XCTAssertEqual(ChatEvent.parse(#"data: {"type":"delta","text":"Hi"}"#), .delta("Hi"))
+        XCTAssertEqual(ChatEvent.parse(#"data: {"type":"done","finish":"blocked"}"#), .done(finish: "blocked"))
+        XCTAssertEqual(ChatEvent.parse(#"data: {"type":"error","code":"rate_limited"}"#), .failed(code: "rate_limited"))
+        XCTAssertNil(ChatEvent.parse(": keep-alive"))
+        XCTAssertNil(ChatEvent.parse(#"data: {"type":"done","finish":"whatever"}"#))
+        XCTAssertEqual(GatewayRefusal(code: "rate_limited").messageKey, "ai.error.tooMany")
+        XCTAssertEqual(GatewayRefusal(code: "anything").messageKey, "ai.error.unavailable")
+    }
+
+    func testADraftWithContactDetailsDoesNotGo() {
+        XCTAssertEqual(ChatModel.draftProblem("   "), "empty")
+        XCTAssertEqual(ChatModel.draftProblem("my number is 99887766"), "contact_details")
+        XCTAssertNil(ChatModel.draftProblem("Is it dishwasher safe?"))
+        XCTAssertEqual(ChatModel.draftProblem(String(repeating: "a", count: 1001)), "too_large")
+    }
+}

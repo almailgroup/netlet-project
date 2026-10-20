@@ -137,6 +137,21 @@ final class AppModel {
     private(set) var features = FeatureStates.unknown
     /// What is waiting in the account: unread notices and messages, parcels on the way.
     let signals: AccountSignals
+    /// What the AI gateway is set up for here (`ai.available`); nil until asked.
+    private(set) var ai: AIAvailability?
+    /// The gateway, holding one token for every conversation.
+    let gateway: AIGateway
+    /// The shop's conversation, kept while the app runs — the web keeps it
+    /// for the tab — and emptied by New chat.
+    let shopChat: ChatModel
+    var chatOpen = false
+    /// An answer finished while the conversation was closed.
+    var chatUnread = false
+
+    /// Whether the shop's conversations are drawn: only with a gateway behind
+    /// them and the assistant switched on, since a button that can only
+    /// apologise is worse than none.
+    var assistantOn: Bool { ai?.chat == true }
     /// The one short message showing, top-centre under the header (`sonner`).
     private(set) var toastMessage: Toast?
     struct Toast: Identifiable, Equatable {
@@ -159,6 +174,34 @@ final class AppModel {
         saved = SavedModel(account: services.account, defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog)
         signals = AccountSignals(api: services.api)
+        let api = services.api
+        let gateway = AIGateway(mint: { try await api.call(API.chatSession) })
+        self.gateway = gateway
+        let settings = self.language
+        shopChat = ChatModel(gateway: gateway, language: { settings.current })
+        shopChat.onAnswered = { [weak self] in
+            guard let self, !self.chatOpen else { return }
+            self.chatUnread = true
+        }
+    }
+
+    /// A conversation about one product, the product page's own assistant.
+    func productChat(_ product: Product) -> ChatModel {
+        let settings = language
+        return ChatModel(gateway: gateway, product: ProductBrief(product), language: { settings.current })
+    }
+
+    /// The help page's box: one question, one answer.
+    func helpChat() -> ChatModel {
+        let settings = language
+        return ChatModel(gateway: gateway, single: true, language: { settings.current })
+    }
+
+    /// Opens the shop's conversation, about the product on screen when there is one.
+    func openChat(about product: Product? = nil) {
+        shopChat.product = product.map(ProductBrief.init)
+        chatUnread = false
+        chatOpen = true
     }
 
     /// The real server, or the recorded demo when launched with `-NetLetDemo YES`.
@@ -194,6 +237,13 @@ final class AppModel {
         case "department":
             selectedTab = .categories
             categoriesPath = NavigationPath([Route.department(slug: value)])
+        case "chat":
+            // `chat:product-handle` opens it about that product, on its page.
+            if let value {
+                selectedTab = .home
+                homePath = NavigationPath([Route.product(handle: value)])
+            }
+            openChat()
         case "categories":
             selectedTab = .categories
         case "stores":
@@ -362,7 +412,10 @@ final class AppModel {
     /// The switches, asked at launch; a switch that cannot be read stays on,
     /// since the server refuses regardless.
     func loadFeatures() async {
-        if let states = try? await services.api.call(API.features) { features = states }
+        async let states = try? services.api.call(API.features)
+        async let available = try? services.api.call(API.aiAvailable)
+        if let states = await states { features = states }
+        ai = await available ?? AIAvailability(chat: false, catalog: false)
     }
 
     func signOut() async {

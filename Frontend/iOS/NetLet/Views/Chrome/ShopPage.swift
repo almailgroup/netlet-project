@@ -18,6 +18,11 @@ struct ShopPage<Content: View>: View {
     var root = false
     var footer = true
     var refresh: (() async -> Void)?
+    /// The assistant's button in the end corner; off where the page's own
+    /// floating bar has that corner, the web's rule that the thing a page is for wins.
+    var assistant = true
+    /// The product on screen, so the conversation starts about it.
+    var assistantProduct: Product?
     @ViewBuilder var content: () -> Content
 
     @Environment(AppModel.self) private var app
@@ -49,6 +54,14 @@ struct ShopPage<Content: View>: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Brand.ground.ignoresSafeArea())
+        .overlay(alignment: .bottomTrailing) {
+            if assistant {
+                ShopAssistantButton(product: assistantProduct)
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: assistant)
         .safeAreaInset(edge: .top, spacing: 0) {
             // The strip under the status bar wears the header's glass too.
             Color.clear.frame(height: 0).background(GlassSurface().ignoresSafeArea(edges: .top))

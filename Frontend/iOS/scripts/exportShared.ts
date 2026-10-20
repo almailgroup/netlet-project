@@ -56,6 +56,9 @@ import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "../../../Sha
 import { MAX_RETURN_NOTE, OPEN_RETURN_STATUSES, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
+import { DEPARTMENT_QUESTIONS, MAX_DESCRIPTION as MAX_BRIEF_DESCRIPTION, MAX_QUESTION, MAX_SPEC_ROWS, MAX_SUGGESTIONS } from "../../../Shared/commerce/assistant.js";
+import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS } from "../../../Shared/ai/gateway.js";
+import { MAX_PHOTO_CHARS, PHOTO_MAX_EDGE } from "../../../Shared/commerce/photoSearch.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -67,7 +70,12 @@ const INFO_PLIST = path.resolve(import.meta.dirname, "../Config/Info.plist");
  * `Info.plist` sentence, translated by each `.lproj`'s `InfoPlist.strings`.
  * The sentences are dictionary keys like every other word on screen.
  */
-const PERMISSIONS = { NSLocationWhenInUseUsageDescription: "ios.permission.location" } as const;
+const PERMISSIONS = {
+  NSLocationWhenInUseUsageDescription: "ios.permission.location",
+  NSMicrophoneUsageDescription: "ios.permission.microphone",
+  NSSpeechRecognitionUsageDescription: "ios.permission.speech",
+  NSCameraUsageDescription: "ios.permission.camera",
+} as const;
 
 export function buildPermissionStrings(): Record<string, string> {
   const escape = (text: string) => text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -198,6 +206,18 @@ export function buildResources(): Record<string, string> {
         claimWindowDays: CLAIM_WINDOW_DAYS,
         maxClaimDescription: MAX_CLAIM_DESCRIPTION,
         filsPerPoint: Number(FILS_PER_POINT),
+      },
+      ai: {
+        chatPath: GATEWAY_ROUTES.chat,
+        maxChatTurns: MAX_CHAT_TURNS,
+        maxChatText: MAX_CHAT_TEXT,
+        maxQuestion: MAX_QUESTION,
+        maxBriefDescription: MAX_BRIEF_DESCRIPTION,
+        maxSpecRows: MAX_SPEC_ROWS,
+        maxSuggestions: MAX_SUGGESTIONS,
+        departmentQuestions: DEPARTMENT_QUESTIONS,
+        photoMaxEdge: PHOTO_MAX_EDGE,
+        maxPhotoChars: MAX_PHOTO_CHARS,
       },
     }),
     "assets.json": json(buildAssets().manifest),

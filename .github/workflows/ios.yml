@@ -139,6 +139,7 @@ jobs:
             shot 26-sell "$lang" page:sell shopper
             shot 27-order "$lang" order:NL-20261001-J7MWY shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
+            shot 29-assistant "$lang" chat ""
           done
           ls -1 build/previews
 

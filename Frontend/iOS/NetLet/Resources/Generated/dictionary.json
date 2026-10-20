@@ -3374,7 +3374,13 @@
     "ios.permission.location": "NetLet uses your location only to move the map to where you are, so you can pin your door for the driver.",
     "ios.documents.fromFiles": "Choose a file",
     "ios.documents.fromPhotos": "Choose a photo",
-    "ios.tooLong": "That is too long. Keep it under {max} characters."
+    "ios.tooLong": "That is too long. Keep it under {max} characters.",
+    "ios.voice.privacy": "Apple's speech recognition turns what you say into text; NetLet gets only the words.",
+    "ios.voice.denied": "NetLet cannot use the microphone. Allow it in Settings, under NetLet, or type instead.",
+    "ios.voice.unsupported": "This phone cannot listen in this language. Type instead.",
+    "ios.permission.microphone": "NetLet listens only while you hold a search or a question open, so you can say it instead of typing.",
+    "ios.permission.speech": "Your words are turned into text by Apple's speech recognition and written into the box for you to check before anything is sent.",
+    "ios.permission.camera": "Take a photo of a product to search for it on NetLet. It is sent only when you press search."
   },
   "ar": {
     "nav.home": "الرئيسية",
@@ -6751,6 +6757,12 @@
     "ios.permission.location": "يستخدم نت‑لت موقعك فقط لتحريك الخريطة إلى مكانك، لتحدد بابك للسائق.",
     "ios.documents.fromFiles": "اختر ملفاً",
     "ios.documents.fromPhotos": "اختر صورة",
-    "ios.tooLong": "النص طويل جداً. اجعله أقل من {max} حرف."
+    "ios.tooLong": "النص طويل جداً. اجعله أقل من {max} حرف.",
+    "ios.voice.privacy": "يحوّل التعرّف على الكلام من أبل ما تقوله إلى نص، ولا يصل إلى نت‑لت إلا الكلمات.",
+    "ios.voice.denied": "لا يستطيع نت‑لت استخدام الميكروفون. اسمح به من الإعدادات ضمن نت‑لت، أو اكتب بدلاً من ذلك.",
+    "ios.voice.unsupported": "لا يستطيع هذا الهاتف الاستماع بهذه اللغة. اكتب بدلاً من ذلك.",
+    "ios.permission.microphone": "يستمع نت‑لت فقط أثناء فتحك للبحث أو السؤال، لتقوله بدلاً من كتابته.",
+    "ios.permission.speech": "يحوّل التعرّف على الكلام من أبل كلماتك إلى نص يُكتب في الخانة لتراجعه قبل إرسال أي شيء.",
+    "ios.permission.camera": "التقط صورة لمنتج للبحث عنه في نت‑لت. لا تُرسل إلا عند الضغط على البحث."
   }
 }

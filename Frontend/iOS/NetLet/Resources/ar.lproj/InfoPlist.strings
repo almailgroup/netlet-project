@@ -1,1 +1,4 @@
 "NSLocationWhenInUseUsageDescription" = "يستخدم نت‑لت موقعك فقط لتحريك الخريطة إلى مكانك، لتحدد بابك للسائق.";
+"NSMicrophoneUsageDescription" = "يستمع نت‑لت فقط أثناء فتحك للبحث أو السؤال، لتقوله بدلاً من كتابته.";
+"NSSpeechRecognitionUsageDescription" = "يحوّل التعرّف على الكلام من أبل كلماتك إلى نص يُكتب في الخانة لتراجعه قبل إرسال أي شيء.";
+"NSCameraUsageDescription" = "التقط صورة لمنتج للبحث عنه في نت‑لت. لا تُرسل إلا عند الضغط على البحث.";

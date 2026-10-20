@@ -157,6 +157,15 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(OrderDetail.self, from: data), "an order without its record is not an order")
     }
 
+    func testTheAssistantIsDrawnOnlyWithAGatewayBehindIt() async throws {
+        let available = try await client.call(API.aiAvailable)
+        XCTAssertTrue(available.chat)
+        let session = try await client.call(API.chatSession)
+        XCTAssertFalse(session.available, "the demo has no gateway, so a question says it could not be answered")
+        let photo = try await client.call(API.photoAvailable)
+        XCTAssertFalse(photo.available)
+    }
+
     func testAnInvoiceIsCheckableAndDatedInBothCalendars() throws {
         XCTAssertTrue(InvoiceWording.isNumber("INV-2026-000002"))
         XCTAssertTrue(InvoiceWording.isNumber("CRN-2026-000010"))

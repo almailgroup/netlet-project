@@ -55,7 +55,7 @@ private struct ProductPage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(refresh: { await model.load(language: l.current) }) {
+        ShopPage(refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: crumbs)
                 gallery
@@ -253,6 +253,8 @@ private struct ProductPage: View {
                     PriceRequestPanel(variant: variant)
                 }
                 AskSellerPanel(product: product)
+                // On a phone it follows everything that buys, the web's place for it.
+                ProductAssistantPanel(product: product)
             }
             .padding(.top, 16)
             if product.isExpress {
