@@ -5257,14 +5257,14 @@ asked for Apple's own Liquid Glass instead. It is a system `TabView` in
 `RootView` — Home, Profile, Cart and Categories, SF Symbols, the selected tab
 in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
 Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. **Over the
-navy footer the glass turns dark and draws its tabs in a dark appearance, even
-in an app fixed to light**, and the selected tab's navy all but vanished in
-the first build (17). The bar takes the asset catalogue's AccentColor — navy,
-with `accentOnDark`, the web's light orange for words over navy, as its dark
-appearance — and nothing sets a SwiftUI `.tint` above it: a `.tint`, even of a
-dynamic colour, was fixed once in the app's light environment, so the second
-try left the selected tab navy on dark glass exactly as before. The rest of
-the app is light, so AccentColor is navy everywhere else. A press ticks
+navy footer the glass turned dark, and the selected tab vanished** in the
+first build (17): it is drawn in the tint, which the glass lightens a little
+over dark content and never swaps for a dark version — a dynamic colour as
+`.tint` and a dark AccentColor both drew the same pixels — and no one colour
+reads on both a light and a dark bubble. So `ShopPage`'s scroll view has the
+hard bottom scroll-edge effect (`scrollEdgeEffectStyle(.hard, for: .bottom)`,
+iOS 26): the band under the bar is a nearly opaque strip of the page, and the
+glass stays light. A press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
 `.toolbar(.hidden, for: .tabBar)`, the bare-header rule. The home page is `HomeShelf`, which is

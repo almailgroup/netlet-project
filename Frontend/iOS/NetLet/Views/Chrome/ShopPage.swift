@@ -45,6 +45,7 @@ struct ShopPage<Content: View>: View {
                 }
             }
             .modifier(OptionalRefresh(action: refresh))
+            .modifier(HardBottomEdge())
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Brand.ground.ignoresSafeArea())
@@ -58,6 +59,22 @@ struct ShopPage<Content: View>: View {
 
 private enum ShopPageTop {
     static let id = "shop-page-top"
+}
+
+/// The page's foot under the tab bar is a nearly opaque band of the page
+/// rather than the page itself, on iOS 26. The system bar is Liquid Glass and
+/// takes on what passes under it: over the navy footer it turned dark, and the
+/// selected tab — drawn in the navy tint, which the glass lightens a little
+/// and never swaps — vanished on its own bubble. No tint fixes that, being
+/// one colour for two grounds; the hard edge keeps the ground light.
+private struct HardBottomEdge: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.scrollEdgeEffectStyle(.hard, for: .bottom)
+        } else {
+            content
+        }
+    }
 }
 
 private struct OptionalRefresh: ViewModifier {
