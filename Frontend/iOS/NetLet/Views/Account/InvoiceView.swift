@@ -447,22 +447,25 @@ enum InvoiceWording {
     private static let kuwait = TimeZone(identifier: "Asia/Kuwait") ?? .current
 
     static func gregorian(_ date: Date, _ language: Language) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: language == .ar ? "ar@numbers=latn" : "en_GB")
-        formatter.timeZone = kuwait
-        formatter.setLocalizedDateFormatFromTemplate("dMMMMy")
-        return formatter.string(from: date)
+        format(date, locale: language == .ar ? "ar_KW@calendar=gregorian;numbers=latn" : "en_GB@calendar=gregorian")
     }
 
     /// Umm al-Qura, the calendar Kuwait's own dates are kept in.
     static func hijri(_ date: Date, _ language: Language) -> String {
+        format(date, locale: language == .ar ? "ar_KW@calendar=islamic-umalqura;numbers=latn" : "en_GB@calendar=islamic-umalqura")
+    }
+
+    /// The calendar rides in the locale rather than on the formatter: setting
+    /// one on the formatter dropped the locale's Latin digits. Any
+    /// Arabic-Indic digit left is folded, as the web writes dates.
+    private static func format(_ date: Date, locale: String) -> String {
         let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .islamicUmmAlQura)
-        formatter.locale = Locale(identifier: language == .ar ? "ar@calendar=islamic-umalqura;numbers=latn" : "en@calendar=islamic-umalqura")
+        formatter.locale = Locale(identifier: locale)
         formatter.timeZone = kuwait
         formatter.setLocalizedDateFormatFromTemplate("dMMMMy")
-        return formatter.string(from: date)
+        return String(formatter.string(from: date).unicodeScalars.map { scalar -> Character in
+            (0x0660...0x0669).contains(scalar.value) ? Character(String(scalar.value - 0x0660)) : Character(scalar)
+        })
     }
 
     /// `INV-2026-000042` or `CRN-…`, and nothing longer — the router's shape.
