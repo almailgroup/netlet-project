@@ -49,7 +49,7 @@ export const DIMENSION_OF: Record<SellUnit, Dimension> = {
  * whole number of them: a 250 g step, a 1.5 l bottle, a 330 ml can. Anything
  * finer than a gram is not a thing a grocer weighs.
  */
-const BASE_PER_UNIT: Record<SellUnit, number> = { each: 1, g: 1, kg: 1000, ml: 1, l: 1000 };
+export const BASE_PER_UNIT: Record<SellUnit, number> = { each: 1, g: 1, kg: 1000, ml: 1, l: 1000 };
 
 /** The unit a shopper expects a price to be quoted in, per family. */
 export const CANONICAL: Record<Dimension, SellUnit> = { count: "each", mass: "kg", volume: "l" };

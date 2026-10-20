@@ -278,5 +278,220 @@
     "cardMin": 1,
     "cardMax": 3
   },
-  "maxBankReference": 80
+  "maxBankReference": 80,
+  "editor": {
+    "attributeSchema": {
+      "electronics": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "model",
+          "label": "Model",
+          "labelAr": "الطراز"
+        },
+        {
+          "key": "ram",
+          "label": "Memory",
+          "labelAr": "الذاكرة",
+          "unit": "GB"
+        },
+        {
+          "key": "storage",
+          "label": "Storage",
+          "labelAr": "السعة التخزينية",
+          "unit": "GB"
+        },
+        {
+          "key": "warranty",
+          "label": "Warranty",
+          "labelAr": "الضمان"
+        }
+      ],
+      "home-and-kitchen": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "material",
+          "label": "Material",
+          "labelAr": "الخامة"
+        },
+        {
+          "key": "capacity",
+          "label": "Capacity",
+          "labelAr": "السعة",
+          "unit": "L"
+        },
+        {
+          "key": "power",
+          "label": "Power",
+          "labelAr": "القدرة",
+          "unit": "W"
+        }
+      ],
+      "beauty": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "volume",
+          "label": "Volume",
+          "labelAr": "الحجم",
+          "unit": "ml"
+        },
+        {
+          "key": "skintype",
+          "label": "Skin type",
+          "labelAr": "نوع البشرة"
+        }
+      ],
+      "style": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "material",
+          "label": "Material",
+          "labelAr": "الخامة"
+        },
+        {
+          "key": "fit",
+          "label": "Fit",
+          "labelAr": "القَصّة",
+          "options": [
+            "Regular",
+            "Slim",
+            "Relaxed",
+            "Oversized"
+          ]
+        }
+      ],
+      "grocery": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "origin",
+          "label": "Country of origin",
+          "labelAr": "بلد المنشأ"
+        },
+        {
+          "key": "storage",
+          "label": "Storage",
+          "labelAr": "طريقة الحفظ",
+          "options": [
+            "Ambient",
+            "Chilled",
+            "Frozen"
+          ]
+        }
+      ]
+    },
+    "sellUnits": [
+      "each",
+      "g",
+      "kg",
+      "ml",
+      "l"
+    ],
+    "basePerUnit": {
+      "each": 1,
+      "g": 1,
+      "kg": 1000,
+      "ml": 1,
+      "l": 1000
+    },
+    "dimensionOf": {
+      "each": "count",
+      "g": "mass",
+      "kg": "mass",
+      "ml": "volume",
+      "l": "volume"
+    },
+    "canonical": {
+      "count": "each",
+      "mass": "kg",
+      "volume": "l"
+    },
+    "stockReasons": [
+      "received",
+      "sold",
+      "damaged",
+      "correction",
+      "returned"
+    ],
+    "sizeClasses": [
+      "small",
+      "medium",
+      "large",
+      "oversize"
+    ],
+    "vehicleByClass": {
+      "small": "bike",
+      "medium": "car",
+      "large": "van",
+      "oversize": "truck"
+    },
+    "deliverySpeeds": [
+      "same_day",
+      "next_day",
+      "two_to_four",
+      "up_to_week",
+      "made_to_order"
+    ],
+    "addonKinds": [
+      "installation",
+      "warranty",
+      "other"
+    ],
+    "optionNameMax": 60,
+    "optionValueMax": 120,
+    "measures": [
+      "chest",
+      "waist",
+      "hips",
+      "inseam",
+      "footLength",
+      "height"
+    ],
+    "measureBounds": {
+      "chest": {
+        "min": 30,
+        "max": 200
+      },
+      "waist": {
+        "min": 30,
+        "max": 200
+      },
+      "hips": {
+        "min": 30,
+        "max": 200
+      },
+      "inseam": {
+        "min": 20,
+        "max": 120
+      },
+      "footLength": {
+        "min": 8,
+        "max": 40
+      },
+      "height": {
+        "min": 40,
+        "max": 230
+      }
+    },
+    "maxSizes": 20,
+    "maxSizeLabel": 20
+  }
 }

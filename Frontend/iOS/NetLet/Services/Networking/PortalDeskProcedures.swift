@@ -6,7 +6,7 @@ import Foundation
 extension API {
     // MARK: Orders
 
-    struct OrderPage: Encodable, Sendable {
+    struct DeskPage: Encodable, Sendable {
         var page: Int?
         var vendorId: Int?
     }
@@ -32,7 +32,7 @@ extension API {
         let evidenceUrl: String?
     }
 
-    static let deskOrders = Procedure<OrderPage, PortalPageOf<DeskOrder>>(query: "orders.forSeller")
+    static let deskOrders = Procedure<DeskPage, PortalPageOf<DeskOrder>>(query: "orders.forSeller")
     static let orderRisk = Procedure<OrderIds, [OrderRisk]>(query: "orders.risk")
     static let deskOrder = Procedure<OrderId, DeskOrderDetail?>(query: "orders.forSellerDetail")
     static let moveLine = Procedure<LineMove, Acknowledged>(mutation: "orders.setFulfilment")
@@ -41,7 +41,7 @@ extension API {
 
     // MARK: Stock
 
-    static let lowStock = Procedure<OrderPage, PortalPageOf<LowStockRow>>(query: "inventory.lowStock")
+    static let lowStock = Procedure<DeskPage, PortalPageOf<LowStockRow>>(query: "inventory.lowStock")
     static let stockHistory = Procedure<Limit, [StockMove]>(query: "inventory.stockHistory")
 
     // MARK: Price requests

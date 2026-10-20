@@ -64,6 +64,14 @@ import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from 
 import { MAX_PHOTO_CHARS, PHOTO_MAX_EDGE } from "../../../Shared/commerce/photoSearch.js";
 import { FULFILMENT_STATES, nextStates } from "../../../Shared/commerce/fulfilment.js";
 import { MAX_BANK_REFERENCE } from "../../../Shared/commerce/payoutRuns.js";
+import { ATTRIBUTE_SCHEMA } from "../../../Shared/commerce/attributeSchema.js";
+import { BASE_PER_UNIT, CANONICAL, DIMENSION_OF, SELL_UNITS } from "../../../Shared/commerce/units.js";
+import { STOCK_REASONS } from "../../../Shared/inventory/stockMoves.js";
+import { BY_CLASS, SIZE_CLASSES } from "../../../Shared/commerce/vehicle.js";
+import { DELIVERY_SPEEDS } from "../../../Shared/commerce/deliverySpeed.js";
+import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
+import { OPTION_NAME_MAX, OPTION_VALUE_MAX } from "../../../Shared/inventory/variantOptions.js";
+import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Shared/commerce/sizeGuide.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -235,7 +243,17 @@ export function buildResources(): Record<string, string> {
          moves the server would take; and the payout schedule's own days. */
       fulfilment: Object.fromEntries(FULFILMENT_STATES.map(state => [state, nextStates(state)])),
       settlement: { cod: SETTLEMENT_DAYS.cod.min, cardMin: SETTLEMENT_DAYS.card.min, cardMax: SETTLEMENT_DAYS.card.max },
-      maxBankReference: MAX_BANK_REFERENCE }),
+      maxBankReference: MAX_BANK_REFERENCE,
+      /* The product editor's vocabulary: each department's specification
+         rows, how units relate, the stock reasons, the size classes and the
+         vehicle each needs, the delivery bands, the add-on kinds and the size
+         chart's measures with their bounds. */
+      editor: {
+        attributeSchema: ATTRIBUTE_SCHEMA, sellUnits: SELL_UNITS, basePerUnit: BASE_PER_UNIT, dimensionOf: DIMENSION_OF,
+        canonical: CANONICAL, stockReasons: STOCK_REASONS, sizeClasses: SIZE_CLASSES, vehicleByClass: BY_CLASS,
+        deliverySpeeds: DELIVERY_SPEEDS, addonKinds: ADDON_KINDS, optionNameMax: OPTION_NAME_MAX, optionValueMax: OPTION_VALUE_MAX,
+        measures: MEASURES, measureBounds: MEASURE_BOUNDS, maxSizes: MAX_SIZES, maxSizeLabel: MAX_SIZE_LABEL,
+      } }),
   };
 }
 

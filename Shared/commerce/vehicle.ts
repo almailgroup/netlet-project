@@ -32,7 +32,7 @@ export const SIZE_CLASSES = ["small", "medium", "large", "oversize"] as const;
 export type SizeClass = (typeof SIZE_CLASSES)[number];
 
 /** The vehicle each size class needs. */
-const BY_CLASS: Record<SizeClass, Vehicle> = {
+export const BY_CLASS: Record<SizeClass, Vehicle> = {
   small: "bike",
   medium: "car",
   large: "van",

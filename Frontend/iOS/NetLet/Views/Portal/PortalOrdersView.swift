@@ -216,7 +216,8 @@ private struct DeskOrderDetailView: View {
         // Off NetLet's shelf, NetLet picks and packs it: the seller is told rather
         // than offered buttons the server would refuse.
         let netletPacks = actor.map { $0.kind != "customer" && !(line.centreId == nil || $0.kind == "admin") } ?? false
-        let moves = PortalRules.shared.nextStates(line.fulfilment).filter { !(order.status == "cancelled" && line.fulfilment == "cancelled") }
+        // A cancelled line on a closed order stays cancelled: what paid for it has gone back.
+        let moves = order.status == "cancelled" && line.fulfilment == "cancelled" ? [] : PortalRules.shared.nextStates(line.fulfilment)
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 (Text(line.productTitle).fontWeight(.semibold) + Text(line.variantLabel.map { " · \($0)" } ?? "").foregroundColor(Brand.muted))
