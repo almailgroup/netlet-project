@@ -901,7 +901,7 @@ private struct SizeChartSection: View {
         TextField("", text: Binding(
             get: { end == 0 ? row.wrappedValue.ranges[measure]?.0 ?? "" : row.wrappedValue.ranges[measure]?.1 ?? "" },
             set: { typed in
-                let clean = typed.filter { $0.isASCIIDigit || $0 == "." }
+                let clean = typed.filter { ("0"..."9").contains($0) || $0 == "." }
                 var pair = row.wrappedValue.ranges[measure] ?? ("", "")
                 if end == 0 { pair.0 = clean } else { pair.1 = clean }
                 row.wrappedValue.ranges[measure] = pair
