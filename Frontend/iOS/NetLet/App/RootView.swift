@@ -7,7 +7,9 @@ import SwiftUI
 /// **The tab bar is Apple's, on the owner's word**, not a copy of the web's
 /// floating pill: a `TabView` built with the iOS 26 SDK is drawn in Liquid
 /// Glass on iOS 26 — floating, refracting what scrolls under it, the selected
-/// tab lit in the shop's navy — and as the standard tab bar on iOS 17 and 18,
+/// tab lit in the shop's navy, or its light orange where the glass turns dark
+/// over the footer (`Brand.tabSelected`) — and as the standard tab bar on iOS
+/// 17 and 18,
 /// so it is the bar every other app on the phone has. Its badge is the
 /// system's, its order follows the page's direction, and VoiceOver reads it
 /// as a tab bar. A press still ticks at the tab bar's strength, and pressing
@@ -42,7 +44,7 @@ struct RootView: View {
                 .tabItem { Label(l.t("nav.categories"), systemImage: "square.grid.2x2") }
                 .tag(AppModel.Tab.categories)
         }
-        .tint(Brand.navy)
+        .tint(Brand.tabSelected)
         .overlay {
             if app.searchOpen {
                 SearchOverlay()

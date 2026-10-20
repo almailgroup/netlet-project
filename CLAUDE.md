@@ -5256,7 +5256,11 @@ was `FloatingTabBar`, a copy of `MobileTabBar`'s floating pill, and the owner
 asked for Apple's own Liquid Glass instead. It is a system `TabView` in
 `RootView` — Home, Profile, Cart and Categories, SF Symbols, the selected tab
 in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
-Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. A press ticks
+Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. **Over the
+navy footer the glass turns dark and draws its tabs in a dark appearance, even
+in an app fixed to light**, and the selected tab's navy all but vanished in
+the first build (17); `Brand.tabSelected` is navy in light and `accentOnDark`,
+the web's light orange for words over navy, in dark. A press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
 `.toolbar(.hidden, for: .tabBar)`, the bare-header rule. The home page is `HomeShelf`, which is
