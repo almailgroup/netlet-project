@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// NetLet's palette, the web's own values (`index.css` and the components):
 /// navy, the brand orange as a fill, and the page's near-white ground. The
@@ -19,15 +18,6 @@ enum Brand {
     static let accentInk = Color(red: 164 / 255, green: 74 / 255, blue: 43 / 255)
     /// The orange's words over navy, where darkening it would make it worse.
     static let accentOnDark = Color(red: 255 / 255, green: 171 / 255, blue: 133 / 255)
-    /// The system tab bar's selected tab: navy on its glass at rest, and
-    /// `accentOnDark` when the glass turns dark over the navy footer. Liquid
-    /// Glass draws what is on it in a dark appearance over dark content even
-    /// though the app is light only, and navy on that all but vanished.
-    static let tabSelected: Color = {
-        let light = UIColor(red: 10 / 255, green: 40 / 255, blue: 90 / 255, alpha: 1)
-        let dark = UIColor(red: 255 / 255, green: 171 / 255, blue: 133 / 255, alpha: 1)
-        return Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
-    }()
     static let success = Color(red: 47 / 255, green: 93 / 255, blue: 51 / 255)
     static let successFill = Color(red: 227 / 255, green: 239 / 255, blue: 228 / 255)
     static let danger = Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255)

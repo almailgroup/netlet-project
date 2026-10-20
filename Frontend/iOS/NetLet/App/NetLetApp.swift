@@ -17,7 +17,10 @@ struct NetLetApp: App {
                 .environment(app.language)
                 .environment(\.layoutDirection, app.language.layoutDirection)
                 .environment(\.locale, app.language.current.locale)
-                .tint(Brand.navy)
+                // The tint is the asset catalogue's AccentColor — navy, which
+                // is what every control here draws in, the app being light only
+                // — and not a `.tint`, which would fix the tab bar's selected
+                // tab at navy over dark glass too (see `RootView`).
                 .buttonStyle(HapticDefaultStyle())
                 .task { await app.start() }
         }
