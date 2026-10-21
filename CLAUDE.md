@@ -2087,7 +2087,11 @@ answers NetLet's own server. Its `README.md` is the setup, `wrangler` commands
 included. Cloudflare's Workers Builds deploys it on every push from the folder
 named in the Worker's settings in Cloudflare's dashboard — `Backend/gateway`
 since the move; a folder change there is a change to make in the dashboard too,
-or the gateway silently stops deploying. **Every model call NetLet makes is Gemini through it, and Mistral is
+or the gateway silently stops deploying. **It did**: the "Workers Builds:
+netlet-ai-gateway" check on `main` went red with the commit after the move and
+stayed red, which is the dashboard still building the old `gateway/` folder —
+the live Worker is the one from before the move until the root directory there
+reads `Backend/gateway`. **Every model call NetLet makes is Gemini through it, and Mistral is
 gone, on the owner's word.** The shop's conversations moved first (see "The
 shop assistant"); then the six features this server called Mistral for —
 search refinement, the Picked for you order, photo search, support drafts, the
@@ -5362,10 +5366,12 @@ artifact; notices were tried first and the API cuts an annotation off at
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was
 run by hand at first, and the owner asked for an app change to reach the
 phones without anybody pressing anything — and **so every push of an app
-change is a build on the owner's phone, and is asked about first**, on their
-word: the change is shown, built on a branch of its own (no upload — the
-TestFlight workflow takes `main` only), and pushed to `main` once they say so.
-A push whose tests failed never
+change is a build on the owner's phone.** For a while each change was built on
+a branch of its own first and pushed to `main` once the owner said so; the
+side branches crowded the repository's branch list, and the owner asked for
+**everything to go straight to `main`**. So app work is pushed there in
+finished pieces, checked on the Mac CI's first run on `main` — which is the run
+that decides the upload — rather than fix by fix. A push whose tests failed never
 uploads, a pull request's run never does, and it checks out the commit the
 tests passed on rather than whatever `main` holds by then. **A run of the iOS
 workflow started by hand waits behind a push's rather than cancelling it**
