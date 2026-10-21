@@ -488,6 +488,7 @@ enum DocumentWords {
     }
 
     /// A file's size in words (`useFileSize`).
+    @MainActor
     static func size(_ bytes: Int, _ l: LanguageSettings) -> String {
         if bytes >= 1_000_000 {
             return l.t("documents.sizeMb", ["size": String(format: "%.1f", Double(bytes) / 1_000_000)])
