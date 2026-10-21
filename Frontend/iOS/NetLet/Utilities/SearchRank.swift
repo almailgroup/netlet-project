@@ -154,15 +154,23 @@ enum SearchRank {
         )
     }
 
-    private static func fields(_ doc: Doc) -> [(weight: Double, tokens: [String])] {
+    private struct Field {
+        let weight: Double
+        let tokens: [String]
+    }
+
+    private static func fields(_ doc: Doc) -> [Field] {
         let arabicDepartment = ReferenceData.shared.departments.first { $0.name == doc.department }?.nameAr
+        let department: [String] = words(doc.department) + words(arabicDepartment)
+        let tags: [String] = doc.tags.flatMap { words($0) }
+        let variants: [String] = doc.variants.flatMap { words($0) }
         return [
-            (10, words(doc.title)),
-            (8, words(doc.brand)),
-            (6, words(doc.department) + words(arabicDepartment)),
-            (4, doc.tags.flatMap { words($0) }),
-            (3, doc.variants.flatMap { words($0) }),
-            (1, words(doc.description)),
+            Field(weight: 10, tokens: words(doc.title)),
+            Field(weight: 8, tokens: words(doc.brand)),
+            Field(weight: 6, tokens: department),
+            Field(weight: 4, tokens: tags),
+            Field(weight: 3, tokens: variants),
+            Field(weight: 1, tokens: words(doc.description)),
         ]
     }
 
@@ -199,10 +207,14 @@ enum SearchRank {
     /// (`rankBySearch`).
     static func rank(_ products: [Product], _ term: String) -> [Product] {
         let words = queryWords(term)
-        return products.enumerated()
-            .map { (offset: $0.offset, product: $0.element, score: score(doc($0.element), words)) }
-            .filter { $0.score > 0 }
-            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }
-            .map(\.product)
+        var scored: [(offset: Int, score: Double)] = []
+        for (offset, product) in products.enumerated() {
+            let value = score(doc(product), words)
+            if value > 0 { scored.append((offset, value)) }
+        }
+        scored.sort { left, right in
+            left.score != right.score ? left.score > right.score : left.offset < right.offset
+        }
+        return scored.map { products[$0.offset] }
     }
 }

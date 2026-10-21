@@ -212,12 +212,7 @@ private struct BrowsePage: View {
             chips.append(Chip(id: "speed:" + speed, label: l.t("speed.\(speed)")) { $0.speeds.remove(speed) })
         }
         if filters.minPrice != nil || filters.maxPrice != nil {
-            let low = filters.minPrice.map(UnitWording.number)
-            let high = filters.maxPrice.map(UnitWording.number)
-            let label = low.flatMap { low in high.map { "\(low) – \($0)" } }
-                ?? low.map { l.t("browse.priceFrom", ["min": $0]) }
-                ?? l.t("browse.priceUpTo", ["max": high ?? "0"])
-            chips.append(Chip(id: "price", label: label) {
+            chips.append(Chip(id: "price", label: priceLabel(filters)) {
                 $0.minPrice = nil
                 $0.maxPrice = nil
             })
@@ -231,6 +226,15 @@ private struct BrowsePage: View {
             chips.append(Chip(id: "rating", label: l.t("browse.ratingAndUp", ["stars": "\(stars)"])) { $0.minRating = nil })
         }
         return chips
+    }
+
+    /// "5 – 20", "From 5" or "Up to 20", the web's chip.
+    private func priceLabel(_ filters: BrowseFilters) -> String {
+        let low = filters.minPrice.map(UnitWording.number)
+        let high = filters.maxPrice.map(UnitWording.number)
+        if let low, let high { return "\(low) – \(high)" }
+        if let low { return l.t("browse.priceFrom", ["min": low]) }
+        return l.t("browse.priceUpTo", ["max": high ?? "0"])
     }
 
     @ViewBuilder

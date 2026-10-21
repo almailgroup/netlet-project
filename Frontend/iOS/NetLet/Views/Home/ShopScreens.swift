@@ -309,10 +309,7 @@ struct StoreView: View {
     private func products(_ found: StorePage) -> some View {
         let departments = storeDepartments(found.products)
         let inDepartment = found.products.filter { department.isEmpty || ($0.productType ?? "") == department }
-        let words = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Searched by the shop's one rule; a chosen sort still wins over the ranking.
-        let shelf = words.isEmpty ? sort.apply(to: inDepartment)
-            : sort == .relevance ? SearchRank.rank(inDepartment, words) : sort.apply(to: SearchRank.rank(inDepartment, words))
+        let shelf = narrowed(inDepartment)
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(l.t("stores.products")).shelfTitle()
@@ -387,6 +384,15 @@ struct StoreView: View {
             }
         }
         .padding(.top, 32)
+    }
+
+    /// The shelf searched by the shop's one rule; a chosen sort still wins
+    /// over the ranking.
+    private func narrowed(_ products: [Product]) -> [Product] {
+        let words = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        if words.isEmpty { return sort.apply(to: products) }
+        let ranked = SearchRank.rank(products, words)
+        return sort == .relevance ? ranked : sort.apply(to: ranked)
     }
 
     /// A store's shelf is searched from a dozen products up (`SEARCH_FROM`).
