@@ -249,19 +249,25 @@ struct ProductPhotos: View {
 /// a photo further up that has not loaded cannot push the one on screen down
 /// when it does. A video plays where it is; a photo opens full screen — as a
 /// layer over this list inside the same cover, the web's `ZoomViewer` over its
-/// `PhotoSheet`, rather than a second cover presented from the first, which
-/// asked for while the first was presented was not drawn.
+/// `PhotoSheet`, rather than a second cover presented from the first.
 struct PhotoSheet: View {
     let product: Product
     @Binding var index: Int
-    /// Opens straight on the full-screen viewer — for the screenshots CI takes.
-    var startFull = false
     let close: () -> Void
 
-    @State private var full = false
+    @State private var full: Bool
     @AccessibilityFocusState private var focusedPhoto: Int?
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
+
+    /// `startFull` opens straight on the full-screen viewer, from the first
+    /// frame — for the screenshots CI takes.
+    init(product: Product, index: Binding<Int>, startFull: Bool = false, close: @escaping () -> Void) {
+        self.product = product
+        _index = index
+        self.close = close
+        _full = State(initialValue: startFull)
+    }
 
     var body: some View {
         let media = product.gallery
@@ -304,7 +310,6 @@ struct PhotoSheet: View {
                     // not follow the page's photo afterwards.
                     await Task.yield()
                     proxy.scrollTo(index, anchor: .top)
-                    if startFull { full = true }
                 }
                 .onChange(of: full) { _, open in
                     // Back from full screen, the photo last looked at — perhaps

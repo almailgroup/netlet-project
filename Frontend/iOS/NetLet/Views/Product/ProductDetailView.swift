@@ -52,8 +52,10 @@ private struct ProductPage: View {
     @State private var failure: String?
     @State private var buttonsGone = false
     @State private var open: Set<String> = ["specifications"]
-    @State private var photosOpen = false
-    @State private var photosStartFull = false
+    /// The photos, open on the list or straight on full screen. One value
+    /// rather than a flag and a second flag beside it: a value read only
+    /// inside a cover's content is the old one the first time it presents.
+    @State private var photos: PhotoViewerStart?
     /// Whether the shopper holds a membership, for the member price line.
     @State private var member = false
     /// The governorate the account delivers to, named in "Get it by … to …".
@@ -64,7 +66,7 @@ private struct ProductPage: View {
         ShopPage(refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: crumbs)
-                ProductPhotos(product: product, index: $model.imageIndex) { photosOpen = true }
+                ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }
                     .padding(.top, 8)
                 buyBox
                     .padding(.top, 24)
@@ -84,13 +86,10 @@ private struct ProductPage: View {
         }
         .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         .sensoryFeedback(.success, trigger: app.cart.itemCount)
-        .fullScreenCover(isPresented: $photosOpen) {
-            PhotoSheet(product: product, index: $model.imageIndex, startFull: photosStartFull) {
-                photosOpen = false
-                photosStartFull = false
-            }
-            .environment(\.layoutDirection, l.layoutDirection)
-            .buttonStyle(HapticDefaultStyle())
+        .fullScreenCover(item: $photos) { start in
+            PhotoSheet(product: product, index: $model.imageIndex, startFull: start == .zoom) { photos = nil }
+                .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
         }
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
@@ -105,8 +104,7 @@ private struct ProductPage: View {
             // A screenshot's start (`-NetLetOpen photos:` or `zoom:`), taken once.
             guard let start = app.photoViewerStart else { return }
             app.photoViewerStart = nil
-            photosStartFull = start == .zoom
-            photosOpen = true
+            photos = start
         }
     }
 

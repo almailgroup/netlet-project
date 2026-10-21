@@ -5329,11 +5329,14 @@ viewer in its end corner, an arrow at each side, the count, four thumbnails and
 "+N"); a press opens `PhotoSheet`, every item of `Product.gallery` (`galleryOf`:
 `media`, a video between the photographs, or the photographs alone) square and
 one under another at the one being looked at; a press on one opens
-`ZoomViewer`, white and full screen. **Full screen is a layer over the list
-inside the photos' cover, never a second cover**: a `fullScreenCover` asked
-for from inside the first was not drawn — the screenshot of it showed the list
-nine seconds on — so the web's shape, its `ZoomViewer` over its `PhotoSheet`,
-is the app's too, the list hidden from VoiceOver while the layer is up. **The zoom is the system's own zooming
+`ZoomViewer`, white and full screen — a layer over the list inside the
+photos' cover, the web's `ZoomViewer` over its `PhotoSheet`, with the list
+hidden from VoiceOver while it is up. **A value read only inside a cover's
+content is the old one the first time it presents**: the photos opened on a
+`Bool` with a "start full screen" flag set beside it, and the screenshot of
+full screen showed the list, because the cover saw the flag still false. It
+is one value now, `.fullScreenCover(item:)` over `PhotoViewerStart` — the
+shape to use whenever a cover needs to know anything. **The zoom is the system's own zooming
 `UIScrollView`** (`ZoomablePhoto`), not a SwiftUI gesture: it pinches about
 the fingers, rubber-bands at the edges and keeps a photo smaller than the
 screen in its middle, which is the web's `panAbout` and `clampPan` done by iOS;

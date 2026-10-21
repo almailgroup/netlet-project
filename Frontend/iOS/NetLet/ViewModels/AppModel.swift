@@ -489,8 +489,10 @@ final class AppModel {
 }
 
 /// Where a product page's photo viewer starts.
-enum PhotoViewerStart {
+enum PhotoViewerStart: Identifiable {
     case photos, zoom
+
+    var id: Self { self }
 }
 
 /// What the search opens on when the header's field is not what was pressed.
