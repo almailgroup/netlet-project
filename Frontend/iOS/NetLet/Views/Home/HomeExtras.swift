@@ -18,10 +18,6 @@ struct HomeBanner: Decodable, Identifiable, Hashable, Sendable {
 }
 
 extension API {
-    struct LocaleOnly: Encodable, Sendable {
-        let locale: String
-    }
-
     struct SponsoredQuery: Encodable, Sendable {
         let slot: String
         var departmentSlug: String?
