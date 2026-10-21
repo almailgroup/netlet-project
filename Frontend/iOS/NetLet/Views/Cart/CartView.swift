@@ -53,6 +53,23 @@ struct CartView: View {
 
     private func filled(_ cart: Cart) -> some View {
         VStack(spacing: 14) {
+            if let recovery = cart.recovery, recovery.remind, let count = recovery.itemCount, let hours = recovery.hours {
+                // Said where it is seen rather than in an email nobody can send.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(count == 1 ? l.t("cart.recoveryTitleOne") : l.t("cart.recoveryTitle", ["count": "\(count)"]))
+                        .font(.inter(13, .heavy))
+                        .foregroundStyle(Brand.navy)
+                    Text(hours >= 48 ? l.t("cart.recoveryNoteDays", ["days": "\(hours / 24)"]) : l.t("cart.recoveryNote", ["hours": "\(hours)"]))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 240 / 255, green: 211 / 255, blue: 198 / 255), lineWidth: 1))
+            }
             VStack(spacing: 0) {
                 ForEach(cart.items) { item in
                     CartLineRow(item: item)
@@ -130,6 +147,9 @@ struct CartLineRow: View {
                 if let variant = item.variantLabel {
                     Text(variant).font(.caption).foregroundStyle(Brand.muted)
                 }
+                if let destination = item.destination {
+                    Text(l.t("address.sendingTo", ["label": destination.label])).font(.inter(12)).foregroundStyle(Brand.muted)
+                }
                 // How much the steps come to, for something sold by weight (`MeasureLabel`).
                 if let measure = item.measure,
                    let amount = ListingRules.shared.measureOf(unit: measure.unit, step: measure.stepAmount, quantity: item.quantity) {
@@ -177,9 +197,13 @@ struct SummaryCard: View {
             ForEach(Array(cart.delivery.perVendor.enumerated()), id: \.offset) { _, line in
                 let name = line.storeName(l.current)
                 VStack(alignment: .leading, spacing: 4) {
-                    row(l.t("cart.deliveryFrom", ["name": name]), line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current))
+                    row(
+                        line.destinationLabel.map { l.t("address.deliveryTo", ["name": name, "label": $0]) } ?? l.t("cart.deliveryFrom", ["name": name]),
+                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current)
+                    )
                     if let toFree = line.toFree, !toFree.isZero {
-                        Text(l.t("cart.deliveryToFree", ["amount": toFree.formatted(l.current), "name": name]))
+                        Text(line.destinationLabel.map { l.t("address.toFreeAt", ["amount": toFree.formatted(l.current), "name": name, "label": $0]) }
+                            ?? l.t("cart.deliveryToFree", ["amount": toFree.formatted(l.current), "name": name]))
                             .font(.caption)
                             .foregroundStyle(Brand.accentInk)
                     }

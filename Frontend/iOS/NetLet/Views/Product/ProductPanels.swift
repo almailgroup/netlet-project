@@ -819,7 +819,15 @@ struct BoughtTogetherShelf: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(l.t("together.heading")).shelfTitle()
                     Text(l.t("together.note")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-                    ProductGrid(products: items.map(\.product))
+                    // Another seller wins over the percentage, being the fact that
+                    // changes what the shopper signs up for; a share under a fifth
+                    // is a number pretending to be a reason.
+                    ProductGrid(products: items.map(\.product)) { product in
+                        guard let item = items.first(where: { $0.product.id == product.id }) else { return nil }
+                        if item.crossVendor { return l.t("together.otherSeller") }
+                        if item.confidence >= 0.2 { return l.t("together.confidence", ["percent": "\(Int((item.confidence * 100).rounded()))"]) }
+                        return nil
+                    }
                 }
                 .padding(.top, 40)
             }

@@ -15,6 +15,8 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     let total: Money
     /// The signed-in shopper's address book, for sending a line elsewhere.
     var addresses: [CartAddress]? = nil
+    /// A bag left alone long enough to be reminded of (`recovery`).
+    var recovery: CartRecovery? = nil
 
     var isEmpty: Bool { items.isEmpty }
 
@@ -55,6 +57,14 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     var variantLabel: String? {
         variantTitle == "Default" || variantTitle.isEmpty ? nil : variantTitle
     }
+}
+
+/// The basket somebody forgot (3.1.17): a count and an age, never a total,
+/// since the bag is priced again on every read.
+struct CartRecovery: Decodable, Hashable, Sendable {
+    let remind: Bool
+    var itemCount: Int? = nil
+    var hours: Int? = nil
 }
 
 struct CartAddon: Decodable, Hashable, Sendable {

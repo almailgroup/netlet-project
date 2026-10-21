@@ -310,3 +310,50 @@ final class GalleryRulesTests: XCTestCase {
         XCTAssertEqual(GalleryRules.photoIndex(naming: "أسود", in: gallery), 3, "the article comes off")
     }
 }
+
+/// The shop's search rule, ported from `Shared/commerce/search.ts` and held
+/// to the same cases its own tests use.
+final class SearchRankTests: XCTestCase {
+    func testFoldsWhatKeyboardsAndSpellersDisagreeOn() {
+        XCTAssertEqual(SearchRank.fold("أإآٱ"), "اااا")
+        XCTAssertEqual(SearchRank.fold("ساعة"), "ساعه")
+        XCTAssertEqual(SearchRank.fold("مستشفى"), "مستشفي")
+        XCTAssertEqual(SearchRank.fold("مُكيّف"), "مكيف")
+        XCTAssertEqual(SearchRank.fold("مـــكيف"), "مكيف")
+        XCTAssertEqual(SearchRank.fold("S٢٦ ۱۲"), "s26 12")
+    }
+
+    func testTakesOffTheArticleAndThePlural() {
+        XCTAssertEqual(SearchRank.words("الساعة"), ["ساعه"])
+        XCTAssertEqual(SearchRank.words("والهواتف للبيع"), ["هواتف", "بيع"])
+        XCTAssertEqual(SearchRank.stem("ساعات"), "ساع")
+        XCTAssertEqual(SearchRank.stem("ال"), "ال")
+        XCTAssertEqual(SearchRank.words("watches batteries battery cookies cookie phones glasses"), ["watch", "batteri", "batteri", "cooki", "cooki", "phon", "glass"])
+        XCTAssertEqual(SearchRank.words("bus 65W S26"), ["bus", "65w", "s26"])
+    }
+
+    func testFindsAProductWhicheverWayItIsSpelt() {
+        let watch = SearchRank.Doc(title: "ساعة ذكية", department: "Electronics")
+        for term in ["ساعه", "الساعة", "ساعات", "الساعات"] {
+            XCTAssertGreaterThan(SearchRank.score(watch, SearchRank.queryWords(term)), 0, term)
+        }
+        XCTAssertGreaterThan(SearchRank.score(SearchRank.Doc(title: "Three-seat sofas"), SearchRank.queryWords("sofa")), 0)
+    }
+
+    func testFindsTheSellersWordThroughASynonym() {
+        let phone = SearchRank.Doc(title: "Galaxy phone")
+        XCTAssertGreaterThan(SearchRank.score(phone, SearchRank.queryWords("جوال")), 0)
+        XCTAssertGreaterThan(SearchRank.score(phone, SearchRank.queryWords("mobile")), 0)
+        XCTAssertGreaterThan(SearchRank.score(SearchRank.Doc(title: "Basmati rice 5kg"), SearchRank.queryWords("عيش")), 0)
+        XCTAssertEqual(SearchRank.queryWords("ph").first?.synonyms, [], "a fragment is never expanded")
+    }
+
+    func testRanksTheWordTypedAboveASynonymAndNeedsEveryWord() {
+        let words = SearchRank.queryWords("mobile holder")
+        XCTAssertGreaterThan(SearchRank.score(SearchRank.Doc(title: "Mobile holder"), words), SearchRank.score(SearchRank.Doc(title: "Phone holder"), words))
+        XCTAssertEqual(SearchRank.score(SearchRank.Doc(title: "Mobile case"), words), 0, "every word, somewhere")
+        let title = SearchRank.Doc(title: "Brass lamp")
+        let described = SearchRank.Doc(title: "Desk light", description: "A brass lamp for reading")
+        XCTAssertGreaterThan(SearchRank.score(title, SearchRank.queryWords("lamp")), SearchRank.score(described, SearchRank.queryWords("lamp")))
+    }
+}

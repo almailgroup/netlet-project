@@ -101,6 +101,9 @@ struct ProductCard: View {
     let product: Product
     /// The Deals band's lead: two columns wide, a wider photo, a larger price.
     var feature = false
+    /// A line in the store's place — "Sponsored · store", or why it was
+    /// recommended — as the web's card takes a `note`.
+    var note: String? = nil
 
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -117,8 +120,8 @@ struct ProductCard: View {
                 }
             }
             VStack(alignment: .leading, spacing: 0) {
-                if let vendor = product.vendor, !vendor.isEmpty {
-                    Text(vendor)
+                if let line = note ?? product.vendor, !line.isEmpty {
+                    Text(line)
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                         .lineLimit(1)
@@ -481,11 +484,13 @@ struct CardPillStyle: ButtonStyle {
 /// A grid of cards, two to a row on a phone, 12 apart.
 struct ProductGrid: View {
     let products: [Product]
+    /// A card's line in the store's place, where a shelf has one to say.
+    var note: ((Product) -> String?)? = nil
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             ForEach(products) { product in
-                ProductCard(product: product)
+                ProductCard(product: product, note: note?(product))
             }
         }
     }

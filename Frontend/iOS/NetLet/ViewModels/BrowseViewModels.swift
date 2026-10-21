@@ -61,7 +61,12 @@ enum ProductSort: String, CaseIterable, Identifiable {
 struct BrowseFilters: Equatable {
     var brands: Set<String> = []
     var sellers: Set<String> = []
+    /// The seller's shipping bands ticked (`speeds`).
+    var speeds: Set<String> = []
     var options: [String: Set<String>] = [:]
+    /// A price range in dinars, either end open.
+    var minPrice: Double?
+    var maxPrice: Double?
     var minRating: Int?
     var inStock = false
     var onOffer = false
@@ -69,7 +74,8 @@ struct BrowseFilters: Equatable {
 
     /// How many are on, for "Filters (3)" and the corner button's badge.
     var activeCount: Int {
-        brands.count + sellers.count + options.values.reduce(0) { $0 + $1.count }
+        brands.count + sellers.count + speeds.count + options.values.reduce(0) { $0 + $1.count }
+            + (minPrice == nil && maxPrice == nil ? 0 : 1)
             + (minRating == nil ? 0 : 1) + (inStock ? 1 : 0) + (onOffer ? 1 : 0) + (express ? 1 : 0)
     }
 
@@ -84,6 +90,12 @@ struct BrowseFilters: Equatable {
             let values = product.options.first { $0.name == name }?.values ?? []
             if !values.contains(where: { wanted.contains($0) }) { return false }
         }
+        if !speeds.isEmpty {
+            guard let speed = product.deliverySpeed, speeds.contains(speed) else { return false }
+        }
+        let price = Double(product.priceRange.min.fils) / 1000
+        if let minPrice, price < minPrice { return false }
+        if let maxPrice, price > maxPrice { return false }
         if let minRating, (product.rating?.value ?? 0) < Double(minRating) { return false }
         if inStock && !product.isAvailable { return false }
         if onOffer && !product.isOnOffer { return false }
@@ -111,7 +123,11 @@ struct Facets {
     let total: Int
     let brands: [FacetValue]
     let sellers: [FacetValue]
+    /// The shipping bands on the page, fastest first.
+    let speeds: [FacetValue]
     let options: [Option]
+    /// The page's cheapest and dearest, whole dinars, for the price range's hint.
+    let priceBounds: (min: Int, max: Int)?
     let ratings: [FacetValue]
     let inStock: Int
     let onOffer: Int
@@ -127,6 +143,15 @@ struct Facets {
         total = products.count
         brands = tally(products.compactMap(\.brand))
         sellers = tally(products.compactMap { $0.vendor?.isEmpty == false ? $0.vendor : nil })
+        speeds = tally(products.compactMap(\.deliverySpeed)).sorted {
+            (Self.speedOrder.firstIndex(of: $0.value) ?? .max) < (Self.speedOrder.firstIndex(of: $1.value) ?? .max)
+        }
+        let prices = products.map { Double($0.priceRange.min.fils) / 1000 }
+        if let low = prices.min(), let high = prices.max() {
+            priceBounds = (Int(low.rounded(.down)), Int(high.rounded(.up)))
+        } else {
+            priceBounds = nil
+        }
         var names: [String] = []
         for product in products { for option in product.options where !names.contains(option.name) { names.append(option.name) } }
         options = names.map { name in
@@ -140,6 +165,9 @@ struct Facets {
         onOffer = products.filter(\.isOnOffer).count
         express = products.filter(\.isExpress).count
     }
+
+    /// `DELIVERY_SPEEDS`, fastest first.
+    static let speedOrder = ["same_day", "next_day", "two_to_four", "up_to_week", "made_to_order"]
 
     /// `facetNarrows`: two values, or one that not every product carries.
     func narrows(_ values: [FacetValue]) -> Bool {

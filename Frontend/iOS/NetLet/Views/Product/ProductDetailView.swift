@@ -56,6 +56,8 @@ private struct ProductPage: View {
     @State private var photosStartFull = false
     /// Whether the shopper holds a membership, for the member price line.
     @State private var member = false
+    /// The governorate the account delivers to, named in "Get it by … to …".
+    @State private var area: Governorate?
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
@@ -93,9 +95,11 @@ private struct ProductPage: View {
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
                 member = false
+                area = nil
                 return
             }
             member = (try? await app.services.api.call(API.myMembership))?.member ?? false
+            area = ReferenceData.shared.governorate(id: (try? await app.services.account.profile())?.deliveryZoneId)
         }
         .task {
             // A screenshot's start (`-NetLetOpen photos:` or `zoom:`), taken once.
@@ -189,7 +193,7 @@ private struct ProductPage: View {
             VStack(alignment: .leading, spacing: 8) {
                 availability
                 if variant?.preorder == nil {
-                    DeliveryLine(speed: product.deliverySpeed, provider: product.deliveryProvider)
+                    DeliveryLine(speed: product.deliverySpeed, provider: product.deliveryProvider, area: area?.name(l.current))
                 }
             }
             choices.padding(.top, 8)
@@ -313,8 +317,10 @@ private struct ProductPage: View {
             if !variant.availableForSale {
                 Label(l.t("product.outOfStock"), systemImage: "xmark.circle").foregroundStyle(Color(red: 179 / 255, green: 38 / 255, blue: 30 / 255))
                     .font(.inter(14, .bold))
-            } else if variant.preorder != nil {
-                Label(l.t("product.preorderShipsUnknown"), systemImage: "clock").foregroundStyle(Brand.navy)
+            } else if let preorder = variant.preorder {
+                // The release date is the promise; one already past is no date at all (`preorder.ts`).
+                Label(preorder.releaseAt.map { l.t("product.preorderShips", ["date": OrderWording.day($0, language: l.current)]) } ?? l.t("product.preorderShipsUnknown"), systemImage: "clock")
+                    .foregroundStyle(Brand.navy)
                     .font(.inter(14, .bold))
             } else {
                 Label(l.t("product.inStock"), systemImage: "checkmark.circle").foregroundStyle(Brand.success)
@@ -695,6 +701,8 @@ struct PurchaseButtonStyle: ButtonStyle {
 struct DeliveryLine: View {
     let speed: String?
     let provider: String?
+    /// The shopper's governorate, when the account has one (`speed.getByTo`).
+    var area: String? = nil
     @Environment(LanguageSettings.self) private var l
 
     /// Business days each band covers; made to order has none.
@@ -704,7 +712,8 @@ struct DeliveryLine: View {
         if speed != nil || provider != nil {
             VStack(alignment: .leading, spacing: 4) {
                 if let speed, let window = Self.windows[speed] {
-                    Text(l.t("speed.getBy", ["date": day(Self.addBusinessDays(window.upperBound))]))
+                    let date = day(Self.addBusinessDays(window.upperBound))
+                    Text(area.map { l.t("speed.getByTo", ["date": date, "area": $0]) } ?? l.t("speed.getBy", ["date": date]))
                         .font(.inter(15, .bold))
                         .foregroundStyle(Brand.success)
                 }

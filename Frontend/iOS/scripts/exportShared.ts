@@ -50,6 +50,8 @@ import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../.
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { MAX_MESSAGE_LENGTH } from "../../../Shared/commerce/contactFilter.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
+import { FOLD_FROM, FOLD_MARKS, FOLD_TO, MAX_QUERY_WORDS } from "../../../Shared/commerce/search.js";
+import { SYNONYM_GROUPS } from "../../../Shared/commerce/searchSynonyms.js";
 import { HELP_GROUPS, MAX_HELP_QUESTION } from "../../../Shared/commerce/helpArticles.js";
 import { LEGAL_UPDATED, PRIVACY, SELLER_TERMS, TERMS } from "../../Web/src/content/legal.js";
 import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
@@ -249,6 +251,9 @@ export function buildResources(): Record<string, string> {
         maxDraftImages: MAX_IMAGES,
       },
     }),
+    /* `rankBySearch`'s folding and synonyms, for a search the app answers
+       from what it holds — a store's own shelf — by the shop's one rule. */
+    "search.json": json({ foldFrom: FOLD_FROM, foldTo: FOLD_TO, foldMarks: FOLD_MARKS, maxQueryWords: MAX_QUERY_WORDS, synonymGroups: SYNONYM_GROUPS }),
     "assets.json": json(buildAssets().manifest),
     "content.json": json(buildContent()),
     /* The portal's menu and the permission model it is filtered by

@@ -208,6 +208,20 @@ private struct BrowsePage: View {
         for seller in filters.sellers.sorted() {
             chips.append(Chip(id: "seller:" + seller, label: seller) { $0.sellers.remove(seller) })
         }
+        for speed in Facets.speedOrder where filters.speeds.contains(speed) {
+            chips.append(Chip(id: "speed:" + speed, label: l.t("speed.\(speed)")) { $0.speeds.remove(speed) })
+        }
+        if filters.minPrice != nil || filters.maxPrice != nil {
+            let low = filters.minPrice.map(UnitWording.number)
+            let high = filters.maxPrice.map(UnitWording.number)
+            let label = low.flatMap { low in high.map { "\(low) – \($0)" } }
+                ?? low.map { l.t("browse.priceFrom", ["min": $0]) }
+                ?? l.t("browse.priceUpTo", ["max": high ?? "0"])
+            chips.append(Chip(id: "price", label: label) {
+                $0.minPrice = nil
+                $0.maxPrice = nil
+            })
+        }
         for (name, values) in filters.options.sorted(by: { $0.key < $1.key }) {
             for value in values.sorted() {
                 chips.append(Chip(id: "option:\(name):\(value)", label: value) { $0.options[name]?.remove(value) })
@@ -266,6 +280,11 @@ private struct BrowsePage: View {
                     .font(.inter(14))
                     .foregroundStyle(Brand.body)
                     .padding(.bottom, 12)
+            }
+            // Paid placements for this department: a strip of their own above
+            // the grid, so the grid stays in the order the shopper chose.
+            if case .shelf(let slug?, .all) = model.source, model.query == nil {
+                SponsoredShelf(slot: "department", departmentSlug: slug)
             }
             if shown.isEmpty {
                 empty
@@ -347,6 +366,12 @@ private struct FilterSheet: View {
                     }
                     values(l.t("browse.brand"), facets.brands, selected: $model.filters.brands, facets: facets)
                     values(l.t("browse.seller"), facets.sellers, selected: $model.filters.sellers, facets: facets)
+                    values(l.t("browse.deliverySpeed"), facets.speeds, selected: $model.filters.speeds, facets: facets) { l.t("speed.\($0)") }
+                    if let bounds = facets.priceBounds {
+                        group(l.t("browse.price")) {
+                            PriceRangeFields(filters: $model.filters, bounds: bounds)
+                        }
+                    }
                     ForEach(facets.options) { option in
                         values(option.name, option.values, selected: optionBinding(option.name), facets: facets)
                     }
@@ -381,11 +406,11 @@ private struct FilterSheet: View {
     }
 
     @ViewBuilder
-    private func values(_ title: String, _ values: [FacetValue], selected: Binding<Set<String>>, facets: Facets) -> some View {
+    private func values(_ title: String, _ values: [FacetValue], selected: Binding<Set<String>>, facets: Facets, label: @escaping (String) -> String = { $0 }) -> some View {
         if facets.narrows(values) || !selected.wrappedValue.isEmpty {
             group(title) {
                 ForEach(values) { value in
-                    tick(value.value, count: value.count, on: Binding(
+                    tick(label(value.value), count: value.count, on: Binding(
                         get: { selected.wrappedValue.contains(value.value) },
                         set: { on in
                             if on { selected.wrappedValue.insert(value.value) } else { selected.wrappedValue.remove(value.value) }
@@ -434,3 +459,67 @@ private struct FilterSheet: View {
         .accessibilityAddTraits(on.wrappedValue ? [.isSelected] : [])
     }
 }
+
+/// The price range, the web's: the page's cheapest and dearest as a hint,
+/// a lowest and a highest typed, and Apply — a range filtered as it is typed
+/// would narrow the grid to nothing at the first digit. Ends given the wrong
+/// way round are swapped rather than refused.
+private struct PriceRangeFields: View {
+    @Binding var filters: BrowseFilters
+    let bounds: (min: Int, max: Int)
+    @State private var low = ""
+    @State private var high = ""
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(l.t("browse.priceRange", ["min": Money(fils: bounds.min * 1000).formatted(l.current), "max": Money(fils: bounds.max * 1000).formatted(l.current)]))
+                .font(.inter(13))
+                .foregroundStyle(Brand.muted)
+            HStack(spacing: 8) {
+                field(l.t("browse.priceMin"), text: $low)
+                Text("–").foregroundStyle(Brand.muted).accessibilityHidden(true)
+                field(l.t("browse.priceMax"), text: $high)
+                Button(l.t("browse.priceApply")) { apply() }
+                    .font(.inter(14, .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.navy))
+                    .buttonStyle(.tap)
+            }
+        }
+        .padding(.top, 4)
+        .onAppear {
+            low = filters.minPrice.map(UnitWording.number) ?? ""
+            high = filters.maxPrice.map(UnitWording.number) ?? ""
+        }
+    }
+
+    private func field(_ label: String, text: Binding<String>) -> some View {
+        TextField(label, text: text)
+            .keyboardType(.decimalPad)
+            .font(.inter(16))
+            .foregroundStyle(Brand.navy)
+            .padding(.horizontal, 10)
+            .frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            .accessibilityLabel(label)
+    }
+
+    private func apply() {
+        func read(_ text: String) -> Double? {
+            let value = Double(PhoneNumber.foldDigits(text).trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "٫", with: "."))
+            guard let value, value.isFinite, value >= 0 else { return nil }
+            return value
+        }
+        var min = read(low)
+        var max = read(high)
+        if let lower = min, let upper = max, lower > upper { (min, max) = (upper, lower) }
+        filters.minPrice = min
+        filters.maxPrice = max
+        Haptics.tap()
+    }
+}
+

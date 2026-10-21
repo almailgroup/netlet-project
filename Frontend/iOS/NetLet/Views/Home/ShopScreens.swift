@@ -86,18 +86,24 @@ struct SavedView: View {
                     case .loaded: ProductGrid(products: found)
                     }
                 }
+                // Under the hearts it learns from, and only once it has learnt
+                // something: nothing is drawn until it is personal.
+                RecommendedRail()
             }
             .padding(.horizontal, 16)
             .padding(.top, 24)
             .padding(.bottom, 48)
         }
-        .task(id: l.current) { await load() }
+        .task(id: "\(l.current.rawValue)|\(app.saved.ids.count)") { await load() }
     }
 
+    /// The saved products by id (`commerce.products.byIds`) — looked up in the
+    /// newest page instead, anything older read as no longer available.
     private func load() async {
         if catalogue.value == nil { catalogue = .loading }
         do {
-            catalogue = .loaded(try await app.services.catalog.products(first: BrowseModel.pageSize, department: nil, language: l.current))
+            let ids = Array(app.saved.ids.prefix(200))
+            catalogue = .loaded(ids.isEmpty ? [] : try await app.services.api.call(API.productsByIds, .init(ids: ids, locale: l.current.rawValue)))
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, catalogue.value == nil { catalogue = .failed(failure) }
@@ -167,6 +173,8 @@ struct StoreView: View {
     @State private var page: LoadState<StorePage?> = .idle
     @State private var department = ""
     @State private var sort: ProductSort = .relevance
+    /// Words searched for inside this store, past a dozen products.
+    @State private var term = ""
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -300,7 +308,11 @@ struct StoreView: View {
     @ViewBuilder
     private func products(_ found: StorePage) -> some View {
         let departments = storeDepartments(found.products)
-        let shelf = sort.apply(to: found.products.filter { department.isEmpty || ($0.productType ?? "") == department })
+        let inDepartment = found.products.filter { department.isEmpty || ($0.productType ?? "") == department }
+        let words = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Searched by the shop's one rule; a chosen sort still wins over the ranking.
+        let shelf = words.isEmpty ? sort.apply(to: inDepartment)
+            : sort == .relevance ? SearchRank.rank(inDepartment, words) : sort.apply(to: SearchRank.rank(inDepartment, words))
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(l.t("stores.products")).shelfTitle()
@@ -324,6 +336,25 @@ struct StoreView: View {
                 .accessibilityLabel(l.t("browse.sortBy"))
                 .onChange(of: sort) { Haptics.tap() }
             }
+            if found.products.count > Self.searchFrom {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Brand.muted)
+                        .accessibilityHidden(true)
+                    TextField(l.t("stores.searchPlaceholder"), text: $term)
+                        .font(.inter(16))
+                        .foregroundStyle(Brand.navy)
+                        .submitLabel(.search)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .accessibilityLabel(l.t("stores.searchLabel", ["name": found.store.name]))
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 44)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            }
             if departments.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -340,6 +371,12 @@ struct StoreView: View {
                     app.push(.stores)
                 }
                 .card(padding: 0)
+            } else if shelf.isEmpty {
+                EmptyStateView(systemImage: "magnifyingglass", title: l.t("stores.noMatch"), note: l.t("stores.noMatchNote"), actionTitle: l.t("stores.showEverything")) {
+                    department = ""
+                    term = ""
+                }
+                .card(padding: 0)
             } else {
                 ProductGrid(products: shelf)
                 if found.products.count < found.store.products {
@@ -351,6 +388,9 @@ struct StoreView: View {
         }
         .padding(.top, 32)
     }
+
+    /// A store's shelf is searched from a dozen products up (`SEARCH_FROM`).
+    private static let searchFrom = 12
 
     private func storeDepartments(_ products: [Product]) -> [DepartmentCount] {
         var counts: [String: Int] = [:]

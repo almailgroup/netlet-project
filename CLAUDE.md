@@ -5343,6 +5343,27 @@ amount on a bag line) — offers the try-on beside the size guide (`tryOn.offere
 off by default), and keeps the web's order: bundles before the quantity,
 Subscribe & Save before Follow, bought-together before the reviews.
 
+**The rest of the shop was checked against the web the same way**, by listing
+every dictionary key a web page or component asks for that no Swift file
+names (a key the web uses and the app does not is usually a feature the app
+lacks). What it found is in the app now: the home page's paid banners
+(`ads.banners`, a carousel that never moves on its own), its sponsored shelf
+and a department's sponsored strip above the grid (`ads.sponsored`), "Picked
+for you" on the home page and under Saved (`recommendations.forMe`, only when
+personal, each card saying why) and the newest guides (`articles`); the
+delivery speed and price range filters and their chips; the bag's reminder
+for a forgotten basket (`cart.recovery`), where a line is going, and the
+shortfall per address; bought-together's "Another seller" and "N% also took
+this"; a pre-order's release date; the delivery date naming the account's
+governorate; and a store's own search past a dozen products. **The store's
+search is the shop's rule, not a second one**: `SearchRank` is
+`Shared/commerce/search.ts` in Swift — the folding, the Arabic article and
+plural, the English plural, the field weights, the synonyms — with the folding
+table and `SYNONYM_GROUPS` exported to `search.json`, and its tests are the
+TypeScript's own cases. **Saved reads its products by id**
+(`commerce.products.byIds`): it looked them up in the newest page, so anything
+older read as no longer available — the bug the web fixed under Wishlists.
+
 **A `.task` on a `Group` that may be empty never runs.** A modifier on a
 `Group` is applied to each of its children, and with none there is nothing to
 start the task — so a panel written `Group { if !items.isEmpty { … } }.task

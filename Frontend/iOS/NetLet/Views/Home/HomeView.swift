@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// The home page, the web's `Home` as a phone draws it: the front door, the
-/// departments as cards, Deals as a navy band led by the deepest saving,
-/// Bestsellers ranked, the brands, the stores, the new arrivals as a grid, and
-/// the footer. Every shelf after the departments is drawn only when it has
+/// departments as cards, the paid banners and placements, Deals as a navy band
+/// led by the deepest saving, Bestsellers ranked, Picked for you, the brands,
+/// the stores, the new arrivals as a grid, the newest guides, and the footer. Every shelf after the departments is drawn only when it has
 /// something true to show (`shelvesFor`, in `HomeShelf`).
 struct HomeView: View {
     @Environment(AppModel.self) private var app
@@ -39,12 +39,17 @@ struct HomeView: View {
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 182 / 255, blue: 158 / 255), lineWidth: 1))
                     .padding(16)
             case .loaded:
+                // Paid banners and placements, approved and labelled; absent when none runs today.
+                HomeBanners()
+                SponsoredShelf(slot: "home")
                 if !shelves.deals.isEmpty {
                     DealsBand(products: shelves.deals)
                 }
                 if !shelves.bestsellers.isEmpty {
                     ProductRail(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
                 }
+                // What is about this shopper sits between what sold and what is new.
+                RecommendedRail(quiet: true)
                 if shelf.brands.count >= HomeShelf.minimumRow {
                     BrandShelf(brands: shelf.brands)
                 }
@@ -59,6 +64,7 @@ struct HomeView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 24)
                 }
+                GuideShelf()
             }
         }
     }
