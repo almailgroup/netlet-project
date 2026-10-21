@@ -1,0 +1,107 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "number": "CRN-2026-000003",
+            "kind": "credit_note",
+            "total": "72.000",
+            "issuedAt": "2026-10-12T14:17:27.522Z",
+            "orderReference": "NL-20261012-9VY2Z"
+          },
+          {
+            "number": "INV-2026-000006",
+            "kind": "invoice",
+            "total": "72.000",
+            "issuedAt": "2026-10-12T14:17:21.250Z",
+            "orderReference": "NL-20261012-9VY2Z"
+          },
+          {
+            "number": "CRN-2026-000002",
+            "kind": "credit_note",
+            "total": "72.000",
+            "issuedAt": "2026-10-12T14:15:40.216Z",
+            "orderReference": "NL-20261012-3NJA9"
+          },
+          {
+            "number": "INV-2026-000005",
+            "kind": "invoice",
+            "total": "72.000",
+            "issuedAt": "2026-10-12T14:15:33.964Z",
+            "orderReference": "NL-20261012-3NJA9"
+          },
+          {
+            "number": "INV-2026-000004",
+            "kind": "invoice",
+            "total": "14.500",
+            "issuedAt": "2026-10-04T07:20:20.685Z",
+            "orderReference": "NL-20261003-W6334"
+          },
+          {
+            "number": "INV-2026-000003",
+            "kind": "invoice",
+            "total": "27.000",
+            "issuedAt": "2026-10-02T12:23:27.204Z",
+            "orderReference": "NL-20261002-3WQ6P"
+          },
+          {
+            "number": "CRN-2026-000001",
+            "kind": "credit_note",
+            "total": "39.500",
+            "issuedAt": "2026-10-02T11:51:48.135Z",
+            "orderReference": "NL-20261001-TUP6F"
+          },
+          {
+            "number": "INV-2026-000002",
+            "kind": "invoice",
+            "total": "26.250",
+            "issuedAt": "2026-10-02T11:49:17.598Z",
+            "orderReference": "NL-20261001-J7MWY"
+          },
+          {
+            "number": "INV-2026-000001",
+            "kind": "invoice",
+            "total": "39.500",
+            "issuedAt": "2026-10-02T11:49:17.500Z",
+            "orderReference": "NL-20261001-TUP6F"
+          }
+        ],
+        "total": 9,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.issuedAt": [
+            "Date"
+          ],
+          "rows.1.issuedAt": [
+            "Date"
+          ],
+          "rows.2.issuedAt": [
+            "Date"
+          ],
+          "rows.3.issuedAt": [
+            "Date"
+          ],
+          "rows.4.issuedAt": [
+            "Date"
+          ],
+          "rows.5.issuedAt": [
+            "Date"
+          ],
+          "rows.6.issuedAt": [
+            "Date"
+          ],
+          "rows.7.issuedAt": [
+            "Date"
+          ],
+          "rows.8.issuedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

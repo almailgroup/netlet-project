@@ -1,0 +1,58 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 2,
+            "email": "noura@shop.test",
+            "name": "Noura Al-Sabah",
+            "code": "AFAAAC",
+            "displayName": "Noura's picks",
+            "channel": "instagram.com/nourapicks",
+            "status": "active",
+            "ratePercent": "3.00",
+            "createdAt": "2026-10-02T12:30:35.832Z",
+            "paidOrders": 0,
+            "earned": "0.000"
+          },
+          {
+            "id": 1,
+            "email": "fahad@shop.test",
+            "name": "Fahad",
+            "code": "AFAAAD",
+            "displayName": "Fahad Picks",
+            "channel": "instagram.com/fahadpicks",
+            "status": "active",
+            "ratePercent": "1.00",
+            "createdAt": "2026-10-02T12:22:21.968Z",
+            "paidOrders": 1,
+            "earned": "0.750"
+          }
+        ],
+        "total": 2,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.1.createdAt": [
+            "Date"
+          ],
+          "rows.2.createdAt": [
+            "Date"
+          ],
+          "rows.3.createdAt": [
+            "Date"
+          ],
+          "rows.4.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

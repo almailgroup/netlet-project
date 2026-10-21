@@ -1,0 +1,135 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "vendors": [
+          {
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "weeks": [
+              {
+                "weekStart": "2026-09-27",
+                "gross": "165.750",
+                "refunded": "39.500",
+                "commission": "19.650",
+                "owed": "106.600",
+                "lines": 9
+              },
+              {
+                "weekStart": "2026-10-04",
+                "gross": "25.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "25.000",
+                "lines": 2
+              },
+              {
+                "weekStart": "2026-10-11",
+                "gross": "378.750",
+                "refunded": "144.000",
+                "commission": "26.475",
+                "owed": "208.275",
+                "lines": 5
+              }
+            ],
+            "owed": "339.875"
+          },
+          {
+            "vendorId": 3,
+            "vendorName": "Dar Home",
+            "weeks": [
+              {
+                "weekStart": "2026-09-27",
+                "gross": "262.500",
+                "refunded": "0.000",
+                "commission": "39.375",
+                "owed": "223.125",
+                "lines": 2
+              },
+              {
+                "weekStart": "2026-10-04",
+                "gross": "5.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "5.000",
+                "lines": 1
+              }
+            ],
+            "owed": "228.125"
+          },
+          {
+            "vendorId": 4,
+            "vendorName": "Gulf Grocers",
+            "weeks": [
+              {
+                "weekStart": "2026-09-27",
+                "gross": "4.900",
+                "refunded": "0.000",
+                "commission": "0.392",
+                "owed": "4.508",
+                "lines": 1
+              },
+              {
+                "weekStart": "2026-10-04",
+                "gross": "25.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "25.000",
+                "lines": 2
+              },
+              {
+                "weekStart": "2026-10-11",
+                "gross": "20.250",
+                "refunded": "0.000",
+                "commission": "0.420",
+                "owed": "19.830",
+                "lines": 3
+              }
+            ],
+            "owed": "49.338"
+          },
+          {
+            "vendorId": 30,
+            "vendorName": "Store",
+            "weeks": [
+              {
+                "weekStart": "2026-10-04",
+                "gross": "5.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "5.000",
+                "lines": 1
+              },
+              {
+                "weekStart": "2026-10-11",
+                "gross": "10.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "10.000",
+                "lines": 1
+              }
+            ],
+            "owed": "15.000"
+          },
+          {
+            "vendorId": 31,
+            "vendorName": "Store",
+            "weeks": [
+              {
+                "weekStart": "2026-10-04",
+                "gross": "5.000",
+                "refunded": "0.000",
+                "commission": "0.000",
+                "owed": "5.000",
+                "lines": 1
+              }
+            ],
+            "owed": "5.000"
+          }
+        ],
+        "owed": "637.338",
+        "truncated": false
+      }
+    }
+  }
+}

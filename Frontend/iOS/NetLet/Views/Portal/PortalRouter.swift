@@ -35,6 +35,11 @@ struct PortalRouter: View {
         case .vendors: PortalStoresView()
         case .newVendor: PortalNewStoreView()
         case .vendor(let id): PortalStoreView(vendorId: id)
+        case .finance: PortalFinanceView()
+        case .invoices: PortalInvoicesView()
+        case .promotions: PortalPromotionsView()
+        case .affiliates: PortalAffiliatesView()
+        case .membership: PortalMembershipView()
         }
     }
 }

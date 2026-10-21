@@ -739,5 +739,14 @@
     "fastHours": 72,
     "fastWindowDays": 90,
     "fastMinDeliveries": 5
+  },
+  "money": {
+    "maxAffiliatePercent": 20,
+    "maxGrantMonths": 12,
+    "maxGrantNote": 300,
+    "voucherKinds": [
+      "percent",
+      "fixed"
+    ]
   }
 }

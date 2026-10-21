@@ -46,7 +46,7 @@ struct PortalPayoutsView: View {
                     waiting
                     bankFiles
                 }
-                dueSection
+                PayoutsDueSection(due: due)
                 historySection
             }
         }
@@ -239,58 +239,6 @@ struct PortalPayoutsView: View {
         }
     }
 
-    // MARK: Due
-
-    @ViewBuilder
-    private var dueSection: some View {
-        let settlement = PortalRules.shared.settlement
-        PortalSectionHeading(title: l.t("admin.payoutsDue"), note: l.t("admin.payoutsDueNote", [
-            "cod": "\(settlement?.cod ?? 14)", "cardMin": "\(settlement?.cardMin ?? 1)", "cardMax": "\(settlement?.cardMax ?? 3)",
-        ]))
-        if let due {
-            if due.isEmpty {
-                PortalEmpty(text: l.t("admin.payoutsDueEmpty"))
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(due.enumerated()), id: \.offset) { index, row in
-                        if index > 0 { Divider() }
-                        let shown = dueState(row)
-                        HStack(alignment: .top, spacing: 8) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(row.reference).font(.inter(13, .semibold)).foregroundStyle(Brand.navy).environment(\.layoutDirection, .leftToRight)
-                                Text(row.vendorName).font(.inter(12)).foregroundStyle(Brand.muted)
-                            }
-                            Spacer(minLength: 6)
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(row.owed.formatted(l.current)).font(.inter(13, .bold)).foregroundStyle(Brand.navy)
-                                Text(shown.text).font(.inter(12, shown.loud ? .bold : .regular)).foregroundStyle(shown.color).multilineTextAlignment(.trailing)
-                            }
-                        }
-                        .padding(12)
-                    }
-                }
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            }
-        }
-    }
-
-    /// When an order's money comes, said the way the schedule reads (`PayoutsDue`).
-    private func dueState(_ row: PayoutDue) -> (text: String, color: Color, loud: Bool) {
-        if row.paid.fils > 0 && row.paid.fils >= row.owed.fils { return (l.t("admin.payoutSent"), Brand.muted, false) }
-        if row.sending.fils > 0 && row.paid.fils + row.sending.fils >= row.owed.fils { return (l.t("admin.payoutBeingSent"), Brand.navy, false) }
-        if row.due.state == "refunded" { return (l.t("admin.payoutRefunded"), Brand.muted, false) }
-        // A due order whose every line came back owes nothing; "Overdue" against KWD 0 would say otherwise.
-        if row.due.state == "due" && row.owed.fils <= 0 && row.paid.fils == 0 && row.sending.fils == 0 { return (l.t("admin.payoutNothingOwed"), Brand.muted, false) }
-        if row.due.state == "unpaid" { return (l.t("admin.payoutUnpaid"), Brand.muted, false) }
-        guard let window = row.due.window else { return (l.t("admin.payoutUnpaid"), Brand.muted, false) }
-        let from = OrderWording.date(window.from, language: l.current)
-        if row.due.state == "held" { return (l.t("admin.payoutHeld", ["from": from]), Brand.body, false) }
-        let text = window.from == window.to ? l.t("admin.payoutDueOn", ["from": from])
-            : l.t("admin.payoutDueBetween", ["from": from, "to": OrderWording.date(window.to, language: l.current)])
-        return row.due.overdue == true ? ("\(l.t("admin.payoutOverdue")) · \(text)", Brand.danger, true) : (text, Brand.navy, false)
-    }
-
     // MARK: History
 
     @ViewBuilder
@@ -464,4 +412,67 @@ struct ActivitySheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+/// When each order's money comes to its seller (`PayoutsDue`), shared by the
+/// payouts page and the finance panel so the two cannot say it differently.
+struct PayoutsDueSection: View {
+    let due: [PayoutDue]?
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            content
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let settlement = PortalRules.shared.settlement
+        PortalSectionHeading(title: l.t("admin.payoutsDue"), note: l.t("admin.payoutsDueNote", [
+            "cod": "\(settlement?.cod ?? 14)", "cardMin": "\(settlement?.cardMin ?? 1)", "cardMax": "\(settlement?.cardMax ?? 3)",
+        ]))
+        if let due {
+            if due.isEmpty {
+                PortalEmpty(text: l.t("admin.payoutsDueEmpty"))
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(due.enumerated()), id: \.offset) { index, row in
+                        if index > 0 { Divider() }
+                        let shown = dueState(row)
+                        HStack(alignment: .top, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.reference).font(.inter(13, .semibold)).foregroundStyle(Brand.navy).environment(\.layoutDirection, .leftToRight)
+                                Text(row.vendorName).font(.inter(12)).foregroundStyle(Brand.muted)
+                            }
+                            Spacer(minLength: 6)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(row.owed.formatted(l.current)).font(.inter(13, .bold)).foregroundStyle(Brand.navy)
+                                Text(shown.text).font(.inter(12, shown.loud ? .bold : .regular)).foregroundStyle(shown.color).multilineTextAlignment(.trailing)
+                            }
+                        }
+                        .padding(12)
+                    }
+                }
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+            }
+        }
+    }
+
+    /// When an order's money comes, said the way the schedule reads (`PayoutsDue`).
+    private func dueState(_ row: PayoutDue) -> (text: String, color: Color, loud: Bool) {
+        if row.paid.fils > 0 && row.paid.fils >= row.owed.fils { return (l.t("admin.payoutSent"), Brand.muted, false) }
+        if row.sending.fils > 0 && row.paid.fils + row.sending.fils >= row.owed.fils { return (l.t("admin.payoutBeingSent"), Brand.navy, false) }
+        if row.due.state == "refunded" { return (l.t("admin.payoutRefunded"), Brand.muted, false) }
+        // A due order whose every line came back owes nothing; "Overdue" against KWD 0 would say otherwise.
+        if row.due.state == "due" && row.owed.fils <= 0 && row.paid.fils == 0 && row.sending.fils == 0 { return (l.t("admin.payoutNothingOwed"), Brand.muted, false) }
+        if row.due.state == "unpaid" { return (l.t("admin.payoutUnpaid"), Brand.muted, false) }
+        guard let window = row.due.window else { return (l.t("admin.payoutUnpaid"), Brand.muted, false) }
+        let from = OrderWording.date(window.from, language: l.current)
+        if row.due.state == "held" { return (l.t("admin.payoutHeld", ["from": from]), Brand.body, false) }
+        let text = window.from == window.to ? l.t("admin.payoutDueOn", ["from": from])
+            : l.t("admin.payoutDueBetween", ["from": from, "to": OrderWording.date(window.to, language: l.current)])
+        return row.due.overdue == true ? ("\(l.t("admin.payoutOverdue")) · \(text)", Brand.danger, true) : (text, Brand.navy, false)
+    }
 }

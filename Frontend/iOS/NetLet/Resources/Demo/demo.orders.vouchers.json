@@ -1,0 +1,80 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "codes": [
+          {
+            "id": 1,
+            "code": "WELCOME10",
+            "kind": "percent",
+            "value": "10.00",
+            "minSpend": "5.000",
+            "startsAt": null,
+            "endsAt": "2026-12-31T20:59:59.999Z",
+            "maxRedemptions": 500,
+            "perShopper": 1,
+            "used": 42
+          }
+        ],
+        "cards": [
+          {
+            "id": 15,
+            "code": "NL96VWXDAM8MZE4CAF",
+            "initialBalance": "10.000",
+            "remaining": "10.000",
+            "expiresAt": null,
+            "note": "Customer care"
+          },
+          {
+            "id": 14,
+            "code": "NLMB8YRNVWDNWBVED7",
+            "initialBalance": "25.000",
+            "remaining": "12.500",
+            "expiresAt": "2027-01-31T20:59:59.999Z",
+            "note": "Eid gifts"
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "cards.0.expiresAt": [
+            "Date"
+          ],
+          "cards.1.expiresAt": [
+            "Date"
+          ],
+          "cards.2.expiresAt": [
+            "Date"
+          ],
+          "cards.4.expiresAt": [
+            "Date"
+          ],
+          "cards.5.expiresAt": [
+            "Date"
+          ],
+          "cards.6.expiresAt": [
+            "Date"
+          ],
+          "cards.7.expiresAt": [
+            "Date"
+          ],
+          "cards.8.expiresAt": [
+            "Date"
+          ],
+          "cards.10.expiresAt": [
+            "Date"
+          ],
+          "cards.11.expiresAt": [
+            "Date"
+          ],
+          "cards.12.expiresAt": [
+            "Date"
+          ],
+          "cards.14.expiresAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

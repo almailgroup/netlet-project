@@ -1,0 +1,36 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 1,
+            "email": "noura@shop.test",
+            "startsAt": "2026-10-05T10:17:50.819Z",
+            "endsAt": "2027-01-05T10:17:50.819Z",
+            "cancelledAt": "2026-10-05T10:21:27.840Z",
+            "source": "granted",
+            "note": "Pilot group",
+            "active": false
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "pageSize": 25
+      },
+      "meta": {
+        "values": {
+          "rows.0.startsAt": [
+            "Date"
+          ],
+          "rows.0.endsAt": [
+            "Date"
+          ],
+          "rows.0.cancelledAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

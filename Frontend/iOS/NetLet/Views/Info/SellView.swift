@@ -109,7 +109,7 @@ final class ApplicationModel {
     }
 
     /// "8.50" as "8.5", "10.00" as "10" — the web's `String(Number(rate))`.
-    static func trimmedRate(_ rate: String) -> String {
+    nonisolated static func trimmedRate(_ rate: String) -> String {
         guard rate.contains(".") else { return rate }
         var text = rate
         while text.hasSuffix("0") { text.removeLast() }

@@ -1,0 +1,87 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "totals": {
+          "gross": "907.150",
+          "refunded": "183.500",
+          "net": "723.650",
+          "commission": "86.312",
+          "vendorNet": "637.338",
+          "paidLines": 25,
+          "refundedLines": 3
+        },
+        "vendors": [
+          {
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "gross": "569.500",
+            "refunded": "183.500",
+            "net": "386.000",
+            "commission": "46.125",
+            "vendorNet": "339.875",
+            "paidLines": 13,
+            "refundedLines": 3
+          },
+          {
+            "vendorId": 3,
+            "vendorName": "Dar Home",
+            "gross": "267.500",
+            "refunded": "0.000",
+            "net": "267.500",
+            "commission": "39.375",
+            "vendorNet": "228.125",
+            "paidLines": 3,
+            "refundedLines": 0
+          },
+          {
+            "vendorId": 4,
+            "vendorName": "Gulf Grocers",
+            "gross": "50.150",
+            "refunded": "0.000",
+            "net": "50.150",
+            "commission": "0.812",
+            "vendorNet": "49.338",
+            "paidLines": 6,
+            "refundedLines": 0
+          },
+          {
+            "vendorId": 30,
+            "vendorName": "Store",
+            "gross": "15.000",
+            "refunded": "0.000",
+            "net": "15.000",
+            "commission": "0.000",
+            "vendorNet": "15.000",
+            "paidLines": 2,
+            "refundedLines": 0
+          },
+          {
+            "vendorId": 31,
+            "vendorName": "Store",
+            "gross": "5.000",
+            "refunded": "0.000",
+            "net": "5.000",
+            "commission": "0.000",
+            "vendorNet": "5.000",
+            "paidLines": 1,
+            "refundedLines": 0
+          }
+        ],
+        "months": [
+          {
+            "month": "2026-10",
+            "gross": "907.150",
+            "refunded": "183.500",
+            "net": "723.650",
+            "commission": "86.312",
+            "vendorNet": "637.338",
+            "paidLines": 25,
+            "refundedLines": 3
+          }
+        ],
+        "truncated": false
+      }
+    }
+  }
+}

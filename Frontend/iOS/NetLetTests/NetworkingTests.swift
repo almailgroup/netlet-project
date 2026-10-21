@@ -620,6 +620,34 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(StoreRules.kuwaitDay(Date(timeIntervalSince1970: 1_791_493_260)), "2026-10-09", "21:00 UTC is already the next day in Kuwait")
     }
 
+    func testTheMoneyDesksDecode() async throws {
+        let report = try await client.call(API.financeReport)
+        let totals = report.totals
+        XCTAssertEqual(totals.commission.fils + totals.vendorNet.fils, totals.net.fils, "commission and what the sellers are owed add up to the net")
+        XCTAssertEqual(totals.gross.fils - totals.refunded.fils, totals.net.fils, "sales less refunds is the net")
+        XCTAssertEqual(totals.takeRate, "11.9")
+        XCTAssertFalse(report.vendors.isEmpty)
+        XCTAssertFalse(report.months.isEmpty)
+        let weekly = try await client.call(API.weeklyPayouts)
+        let seller = try XCTUnwrap(weekly.vendors.first)
+        XCTAssertEqual(seller.weeks.reduce(0) { $0 + $1.owed.fils }, seller.owed.fils, "a seller's weeks add up to what they are owed")
+        let cashOuts = try await client.call(API.pendingCashOuts)
+        XCTAssertEqual(cashOuts.first?.value, Money(fils: 120))
+        let invoices = try await client.call(API.invoiceList, .init())
+        XCTAssertTrue(invoices.rows.contains { $0.kind == "credit_note" })
+        let vouchers = try await client.call(API.vouchers)
+        XCTAssertEqual(vouchers.codes.first?.code, "WELCOME10")
+        XCTAssertEqual(vouchers.cards.count, 2)
+        let affiliates = try await client.call(API.affiliateList, .init())
+        XCTAssertFalse(affiliates.rows.isEmpty)
+        let grants = try await client.call(API.membershipList, .init(current: false))
+        XCTAssertEqual(grants.rows.first?.state(), "ended", "a cancelled grant reads as ended whatever its dates")
+        let terms = try await client.call(API.membershipTerms)
+        XCTAssertNil(terms.freeDeliveryOver)
+        _ = try await client.call(API.membershipReport)
+        XCTAssertEqual(PortalRules.shared.money?.voucherKinds, ["percent", "fixed"])
+    }
+
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {
         do {
             _ = try await client.call(API.changeEmail, .init(email: "a@b.co", currentPassword: "x"))

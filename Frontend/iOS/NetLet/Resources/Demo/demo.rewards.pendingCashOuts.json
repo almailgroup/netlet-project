@@ -1,0 +1,18 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 31,
+          "userId": 4,
+          "name": "Noura Al-Sabah",
+          "email": "noura@shop.test",
+          "pot": "points",
+          "points": 1200,
+          "value": "0.120",
+          "requestedAt": "2026-10-12T09:00:00.000Z"
+        }
+      ]
+    }
+  }
+}

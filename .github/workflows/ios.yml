@@ -152,6 +152,8 @@ jobs:
             shot 39-admin-audit "$lang" portal:/admin/audit admin
             shot 40-admin-stores "$lang" portal:/admin/vendors admin
             shot 41-admin-store "$lang" portal:/admin/vendors/2 admin
+            shot 42-admin-finance "$lang" portal:/admin/finance admin
+            shot 43-admin-promotions "$lang" portal:/admin/promotions admin
           done
           ls -1 build/previews
 
