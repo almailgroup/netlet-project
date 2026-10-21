@@ -55,6 +55,8 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
     var vendorName: String? = nil
     var categoryName: String? = nil
     var images: [Image]? = nil
+    /// When it was last changed, which the review queue shows.
+    var updatedAt: Date? = nil
 
     /// The first still picture, never the video.
     var cover: String? { images?.first { $0.kind != "video" }?.url }

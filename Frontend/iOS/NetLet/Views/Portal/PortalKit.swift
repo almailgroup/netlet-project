@@ -273,3 +273,51 @@ struct PortalEmpty: View {
 
 /// A Latin value inside a sentence on either page: an email, a reference, an IBAN.
 func latin(_ text: String) -> String { "\u{2066}\(text)\u{2069}" }
+
+/// A line that says something about the page's state (`Notice`): good news
+/// in green, something to know in orange, a refusal in red, a fact in navy.
+struct PortalNotice: View {
+    enum Tone { case success, warning, danger, info }
+    let text: String
+    var tone: Tone = .info
+
+    var body: some View {
+        Label {
+            Text(text).fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: symbol)
+        }
+        .font(.inter(13, .semibold))
+        .foregroundStyle(ink)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fill))
+    }
+
+    private var symbol: String {
+        switch tone {
+        case .success: return "checkmark.circle.fill"
+        case .warning: return "exclamationmark.triangle.fill"
+        case .danger: return "xmark.octagon.fill"
+        case .info: return "info.circle.fill"
+        }
+    }
+
+    private var ink: Color {
+        switch tone {
+        case .success: return Brand.success
+        case .warning: return Brand.accentInk
+        case .danger: return Brand.danger
+        case .info: return Brand.navy
+        }
+    }
+
+    private var fill: Color {
+        switch tone {
+        case .success: return Brand.successFill
+        case .warning: return Color(red: 254 / 255, green: 241 / 255, blue: 233 / 255)
+        case .danger: return Color(red: 251 / 255, green: 234 / 255, blue: 232 / 255)
+        case .info: return Brand.tint
+        }
+    }
+}

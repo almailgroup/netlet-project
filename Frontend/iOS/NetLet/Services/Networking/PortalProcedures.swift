@@ -60,7 +60,9 @@ struct SalesSummary: Decodable, Sendable {
     let top: [Top]
 }
 
+/// What sellers changed, and how much of it this administrator has not read.
 struct SellerChanges: Decodable, Sendable {
+    let rows: [AuditEntry]
     let unseen: Int
 }
 

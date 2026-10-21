@@ -1,0 +1,46 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 2,
+          "kind": "signatory_id",
+          "fileName": "civil-id.png",
+          "contentType": "image/png",
+          "byteSize": 21665,
+          "status": "rejected",
+          "reviewNote": "الصورة غير واضحة.",
+          "reviewedAt": "2026-10-12T14:55:28.482Z",
+          "createdAt": "2026-10-12T14:55:00.828Z"
+        },
+        {
+          "id": 1,
+          "kind": "trade_licence",
+          "fileName": "licence scan.pdf",
+          "contentType": "application/pdf",
+          "byteSize": 193,
+          "status": "accepted",
+          "reviewNote": null,
+          "reviewedAt": "2026-10-12T14:55:15.200Z",
+          "createdAt": "2026-10-12T14:54:59.308Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.reviewedAt": [
+            "Date"
+          ],
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.reviewedAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

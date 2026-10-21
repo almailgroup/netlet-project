@@ -146,6 +146,10 @@ jobs:
             shot 33-portal-editor "$lang" portal:/admin/products/10 shopper
             shot 34-portal-fulfilment "$lang" portal:/admin/fulfilment shopper
             shot 35-portal-ads "$lang" portal:/admin/ads shopper
+            shot 36-admin-applications "$lang" portal:/admin/applications admin
+            shot 37-admin-people "$lang" portal:/admin/people admin
+            shot 38-admin-features "$lang" portal:/admin/features admin
+            shot 39-admin-audit "$lang" portal:/admin/audit admin
           done
           ls -1 build/previews
 

@@ -122,6 +122,19 @@ final class TRPCClient: Sendable {
         struct Result: Decodable {
             struct Payload: Decodable {
                 let json: Value
+
+                private enum CodingKeys: String, CodingKey { case json }
+
+                /// A procedure that returns nothing answers `null`, and
+                /// "it worked" is then all there is to read.
+                init(from decoder: Decoder) throws {
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    if let nothing = Acknowledged() as? Value, (try? container.decodeNil(forKey: .json)) ?? true {
+                        json = nothing
+                    } else {
+                        json = try container.decode(Value.self, forKey: .json)
+                    }
+                }
             }
 
             let data: Payload

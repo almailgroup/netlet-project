@@ -1,0 +1,56 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 2,
+            "userId": 3,
+            "storeName": "Fahad Lighting",
+            "storeNameAr": null,
+            "contactEmail": "fahad@lighting.test",
+            "contactPhone": "+965 9123 4567",
+            "governorate": "hawalli",
+            "addressLine": "Block 4, Street 12",
+            "licenceNumber": "TL-77812",
+            "licenceExpiresAt": null,
+            "licenceDocUrl": null,
+            "identityDocUrl": null,
+            "payoutIban": "KW81CBKU0000000000001234560101",
+            "underPlatformLicence": false,
+            "proposedCommissionPercent": null,
+            "commissionNote": null,
+            "agreementVersion": "2026-09-01",
+            "agreedAt": "2026-10-12T14:55:03.054Z",
+            "status": "submitted",
+            "rejectionReason": null,
+            "reviewedBy": null,
+            "reviewedAt": null,
+            "vendorId": null,
+            "createdAt": "2026-10-12T14:54:56.237Z",
+            "updatedAt": "2026-10-12T14:55:03.097Z",
+            "applicantEmail": "fahad@shop.test",
+            "applicantName": "Fahad",
+            "documentsWaiting": 0
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.agreedAt": [
+            "Date"
+          ],
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

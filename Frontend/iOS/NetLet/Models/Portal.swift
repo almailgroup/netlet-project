@@ -130,6 +130,12 @@ enum PortalPage: Hashable, Sendable {
     case claims
     case fulfilment
     case ads
+    case review
+    case applications
+    case people
+    case audit
+    case features
+    case subscriptions
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -169,6 +175,12 @@ enum PortalPage: Hashable, Sendable {
             case "claims": self = .claims
             case "fulfilment": self = .fulfilment
             case "ads": self = .ads
+            case "review": self = .review
+            case "applications": self = .applications
+            case "people": self = .people
+            case "audit": self = .audit
+            case "features": self = .features
+            case "subscriptions": self = .subscriptions
             default: return nil
             }
         default: return nil

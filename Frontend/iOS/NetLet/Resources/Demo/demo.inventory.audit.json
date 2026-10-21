@@ -1,0 +1,330 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 267,
+          "action": "guide.delete",
+          "subjectType": "guide",
+          "subjectId": 5,
+          "subjectLabel": "Paying with cash on delivery",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "published"
+          },
+          "after": null,
+          "createdAt": "2026-10-18T19:41:08.804Z"
+        },
+        {
+          "id": 266,
+          "action": "guide.setStatus",
+          "subjectType": "guide",
+          "subjectId": 5,
+          "subjectLabel": "Paying with cash on delivery",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "draft"
+          },
+          "after": {
+            "status": "published"
+          },
+          "createdAt": "2026-10-18T19:41:07.962Z"
+        },
+        {
+          "id": 265,
+          "action": "guide.setStatus",
+          "subjectType": "guide",
+          "subjectId": 4,
+          "subjectLabel": "Paying with cash on delivery",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "draft"
+          },
+          "after": {
+            "status": "published"
+          },
+          "createdAt": "2026-10-18T19:40:23.009Z"
+        },
+        {
+          "id": 264,
+          "action": "guide.setStatus",
+          "subjectType": "guide",
+          "subjectId": 2,
+          "subjectLabel": "How to add your first product",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "draft"
+          },
+          "after": {
+            "status": "published"
+          },
+          "createdAt": "2026-10-18T19:37:29.749Z"
+        },
+        {
+          "id": 263,
+          "action": "guide.setStatus",
+          "subjectType": "guide",
+          "subjectId": 1,
+          "subjectLabel": "How to return an item",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "draft"
+          },
+          "after": {
+            "status": "published"
+          },
+          "createdAt": "2026-10-18T19:37:29.691Z"
+        },
+        {
+          "id": 262,
+          "action": "product.delete",
+          "subjectType": "product",
+          "subjectId": 233,
+          "subjectLabel": "Samsung Galaxy A55 5G, 256 GB, Navy",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": 2,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "title": "Samsung Galaxy A55 5G, 256 GB, Navy en-390",
+            "handle": "samsung-galaxy-a55-5g-256-gb-navy-en-390",
+            "images": 1,
+            "status": "draft",
+            "variants": [
+              {
+                "sku": null,
+                "price": "129.000",
+                "stock": 0,
+                "title": "Default"
+              }
+            ]
+          },
+          "after": {
+            "deleted": true,
+            "photosRemoved": 1,
+            "openOrderLines": 0,
+            "bundlesWithdrawn": 0,
+            "subscriptionsPaused": 0
+          },
+          "createdAt": "2026-10-17T19:28:39.651Z"
+        },
+        {
+          "id": 261,
+          "action": "product.create",
+          "subjectType": "product",
+          "subjectId": 233,
+          "subjectLabel": "Samsung Galaxy A55 5G, 256 GB, Navy",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": 2,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": null,
+          "after": {
+            "price": "129.000",
+            "stock": 0,
+            "title": "Samsung Galaxy A55 5G, 256 GB, Navy en-390"
+          },
+          "createdAt": "2026-10-17T19:28:37.261Z"
+        },
+        {
+          "id": 252,
+          "action": "ads.bannerApprove",
+          "subjectType": "placement",
+          "subjectId": 6,
+          "subjectLabel": "Smart watch",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": 2,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": {
+            "status": "pending",
+            "startsOn": "2026-10-13"
+          },
+          "after": {
+            "note": null,
+            "status": "approved",
+            "startsOn": "2026-10-13"
+          },
+          "createdAt": "2026-10-12T14:46:54.545Z"
+        },
+        {
+          "id": 251,
+          "action": "ads.book",
+          "subjectType": "placement",
+          "subjectId": 6,
+          "subjectLabel": "Smart watch",
+          "actorId": 5,
+          "actorEmail": "vendor@acme.test",
+          "actorRole": "owner",
+          "vendorId": 2,
+          "authorisedById": null,
+          "authorisedByEmail": null,
+          "before": null,
+          "after": {
+            "slot": "home_banner",
+            "total": "175.000",
+            "endsOn": "2026-10-19",
+            "headline": "Brighter evenings, half the bill",
+            "startsOn": "2026-10-13"
+          },
+          "createdAt": "2026-10-12T14:46:25.855Z"
+        },
+        {
+          "id": 250,
+          "action": "user.setAdmin",
+          "subjectType": "user",
+          "subjectId": 3,
+          "subjectLabel": "fahad@shop.test",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": 1,
+          "authorisedByEmail": "owner@netlet.test",
+          "before": {
+            "role": "admin"
+          },
+          "after": {
+            "role": "user"
+          },
+          "createdAt": "2026-10-11T21:17:00.383Z"
+        },
+        {
+          "id": 249,
+          "action": "user.setAdmin",
+          "subjectType": "user",
+          "subjectId": 3,
+          "subjectLabel": "fahad@shop.test",
+          "actorId": 1,
+          "actorEmail": "owner@netlet.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": 1,
+          "authorisedByEmail": "owner@netlet.test",
+          "before": {
+            "role": "admin"
+          },
+          "after": {
+            "role": "user"
+          },
+          "createdAt": "2026-10-11T21:16:59.893Z"
+        },
+        {
+          "id": 248,
+          "action": "user.setAdmin",
+          "subjectType": "user",
+          "subjectId": 1,
+          "subjectLabel": "owner@netlet.test",
+          "actorId": 3,
+          "actorEmail": "fahad@shop.test",
+          "actorRole": "admin",
+          "vendorId": null,
+          "authorisedById": 1,
+          "authorisedByEmail": "owner@netlet.test",
+          "before": {
+            "role": "admin"
+          },
+          "after": {
+            "role": "user"
+          },
+          "createdAt": "2026-10-11T21:16:59.388Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ],
+          "2.createdAt": [
+            "Date"
+          ],
+          "3.createdAt": [
+            "Date"
+          ],
+          "4.createdAt": [
+            "Date"
+          ],
+          "5.createdAt": [
+            "Date"
+          ],
+          "6.createdAt": [
+            "Date"
+          ],
+          "7.createdAt": [
+            "Date"
+          ],
+          "8.createdAt": [
+            "Date"
+          ],
+          "9.createdAt": [
+            "Date"
+          ],
+          "10.createdAt": [
+            "Date"
+          ],
+          "11.createdAt": [
+            "Date"
+          ],
+          "12.createdAt": [
+            "Date"
+          ],
+          "13.createdAt": [
+            "Date"
+          ],
+          "14.createdAt": [
+            "Date"
+          ],
+          "15.createdAt": [
+            "Date"
+          ],
+          "16.createdAt": [
+            "Date"
+          ],
+          "17.createdAt": [
+            "Date"
+          ],
+          "18.createdAt": [
+            "Date"
+          ],
+          "19.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -375,8 +375,8 @@ private struct DocumentRow: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(l.t(DocumentRow.label(kind))).font(.inter(14, .bold)).foregroundStyle(Brand.ink)
-                    Text(l.t(DocumentRow.hint(kind))).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                    Text(l.t(DocumentWords.label(kind))).font(.inter(14, .bold)).foregroundStyle(Brand.ink)
+                    Text(l.t(DocumentWords.hint(kind))).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
                 if let latest = entry?.latest {
@@ -389,7 +389,7 @@ private struct DocumentRow: View {
                 }
             }
             if let latest = entry?.latest {
-                Label("\(latest.fileName) · \(DocumentRow.size(latest.byteSize, l))", systemImage: "paperclip")
+                Label("\(latest.fileName) · \(DocumentWords.size(latest.byteSize, l))", systemImage: "paperclip")
                     .font(.inter(12))
                     .foregroundStyle(Brand.body)
                 if latest.status == "rejected", let note = latest.reviewNote {
@@ -418,7 +418,7 @@ private struct DocumentRow: View {
                         .background(Capsule().fill(Brand.tint))
                     }
                     .disabled(model.uploading != nil)
-                    .accessibilityLabel("\(l.t(entry == nil ? "documents.upload" : "documents.replace")): \(l.t(DocumentRow.label(kind)))")
+                    .accessibilityLabel("\(l.t(entry == nil ? "documents.upload" : "documents.replace")): \(l.t(DocumentWords.label(kind)))")
                     if let latest = entry?.latest, latest.status != "accepted" {
                         Button(l.t("documents.remove")) {
                             Task { await app.attempt(done: "documents.removed") { try await model.remove(latest) } }
@@ -462,6 +462,11 @@ private struct DocumentRow: View {
         }
     }
 
+}
+
+/// A document kind's words and a file's size, shared by the applicant's
+/// form and the administrator's review.
+enum DocumentWords {
     static func label(_ kind: String) -> String {
         switch kind {
         case "trade_licence": return "documents.kindTradeLicence"

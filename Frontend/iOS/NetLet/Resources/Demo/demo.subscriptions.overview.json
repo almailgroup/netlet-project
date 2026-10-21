@@ -1,0 +1,12 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "active": 0,
+        "paused": 0,
+        "due": 0,
+        "scheduled": false
+      }
+    }
+  }
+}

@@ -59,6 +59,15 @@ final class TRPCClientTests: XCTestCase {
         XCTAssertEqual(APIError.from(CancellationError()), .cancelled)
     }
 
+    func testAProcedureThatReturnsNothingIsReadAsDone() async throws {
+        // superjson writes a void result as `null` with a note that it was undefined.
+        let transport = StubTransport { _ in (200, #"{"result":{"data":{"json":null,"meta":{"values":["undefined"]}}}}"#) }
+        let client = TRPCClient(configuration: configuration, transport: transport)
+        _ = try await client.call(API.rejectApplication, .init(id: 2, reason: "No licence"))
+        _ = try await client.call(API.markAuditSeen)
+        XCTAssertEqual(transport.sent.count, 2)
+    }
+
     func testANullAnswerIsNil() async throws {
         let transport = StubTransport { _ in (200, #"{"result":{"data":{"json":null}}}"#) }
         let user = try await AccountService(client: TRPCClient(configuration: configuration, transport: transport)).currentUser()
@@ -531,6 +540,55 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(user?.firstName, "Noura")
         let products = try await shopper.call(API.products, .init(first: 24))
         XCTAssertFalse(products.isEmpty, "a procedure with no variant answers from the shared recording")
+    }
+
+    func testNetLetsOwnDesksDecode() async throws {
+        let overview = try await client.call(API.subscriptionOverview)
+        XCTAssertFalse(overview.scheduled)
+        let trail = try await client.call(API.auditTrail, .init(limit: 100))
+        XCTAssertFalse(trail.isEmpty)
+        XCTAssertEqual(trail.first { $0.action == "guide.delete" }?.change?.field, "status", "a deleted guide says what it was")
+        let changes = try await client.call(API.sellerChanges, .init(limit: 100))
+        XCTAssertEqual(changes.rows.first?.actorRole, "owner")
+        let switches = try await client.call(API.featureSwitches)
+        XCTAssertTrue(switches.contains { $0.key == "ai" })
+        XCTAssertTrue(switches.allSatisfy { Phrasebook.shared.has(FeatureWords.name($0.key)) && Phrasebook.shared.has(FeatureWords.whenOff($0.key)) },
+                      "every switch the server lists has its words")
+        XCTAssertNotNil(switches.first { $0.why != nil }?.why?.reason)
+        let people = try await client.call(API.people, .init())
+        XCTAssertEqual(people.total, people.rows.count)
+        XCTAssertTrue(people.rows.contains { $0.role == "admin" })
+        XCTAssertTrue(people.rows.contains { !$0.vendors.isEmpty })
+        let applications = try await client.call(API.pendingApplications, .init(status: "submitted"))
+        let application = try XCTUnwrap(applications.rows.first)
+        XCTAssertEqual(application.missing(currentAgreement: application.agreementVersion ?? ""), [], "a complete application lacks nothing")
+        let papers = try await client.call(API.reviewerDocuments, .init(applicationId: application.id))
+        XCTAssertFalse(papers.isEmpty)
+        let flags = try await client.call(API.reviewFlags, .init(ids: [1, 2, 3, 4, 5]))
+        XCTAssertTrue(flags.contains { !$0.flags.isEmpty })
+        XCTAssertTrue(flags.flatMap(\.flags).allSatisfy { Phrasebook.shared.has($0.label) })
+        _ = try await client.call(API.modelReviewAvailable)
+        let admin = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let identity = try await admin.call(API.sellerIdentity)
+        XCTAssertEqual(identity.kind, "admin")
+        XCTAssertTrue(identity.can("platform.manageUsers"))
+    }
+
+    func testTheDesksRulesAreTheWebs() throws {
+        let data = Data(#"{"id":1,"action":"product.setStatus","before":{"status":"published","price":"12.500"},"after":{"status":"draft","price":"12.500"},"createdAt":"2026-10-11T20:37:36.630Z"}"#.utf8)
+        let decoder = TRPCClient.makeDecoder()
+        let entry = try decoder.decode(AuditEntry.self, from: data)
+        XCTAssertEqual(entry.change?.from, "published")
+        XCTAssertEqual(entry.change?.to, "draft")
+        XCTAssertFalse(entry.automatic)
+        let odd = try decoder.decode(AuditEntry.self, from: Data(#"{"id":2,"action":"x","before":[1,2],"after":{"automatic":true,"commissionPercent":10},"createdAt":"2026-10-11T20:37:36Z"}"#.utf8))
+        XCTAssertNil(odd.before, "an act that wrote a list is simply not summarised")
+        XCTAssertEqual(odd.change?.to, "10")
+        XCTAssertTrue(odd.automatic)
+        XCTAssertEqual(FeatureWords.group("tryOn"), "shopping")
+        XCTAssertEqual(FeatureWords.group("articles"), "content")
+        XCTAssertNil(PendingApplication.webAddress("javascript:alert(1)"))
+        XCTAssertNotNil(PendingApplication.webAddress("https://example.com/licence.pdf"))
     }
 
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {

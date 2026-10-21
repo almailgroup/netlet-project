@@ -1,0 +1,47 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "productId": 5,
+          "flags": [
+            {
+              "finding": "noCategory",
+              "severity": "minor"
+            }
+          ],
+          "attention": false
+        },
+        {
+          "productId": 4,
+          "flags": [],
+          "attention": false
+        },
+        {
+          "productId": 1,
+          "flags": [
+            {
+              "finding": "noImages",
+              "severity": "minor"
+            },
+            {
+              "finding": "thinDescription",
+              "severity": "minor"
+            }
+          ],
+          "attention": false
+        },
+        {
+          "productId": 2,
+          "flags": [],
+          "attention": false
+        },
+        {
+          "productId": 3,
+          "flags": [],
+          "attention": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "key": "ai",
+          "enabled": true,
+          "updatedAt": "2026-10-11T20:37:30.456Z",
+          "updatedByEmail": "owner@netlet.test",
+          "why": null
+        },
+        {
+          "key": "assistant",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "recommendations",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": {
+            "kind": "note",
+            "reason": "features.why.recommendationsWhere"
+          }
+        },
+        {
+          "key": "boughtTogether",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "chat",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "priceOffers",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "returns",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "deliveryRatings",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "damageClaims",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "wishlists",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "giftCards",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "affiliates",
+          "enabled": false,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "ads",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "subscriptions",
+          "enabled": false,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "fulfilment",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "membership",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "voiceSearch",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": {
+            "kind": "note",
+            "reason": "features.why.voiceBrowser"
+          }
+        },
+        {
+          "key": "photoSearch",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "appBanner",
+          "enabled": false,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "articles",
+          "enabled": true,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": null
+        },
+        {
+          "key": "tryOn",
+          "enabled": false,
+          "updatedAt": null,
+          "updatedByEmail": null,
+          "why": {
+            "kind": "note",
+            "reason": "features.why.tryOnWhere"
+          }
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

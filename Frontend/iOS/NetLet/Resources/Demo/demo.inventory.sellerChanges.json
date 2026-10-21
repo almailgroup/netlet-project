@@ -1,0 +1,42 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 232,
+            "action": "product.setStatus",
+            "subjectType": "product",
+            "subjectId": 1,
+            "subjectLabel": "Desk lamp",
+            "actorId": 5,
+            "actorEmail": "vendor@acme.test",
+            "actorRole": "owner",
+            "vendorId": 2,
+            "authorisedById": null,
+            "authorisedByEmail": null,
+            "before": {
+              "status": "published"
+            },
+            "after": {
+              "status": "draft"
+            },
+            "createdAt": "2026-10-11T20:37:36.630Z"
+          }
+        ],
+        "unseen": 1,
+        "seenAt": "2026-10-11T20:37:33.928Z"
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "seenAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 1,
+        "email": "owner@netlet.test",
+        "name": "NetLet Owner",
+        "role": "admin",
+        "createdAt": "2026-10-01T18:22:27.074Z",
+        "lastSignedIn": "2026-10-21T07:37:22.991Z"
+      },
+      "meta": {
+        "values": {
+          "createdAt": [
+            "Date"
+          ],
+          "lastSignedIn": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

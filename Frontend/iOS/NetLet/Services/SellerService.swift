@@ -9,6 +9,7 @@ protocol SellerServicing: Sendable {
     func publish(id: Int) async throws -> String
     func upload(jpeg: Data) async throws -> UploadedPhoto
     func uploadDocument(kind: String, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
+    func downloadDocument(id: Int, fileName: String) async throws -> URL
 }
 
 struct SellerService: SellerServicing {
@@ -54,6 +55,30 @@ struct SellerService: SellerServicing {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = data
         return try await send(request, fallback: "documents.failed")
+    }
+
+    /// A paper from an application, for the administrator reviewing it
+    /// (`GET /api/applications/documents/:id`, which answers only the applicant
+    /// and an administrator, and anybody else with the same 404). It is saved
+    /// under its own name in a folder of its own, for Quick Look to open.
+    func downloadDocument(id: Int, fileName: String) async throws -> URL {
+        var request = URLRequest(url: client.configuration.url(path: "/api/applications/documents/\(id)"))
+        request.httpMethod = "GET"
+        let answer: (Data, HTTPURLResponse)
+        do {
+            answer = try await client.transport.send(request)
+        } catch {
+            throw APIError.from(error)
+        }
+        guard (200..<300).contains(answer.1.statusCode) else {
+            throw APIError.server(code: answer.1.statusCode == 403 ? "FORBIDDEN" : "NOT_FOUND", message: "documents.failed", status: answer.1.statusCode)
+        }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("documents/\(id)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let safe = fileName.replacingOccurrences(of: "/", with: "-")
+        let file = folder.appendingPathComponent(safe.isEmpty ? "document" : safe)
+        try answer.0.write(to: file, options: .atomic)
+        return file
     }
 
     /// Sends a raw upload and reads its answer, or the key it was refused with.
