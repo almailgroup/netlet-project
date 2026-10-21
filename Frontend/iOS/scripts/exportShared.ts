@@ -40,6 +40,7 @@ import { MAX_ADDRESSES, MAX_LABEL, MAX_LINE, MAX_NOTES as MAX_ADDRESS_NOTES } fr
 import { defaultNotificationPreferences, notificationKinds, notificationLabelKeys } from "../../../Shared/customer.js";
 import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
 import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
+import { GUIDE_SUMMARY_MAX, GUIDE_TITLE_MAX, GUIDE_TOPIC_MAX, MAX_GUIDE_STEPS, STEP_BODY_MAX, STEP_TITLE_MAX } from "../../../Shared/commerce/guides.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX } from "../../../Shared/commerce/reviews.js";
 import { ATTRIBUTION_DAYS, MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membership.js";
@@ -288,6 +289,11 @@ export function buildResources(): Record<string, string> {
       money: {
         maxAffiliatePercent: MAX_AFFILIATE_PERCENT, maxGrantMonths: MAX_GRANT_MONTHS, maxGrantNote: MAX_GRANT_NOTE,
         voucherKinds: VOUCHER_KINDS,
+      },
+      /* The guide editor's lengths (`guides.ts`), which the router refuses past. */
+      guides: {
+        titleMax: GUIDE_TITLE_MAX, summaryMax: GUIDE_SUMMARY_MAX, stepTitleMax: STEP_TITLE_MAX, stepBodyMax: STEP_BODY_MAX,
+        maxSteps: MAX_GUIDE_STEPS, topicMax: GUIDE_TOPIC_MAX,
       } }),
   };
 }

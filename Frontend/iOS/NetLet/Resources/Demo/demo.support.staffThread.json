@@ -1,0 +1,73 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 5,
+        "topic": "order",
+        "orderReference": "NL-20261002-3WQ6P",
+        "status": "open",
+        "shopperName": "Noura Al-Sabah",
+        "messages": [
+          {
+            "id": 25,
+            "author": "shopper",
+            "body": "هل يمكن أن يصل طلبي قبل الخميس؟",
+            "answer": null,
+            "createdAt": "2026-10-04T16:10:12.339Z"
+          },
+          {
+            "id": 26,
+            "author": "automatic",
+            "body": null,
+            "answer": [
+              {
+                "key": "support.answerOrderStatus",
+                "params": {
+                  "onTheWay": "0",
+                  "delivered": "0",
+                  "preparing": "1",
+                  "reference": "NL-20261002-3WQ6P"
+                }
+              },
+              {
+                "key": "support.answerPerson"
+              }
+            ],
+            "createdAt": "2026-10-04T16:10:12.340Z"
+          },
+          {
+            "id": 27,
+            "author": "staff",
+            "body": "Your order is being prepared and should leave the store tomorrow. We will tell you the moment it is on the way.",
+            "answer": null,
+            "createdAt": "2026-10-04T17:02:40.000Z"
+          },
+          {
+            "id": 28,
+            "author": "shopper",
+            "body": "شكراً، وهل يمكن التوصيل مساءً؟",
+            "answer": null,
+            "createdAt": "2026-10-04T17:20:05.000Z"
+          }
+        ],
+        "shopperEmail": "noura@shop.test"
+      },
+      "meta": {
+        "values": {
+          "messages.0.createdAt": [
+            "Date"
+          ],
+          "messages.1.createdAt": [
+            "Date"
+          ],
+          "messages.2.createdAt": [
+            "Date"
+          ],
+          "messages.3.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "userId": 4,
+          "courierId": 1,
+          "email": "rider@courier.test",
+          "name": "Swift Rider"
+        }
+      ]
+    }
+  }
+}

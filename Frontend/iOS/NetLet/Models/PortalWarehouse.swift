@@ -270,6 +270,10 @@ struct DispatchBoard: Decodable, Sendable {
 struct DeliveryCompany: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
+    var nameAr: String? = nil
+    var contactPhone: String? = nil
+    var contactEmail: String? = nil
+    /// active or suspended.
     let status: String
 }
 

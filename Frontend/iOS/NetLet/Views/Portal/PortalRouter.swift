@@ -40,6 +40,11 @@ struct PortalRouter: View {
         case .promotions: PortalPromotionsView()
         case .affiliates: PortalAffiliatesView()
         case .membership: PortalMembershipView()
+        case .support: PortalSupportView()
+        case .supportThread(let id): PortalSupportThreadView(conversationId: id)
+        case .guides: PortalGuidesView()
+        case .guide(let id): PortalGuideEditorView(guideId: id)
+        case .couriers: PortalCouriersView()
         }
     }
 }

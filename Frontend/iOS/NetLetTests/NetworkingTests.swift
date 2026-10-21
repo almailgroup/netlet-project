@@ -648,6 +648,56 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalRules.shared.money?.voucherKinds, ["percent", "fixed"])
     }
 
+    func testTheHelpDeskGuidesAndCouriersDecode() async throws {
+        let inbox = try await client.call(API.staffInbox, .init())
+        XCTAssertEqual(inbox.rows.first?.status, "open", "the conversations waiting on NetLet come first")
+        let thread = try await client.call(API.staffThread, .init(id: 5))
+        XCTAssertEqual(Set(thread.messages.map(\.author)), ["shopper", "automatic", "staff"])
+        XCTAssertNotNil(thread.messages.first { $0.author == "automatic" }?.answer, "the automatic answer is message keys")
+        let guides = try await client.call(API.guideList, .init())
+        XCTAssertEqual(guides.total, guides.rows.count)
+        let guide = try await client.call(API.guideGet, .init(id: 1))
+        XCTAssertEqual(guide.status, "published")
+        XCTAssertEqual(GuideRules.problems(guide.content), [], "a published guide passes the rules it was published under")
+        let couriers = try await client.call(API.deliveryCompanies)
+        XCTAssertTrue(couriers.contains { $0.status == "suspended" })
+        let members = try await client.call(API.courierMembers, .init(courierId: 1))
+        XCTAssertEqual(members.first?.email, "rider@courier.test")
+    }
+
+    func testTheGuideAndReplyRulesAreTheWebs() throws {
+        var guide = GuideContent.empty
+        XCTAssertEqual(GuideRules.problems(guide), ["guides.needTitle", "guides.stepIncomplete"])
+        guide.title = "Paying"
+        guide.titleAr = "الدفع"
+        guide.steps = [.init(title: "Order", titleAr: "اطلب", body: "Place it.", bodyAr: "ضعه.", imageUrl: "/media/LbtfvtL9lnOShrXz_N_cCXYF.webp")]
+        XCTAssertEqual(GuideRules.problems(guide), [])
+        guide.steps[0].imageUrl = "https://elsewhere.example/a.jpg"
+        XCTAssertEqual(GuideRules.problems(guide), ["guides.badPicture"], "a guide's pictures are NetLet's own uploads only")
+        guide.steps[0].imageUrl = nil
+        guide.summary = "Call 99887766 to pay"
+        XCTAssertEqual(GuideRules.problems(guide), ["guides.contactDetails"], "a guide is NetLet talking, under the chat's filter")
+        guide.steps = []
+        XCTAssertTrue(GuideRules.problems(guide).contains("guides.needSteps"))
+        let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(API.GuideSave(id: OrNull(nil), guide: .empty))) as? [String: Any]
+        XCTAssertTrue(body?["id"] is NSNull, "a new guide is saved with a null id")
+        let step = ((body?["guide"] as? [String: Any])?["steps"] as? [[String: Any]])?.first
+        XCTAssertTrue(step?["imageUrl"] is NSNull, "a step without a picture says so rather than leaving the key out")
+        XCTAssertEqual(SupportRules.problem("   ", limit: 10), "support.empty")
+        XCTAssertEqual(SupportRules.problem(String(repeating: "a", count: 11), limit: 10), "support.tooLong")
+        XCTAssertNil(SupportRules.problem("On its way", limit: 10))
+    }
+
+    func testEveryPageOfThePortalIsDrawnInTheApp() {
+        let links = PortalRules.shared.menu.flatMap(\.links)
+        XCTAssertFalse(links.isEmpty)
+        XCTAssertEqual(links.filter { !PortalPage.draws($0.href) }.map(\.href), [], "no page of the web's portal opens a browser")
+        XCTAssertEqual(PortalPage("/admin/support/5"), .supportThread(5))
+        XCTAssertEqual(PortalPage("/admin/guides/new"), .guide(nil))
+        XCTAssertEqual(PortalPage("/admin/guides/2"), .guide(2))
+        XCTAssertEqual(PortalPage("/admin/couriers"), .couriers)
+    }
+
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {
         do {
             _ = try await client.call(API.changeEmail, .init(email: "a@b.co", currentPassword: "x"))

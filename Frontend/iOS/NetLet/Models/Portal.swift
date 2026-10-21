@@ -55,6 +55,7 @@ struct PortalRules: Decodable, Sendable {
     var maxBankReference: Int?
     var badges: BadgeRules?
     var money: MoneyRules?
+    var guides: GuideLimits?
 
     /// How long after the sale a seller's money comes due (`SETTLEMENT_DAYS`).
     struct Settlement: Decodable, Sendable {
@@ -146,6 +147,14 @@ enum PortalPage: Hashable, Sendable {
     case promotions
     case affiliates
     case membership
+    case support
+    /// One conversation in NetLet's inbox — the app's own address for what
+    /// the web opens beside the list.
+    case supportThread(Int)
+    case guides
+    /// One guide; nil is a new one (`/admin/guides/new`).
+    case guide(Int?)
+    case couriers
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -174,6 +183,13 @@ enum PortalPage: Hashable, Sendable {
         case 2 where rest[0] == "messages":
             guard let id = Int(rest[1]) else { return nil }
             self = .thread(id)
+        case 2 where rest[0] == "support":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .supportThread(id)
+        case 2 where rest[0] == "guides" && rest[1] == "new": self = .guide(nil)
+        case 2 where rest[0] == "guides":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .guide(id)
         case 1:
             switch rest[0] {
             case "orders": self = .orders
@@ -201,6 +217,9 @@ enum PortalPage: Hashable, Sendable {
             case "promotions": self = .promotions
             case "affiliates": self = .affiliates
             case "membership": self = .membership
+            case "support": self = .support
+            case "guides": self = .guides
+            case "couriers": self = .couriers
             default: return nil
             }
         default: return nil

@@ -1,0 +1,51 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 1,
+        "slug": "how-to-return-an-item",
+        "status": "published",
+        "audience": "shopper",
+        "title": "How to return an item",
+        "titleAr": "كيف تُرجع منتجاً",
+        "summary": "Start a return from your orders in three short steps, within 14 days of delivery.",
+        "summaryAr": "ابدأ الإرجاع من طلباتك في ثلاث خطوات قصيرة، خلال 14 يوماً من التوصيل.",
+        "steps": [
+          {
+            "body": "Tap Profile at the foot of the screen, then Orders and returns.",
+            "title": "Open your orders",
+            "bodyAr": "اضغط «حسابي» أسفل الشاشة، ثم «الطلبات والإرجاع».",
+            "titleAr": "افتح طلباتك",
+            "imageUrl": "/media/LbtfvtL9lnOShrXz_N_cCXYF.webp"
+          },
+          {
+            "body": "Open the order and press Return beside the item you are sending back.\nSay why: a fault is approved at once.",
+            "title": "Choose the item",
+            "bodyAr": "افتح الطلب واضغط «إرجاع» بجانب المنتج الذي تعيده.\nاذكر السبب: العيب يُقبل فوراً.",
+            "titleAr": "اختر المنتج",
+            "imageUrl": "/media/zAlHMw20uR4-dJ-ajcYgLRZH.webp"
+          },
+          {
+            "body": "Pack it as it came. The refund is made once it arrives back.",
+            "title": "Hand it to the driver",
+            "bodyAr": "غلّفه كما وصلك. يُردّ المبلغ عند وصوله إلينا.",
+            "titleAr": "سلّمه للسائق",
+            "imageUrl": null
+          }
+        ],
+        "publishedAt": "2026-10-18T19:37:29.685Z",
+        "updatedAt": "2026-10-18T19:37:29.685Z"
+      },
+      "meta": {
+        "values": {
+          "publishedAt": [
+            "Date"
+          ],
+          "updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -258,7 +258,7 @@ struct PortalNewStoreView: View {
         ["owner", "manager", "staff"].map { ($0, l.t(TeamWords.role($0))) }
     }
 
-    private func step<Content: View>(_ number: Int, _ title: String, note: String? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+    private func step<Content: View>(_ number: Int, _ title: String, note: String? = nil, @ViewBuilder _ content: @escaping () -> Content) -> some View {
         PortalCard {
             HStack(spacing: 8) {
                 Text("\(number)").font(.inter(13, .bold)).foregroundStyle(.white).frame(width: 24, height: 24).background(Circle().fill(Brand.navy))
@@ -440,7 +440,7 @@ struct PortalStoreView: View {
     // MARK: Sections
 
     private func section<Content: View>(_ title: String, note: String? = nil, key: String, disabled: Bool = false,
-                                        save: (() -> Void)? = nil, @ViewBuilder _ content: () -> Content) -> some View {
+                                        save: (() -> Void)? = nil, @ViewBuilder _ content: @escaping () -> Content) -> some View {
         PortalCard {
             Text(l.t(title)).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             if let note { Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true) }

@@ -748,5 +748,13 @@
       "percent",
       "fixed"
     ]
+  },
+  "guides": {
+    "titleMax": 140,
+    "summaryMax": 400,
+    "stepTitleMax": 120,
+    "stepBodyMax": 1000,
+    "maxSteps": 10,
+    "topicMax": 200
   }
 }

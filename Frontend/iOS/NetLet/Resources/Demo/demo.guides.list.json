@@ -1,0 +1,116 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 3,
+            "slug": "paying-cash-on-delivery",
+            "status": "draft",
+            "audience": "shopper",
+            "title": "Paying cash on delivery",
+            "titleAr": "",
+            "summary": "",
+            "summaryAr": "",
+            "steps": [
+              {
+                "body": "",
+                "title": "",
+                "bodyAr": "",
+                "titleAr": "",
+                "imageUrl": null
+              }
+            ],
+            "publishedAt": null,
+            "updatedAt": "2026-10-18T19:37:29.760Z"
+          },
+          {
+            "id": 2,
+            "slug": "how-to-add-your-first-product",
+            "status": "published",
+            "audience": "seller",
+            "title": "How to add your first product",
+            "titleAr": "كيف تضيف منتجك الأول",
+            "summary": "From the portal's Products page to a listing on the shop.",
+            "summaryAr": "من صفحة المنتجات في البوابة إلى منتج معروض في المتجر.",
+            "steps": [
+              {
+                "body": "In the portal, open Products and press New product.",
+                "title": "Open Products",
+                "bodyAr": "في البوابة افتح «المنتجات» واضغط «منتج جديد».",
+                "titleAr": "افتح المنتجات",
+                "imageUrl": "/media/CdpICfnfQ6AIAmo5reyjlitV.webp"
+              },
+              {
+                "body": "Name, price, photos, description and department.",
+                "title": "Fill in the essentials",
+                "bodyAr": "الاسم والسعر والصور والوصف والقسم.",
+                "titleAr": "املأ الأساسيات",
+                "imageUrl": "/media/C19YrpYpf8yAgcUNp4qS54qh.webp"
+              }
+            ],
+            "publishedAt": "2026-10-18T19:37:29.746Z",
+            "updatedAt": "2026-10-18T19:37:29.746Z"
+          },
+          {
+            "id": 1,
+            "slug": "how-to-return-an-item",
+            "status": "published",
+            "audience": "shopper",
+            "title": "How to return an item",
+            "titleAr": "كيف تُرجع منتجاً",
+            "summary": "Start a return from your orders in three short steps, within 14 days of delivery.",
+            "summaryAr": "ابدأ الإرجاع من طلباتك في ثلاث خطوات قصيرة، خلال 14 يوماً من التوصيل.",
+            "steps": [
+              {
+                "body": "Tap Profile at the foot of the screen, then Orders and returns.",
+                "title": "Open your orders",
+                "bodyAr": "اضغط «حسابي» أسفل الشاشة، ثم «الطلبات والإرجاع».",
+                "titleAr": "افتح طلباتك",
+                "imageUrl": "/media/LbtfvtL9lnOShrXz_N_cCXYF.webp"
+              },
+              {
+                "body": "Open the order and press Return beside the item you are sending back.\nSay why: a fault is approved at once.",
+                "title": "Choose the item",
+                "bodyAr": "افتح الطلب واضغط «إرجاع» بجانب المنتج الذي تعيده.\nاذكر السبب: العيب يُقبل فوراً.",
+                "titleAr": "اختر المنتج",
+                "imageUrl": "/media/zAlHMw20uR4-dJ-ajcYgLRZH.webp"
+              },
+              {
+                "body": "Pack it as it came. The refund is made once it arrives back.",
+                "title": "Hand it to the driver",
+                "bodyAr": "غلّفه كما وصلك. يُردّ المبلغ عند وصوله إلينا.",
+                "titleAr": "سلّمه للسائق",
+                "imageUrl": null
+              }
+            ],
+            "publishedAt": "2026-10-18T19:37:29.685Z",
+            "updatedAt": "2026-10-18T19:37:29.685Z"
+          }
+        ],
+        "total": 3,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.updatedAt": [
+            "Date"
+          ],
+          "rows.1.publishedAt": [
+            "Date"
+          ],
+          "rows.1.updatedAt": [
+            "Date"
+          ],
+          "rows.2.publishedAt": [
+            "Date"
+          ],
+          "rows.2.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

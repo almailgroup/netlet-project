@@ -1,0 +1,125 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 9,
+            "topic": "order",
+            "orderReference": null,
+            "status": "open",
+            "lastMessageAt": "2026-10-11T20:39:14.269Z",
+            "unread": true,
+            "shopperEmail": "owner@netlet.test"
+          },
+          {
+            "id": 8,
+            "topic": "order",
+            "orderReference": null,
+            "status": "open",
+            "lastMessageAt": "2026-10-04T16:11:34.177Z",
+            "unread": true,
+            "shopperEmail": "owner@netlet.test"
+          },
+          {
+            "id": 5,
+            "topic": "order",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "open",
+            "lastMessageAt": "2026-10-04T16:10:12.339Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          },
+          {
+            "id": 4,
+            "topic": "order",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "open",
+            "lastMessageAt": "2026-10-04T16:09:40.125Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          },
+          {
+            "id": 3,
+            "topic": "order",
+            "orderReference": null,
+            "status": "open",
+            "lastMessageAt": "2026-10-04T07:42:06.698Z",
+            "unread": true,
+            "shopperEmail": "owner@netlet.test"
+          },
+          {
+            "id": 1,
+            "topic": "delivery",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "resolved",
+            "lastMessageAt": "2026-10-11T20:39:14.675Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          },
+          {
+            "id": 7,
+            "topic": "order",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "waiting",
+            "lastMessageAt": "2026-10-04T16:11:20.802Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          },
+          {
+            "id": 6,
+            "topic": "order",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "waiting",
+            "lastMessageAt": "2026-10-04T16:11:09.921Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          },
+          {
+            "id": 2,
+            "topic": "delivery",
+            "orderReference": "NL-20261002-3WQ6P",
+            "status": "resolved",
+            "lastMessageAt": "2026-10-04T07:41:46.692Z",
+            "unread": false,
+            "shopperEmail": "noura@shop.test"
+          }
+        ],
+        "total": 9,
+        "page": 1,
+        "pageSize": 20
+      },
+      "meta": {
+        "values": {
+          "rows.0.lastMessageAt": [
+            "Date"
+          ],
+          "rows.1.lastMessageAt": [
+            "Date"
+          ],
+          "rows.2.lastMessageAt": [
+            "Date"
+          ],
+          "rows.3.lastMessageAt": [
+            "Date"
+          ],
+          "rows.4.lastMessageAt": [
+            "Date"
+          ],
+          "rows.5.lastMessageAt": [
+            "Date"
+          ],
+          "rows.6.lastMessageAt": [
+            "Date"
+          ],
+          "rows.7.lastMessageAt": [
+            "Date"
+          ],
+          "rows.8.lastMessageAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}
