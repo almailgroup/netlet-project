@@ -146,6 +146,17 @@ final class ValidationTests: XCTestCase {
         draft.price = "12.500"
         draft.stock = "4"
         XCTAssertTrue(Validation.listingProblems(draft, departmentSlug: nil, rules: rules).isEmpty)
+
+        draft.compareAtPrice = "12.500"
+        XCTAssertEqual(Validation.listingProblems(draft, departmentSlug: nil, rules: rules)[.compareAtPrice], "admin.newWasHigher",
+                       "a was-price no higher than the price is not a saving")
+        draft.compareAtPrice = "15"
+        XCTAssertNil(Validation.listingProblems(draft, departmentSlug: nil, rules: rules)[.compareAtPrice])
+        draft.sku = String(repeating: "A", count: rules.maxSku + 1)
+        XCTAssertEqual(Validation.listingProblems(draft, departmentSlug: nil, rules: rules)[.sku], "admin.newTooLong")
+        XCTAssertEqual(Validation.ListingField.allCases.first, .title, "a refusal is pointed at the form's first box first")
+        XCTAssertEqual(SearchPreview.handle("Brass Lamp — 40cm!"), "brass-lamp-40cm", "the address a draft's name makes")
+        XCTAssertEqual(SearchPreview.text("- Warm light\n- Brass", limit: 160), "Warm light · Brass")
     }
 
     func testDeliverySaysTheFirstThingMissing() {

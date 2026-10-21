@@ -446,7 +446,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(board.parcels.first?.courierMoves, ["shipped"], "a parcel being prepared is collected next")
         XCTAssertNotNil(board.parcels.first?.collectFrom, "NetLet's shelf names the centre to collect from")
         let companies = try await client.call(API.deliveryCompanies)
-        XCTAssertEqual(companies.first?.name, "Gulf Couriers")
+        XCTAssertEqual(companies.map(\.name), ["Desert Express", "Fast Riders", "Gulf Couriers"], "the companies in the order the server lists them")
         _ = try await client.call(API.deliveryScores)
         _ = try await client.call(API.claimLedger)
         _ = try await client.call(API.damageClaims, .init(status: "open"))

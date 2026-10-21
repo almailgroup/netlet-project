@@ -157,6 +157,7 @@ jobs:
             shot 44-admin-support "$lang" portal:/admin/support/5 admin
             shot 45-admin-guide "$lang" portal:/admin/guides/1 admin
             shot 46-admin-couriers "$lang" portal:/admin/couriers admin
+            shot 47-admin-new-product "$lang" portal:/admin/products/new admin
           done
           ls -1 build/previews
 

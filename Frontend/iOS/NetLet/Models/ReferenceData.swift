@@ -160,6 +160,10 @@ struct Rules: Decodable, Sendable {
         let departmentQuestions: [String: [String]]
         let photoMaxEdge: Int
         let maxPhotoChars: Int
+        /// "Generate with AI" (`GATEWAY_ROUTES.catalog`, `MAX_NOTES`, `MAX_IMAGES`).
+        var catalogPath = "/api/ai/catalog-assist"
+        var maxNotes = 4000
+        var maxDraftImages = 3
 
         static let fallback = AI(
             chatPath: "/api/ai/chat", maxChatTurns: 12, maxChatText: 1000, maxQuestion: 300,

@@ -60,7 +60,7 @@ import { MAX_RETURN_NOTE, OPEN_RETURN_STATUSES, RETURN_KINDS, RETURN_REASONS } f
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
 import { DEPARTMENT_QUESTIONS, MAX_DESCRIPTION as MAX_BRIEF_DESCRIPTION, MAX_QUESTION, MAX_SPEC_ROWS, MAX_SUGGESTIONS } from "../../../Shared/commerce/assistant.js";
-import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS } from "../../../Shared/ai/gateway.js";
+import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS, MAX_IMAGES, MAX_NOTES } from "../../../Shared/ai/gateway.js";
 import { ADMIN_ONLY, COURIER_CAPABILITIES, NEEDS, RANK } from "../../../Shared/inventory/permissions.js";
 import { ADMIN_MENU } from "../../Web/src/content/adminMenu.js";
 import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from "../../../Shared/inventory/productBulk.js";
@@ -244,6 +244,9 @@ export function buildResources(): Record<string, string> {
         departmentQuestions: DEPARTMENT_QUESTIONS,
         photoMaxEdge: PHOTO_MAX_EDGE,
         maxPhotoChars: MAX_PHOTO_CHARS,
+        catalogPath: GATEWAY_ROUTES.catalog,
+        maxNotes: MAX_NOTES,
+        maxDraftImages: MAX_IMAGES,
       },
     }),
     "assets.json": json(buildAssets().manifest),

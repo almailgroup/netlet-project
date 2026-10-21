@@ -10,7 +10,7 @@ struct PortalRouter: View {
         switch PortalPage(path) ?? .home {
         case .home: PortalHomeView()
         case .products(let vendorId): PortalProductsView(vendorId: vendorId)
-        case .newProduct: NewListingView()
+        case .newProduct(let vendorId): NewListingView(vendorId: vendorId)
         case .product(let id): PortalProductEditorView(productId: id)
         case .orders: PortalOrdersView()
         case .stock: PortalStockView()

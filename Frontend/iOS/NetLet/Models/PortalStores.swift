@@ -225,6 +225,7 @@ extension API {
         var page: Int?
         var query: String?
         var status: String?
+        var pageSize: Int?
     }
 
     static let storeList = Procedure<StoreQuery, StoreListPage>(query: "inventory.vendors.list")

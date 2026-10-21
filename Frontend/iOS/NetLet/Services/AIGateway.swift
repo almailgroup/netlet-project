@@ -55,9 +55,82 @@ struct ProductBrief: Encodable, Hashable, Sendable {
     }
 }
 
+/// What "Generate with AI" sends (`CatalogAssistRequest`): the seller's
+/// notes, the department already chosen, and up to three photos shrunk on
+/// the phone.
+struct CatalogAssistBody: Encodable, Sendable {
+    struct Image: Encodable, Sendable {
+        let mimeType: String
+        let data: String
+    }
+
+    let locale: String
+    let notes: String
+    let department: String?
+    let images: [Image]
+
+    /// `department` is sent as null rather than left out, as the web does.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(locale, forKey: .locale)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(department, forKey: .department)
+        try container.encode(images, forKey: .images)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case locale, notes, department, images
+    }
+}
+
+/// A listing drafted by the model for the seller to read, change and keep —
+/// never saved by itself (`CatalogDraft`), already held to the shop's
+/// departments and rows by the gateway (`draftFromModel`).
+struct CatalogDraft: Decodable, Equatable, Sendable {
+    struct Words: Decodable, Equatable, Sendable {
+        let en: String
+        let ar: String
+    }
+
+    struct Row: Decodable, Equatable, Sendable {
+        let key: String
+        let value: String
+    }
+
+    struct Search: Decodable, Equatable, Sendable {
+        let title: String
+        let description: String
+    }
+
+    let title: Words
+    let description: Words
+    let department: String?
+    let tags: [String]
+    let attributes: [Row]
+    let missing: [String]
+    /// Shown and kept nowhere: the search preview is `productMeta`'s rule.
+    let seo: Search
+}
+
 extension API {
     static let aiAvailable = Procedure<NoInput, AIAvailability>(query: "ai.available")
     static let chatSession = Procedure<NoInput, GatewaySession>(mutation: "ai.chatSession")
+
+    struct CatalogScope: Encodable, Sendable {
+        let vendorId: Int?
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(vendorId, forKey: .vendorId)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case vendorId
+        }
+    }
+
+    /// Signed only for somebody who may create a product in that store.
+    static let catalogSession = Procedure<CatalogScope, GatewaySession>(mutation: "ai.catalogSession")
 }
 
 /// A refusal from the gateway, by its code (`GATEWAY_ERRORS`).
@@ -184,6 +257,35 @@ actor AIGateway {
                 if let event = ChatEvent.parse(line) { await onEvent(event) }
             }
             return
+        }
+        throw GatewayRefusal(code: "unauthorised")
+    }
+
+    /// Asks the catalogue route for a listing draft. Its answer is one JSON
+    /// body, `{ ok, data }` or `{ ok: false, error: { code } }`.
+    func catalog(_ body: CatalogAssistBody) async throws -> CatalogDraft {
+        struct Answer: Decodable { let data: CatalogDraft }
+        let payload = try JSONEncoder().encode(body)
+        let path = ReferenceData.shared.rules.aiRules.catalogPath
+        for fresh in [false, true] {
+            guard let ticket = try await current(fresh: fresh) else { throw GatewayRefusal(code: "not_configured") }
+            var request = URLRequest(url: ticket.url.appendingPathComponent(String(path.drop(while: { $0 == "/" }))))
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "content-type")
+            request.setValue("Bearer \(ticket.token)", forHTTPHeaderField: "authorization")
+            request.httpBody = payload
+            let (data, response) = try await session.data(for: request)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            if status == 200, object?["ok"] as? Bool == true {
+                return try JSONDecoder().decode(Answer.self, from: data).data
+            }
+            let code = (object?["error"] as? [String: Any]).flatMap { $0["code"] as? String } ?? "model_unavailable"
+            if code == "unauthorised" && !fresh {
+                self.ticket = nil
+                continue
+            }
+            throw GatewayRefusal(code: code)
         }
         throw GatewayRefusal(code: "unauthorised")
     }

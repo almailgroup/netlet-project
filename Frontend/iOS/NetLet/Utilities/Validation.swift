@@ -36,10 +36,13 @@ enum Validation {
         var stock = ""
         var description = ""
         var warranty = ""
+        var compareAtPrice = ""
+        var sku = ""
     }
 
+    /// In the form's order, which is the order a refusal is pointed at.
     enum ListingField: String, CaseIterable {
-        case title, titleAr, price, stock, description, warranty
+        case title, titleAr, warranty, price, compareAtPrice, sku, stock, description
     }
 
     static func listingProblems(_ draft: ListingDraft, departmentSlug: String?, rules: Rules.Listing) -> [ListingField: String] {
@@ -63,6 +66,16 @@ enum Validation {
         if price.isEmpty { problems[.price] = "admin.newPriceRequired" }
         else if !isMoneyShape(price) { problems[.price] = "admin.newPriceShape" }
         else if (Money.parseFils(price) ?? 0) <= 0 { problems[.price] = "admin.newPricePositive" }
+
+        // Equal or lower is not a saving, and the shop would strike through a
+        // price that is not higher.
+        let was = draft.compareAtPrice.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !was.isEmpty {
+            if !isMoneyShape(was) { problems[.compareAtPrice] = "admin.newPriceShape" }
+            else if isMoneyShape(price), (Money.parseFils(was) ?? 0) <= (Money.parseFils(price) ?? 0) { problems[.compareAtPrice] = "admin.newWasHigher" }
+        }
+
+        if draft.sku.trimmingCharacters(in: .whitespacesAndNewlines).count > rules.maxSku { problems[.sku] = "admin.newTooLong" }
 
         let stock = draft.stock.trimmingCharacters(in: .whitespacesAndNewlines)
         if !stock.isEmpty {

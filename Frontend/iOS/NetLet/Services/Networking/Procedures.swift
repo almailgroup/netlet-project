@@ -253,6 +253,8 @@ enum API {
     struct NewListing: Encodable, Sendable {
         struct Variant: Encodable, Sendable {
             let price: String
+            var compareAtPrice: String?
+            var sku: String?
             let stock: Int
         }
 
@@ -260,12 +262,21 @@ enum API {
             let url: String
         }
 
+        /// A specification row by the department's own key.
+        struct Spec: Encodable, Sendable {
+            let key: String
+            let value: String
+        }
+
         let vendorId: Int
         let title: String
         let titleAr: String
         var description: String?
+        var descriptionAr: String?
         var categoryId: Int?
+        var tags: [String]?
         var warranty: String?
+        var specs: [Spec]?
         let variant: Variant
         let images: [Photo]
     }
@@ -279,6 +290,21 @@ enum API {
     static let categories = Procedure<NoInput, [Category]>(query: "inventory.categories")
     static let sellerProducts = Procedure<SellerList, SellerProductPage>(query: "inventory.products.list")
     static let createListing = Procedure<NewListing, CreatedListing>(mutation: "inventory.products.create")
+
+    /// Whether "Draft with AI" can offer the Arabic name at all.
+    static let arabicDraftAvailable = Procedure<NoInput, Bool>(query: "inventory.products.arabicDraftAvailable")
+
+    struct EnglishName: Encodable, Sendable {
+        let vendorId: Int
+        let title: String
+    }
+
+    /// A draft of the Arabic name for the seller to read and keep or change.
+    static let draftArabicTitle = Procedure<EnglishName, DraftAnswer>(mutation: "inventory.products.draftArabicTitle")
+
+    /// The store a store's own people act for, with whether its listings are
+    /// checked before they go live; nil for anybody else.
+    static let myStore = Procedure<NoInput, OwnStore?>(query: "inventory.myStore")
     /// Answers the status the product is now in — `pending_review` when the
     /// store's listings are checked before they go live.
     static let setListingStatus = Procedure<ListingStatus, String>(mutation: "inventory.products.setStatus")

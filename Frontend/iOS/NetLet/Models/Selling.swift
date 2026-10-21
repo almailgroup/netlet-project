@@ -83,6 +83,13 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
 }
 
 /// What creating a listing answers: the new product's row.
+/// The store's own row as its people read it (`inventory.myStore`).
+struct OwnStore: Decodable, Sendable {
+    let id: Int
+    let name: String
+    let autoPublish: Bool
+}
+
 struct CreatedListing: Decodable, Sendable {
     let id: Int
     let handle: String

@@ -39,9 +39,9 @@ struct StaffSupportThread: Decodable, Sendable {
     let messages: [SupportThread.Message]
 }
 
-/// A model's draft of NetLet's reply (`support.draft`): words for a person to
-/// read and send, or why there are none.
-struct SupportDraft: Decodable, Sendable {
+/// A model's draft for a person to read (`support.draft`,
+/// `inventory.products.draftArabicTitle`): the words, or why there are none.
+struct DraftAnswer: Decodable, Sendable {
     /// draft, nothingToAnswer or unavailable.
     let kind: String
     var text: String? = nil
@@ -209,7 +209,7 @@ extension API {
     static let staffReply = Procedure<StaffReply, Acknowledged>(mutation: "support.staffReply")
     static let staffResolve = Procedure<RowId, Acknowledged>(mutation: "support.staffResolve")
     static let supportDraftAvailable = Procedure<NoInput, Bool>(query: "support.draftAvailable")
-    static let supportDraft = Procedure<RowId, SupportDraft>(mutation: "support.draft")
+    static let supportDraft = Procedure<RowId, DraftAnswer>(mutation: "support.draft")
 
     static let guideList = Procedure<PageOnly, AdminGuidePage>(query: "guides.list")
     static let guideGet = Procedure<RowId, AdminGuide>(query: "guides.get")

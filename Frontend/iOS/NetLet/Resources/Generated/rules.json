@@ -143,6 +143,9 @@
       ]
     },
     "photoMaxEdge": 768,
-    "maxPhotoChars": 240000
+    "maxPhotoChars": 240000,
+    "catalogPath": "/api/ai/catalog-assist",
+    "maxNotes": 4000,
+    "maxDraftImages": 3
   }
 }
