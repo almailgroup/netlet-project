@@ -2089,9 +2089,10 @@ named in the Worker's settings in Cloudflare's dashboard — `Backend/gateway`
 since the move; a folder change there is a change to make in the dashboard too,
 or the gateway silently stops deploying. **It did**: the "Workers Builds:
 netlet-ai-gateway" check on `main` went red with the commit after the move and
-stayed red, which is the dashboard still building the old `gateway/` folder —
-the live Worker is the one from before the move until the root directory there
-reads `Backend/gateway`. **Every model call NetLet makes is Gemini through it, and Mistral is
+stayed red for every push after, because the dashboard was still building the
+old `gateway/` folder, so the live Worker stayed the one from before the move.
+The owner set the root directory to `Backend/gateway`; that check going green
+again is how to tell the Worker is deploying. **Every model call NetLet makes is Gemini through it, and Mistral is
 gone, on the owner's word.** The shop's conversations moved first (see "The
 shop assistant"); then the six features this server called Mistral for —
 search refinement, the Picked for you order, photo search, support drafts, the
