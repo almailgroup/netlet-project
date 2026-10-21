@@ -286,7 +286,11 @@ struct PhotoSheet: View {
                     // not follow the page's photo afterwards.
                     await Task.yield()
                     proxy.scrollTo(index, anchor: .top)
-                    if startFull { full = true }
+                    guard startFull else { return }
+                    // After this sheet has finished rising: a cover asked for
+                    // mid-presentation is dropped.
+                    try? await Task.sleep(for: .seconds(1))
+                    full = true
                 }
                 .onChange(of: full) { _, open in
                     // Back from full screen, the photo last looked at — perhaps

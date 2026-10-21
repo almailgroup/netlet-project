@@ -9,11 +9,12 @@ import SwiftUI
 /// (`support.channels`) over the shop's own defaults, so the footer and the web
 /// cannot name two numbers.
 ///
-/// The navy ends with the footer, so at the foot of a page the floating tab
-/// bar sits over the page's ground. Under navy the system's glass turns dark
-/// and draws the selected tab in the same navy, where it vanished; with no
-/// band behind the bar any more (`NoBottomEdge`), the ground is what keeps it
-/// readable.
+/// The navy ends with the footer, and every page above it is at least a
+/// screen tall (`ShopPage`), so the floating tab bar rests over the page's
+/// ground at the top of a page and at its foot alike. Under navy the system's
+/// glass turns dark and draws the selected tab in the same navy, where it
+/// vanished; with no band behind the bar any more (`NoBottomEdge`), the ground
+/// is what keeps it readable, and only a scroll through the footer crosses it.
 struct SiteFooter: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l

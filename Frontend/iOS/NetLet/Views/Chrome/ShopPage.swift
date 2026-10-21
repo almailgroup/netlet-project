@@ -31,34 +31,45 @@ struct ShopPage<Content: View>: View {
     var body: some View {
         let back: (() -> Void)? = root ? nil : { dismiss() }
         return ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    LogoRow(back: back) {
-                        if root && app.selectedTab == .home {
-                            withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
-                        } else {
-                            app.goHome()
+            GeometryReader { screen in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                        LogoRow(back: back) {
+                            if root && app.selectedTab == .home {
+                                withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
+                            } else {
+                                app.goHome()
+                            }
+                        }
+                        .id(ShopPageTop.id)
+                        Section {
+                            if footer {
+                                // At least a screen tall, the web's `min-h-[100svh]`:
+                                // the footer starts below the fold, so the tab bar
+                                // never rests over its navy (see `SiteFooter`).
+                                VStack(alignment: .leading, spacing: 0) { content() }
+                                    .frame(maxWidth: .infinity, minHeight: screen.size.height, alignment: .topLeading)
+                                SiteFooter().id(ShopPageTop.foot)
+                            } else {
+                                content()
+                            }
+                        } header: {
+                            SearchRow()
                         }
                     }
-                    .id(ShopPageTop.id)
-                    Section {
-                        content()
-                        if footer { SiteFooter().id(ShopPageTop.foot) }
-                    } header: {
-                        SearchRow()
-                    }
                 }
+                .task(id: app.startAtFoot) {
+                    // The screenshot of the tab bar over the footer; asked for once
+                    // the launch has settled, after the home page has appeared.
+                    guard root, footer, app.startAtFoot else { return }
+                    app.startAtFoot = false
+                    try? await Task.sleep(for: .seconds(2))
+                    proxy.scrollTo(ShopPageTop.foot, anchor: .bottom)
+                }
+                .modifier(OptionalRefresh(action: refresh))
+                .modifier(NoBottomEdge())
+                .scrollDismissesKeyboard(.interactively)
             }
-            .task {
-                // The screenshot of the tab bar over the footer.
-                guard root, footer, app.startAtFoot else { return }
-                app.startAtFoot = false
-                try? await Task.sleep(for: .seconds(2))
-                proxy.scrollTo(ShopPageTop.foot, anchor: .bottom)
-            }
-            .modifier(OptionalRefresh(action: refresh))
-            .modifier(NoBottomEdge())
-            .scrollDismissesKeyboard(.interactively)
         }
         .background(Brand.ground.ignoresSafeArea())
         .overlay(alignment: .bottomTrailing) {

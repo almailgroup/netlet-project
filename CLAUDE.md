@@ -5298,9 +5298,13 @@ hard bottom scroll-edge effect, a nearly opaque band of the page under the bar,
 and **the owner asked for the glass behind the menu to go**: every scroll view
 in the tabs has its bottom edge effect hidden (`NoBottomEdge`,
 `scrollEdgeEffectHidden`), so the bar floats over the page as the web's pill
-does, and the footer's navy ends with the footer, so at the foot of a page the
-bar sits over the page's ground and the selected tab stays readable. Scrolling
-through the footer the glass darkens for a moment, as it does in any app. A
+does. What keeps the selected tab readable is that the bar rests over the
+page's ground, never the footer's navy: the navy ends with the footer, and
+every page above it is at least a screen tall (`ShopPage`, the web's
+`min-h-[100svh]`), so the footer starts below the fold even on a short page —
+the first preview without the band showed the bag's footer under the bar and
+the Cart tab gone but for its badge. Scrolling through the footer the glass
+darkens for a moment, as it does in any app. A
 press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
