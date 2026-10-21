@@ -450,7 +450,7 @@ private struct GuidesShelf: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
             if !guides.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {

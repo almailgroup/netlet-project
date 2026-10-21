@@ -139,6 +139,14 @@ struct ProductCard: View {
                 if let variant {
                     PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, size: feature ? 20 : 16)
                         .padding(.top, 6)
+                    // The price per kilo or litre of something sold by weight (`UnitPrice`).
+                    if let measure = variant.measure,
+                       let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
+                        Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .padding(.top, 2)
+                    }
                 }
                 Spacer(minLength: 0)
                 CardActions(product: product)

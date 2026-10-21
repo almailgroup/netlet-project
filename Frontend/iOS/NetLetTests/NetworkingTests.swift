@@ -419,6 +419,15 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(perKilo?.price, Money(fils: 2400))
         XCTAssertEqual(perKilo?.unit, "kg")
         XCTAssertNil(rules.unitPrice(Money(fils: 600), unit: "each", step: 1), "a counted product's unit price is just its price")
+        // `measureOf`: grams under a kilo, kilos from one up, never a float in the label.
+        XCTAssertEqual(rules.measureOf(unit: "g", step: 250, quantity: 3)?.value, 750)
+        XCTAssertEqual(rules.measureOf(unit: "g", step: 250, quantity: 3)?.unit, "g")
+        XCTAssertEqual(rules.measureOf(unit: "g", step: 250, quantity: 6)?.value, 1.5)
+        XCTAssertEqual(rules.measureOf(unit: "g", step: 250, quantity: 6)?.unit, "kg")
+        XCTAssertNil(rules.measureOf(unit: "each", step: 1, quantity: 4), "a count says itself")
+        XCTAssertEqual(UnitWording.number(1.5), "1.5")
+        XCTAssertEqual(UnitWording.number(800), "800")
+        XCTAssertEqual(UnitWording.number(1.25), "1.25")
 
         XCTAssertEqual(rules.vehicle(forSizeClass: "large"), "van")
         XCTAssertEqual(memberPriceProblem(list: Money(fils: 10_000), member: "10.000"), "membership.priceNotBelow")

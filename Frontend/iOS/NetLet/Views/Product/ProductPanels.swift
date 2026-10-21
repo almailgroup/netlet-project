@@ -321,7 +321,7 @@ struct PriceRequestPanel: View {
     private var numericId: Int? { Int(variant.id) }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
             if open == true {
                 let settled = held.map { ["declined", "expired", "withdrawn", "used"].contains($0.state) } ?? true
                 let standing = app.session.isSignedIn && !settled
@@ -652,7 +652,9 @@ struct BundlesPanel: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        // A stack rather than a group, so it is a view while it holds nothing
+        // and still asks for the sets; the room above comes with the sets.
+        VStack(alignment: .leading, spacing: 0) {
             if !bundles.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(l.t("bundle.heading")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
@@ -687,6 +689,7 @@ struct BundlesPanel: View {
                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                     }
                 }
+                .padding(.top, 16)
             }
         }
         .task(id: variantId) { bundles = (try? await app.services.api.call(API.bundles, .init(variantId: variantId))) ?? [] }
@@ -811,7 +814,7 @@ struct BoughtTogetherShelf: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
             if !items.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(l.t("together.heading")).shelfTitle()

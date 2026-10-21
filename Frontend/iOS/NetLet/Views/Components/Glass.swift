@@ -11,6 +11,9 @@ import SwiftUI
 struct GlassSurface: View {
     var top: Double = 0.6
     var foot: Double = 0.45
+    /// The bright top edge — only where the surface is the top of the glass,
+    /// or two rows of one header read as two strips.
+    var rim = true
 
     var body: some View {
         ZStack {
@@ -18,7 +21,7 @@ struct GlassSurface: View {
             LinearGradient(colors: [Color.white.opacity(top), Color.white.opacity(foot)], startPoint: .top, endPoint: .bottom)
         }
         .overlay(alignment: .top) {
-            Rectangle().fill(Color.white.opacity(0.95)).frame(height: 1)
+            if rim { Rectangle().fill(Color.white.opacity(0.95)).frame(height: 1) }
         }
     }
 }

@@ -42,6 +42,7 @@ struct RootView: View {
                 .tabItem { Label(l.t("nav.categories"), systemImage: "square.grid.2x2") }
                 .tag(AppModel.Tab.categories)
         }
+        .modifier(NoBottomEdge())
         .overlay {
             if app.searchOpen {
                 SearchOverlay()

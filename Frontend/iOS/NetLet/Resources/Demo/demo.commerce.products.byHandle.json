@@ -23,12 +23,32 @@
             "altText": "Wireless earbuds",
             "kind": "image",
             "posterUrl": null
+          },
+          {
+            "url": "/departments/home-and-kitchen.webp",
+            "altText": "Wireless earbuds in their charging case",
+            "kind": "image",
+            "posterUrl": null
+          },
+          {
+            "url": "/departments/style.webp",
+            "altText": "Wireless earbuds, worn",
+            "kind": "image",
+            "posterUrl": null
           }
         ],
         "images": [
           {
             "url": "/departments/electronics.webp",
             "altText": "Wireless earbuds"
+          },
+          {
+            "url": "/departments/home-and-kitchen.webp",
+            "altText": "Wireless earbuds in their charging case"
+          },
+          {
+            "url": "/departments/style.webp",
+            "altText": "Wireless earbuds, worn"
           }
         ],
         "priceRange": {

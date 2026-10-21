@@ -138,12 +138,22 @@ final class AppModel {
     /// The header's search, grown down over the page while it is open.
     var searchOpen = false
     var searchText = ""
+    /// What the search opens on from the header's microphone or camera.
+    var searchStart: SearchStart?
+    /// The photo viewer a product page opens on — for the screenshots CI takes.
+    var photoViewerStart: PhotoViewerStart?
+    /// The home page opens scrolled to its foot — for the screenshot of the
+    /// tab bar over the footer.
+    var startAtFoot = false
     /// Which of the shop's switchable features are on (`features.states`).
     private(set) var features = FeatureStates.unknown
     /// What is waiting in the account: unread notices and messages, parcels on the way.
     let signals: AccountSignals
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
     private(set) var ai: AIAvailability?
+    /// Whether a model can read a photo for search (`search.photoAvailable`),
+    /// so the camera is drawn only where it does something.
+    private(set) var photoSearchReady = false
     /// The gateway, holding one token for every conversation.
     let gateway: AIGateway
     /// The shop's conversation, kept while the app runs — the web keeps it
@@ -264,6 +274,15 @@ final class AppModel {
         case "product":
             guard let value else { return }
             selectedTab = .home
+            homePath = NavigationPath([Route.product(handle: value)])
+        case "homeFoot":
+            selectedTab = .home
+            startAtFoot = true
+        case "photos", "zoom":
+            // Every photo of a product, or one of them full screen.
+            guard let value else { return }
+            selectedTab = .home
+            photoViewerStart = parts[0] == "zoom" ? .zoom : .photos
             homePath = NavigationPath([Route.product(handle: value)])
         case "search":
             selectedTab = .home
@@ -435,8 +454,10 @@ final class AppModel {
     func loadFeatures() async {
         async let states = try? services.api.call(API.features)
         async let available = try? services.api.call(API.aiAvailable)
+        async let photo = try? services.api.call(API.photoAvailable)
         if let states = await states { features = states }
         ai = await available ?? AIAvailability(chat: false, catalog: false)
+        photoSearchReady = await photo?.available ?? false
     }
 
     func signOut() async {
@@ -466,3 +487,14 @@ final class AppModel {
         await signals.refresh()
     }
 }
+
+/// Where a product page's photo viewer starts.
+enum PhotoViewerStart {
+    case photos, zoom
+}
+
+/// What the search opens on when the header's field is not what was pressed.
+enum SearchStart {
+    case voice, photo
+}
+

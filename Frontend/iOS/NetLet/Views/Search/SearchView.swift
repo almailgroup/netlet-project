@@ -28,7 +28,6 @@ private struct SearchSheet: View {
     @FocusState private var focused: Bool
     @State private var dictation: Dictation
     @State private var photoOpen = false
-    @State private var photoReady = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -80,10 +79,16 @@ private struct SearchSheet: View {
         .onAppear {
             model.query = app.searchText
             model.language = l.current
-            focused = true
-        }
-        .task {
-            photoReady = (try? await app.services.api.call(API.photoAvailable))?.available ?? false
+            // Opened by the header's microphone or camera: straight to that.
+            switch app.searchStart {
+            case .voice?:
+                dictation.start(language: l.current) { heard in model.query = heard }
+            case .photo?:
+                photoOpen = true
+            case nil:
+                focused = true
+            }
+            app.searchStart = nil
         }
         .onChange(of: dictation.listening) { _, listening in
             // What was heard is shown back in the field before anything is searched.
@@ -127,25 +132,34 @@ private struct SearchSheet: View {
                             dictation.start(language: l.current) { heard in model.query = heard }
                         } label: {
                             Image(systemName: "mic")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Brand.navy)
+                                .font(.system(size: 17))
+                                .foregroundStyle(Brand.muted)
                                 .frame(width: 36, height: 36)
                         }
                         .buttonStyle(.tap)
                         .accessibilityLabel(l.t("search.voice"))
                     }
-                    if app.features.isOn("photoSearch") && photoReady {
+                    if app.features.isOn("photoSearch") && app.photoSearchReady {
                         Button {
                             focused = false
                             photoOpen = true
                         } label: {
                             Image(systemName: "camera")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundStyle(Brand.navy)
+                                .font(.system(size: 17))
+                                .foregroundStyle(Brand.muted)
                                 .frame(width: 36, height: 36)
                         }
                         .buttonStyle(.tap)
                         .accessibilityLabel(l.t("search.photo"))
+                    }
+                    if (app.features.isOn("voiceSearch") && Dictation.isAvailable) || (app.features.isOn("photoSearch") && app.photoSearchReady) {
+                        // A hairline, so the pair reads as other ways in rather
+                        // than two more things the search disc might mean.
+                        Rectangle()
+                            .fill(Color(red: 201 / 255, green: 214 / 255, blue: 230 / 255))
+                            .frame(width: 1, height: 20)
+                            .padding(.horizontal, 2)
+                            .accessibilityHidden(true)
                     }
                 }
                 if dictation.listening {
@@ -167,9 +181,13 @@ private struct SearchSheet: View {
                         app.searchText = ""
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(Brand.muted)
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(Color.white))
+                            .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
                             .frame(width: 36, height: 36)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.tap)
                     .accessibilityLabel(l.t("header.searchClear"))
@@ -185,12 +203,15 @@ private struct SearchSheet: View {
                 }
                 .buttonStyle(.tap)
                 .accessibilityLabel(l.t("header.searchSubmit"))
+                .padding(.leading, 6)
             }
             .padding(.leading, 8)
             .padding(.trailing, 4)
             .frame(height: 44)
             .background(Capsule().fill(Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.35), lineWidth: 1.5))
+            // `.glass-field:focus-within`: a navy edge and a soft navy ring.
+            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1))
+            .background(Capsule().stroke(Brand.navy.opacity(0.12), lineWidth: 6))
             Button(l.t("search.close")) { close() }
                 .font(.inter(15, .semibold))
                 .foregroundStyle(Brand.navy)

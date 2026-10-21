@@ -16,6 +16,8 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let tags: [String]
     let attributes: [ProductAttribute]
     let images: [ProductImage]
+    /// The photographs with any video between them; absent from an older server.
+    let media: [ProductMedia]?
     let priceRange: PriceRange
     let options: [ProductOption]
     let variants: [ProductVariant]
@@ -39,6 +41,15 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
 
     var isAvailable: Bool { variants.contains(where: \.availableForSale) }
 
+    /// What the product page and its photo viewers index into (`galleryOf`):
+    /// the photographs with any video in the shopper's sequence between them,
+    /// or the photographs alone when the server sent no `media`. Cards and
+    /// shelves keep reading `images`, so none of them draws a video.
+    var gallery: [ProductMedia] {
+        if let media, !media.isEmpty { return media }
+        return images.map { ProductMedia(kind: "image", url: $0.url, altText: $0.altText, posterUrl: nil) }
+    }
+
     /// A product with more than one variant asks which before anything is added
     /// — a size has to be chosen before a number means anything.
     var needsChoice: Bool { variants.count > 1 }
@@ -53,6 +64,18 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
 struct ProductImage: Codable, Hashable, Sendable {
     let url: String
     let altText: String?
+}
+
+/// One item of a product's gallery (`ProductMedia`): a photograph, or a video.
+/// A video's poster is optional; without one the player shows its own frame.
+struct ProductMedia: Decodable, Hashable, Sendable {
+    /// image or video.
+    let kind: String
+    let url: String
+    let altText: String?
+    let posterUrl: String?
+
+    var isVideo: Bool { kind == "video" }
 }
 
 struct PriceRange: Decodable, Hashable, Sendable {
@@ -99,6 +122,8 @@ struct ProductVariant: Decodable, Identifiable, Hashable, Sendable {
     let availableForSale: Bool
     let preorder: Preorder?
     let maxQuantity: Int
+    /// How it is sold: in ones, or by a step of grams or millilitres.
+    let measure: Measure?
     let selectedOptions: [SelectedOption]
 
     /// A saving the shop may advertise. The server has already dropped a

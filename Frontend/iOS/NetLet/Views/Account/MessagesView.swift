@@ -401,7 +401,7 @@ private struct OtherChannels: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 0) {
             if let contact, contact.whatsapp != nil || contact.phone != nil {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(l.t("support.otherChannels")).font(.inter(16, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)

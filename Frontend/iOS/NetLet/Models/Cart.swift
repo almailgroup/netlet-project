@@ -35,6 +35,8 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     let image: ProductImage?
     let unitPrice: Money
     let quantity: Int
+    /// How the line is sold: in ones, or by a step of grams or millilitres.
+    var measure: Measure? = nil
     let lineTotal: Money
     let bundleName: String?
     let addons: [CartAddon]?

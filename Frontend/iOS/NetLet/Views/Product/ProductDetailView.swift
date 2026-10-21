@@ -52,19 +52,24 @@ private struct ProductPage: View {
     @State private var failure: String?
     @State private var buttonsGone = false
     @State private var open: Set<String> = ["specifications"]
+    @State private var photosOpen = false
+    @State private var photosStartFull = false
+    /// Whether the shopper holds a membership, for the member price line.
+    @State private var member = false
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         ShopPage(refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: crumbs)
-                gallery
+                ProductPhotos(product: product, index: $model.imageIndex) { photosOpen = true }
                     .padding(.top, 8)
                 buyBox
                     .padding(.top, 24)
+                // Complements before reviews, reviews before more to consider.
+                BoughtTogetherShelf(product: product)
                 ReviewsSection(product: product)
                     .padding(.top, 40)
-                BoughtTogetherShelf(product: product)
                 related
             }
             .padding(.horizontal, 16)
@@ -77,6 +82,28 @@ private struct ProductPage: View {
         }
         .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         .sensoryFeedback(.success, trigger: app.cart.itemCount)
+        .fullScreenCover(isPresented: $photosOpen) {
+            PhotoSheet(product: product, index: $model.imageIndex, startFull: photosStartFull) {
+                photosOpen = false
+                photosStartFull = false
+            }
+            .environment(\.layoutDirection, l.layoutDirection)
+            .buttonStyle(HapticDefaultStyle())
+        }
+        .task(id: app.session.isSignedIn) {
+            guard app.session.isSignedIn else {
+                member = false
+                return
+            }
+            member = (try? await app.services.api.call(API.myMembership))?.member ?? false
+        }
+        .task {
+            // A screenshot's start (`-NetLetOpen photos:` or `zoom:`), taken once.
+            guard let start = app.photoViewerStart else { return }
+            app.photoViewerStart = nil
+            photosStartFull = start == .zoom
+            photosOpen = true
+        }
     }
 
     private var crumbs: [String] {
@@ -89,59 +116,6 @@ private struct ProductPage: View {
     }
 
     private var variant: ProductVariant? { model.variant ?? product.leadVariant }
-
-    // MARK: The photographs
-
-    private var gallery: some View {
-        let images = product.images
-        return VStack(spacing: 12) {
-            ZStack(alignment: .topTrailing) {
-                TabView(selection: $model.imageIndex) {
-                    if images.isEmpty {
-                        RemoteImage(reference: nil).tag(0)
-                    }
-                    ForEach(Array(images.enumerated()), id: \.offset) { index, image in
-                        RemoteImage(reference: image.url, contentMode: .fit, label: image.altText ?? product.title)
-                            .padding(16)
-                            .tag(index)
-                            .accessibilityLabel(l.t("product.showImage", ["index": "\(index + 1)", "total": "\(images.count)"]))
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                HeartButton(product: product)
-                    .padding(8)
-            }
-            .aspectRatio(1, contentMode: .fit)
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white))
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(l.t("product.productImages"))
-            if images.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(images.enumerated()), id: \.offset) { index, image in
-                            Button {
-                                withAnimation(still ? nil : .easeOut(duration: 0.2)) { model.imageIndex = index }
-                            } label: {
-                                RemoteImage(reference: image.url, contentMode: .fit)
-                                    .padding(4)
-                                    .frame(width: 62, height: 62)
-                                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                            .strokeBorder(model.imageIndex == index ? Brand.navy : Brand.line, lineWidth: model.imageIndex == index ? 2 : 1)
-                                    )
-                            }
-                            .buttonStyle(.tap)
-                            .accessibilityLabel(l.t("product.showImage", ["index": "\(index + 1)", "total": "\(images.count)"]))
-                            .accessibilityAddTraits(model.imageIndex == index ? [.isSelected] : [])
-                        }
-                    }
-                }
-            }
-        }
-    }
 
     // MARK: The card that decides the purchase
 
@@ -210,6 +184,7 @@ private struct ProductPage: View {
                 .padding(.top, 16)
             }
             price.padding(.top, 20)
+            priceNotes
             Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 24)
             VStack(alignment: .leading, spacing: 8) {
                 availability
@@ -218,14 +193,21 @@ private struct ProductPage: View {
                 }
             }
             choices.padding(.top, 8)
-            if let chart = product.sizeChart {
-                SizeGuideButton(product: product, chart: chart) { size in
-                    model.choose(size: size, axis: chart.axis, in: product)
+            // The fitting beside the choosing: the size guide and seeing it on you.
+            FlowLayout(spacing: 20) {
+                if let chart = product.sizeChart {
+                    SizeGuideButton(product: product, chart: chart) { size in
+                        model.choose(size: size, axis: chart.axis, in: product)
+                    }
                 }
-                .padding(.top, 8)
+                TryOnButton(product: product)
             }
+            .padding(.top, 8)
             if let addons = product.addons, !addons.isEmpty {
                 AddonPicker(addons: addons, chosen: $model.addons).padding(.top, 16)
+            }
+            if let variant = model.variant ?? product.leadVariant {
+                BundlesPanel(variantId: variant.id)
             }
             quantity.padding(.top, 24)
             buttons
@@ -243,28 +225,26 @@ private struct ProductPage: View {
                     .padding(.top, 12)
             }
             VStack(alignment: .leading, spacing: 12) {
-                FollowButton(product: product)
                 if let variant = model.variant, variant.availableForSale, variant.preorder == nil,
                    product.subscription != nil, app.features.isOn("subscriptions") {
                     SubscribePanel(product: product, variant: variant, quantity: model.quantity)
                 }
+                FollowButton(product: product)
                 if let variant = model.variant ?? product.leadVariant {
-                    BundlesPanel(variantId: variant.id)
                     PriceRequestPanel(variant: variant)
                 }
                 AskSellerPanel(product: product)
+                if product.isExpress {
+                    Label(l.t("product.expressNote"), systemImage: "checkmark.seal")
+                        .font(.inter(12, .semibold))
+                        .foregroundStyle(Brand.muted)
+                        .frame(maxWidth: .infinity)
+                        .multilineTextAlignment(.center)
+                }
                 // On a phone it follows everything that buys, the web's place for it.
                 ProductAssistantPanel(product: product)
             }
             .padding(.top, 16)
-            if product.isExpress {
-                Label(l.t("product.expressNote"), systemImage: "checkmark.seal")
-                    .font(.inter(12, .semibold))
-                    .foregroundStyle(Brand.muted)
-                    .frame(maxWidth: .infinity)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 16)
-            }
             Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 24)
             information
         }
@@ -298,6 +278,31 @@ private struct ProductPage: View {
                         .padding(.vertical, 4)
                         .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(red: 212 / 255, green: 237 / 255, blue: 218 / 255)))
                 }
+            }
+        }
+    }
+
+    /// A member's own price, shown only to a member — a price somebody is told
+    /// about and cannot have is not one to show them — and the price per kilo
+    /// or litre of something sold by weight (`UnitPrice`).
+    @ViewBuilder
+    private var priceNotes: some View {
+        if let variant {
+            if member, let memberPrice = variant.memberPrice {
+                Label(l.t("membership.yourPrice", ["price": memberPrice.formatted(l.current)]), systemImage: "checkmark.seal.fill")
+                    .font(.inter(13, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(Capsule().fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
+                    .padding(.top, 8)
+            }
+            if let measure = variant.measure,
+               let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
+                Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                    .font(.inter(14))
+                    .foregroundStyle(Brand.muted)
+                    .padding(.top, 4)
             }
         }
     }

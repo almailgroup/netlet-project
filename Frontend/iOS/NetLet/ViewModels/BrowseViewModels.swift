@@ -402,10 +402,7 @@ final class ProductDetailViewModel {
 
     /// Choosing a colour shows its photo, by the photo's description — the web's rule.
     private func showPhoto(of value: String, in product: Product) {
-        let word = value.lowercased()
-        if let index = product.images.firstIndex(where: { image in
-            (image.altText ?? "").lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).contains { $0 == word || $0 == "ال" + word }
-        }) {
+        if let index = GalleryRules.photoIndex(naming: value, in: product.gallery) {
             imageIndex = index
         }
     }

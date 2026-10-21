@@ -35,6 +35,7 @@ struct AccountView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.bottom, 24)
                 identity(user)
+                MembershipCard()
                 ForEach(AccountEntry.groups, id: \.self) { group in
                     let items = entries.filter { $0.group == group }
                     if !items.isEmpty {
@@ -331,5 +332,51 @@ private struct ProfileForm: View {
             .disabled(model.saving != nil)
         }
         .card()
+    }
+}
+
+/// A member's card on the account's front page — the web's `MembershipCard`:
+/// until when, and what it gives. Drawn only for a member, since nobody can
+/// buy one yet and an offer of one would be an advert for nothing.
+struct MembershipCard: View {
+    @State private var membership: MyMembership?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let membership, membership.member, let until = membership.until {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(l.t("membership.cardTitle"), systemImage: "checkmark.seal.fill")
+                        .font(.inter(16, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(l.t("membership.until", ["date": OrderWording.date(until, language: l.current)]))
+                        .font(.inter(13, .semibold))
+                        .foregroundStyle(Brand.muted)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(benefits(membership), id: \.self) { line in
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text("•").foregroundStyle(Brand.navy.opacity(0.4)).accessibilityHidden(true)
+                                Text(line).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
+                .padding(.top, 16)
+            }
+        }
+        .task { membership = try? await app.services.api.call(API.myMembership) }
+    }
+
+    private func benefits(_ membership: MyMembership) -> [String] {
+        let delivery = membership.freeDeliveryOver.flatMap(Money.parseFils).map {
+            l.t("membership.benefitDeliveryOver", ["amount": Money(fils: $0).formatted(l.current)])
+        } ?? l.t("membership.benefitDelivery")
+        return [delivery, l.t("membership.benefitPrices"), l.t("membership.benefitPriority")]
     }
 }

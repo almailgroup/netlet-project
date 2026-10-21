@@ -5272,7 +5272,17 @@ refuses.
 `ShopPage`, the web's `StorefrontShell` at 390: the logo row (logo at the
 start, the language at the end) scrolls away and the search row stays pinned,
 both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
-tint); the footer follows the content and its navy runs on under the tab bar.
+tint); the footer follows the content. **The header is the web's phone header
+piece for piece, on the owner's word**: one surface from 60% at the top of the
+logo row to 45% at the foot of the search row, with no rim between the rows
+(the first build drew each row's rim, which split one header into three
+strips); the language in `.pressable`'s 14px at weight 500; and the field the
+web's — a microphone and a camera in the muted ink where clear would stand,
+each only where it works (`voiceSearch` and a phone that can listen;
+`photoSearch` and `search.photoAvailable`, asked once at launch), a hairline
+before the navy search disc, and clear as a small white disc once there are
+words. The microphone opens the search already listening and the camera
+already choosing (`AppModel.searchStart`).
 **The tab bar is the one place it is not the web's, on the owner's word**: it
 was `FloatingTabBar`, a copy of `MobileTabBar`'s floating pill, and the owner
 asked for Apple's own Liquid Glass instead. It is a system `TabView` in
@@ -5283,10 +5293,15 @@ navy footer the glass turned dark, and the selected tab vanished** in the
 first build (17): it is drawn in the tint, which the glass lightens a little
 over dark content and never swaps for a dark version — a dynamic colour as
 `.tint` and a dark AccentColor both drew the same pixels — and no one colour
-reads on both a light and a dark bubble. So `ShopPage`'s scroll view has the
-hard bottom scroll-edge effect (`scrollEdgeEffectStyle(.hard, for: .bottom)`,
-iOS 26): the band under the bar is a nearly opaque strip of the page, and the
-glass stays light. A press ticks
+reads on both a light and a dark bubble. Build 17 answered that with the
+hard bottom scroll-edge effect, a nearly opaque band of the page under the bar,
+and **the owner asked for the glass behind the menu to go**: every scroll view
+in the tabs has its bottom edge effect hidden (`NoBottomEdge`,
+`scrollEdgeEffectHidden`), so the bar floats over the page as the web's pill
+does, and the footer's navy ends with the footer, so at the foot of a page the
+bar sits over the page's ground and the selected tab stays readable. Scrolling
+through the footer the glass darkens for a moment, as it does in any app. A
+press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
 `.toolbar(.hidden, for: .tabBar)`, the bare-header rule. The home page is `HomeShelf`, which is
@@ -5302,6 +5317,38 @@ browser sheet any more.** A page the app did not draw used to open the
 website's own in one (`openWeb`), which had its own cookie jar and so asked
 for sign-in again, and the owner asked for everything in the app; every one of
 those pages is a screen now.
+
+**A product's photos open, go full screen and zoom, as on the web, on the
+owner's word** — build 19 drew a pager that did nothing when pressed.
+`ProductPhotos` is the web's phone gallery (the photo with share, save and the
+viewer in its end corner, an arrow at each side, the count, four thumbnails and
+"+N"); a press opens `PhotoSheet`, every item of `Product.gallery` (`galleryOf`:
+`media`, a video between the photographs, or the photographs alone) square and
+one under another at the one being looked at; a press on one opens
+`ZoomViewer`, white and full screen. **The zoom is the system's own zooming
+`UIScrollView`** (`ZoomablePhoto`), not a SwiftUI gesture: it pinches about
+the fingers, rubber-bands at the edges and keeps a photo smaller than the
+screen in its middle, which is the web's `panAbout` and `clampPan` done by iOS;
+a double tap goes to 2.5× at the spot and back, the buttons step by a half to
+4× (`GalleryRules`, tested), and VoiceOver zooms through its own zoom action.
+Its pages are a page `TabView`, so a swipe at a photo's own size — or past the
+edge of a zoomed one, as in Photos — goes to the next, mirrored on the Arabic
+page. Close steps back one layer; back from full screen the photo last looked
+at is in view and VoiceOver is on it. A video plays where it is, poster first,
+never by itself. `-NetLetOpen photos:` and `zoom:` open either for the
+screenshots. The page now also says what the web's does beside the price — a
+member's price to a member (`membership.mine`, and the account's membership
+card), the price per kilo or litre (`unit.perUnit`, on the card too, and the
+amount on a bag line) — offers the try-on beside the size guide (`tryOn.offered`,
+off by default), and keeps the web's order: bundles before the quantity,
+Subscribe & Save before Follow, bought-together before the reviews.
+
+**A `.task` on a `Group` that may be empty never runs.** A modifier on a
+`Group` is applied to each of its children, and with none there is nothing to
+start the task — so a panel written `Group { if !items.isEmpty { … } }.task
+{ load items }` waits for items it never asks for. Bought-together, the help
+page's guides, the bundles, the price request and the shop's other channels
+were all that shape; each is a `VStack` now, which exists while empty.
 
 **A press is felt, at the owner's strengths**: the tab bar at half
 (`Haptics.tab`) and every other button at a tenth (`Haptics.tap`), from one

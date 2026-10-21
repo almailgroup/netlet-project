@@ -43,14 +43,21 @@ struct ShopPage<Content: View>: View {
                     .id(ShopPageTop.id)
                     Section {
                         content()
-                        if footer { SiteFooter() }
+                        if footer { SiteFooter().id(ShopPageTop.foot) }
                     } header: {
                         SearchRow()
                     }
                 }
             }
+            .task {
+                // The screenshot of the tab bar over the footer.
+                guard root, footer, app.startAtFoot else { return }
+                app.startAtFoot = false
+                try? await Task.sleep(for: .seconds(2))
+                proxy.scrollTo(ShopPageTop.foot, anchor: .bottom)
+            }
             .modifier(OptionalRefresh(action: refresh))
-            .modifier(HardBottomEdge())
+            .modifier(NoBottomEdge())
             .scrollDismissesKeyboard(.interactively)
         }
         .background(Brand.ground.ignoresSafeArea())
@@ -63,8 +70,9 @@ struct ShopPage<Content: View>: View {
         }
         .animation(.easeOut(duration: 0.2), value: assistant)
         .safeAreaInset(edge: .top, spacing: 0) {
-            // The strip under the status bar wears the header's glass too.
-            Color.clear.frame(height: 0).background(GlassSurface().ignoresSafeArea(edges: .top))
+            // The strip under the status bar wears the header's glass too, at
+            // the tint the bar's top has, so the two meet with no step.
+            Color.clear.frame(height: 0).background(GlassSurface(top: 0.6, foot: 0.6).ignoresSafeArea(edges: .top))
         }
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -72,18 +80,18 @@ struct ShopPage<Content: View>: View {
 
 private enum ShopPageTop {
     static let id = "shop-page-top"
+    static let foot = "shop-page-foot"
 }
 
-/// The page's foot under the tab bar is a nearly opaque band of the page
-/// rather than the page itself, on iOS 26. The system bar is Liquid Glass and
-/// takes on what passes under it: over the navy footer it turned dark, and the
-/// selected tab — drawn in the navy tint, which the glass lightens a little
-/// and never swaps — vanished on its own bubble. No tint fixes that, being
-/// one colour for two grounds; the hard edge keeps the ground light.
-private struct HardBottomEdge: ViewModifier {
+/// Nothing behind the tab bar but the page itself, on the owner's word: on
+/// iOS 26 a scroll view draws an edge effect under the bar — a blur, or a
+/// nearly opaque band in its hard style, which build 17 used — and the owner
+/// asked for the glass behind the menu to go. The bar floats over the page as
+/// the web's pill does. Hidden for every scroll view in the tabs (`RootView`).
+struct NoBottomEdge: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26, *) {
-            content.scrollEdgeEffectStyle(.hard, for: .bottom)
+            content.scrollEdgeEffectHidden(true, for: .bottom)
         } else {
             content
         }
@@ -134,8 +142,9 @@ struct LogoRow: View {
             Button {
                 app.setLanguage(l.current.other)
             } label: {
+                // `.pressable`'s type, as every control on the web's bar.
                 Text(l.t("header.language"))
-                    .font(.inter(13, .heavy))
+                    .font(.inter(14, .medium))
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 12)
                     .frame(minHeight: 44)
@@ -147,53 +156,111 @@ struct LogoRow: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 58)
-        .background(GlassSurface(top: 0.6, foot: 0.6))
+        // The top of one surface that runs 60% to 45% across both rows, as the
+        // web's header does; the rim is the strip's above it.
+        .background(GlassSurface(top: 0.6, foot: 0.53, rim: false))
     }
 }
 
-/// The header's second row: the search field, the width of the screen, with
-/// the navy search disc at its end. A press anywhere on it opens the search
-/// over the page (`SearchOverlay`), the way the web's field grows its sheet.
+/// The header's second row: the search field, the width of the screen — the
+/// web's phone field. The words open the search over the page
+/// (`SearchOverlay`), the way the web's field grows its sheet; with nothing
+/// typed the microphone and the camera stand where clear would, each only
+/// where it works, and a hairline keeps them apart from the navy search disc.
 struct SearchRow: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Button {
-            app.searchOpen = true
-        } label: {
-            HStack(spacing: 0) {
-                Text(app.searchText.isEmpty ? placeholder : app.searchText)
+        let empty = app.searchText.isEmpty
+        HStack(spacing: 0) {
+            Button {
+                app.searchOpen = true
+            } label: {
+                Text(empty ? placeholder : app.searchText)
                     .font(.inter(16))
-                    .foregroundStyle(app.searchText.isEmpty ? Brand.muted : Brand.navy)
+                    .foregroundStyle(empty ? Brand.muted : Brand.navy)
                     .lineLimit(1)
                     .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.tap)
+            .accessibilityLabel(l.t("header.searchAria"))
+            .accessibilityValue(app.searchText)
+            .accessibilityAddTraits(.isSearchField)
+            if !empty {
+                Button {
+                    app.searchText = ""
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Brand.muted)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.white))
+                        .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel(l.t("header.searchClear"))
+            } else if voiceOn || photoOn {
+                if voiceOn { otherWay("mic", label: "search.voice", start: .voice) }
+                if photoOn { otherWay("camera", label: "search.photo", start: .photo) }
+                Rectangle()
+                    .fill(Color(red: 201 / 255, green: 214 / 255, blue: 230 / 255))
+                    .frame(width: 1, height: 20)
+                    .padding(.horizontal, 2)
+                    .accessibilityHidden(true)
+            }
+            Button {
+                let words = app.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                if words.isEmpty { app.searchOpen = true } else { app.search(words) }
+            } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
                     .background(Circle().fill(Brand.navy))
             }
-            .padding(.leading, 8)
-            .padding(.trailing, 4)
-            .frame(height: 44)
-            .background(Capsule().fill(Color.white))
-            .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
-            .contentShape(Capsule())
+            .buttonStyle(.tap)
+            .accessibilityLabel(l.t("header.searchSubmit"))
+            .padding(.leading, 6)
         }
-        .buttonStyle(.tap)
-        .accessibilityLabel(l.t("header.searchAria"))
-        .accessibilityAddTraits(.isSearchField)
+        .padding(.leading, 8)
+        .padding(.trailing, 4)
+        .frame(height: 44)
+        .background(Capsule().fill(Color.white))
+        .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            GlassSurface(top: 0.6, foot: 0.45)
+            GlassSurface(top: 0.53, foot: 0.45, rim: false)
                 .ignoresSafeArea(edges: .top)
         )
         .overlay(alignment: .bottom) {
             Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
         }
+    }
+
+    private var voiceOn: Bool { app.features.isOn("voiceSearch") && Dictation.isAvailable }
+    private var photoOn: Bool { app.features.isOn("photoSearch") && app.photoSearchReady }
+
+    /// The microphone or the camera: flat, in the muted ink, opening the
+    /// search already listening or already choosing a photo.
+    private func otherWay(_ symbol: String, label: String, start: SearchStart) -> some View {
+        Button {
+            app.searchStart = start
+            app.searchOpen = true
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 17))
+                .foregroundStyle(Brand.muted)
+                .frame(width: 36, height: 36)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.tap)
+        .accessibilityLabel(l.t(label))
     }
 
     /// The field's example comes from the live catalogue — the first product

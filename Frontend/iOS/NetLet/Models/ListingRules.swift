@@ -164,6 +164,19 @@ struct ListingRules: Decodable, Sendable {
         return (Money(fils: (scaled + 500) / 1000), canonical)
     }
 
+    /// How much `quantity` steps come to, in the unit a grocer's label would
+    /// use (`measureOf`): 800 g under a kilo, 1.5 kg from one up, three
+    /// decimals at most. Nil for a counted product, where the count says it.
+    func measureOf(unit: String, step: Double, quantity: Int) -> (value: Double, unit: String)? {
+        guard let dimension = dimensionOf[unit], dimension != "count",
+              let canonical = canonical[dimension], let perCanonical = basePerUnit[canonical], perCanonical > 0 else { return nil }
+        let base = Int((step * Double(basePerUnit[unit] ?? 1)).rounded()) * quantity
+        if base >= perCanonical {
+            return ((Double(base) / Double(perCanonical) * 1000).rounded() / 1000, canonical)
+        }
+        return (Double(base), dimension == "mass" ? "g" : "ml")
+    }
+
     // MARK: Delivery (`vehicle.ts`)
 
     func vehicle(forSizeClass sizeClass: String?) -> String? {
@@ -200,3 +213,17 @@ func memberPriceProblem(list: Money?, member: String) -> String? {
     if memberPrice.fils >= list.fils { return "membership.priceNotBelow" }
     return nil
 }
+
+/// A measured amount written as the web writes a number: whole without a
+/// point, otherwise up to three decimals with the trailing zeros dropped —
+/// "1.5 kg", never "1.500 kg" — in Latin digits on either page.
+enum UnitWording {
+    static func number(_ value: Double) -> String {
+        if value == value.rounded() { return String(Int(value)) }
+        var text = String(format: "%.3f", value)
+        while text.hasSuffix("0") { text.removeLast() }
+        if text.hasSuffix(".") { text.removeLast() }
+        return text
+    }
+}
+

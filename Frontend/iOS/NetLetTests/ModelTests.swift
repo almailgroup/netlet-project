@@ -258,3 +258,55 @@ final class ChatTextTests: XCTestCase {
         XCTAssertEqual(ChatModel.draftProblem(String(repeating: "a", count: 1001)), "too_large")
     }
 }
+
+/// The product photos' arithmetic, held to the web's `gallery.ts` and the
+/// numbers `ZoomViewer` zooms by.
+final class GalleryRulesTests: XCTestCase {
+    func testStepsRoundTheEndBothWays() {
+        XCTAssertEqual(GalleryRules.step(0, by: 1, count: 3), 1)
+        XCTAssertEqual(GalleryRules.step(2, by: 1, count: 3), 0)
+        XCTAssertEqual(GalleryRules.step(0, by: -1, count: 3), 2)
+        XCTAssertEqual(GalleryRules.step(4, by: 1, count: 1), 0, "one photo goes nowhere")
+    }
+
+    func testTheRailDrawsFourAndCountsTheRestOnce() {
+        XCTAssertEqual(GalleryRules.rail(count: 3).shown, 3)
+        XCTAssertEqual(GalleryRules.rail(count: 3).more, 0)
+        XCTAssertEqual(GalleryRules.rail(count: 4).more, 0)
+        XCTAssertEqual(GalleryRules.rail(count: 7).shown, 4)
+        XCTAssertEqual(GalleryRules.rail(count: 7).more, 3)
+    }
+
+    func testTheButtonsZoomAsTheWebDoes() {
+        XCTAssertEqual(GalleryRules.zoomedIn(from: 1), 2.5, "in from the photo's own size is a double tap's")
+        XCTAssertEqual(GalleryRules.zoomedIn(from: 2.5), 3)
+        XCTAssertEqual(GalleryRules.zoomedIn(from: 3.8), 4, "never past the most")
+        XCTAssertEqual(GalleryRules.zoomedOut(from: 2.5), 2)
+        XCTAssertEqual(GalleryRules.zoomedOut(from: 1.2), 1, "never under the photo's own size")
+    }
+
+    func testADoubleTapKeepsTheSpotUnderTheFinger() {
+        let rect = GalleryRules.zoomRect(around: CGPoint(x: 100, y: 200), scale: 2.5, viewport: CGSize(width: 400, height: 800))
+        XCTAssertEqual(rect.width, 160)
+        XCTAssertEqual(rect.height, 320)
+        XCTAssertEqual(rect.midX, 100)
+        XCTAssertEqual(rect.midY, 200)
+    }
+
+    func testAPhotoFitsWholeAndAsLargeAsItCan() {
+        XCTAssertEqual(GalleryRules.fitted(CGSize(width: 1000, height: 500), in: CGSize(width: 400, height: 800)), CGSize(width: 400, height: 200))
+        XCTAssertEqual(GalleryRules.fitted(CGSize(width: 300, height: 600), in: CGSize(width: 400, height: 400)), CGSize(width: 200, height: 400))
+    }
+
+    func testAColourShowsItsPhotoByWholeWordAndNeverAVideo() {
+        let gallery = [
+            ProductMedia(kind: "image", url: "/a.webp", altText: "Smart watch, front", posterUrl: nil),
+            ProductMedia(kind: "video", url: "/b.mp4", altText: "Black strap close up", posterUrl: nil),
+            ProductMedia(kind: "image", url: "/c.webp", altText: "Smart watch in black", posterUrl: nil),
+            ProductMedia(kind: "image", url: "/d.webp", altText: "ساعة باللون الأسود", posterUrl: nil),
+        ]
+        XCTAssertEqual(GalleryRules.photoIndex(naming: "Black", in: gallery), 2, "the video names it first and is skipped")
+        XCTAssertNil(GalleryRules.photoIndex(naming: "S", in: gallery), "a size is not a letter inside a word")
+        XCTAssertEqual(GalleryRules.photoIndex(naming: "أسود", in: gallery), 3, "the article comes off")
+    }
+}

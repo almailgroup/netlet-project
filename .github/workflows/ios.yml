@@ -158,6 +158,9 @@ jobs:
             shot 45-admin-guide "$lang" portal:/admin/guides/1 admin
             shot 46-admin-couriers "$lang" portal:/admin/couriers admin
             shot 47-admin-new-product "$lang" portal:/admin/products/new admin
+            shot 48-product-photos "$lang" photos:wireless-earbuds ""
+            shot 49-product-zoom "$lang" zoom:wireless-earbuds ""
+            shot 50-home-foot "$lang" homeFoot ""
           done
           ls -1 build/previews
 

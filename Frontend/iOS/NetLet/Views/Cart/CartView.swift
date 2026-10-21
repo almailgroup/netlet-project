@@ -130,6 +130,13 @@ struct CartLineRow: View {
                 if let variant = item.variantLabel {
                     Text(variant).font(.caption).foregroundStyle(Brand.muted)
                 }
+                // How much the steps come to, for something sold by weight (`MeasureLabel`).
+                if let measure = item.measure,
+                   let amount = ListingRules.shared.measureOf(unit: measure.unit, step: measure.stepAmount, quantity: item.quantity) {
+                    Text(l.t("unit.amount", ["value": UnitWording.number(amount.value), "unit": l.t("unit.\(amount.unit)")]))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
+                }
                 if let bundle = item.bundleName {
                     Text(bundle).font(.caption).foregroundStyle(Brand.muted)
                 }
