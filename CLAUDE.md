@@ -5225,10 +5225,27 @@ of the same API, not a second shop.** It replaced the Expo WebView shell, on
 the owner's word, and took its bundle identifier, `com.netlet.marketplace`;
 nothing of the shell was reused but its icon. Browsing, search, the product
 page, the bag, cash-on-delivery checkout, sign-in with the emailed code and
-the reCAPTCHA box, the account's details and orders, and a store member adding
-a product with photos are all there. Everything else a seller or an
-administrator does stays in the web portal, which the Sell tab says.
-`Frontend/iOS/README.md` is the run steps.
+the reCAPTCHA box, every section of the account, the footer's pages, the shop
+assistant, and the whole of the seller and admin portal are all there.
+**Nothing in it opens NetLet in a browser, on the owner's word** ("everything
+should be in app itself, no browser"): the only links that leave the app go to
+another app — WhatsApp, the phone, Maps, mail, a social profile, a damage
+claim's evidence. `Frontend/iOS/README.md` is the run steps.
+
+**The portal is the web's, page for page.** `PortalPage` reads a `/admin/...`
+address and `PortalRouter` draws it, so a tile, a link in a notice and the
+menu agree on what opens; the menu is the web's own `ADMIN_MENU` filtered by
+`can()`, both exported in `portal.json`, and
+`testEveryPageOfThePortalIsDrawnInTheApp` fails while any link in it has no
+screen. Each desk asks the procedures its web page asks, and the small rules
+the web asks first — the IBAN's check digits, a guide's publish rules, a
+reply's ceiling, a was-price above the price — are Swift twins of the shared
+functions, tested against the same cases. Every admin page's answers were
+recorded off a real server as an administrator into the fixtures the tests
+decode and the CI pictures draw. The new-product form is the web's step for
+step, its "Generate with AI" through the gateway's catalogue route with a
+token signed for that store (`ai.catalogSession`); Create lands on the
+product's editor.
 
 **It holds no rule of its own that the server also holds.** Swift cannot import
 `Shared/`, and a hand-copied list of departments, governorates or sentences
@@ -5275,11 +5292,11 @@ Bestsellers, the brands and stores rows from three, and the grid. The type is
 Inter from the web's own variable file (`Typography.swift`); the logo, the
 department art and the hero pictures are the web's files, copied byte for byte
 by `pnpm ios:resources` with `assets.json` naming which is which, so the
-staleness test fails until a changed web picture is copied. **A page the app
-does not draw opens the website's own in a browser sheet** (`openWeb`: help,
-returns, selling, the terms, the privacy policy, and the account sections the
-app has no screen for) rather than a dead tile — that sheet has its own cookie
-jar, so an account section opened there asks for sign-in there.
+staleness test fails until a changed web picture is copied. **There is no
+browser sheet any more.** A page the app did not draw used to open the
+website's own in one (`openWeb`), which had its own cookie jar and so asked
+for sign-in again, and the owner asked for everything in the app; every one of
+those pages is a screen now.
 
 **A press is felt, at the owner's strengths**: the tab bar at half
 (`Haptics.tab`) and every other button at a tenth (`Haptics.tap`), from one
@@ -5329,8 +5346,12 @@ Xcode 16's synchronized folders, so a new file needs no project edit. **Swift
 5 mode evaluates a default argument and a stored property's initial value
 outside the main actor**, so a main-actor object is made in an initialiser
 (`AppModel`'s language, the `App`'s model) — the first macOS build failed on
-exactly that. After the tests the same job installs the app and photographs
-eleven screens in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
+exactly that. Two more of the same family failed the portal's builds: a pure
+helper on a main-actor type that something nonisolated calls is marked
+`nonisolated` (`trimmedRate`), and a view helper that hands its content to
+`PortalCard` takes it `@escaping`, because the card keeps it. Neither shows
+anywhere but on macOS, so a push is not done until its iOS run is green. After the tests the same job installs the app and photographs
+every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
 posts small copies as neutral check runs on the commit, because a session
 working on this repository can read the checks API but cannot download an

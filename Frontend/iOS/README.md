@@ -21,11 +21,14 @@ two launch arguments, off by default, under *Edit Scheme → Run → Arguments*:
 Two more, for development and screenshots, in Debug builds only:
 
 - `-NetLetDemoAs shopper` makes the demo a signed-in shopper who also runs a
-  store, so the bag, checkout, orders and Selling have something in them.
+  store, so the bag, checkout, orders and Selling have something in them;
+  `-NetLetDemoAs admin` makes it NetLet's administrator, for the portal's
+  admin-only desks.
 - `-NetLetOpen <screen>` starts on one screen: `department:grocery`,
   `categories`, `deals`, `stores`, `store:<slug>`, `product:<handle>`,
   `search:<words>`, `searchOpen`, `saved`, `cart`, `checkout`, `account`,
-  `orders`, `order:<reference>`, `profile`, `sell`, `newListing`.
+  `orders`, `order:<reference>`, `profile`, `sell`, `newListing`, or any page
+  of the portal by its web address, `portal:/admin/finance`.
 - `-netlet.language ar` starts in Arabic.
 
 Signing in sets NetLet's httpOnly session cookie in the system's cookie store,
