@@ -247,7 +247,10 @@ struct ProductPhotos: View {
 /// A phone's "Images": every item of the gallery, the width of the screen and
 /// square, one under another, opening at the one being looked at. Square, so
 /// a photo further up that has not loaded cannot push the one on screen down
-/// when it does. A video plays where it is; a photo opens full screen.
+/// when it does. A video plays where it is; a photo opens full screen — as a
+/// layer over this list inside the same cover, the web's `ZoomViewer` over its
+/// `PhotoSheet`, rather than a second cover presented from the first, which
+/// asked for while the first was presented was not drawn.
 struct PhotoSheet: View {
     let product: Product
     @Binding var index: Int
@@ -258,9 +261,24 @@ struct PhotoSheet: View {
     @State private var full = false
     @AccessibilityFocusState private var focusedPhoto: Int?
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let media = product.gallery
+        ZStack {
+            list(media)
+                .accessibilityHidden(full)
+            if full {
+                ZoomViewer(items: media, index: $index, title: product.title) { full = false }
+                    .transition(.opacity)
+                    .accessibilityAddTraits(.isModal)
+                    .zIndex(1)
+            }
+        }
+        .animation(still ? nil : .easeOut(duration: 0.2), value: full)
+    }
+
+    private func list(_ media: [ProductMedia]) -> some View {
         VStack(spacing: 0) {
             header
             ScrollViewReader { proxy in
@@ -286,29 +304,26 @@ struct PhotoSheet: View {
                     // not follow the page's photo afterwards.
                     await Task.yield()
                     proxy.scrollTo(index, anchor: .top)
-                    guard startFull else { return }
-                    // After this sheet has finished rising: a cover asked for
-                    // mid-presentation is dropped.
-                    try? await Task.sleep(for: .seconds(1))
-                    full = true
+                    if startFull { full = true }
                 }
                 .onChange(of: full) { _, open in
                     // Back from full screen, the photo last looked at — perhaps
                     // not the one pressed, if the shopper swiped along — is the
-                    // one in view, and the one VoiceOver is on.
+                    // one in view, and the one VoiceOver is on, once the list is
+                    // back in the accessibility tree.
                     guard !open else { return }
                     proxy.scrollTo(index)
-                    focusedPhoto = index
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(250))
+                        focusedPhoto = index
+                    }
                 }
             }
         }
         .background(Color(red: 247 / 255, green: 247 / 255, blue: 245 / 255).ignoresSafeArea())
+        // Escape here is the list's; full screen answers its own first, so one
+        // Escape steps back one layer (`useOverlay`'s stack).
         .accessibilityAction(.escape) { close() }
-        .fullScreenCover(isPresented: $full) {
-            ZoomViewer(items: media, index: $index, title: product.title) { full = false }
-                .environment(\.layoutDirection, l.layoutDirection)
-                .buttonStyle(HapticDefaultStyle())
-        }
     }
 
     private var header: some View {
