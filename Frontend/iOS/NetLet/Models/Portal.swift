@@ -53,6 +53,7 @@ struct PortalRules: Decodable, Sendable {
     var fulfilment: [String: [String]]?
     var settlement: Settlement?
     var maxBankReference: Int?
+    var badges: BadgeRules?
 
     /// How long after the sale a seller's money comes due (`SETTLEMENT_DAYS`).
     struct Settlement: Decodable, Sendable {
@@ -136,6 +137,9 @@ enum PortalPage: Hashable, Sendable {
     case audit
     case features
     case subscriptions
+    case vendors
+    case newVendor
+    case vendor(Int)
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -157,6 +161,10 @@ enum PortalPage: Hashable, Sendable {
         case 2 where rest[0] == "products":
             guard let id = Int(rest[1]) else { return nil }
             self = .product(id)
+        case 2 where rest[0] == "vendors" && rest[1] == "new": self = .newVendor
+        case 2 where rest[0] == "vendors":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .vendor(id)
         case 2 where rest[0] == "messages":
             guard let id = Int(rest[1]) else { return nil }
             self = .thread(id)
@@ -181,6 +189,7 @@ enum PortalPage: Hashable, Sendable {
             case "audit": self = .audit
             case "features": self = .features
             case "subscriptions": self = .subscriptions
+            case "vendors": self = .vendors
             default: return nil
             }
         default: return nil

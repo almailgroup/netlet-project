@@ -367,6 +367,17 @@ final class AppModel {
         }
     }
 
+    /// Where a finished form leads, in the form's place, so Back does not
+    /// return to a form already sent — a store just opened, for one.
+    func replace(with route: Route) {
+        if selectedTab == .account, !accountPath.isEmpty {
+            accountPath.removeLast()
+            accountPath.append(route)
+        } else {
+            open(route)
+        }
+    }
+
     /// A screen of the account, on the Profile tab, from anywhere — or the
     /// account's home with none.
     func openAccount(_ route: Route?) {

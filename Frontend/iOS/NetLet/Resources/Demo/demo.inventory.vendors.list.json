@@ -1,0 +1,295 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 2,
+            "slug": "acme",
+            "name": "Acme Electronics",
+            "nameAr": "أكمي للإلكترونيات",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000",
+            "autoPublish": true,
+            "discountLicenceNumber": "MOCI-TEST-1",
+            "discountLicenceExpiresAt": "2027-01-12T10:37:23.781Z",
+            "acceptsOffers": true,
+            "deliveryFlat": "1.500",
+            "deliveryFreeOver": "20.000",
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": "10.00",
+            "badges": [],
+            "contactEmail": "hello@acme.test",
+            "contactPhone": "+96550001111",
+            "description": "Phones, chargers and the small electronics you reach for every day. We test every device before it ships from our Hawalli shop.",
+            "descriptionAr": "هواتف وشواحن وأجهزة إلكترونية صغيرة تستخدمها كل يوم. نفحص كل جهاز قبل شحنه من متجرنا في حولي.",
+            "logoUrl": null,
+            "governorate": "hawalli",
+            "addressLine": null,
+            "licenceNumber": "CR-445566",
+            "licenceExpiresAt": null,
+            "payoutIban": "KW81CBKU0000000000001234560101",
+            "createdAt": "2026-10-01T18:22:27.152Z",
+            "updatedAt": "2026-10-11T20:39:07.096Z",
+            "productCount": 99,
+            "liveCount": 7,
+            "memberCount": 1
+          },
+          {
+            "id": 3,
+            "slug": "dar-home",
+            "name": "Dar Home",
+            "nameAr": "دار البيت",
+            "status": "approved",
+            "commissionPercent": "15.00",
+            "commissionFixed": null,
+            "autoPublish": true,
+            "discountLicenceNumber": "MOCI-TEST-1",
+            "discountLicenceExpiresAt": "2027-01-12T10:37:23.781Z",
+            "acceptsOffers": false,
+            "deliveryFlat": "5.000",
+            "deliveryFreeOver": null,
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": null,
+            "badges": [],
+            "contactEmail": null,
+            "contactPhone": null,
+            "description": null,
+            "descriptionAr": null,
+            "logoUrl": null,
+            "governorate": "capital",
+            "addressLine": null,
+            "licenceNumber": null,
+            "licenceExpiresAt": null,
+            "payoutIban": "KW22NBOK0000000000002010036290",
+            "createdAt": "2026-10-01T18:22:27.199Z",
+            "updatedAt": "2026-10-01T18:26:59.622Z",
+            "productCount": 6,
+            "liveCount": 5,
+            "memberCount": 0
+          },
+          {
+            "id": 4,
+            "slug": "gulf-grocers",
+            "name": "Gulf Grocers",
+            "nameAr": "بقالة الخليج",
+            "status": "approved",
+            "commissionPercent": "8.00",
+            "commissionFixed": null,
+            "autoPublish": false,
+            "discountLicenceNumber": "MOCI-TEST-1",
+            "discountLicenceExpiresAt": "2027-01-12T10:37:23.781Z",
+            "acceptsOffers": false,
+            "deliveryFlat": "0.750",
+            "deliveryFreeOver": null,
+            "deliverySpeed": "next_day",
+            "deliveryProvider": "Aramex",
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": null,
+            "badges": [],
+            "contactEmail": null,
+            "contactPhone": null,
+            "description": null,
+            "descriptionAr": null,
+            "logoUrl": null,
+            "governorate": "farwaniya",
+            "addressLine": null,
+            "licenceNumber": null,
+            "licenceExpiresAt": null,
+            "payoutIban": "KW22NBOK0000000000002010036290",
+            "createdAt": "2026-10-01T18:22:27.231Z",
+            "updatedAt": "2026-10-01T18:26:59.642Z",
+            "productCount": 4,
+            "liveCount": 4,
+            "memberCount": 0
+          },
+          {
+            "id": 1,
+            "slug": "netlet",
+            "name": "NetLet",
+            "nameAr": "نتلت",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000",
+            "autoPublish": true,
+            "discountLicenceNumber": null,
+            "discountLicenceExpiresAt": null,
+            "acceptsOffers": true,
+            "deliveryFlat": null,
+            "deliveryFreeOver": null,
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": null,
+            "badges": [
+              "verified"
+            ],
+            "contactEmail": null,
+            "contactPhone": null,
+            "description": null,
+            "descriptionAr": null,
+            "logoUrl": null,
+            "governorate": null,
+            "addressLine": null,
+            "licenceNumber": null,
+            "licenceExpiresAt": null,
+            "payoutIban": null,
+            "createdAt": "2026-10-01T18:20:34.881Z",
+            "updatedAt": "2026-10-11T20:39:07.050Z",
+            "productCount": 3,
+            "liveCount": 0,
+            "memberCount": 0
+          },
+          {
+            "id": 30,
+            "slug": "rose-beauty",
+            "name": "Rose Beauty",
+            "nameAr": "روز بيوتي",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": null,
+            "autoPublish": false,
+            "discountLicenceNumber": "MOCI-TEST-2",
+            "discountLicenceExpiresAt": "2027-01-12T10:37:23.781Z",
+            "acceptsOffers": false,
+            "deliveryFlat": null,
+            "deliveryFreeOver": null,
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": null,
+            "badges": [],
+            "contactEmail": null,
+            "contactPhone": null,
+            "description": null,
+            "descriptionAr": null,
+            "logoUrl": null,
+            "governorate": null,
+            "addressLine": null,
+            "licenceNumber": null,
+            "licenceExpiresAt": null,
+            "payoutIban": null,
+            "createdAt": "2026-10-14T10:37:23.781Z",
+            "updatedAt": "2026-10-14T10:37:23.781Z",
+            "productCount": 3,
+            "liveCount": 3,
+            "memberCount": 0
+          },
+          {
+            "id": 31,
+            "slug": "souq-style",
+            "name": "Souq Style",
+            "nameAr": "سوق ستايل",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": null,
+            "autoPublish": false,
+            "discountLicenceNumber": null,
+            "discountLicenceExpiresAt": null,
+            "acceptsOffers": false,
+            "deliveryFlat": null,
+            "deliveryFreeOver": null,
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "underPlatformLicence": false,
+            "acceptsCod": true,
+            "codCeiling": null,
+            "subscriptionPercent": null,
+            "badges": [],
+            "contactEmail": null,
+            "contactPhone": null,
+            "description": null,
+            "descriptionAr": null,
+            "logoUrl": null,
+            "governorate": null,
+            "addressLine": null,
+            "licenceNumber": null,
+            "licenceExpiresAt": null,
+            "payoutIban": null,
+            "createdAt": "2026-10-14T10:37:23.781Z",
+            "updatedAt": "2026-10-14T10:37:23.781Z",
+            "productCount": 2,
+            "liveCount": 2,
+            "memberCount": 0
+          }
+        ],
+        "total": 6,
+        "page": 1,
+        "pageSize": 50,
+        "counts": {
+          "all": 6,
+          "pending": 0,
+          "approved": 6,
+          "suspended": 0
+        }
+      },
+      "meta": {
+        "values": {
+          "rows.0.discountLicenceExpiresAt": [
+            "Date"
+          ],
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.updatedAt": [
+            "Date"
+          ],
+          "rows.1.discountLicenceExpiresAt": [
+            "Date"
+          ],
+          "rows.1.createdAt": [
+            "Date"
+          ],
+          "rows.1.updatedAt": [
+            "Date"
+          ],
+          "rows.2.discountLicenceExpiresAt": [
+            "Date"
+          ],
+          "rows.2.createdAt": [
+            "Date"
+          ],
+          "rows.2.updatedAt": [
+            "Date"
+          ],
+          "rows.3.createdAt": [
+            "Date"
+          ],
+          "rows.3.updatedAt": [
+            "Date"
+          ],
+          "rows.4.discountLicenceExpiresAt": [
+            "Date"
+          ],
+          "rows.4.createdAt": [
+            "Date"
+          ],
+          "rows.4.updatedAt": [
+            "Date"
+          ],
+          "rows.5.createdAt": [
+            "Date"
+          ],
+          "rows.5.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

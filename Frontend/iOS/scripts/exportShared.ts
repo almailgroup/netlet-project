@@ -69,6 +69,10 @@ import { BASE_PER_UNIT, CANONICAL, DIMENSION_OF, SELL_UNITS } from "../../../Sha
 import { STOCK_REASONS } from "../../../Shared/inventory/stockMoves.js";
 import { BY_CLASS, SIZE_CLASSES } from "../../../Shared/commerce/vehicle.js";
 import { DELIVERY_SPEEDS } from "../../../Shared/commerce/deliverySpeed.js";
+import {
+  AWARDED_BADGES, FAST_SHIPPING_HOURS, FAST_SHIPPING_MIN_DELIVERIES, FAST_SHIPPING_SHARE, FAST_SHIPPING_WINDOW_DAYS,
+  HIGH_RATING_FLOOR, HIGH_RATING_MIN_REVIEWS,
+} from "../../../Shared/inventory/vendorHealth.js";
 import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX } from "../../../Shared/inventory/variantOptions.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Shared/commerce/sizeGuide.js";
@@ -269,6 +273,13 @@ export function buildResources(): Record<string, string> {
       ads: {
         slots: AD_SLOTS, rates: AD_RATES, capacity: AD_CAPACITY, maxDays: MAX_AD_DAYS, maxLeadDays: MAX_AD_LEAD_DAYS,
         headlineMax: BANNER_HEADLINE_MAX, noteMax: BANNER_NOTE_MAX, bannerAspect: BANNER_ASPECT, bannerMinWidth: BANNER_MIN_WIDTH, bannerMaxWidth: BANNER_MAX_WIDTH,
+      },
+      /* The badges a person awards, and the floors the measured ones are
+         earned by, which a store's page says in words. */
+      badges: {
+        awarded: AWARDED_BADGES, highRatingFloor: HIGH_RATING_FLOOR, highRatingMinReviews: HIGH_RATING_MIN_REVIEWS,
+        fastShare: FAST_SHIPPING_SHARE, fastHours: FAST_SHIPPING_HOURS, fastWindowDays: FAST_SHIPPING_WINDOW_DAYS,
+        fastMinDeliveries: FAST_SHIPPING_MIN_DELIVERIES,
       } }),
   };
 }

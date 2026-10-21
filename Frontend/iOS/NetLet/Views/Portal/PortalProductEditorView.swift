@@ -200,7 +200,7 @@ extension SellerProduct {
 }
 
 /// The save button every section ends on.
-private struct SectionSave: View {
+struct SectionSave: View {
     let pending: Bool
     var disabled = false
     let action: () -> Void
@@ -217,7 +217,7 @@ private struct SectionSave: View {
 
 /// A menu of choices with its label above it, the portal's `Select`. An
 /// option keyed "" is the "none" choice and is handed back as nil.
-private struct ChoiceField: View {
+struct ChoiceField: View {
     let label: String
     var hint: String?
     let current: String?
@@ -231,7 +231,10 @@ private struct ChoiceField: View {
             Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
             Menu {
                 ForEach(Array(options.enumerated()), id: \.offset) { _, option in
-                    Button(option.1) { choose(option.0.isEmpty ? nil : option.0) }
+                    Button(option.1) {
+                        Haptics.tap()
+                        choose(option.0.isEmpty ? nil : option.0)
+                    }
                 }
             } label: {
                 MenuField(text: current.flatMap { value in options.first { $0.0 == value }?.1 }, placeholder: placeholder)

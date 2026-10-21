@@ -728,5 +728,16 @@
     "bannerAspect": 3,
     "bannerMinWidth": 900,
     "bannerMaxWidth": 2400
+  },
+  "badges": {
+    "awarded": [
+      "verified"
+    ],
+    "highRatingFloor": 4.5,
+    "highRatingMinReviews": 5,
+    "fastShare": 0.8,
+    "fastHours": 72,
+    "fastWindowDays": 90,
+    "fastMinDeliveries": 5
   }
 }

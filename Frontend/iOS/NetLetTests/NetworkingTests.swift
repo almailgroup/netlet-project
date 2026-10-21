@@ -591,6 +591,35 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertNotNil(PendingApplication.webAddress("https://example.com/licence.pdf"))
     }
 
+    func testTheStoresDecode() async throws {
+        let list = try await client.call(API.storeList, .init())
+        XCTAssertFalse(list.rows.isEmpty)
+        XCTAssertEqual(list.counts["all"], list.total)
+        XCTAssertTrue(list.rows.contains { $0.productCount > 0 && $0.liveCount <= $0.productCount })
+        let names = try await client.call(API.vendorRows, .init(pageSize: 200))
+        XCTAssertEqual(names.rows.count, list.rows.count, "the store picker reads the same recording")
+        let store = try await client.call(API.storeDetail, .init(vendorId: 2))
+        XCTAssertEqual(store.slug, "acme")
+        XCTAssertGreaterThanOrEqual(store.stats.products, store.stats.live)
+        XCTAssertNotNil(store.discountLicenceExpiresAt)
+        XCTAssertEqual(store.missing, ["admin.addressLine"], "a store with no street is told so")
+        XCTAssertNotNil(PortalRules.shared.badges, "the badge floors come from the shop")
+    }
+
+    func testTheStoresRulesAreTheWebs() {
+        XCTAssertEqual(StoreRules.slug("Fahad's Lighting & Co."), "fahad-s-lighting-and-co")
+        XCTAssertEqual(StoreRules.slug("متجر"), "", "a name with nothing to spell an address with gives none")
+        XCTAssertTrue(StoreRules.isValidIban("KW81 CBKU 0000 0000 0000 1234 5601 01"))
+        XCTAssertFalse(StoreRules.isValidIban("KW81CBKU0000000000001234560110"), "a transposed pair is caught")
+        XCTAssertTrue(StoreRules.isValidKuwaitPhone("+965 5000 1111"))
+        XCTAssertFalse(StoreRules.isValidKuwaitPhone("5000111"))
+        let now = Date()
+        XCTAssertEqual(StoreRules.permit(number: " ", expiresAt: nil, now: now), .missing)
+        XCTAssertEqual(StoreRules.permit(number: "MOCI-1", expiresAt: nil, now: now), .noExpiry)
+        XCTAssertEqual(StoreRules.permit(number: "MOCI-1", expiresAt: now.addingTimeInterval(-60), now: now), .expired(now.addingTimeInterval(-60)))
+        XCTAssertEqual(StoreRules.kuwaitDay(Date(timeIntervalSince1970: 1_791_493_260)), "2026-10-09", "21:00 UTC is already the next day in Kuwait")
+    }
+
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {
         do {
             _ = try await client.call(API.changeEmail, .init(email: "a@b.co", currentPassword: "x"))
