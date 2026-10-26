@@ -1,5 +1,5 @@
 /**
- * Keeping a conversation on NetLet (3.8).
+ * Keeping a sale on NetLet: the contact filter.
  *
  * Two lists, and both are the requirement: the ways people actually write a
  * number or an address to get round a filter, and the ordinary messages a

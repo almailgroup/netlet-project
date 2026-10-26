@@ -117,7 +117,7 @@ export function reviewProduct(product: ReviewableProduct): Flag[] {
   if (shown?.found) {
     flags.push({ finding: "contactInText", severity: "serious", detail: `${shown.name}: ${shown.found[0]}` });
   } else {
-    /* The chat's filter, for everything the plain shapes above cannot see:
+    /* The contact filter, for everything the plain shapes above cannot see:
        Arabic-Indic digits, a number spelled out or broken up with invisible
        characters, "noura at gmail dot com". A listing is the same way off the
        platform as a message, and the seller typing one knows the tricks just

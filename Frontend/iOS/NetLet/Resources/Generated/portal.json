@@ -90,11 +90,6 @@
           "need": "offer.answer"
         },
         {
-          "href": "/admin/messages",
-          "label": "admin.messages",
-          "need": "chat.answer"
-        },
-        {
           "href": "/admin/support",
           "label": "support.inboxTitle",
           "need": "support.answer"
@@ -197,7 +192,6 @@
     "stock.adjust": "staff",
     "vendor.viewMembers": "staff",
     "delivery.fileClaim": "staff",
-    "chat.answer": "staff",
     "returns.handle": "manager",
     "product.create": "manager",
     "product.edit": "manager",

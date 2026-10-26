@@ -366,9 +366,9 @@ export async function summariesFor(productIds: number[]): Promise<Map<string, Re
 /** A vendor's public answer to a review of their own product. */
 export async function replyToReview(vendorId: number, reviewId: number, reply: string): Promise<void> {
   const text = reply.trim();
-  /* A reply is public and the seller writes it, so it is the chat's leak with
-     a bigger audience: "call us on 9988 7766 for a better price" under every
-     review of the product. The same filter, for the same reason. */
+  /* A reply is public and the seller writes it, so it is the easiest place to
+     take a sale off NetLet: "call us on 9988 7766 for a better price" under
+     every review of the product. The contact filter refuses it. */
   if (contactFindings(text).length > 0) throw new ReviewRefused("offPlatform");
   const changed = await (await db())
     .update(reviews)

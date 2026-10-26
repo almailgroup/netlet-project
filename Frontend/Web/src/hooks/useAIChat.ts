@@ -10,8 +10,8 @@
  * the rule every optional service here follows.
  *
  * What it refuses before anything leaves the page is what the gateway would
- * refuse — the length, and a phone number, an email or a link, by the chat's
- * own filter — so a shopper is told while typing rather than after a round
+ * refuse — the length, and a phone number, an email or a link, by the contact
+ * filter — so a shopper is told while typing rather than after a round
  * trip, and nothing they typed of that kind reaches a third party.
  *
  * `persist` keeps the conversation for the tab (`sessionStorage`, through

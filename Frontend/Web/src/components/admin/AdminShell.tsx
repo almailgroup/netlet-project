@@ -30,7 +30,7 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, MessagesSquare, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -72,7 +72,6 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/claims": <ShieldAlert className="size-4" />,
   "/admin/couriers": <Building2 className="size-4" />,
   "/admin/offers": <Handshake className="size-4" />,
-  "/admin/messages": <MessagesSquare className="size-4" />,
   "/admin/support": <LifeBuoy className="size-4" />,
   "/admin/guides": <BookOpen className="size-4" />,
   "/admin/membership": <BadgeCheck className="size-4" />,

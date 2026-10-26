@@ -312,7 +312,7 @@ enum FeatureWords {
         switch key {
         case "ai", "assistant", "recommendations", "boughtTogether", "voiceSearch", "photoSearch": return "search"
         case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn": return "shopping"
-        case "returns", "chat", "deliveryRatings", "damageClaims": return "afterSale"
+        case "returns", "deliveryRatings", "damageClaims": return "afterSale"
         case "ads", "affiliates", "fulfilment": return "selling"
         default: return "content"
         }
@@ -324,7 +324,6 @@ enum FeatureWords {
         case "assistant": return "features.assistant"
         case "recommendations": return "features.recommendations"
         case "boughtTogether": return "features.boughtTogether"
-        case "chat": return "features.chat"
         case "priceOffers": return "features.priceOffers"
         case "returns": return "features.returns"
         case "deliveryRatings": return "features.deliveryRatings"
@@ -350,7 +349,6 @@ enum FeatureWords {
         case "assistant": return "features.assistantOff"
         case "recommendations": return "features.recommendationsOff"
         case "boughtTogether": return "features.boughtTogetherOff"
-        case "chat": return "features.chatOff"
         case "priceOffers": return "features.priceOffersOff"
         case "returns": return "features.returnsOff"
         case "deliveryRatings": return "features.deliveryRatingsOff"

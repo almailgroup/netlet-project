@@ -235,7 +235,6 @@ private struct ProductPage: View {
                 if let variant = model.variant ?? product.leadVariant {
                     PriceRequestPanel(variant: variant)
                 }
-                AskSellerPanel(product: product)
                 if product.isExpress {
                     Label(l.t("product.expressNote"), systemImage: "checkmark.seal")
                         .font(.inter(12, .semibold))

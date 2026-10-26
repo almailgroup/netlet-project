@@ -49,7 +49,6 @@ import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { FILS_PER_POINT, MIN_CASH_OUT_POINTS } from "../../../Shared/commerce/referral.js";
 import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
-import { MAX_MESSAGE_LENGTH } from "../../../Shared/commerce/contactFilter.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
 import { FOLD_FROM, FOLD_MARKS, FOLD_TO, MAX_QUERY_WORDS } from "../../../Shared/commerce/search.js";
 import { SYNONYM_GROUPS } from "../../../Shared/commerce/searchSynonyms.js";
@@ -224,7 +223,6 @@ export function buildResources(): Record<string, string> {
         askWindowDays: ASK_WINDOW_DAYS,
         offerWindowDays: OFFER_WINDOW_DAYS,
         maxOfferNote: MAX_OFFER_NOTE,
-        maxMessage: MAX_MESSAGE_LENGTH,
         subscriptionIntervals: SUBSCRIPTION_INTERVALS,
       },
       orders: {

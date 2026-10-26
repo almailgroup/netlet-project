@@ -60,7 +60,7 @@ import { isValidIban, isValidKuwaitPhone, isGovernorate } from "./storeProfile.j
  * the first published text is a new version: an application that ticked the
  * old one ticked a sentence, and is asked again.
  */
-export const AGREEMENT_VERSION = "2026-10-18";
+export const AGREEMENT_VERSION = "2026-10-26";
 
 /** Where an application is. Four states, all stored: none is derived. */
 export const APPLICATION_STATES = ["draft", "submitted", "approved", "rejected"] as const;

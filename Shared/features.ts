@@ -49,7 +49,6 @@ export const FEATURE_KEYS = [
   "assistant",
   "recommendations",
   "boughtTogether",
-  "chat",
   "priceOffers",
   "returns",
   "deliveryRatings",
@@ -93,9 +92,6 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   assistant: { entries: ["ai.chatSession"], audience: "shopper", defaultOn: true },
   recommendations: { entries: [], audience: "shopper", defaultOn: true },
   boughtTogether: { entries: [], audience: "shopper", defaultOn: true },
-  /* The shopper writing is the entry; the seller answering an open thread is
-     finishing one. */
-  chat: { entries: ["chat.send"], audience: "everyone", defaultOn: true },
   priceOffers: { entries: ["offers.request"], audience: "everyone", defaultOn: true },
   returns: { entries: ["orders.requestReturn"], audience: "everyone", defaultOn: true },
   deliveryRatings: { entries: ["orders.rateDelivery"], audience: "shopper", defaultOn: true },

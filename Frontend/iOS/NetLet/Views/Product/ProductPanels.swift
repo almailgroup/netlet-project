@@ -247,60 +247,6 @@ private struct SizeGuideSheet: View {
     }
 }
 
-// MARK: - Asking the seller
-
-/// "Ask the seller a question" — the web's `AskSeller`: one line until pressed,
-/// then a message box; signed out, the way to sign in.
-struct AskSellerPanel: View {
-    let product: Product
-    @State private var open = false
-    @State private var sent = false
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        if let vendor = product.vendor, let id = Int(product.id), id > 0, app.features.isOn("chat") {
-            VStack(alignment: .leading, spacing: 10) {
-                if !open {
-                    Button {
-                        open = true
-                    } label: {
-                        Label(l.t("chat.askSeller", ["vendor": vendor]), systemImage: "questionmark.bubble")
-                            .font(.inter(14, .bold))
-                            .foregroundStyle(Brand.navy)
-                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                            .padding(.horizontal, 14)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
-                    }
-                    .buttonStyle(.tap)
-                } else if !app.session.isSignedIn {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(l.t("chat.signInFirst")).font(.inter(14, .bold)).foregroundStyle(Brand.ink)
-                        Text(l.t("chat.signInWhy")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
-                        Button(l.t("header.signIn")) { app.authPresented = true }.buttonStyle(SecondaryButtonStyle())
-                    }
-                } else if sent {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(l.t("chat.sentToSeller", ["vendor": vendor])).font(.inter(14)).foregroundStyle(Brand.success)
-                        Button(l.t("chat.openMessages")) { app.open(.messages) }
-                            .font(.inter(14, .bold))
-                            .foregroundStyle(Brand.navy)
-                            .buttonStyle(.tap)
-                    }
-                } else {
-                    Composer(label: l.t("chat.askSeller", ["vendor": vendor]), limit: ReferenceData.shared.rules.accountRules.maxMessage) { body in
-                        let worked = await app.attempt {
-                            _ = try await app.services.api.call(API.sendToSeller, .init(productId: id, body: body))
-                        }
-                        if worked { sent = true }
-                        return worked
-                    }
-                }
-            }
-        }
-    }
-}
-
 // MARK: - Asking for a better price
 
 /// "Ask for a better price" — the web's `PriceOfferPanel`: one line until

@@ -225,7 +225,7 @@ describe("moderation", () => {
       .rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  /* A public reply is the chat's leak with a bigger audience. */
+  /* A public reply is the easiest place to take a sale off NetLet. */
   it("refuses a reply carrying a way to reach the seller off the platform", async () => {
     const { replyToReview } = await import("../services/reviews.js");
     const [row] = await db.select().from(reviews).where(eq(reviews.orderItemId, lines.delivered));

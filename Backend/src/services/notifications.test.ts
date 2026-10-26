@@ -244,7 +244,7 @@ describe("the inbox is its owner's", () => {
   it("lists newest first, counts unread, and marks only the reader's own", async () => {
     await notices.notify([
       { userId: ids.noura, kind: "support_answered", dedupe: "a" },
-      { userId: ids.noura, kind: "seller_message", params: { store: "Acme" }, dedupe: "b" },
+      { userId: ids.noura, kind: "offer_answered", params: { product: "Lamp", store: "Acme" }, dedupe: "b" },
       { userId: ids.fahad, kind: "support_answered", dedupe: "c" },
     ]);
     const mine = await notices.inboxFor(ids.noura);
@@ -259,6 +259,16 @@ describe("the inbox is its owner's", () => {
     await notices.markNoticesRead(ids.noura, "all");
     expect(await notices.unreadNotices(ids.noura)).toBe(0);
     expect(await notices.unreadNotices(ids.fahad)).toBe(fahads.unread);
+  });
+
+  it("leaves out a kind the shop no longer has", async () => {
+    /* A store's message to a shopper, written before the messaging went. */
+    await db.insert(noticeTable).values({ userId: ids.noura, kind: "seller_message", messageKey: "notice.sellerMessage", params: { store: "Acme" }, dedupeKey: "old-chat" });
+    await notices.notify({ userId: ids.noura, kind: "support_answered", dedupe: "still-here" });
+    const mine = await notices.inboxFor(ids.noura);
+    expect(mine.entries.map(entry => entry.kind)).toEqual(["support_answered"]);
+    expect(mine.total).toBe(1);
+    expect(await notices.unreadNotices(ids.noura)).toBe(1);
   });
 });
 

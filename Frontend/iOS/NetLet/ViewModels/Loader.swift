@@ -66,7 +66,6 @@ final class AccountSignals {
     }
 
     private(set) var unreadNotices = 0
-    private(set) var unreadMessages = 0
     private(set) var unreadSupport = 0
     private(set) var onTheWay = 0
     private let api: APICalling
@@ -76,18 +75,16 @@ final class AccountSignals {
     }
 
     /// Everything waiting, for the Profile tab's badge.
-    var total: Int { unreadNotices + unreadMessages + unreadSupport }
+    var total: Int { unreadNotices + unreadSupport }
 
     func refresh() async {
         if let count = try? await api.call(API.unreadNotices) { unreadNotices = count }
-        if let count = try? await api.call(API.unreadMessages) { unreadMessages = count }
         if let count = try? await api.call(API.unreadSupport) { unreadSupport = count }
         if let road = try? await api.call(API.onTheWay) { onTheWay = road.count }
     }
 
     func clear() {
         unreadNotices = 0
-        unreadMessages = 0
         unreadSupport = 0
         onTheWay = 0
     }

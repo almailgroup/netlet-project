@@ -15,7 +15,6 @@ import { customerRouter } from "./customer.js";
 import { dispatchRouter } from "./dispatch.js";
 import { featuresRouter } from "./features.js";
 import { invoicesRouter } from "./invoices.js";
-import { chatRouter } from "./chat.js";
 import { returnsRouter } from "./returns.js";
 import { inventoryRouter } from "./inventory.js";
 import { offersRouter } from "./offers.js";
@@ -48,7 +47,6 @@ export const appRouter = router({
   dispatch: dispatchRouter,
   features: featuresRouter,
   invoices: invoicesRouter,
-  chat: chatRouter,
   returns: returnsRouter,
   inventory: inventoryRouter,
   offers: offersRouter,

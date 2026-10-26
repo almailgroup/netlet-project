@@ -5,13 +5,10 @@
         "entries": [
           {
             "id": 9,
-            "kind": "seller_message",
-            "messageKey": "notice.sellerMessage",
-            "params": {
-              "store": "Acme Electronics",
-              "storeAr": "أكمي للإلكترونيات"
-            },
-            "link": "/account/messages",
+            "kind": "support_answered",
+            "messageKey": "notice.supportAnswered",
+            "params": {},
+            "link": "/account/help",
             "read": false,
             "createdAt": "2026-10-20T21:46:10.414Z"
           },

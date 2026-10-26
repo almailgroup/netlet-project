@@ -103,7 +103,6 @@ struct Rules: Decodable, Sendable {
         let askWindowDays: Int
         let offerWindowDays: Int
         let maxOfferNote: Int
-        let maxMessage: Int
         let subscriptionIntervals: [Int]
 
         static let fallback = Account(
@@ -118,7 +117,7 @@ struct Rules: Decodable, Sendable {
             supportTopics: ["order", "delivery", "return", "payment", "account", "other"],
             maxSupportMessage: 2000, maxOpenConversations: 5, ratingMax: 5, maxReviewTitle: 120, maxReviewBody: 2000,
             attributionDays: 30, minAffiliatePayoutFils: 5000, minCashOutPoints: 1000, maxLists: 12, maxListItems: 200,
-            claimHoldDays: 14, askWindowDays: 7, offerWindowDays: 3, maxOfferNote: 400, maxMessage: 2000,
+            claimHoldDays: 14, askWindowDays: 7, offerWindowDays: 3, maxOfferNote: 400,
             subscriptionIntervals: [1, 2, 4, 8]
         )
     }

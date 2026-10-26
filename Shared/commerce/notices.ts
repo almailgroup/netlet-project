@@ -44,14 +44,22 @@ export const NOTICE_KINDS = [
   "price_drop",
   "offer_answered",
   "support_answered",
-  "seller_message",
   "bag_reminder",
   "new_arrival",
   "seller_new_order",
-  "seller_shopper_message",
   "seller_return",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
+
+/**
+ * Whether a stored kind is one the shop still has. A kind that went — the
+ * shopper–store messages, removed on the owner's word — may still have rows,
+ * and they are left out of the inbox, its count and the email queue rather
+ * than drawn with a sentence the dictionary no longer carries.
+ */
+export function isNoticeKind(kind: string): kind is NoticeKind {
+  return (NOTICE_KINDS as readonly string[]).includes(kind);
+}
 
 type NoticeRule = {
   /** Who reads it: a shopper on their account, or a store's people in the portal. */
@@ -87,11 +95,9 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   price_drop: { audience: "shopper", preference: "price_drop", email: true, key: "notice.priceDrop" },
   offer_answered: { audience: "shopper", preference: null, email: true, key: "notice.offerAnswered" },
   support_answered: { audience: "shopper", preference: null, email: true, key: "notice.supportAnswered" },
-  seller_message: { audience: "shopper", preference: null, email: true, key: "notice.sellerMessage" },
   bag_reminder: { audience: "shopper", preference: "bag_reminder", email: true, key: "notice.bagReminder" },
   new_arrival: { audience: "shopper", preference: "new_arrival", email: false, key: "notice.newArrival" },
   seller_new_order: { audience: "seller", preference: null, email: true, key: "notice.sellerNewOrder" },
-  seller_shopper_message: { audience: "seller", preference: null, email: true, key: "notice.sellerShopperMessage" },
   seller_return: { audience: "seller", preference: null, email: true, key: "notice.sellerReturn" },
 };
 
@@ -190,7 +196,7 @@ export const dedupe = {
   priceDrop: (productId: number | string, fils: bigint, at: Date) => `price:${productId}:${fils}:${dayOf(at)}`,
   offer: (offerId: number, state: string) => `offer:${offerId}:${state}`,
   /** A reply resets on the reader's next look, so one notice per thread per day is enough. */
-  thread: (kind: "support" | "chat", threadId: number, at: Date) => `${kind}:${threadId}:${dayOf(at)}`,
+  thread: (kind: "support", threadId: number, at: Date) => `${kind}:${threadId}:${dayOf(at)}`,
   /** One reminder per basket as it stands: touching the basket is a new basket to remind about. */
   bag: (cartId: string, updatedAt: Date) => `bag:${cartId}:${updatedAt.getTime()}`,
   /** A store's new listings, one notice a week whatever it publishes. */

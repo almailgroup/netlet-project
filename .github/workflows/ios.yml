@@ -128,7 +128,6 @@ jobs:
             shot 15-preferences "$lang" section:preferences shopper
             shot 16-notifications "$lang" section:notifications shopper
             shot 17-wishlist "$lang" wishlist:24 shopper
-            shot 18-messages "$lang" sellerThread:1 shopper
             shot 19-help "$lang" supportThread:1 shopper
             shot 20-rewards "$lang" section:rewards shopper
             shot 21-affiliate "$lang" section:affiliate shopper

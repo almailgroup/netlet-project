@@ -37,7 +37,6 @@ import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
-import { AccountMessages } from "@/components/account/AccountMessages";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -63,7 +62,6 @@ import {
   LogOut,
   MapPin,
   Megaphone,
-  MessageCircle,
   Package,
   Repeat,
   SlidersHorizontal,
@@ -100,7 +98,6 @@ const ENTRIES: Entry[] = [
   { id: "offers", label: "offers.mine", hint: "account.hint.offers", icon: Tag, group: "shopping" },
   { id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", icon: Star, group: "shopping" },
   { id: "notifications", label: "notices.title", hint: "notices.tile", icon: Bell, group: "conversations" },
-  { id: "messages", label: "chat.sectionMessages", hint: "account.hint.messages", icon: MessageCircle, group: "conversations" },
   { id: "help", label: "support.section", hint: "account.hint.help", icon: LifeBuoy, group: "conversations" },
   { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", icon: Users, group: "rewards" },
   { id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", icon: Megaphone, group: "rewards" },
@@ -126,7 +123,6 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "offers": return <AccountOffers />;
     case "reviews": return <AccountReviews />;
     case "notifications": return <AccountNotifications />;
-    case "messages": return <AccountMessages />;
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
     case "affiliate": return <AccountAffiliate />;
@@ -180,7 +176,6 @@ export default function Account() {
   const badge = (id: string): string | null => {
     if (id === "orders" && signals.onTheWay) return t("header.onTheWay", { count: signals.onTheWay });
     if (id === "notifications" && signals.unreadNotices) return t("header.unreadCount", { count: signals.unreadNotices });
-    if (id === "messages" && signals.unreadMessages) return t("header.unreadCount", { count: signals.unreadMessages });
     if (id === "help" && signals.unreadSupport) return t("header.unreadCount", { count: signals.unreadSupport });
     return null;
   };

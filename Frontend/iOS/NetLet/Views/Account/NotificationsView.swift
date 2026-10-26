@@ -134,7 +134,6 @@ struct NotificationsView: View {
         case "refund_done": return "wallet.pass"
         case "price_drop", "offer_answered": return "tag"
         case "support_answered": return "lifepreserver"
-        case "seller_message", "seller_shopper_message": return "message"
         case "bag_reminder": return "bag"
         case "new_arrival": return "sparkles"
         case "seller_new_order": return "storefront"

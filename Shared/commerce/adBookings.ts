@@ -94,7 +94,7 @@ export type BannerProblem = "ads.bannerNeedsHeadline" | "ads.bannerTooLong" | "a
 
 /**
  * What is wrong with a headline, or null. It is the store's words on NetLet's
- * front page, so the chat's contact filter reads it: a phone number in a
+ * front page, so the contact filter reads it: a phone number in a
  * banner is the off-platform sale the filter exists to stop, with the
  * biggest audience the shop has.
  */

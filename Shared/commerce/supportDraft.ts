@@ -22,7 +22,7 @@
  * identity attached is a trade nobody asked NetLet to make.
  *
  * A shopper can type their own details into a message anyway, so a message
- * carrying a phone number, an email, a link or a handle — the chat filter's
+ * carrying a phone number, an email, a link or a handle — the contact filter's
  * own test, `contactFindings` — is **withheld whole** rather than redacted. A
  * redactor that misses one shape leaks it; withholding the message cannot.
  *

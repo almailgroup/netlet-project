@@ -18,7 +18,6 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "d
 import {
   cartItems,
   carts,
-  conversations,
   customerNotificationPreferences,
   customerPreferences,
   followedProducts,
@@ -39,10 +38,12 @@ import {
 import {
   EMAIL_ATTEMPTS,
   INBOX_PAGE_SIZE,
+  NOTICE_KINDS,
   NOTICE_RULES,
   cameBack,
   dedupe,
   emailed,
+  isNoticeKind,
   isSiteLink,
   noticeValues,
   priceFell,
@@ -167,8 +168,9 @@ async function deliver(db: Db, deliveryId: number, now = new Date()): Promise<"s
     .leftJoin(customerPreferences, eq(customerPreferences.userId, notifications.userId))
     .where(eq(notifications.id, claimed.notificationId))
     .limit(1);
-  /* Turned off since it was queued: what they asked for now wins. */
-  if (!notice || !(notice.allows ?? true)) {
+  /* Turned off since it was queued: what they asked for now wins. A kind the
+     shop no longer has is not sent either. */
+  if (!notice || !(notice.allows ?? true) || !isNoticeKind(notice.kind)) {
     await db.update(notificationDeliveries).set({ status: "skipped" }).where(eq(notificationDeliveries.id, deliveryId));
     return "skipped";
   }
@@ -238,6 +240,9 @@ export async function sendDueEmails(limit = 50, now = new Date()): Promise<{ sen
 
 /* --------------------------------------------------------------- inbox --- */
 
+/* Only the kinds the shop still has (`isNoticeKind`'s reason). */
+const current = inArray(notifications.kind, [...NOTICE_KINDS]);
+
 export type InboxEntry = {
   id: number;
   kind: string;
@@ -257,13 +262,13 @@ export async function inboxFor(userId: number, page = 1): Promise<{ entries: Inb
       unread: sql<number>`count(*) filter (where ${notifications.readAt} is null)::int`,
     })
     .from(notifications)
-    .where(eq(notifications.userId, userId));
+    .where(and(eq(notifications.userId, userId), current));
   const total = counts?.total ?? 0;
   const at = clampPage(page, total, INBOX_PAGE_SIZE);
   const rows = await db
     .select()
     .from(notifications)
-    .where(eq(notifications.userId, userId))
+    .where(and(eq(notifications.userId, userId), current))
     .orderBy(desc(notifications.createdAt), desc(notifications.id))
     .limit(INBOX_PAGE_SIZE)
     .offset(offsetFor(at, INBOX_PAGE_SIZE));
@@ -290,7 +295,7 @@ export async function unreadNotices(userId: number): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(notifications)
-    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt), current));
   return row?.n ?? 0;
 }
 
@@ -666,34 +671,6 @@ export async function tellSupportAnswered(conversationId: number, now = new Date
     await notifyQuietly({ userId: row.userId, kind: "support_answered", link: "/account/help", dedupe: dedupe.thread("support", conversationId, now) });
   } catch (error) {
     console.error(`[notices] support reply ${conversationId} not told: ${describeError(error)}`);
-  }
-}
-
-/** A message in a shopper–store thread, told to whoever did not write it. */
-export async function tellChatMessage(conversationId: number, from: "shopper" | "seller", now = new Date()): Promise<void> {
-  try {
-    const db = await getDb();
-    if (!db) return;
-    const [row] = await db
-      .select({ userId: conversations.userId, vendorId: conversations.vendorId, store: vendors.name, storeAr: vendors.nameAr })
-      .from(conversations)
-      .innerJoin(vendors, eq(vendors.id, conversations.vendorId))
-      .where(eq(conversations.id, conversationId))
-      .limit(1);
-    if (!row) return;
-    if (from === "seller") {
-      await notifyQuietly({
-        userId: row.userId,
-        kind: "seller_message",
-        params: { store: row.store, storeAr: row.storeAr ?? "" },
-        link: "/account/messages",
-        dedupe: dedupe.thread("chat", conversationId, now),
-      });
-    } else {
-      await notifyStore(row.vendorId, { kind: "seller_shopper_message", link: "/admin/messages", dedupe: dedupe.thread("chat", conversationId, now) });
-    }
-  } catch (error) {
-    console.error(`[notices] chat message in ${conversationId} not told: ${describeError(error)}`);
   }
 }
 

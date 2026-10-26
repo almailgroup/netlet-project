@@ -236,10 +236,6 @@ final class FixtureDecodingTests: XCTestCase {
         let reviewable = try await client.call(API.reviewableLines)
         XCTAssertFalse(reviewable.isEmpty)
 
-        let conversations = try await client.call(API.sellerConversations)
-        let thread = try await client.call(API.sellerThread, .init(conversationId: try XCTUnwrap(conversations.first).id))
-        XCTAssertFalse(thread.messages.isEmpty)
-
         let help = try await client.call(API.supportConversations)
         let opened = try await client.call(API.supportThread, .init(id: try XCTUnwrap(help.first).id))
         let automatic = try XCTUnwrap(opened.messages.first { $0.author == "automatic" })
@@ -318,7 +314,8 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/guides/how-to-return-an-item"), .guide(slug: "how-to-return-an-item"))
         XCTAssertEqual(Route.from(link: "/gifts/abc12345"), .gift(token: "abc12345"))
         XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
-        XCTAssertEqual(Route.from(link: "/account/messages"), .messages)
+        // The shopper–store messages went on the owner's word; an old link opens nothing.
+        XCTAssertNil(Route.from(link: "/account/messages"))
         XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))
         XCTAssertEqual(Route.from(link: "/category/all"), .department(slug: nil))
         XCTAssertNil(Route.from(link: "/somewhere/else"))
@@ -360,10 +357,6 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(low.total, low.rows.count)
         let asks = try await client.call(API.askInbox, .init(page: 1, open: false))
         XCTAssertEqual(asks.rows.first?.askedPrice, Money(fils: 7500))
-        let conversations = try await client.call(API.storeConversations)
-        XCTAssertEqual(conversations.first?.counterpart, "Noura A.")
-        let thread = try await client.call(API.storeThread, .init(conversationId: 1))
-        XCTAssertEqual(thread.messages.count, 2)
         let returns = try await client.call(API.deskReturns, .init(open: false))
         XCTAssertFalse(returns.isEmpty)
         let members = try await client.call(API.storeMembers, .init(vendorId: 2))
@@ -516,7 +509,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(rules.nextStates("returned"), [], "a returned line is over")
         XCTAssertEqual(rules.nextStates("cancelled"), ["pending"], "a cancelled line can only be restored")
         XCTAssertFalse(rules.nextStates("pending").contains("returned"), "returning is the return's, never a button")
-        XCTAssertEqual(PortalPage("/admin/messages/3"), .thread(3))
+        XCTAssertEqual(PortalPage("/admin/support/3"), .supportThread(3))
         XCTAssertEqual(PortalPage("/admin/payouts"), .payouts)
     }
 
@@ -690,7 +683,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(GuideRules.problems(guide), ["guides.badPicture"], "a guide's pictures are NetLet's own uploads only")
         guide.steps[0].imageUrl = nil
         guide.summary = "Call 99887766 to pay"
-        XCTAssertEqual(GuideRules.problems(guide), ["guides.contactDetails"], "a guide is NetLet talking, under the chat's filter")
+        XCTAssertEqual(GuideRules.problems(guide), ["guides.contactDetails"], "a guide is NetLet talking, under the contact filter")
         guide.steps = []
         XCTAssertTrue(GuideRules.problems(guide).contains("guides.needSteps"))
         let body = try JSONSerialization.jsonObject(with: JSONEncoder().encode(API.GuideSave(id: OrNull(nil), guide: .empty))) as? [String: Any]

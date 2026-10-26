@@ -166,26 +166,6 @@ struct PriceAsk: Decodable, Identifiable, Hashable, Sendable {
     let createdAt: Date
 }
 
-// MARK: Messages
-
-/// A conversation in the store's inbox (`chat.seller.list`).
-struct StoreConversation: Decodable, Identifiable, Hashable, Sendable {
-    let id: Int
-    let counterpart: String?
-    let vendorName: String?
-    let lastMessageAt: Date?
-    let preview: String?
-    let unread: Int
-}
-
-/// One conversation as the store reads it (`chat.seller.thread`).
-struct StoreThread: Decodable, Sendable {
-    let id: Int
-    let vendorName: String
-    let shopperName: String?
-    let messages: [SellerThread.Message]
-}
-
 // MARK: Returns
 
 /// A return or exchange on the seller's desk (`returns.list`), with the acts

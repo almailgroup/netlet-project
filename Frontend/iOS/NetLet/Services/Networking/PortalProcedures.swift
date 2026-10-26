@@ -94,7 +94,6 @@ extension API {
     static let bannersWaiting = Procedure<NoInput, Int>(query: "ads.bannersWaiting")
     static let supportWaiting = Procedure<NoInput, Int>(query: "support.waiting")
     static let centreWaiting = Procedure<NoInput, CentreWaiting>(query: "fulfilment.waiting")
-    static let shopperMessagesWaiting = Procedure<NoInput, Int>(query: "chat.seller.unread")
 }
 
 /// What a bulk action did (`products.bulk`): how many it did, and each one

@@ -41,8 +41,7 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
   ] },
   { label: "admin.navCustomers", links: [
     { href: "/admin/offers", label: "admin.offers", need: "offer.answer" },
-    { href: "/admin/messages", label: "admin.messages", need: "chat.answer" },
-    /* NetLet's own inbox (3.5.1); a seller's conversations are the line above. */
+    /* NetLet's own inbox (3.5.1). */
     { href: "/admin/support", label: "support.inboxTitle", need: "support.answer" },
     /* NetLet's how-to guides (3.5.3): what a shopper or seller reads before asking. */
     { href: "/admin/guides", label: "guides.adminTitle", need: "platform.configure" },

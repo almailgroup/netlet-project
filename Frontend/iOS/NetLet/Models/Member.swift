@@ -209,42 +209,6 @@ struct ReviewableLine: Decodable, Identifiable, Hashable, Sendable {
     var id: Int { orderItemId }
 }
 
-// MARK: Messages with sellers
-
-/// One conversation with a store (`chat.mine`).
-struct SellerConversation: Decodable, Identifiable, Hashable, Sendable {
-    let id: Int
-    let counterpart: String
-    let vendorId: Int?
-    let lastMessageAt: Date
-    let preview: String?
-    /// Who wrote the last message: `shopper` or `seller`.
-    let previewSide: String?
-    let unread: Int
-}
-
-/// A conversation opened (`chat.thread`), marked read as it is.
-struct SellerThread: Decodable, Sendable {
-    struct Message: Decodable, Identifiable, Hashable, Sendable {
-        let id: Int
-        let side: String
-        let body: String
-        let createdAt: Date
-        let productTitle: String?
-        let orderReference: String?
-    }
-
-    let id: Int
-    let vendorId: Int?
-    let vendorName: String
-    let messages: [Message]
-}
-
-/// What sending answers: the conversation the message went into.
-struct SentMessage: Decodable, Sendable {
-    let conversationId: Int
-}
-
 // MARK: Talking to NetLet
 
 /// One conversation with NetLet's help desk (`support.mine`).

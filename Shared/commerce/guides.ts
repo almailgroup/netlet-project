@@ -68,7 +68,7 @@ export function acceptableGuideImage(value: string | null): boolean {
  * Why a guide cannot be published, first reason first; empty when it can.
  *
  * Both languages, every step titled and written, and no phone number, email
- * or link in any of it — the chat's filter, because a guide is NetLet
+ * or link in any of it — the contact filter, because a guide is NetLet
  * speaking and a number in one would be NetLet sending shoppers off the
  * platform. A step without a picture is allowed: some steps are a sentence.
  */
@@ -100,14 +100,14 @@ function siteFacts(audience: GuideAudience, say: Say): string[] {
     `On a phone the bar at the foot of the screen has four tabs: ${say("nav.home")}, ${say("nav.profile")}, ${say("nav.cart")} and ${say("nav.categories")}. On a wide screen the header carries the delivery area, saved items, the language, the account and the cart.`,
     "Every shopping page has the search field at the top.",
     `A product card has "${say("product.addToCart")}" and "${say("product.buyNow")}". A product with sizes or colours asks for the option first.`,
-    `${say("nav.profile")} opens the account: ${say("account.sectionOrders")}, ${say("notices.title")}, ${say("chat.sectionMessages")}, ${say("support.section")}, ${say("account.sectionWishlists")}, ${say("address.book")}, ${say("account.sectionPreferences")} and ${say("account.sectionProfile")}.`,
+    `${say("nav.profile")} opens the account: ${say("account.sectionOrders")}, ${say("notices.title")}, ${say("support.section")}, ${say("account.sectionWishlists")}, ${say("address.book")}, ${say("account.sectionPreferences")} and ${say("account.sectionProfile")}.`,
     `Checkout asks for the area, block, street and house, and a phone number for the driver, and is paid in cash on delivery. The button is "${say("checkout.placeOrder")}".`,
     `A return is started from the order under ${say("account.sectionOrders")}, within ${RETURN_WINDOW_DAYS} days of delivery.`,
     `The ${say("help.title")} page answers common questions and finds an order by its number and the email it was placed with.`,
   ];
   const seller = [
     `A store is opened from "${say("sell.title")}" (/sell): an application, the store's documents (trade licence, the signatory's civil ID, an IBAN letter), and NetLet reviews it.`,
-    `The seller portal is /admin. Its menu groups are ${say("admin.navCatalogue")} (${say("admin.products")}, ${say("admin.stock")}, ${say("admin.bundles")}), ${say("admin.navOrders")} (${say("admin.orders")}, ${say("admin.returns")}), ${say("admin.navCustomers")} (${say("admin.offers")}, ${say("admin.messages")}), ${say("admin.navMoney")} (${say("admin.payoutsPage")}, ${say("admin.ads")}) and ${say("admin.navPlatform")} (${say("admin.team")}).`,
+    `The seller portal is /admin. Its menu groups are ${say("admin.navCatalogue")} (${say("admin.products")}, ${say("admin.stock")}, ${say("admin.bundles")}), ${say("admin.navOrders")} (${say("admin.orders")}, ${say("admin.returns")}), ${say("admin.navCustomers")} (${say("admin.offers")}), ${say("admin.navMoney")} (${say("admin.payoutsPage")}, ${say("admin.ads")}) and ${say("admin.navPlatform")} (${say("admin.team")}).`,
     `${say("admin.products")} → "${say("admin.newProduct")}" asks for the name, the price, photos, a description and the department. "Generate with AI" drafts the listing from notes and photos, and photos can be uploaded, taken from the maker's page, or cleaned up.`,
     "An order line moves from received, to being prepared, to shipped, to delivered; a line the store cannot supply is cancelled from the order.",
     "A product the store publishes is reviewed by NetLet first unless the store publishes without review.",

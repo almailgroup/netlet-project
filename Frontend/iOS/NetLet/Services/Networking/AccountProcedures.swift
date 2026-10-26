@@ -13,7 +13,6 @@ extension API {
     // MARK: What is waiting
 
     static let unreadNotices = Procedure<NoInput, Int>(query: "notifications.unread")
-    static let unreadMessages = Procedure<NoInput, Int>(query: "chat.unread")
     static let unreadSupport = Procedure<NoInput, Int>(query: "support.unread")
     static let onTheWay = Procedure<NoInput, AccountSignals.OnTheWay>(query: "orders.onTheWay")
 
@@ -177,26 +176,6 @@ extension API {
     static let writeReview = Procedure<WriteReview, Acknowledged>(mutation: "reviews.write")
     static let editReview = Procedure<EditReview, Acknowledged>(mutation: "reviews.edit")
     static let removeReview = Procedure<ReviewId, Acknowledged>(mutation: "reviews.remove")
-
-    // MARK: Messages with sellers
-
-    struct ConversationId: Encodable, Sendable {
-        let conversationId: Int
-    }
-
-    /// A message to a store: into a conversation, or starting one about a
-    /// product or an order.
-    struct SellerMessage: Encodable, Sendable {
-        var conversationId: Int?
-        var productId: Int?
-        var orderReference: String?
-        var vendorId: Int?
-        let body: String
-    }
-
-    static let sellerConversations = Procedure<NoInput, [SellerConversation]>(query: "chat.mine")
-    static let sellerThread = Procedure<ConversationId, SellerThread>(query: "chat.thread")
-    static let sendToSeller = Procedure<SellerMessage, SentMessage>(mutation: "chat.send")
 
     // MARK: Help
 

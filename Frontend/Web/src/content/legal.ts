@@ -18,7 +18,7 @@
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** When either page last changed, as a Kuwaiti calendar day. */
-export const LEGAL_UPDATED = "2026-10-17";
+export const LEGAL_UPDATED = "2026-10-26";
 
 export type LegalParagraph = {
   key: MessageKey;
@@ -38,7 +38,7 @@ export const TERMS: LegalSection[] = [
   },
   { id: "delivery", title: "terms.delivery.title", body: [{ key: "terms.delivery.stores" }, { key: "terms.delivery.times" }, { key: "terms.delivery.cancel" }] },
   { id: "returns", title: "terms.returns.title", body: [{ key: "terms.returns.window" }, { key: "terms.returns.mind" }] },
-  { id: "writing", title: "terms.writing.title", body: [{ key: "terms.writing.honest" }, { key: "terms.writing.filter" }] },
+  { id: "writing", title: "terms.writing.title", body: [{ key: "terms.writing.honest" }] },
   { id: "fair", title: "terms.fair.title", body: [{ key: "terms.fair.body" }] },
   { id: "liability", title: "terms.liability.title", body: [{ key: "terms.liability.body" }] },
   { id: "law", title: "terms.law.title", body: [{ key: "terms.law.changes" }, { key: "terms.law.kuwait" }] },

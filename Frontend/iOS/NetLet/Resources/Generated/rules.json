@@ -78,7 +78,6 @@
     "askWindowDays": 7,
     "offerWindowDays": 3,
     "maxOfferNote": 400,
-    "maxMessage": 2000,
     "subscriptionIntervals": [
       1,
       2,

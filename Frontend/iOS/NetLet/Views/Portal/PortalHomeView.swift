@@ -96,7 +96,6 @@ struct PortalHomeView: View {
         add("admin.sellerChanges", waiting["sellerChanges"], "/admin/audit")
         add("dispatch.waiting", waiting["parcels"], "/admin/dispatch")
         add("admin.claimsOpenTile", waiting["claims"], "/admin/claims")
-        add("admin.messagesWaiting", waiting["messages"], "/admin/messages")
         add("admin.returnsWaiting", waiting["returns"], "/admin/returns")
         add("admin.affiliatesWaiting", waiting["affiliates"], "/admin/affiliates")
         add("admin.bannersWaiting", waiting["banners"], "/admin/ads")
@@ -138,7 +137,6 @@ struct PortalHomeView: View {
             async let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
             async let banners = count("product.review") { try await api.call(API.bannersWaiting) }
             async let support = count("support.answer") { try await api.call(API.supportWaiting) }
-            async let messages = asked(who.kind == "vendor" && who.can("chat.answer", vendorId: own)) { try await api.call(API.shopperMessagesWaiting) }
             async let centres = asked(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
             counts = await overview
             health = await score ?? nil
@@ -147,7 +145,7 @@ struct PortalHomeView: View {
             waiting = [
                 "parcels": await parcels, "claims": await claims, "offers": await offers, "sellerChanges": await changes,
                 "applications": await applications, "returns": await returns, "affiliates": await affiliates,
-                "banners": await banners, "support": await support, "messages": await messages,
+                "banners": await banners, "support": await support,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
             ].compactMapValues { $0 }
         } catch {

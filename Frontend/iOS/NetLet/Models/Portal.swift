@@ -120,10 +120,6 @@ enum PortalPage: Hashable, Sendable {
     case orders
     case stock
     case offers
-    case messages
-    /// One shopper's conversation with the store — the app's own address for
-    /// what the web opens beside the list.
-    case thread(Int)
     case returns
     case team
     case payouts
@@ -180,9 +176,6 @@ enum PortalPage: Hashable, Sendable {
         case 2 where rest[0] == "vendors":
             guard let id = Int(rest[1]) else { return nil }
             self = .vendor(id)
-        case 2 where rest[0] == "messages":
-            guard let id = Int(rest[1]) else { return nil }
-            self = .thread(id)
         case 2 where rest[0] == "support":
             guard let id = Int(rest[1]) else { return nil }
             self = .supportThread(id)
@@ -195,7 +188,6 @@ enum PortalPage: Hashable, Sendable {
             case "orders": self = .orders
             case "stock": self = .stock
             case "offers": self = .offers
-            case "messages": self = .messages
             case "returns": self = .returns
             case "team": self = .team
             case "payouts": self = .payouts

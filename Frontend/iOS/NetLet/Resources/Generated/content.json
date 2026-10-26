@@ -100,14 +100,14 @@
     "maxQuestion": 300
   },
   "legal": {
-    "updated": "2026-10-17",
+    "updated": "2026-10-26",
     "figures": {
       "days": 14,
       "commission": 10,
       "codDays": 14,
       "askDays": 7,
       "offerDays": 3,
-      "version": "2026-10-18"
+      "version": "2026-10-26"
     },
     "documents": {
       "terms": {
@@ -190,9 +190,6 @@
             "body": [
               {
                 "key": "terms.writing.honest"
-              },
-              {
-                "key": "terms.writing.filter"
               }
             ]
           },
@@ -506,7 +503,7 @@
     }
   },
   "selling": {
-    "agreementVersion": "2026-10-18",
+    "agreementVersion": "2026-10-26",
     "defaultCommission": "10.00",
     "maxCommissionNote": 500,
     "documentKinds": [

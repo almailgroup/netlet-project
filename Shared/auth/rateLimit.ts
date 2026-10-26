@@ -124,17 +124,6 @@ export const MAX_OFFER_REQUESTS_PER_ACCOUNT = 12;
 export const OFFER_REQUEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
- * How many messages a shopper may send sellers in an hour (3.8).
- *
- * Per account, like the price-request ceiling, because sending needs signing
- * in and what is being protected is a seller's inbox. Sixty an hour is a long
- * conversation at a typing pace and a short one for a script, which is the
- * line between them.
- */
-export const MAX_MESSAGES_PER_ACCOUNT = 60;
-export const MESSAGE_WINDOW_MS = 60 * 60 * 1000;
-
-/**
  * How many outside fetches one account may ask NetLet to make in an hour
  * (3.1.10): a manufacturer's page, and each of its images previewed or used.
  *

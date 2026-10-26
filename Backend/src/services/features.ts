@@ -4,7 +4,7 @@
  *
  * **Read on every guarded call, never cached in the process.** NetLet runs as
  * a pool of short-lived instances, so a cache here would be one per instance:
- * an administrator turning chat off would see it off on the instance that
+ * an administrator turning the assistant off would see it off on the instance that
  * served them and on for a while everywhere else, which is the same mistake
  * `Backend/src/services/rateLimit.ts` exists to avoid. The read is one primary-key-sized
  * table and only happens on an entry path or a model call, never on browsing.

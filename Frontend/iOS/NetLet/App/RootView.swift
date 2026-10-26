@@ -152,8 +152,6 @@ private struct RouteDestination: View {
         case .wishlist(let id): WishlistDetailView(listId: id)
         case .offers: PriceRequestsView()
         case .reviews: ReviewsView()
-        case .messages: SellerMessagesView()
-        case .sellerThread(let id): SellerThreadView(conversationId: id)
         case .help: SupportView()
         case .supportThread(let id): SupportThreadView(conversationId: id)
         case .rewards: RewardsView()

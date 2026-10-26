@@ -1,13 +1,16 @@
 /**
- * Keeping a conversation on NetLet (3.8).
+ * Keeping a sale on NetLet.
  *
- * The requirement for the chat is mostly this file. A chat between a shopper
- * and a seller is, on day one, the easiest way to take a sale off the
- * platform: "message me on WhatsApp, 9988 7766, cheaper without the fees". The
- * order then has no protection, no return window, no record — and NetLet is
- * the one the shopper blames. So a message carrying a way to reach somebody
- * outside NetLet is refused, and the sender is told which of four things it
- * carried: a phone number, an email, a link, or a handle on another platform.
+ * Anything a seller writes that a shopper reads — a public reply to a review,
+ * a paid banner's headline, a listing in the review queue — is a way to take a
+ * sale off the platform: "message me on WhatsApp, 9988 7766, cheaper without
+ * the fees". The order then has no protection, no return window, no record —
+ * and NetLet is the one the shopper blames. So text carrying a way to reach
+ * somebody outside NetLet is refused, and the writer is told which of four
+ * things it carried: a phone number, an email, a link, or a handle on another
+ * platform. NetLet's own words (support, guides, the assistants) are held to
+ * it too. It was written for a shopper–store chat, which went on the owner's
+ * word; the rule outlived it.
  *
  * Pure, and imported by both sides, for the reason the password floor is: the
  * composer can say what is wrong *as somebody types*, and the API refuses the
@@ -37,9 +40,6 @@
 
 export const CONTACT_KINDS = ["phone", "email", "link", "handle"] as const;
 export type ContactKind = (typeof CONTACT_KINDS)[number];
-
-/** Longest a message may be. A chat, not a letter. */
-export const MAX_MESSAGE_LENGTH = 2000;
 
 /* Arabic-Indic (U+0660…) and Eastern Arabic-Indic (U+06F0…) digits. */
 const foldDigits = (text: string) =>

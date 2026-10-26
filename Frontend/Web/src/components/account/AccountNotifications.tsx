@@ -16,7 +16,6 @@ import {
   Bell,
   CheckCircle2,
   LifeBuoy,
-  MessageCircle,
   Package,
   RotateCcw,
   ShoppingBag,
@@ -51,11 +50,9 @@ const ICONS: Partial<Record<NoticeKind, LucideIcon>> = {
   price_drop: Tag,
   offer_answered: Tag,
   support_answered: LifeBuoy,
-  seller_message: MessageCircle,
   bag_reminder: ShoppingBag,
   new_arrival: Sparkles,
   seller_new_order: Store,
-  seller_shopper_message: MessageCircle,
   seller_return: RotateCcw,
 };
 

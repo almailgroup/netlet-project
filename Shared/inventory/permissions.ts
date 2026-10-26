@@ -64,13 +64,6 @@ export type Capability =
    */
   | "offer.answer"
   /*
-   * Answering shoppers' messages (3.8). `staff`, unlike quoting a price: a
-   * question about whether the blue one is in stock is answered by whoever is
-   * on the shop floor, and a rank that can see the inbox and not reply is a
-   * rank that watches questions go stale.
-   */
-  | "chat.answer"
-  /*
    * Returns (3.2.8). `manager`: answering a request a rule could not decide,
    * and saying what came back and whether it goes on the shelf, are decisions
    * about money and stock together, which is a manager's.
@@ -158,7 +151,6 @@ export const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "stock.adjust": "staff",
   "vendor.viewMembers": "staff",
   "delivery.fileClaim": "staff",
-  "chat.answer": "staff",
   "returns.handle": "manager",
   "product.create": "manager",
   "product.edit": "manager",

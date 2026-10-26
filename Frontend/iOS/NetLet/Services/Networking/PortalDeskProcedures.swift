@@ -75,17 +75,6 @@ extension API {
     static let declineAsk = Procedure<AskDecline, Acknowledged>(mutation: "offers.decline")
     static let setStoreTakesAsks = Procedure<StoreAccepts, Acknowledged>(mutation: "offers.setStoreOpen")
 
-    // MARK: Messages
-
-    struct StoreReply: Encodable, Sendable {
-        let conversationId: Int
-        let body: String
-    }
-
-    static let storeConversations = Procedure<NoInput, [StoreConversation]>(query: "chat.seller.list")
-    static let storeThread = Procedure<ConversationId, StoreThread>(query: "chat.seller.thread")
-    static let replyAsStore = Procedure<StoreReply, Acknowledged>(mutation: "chat.seller.reply")
-
     // MARK: Returns
 
     struct ReturnFilter: Encodable, Sendable {

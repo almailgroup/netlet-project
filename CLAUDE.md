@@ -456,6 +456,13 @@ set by hand in the Supabase dashboard — was refused as "not in the shape we
 expected" before its password was ever checked. That was found on the live
 site with a nine-character password; `auth.test.ts` signs in with one now.
 
+**The floor is eight characters, on the owner's word** (`MIN_PASSWORD_LENGTH`;
+it was ten). That one constant is the sign-up, reset and profile schemas, a
+store owner's and a new member's password on `/admin/vendors`, the checklist on
+the web and in the app (exported in `rules.json`), and the dictionary's "at
+least 8 characters" — so the form and the API move together. The common-shape
+check still refuses `password1` at any length.
+
 **The dialog is the whole screen on a phone** and a card from `sm` up: the
 keyboard takes half of a 390px screen, and a card with a margin round it left
 the password box under the keyboard. "Forgot your password?" sits under the
@@ -622,7 +629,7 @@ silently dropped from the production stylesheet by the minifier — check the
 built CSS for any rule newer than the toolchain, not only the page in dev.
 
 **The account control names the shopper and opens a short menu** —
-`AccountMenu`: orders, messages, wishlists, addresses, the account page, the
+`AccountMenu`: orders, notices, wishlists, addresses, the account page, the
 portal for somebody who also runs a store or the shop, and signing out —
 behind its confirmation, for the reason it left the header once (see Signing
 in). It is the WAI-ARIA menu button (arrows, Home/End, Escape back to the
@@ -681,10 +688,10 @@ happened.
 
 **The account control says what is waiting, and only that.** A dot on the
 button, and in the menu "1 on the way" beside Orders and "2 unread" beside
-Messages — and Help from NetLet, which is in the menu only while NetLet has
+Notifications — and Help from NetLet, which is in the menu only while NetLet has
 answered and the shopper has not read it. `useAccountSignals` is the one
 reader, so the phone's Profile tab shows the same count; it is the server's
-own figures (`chat.unread`, `support.unread`, `orders.onTheWay`), asked each
+own figures (`notifications.unread`, `support.unread`, `orders.onTheWay`), asked each
 minute while the tab is visible, and zero outright when signed out because the
 cache still holds the last account's. **While the session loads, the control
 is a quiet block of its own size**: it said "Sign in" for that moment and then
@@ -1536,7 +1543,7 @@ reviews, wishlists, price requests, points, the affiliate programme, selling,
 the profile, addresses, preferences, activity and signing out — 7,000px tall on
 a laptop and 8,300px on a phone, which had no menu at all, so changing a
 password meant scrolling past every parcel ever ordered. The home is now a
-short page of tiles in four groups (shopping, messages and help, rewards,
+short page of tiles in four groups (shopping, notifications and help, rewards,
 account settings), each tile saying in one line what it holds and, where there
 is something, what is waiting — "1 on the way", "2 unread", from
 `useAccountSignals`, the header's own reader. A tile opens
@@ -2150,7 +2157,7 @@ dictionary, and the catalogue's departments and rows are the editor's. That
 makes **a change to `helpArticles.ts`, the departments or the attribute schema
 a change to the Worker** — deploy it with NetLet. Everything typed by a person
 is fenced as data, the product assistant's rule; a question carrying a phone
-number, an email or a link is refused before it leaves, by the chat's filter,
+number, an email or a link is refused before it leaves, by the contact filter,
 on the page (`chatDraftProblem`) and in the Worker alike.
 
 **A catalogue draft is held to the shop before a seller sees it**
@@ -2224,7 +2231,7 @@ in it that column can be taller than the screen, so `useStickyFoot` sticks it
 at the header's foot while it fits and otherwise with its foot just above the
 bottom of the screen — stuck at the usual offset, the box would have been off
 the bottom for as long as the buy box scrolled. **On a phone it follows
-everything that buys** (after Ask the seller, before the policy sections):
+everything that buys** (after the price request, before the policy sections):
 under the photo it would push the price and Add to cart off the first screen.
 One place at a time (`useMediaQuery`), never both with one hidden.
 
@@ -2684,18 +2691,40 @@ to the fil for a member.
 without a currency, and the membership desk printed "$US 0" — the shop sells in
 one currency, so the fallback is `KWD` now. Seen in a screenshot, not a test.
 
-## Talking to a seller
+## No talking to a seller
 
-**The filter is the feature.** A chat between a shopper and a seller is, on day
-one, the easiest way to take a sale off the platform — and the order that
-leaves has no protection, no return window and no record, and NetLet is still
-who the shopper blames. `Shared/commerce/contactFilter.ts` refuses a message
-carrying a phone number, an email, a link or a handle on another platform, and
-it is pure and shared for the password floor's reason: the composer names what
-it found as somebody types and disables Send, and the server refuses the same
-message, so the page cannot send what the API would bounce and nothing refused
-is ever stored. It names the *kind* back, never the match — repeating the
-number in the warning is one more place it is on screen.
+**Shoppers and stores do not message each other on NetLet, on the owner's
+word.** It was built — one thread per shopper and store, scoped in the query,
+read-only moderation — and it went whole in October 2026: "Ask the seller" on
+the product page, the account's Messages section, the portal's
+`/admin/messages`, the overview tile, the unread counts in the header, the menu
+and the Profile tab, the `chat` switch, the `chat.answer` capability, the
+per-account message ceiling and the two notice kinds, on the web and in the
+app. A shopper reaches a person through Help from NetLet (see "Talking to
+NetLet"). **The tables stay until a drop migration is approved**
+(`conversations`, `conversation_messages`), and the old notices are left out
+of the inbox, its count and the email queue by `isNoticeKind`, rather than
+drawn with a sentence the dictionary no longer carries. A stored `chat` switch
+is read past like any switch this build does not have. The seller agreement
+and the terms stopped mentioning messages, and `AGREEMENT_VERSION` and
+`LEGAL_UPDATED` moved with them.
+
+## The contact filter
+
+**It outlived the chat it was written for.** Anything a seller writes that a
+shopper reads is the easiest way to take a sale off the platform — and the
+order that leaves has no protection, no return window and no record, and
+NetLet is still who the shopper blames. `Shared/commerce/contactFilter.ts`
+finds a phone number, an email, a link or a handle on another platform, and it
+is pure and shared for the password floor's reason: a form can say what is
+wrong as somebody types, and the server refuses the same text. It names the
+*kind* back, never the match — repeating the number in the warning is one more
+place it is on screen. It refuses a store's public reply to a review
+(`replyToReview`) and a paid banner's headline; the product review queue asks
+it too, for what its plain shapes cannot see — except that an unbroken run of
+nine or more digits in a listing is a barcode or a model number, not a Kuwaiti
+phone, and a queue that flags every EAN is one reviewers learn to skip. NetLet's
+own words — guides, support drafts, the assistants — are held to it as well.
 
 **The obfuscations and the false positives are both the requirement, and both
 are tested by name.** Nobody getting round a filter types `99887766`; they type
@@ -2718,28 +2747,7 @@ shape kept two lists of endings. `\p{Cf}`, the variation selectors and the
 keycap are stripped; look-alike letters count only *between* digits, so "size L"
 is still a size; and "IG" is a handle only before a colon or a handle-shaped
 name, because it is also a model code. Hostile 2,000-character inputs run in
-about 20ms, and the server refuses anything longer before the filter sees it.
-
-**The same filter guards the other two places a seller writes to shoppers.** A
-public reply to a review is the chat's leak with a bigger audience, so
-`replyToReview` refuses one too. The product review queue asks the filter as
-well, for what its plain shapes cannot see — except that an unbroken run of nine
-or more digits in a listing is a barcode or a model number, not a Kuwaiti phone,
-and a queue that flags every EAN is one reviewers learn to skip.
-
-It is mitigation, not proof, which is why an administrator can read every
-thread. **Reading is all they do**: a moderator looking is not the shop having
-answered, so it marks nothing read, and answering as a store you do not belong
-to would put words in its mouth.
-
-**One thread per shopper and store, and every thread starts from something** —
-a published product or one of the shopper's own orders with that store's lines
-in it. A store whose shelf was emptied by suspension takes no new
-conversations: one opening with it is a sale being arranged around the
-suspension. The shopper is named to the store by first name and initial, by
-`reviews.ts`'s `displayName`, never by email. Read state is a timestamp per
-side, so unread is derived — and the open thread refreshes the list's badge,
-because the list was fetched before opening marked it read.
+about 20ms. It is mitigation, not proof.
 
 ## Talking to NetLet
 
@@ -2764,8 +2772,8 @@ before it, so add a new key instead.
 
 The order is looked up through `getOrderForUser`, so another shopper's reference
 is "not found" — the rule every order read follows. `support.answer` is
-administrators only: a seller answers their own customers in chat (3.8), and a
-conversation with NetLet is about NetLet. Three states, and a shopper writing
+administrators only: a conversation with NetLet is about NetLet, and stores
+do not message shoppers at all (see "No talking to a seller"). Three states, and a shopper writing
 into an answered conversation reopens it — somebody still typing has not been
 answered, whatever a button said. Throttled by account in Postgres, for the
 price-ask reason: there is a real identity, and what runs out is people.
@@ -2785,7 +2793,7 @@ staff reply box and nothing more — a draft is sent only by somebody pressing
 Send, so every reply is a person's. The model sees the turns and the order's
 facts recomputed *now* (the automatic answer was true when it was given), never
 the name, email, address or reference; a turn carrying contact details, by the
-chat filter's own `contactFindings`, is **withheld whole** — a redactor that
+contact filter's own `contactFindings`, is **withheld whole** — a redactor that
 misses one shape leaks it. The reply language is read from the shopper's words
 *before* withholding, or an Arabic shopper whose only message held a phone
 number got an English draft; walking it in a browser is what showed that. The
@@ -2827,7 +2835,7 @@ two sellers pressing at once tells nobody twice.
 Preferences already had and nothing read: each kind names the preference that
 gates it (`NOTICE_RULES`) — an order's steps follow Delivery updates — and only
 the order's own confirmation is never silenced.
-**Sellers hear their store's new orders, messages and returns**, every member
+**Sellers hear their store's new orders and returns**, every member
 of the store (`notifyStore`).
 
 **Price drops name the new price, never the old.** "Was 40, now 32" is an
@@ -2902,7 +2910,7 @@ asking first over anything typed. Nothing is saved until Save and nothing is
 public until Publish. **Publish asks `guideProblems` on both sides**: both
 titles, every step written in both languages, pictures only from NetLet's own
 `/media` uploads (`acceptableGuideImage`), and no phone number, email or link
-anywhere — the chat's filter, because a guide is NetLet talking. An edit that
+anywhere — the contact filter, because a guide is NetLet talking. An edit that
 breaks a published guide is refused rather than half-published. A draft's
 address follows its title and a published one keeps it (`guideSlug`,
 `freeSlug`), the product handle's rule. Publishing, taking down and deleting
@@ -3208,7 +3216,7 @@ its products (`slot = 'home_banner'`, three a day). It is NetLet's own front
 page in the store's words, so an administrator approves each one on
 `/admin/ads` — the store's discount permit is said beside it, since a headline
 promising a saving needs one and only a person can read whether it does — and
-the chat's contact filter reads the headline, a phone number on the front page
+the contact filter reads the headline, a phone number on the front page
 being the off-platform sale at its biggest audience. **A day it did not run is
 never charged**: `feeAccrued` is zero while it waits, approving it after its
 booked start moves the start to the day of approval (`approvalStart`, and the

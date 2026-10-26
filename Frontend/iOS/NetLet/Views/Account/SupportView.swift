@@ -1,118 +1,5 @@
 import SwiftUI
 
-/// The shopper's conversations with stores — the web's `AccountMessages`:
-/// each store, the last thing said and what is unread, opened into its thread.
-struct SellerMessagesView: View {
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        ModelHost(make: { Loader { try await app.services.api.call(API.sellerConversations) } }) { list in
-            ShopPage(refresh: { await list.load() }) {
-                AccountSection(title: l.t("chat.sectionMessages"), hint: l.t("account.hint.messages")) {
-                    LoadStateView(state: list.state, retry: { await list.load() }) { rows in
-                        if rows.isEmpty {
-                            EmptyStateView(systemImage: "bubble.left.and.bubble.right", title: l.t("chat.emptyShopper")).card(padding: 0)
-                        } else {
-                            VStack(spacing: 10) {
-                                ForEach(rows) { row in conversation(row) }
-                            }
-                        }
-                    }
-                }
-            }
-            .task { await list.load() }
-        }
-    }
-
-    private func conversation(_ row: SellerConversation) -> some View {
-        Button {
-            app.push(.sellerThread(id: row.id))
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "storefront")
-                    .foregroundStyle(Brand.navy)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Brand.tint))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(row.counterpart).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
-                    if let preview = row.preview {
-                        Text((row.previewSide == "shopper" ? "\(l.t("chat.you")): " : "") + preview)
-                            .font(.inter(13))
-                            .foregroundStyle(Brand.body)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
-                    }
-                    Text(OrderWording.date(row.lastMessageAt, language: l.current)).font(.inter(12)).foregroundStyle(Brand.muted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                if row.unread > 0 {
-                    Text(l.t(row.unread == 1 ? "chat.unreadOne" : "chat.unread", ["count": "\(row.unread)"]))
-                        .font(.inter(11, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Brand.orange))
-                }
-                Image(systemName: "chevron.forward").font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.chevron)
-            }
-            .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
-    }
-}
-
-/// One conversation with a store, marked read as it opens, and a reply box.
-struct SellerThreadView: View {
-    let conversationId: Int
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        ModelHost(make: { Loader { try await app.services.api.call(API.sellerThread, .init(conversationId: conversationId)) } }) { thread in
-            ShopPage(footer: false, refresh: { await thread.load() }) {
-                AccountSection(title: thread.value?.vendorName ?? l.t("chat.sectionMessages"), hint: l.t("chat.keepOnNetLet")) {
-                    LoadStateView(state: thread.state, retry: { await thread.load() }) { data in
-                        VStack(alignment: .leading, spacing: 14) {
-                            VStack(spacing: 10) {
-                                ForEach(data.messages) { message in
-                                    Bubble(
-                                        mine: message.side == "shopper",
-                                        author: message.side == "shopper" ? l.t("chat.you") : data.vendorName,
-                                        about: message.productTitle.map { l.t("chat.about", ["subject": $0]) }
-                                            ?? message.orderReference.map { "\(l.t("chat.aboutOrder")) \u{2066}\($0)\u{2069}" },
-                                        text: message.body,
-                                        stamp: OrderWording.dateTime(message.createdAt, language: l.current)
-                                    )
-                                }
-                            }
-                            if app.features.isOn("chat") {
-                                Composer(label: l.t("chat.replyTo", ["name": data.vendorName]), limit: ReferenceData.shared.rules.accountRules.maxMessage) { body in
-                                    let sent = await app.attempt {
-                                        _ = try await app.services.api.call(API.sendToSeller, .init(conversationId: conversationId, body: body))
-                                    }
-                                    if sent { await thread.load() }
-                                    return sent
-                                }
-                            } else {
-                                Text(l.t("chat.switchedOff")).font(.inter(13)).foregroundStyle(Brand.muted)
-                            }
-                        }
-                    }
-                }
-            }
-            .task {
-                await thread.load()
-                await app.signals.refresh()
-            }
-        }
-    }
-}
-
 /// One message in a thread: the shopper's at the end, the other side's at the start.
 struct Bubble: View {
     let mine: Bool
@@ -145,8 +32,8 @@ struct Bubble: View {
     }
 }
 
-/// A message box and Send — the web's `ChatComposer`. A message carrying a
-/// phone number, an email or a link is refused by the server and said back.
+/// A message box and Send. A message carrying a phone number, an email or a
+/// link is refused by the server and said back.
 struct Composer: View {
     let label: String
     let limit: Int
@@ -164,7 +51,7 @@ struct Composer: View {
                 FieldProblem(key: "support.tooLong")
             }
             HStack(alignment: .center, spacing: 10) {
-                Text(note ?? l.t("chat.keepOnNetLet"))
+                Text(note ?? "")
                     .font(.inter(12))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)

@@ -169,7 +169,7 @@ describe("home banners", () => {
     expect(bannerShapeOk(Number.NaN, 200)).toBe(false);
   });
 
-  it("reads the headline with the chat's contact filter", () => {
+  it("reads the headline with the contact filter", () => {
     const none = () => [];
     const found = (text: string) => (/\d{8}/.test(text) ? ["phone"] : []);
     expect(headlineProblem("", true, none)).toBe("ads.bannerNeedsHeadline");

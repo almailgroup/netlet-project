@@ -31,8 +31,6 @@ import {
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
-  MAX_MESSAGES_PER_ACCOUNT,
-  MESSAGE_WINDOW_MS,
   MAX_LOOKUPS_PER_ADDRESS,
   MAX_IMPORTS_PER_ACCOUNT,
   IMPORT_WINDOW_MS,
@@ -47,7 +45,7 @@ import { getDb } from "./db.js";
  * there is no failure to count, and the abuse is using NetLet to mail somebody
  * else. `codeMiss` counts a wrong code, like a wrong password.
  */
-export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "chatMessage" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
+export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -369,36 +367,6 @@ export async function recordOfferRequest(email: string | null | undefined): Prom
   await db.insert(authAttempts).values([{ bucket: accountBucket(email), kind: "offerRequest" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "offerRequest"), lt(authAttempts.createdAt, new Date(Date.now() - OFFER_REQUEST_WINDOW_MS))),
-  );
-}
-
-/**
- * May this shopper send a seller another message? Counted per account over an
- * hour — `MAX_MESSAGES_PER_ACCOUNT` says why.
- */
-export async function checkMessageAllowed(email: string | null | undefined): Promise<RateVerdict> {
-  const db = await getDb();
-  if (!db || !email) return ALLOWED;
-  const rows = await db
-    .select({ at: authAttempts.createdAt })
-    .from(authAttempts)
-    .where(
-      and(
-        eq(authAttempts.bucket, accountBucket(email)),
-        eq(authAttempts.kind, "chatMessage"),
-        gt(authAttempts.createdAt, new Date(Date.now() - MESSAGE_WINDOW_MS)),
-      ),
-    );
-  return limitVerdict(rows.map(row => row.at), MAX_MESSAGES_PER_ACCOUNT, new Date(), MESSAGE_WINDOW_MS);
-}
-
-/** Count one message sent. */
-export async function recordMessage(email: string | null | undefined): Promise<void> {
-  const db = await getDb();
-  if (!db || !email) return;
-  await db.insert(authAttempts).values([{ bucket: accountBucket(email), kind: "chatMessage" }]);
-  await db.delete(authAttempts).where(
-    and(eq(authAttempts.kind, "chatMessage"), lt(authAttempts.createdAt, new Date(Date.now() - MESSAGE_WINDOW_MS))),
   );
 }
 

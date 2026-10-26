@@ -12,7 +12,6 @@ import { TryOn } from "@/components/product/TryOn";
 import { SubscribePanel } from "@/components/product/SubscribePanel";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
 import { ProductInfo } from "@/components/product/ProductInfo";
-import { AskSeller } from "@/components/product/AskSeller";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
@@ -1050,7 +1049,6 @@ export default function ProductDetail() {
   const deliveryArea = deliveryZone ? (isArabicPage ? deliveryZone.labelAr : deliveryZone.label) : null;
   /* Both are switchable (2.3); the server refuses either way, this only stops offering it. */
   const offersOn = useFeature("priceOffers");
-  const chatOn = useFeature("chat");
   const money = useMoney();
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -1358,11 +1356,6 @@ export default function ProductDetail() {
             {selectedVariant && offersOn
               ? <PriceOfferPanel variantId={selectedVariant.id} listPrice={selectedVariant.price.amount} />
               : null}
-
-            {/* A question for the shop (3.8). After the price request, because
-                both are ways of talking to the seller and the price is the more
-                specific of the two. */}
-            {product.vendor && chatOn ? <AskSeller productId={product.id} vendor={product.vendor} /> : null}
 
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}

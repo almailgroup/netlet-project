@@ -33,8 +33,6 @@ enum Route: Hashable {
     case wishlist(id: Int)
     case offers
     case reviews
-    case messages
-    case sellerThread(id: Int)
     case help
     case supportThread(id: Int)
     case rewards
@@ -97,7 +95,6 @@ enum Route: Hashable {
             case "wishlists": return .wishlists
             case "offers": return .offers
             case "reviews": return .reviews
-            case "messages": return .messages
             case "help": return .help
             case "rewards": return .rewards
             case "affiliate": return .affiliate
@@ -331,10 +328,6 @@ final class AppModel {
             guard let id = value.flatMap(Int.init) else { return }
             accountPath = NavigationPath([Route.wishlists, Route.wishlist(id: id)])
             selectedTab = .account
-        case "sellerThread":
-            guard let id = value.flatMap(Int.init) else { return }
-            accountPath = NavigationPath([Route.messages, Route.sellerThread(id: id)])
-            selectedTab = .account
         case "page":
             // `page:help`, `page:terms`, `page:guides/how-to-return-an-item` — a footer page, by its web address.
             guard let value, let route = Route.from(link: "/\(value)") else { return }
@@ -376,7 +369,7 @@ final class AppModel {
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .messages, .sellerThread, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing,
+             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing,
              .invoice, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
         case .checkout:

@@ -81,26 +81,23 @@ describe("the switchboard's list", () => {
 
 describe("turning a feature off", () => {
   it("refuses the entry for every caller, and lets it through again once back on", async () => {
-    await as("admin").features.set({ key: "chat", enabled: false });
-    await expect(as("shopper").chat.send({ productId: ids.product, body: "Is the blue one in stock?" }))
+    await as("admin").features.set({ key: "wishlists", enabled: false });
+    await expect(as("shopper").wishlists.create({ title: "Birthday" }))
       .rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "features.off" });
     /* An administrator is refused too: the switch is about the shop, not about rank. */
-    await expect(as("admin").chat.send({ productId: ids.product, body: "Is the blue one in stock?" }))
+    await expect(as("admin").wishlists.create({ title: "Birthday" }))
       .rejects.toMatchObject({ message: "features.off" });
 
-    await as("admin").features.set({ key: "chat", enabled: true });
-    const sent = await as("shopper").chat.send({ productId: ids.product, body: "Is the blue one in stock?" });
-    expect(sent).toBeTruthy();
+    await as("admin").features.set({ key: "wishlists", enabled: true });
+    const made = await as("shopper").wishlists.create({ title: "Birthday" });
+    expect(made).toBeTruthy();
   });
 
   it("closes only the door it names: reading what is already there still works", async () => {
-    await as("shopper").chat.send({ productId: ids.product, body: "Does it come in green?" });
-    await as("admin").features.set({ key: "chat", enabled: false });
-    const mine = await as("shopper").chat.mine();
+    await as("shopper").wishlists.create({ title: "Eid" });
+    await as("admin").features.set({ key: "wishlists", enabled: false });
+    const mine = await as("shopper").wishlists.mine();
     expect(mine.length).toBeGreaterThan(0);
-    /* And the seller can still answer the thread that was open. */
-    const inbox = await as("owner").chat.seller.list();
-    expect(inbox.length).toBeGreaterThan(0);
   });
 
   it("refuses a price request while price offers are off", async () => {
@@ -125,10 +122,10 @@ describe("turning a feature off", () => {
 
 describe("who moves a switch", () => {
   it("is an administrator alone", async () => {
-    await expect(as("owner").features.set({ key: "chat", enabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(as("shopper").features.set({ key: "chat", enabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(as("owner").features.set({ key: "returns", enabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(as("shopper").features.set({ key: "returns", enabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(as("owner").features.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(as(null).features.set({ key: "chat", enabled: false })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+    await expect(as(null).features.set({ key: "returns", enabled: false })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(await db.select().from(featureSwitches)).toEqual([]);
   });
 
@@ -144,7 +141,7 @@ describe("who moves a switch", () => {
     const list = await as("admin").features.list();
     expect(list.map((entry: { key: string }) => entry.key)).toEqual([...FEATURE_KEYS]);
     expect(list.find((entry: { key: string }) => entry.key === "returns")).toMatchObject({ enabled: false, updatedByEmail: "admin@netlet.test" });
-    expect(list.find((entry: { key: string }) => entry.key === "chat")).toMatchObject({ enabled: true, updatedByEmail: null });
+    expect(list.find((entry: { key: string }) => entry.key === "wishlists")).toMatchObject({ enabled: true, updatedByEmail: null });
   });
 
   it("is idempotent: pressing it twice leaves one row", async () => {

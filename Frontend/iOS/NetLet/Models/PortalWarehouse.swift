@@ -56,7 +56,7 @@ struct WarehouseRules: Decodable, Sendable {
     }
 
     /// `headlineProblem`: the store's words on NetLet's front page, read by the
-    /// chat's contact filter.
+    /// contact filter.
     func headlineProblem(_ headline: String, required: Bool) -> String? {
         let text = headline.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         if text.isEmpty { return required ? "ads.bannerNeedsHeadline" : nil }

@@ -31,7 +31,7 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PixelDot } from "@/components/ui/PixelBadge";
-import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, MessageCircle, Package, UserRound } from "lucide-react";
+import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, UserRound } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ export function AccountMenu() {
   const portal: MessageKey | null = me.data?.kind === "admin" ? "header.menuAdmin" : me.data?.kind === "vendor" ? "header.menuSeller" : null;
   /* Above the early returns, with every other hook (`hookOrder.test.ts`). */
   const signals = useAccountSignals();
-  const unread = signals.unreadMessages + signals.unreadSupport + signals.unreadNotices;
+  const unread = signals.unreadSupport + signals.unreadNotices;
 
   const focusItem = (index: number) => {
     const all = menu.current ? [...menu.current.querySelectorAll<HTMLElement>("[role=menuitem]")] : [];
@@ -179,7 +179,6 @@ export function AccountMenu() {
         >
           {entry("/account/orders", <Package className="size-4" />, "account.sectionOrders", signals.onTheWay ? t("header.onTheWay", { count: signals.onTheWay }) : null)}
           {entry("/account/notifications", <Bell className="size-4" />, "notices.menu", signals.unreadNotices ? t("header.unreadCount", { count: signals.unreadNotices }) : null)}
-          {entry("/account/messages", <MessageCircle className="size-4" />, "chat.sectionMessages", signals.unreadMessages ? t("header.unreadCount", { count: signals.unreadMessages }) : null)}
           {/* Only while NetLet has answered and the shopper has not read it:
               a standing link to support is on the account page and the footer. */}
           {signals.unreadSupport ? entry("/account/help", <LifeBuoy className="size-4" />, "support.section", t("header.unreadCount", { count: signals.unreadSupport })) : null}

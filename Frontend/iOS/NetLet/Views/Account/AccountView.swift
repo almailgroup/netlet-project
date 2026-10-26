@@ -158,7 +158,6 @@ struct AccountView: View {
         switch entry.id {
         case "orders" where signals.onTheWay > 0: return l.t("header.onTheWay", ["count": "\(signals.onTheWay)"])
         case "notifications" where signals.unreadNotices > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadNotices)"])
-        case "messages" where signals.unreadMessages > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadMessages)"])
         case "help" where signals.unreadSupport > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadSupport)"])
         default: return nil
         }
@@ -231,7 +230,6 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "offers", label: "offers.mine", hint: "account.hint.offers", symbol: "tag", group: "account.groupShopping"),
         AccountEntry(id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", symbol: "star", group: "account.groupShopping"),
         AccountEntry(id: "notifications", label: "notices.title", hint: "notices.tile", symbol: "bell", group: "account.groupConversations"),
-        AccountEntry(id: "messages", label: "chat.sectionMessages", hint: "account.hint.messages", symbol: "message", group: "account.groupConversations"),
         AccountEntry(id: "help", label: "support.section", hint: "account.hint.help", symbol: "lifepreserver", group: "account.groupConversations"),
         AccountEntry(id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", symbol: "person.2", group: "account.groupRewards"),
         AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
@@ -251,7 +249,6 @@ struct AccountEntry: Identifiable, Hashable {
         case "offers": return .offers
         case "reviews": return .reviews
         case "notifications": return .notifications
-        case "messages": return .messages
         case "help": return .help
         case "rewards": return .rewards
         case "affiliate": return .affiliate
