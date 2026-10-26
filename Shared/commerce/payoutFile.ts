@@ -34,7 +34,7 @@
  * particular bank takes is that bank's decision; neither claims more.
  */
 import { fromFils, toFils } from "../money.js";
-import { isValidIban } from "../inventory/storeProfile.js";
+import { isValidIban, normaliseIban } from "../inventory/storeProfile.js";
 
 /** The most transfers one file carries. Bank portals cap a bulk upload; this is under the usual caps. */
 export const MAX_FILE_TRANSFERS = 500;
@@ -76,9 +76,9 @@ export function transferReference(runId: number): string {
   return `NLPO-${runId}`;
 }
 
-/** An IBAN as a bank file wants it: no spaces, upper case. */
+/** An IBAN as a bank file wants it: no spaces, upper case, a Kuwaiti bank code in letters (`normaliseIban`). */
 export function compactIban(iban: string): string {
-  return iban.replace(/[\s-]/g, "").toUpperCase();
+  return normaliseIban(iban);
 }
 
 /** A bank identifier code: 8 or 11 characters, bank, country, location, branch. */

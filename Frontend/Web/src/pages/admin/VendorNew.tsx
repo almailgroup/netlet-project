@@ -14,14 +14,14 @@
  * database client this replaces.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Card, Field, PageHeader, buttonClass, fieldClass } from "@/components/admin/ui";
+import { Card, Field, PageHeader, PasswordBox, buttonClass, fieldClass } from "@/components/admin/ui";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
-import { isValidIban, isValidKuwaitPhone, storeSlug } from "@shared/inventory/storeProfile";
+import { ibanReadAs, isValidIban, isValidKuwaitPhone, storeSlug } from "@shared/inventory/storeProfile";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { ArrowLeft, LoaderCircle, Store } from "lucide-react";
@@ -101,6 +101,7 @@ function NewStore() {
   const problems: Partial<Record<keyof Draft, MessageKey>> = {};
   if (draft.contactPhone.trim() && !isValidKuwaitPhone(draft.contactPhone)) problems.contactPhone = "admin.invalidPhone";
   if (draft.payoutIban.trim() && !isValidIban(draft.payoutIban)) problems.payoutIban = "admin.invalidIban";
+  const ibanRead = problems.payoutIban ? null : ibanReadAs(draft.payoutIban);
 
   const wantsOwner = draft.ownerEmail.trim() !== "" || draft.ownerPassword !== "";
   const ownerReady = !wantsOwner || (draft.ownerEmail.trim() !== "" && draft.ownerPassword.length >= 10);
@@ -188,7 +189,11 @@ function NewStore() {
             <Field label={t("admin.licenceNumber")}>
               <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={fieldClass} />
             </Field>
-            <Field label={t("admin.payoutIban")} error={problems.payoutIban && t(problems.payoutIban)}>
+            <Field
+              label={t("admin.payoutIban")}
+              error={problems.payoutIban && t(problems.payoutIban)}
+              hint={ibanRead ? t("admin.ibanReadAs", { iban: ibanRead }) : undefined}
+            >
               <input dir="ltr" autoComplete="off" spellCheck={false} value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={fieldClass} />
             </Field>
             <Field label={t("admin.storeDescription")} optional className="sm:col-span-2">
@@ -214,7 +219,7 @@ function NewStore() {
               <input dir="ltr" type="email" value={draft.ownerEmail} onChange={e => set("ownerEmail", e.target.value)} className={fieldClass} />
             </Field>
             <Field label={t("admin.ownerPassword")} hint={t("admin.ownerPasswordHint")}>
-              <input dir="ltr" type="password" autoComplete="new-password" value={draft.ownerPassword} onChange={e => set("ownerPassword", e.target.value)} className={fieldClass} />
+              <PasswordBox value={draft.ownerPassword} onChange={value => set("ownerPassword", value)} />
             </Field>
           </div>
         </Card>

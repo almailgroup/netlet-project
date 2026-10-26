@@ -22,7 +22,7 @@ import {
   type SellerApplication,
   MAX_COMMISSION_NOTE,
 } from "../../../Shared/inventory/sellerApplication.js";
-import { storeSlug } from "../../../Shared/inventory/storeProfile.js";
+import { normaliseIban, storeSlug } from "../../../Shared/inventory/storeProfile.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { getDb } from "./db.js";
@@ -97,7 +97,7 @@ export async function saveApplication(userId: number, input: SellerApplication):
     identityDocUrl: input.identityDocUrl?.trim() || null,
     /* Normalised the way the store record stores it, so the two cannot differ
        by a space once the application becomes a vendor. */
-    payoutIban: input.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null,
+    payoutIban: normaliseIban(input.payoutIban ?? "") || null,
     underPlatformLicence: input.underPlatformLicence ?? false,
     agreementVersion: input.agreementVersion === AGREEMENT_VERSION ? AGREEMENT_VERSION : null,
     agreedAt: input.agreementVersion === AGREEMENT_VERSION ? new Date() : null,

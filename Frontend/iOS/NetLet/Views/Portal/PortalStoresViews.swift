@@ -195,6 +195,12 @@ struct PortalNewStoreView: View {
     private var ibanProblem: String? {
         payoutIban.trimmingCharacters(in: .whitespaces).isEmpty || StoreRules.isValidIban(payoutIban) ? nil : l.t("admin.invalidIban")
     }
+
+    /// "Saved as KW75NBOK…" when the bank code was typed with a 0 or a 1.
+    private func ibanRead(_ raw: String) -> String? {
+        guard StoreRules.isValidIban(raw), let read = StoreRules.ibanReadAs(raw) else { return nil }
+        return l.t("admin.ibanReadAs", ["iban": read])
+    }
     private var wantsOwner: Bool { !ownerEmail.trimmingCharacters(in: .whitespaces).isEmpty || !ownerPassword.isEmpty }
     private var ready: Bool {
         let ownerReady = !wantsOwner || (!ownerEmail.trimmingCharacters(in: .whitespaces).isEmpty && ownerPassword.count >= 10)
@@ -214,7 +220,7 @@ struct PortalNewStoreView: View {
                 ChoiceField(label: l.t("admin.governorate"), current: governorate ?? "", placeholder: l.t("admin.notSet"), options: governorates) { governorate = $0 }
                 LabeledField(label: l.t("admin.addressLine"), text: $addressLine)
                 LabeledField(label: l.t("admin.licenceNumber"), text: $licenceNumber, leftToRight: true)
-                LabeledField(label: l.t("admin.payoutIban"), text: $payoutIban, problem: ibanProblem, keyboard: .asciiCapable, leftToRight: true)
+                LabeledField(label: l.t("admin.payoutIban"), text: $payoutIban, hint: ibanRead(payoutIban), problem: ibanProblem, keyboard: .asciiCapable, leftToRight: true)
                 LabeledField(label: l.t("admin.storeDescription"), text: $description, axis: .vertical)
                 LabeledField(label: l.t("admin.storeDescriptionAr"), text: $descriptionAr, axis: .vertical)
             }
@@ -482,6 +488,12 @@ struct PortalStoreView: View {
         draft.payoutIban.trimmingCharacters(in: .whitespaces).isEmpty || StoreRules.isValidIban(draft.payoutIban) ? nil : l.t("admin.invalidIban")
     }
 
+    /// "Saved as KW75NBOK…" when the bank code was typed with a 0 or a 1.
+    private func ibanRead(_ raw: String) -> String? {
+        guard StoreRules.isValidIban(raw), let read = StoreRules.ibanReadAs(raw) else { return nil }
+        return l.t("admin.ibanReadAs", ["iban": read])
+    }
+
     private var contact: some View {
         section("admin.sectionContact", note: "admin.sectionContactNote", key: "contact", disabled: phoneProblem != nil, save: {
             save("contact", .init(vendorId: vendorId, contactEmail: .text(draft.contactEmail), contactPhone: .text(draft.contactPhone),
@@ -555,7 +567,7 @@ struct PortalStoreView: View {
             LabeledField(label: l.t("admin.codCeiling"), text: $draft.codCeiling, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
                 .disabled(!draft.acceptsCod)
             LabeledField(label: l.t("admin.subscriptionPercent"), text: $draft.subscriptionPercent, hint: l.t("admin.subscriptionPercentHint"), keyboard: .decimalPad, leftToRight: true)
-            LabeledField(label: l.t("admin.payoutIban"), text: $draft.payoutIban, problem: ibanProblem, keyboard: .asciiCapable, leftToRight: true)
+            LabeledField(label: l.t("admin.payoutIban"), text: $draft.payoutIban, hint: ibanRead(draft.payoutIban), problem: ibanProblem, keyboard: .asciiCapable, leftToRight: true)
         }
     }
 

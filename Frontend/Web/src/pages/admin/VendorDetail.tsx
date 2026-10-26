@@ -21,7 +21,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
-import { Card, Field, PageHeader, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
+import { Card, Field, PageHeader, PasswordBox, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -31,7 +31,7 @@ import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySp
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { discountAllowed } from "@shared/inventory/discountLicence";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
-import { isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
+import { ibanReadAs, isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
 import {
   AWARDED_BADGES,
   awardedBadges,
@@ -134,6 +134,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
 
   const phoneProblem = draft.contactPhone.trim() && !isValidKuwaitPhone(draft.contactPhone) ? t("admin.invalidPhone") : undefined;
   const ibanProblem = draft.payoutIban.trim() && !isValidIban(draft.payoutIban) ? t("admin.invalidIban") : undefined;
+  const ibanRead = ibanProblem ? null : ibanReadAs(draft.payoutIban);
 
   /* One section's fields and nothing else: an absent key writes nothing. */
   const save = (section: string, patch: Omit<Parameters<typeof saveProfile.mutate>[0], "vendorId">) => {
@@ -405,7 +406,12 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               <Field label={t("admin.subscriptionPercent")} hint={t("admin.subscriptionPercentHint")}>
                 <input dir="ltr" inputMode="decimal" value={draft.subscriptionPercent} onChange={e => set("subscriptionPercent", e.target.value)} className={fieldClass} />
               </Field>
-              <Field label={t("admin.payoutIban")} error={ibanProblem} className="sm:col-span-2">
+              <Field
+                label={t("admin.payoutIban")}
+                error={ibanProblem}
+                hint={ibanRead ? t("admin.ibanReadAs", { iban: ibanRead }) : undefined}
+                className="sm:col-span-2"
+              >
                 <input dir="ltr" autoComplete="off" spellCheck={false} value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={fieldClass} />
               </Field>
             </div>
@@ -615,7 +621,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
             <input dir="ltr" type="email" value={fresh.email} onChange={e => setFresh({ ...fresh, email: e.target.value })} className={fieldClass} />
           </Field>
           <Field label={t("admin.ownerPassword")} hint={t("admin.ownerPasswordHint")}>
-            <input dir="ltr" type="password" autoComplete="new-password" value={fresh.password} onChange={e => setFresh({ ...fresh, password: e.target.value })} className={fieldClass} />
+            <PasswordBox value={fresh.password} onChange={password => setFresh({ ...fresh, password })} />
           </Field>
           <Field label={t("admin.memberRole")}>
             <Select value={fresh.role} onChange={e => setFresh({ ...fresh, role: e.target.value as VendorRole })} className={fieldClass}>

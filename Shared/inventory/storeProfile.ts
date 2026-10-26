@@ -44,6 +44,37 @@ export function storeSlug(name: string): string {
 }
 
 /**
+ * An IBAN as it is checked, stored and sent to the bank: no spaces or hyphens,
+ * upper case, and in a Kuwaiti one the bank code read as the letters it must
+ * be.
+ *
+ * A Kuwaiti IBAN is KW, two check digits, a four-letter bank code (NBOK, CBKU,
+ * KFHO…) and twenty-two characters of account, so a 0 or a 1 among those four
+ * can only be an O or an I typed on the wrong row. "KW75NB0K…" for the
+ * National Bank was refused as bad check digits, which sent whoever typed it
+ * to stare at the digits; read as NBOK it passes, and mod-97 is still what
+ * says whether it is right. Nowhere else: in the rest of an IBAN a digit is a
+ * digit, and a guess there would be a guess about where money goes.
+ */
+export function normaliseIban(raw: string): string {
+  const iban = raw.replace(/[\s-]/g, "").toUpperCase();
+  if (!iban.startsWith("KW") || iban.length < 8) return iban;
+  const bank = iban.slice(4, 8).replace(/0/g, "O").replace(/1/g, "I");
+  return iban.slice(0, 4) + bank + iban.slice(8);
+}
+
+/**
+ * The IBAN as it will be saved, when that is not what was typed beyond its
+ * spaces and case — so the form can say it ("Saved as KW75NBOK…") rather than
+ * change somebody's typing under them.
+ */
+export function ibanReadAs(raw: string): string | null {
+  const plain = raw.replace(/[\s-]/g, "").toUpperCase();
+  const read = normaliseIban(raw);
+  return read !== plain ? read : null;
+}
+
+/**
  * IBAN check digits, by the mod-97 rule in ISO 13616.
  *
  * Worth doing rather than matching a length: a transposed pair of digits is
@@ -52,7 +83,7 @@ export function storeSlug(name: string): string {
  * leaves for an account that does not exist.
  */
 export function isValidIban(raw: string): boolean {
-  const iban = raw.replace(/[\s-]/g, "").toUpperCase();
+  const iban = normaliseIban(raw);
   if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$/.test(iban)) return false;
 
   // Move the first four characters to the end, then read letters as numbers.

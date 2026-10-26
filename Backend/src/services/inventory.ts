@@ -14,6 +14,7 @@ import { merchantWarranty } from "../../../Shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../../../Shared/inventory/stockMoves.js";
 import { optionPairs, optionPairsProblem, optionsRecord } from "../../../Shared/inventory/variantOptions.js";
 import { percentProblem, scalePrice } from "../../../Shared/inventory/productBulk.js";
+import { normaliseIban } from "../../../Shared/inventory/storeProfile.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
@@ -2391,7 +2392,7 @@ export function storeDetailColumns(patch: StoreDetailsPatch) {
     ...(has("addressLine") ? { addressLine: textOrNull(patch.addressLine) } : {}),
     ...(has("licenceNumber") ? { licenceNumber: textOrNull(patch.licenceNumber) } : {}),
     ...(has("payoutIban")
-      ? { payoutIban: patch.payoutIban?.replace(/[\s-]/g, "").toUpperCase() || null }
+      ? { payoutIban: normaliseIban(patch.payoutIban ?? "") || null }
       : {}),
     ...(has("discountLicenceNumber") ? { discountLicenceNumber: textOrNull(patch.discountLicenceNumber) } : {}),
     ...(has("discountLicenceExpiresAt") ? { discountLicenceExpiresAt: patch.discountLicenceExpiresAt ?? null } : {}),

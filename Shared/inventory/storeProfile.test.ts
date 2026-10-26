@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   GOVERNORATES,
+  ibanReadAs,
   isGovernorate,
   isValidIban,
   isValidKuwaitPhone,
   missingStoreDetails,
+  normaliseIban,
   storeSlug,
 } from "./storeProfile.js";
 import { kuwaitDeliveryZones } from "../customer.js";
@@ -45,6 +47,38 @@ describe("isValidIban", () => {
     expect(isValidIban("")).toBe(false);
     expect(isValidIban("1234567890")).toBe(false);
     expect(isValidIban("KW81")).toBe(false);
+  });
+
+  it("reads a 0 or a 1 in a Kuwaiti bank code as the letter it must be", () => {
+    // Typed from the National Bank's letter with a zero for the O: refused as
+    // bad check digits before, when the digits were never the problem.
+    expect(isValidIban("KW09 NB0K 0000 0000 0000 1234 5678 90")).toBe(true);
+    expect(isValidIban("KW57KFH00000000000009876543210")).toBe(true);
+    // A bank code is four letters, so nothing is guessed: the check digits
+    // still decide, and a wrong account is still wrong.
+    expect(isValidIban("KW09NB0K0000000000001234567809")).toBe(false);
+  });
+});
+
+describe("normaliseIban", () => {
+  it("is the IBAN as it is stored and sent", () => {
+    expect(normaliseIban("kw09 nb0k 0000-0000 0000 1234 5678 90")).toBe("KW09NBOK0000000000001234567890");
+    expect(normaliseIban("KW57 KFH0 0000 0000 0000 9876 5432 10")).toBe("KW57KFHO0000000000009876543210");
+  });
+
+  it("touches a digit only in a Kuwaiti bank code", () => {
+    // The account part is digits that mean digits, and another country's
+    // format is not this rule's to read.
+    expect(normaliseIban("KW81CBKU0000000000001234560101")).toBe("KW81CBKU0000000000001234560101");
+    expect(normaliseIban("DE89 3704 0044 0532 0130 00")).toBe("DE89370400440532013000");
+    expect(normaliseIban("KW8")).toBe("KW8");
+  });
+
+  it("says what it changed, so the form can show it", () => {
+    expect(ibanReadAs("KW09 NB0K 0000 0000 0000 1234 5678 90")).toBe("KW09NBOK0000000000001234567890");
+    // Spaces and case are how people type one, not a change worth a line.
+    expect(ibanReadAs("kw09 nbok 0000 0000 0000 1234 5678 90")).toBeNull();
+    expect(ibanReadAs("")).toBeNull();
   });
 });
 

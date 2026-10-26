@@ -13,10 +13,31 @@ enum StoreRules {
         return text.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
     }
 
+    /// An IBAN as it is checked and saved (`normaliseIban`): no spaces or
+    /// hyphens, upper case, and in a Kuwaiti one the four-letter bank code read
+    /// as letters, so "NB0K" typed for the National Bank is NBOK. Nowhere
+    /// else: in the rest of an IBAN a digit is a digit.
+    static func normaliseIban(_ raw: String) -> String {
+        let iban = raw.replacingOccurrences(of: "[\\s-]", with: "", options: .regularExpression).uppercased()
+        guard iban.hasPrefix("KW"), iban.count >= 8 else { return iban }
+        let bank = String(iban.dropFirst(4).prefix(4))
+            .replacingOccurrences(of: "0", with: "O")
+            .replacingOccurrences(of: "1", with: "I")
+        return String(iban.prefix(4)) + bank + String(iban.dropFirst(8))
+    }
+
+    /// The IBAN as it will be saved, when that is not what was typed beyond
+    /// its spaces and case (`ibanReadAs`), for the form to say.
+    static func ibanReadAs(_ raw: String) -> String? {
+        let plain = raw.replacingOccurrences(of: "[\\s-]", with: "", options: .regularExpression).uppercased()
+        let read = normaliseIban(raw)
+        return read != plain ? read : nil
+    }
+
     /// IBAN check digits by the mod-97 rule (`isValidIban`): a transposed
     /// pair passes any length check and sends money nowhere.
     static func isValidIban(_ raw: String) -> Bool {
-        let iban = raw.replacingOccurrences(of: "[\\s-]", with: "", options: .regularExpression).uppercased()
+        let iban = normaliseIban(raw)
         guard iban.range(of: "^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$", options: .regularExpression) != nil else { return false }
         let rearranged = iban.dropFirst(4) + iban.prefix(4)
         var remainder = 0

@@ -23,7 +23,7 @@ import { lineOutcome } from "../../../Shared/commerce/finance.js";
 import { batchFor, chargeReference, feeReference, maskIban, MAX_BANK_REFERENCE, type Batch, type FeeCharge, type Obligation } from "../../../Shared/commerce/payoutRuns.js";
 import { debtorProblem, fileReference, kuwaitDate, MAX_FILE_TRANSFERS, pain001, payoutCsv, type DebtorProblem, type FileTransfer, type PayoutFormat } from "../../../Shared/commerce/payoutFile.js";
 import { payoutDue } from "../../../Shared/commerce/payoutSchedule.js";
-import { isValidIban } from "../../../Shared/inventory/storeProfile.js";
+import { isValidIban, normaliseIban } from "../../../Shared/inventory/storeProfile.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { fromFils, toFils } from "../../../Shared/money.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
@@ -247,7 +247,7 @@ export async function readyBatches(actor: Actor, now = new Date()): Promise<Read
 function payeeIban(iban: string | null): string {
   if (!iban?.trim()) throw new PayoutRefused("payouts.noIban");
   if (!isValidIban(iban)) throw new PayoutRefused("payouts.badIban");
-  return iban.replace(/[\s-]/g, "").toUpperCase();
+  return normaliseIban(iban);
 }
 
 /**

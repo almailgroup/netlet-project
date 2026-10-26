@@ -3867,7 +3867,16 @@ blocked from recording a seller because the trade licence is on a document
 nobody has scanned. What *is* checked is what would be actively wrong — a
 payout IBAN is validated by the mod-97 rule in `Shared/inventory/storeProfile.ts`,
 because a transposed pair of digits passes any length check and sends money
-to an account that does not exist.
+to an account that does not exist. **A Kuwaiti IBAN's bank code is read as the
+four letters it must be** (`normaliseIban`): the owner opening a store typed
+the National Bank's IBAN with a zero for the O, "NB0K", and was told the check
+digits did not add up, which sent them to stare at the digits. A 0 or a 1 in
+those four places is read as O or I and mod-97 still decides; nowhere else in
+an IBAN is a digit read as anything but a digit. The IBAN is stored, frozen on
+a payout run and written to the bank file in that form, and the form says what
+it will be saved as (`ibanReadAs`, "Saved as KW…NBOK…") rather than change the
+box under the typing. A password an administrator sets for somebody else has
+the eye to read it back (`PasswordBox`), the sign-in form's own.
 
 `/admin/vendors` is a list and nothing else; one store's status, commission,
 badges and team are on `/admin/vendors/:id`, each section saving on its own.

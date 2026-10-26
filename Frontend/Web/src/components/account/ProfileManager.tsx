@@ -217,7 +217,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
               aria-label={t("account.newPassword")}
               aria-describedby={rulesId}
               onChange={event => setNext(event.target.value)}
-              className={`${field} pe-12`}
+              className={`${field} pe-12 rtl:pe-3.5 rtl:ps-12`}
             />
             <button
               type="button"

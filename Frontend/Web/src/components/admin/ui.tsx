@@ -13,9 +13,9 @@
  * 14px/500 is the storefront's and would flatten a portal heading.
  */
 import { useTranslation } from "@/hooks/useTranslation";
-import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, CircleAlert, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, ArrowLeft, CheckCircle2, CircleAlert, Eye, EyeOff, Info } from "lucide-react";
 import { Link } from "wouter";
-import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
+import { cloneElement, isValidElement, useId, useState, type ReactElement, type ReactNode } from "react";
 
 /** Re-exported so every portal page takes it from where it takes the rest. */
 export { isolate } from "@/lib/isolate";
@@ -376,6 +376,54 @@ export function Field({ label, hint, error, optional, className = "", children }
       ) : hint ? (
         <p id={noteId} className="mt-1.5 text-[12px] leading-5 ink-muted">{hint}</p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A password somebody is setting for somebody else, with the eye to read it
+ * back — an administrator opening a store hands the first password over, and
+ * one typed blind is one they cannot be sure they are handing over right.
+ * `Field` names it like any box: the id and the note go to the input inside.
+ */
+export function PasswordBox({ value, onChange, id, "aria-describedby": describedBy, "aria-invalid": invalid }: {
+  value: string;
+  onChange: (value: string) => void;
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+}) {
+  const { t } = useTranslation();
+  const [reveal, setReveal] = useState(false);
+  const label = t(reveal ? "auth.hidePassword" : "auth.showPassword");
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
+        dir="ltr"
+        type={reveal ? "text" : "password"}
+        autoComplete="new-password"
+        autoCapitalize="off"
+        spellCheck={false}
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        /* Room for the eye. The box types left to right on either page, so its
+           own end is the right; on the Arabic page the eye sits at the page's
+           end, the left, and the room goes there (the sign-in form's rule). */
+        className={`${fieldClass} pe-12 rtl:pe-3.5 rtl:ps-12`}
+      />
+      <button
+        type="button"
+        onClick={() => setReveal(shown => !shown)}
+        aria-pressed={reveal}
+        aria-label={label}
+        title={label}
+        className="absolute end-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+      >
+        {reveal ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
+      </button>
     </div>
   );
 }

@@ -32,7 +32,7 @@ import {
   proposalProblem,
 } from "@shared/inventory/sellerApplication";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
-import { GOVERNORATES } from "@shared/inventory/storeProfile";
+import { GOVERNORATES, ibanReadAs, isValidIban } from "@shared/inventory/storeProfile";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowUpRight, CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -167,6 +167,8 @@ export default function Sell() {
   const linksOk = !badLink(form.licenceDocUrl) && !badLink(form.identityDocUrl);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(current => ({ ...current, [key]: value }));
+  /* What the IBAN will be saved as, when that is not what was typed (`ibanReadAs`). */
+  const ibanRead = isValidIban(form.payoutIban) ? ibanReadAs(form.payoutIban) : null;
 
   return (
     <PageBody width="reading" className="type-body">
@@ -266,7 +268,8 @@ export default function Sell() {
                     </Labelled>
                   ) : null}
                   <Labelled label={t("sell.fieldIban")}>
-                    <input dir="ltr" value={form.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={field} />
+                    <input dir="ltr" autoComplete="off" spellCheck={false} value={form.payoutIban} aria-describedby={ibanRead ? "iban-read" : undefined} onChange={e => set("payoutIban", e.target.value)} className={field} />
+                    {ibanRead ? <span id="iban-read" className="mt-1 block text-[12px] leading-5 ink-muted">{t("admin.ibanReadAs", { iban: ibanRead })}</span> : null}
                   </Labelled>
                   {/* Links were how documents arrived before uploads existed.
                       An application that carries one keeps it and can still
