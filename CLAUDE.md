@@ -3382,8 +3382,10 @@ writes them. `docs/REQUIREMENTS.md` said from the start that 3.7 shares a ledger
 with the referral points, and it does — `point_entries`, in its own **pot**.
 
 **One ledger, two pots.** Referral points spend at face value and cash out at a
-tenth; an affiliate's commission is money, counted in fils and paid at face
-value. `balanceFor` takes the pot and every points query names it, or a
+tenth — which the owner's requirements document (`docs/Netlet-Requirements.pdf`,
+3.1.15) contradicts: it deducts a 10% fee, so a payout is nine tenths, and the
+map marks the row partial until the owner says which; an affiliate's commission
+is money, counted in fils and paid at face value. `balanceFor` takes the pot and every points query names it, or a
 commission would be spendable at checkout and points cashable at an
 affiliate's rate. The pot is a column rather than a reason prefix because a
 balance is a `sum` over a `where`, and the `where` is the whole rule.
