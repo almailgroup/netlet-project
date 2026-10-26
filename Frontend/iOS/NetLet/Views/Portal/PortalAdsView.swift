@@ -124,6 +124,27 @@ enum AdWords {
         return reader.string(from: moved)
     }
 
+    /// A `yyyy-mm-dd` Kuwaiti day as a moment inside it (noon), for a date picker.
+    static func date(_ day: String) -> Date {
+        let reader = DateFormatter()
+        reader.calendar = Calendar(identifier: .gregorian)
+        reader.locale = Locale(identifier: "en_US_POSIX")
+        reader.timeZone = TimeZone(identifier: "Asia/Kuwait")
+        reader.dateFormat = "yyyy-MM-dd HH:mm"
+        return reader.date(from: day + " 12:00") ?? Date()
+    }
+
+    /// Days from one `yyyy-mm-dd` to another, both counted (`daysInclusive`).
+    static func daysInclusive(_ from: String, _ to: String) -> Int {
+        let reader = DateFormatter()
+        reader.calendar = Calendar(identifier: .gregorian)
+        reader.locale = Locale(identifier: "en_US_POSIX")
+        reader.timeZone = TimeZone(identifier: "UTC")
+        reader.dateFormat = "yyyy-MM-dd"
+        guard let start = reader.date(from: from), let end = reader.date(from: to) else { return 0 }
+        return (Calendar(identifier: .gregorian).dateComponents([.day], from: start, to: end).day ?? -1) + 1
+    }
+
     /// `approvalStart`: an approval after the booked start runs from today.
     static func approvalStart(_ startsOn: String, today: String) -> String { startsOn < today ? today : startsOn }
 
@@ -184,6 +205,15 @@ private struct AdBookForm: View {
                 .font(.inter(14))
             Stepper(value: $days, in: 1...rules.ads.maxDays) {
                 Text("\(l.t("ads.days", ["max": "\(rules.ads.maxDays)"])): \(days)").font(.inter(14))
+            }
+            if let productId {
+                PlacementCalendarView(productId: productId, slot: slot, startsOn: startsOn, days: days) { from, length in
+                    starts = AdWords.date(from)
+                    days = length
+                }
+                .id("\(productId)-\(slot)")
+            } else {
+                Text(l.t("ads.calendarPickProduct")).font(.inter(13)).foregroundStyle(Brand.muted)
             }
             if let quote, productId != nil {
                 VStack(alignment: .leading, spacing: 4) {
@@ -428,5 +458,174 @@ private struct BannerReviewCard: View {
         note = ""
         app.toast(l.t(answer?.status == "approved" ? "ads.bannerApproved" : "ads.bannerRejected"))
         changed()
+    }
+}
+
+/// The calendar a store books from (3.3.15) — the web's `PlacementCalendar`:
+/// each day with how many places are still free, a month at a time, Sunday
+/// first, the Kuwaiti week. The first press picks the first day and the
+/// second the last; a run never takes a full day, because the booking would
+/// refuse it. The date and the stepper above stay, and are the same two values.
+struct PlacementCalendarView: View {
+    let productId: Int
+    let slot: String
+    let startsOn: String
+    let days: Int
+    let pick: (String, Int) -> Void
+    @State private var calendar: PlacementCalendar?
+    @State private var failed: APIError?
+    @State private var anchor: String?
+    @State private var monthIndex = 0
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    private var rules: WarehouseRules { .shared }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let calendar {
+                content(calendar)
+            } else if let failed {
+                Text(l.t(failed.messageKey(knownKey: l.phrasebook.has))).font(.inter(13)).foregroundStyle(Brand.danger)
+            } else {
+                ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 80)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .task {
+            do {
+                calendar = try await app.services.api.call(API.adCalendar, .init(productId: productId, slot: slot))
+                failed = nil
+            } catch {
+                let failure = APIError.from(error)
+                if failure != .cancelled { failed = failure }
+            }
+        }
+    }
+
+    private func monthsOf(_ calendar: PlacementCalendar) -> [(key: String, days: [PlacementCalendar.Day])] {
+        var keys: [String] = []
+        var grouped: [String: [PlacementCalendar.Day]] = [:]
+        for day in calendar.days {
+            let key = String(day.date.prefix(7))
+            if grouped[key] == nil { keys.append(key) }
+            grouped[key, default: []].append(day)
+        }
+        return keys.map { ($0, grouped[$0] ?? []) }
+    }
+
+    @ViewBuilder
+    private func content(_ calendar: PlacementCalendar) -> some View {
+        let months = monthsOf(calendar)
+        if !months.isEmpty {
+            let shown = min(monthIndex, months.count - 1)
+            let month = months[shown]
+            let lastStart = AdWords.addDays(calendar.today, rules.ads.maxLeadDays)
+            let runEnd = days > 0 ? AdWords.addDays(startsOn, days - 1) : nil
+            let byDate = Dictionary(uniqueKeysWithValues: calendar.days.map { ($0.date, $0) })
+            HStack(alignment: .firstTextBaseline) {
+                Text(l.t("ads.calendarTitle")).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                Spacer(minLength: 6)
+                Text(l.t("ads.rateLine", ["rate": calendar.dailyRate.formatted(l.current), "places": "\(calendar.capacity)"]))
+                    .font(.inter(12)).foregroundStyle(Brand.muted)
+            }
+            Text(l.t(anchor == nil ? "ads.calendarHint" : "ads.calendarPickEnd")).font(.inter(13)).foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button { monthIndex = max(0, shown - 1) } label: {
+                    Image(systemName: "chevron.backward").frame(width: 44, height: 36)
+                }
+                .buttonStyle(PortalSmallButtonStyle())
+                .disabled(shown == 0)
+                .accessibilityLabel(l.t("ads.calendarPrevMonth"))
+                Spacer()
+                Text(monthName(month.key)).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                Spacer()
+                Button { monthIndex = min(months.count - 1, shown + 1) } label: {
+                    Image(systemName: "chevron.forward").frame(width: 44, height: 36)
+                }
+                .buttonStyle(PortalSmallButtonStyle())
+                .disabled(shown >= months.count - 1)
+                .accessibilityLabel(l.t("ads.calendarNextMonth"))
+            }
+            let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(weekdays, id: \.self) { name in
+                    Text(name).font(.inter(11, .semibold)).foregroundStyle(Brand.muted).accessibilityHidden(true)
+                }
+                ForEach(0..<leading(month.days.first?.date), id: \.self) { _ in Color.clear.frame(height: 1).accessibilityHidden(true) }
+                ForEach(month.days, id: \.date) { entry in
+                    let full = entry.free == 0
+                    let chosen = runEnd.map { startsOn <= entry.date && entry.date <= $0 } ?? false
+                    let startable = entry.date <= lastStart || (anchor.map { entry.date >= $0 } ?? false)
+                    Button {
+                        press(entry.date, byDate: byDate, lastStart: lastStart)
+                    } label: {
+                        VStack(spacing: 1) {
+                            Text(verbatim: "\(Int(entry.date.suffix(2)) ?? 0)").font(.inter(13, .bold)).monospacedDigit()
+                            Text(full ? l.t("ads.calendarFull") : l.t("ads.calendarFree", ["count": "\(entry.free)"]))
+                                .font(.inter(10)).lineLimit(1).minimumScaleFactor(0.7)
+                                .foregroundStyle(chosen ? Color.white.opacity(0.85) : Brand.muted)
+                        }
+                        .strikethrough(full)
+                        .foregroundStyle(chosen ? Color.white : (full || !startable) ? Brand.muted : Brand.navy)
+                        .frame(maxWidth: .infinity, minHeight: 46)
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(chosen ? Brand.navy : full ? Brand.photo : Color.white))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: 1))
+                    }
+                    .buttonStyle(.tap)
+                    .disabled(full || !startable)
+                    .accessibilityLabel(full ? l.t("ads.calendarDayFull", ["day": OrderWording.day(entry.date, language: l.current)])
+                                        : l.t("ads.calendarDayLabel", ["day": OrderWording.day(entry.date, language: l.current), "count": "\(entry.free)", "capacity": "\(calendar.capacity)"]))
+                    .accessibilityAddTraits(chosen ? .isSelected : [])
+                }
+            }
+        }
+    }
+
+    /// First press the first day; a second press on or after it the last, if
+    /// every day between has room and the run is not too long.
+    private func press(_ date: String, byDate: [String: PlacementCalendar.Day], lastStart: String) {
+        guard let entry = byDate[date], entry.free > 0 else { return }
+        if let anchor, date >= anchor {
+            let length = AdWords.daysInclusive(anchor, date)
+            let blocked = (0..<max(0, length)).contains { offset in (byDate[AdWords.addDays(anchor, offset)]?.free ?? 0) == 0 }
+            if length <= rules.ads.maxDays && !blocked {
+                pick(anchor, length)
+                self.anchor = nil
+                return
+            }
+        }
+        guard date <= lastStart else { return }
+        pick(date, 1)
+        anchor = date
+    }
+
+    /// Blank cells before the month's first day, Sunday first.
+    private func leading(_ first: String?) -> Int {
+        guard let first else { return 0 }
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = TimeZone(identifier: "Asia/Kuwait") ?? .current
+        return gregorian.component(.weekday, from: AdWords.date(first)) - 1
+    }
+
+    private var weekdays: [String] {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: l.current == .ar ? "ar-KW" : "en-GB")
+        // Arabic's short names are whole words that wrap in a seventh of a
+        // phone; its calendars head a column with the day's letter.
+        return l.current == .ar ? formatter.veryShortWeekdaySymbols : formatter.shortWeekdaySymbols
+    }
+
+    private func monthName(_ key: String) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: l.current == .ar ? "ar-KW@numbers=latn" : "en-GB")
+        formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
+        formatter.setLocalizedDateFormatFromTemplate("MMMMyyyy")
+        return formatter.string(from: AdWords.date(key + "-15"))
     }
 }

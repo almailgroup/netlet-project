@@ -225,3 +225,60 @@ export function adviseForFit(chart: SizeChart, answer: SizeAnswer, tendency: Fit
   });
   return leaning ? next.size : null;
 }
+
+/* ------------------------------------------------- from past purchases --- */
+
+/**
+ * The size a shopper's own past purchases suggest (3.1.20: "based on their
+ * past purchases or measurements").
+ *
+ * Each past line in the same department votes: one kept votes for its own
+ * size, one sent back as too small for the next size up on this chart, one
+ * too large for the next size down. A size this chart does not have casts no
+ * vote — a past "M" says nothing about a chart in numbers. The size with the
+ * most votes wins, a tie going to the most recent; and the answer carries the
+ * counts behind it, the rule `fitTendency` follows, so the shopper can weigh
+ * two purchases against one.
+ *
+ * The lines are the shopper's own and come only to them; the arithmetic runs
+ * in their browser beside the chart, like `recommendSize`.
+ */
+export type PastSizeLine = {
+  /** The variant's title as frozen on the order line, e.g. "M" or "Navy / M". */
+  variantTitle: string | null;
+  outcome: "kept" | "tooSmall" | "tooLarge";
+  at: string | Date;
+};
+
+export type PurchaseSuggestion = { size: string; kept: number; tooSmall: number; tooLarge: number };
+
+/** The chart's size a variant title names, matched whole and without case. */
+export function sizeOnChart(chart: SizeChart, variantTitle: string | null): string | null {
+  if (!variantTitle) return null;
+  const parts = variantTitle.split(/\s*[/,|·-]\s*|\s+/).map(part => part.trim().toLowerCase()).filter(Boolean);
+  const whole = variantTitle.trim().toLowerCase();
+  const row = chart.rows.find(entry => entry.size.toLowerCase() === whole) ?? chart.rows.find(entry => parts.includes(entry.size.toLowerCase()));
+  return row?.size ?? null;
+}
+
+export function sizeFromPurchases(chart: SizeChart, past: PastSizeLine[]): PurchaseSuggestion | null {
+  const votes = new Map<string, { count: number; latest: number; kept: number; tooSmall: number; tooLarge: number }>();
+  for (const line of past) {
+    const size = sizeOnChart(chart, line.variantTitle);
+    if (!size) continue;
+    const index = chart.rows.findIndex(row => row.size === size);
+    const target = line.outcome === "kept" ? chart.rows[index] : chart.rows[index + (line.outcome === "tooSmall" ? 1 : -1)];
+    if (!target) continue;
+    const at = new Date(line.at).getTime() || 0;
+    const entry = votes.get(target.size) ?? { count: 0, latest: 0, kept: 0, tooSmall: 0, tooLarge: 0 };
+    entry.count += 1;
+    entry.latest = Math.max(entry.latest, at);
+    entry[line.outcome] += 1;
+    votes.set(target.size, entry);
+  }
+  let best: [string, { count: number; latest: number; kept: number; tooSmall: number; tooLarge: number }] | null = null;
+  for (const candidate of votes) {
+    if (!best || candidate[1].count > best[1].count || (candidate[1].count === best[1].count && candidate[1].latest > best[1].latest)) best = candidate;
+  }
+  return best ? { size: best[0], kept: best[1].kept, tooSmall: best[1].tooSmall, tooLarge: best[1].tooLarge } : null;
+}

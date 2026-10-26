@@ -170,6 +170,11 @@
           "need": "platform.viewAll"
         },
         {
+          "href": "/admin/fraud",
+          "label": "fraud.title",
+          "need": "platform.viewAll"
+        },
+        {
           "href": "/admin/subscriptions",
           "label": "subscriptions.adminTitle",
           "need": "platform.configure"
@@ -692,6 +697,7 @@
       ]
     },
     "limit": 1000,
+    "categoriseBatch": 100,
     "template": "title,sku,price,compareatprice,stock,category,description,imageurl\nBrass Reading Lamp,LAMP-01,24.500,31.000,12,,A warm brass lamp for a side table,https://example.com/lamp.jpg\n"
   },
   "inbound": {

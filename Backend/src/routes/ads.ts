@@ -18,6 +18,7 @@ import {
   cancelPlacement,
   countWaitingBanners,
   listPlacements,
+  placementCalendar,
   quotePlacement,
   reviewBanner,
   sponsoredToday,
@@ -68,6 +69,11 @@ const banner = z.object({
 });
 
 export const adsRouter = router({
+  /** Which days the place has room on, for the calendar the store books from (3.3.15). */
+  calendar: protectedProcedure
+    .input(z.object({ productId: rowId, slot: z.enum(AD_SLOTS) }))
+    .query(async ({ ctx, input }) => guard(async () => placementCalendar(await resolveActor(ctx.user), input))),
+
   quote: protectedProcedure
     .input(request)
     .query(async ({ ctx, input }) => guard(async () => quotePlacement(await resolveActor(ctx.user), input))),

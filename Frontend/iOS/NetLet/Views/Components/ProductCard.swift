@@ -162,6 +162,18 @@ struct ProductCard: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // A long press previews the product without leaving the shelf (3.1.11)
+        // — the web's long-press Quick View, in the phone's own shape: the
+        // photo, the name and the price lifted over the page, with what the
+        // card's buttons do beneath it.
+        .contextMenu {
+            CardMenu(product: product)
+        } preview: {
+            CardPreview(product: product)
+                .environment(app)
+                .environment(l)
+        }
     }
 
     @ViewBuilder
@@ -199,6 +211,111 @@ struct ProductCard: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(fill))
+    }
+}
+
+/// What a long press offers beneath the preview: the product's page, what
+/// the card's own buttons do, and saving and sharing it.
+private struct CardMenu: View {
+    let product: Product
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let variant = product.leadVariant
+        Button {
+            app.push(.product(handle: product.handle))
+        } label: {
+            Label(l.t("quick.fullDetails"), systemImage: "doc.text.magnifyingglass")
+        }
+        if let variant, variant.availableForSale {
+            if product.needsChoice {
+                Button {
+                    app.push(.product(handle: product.handle))
+                } label: {
+                    Label(l.t("product.chooseOption"), systemImage: "slider.horizontal.3")
+                }
+            } else {
+                if app.cart.cart?.plainLine(for: variant.id) == nil {
+                    Button {
+                        Task { await add(variant, thenCheckout: false) }
+                    } label: {
+                        Label(l.t(variant.preorder == nil ? "product.addToCart" : "product.preorder"), systemImage: "bag")
+                    }
+                }
+                Button {
+                    Task {
+                        if app.cart.cart?.plainLine(for: variant.id) != nil { app.openCheckout() } else { await add(variant, thenCheckout: true) }
+                    }
+                } label: {
+                    Label(l.t("product.buyNow"), systemImage: "bolt.fill")
+                }
+            }
+        }
+        let saved = app.saved.contains(product.id)
+        Button {
+            Task {
+                await app.saved.toggle(product.id)
+                app.toast(l.t(saved ? "saved.removed" : "saved.savedForLater", ["name": product.title]))
+            }
+        } label: {
+            Label(l.t(saved ? "product.removeSaved" : "product.save", ["name": product.title]), systemImage: saved ? "heart.slash" : "heart")
+        }
+        ShareLink(item: app.services.configuration.url(path: "/products/\(product.handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? product.handle)")) {
+            Label(l.t("product.share", ["name": product.title]), systemImage: "square.and.arrow.up")
+        }
+    }
+
+    private func add(_ variant: ProductVariant, thenCheckout: Bool) async {
+        if await app.cart.add(variantId: variant.id) {
+            Haptics.succeeded()
+            announce(l.t("cart.added", ["name": product.title]))
+            if thenCheckout { app.openCheckout() }
+        } else {
+            Haptics.refused()
+            app.toast(l.t("cart.addFailed"))
+        }
+    }
+}
+
+/// The product lifted over the page by a long press: the first photo large,
+/// then the store, the name, the rating and the price.
+private struct CardPreview: View {
+    let product: Product
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let variant = product.leadVariant
+        VStack(alignment: .leading, spacing: 0) {
+            Brand.photo
+                .aspectRatio(4.0 / 5.0, contentMode: .fit)
+                .overlay {
+                    RemoteImage(reference: product.images.first?.url, contentMode: .fill, label: product.images.first?.altText ?? product.title)
+                }
+                .clipped()
+            VStack(alignment: .leading, spacing: 4) {
+                if let vendor = product.vendor, !vendor.isEmpty {
+                    Text(vendor).font(.inter(13)).foregroundStyle(Brand.muted).lineLimit(1)
+                }
+                Text(product.title)
+                    .font(.inter(17, .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let rating = product.rating { RatingLine(rating: rating) }
+                if let variant {
+                    PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, size: 20)
+                        .padding(.top, 2)
+                }
+                if !product.isAvailable {
+                    Text(l.t("product.soldOut")).font(.inter(13, .semibold)).foregroundStyle(Brand.danger)
+                }
+            }
+            .padding(14)
+        }
+        .frame(width: 300)
+        .background(Color.white)
+        .environment(\.layoutDirection, l.layoutDirection)
     }
 }
 

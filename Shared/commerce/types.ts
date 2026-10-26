@@ -347,7 +347,7 @@ export type Cart = {
    * Resolved on the server so the page cannot offer a method the API would
    * refuse — the rule the password floor already follows.
    */
-  cod: { available: true } | { available: false; because: { kind: "seller"; vendorName: string } | { kind: "ceiling"; vendorName: string; ceiling: string } };
+  cod: { available: true } | { available: false; because: { kind: "shop"; vendorName: string } | { kind: "seller"; vendorName: string } | { kind: "ceiling"; vendorName: string; ceiling: string } };
   /**
    * Whether this basket looks forgotten (3.1.17), and for how long.
    *

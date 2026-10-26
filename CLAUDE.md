@@ -832,6 +832,16 @@ holds a camera permission), shrunk to 768px in the browser and under the API's
 with a line saying where it goes, and sent only on the press. The model may
 return a few words and nothing else; they go into the field like typing.
 
+**"Find similar" is the same search from a product page** (3.1.6), a pill on
+the photo with words on it — a magnifier on a photo of the thing already being
+looked at says nothing — and not over a video. `search.similar` hands the
+product's own first photo and title to the photo-search model (`similarTo` in
+`photoSearch.ts`), told to name the kind of thing and never the brand, counted
+against the photo ceiling; the press lands on a search for those words within
+the product's department (`/category/<slug>?q=`, which the app reads as
+`.search(query:department:)`). With no model it opens the department, so the
+pill is never a button that can only apologise.
+
 **The dropdown is liquid glass, on the owner's word, and everything with
 words on it is a white plate.** It was a solid sheet once, because the
 department rail read through an 82% white with text straight on it. It now
@@ -1127,8 +1137,16 @@ Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
 about the ceiling.
 
-**Quick View is on every page that draws a card**, opened by the disc and by
-"Choose an option", and mounted once per page beside the other overlays. On
+**Quick View is on every page that draws a card**, opened by the disc, by
+"Choose an option" and, on a phone, by **a long press on the photo**
+(`useLongPress`: touch only, 450ms, a finger that moves is scrolling), and
+mounted once per page beside the other overlays. **The click the lifting finger
+sends is swallowed wherever it lands**: by then the preview is open under the
+finger and its own photo is a link, so swallowed on the card alone the lift
+opened the product page from the preview — found by holding a card over CDP
+(`Input.dispatchTouchEvent`), not by reading. It listens only until just after
+the lift, because a browser that sends no click after a hold must not eat the
+shopper's next tap. The app's long press is iOS's own context-menu preview. On
 Home it is fetched on first use rather than with the page. On a phone its Add
 and Buy stack, and a stacked button is never `flex-1`: a zero basis in a column
 of no fixed height shrank both to the height of their words.
@@ -3110,6 +3128,25 @@ product came out maroon, which only looking at the picture showed. Photos are
 gallery accepts their `/media/...` path beside an https URL
 (`acceptableImageUrl`), and `vercel.json` routes `/media` to the function.
 
+**A spreadsheet's photos get the same fixes** (3.3.4: "the same applies to bulk
+uploads"). They arrive as addresses; with "Fix the photos" on, the web's import
+(`lib/importPhotos.ts`) fetches each through `/api/media/remote` — the
+maker's-page import's SSRF guard, so the browser never contacts the host —
+prepares it with the fixes and uploads it with its address as the source, two
+at a time, before the rows are written. **It never stops an import**: a photo
+that cannot be fetched or read keeps its address, and once an hourly ceiling
+answers 429 the rest do too, and the page says how many. The app's import keeps
+the addresses, since its uploads are only shrunk and re-encoded.
+
+**The rows the words cannot file go to a model** (3.3.5): `suggestDepartment`
+scores first, and the rows it leaves without a department go to the gateway a
+hundred at a time (`products.categorise`, `categorise` in `SERVER_TASKS`,
+`MAX_CATEGORISE_PER_HOUR` an account). `departmentsFromModel` keeps an answer
+only if it names one of NetLet's own departments for a line that was asked
+about, so the model picks among the shop's departments and cannot add one; its
+answers are tagged as guesses like the words', and no model leaves the rows as
+they were.
+
 ## Manufacturer images
 
 `Shared/commerce/manufacturerImages.ts` is the rule, pure; `Backend/src/services/manufacturerImages.ts`
@@ -3201,6 +3238,14 @@ today and charges today. **A store books against what it has earned**, less
 what its other bookings can still cost — otherwise NetLet extends credit to a
 store with no sales. Bookings serialise on one advisory lock (capacity) and
 take the store's row `for update` (earnings), the lock a payout run takes.
+
+**A store books from a calendar** (`availability`, `ads.calendar`): every day
+a run may start on and the tail of the longest run, a month at a time, Sunday
+first, each with its free places, counted by `runsOn` — the rule `fullDays` and
+the booking use — so it cannot call free a day the booking then refuses. The
+first press is the first day and the second the last; a run across a full day
+is not offered. Arabic heads the columns with the day's letter, because its
+short names are whole words that wrap in a seventh of a phone.
 
 Disclosed on the shelf and on every card, and never folded into a sort: a
 department's paid products are a strip above a grid that stays in the
@@ -3360,6 +3405,13 @@ and restoring somebody would name whoever took the rights away as the person
 who conferred them. A null is ordinary: the first administrator was made one by
 whoever ran the bootstrap.
 
+**An administrator's sign-in and the acts on a return are on it too**:
+`admin.signIn` (with the address and whether they asked to stay signed in,
+written by `startSession`, the one door every sign-in passes), and
+`return.decide`, `return.receive`, `return.refundPaid`, each naming the order.
+An automatic return decision is the rule's, so it is not a person's act on the
+trail.
+
 It also freezes **the rank the actor held at the time**, which is what makes
 "what the sellers changed" a column filter rather than a join against a
 membership table that has since moved. `/admin` carries an unread count of
@@ -3383,16 +3435,31 @@ every recommendation is drawn from, so *which* hundred products the shop
 displayed could change between two page loads. A cap needs the tiebreak as much
 as a page does: paging repeats rows, but a cap decides membership.
 
+## Fraud watch
+
+`Shared/commerce/fraudSignals.ts` is the judgement for orders, **reviews and
+referrals** (3.6.5), pure; `Backend/src/services/fraud.ts` reads the counts.
+`/admin/fraud` shows the newest `WATCH_LIMIT` of each with what was noticed:
+a reviewer who works for the store, reviewers at one door, a burst in a day, an
+account hours old, the same stars every time; a referral whose two accounts
+share a door or a phone or one mailbox spelled twice (`emailsAlike`, which
+drops a `+tag` and trailing digits, and Gmail's dots), a qualifying order taken
+back, a burst of invitations. **It flags and never acts** — a review is hidden
+by a person's press with a reason (`reviews.setHidden`), and a referral is
+something to look at before its cash-out is paid. Admin-only, because the
+signals describe other accounts.
+
 ## Affiliates
 
 `Shared/commerce/affiliate.ts` is the rules and is pure; `Backend/src/services/affiliates.ts`
 writes them. `docs/REQUIREMENTS.md` said from the start that 3.7 shares a ledger
 with the referral points, and it does — `point_entries`, in its own **pot**.
 
-**One ledger, two pots.** Referral points spend at face value and cash out at a
-tenth — which the owner's requirements document (`docs/Netlet-Requirements.pdf`,
-3.1.15) contradicts: it deducts a 10% fee, so a payout is nine tenths, and the
-map marks the row partial until the owner says which; an affiliate's commission
+**One ledger, two pots.** Referral points spend at face value and cash out
+less a 10% fee (`CASH_OUT_FEE_PERCENT`), the owner's document's rule (3.1.15):
+1,000 points pay KWD 0.900, rounded down to the fil. It paid a tenth until the
+document was read against it; a cash-out is valued on the read, so one asked
+for before the change is paid at the corrected figure. An affiliate's commission
 is money, counted in fils and paid at face value. `balanceFor` takes the pot and every points query names it, or a
 commission would be spendable at checkout and points cashable at an
 affiliate's rate. The pot is a column rather than a reason prefix because a
@@ -3448,6 +3515,15 @@ tendency. `adviseForFit` then suggests the next size for somebody near the edge
 of theirs, *beside* the chart's answer and never instead of it, with both offered
 as buttons. `returns.fit` is public and counts only; a withdrawn request is not
 counted, a declined one is, because the shopper still found it the wrong size.
+
+**And from the shopper's own purchases** (3.1.20: "past purchases or
+measurements"). `returns.mySizes` is the signed-in shopper's own lines in the
+product's department and nobody else's; `sizeFromPurchases` weighs them on the
+page — a kept line votes for its size, one sent back too small for the next
+size up, too large the next down; a size the chart lacks casts no vote, most
+votes wins and a tie goes to the most recent — and the box says the counts
+behind its answer, `fitTendency`'s rule. A line still on its way is not a size
+kept.
 
 **An `sr-only` element inside a sideways scroller widens the whole page.** The
 editor's table carried an `sr-only` caption; `sr-only` is `position: absolute`,
@@ -3544,6 +3620,13 @@ naming a procedure the router does not have, so a rename cannot leave a switch
 guarding nothing. It answers `PRECONDITION_FAILED` / `features.off`: nobody
 lacks permission, the shop has the thing turned off. A rail answers empty
 instead, because a shelf that errors is worse than a shelf that is absent.
+
+**`cashOnDelivery` is the shop-wide cash switch** (3.2.2), on by default and
+with no entries, because nothing *starts* from it: `codAvailability` takes it
+and refuses the basket as `{ kind: "shop" }` ("NetLet is not taking cash on
+delivery at the moment"), on the checkout's read and again inside the order.
+While cash is the only way to pay, off means nobody can order, which is what
+switching it off is for. The store-by-store switch stays beside it.
 
 **`ai` is the one switch over every model call** — the gateway's tokens, search
 refinement, recommendation ordering, the review queue's model pass. Each
@@ -4968,7 +5051,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), and is 716 KB (209 KB) now — the bag's queue, the search box's own suggestions and the shelf memory — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — and is 725 KB (212 KB) now, the requirement fixes' words in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -5393,6 +5476,17 @@ table and `SYNONYM_GROUPS` exported to `search.json`, and its tests are the
 TypeScript's own cases. **Saved reads its products by id**
 (`commerce.products.byIds`): it looked them up in the newest page, so anything
 older read as no longer available — the bug the web fixed under Wishlists.
+
+**The requirement fixes are in the app too**: the Fraud watch desk, "Find
+similar" on the product photo, a long press on a card (iOS's own context-menu
+preview — the photo, the name and the price lifted over the page, with the
+product's page, Add to cart, Buy now, save and share beneath it), the size the
+shopper's past purchases suggest (`SizeChart.fromPurchases`, tested on the
+TypeScript's own cases), the placement calendar (Arabic columns headed by the
+day's letter, `veryShortWeekdaySymbols`) and the model filing an import's
+unplaced rows, a batch the size `portal.json` exports. Fixing an import's
+photos is the web's alone: the app's uploads are shrunk and re-encoded, with no
+fixes to apply.
 
 **A `.task` on a `Group` that may be empty never runs.** A modifier on a
 `Group` is applied to each of its children, and with none there is nothing to

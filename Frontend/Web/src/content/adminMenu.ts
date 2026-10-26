@@ -63,6 +63,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/applications", label: "admin.applications", need: "platform.manageUsers" },
     { href: "/admin/people", label: "admin.people", need: "platform.manageUsers" },
     { href: "/admin/audit", label: "admin.audit", need: "platform.viewAll" },
+    /* Reviews and referrals that do not look like a shopper's own (3.6.5); orders carry their own flags. */
+    { href: "/admin/fraud", label: "fraud.title", need: "platform.viewAll" },
     { href: "/admin/subscriptions", label: "subscriptions.adminTitle", need: "platform.configure" },
     { href: "/admin/features", label: "admin.features", need: "platform.configure" },
   ] },

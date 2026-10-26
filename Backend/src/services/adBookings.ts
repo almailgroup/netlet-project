@@ -27,8 +27,10 @@ import { adBookings, categories, mediaFiles, payoutRunItems, products, vendors }
 import {
   AD_CAPACITY,
   AD_RATES,
+  CALENDAR_DAYS,
   addDays,
   approvalStart,
+  availability,
   bannerShapeOk,
   bookingProblem,
   daysInclusive,
@@ -44,6 +46,7 @@ import {
   type AdSlot,
   type BookingProblem,
   type BookingState,
+  type CalendarDay,
 } from "../../../Shared/commerce/adBookings.js";
 import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
 import { mediaPath, type StoredType } from "../../../Shared/commerce/media.js";
@@ -169,6 +172,29 @@ export type PlacementQuote = {
   room: string;
   problem: AdRefusal | null;
 };
+
+export type PlacementCalendar = { today: string; dailyRate: string; capacity: number; days: CalendarDay[] };
+
+/**
+ * Which days a place has room on, from today to the furthest a run can reach
+ * (3.3.15), for this store's product — a department's place is its own
+ * department's. Counts only: never whose bookings fill a day.
+ */
+export async function placementCalendar(actor: Actor, request: { productId: number; slot: AdSlot }, now = new Date()): Promise<PlacementCalendar> {
+  const vendorId = storeOf(actor);
+  const db = await handle();
+  const today = kuwaitToday(now);
+  const product = await productFor(db, vendorId, request.productId);
+  if (request.slot === "department" && product.categoryId === null) throw new AdRefused("ads.noDepartment");
+  const last = addDays(today, CALENDAR_DAYS - 1);
+  const existing = await overlapping(db, request.slot, product.categoryId, today, last);
+  return {
+    today,
+    dailyRate: AD_RATES[request.slot],
+    capacity: AD_CAPACITY[request.slot],
+    days: availability(existing, today, CALENDAR_DAYS, AD_CAPACITY[request.slot]),
+  };
+}
 
 /**
  * What a run would cost and whether it can be booked, without booking it —

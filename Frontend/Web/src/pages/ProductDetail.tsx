@@ -36,11 +36,11 @@ import {
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { relatedProducts } from "@shared/commerce/related";
 import { descriptionBlocks } from "@shared/commerce/productDetail";
-import { categorySlug } from "@shared/commerce/browse";
+import { EMPTY_FILTERS, categorySlug, searchPath, searchWithTerm } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import type { Product } from "@shared/commerce/types";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, PackageOpen, Play, RotateCcw, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
@@ -552,7 +552,7 @@ function GalleryColumn({ children }: { children: ReactNode }) {
   );
 }
 
-function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom, onShare, onToggleSaved, isSaved }: {
+function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeImage, onZoom, onShare, onToggleSaved, isSaved, onFindSimilar, findingSimilar }: {
   product: Product;
   selectedImageIndex: number;
   onSelectImage: (index: number) => void;
@@ -561,6 +561,8 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   onShare: () => void;
   onToggleSaved: () => void;
   isSaved: boolean;
+  onFindSimilar: () => void;
+  findingSimilar: boolean;
 }) {
   const { direction, t } = useTranslation();
   /*
@@ -823,6 +825,23 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
             <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
+          {/* "Find similar" (3.1.6: visual search "also from any product
+              page"): words on it, not a bare icon, because nobody guesses
+              what a magnifier on a photo of the thing they are already
+              looking at would do. Not over a video, whose controls are there. */}
+          {isVideo ? null : (
+            <button
+              type="button"
+              onClick={onFindSimilar}
+              disabled={findingSimilar}
+              aria-busy={findingSimilar}
+              className="pressable absolute bottom-3 end-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-white px-3.5 text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] disabled:opacity-80"
+            >
+              {findingSimilar ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <ScanSearch className="size-4" aria-hidden />}
+              {t("product.findSimilar")}
+            </button>
+          )}
+
           {hasMultipleImages ? <>
             {/* Both directions on touch. The rail is the only other way back,
                 and on a phone it is a scrolled strip rather than a full list. */}
@@ -1045,7 +1064,20 @@ export default function ProductDetail() {
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart } = useCart();
   const { savedIds, toggleSaved, deliveryZone } = useCustomer();
-  const { direction, t, isArabic: isArabicPage } = useTranslation();
+  const { direction, t, tError, locale, isArabic: isArabicPage } = useTranslation();
+  /* "Find similar": the server reads this product's photo and title and
+     names the kind of thing, and the page searches its department for it —
+     or opens the department alone when no model could read them. */
+  const similar = trpc.search.similar.useMutation({
+    onSuccess: reply => {
+      if (reply.kind === "query") {
+        navigate(reply.department ? `/category/${reply.department}${searchWithTerm(EMPTY_FILTERS, reply.query)}` : searchPath(reply.query));
+      } else {
+        navigate(`/category/${reply.department ?? "all"}`);
+      }
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
   const deliveryArea = deliveryZone ? (isArabicPage ? deliveryZone.labelAr : deliveryZone.label) : null;
   /* Both are switchable (2.3); the server refuses either way, this only stops offering it. */
   const offersOn = useFeature("priceOffers");
@@ -1205,7 +1237,7 @@ export default function ProductDetail() {
 
         <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <GalleryColumn>
-            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} />
+            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
             {/* Under the photo, where somebody looking at the thing wonders
                 about it — on a wide screen. A phone draws it after the buy
                 buttons instead (below), so it never pushes the price and Add

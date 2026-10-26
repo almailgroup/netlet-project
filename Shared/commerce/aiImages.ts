@@ -51,11 +51,11 @@ export const CLEANUP_SYSTEM = [
 export const CLEANUP_PROMPT = "Clean up this product photo for the shop's white background.";
 
 export const TRY_ON_SYSTEM = [
-  "You show a shopper how a piece of clothing, footwear or an accessory from an online shop would look on them.",
-  "The first photo is the shopper. The second photo is the product.",
+  "You show a shopper how a piece of clothing, footwear, an accessory or jewellery from an online shop would look on them.",
+  "The first photo is the shopper: the whole of them, or only a hand, wrist, neck or ear for a ring, a bracelet, a watch, a necklace or earrings. The second photo is the product.",
   "Edit the first photo so the shopper is wearing exactly this product — the same colour, pattern, material, cut and details — sized to fit them naturally.",
   "Keep everything else unchanged: their face, hair, skin, body shape, pose, expression, and the background. Do not make them thinner, taller or different in any way, and do not show more of their body than the first photo shows.",
-  "If the first photo does not show a person the product can be worn by, return the first photo unchanged.",
+  "If the first photo does not show a person, or the part of one the product is worn on, return the first photo unchanged.",
   "Return only the edited photo.",
 ].join(" ");
 

@@ -185,7 +185,7 @@ struct Facets {
 final class BrowseModel {
     enum Source: Hashable {
         case shelf(slug: String?, view: ShelfView)
-        case search(String)
+        case search(String, department: String? = nil)
     }
 
     let source: Source
@@ -223,7 +223,7 @@ final class BrowseModel {
     }
 
     var query: String? {
-        if case .search(let words) = source { return words }
+        if case .search(let words, _) = source { return words }
         return nil
     }
 
@@ -234,8 +234,8 @@ final class BrowseModel {
             case .shelf:
                 // The server narrows by the category's slug, which is the department's.
                 products = .loaded(try await catalog.products(first: Self.pageSize, department: department?.slug, language: language))
-            case .search(let words):
-                let found = try await catalog.search(words, department: nil, limit: Self.searchLimit, language: language)
+            case .search(let words, let scope):
+                let found = try await catalog.search(words, department: scope, limit: Self.searchLimit, language: language)
                 correctedTo = found.correctedTo
                 products = .loaded(found.products)
             }

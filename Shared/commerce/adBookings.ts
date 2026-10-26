@@ -247,6 +247,28 @@ export function fullDays(existing: BookingFacts[], startsOn: string, days: numbe
   return full;
 }
 
+/**
+ * The calendar a store books from (3.3.15: "a calendar of available dates,
+ * prices and display"): each day from `from`, how many places are taken and
+ * how many are free. Counted by `runsOn`, the rule `fullDays` and the booking
+ * itself use, so the calendar cannot call a day free that the booking would
+ * then refuse.
+ */
+export type CalendarDay = { date: string; taken: number; free: number };
+
+export function availability(existing: BookingFacts[], from: string, days: number, capacity: number): CalendarDay[] {
+  const calendar: CalendarDay[] = [];
+  for (let offset = 0; offset < days; offset++) {
+    const date = addDays(from, offset);
+    const taken = existing.filter(booking => runsOn(booking, date)).length;
+    calendar.push({ date, taken, free: Math.max(0, capacity - taken) });
+  }
+  return calendar;
+}
+
+/** The days a calendar shows: every day a run may start on, and the last run's tail. */
+export const CALENDAR_DAYS = MAX_AD_LEAD_DAYS + MAX_AD_DAYS;
+
 /** The price of a run at today's rate card, as a money string. */
 export function quoteFor(slot: AdSlot, days: number): string {
   return fromFils(toFils(AD_RATES[slot]) * BigInt(days));

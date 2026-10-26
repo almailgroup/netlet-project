@@ -74,3 +74,11 @@ describe("what a cash order is", () => {
     expect(canRecordCollection({ status: "pending_payment", paymentMethod: null })).toBe(false);
   });
 });
+
+describe("cash switched off for the whole shop", () => {
+  it("is refused first, whatever every seller says, with no seller named", () => {
+    const willing = [{ vendorName: "Acme", goods: "10.000", rule: { accepts: true, ceiling: null } }];
+    expect(codAvailability(willing, false)).toEqual({ available: false, because: { kind: "shop", vendorName: "" } });
+    expect(codAvailability(willing)).toEqual({ available: true });
+  });
+});

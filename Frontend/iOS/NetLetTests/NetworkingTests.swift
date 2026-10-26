@@ -99,6 +99,24 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(found.total, found.products.count)
     }
 
+    /// The pieces the PDF audit added: fraud watch, the placement calendar,
+    /// the model's import filing, past sizes and "Find similar".
+    func testTheRequirementFixesDecode() async throws {
+        let reviews = try await client.call(API.reviewWatch)
+        XCTAssertFalse(reviews.isEmpty)
+        XCTAssertTrue(reviews.flatMap(\.flags).allSatisfy { Phrasebook.shared.has("fraud.\($0.signal)") }, "every flag the server raises has its words")
+        _ = try await client.call(API.referralWatch)
+        let calendar = try await client.call(API.adCalendar, .init(productId: 1, slot: "home"))
+        XCTAssertEqual(calendar.days.count, WarehouseRules.shared.ads.maxLeadDays + WarehouseRules.shared.ads.maxDays, "every day a run may start on, and the last run's tail")
+        XCTAssertTrue(calendar.days.allSatisfy { $0.free + $0.taken == calendar.capacity })
+        let filed = try await client.call(API.categoriseImport, .init(rows: [.init(line: 2, text: "Mystery widget")]))
+        XCTAssertFalse(filed.available)
+        let past = try await client.call(API.mySizes, .init(productId: "10"))
+        XCTAssertFalse(past.isEmpty)
+        let similar = try await client.call(API.findSimilar, .init(productId: "10", locale: "en"))
+        XCTAssertEqual(similar.route, .department(slug: "style"))
+    }
+
     func testTheFootersContact() async throws {
         let contact = try await client.call(API.contact)
         XCTAssertEqual(contact.phone, "96550808606")
@@ -308,6 +326,37 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertNil(runsSmall.advice(chart, answer: SizeAnswer.recommend(chart, measurements: ["chest": 92])))
     }
 
+    /// `sizeFromPurchases` and `sizeOnChart`, the TypeScript's own cases.
+    func testTheShoppersOwnPurchasesSuggestASize() {
+        let shirts = SizeChart(axis: "Size", measures: ["chest"], rows: [
+            .init(size: "S", ranges: ["chest": [86, 91]]),
+            .init(size: "M", ranges: ["chest": [92, 97]]),
+            .init(size: "L", ranges: ["chest": [98, 103]]),
+            .init(size: "XL", ranges: ["chest": [104, 109]]),
+        ])
+        func day(_ text: String) -> Date { ISO8601DateFormatter().date(from: text + "T00:00:00Z")! }
+        XCTAssertEqual(shirts.size(named: "M"), "M")
+        XCTAssertEqual(shirts.size(named: "Navy / xl"), "XL")
+        XCTAssertNil(shirts.size(named: "Large"))
+        XCTAssertNil(shirts.size(named: nil))
+        XCTAssertEqual(shirts.fromPurchases([
+            .init(variantTitle: "M", outcome: "kept", at: day("2026-05-01")),
+            .init(variantTitle: "White / M", outcome: "kept", at: day("2026-07-01")),
+            .init(variantTitle: "L", outcome: "kept", at: day("2026-02-01")),
+        ]), PurchaseSuggestion(size: "M", kept: 2, tooSmall: 0, tooLarge: 0))
+        XCTAssertEqual(shirts.fromPurchases([.init(variantTitle: "S", outcome: "tooSmall", at: day("2026-05-01"))]),
+                       PurchaseSuggestion(size: "M", kept: 0, tooSmall: 1, tooLarge: 0))
+        XCTAssertEqual(shirts.fromPurchases([.init(variantTitle: "XL", outcome: "tooLarge", at: day("2026-05-01"))]),
+                       PurchaseSuggestion(size: "L", kept: 0, tooSmall: 0, tooLarge: 1))
+        XCTAssertNil(shirts.fromPurchases([.init(variantTitle: "XL", outcome: "tooSmall", at: day("2026-05-01"))]), "nothing above the largest")
+        XCTAssertEqual(shirts.fromPurchases([
+            .init(variantTitle: "M", outcome: "kept", at: day("2026-01-01")),
+            .init(variantTitle: "L", outcome: "kept", at: day("2026-09-01")),
+        ])?.size, "L", "a tie goes to the most recent")
+        XCTAssertNil(shirts.fromPurchases([.init(variantTitle: "42", outcome: "kept", at: day("2026-01-01"))]))
+        XCTAssertNil(shirts.fromPurchases([]))
+    }
+
     func testALinkOnTheSiteOpensItsScreen() {
         XCTAssertEqual(Route.from(link: "/help"), .helpCentre)
         XCTAssertEqual(Route.from(link: "/seller-agreement"), .legal(.sellers))
@@ -318,6 +367,8 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertNil(Route.from(link: "/account/messages"))
         XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))
         XCTAssertEqual(Route.from(link: "/category/all"), .department(slug: nil))
+        XCTAssertEqual(Route.from(link: "/category/style?q=shirt"), .search(query: "shirt", department: "style"))
+        XCTAssertEqual(Route.from(link: "/search?q=kettle"), .search(query: "kettle"))
         XCTAssertNil(Route.from(link: "/somewhere/else"))
     }
 

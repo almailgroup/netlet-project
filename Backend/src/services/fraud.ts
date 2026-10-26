@@ -17,9 +17,19 @@
  * order is a separate, narrower question, and inventing an answer to it by
  * leaking this one would be the wrong way round.
  */
-import { and, eq, gt, inArray, ne, sql } from "drizzle-orm";
-import { orderItems, orders, users } from "../../database/schema.js";
-import { fraudFlags, riskOf, type Flag, type RiskLevel } from "../../../Shared/commerce/fraudSignals.js";
+import { and, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import { orderItems, orders, referrals, reviews, users, vendorMembers } from "../../database/schema.js";
+import {
+  fraudFlags,
+  referralFlags,
+  reviewFlags,
+  riskOf,
+  type Flag,
+  type ReferralFlag,
+  type ReviewFlag,
+  type RiskLevel,
+} from "../../../Shared/commerce/fraudSignals.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
@@ -125,4 +135,207 @@ export async function riskForOrders(actor: Actor, orderIds: number[]): Promise<O
   }
 
   return judged;
+}
+
+/* ------------------------------------------------- reviews and referrals --- */
+
+/** How many of the newest reviews and referrals the fraud page reads. */
+export const WATCH_LIMIT = 100;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/* One door, however it was typed: case, spaces and punctuation dropped. */
+const sameDoor = (address: string | null) => (address ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+const samePhone = (phone: string | null) => (phone ?? "").replace(/\D+/g, "").slice(-8);
+
+export type ReviewWatchRow = {
+  id: number;
+  productId: number | null;
+  productTitle: string;
+  rating: number;
+  title: string | null;
+  body: string | null;
+  reviewerEmail: string | null;
+  createdAt: Date;
+  hidden: boolean;
+  hiddenReason: string | null;
+  risk: RiskLevel;
+  flags: ReviewFlag[];
+};
+
+/**
+ * The newest reviews, each judged (3.6.5: "fake reviews"). Admin-only beside
+ * the query: the signals are about other accounts — who else shares an
+ * address, who works for the store.
+ */
+export async function reviewWatch(actor: Actor, limit = WATCH_LIMIT): Promise<ReviewWatchRow[]> {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      id: reviews.id,
+      userId: reviews.userId,
+      productId: reviews.productId,
+      vendorId: reviews.vendorId,
+      productTitle: reviews.productTitle,
+      rating: reviews.rating,
+      title: reviews.title,
+      body: reviews.body,
+      createdAt: reviews.createdAt,
+      hiddenAt: reviews.hiddenAt,
+      hiddenReason: reviews.hiddenReason,
+      email: users.email,
+      accountCreatedAt: users.createdAt,
+      addressLine: orders.addressLine,
+    })
+    .from(reviews)
+    .innerJoin(users, eq(users.id, reviews.userId))
+    .leftJoin(orderItems, eq(orderItems.id, reviews.orderItemId))
+    .leftJoin(orders, eq(orders.id, orderItems.orderId))
+    .orderBy(desc(reviews.createdAt), desc(reviews.id))
+    .limit(limit);
+  if (!rows.length) return [];
+
+  const reviewerIds = [...new Set(rows.map(row => row.userId))];
+  const productIds = [...new Set(rows.flatMap(row => (row.productId === null ? [] : [row.productId])))];
+
+  const memberships = await db
+    .select({ userId: vendorMembers.userId, vendorId: vendorMembers.vendorId })
+    .from(vendorMembers)
+    .where(inArray(vendorMembers.userId, reviewerIds));
+  const seller = new Set(memberships.map(row => `${row.userId}:${row.vendorId}`));
+
+  /* Every review of these products, for bursts and shared doors. */
+  const siblings = productIds.length
+    ? await db
+        .select({ productId: reviews.productId, userId: reviews.userId, createdAt: reviews.createdAt, addressLine: orders.addressLine })
+        .from(reviews)
+        .leftJoin(orderItems, eq(orderItems.id, reviews.orderItemId))
+        .leftJoin(orders, eq(orders.id, orderItems.orderId))
+        .where(inArray(reviews.productId, productIds))
+    : [];
+
+  const habits = await db
+    .select({ userId: reviews.userId, count: sql<string>`count(*)`, ratings: sql<string>`count(distinct ${reviews.rating})` })
+    .from(reviews)
+    .where(inArray(reviews.userId, reviewerIds))
+    .groupBy(reviews.userId);
+  const habitOf = new Map(habits.map(row => [row.userId, row]));
+
+  return rows.map(row => {
+    const same = siblings.filter(other => other.productId === row.productId);
+    const door = sameDoor(row.addressLine);
+    const habit = habitOf.get(row.userId);
+    const flags = reviewFlags({
+      rating: row.rating,
+      reviewerIsSeller: row.vendorId !== null && seller.has(`${row.userId}:${row.vendorId}`),
+      otherReviewersAtAddress: door
+        ? new Set(same.filter(other => other.userId !== row.userId && sameDoor(other.addressLine) === door).map(other => other.userId)).size
+        : 0,
+      reviewsSameDay: same.filter(other => Math.abs(other.createdAt.getTime() - row.createdAt.getTime()) <= DAY_MS).length,
+      accountAgeHours: Math.max(0, (row.createdAt.getTime() - row.accountCreatedAt.getTime()) / 3_600_000),
+      reviewerReviews: Number(habit?.count ?? 1),
+      reviewerDistinctRatings: Number(habit?.ratings ?? 1),
+    });
+    return {
+      id: row.id,
+      productId: row.productId,
+      productTitle: row.productTitle,
+      rating: row.rating,
+      title: row.title,
+      body: row.body ? row.body.slice(0, 400) : null,
+      reviewerEmail: row.email,
+      createdAt: row.createdAt,
+      hidden: row.hiddenAt !== null,
+      hiddenReason: row.hiddenReason,
+      risk: riskOf(flags),
+      flags,
+    };
+  });
+}
+
+export type ReferralWatchRow = {
+  id: number;
+  referrerEmail: string | null;
+  referredEmail: string | null;
+  createdAt: Date;
+  qualifiedAt: Date | null;
+  risk: RiskLevel;
+  flags: ReferralFlag[];
+};
+
+/**
+ * The newest referrals, each judged (3.6.5: "points and referral system
+ * abuse"): two accounts that share a door, a phone or a mailbox, a qualifying
+ * order that went back, a referrer bringing in more than a week can explain.
+ */
+export async function referralWatch(actor: Actor, limit = WATCH_LIMIT): Promise<ReferralWatchRow[]> {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return [];
+
+  const referrer = alias(users, "referrer");
+  const referred = alias(users, "referred");
+  const rows = await db
+    .select({
+      id: referrals.id,
+      referrerId: referrals.referrerId,
+      referredId: referrals.referredId,
+      createdAt: referrals.createdAt,
+      qualifiedAt: referrals.qualifiedAt,
+      qualifiedOrderId: referrals.qualifiedOrderId,
+      referrerEmail: referrer.email,
+      referredEmail: referred.email,
+    })
+    .from(referrals)
+    .innerJoin(referrer, eq(referrer.id, referrals.referrerId))
+    .innerJoin(referred, eq(referred.id, referrals.referredId))
+    .orderBy(desc(referrals.createdAt), desc(referrals.id))
+    .limit(limit);
+  if (!rows.length) return [];
+
+  const people = [...new Set(rows.flatMap(row => [row.referrerId, row.referredId]))];
+  const placed = await db
+    .select({ id: orders.id, userId: orders.userId, addressLine: orders.addressLine, contactPhone: orders.contactPhone, status: orders.status })
+    .from(orders)
+    .where(inArray(orders.userId, people));
+  const doors = new Map<number, Set<string>>();
+  const phones = new Map<number, Set<string>>();
+  for (const order of placed) {
+    if (order.userId === null) continue;
+    const door = sameDoor(order.addressLine);
+    const phone = samePhone(order.contactPhone);
+    if (door) doors.set(order.userId, new Set([...(doors.get(order.userId) ?? []), door]));
+    if (phone.length >= 7) phones.set(order.userId, new Set([...(phones.get(order.userId) ?? []), phone]));
+  }
+  const overlap = (map: Map<number, Set<string>>, a: number, b: number) => [...(map.get(a) ?? [])].some(value => map.get(b)?.has(value));
+  const statusOf = new Map(placed.map(order => [order.id, order.status]));
+
+  const referrerIds = [...new Set(rows.map(row => row.referrerId))];
+  const theirs = await db
+    .select({ referrerId: referrals.referrerId, createdAt: referrals.createdAt })
+    .from(referrals)
+    .where(inArray(referrals.referrerId, referrerIds));
+
+  return rows.map(row => {
+    const status = row.qualifiedOrderId ? statusOf.get(row.qualifiedOrderId) : undefined;
+    const flags = referralFlags({
+      sharedAddress: overlap(doors, row.referrerId, row.referredId),
+      sharedPhone: overlap(phones, row.referrerId, row.referredId),
+      referrerEmail: row.referrerEmail ?? "",
+      referredEmail: row.referredEmail ?? "",
+      qualifyingRefunded: status === "refunded" || status === "cancelled",
+      referrerWeek: theirs.filter(other => other.referrerId === row.referrerId && Math.abs(other.createdAt.getTime() - row.createdAt.getTime()) <= 7 * DAY_MS).length,
+    });
+    return {
+      id: row.id,
+      referrerEmail: row.referrerEmail,
+      referredEmail: row.referredEmail,
+      createdAt: row.createdAt,
+      qualifiedAt: row.qualifiedAt,
+      risk: riskOf(flags),
+      flags,
+    };
+  });
 }

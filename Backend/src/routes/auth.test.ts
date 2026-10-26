@@ -163,12 +163,17 @@ describe("auth with Supabase Auth as the password store", () => {
     }));
     vi.doMock("../services/db.js", () => ({ touchLastSignedIn: async () => {} }));
     vi.doMock("../services/referral.js", () => ({ recordReferral: async () => {} }));
+    vi.doMock("../services/audit.js", () => ({
+      recordAudit: async (actor: unknown, record: unknown) => { audited.push({ actor, record }); },
+    }));
   }
 
   let recorded: string[] = [];
+  let audited: { actor: unknown; record: unknown }[] = [];
 
   beforeEach(() => {
     recorded = [];
+    audited = [];
     vi.stubEnv("JWT_SECRET", "test-secret");
     vi.stubEnv("DATABASE_URL", "postgres://unused");
     vi.stubEnv("SUPABASE_URL", "https://proj.supabase.co");
@@ -263,6 +268,24 @@ describe("auth with Supabase Auth as the password store", () => {
   /* "Keep me signed in" unticked, on a shared device: the cookie carries no
      expiry, so the browser drops it on closing, and the token inside lapses in
      a day for a browser that restores its session cookies. */
+  /* 3.6.3: an administrator's sign-in is on the trail, with the address; a
+     shopper's is nobody's business. */
+  it("puts an administrator's sign-in on the audit trail, and nobody else's", async () => {
+    const admin = { ...supabaseUser, role: "admin" } as User;
+    stubStore({ signIn: async (email: string) => (email === "admin@example.com" ? admin : supabaseUser) });
+    const { ctx } = createContext(null);
+    const api = await caller(ctx);
+
+    await api.auth.login({ email: "supa@example.com", password: "Harbour-Falcon-2026" });
+    expect(audited).toEqual([]);
+    await api.auth.login({ email: "admin@example.com", password: "Harbour-Falcon-2026" });
+    expect(audited).toHaveLength(1);
+    expect(audited[0]).toMatchObject({
+      actor: { id: 42, role: "admin" },
+      record: { action: "admin.signIn", subjectType: "session", subjectId: 42, after: { remembered: true } },
+    });
+  });
+
   it("signs in for the browser session only when not remembered", async () => {
     stubStore();
     const { ctx, set } = createContext(null);
@@ -278,16 +301,16 @@ describe("auth with Supabase Auth as the password store", () => {
     expect(set.at(-1)!.options).toHaveProperty("maxAge");
   });
 
-  /* The ten-character floor is for setting a password. An account whose
+  /* The floor is for setting a password. An account whose
      password predates it, or was set by hand in the Supabase dashboard, must
      still get in — it was refused as malformed input before the password was
      even checked, on the live site. */
   it("signs in with a password shorter than the floor for new ones", async () => {
-    stubStore({ signIn: async (_email: string, password: string) => (password === "Short-9ch" ? supabaseUser : null) });
+    stubStore({ signIn: async (_email: string, password: string) => (password === "Short-7" ? supabaseUser : null) });
     const { ctx, set } = createContext(null);
     const api = await caller(ctx);
 
-    const user = await api.auth.login({ email: "supa@example.com", password: "Short-9ch" });
+    const user = await api.auth.login({ email: "supa@example.com", password: "Short-7" });
     expect(user.email).toBe("supa@example.com");
     expect(set.map(entry => entry.name)).toContain(COOKIE_NAME);
     await expect(api.auth.login({ email: "supa@example.com", password: "" })).rejects.toMatchObject({ code: "BAD_REQUEST" });

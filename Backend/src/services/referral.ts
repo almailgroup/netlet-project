@@ -373,7 +373,7 @@ export async function pendingCashOuts(actor: Actor, limit = 200): Promise<CashOu
     email: row.email,
     pot: row.pot as Pot,
     points: -row.points,
-    /* An affiliate's pot is fils at face value; points pay a tenth. */
+    /* An affiliate's pot is fils at face value; points pay face value less the 10% fee. */
     value: row.pot === "affiliate" ? fromFils(BigInt(-row.points)) : cashOutValue(-row.points),
     requestedAt: row.createdAt,
   }));

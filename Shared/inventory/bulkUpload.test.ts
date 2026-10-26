@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mapHeaders, parseCsv, planUpload, suggestDepartment, templateCsv } from "./bulkUpload.js";
+import { departmentsFromModel, mapHeaders, parseCsv, planUpload, suggestDepartment, templateCsv } from "./bulkUpload.js";
 
 describe("reading what a spreadsheet actually exports", () => {
   /* Excel writes one, and an exact match on "title" fails on every file a
@@ -140,5 +140,13 @@ describe("the template", () => {
     expect(plan.problems).toEqual([]);
     expect(plan.products).toHaveLength(1);
     expect(plan.products[0].category).toBe("Home & Kitchen");
+  });
+});
+
+describe("the model's second pass", () => {
+  it("keeps only lines that were asked about, filed under a department the shop carries", () => {
+    expect(departmentsFromModel({ "12": "electronics", "13": "Grocery", "14": "Other", "99": "Beauty", "15": null, "x": "Style" }, [12, 13, 14, 15]))
+      .toEqual({ 12: "Electronics", 13: "Grocery" });
+    expect(departmentsFromModel(null, [12])).toEqual({});
   });
 });

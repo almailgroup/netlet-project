@@ -411,7 +411,7 @@ export async function recordImport(userId: number): Promise<void> {
  * the same table as every other ceiling, under a kind of its own, so pruning
  * one never touches another.
  */
-export async function takeHourlyAllowance(userId: number, kind: "photoClean" | "tryOn" | "guideDraw" | "guideDraft", max: number): Promise<boolean> {
+export async function takeHourlyAllowance(userId: number, kind: "photoClean" | "tryOn" | "guideDraw" | "guideDraft" | "categorise", max: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
   const bucket = `user:${userId}`;

@@ -57,6 +57,7 @@ const AdminOverview = lazyPage(() => import("@/pages/admin/Overview"));
 const AdminProducts = lazyPage(() => import("@/pages/admin/Products"));
 const AdminPeople = lazyPage(() => import("@/pages/admin/People"));
 const AdminAudit = lazyPage(() => import("@/pages/admin/Audit"));
+const AdminFraud = lazyPage(() => import("@/pages/admin/Fraud"));
 const AdminStock = lazyPage(() => import("@/pages/admin/Stock"));
 const AdminOrders = lazyPage(() => import("@/pages/admin/Orders"));
 const AdminImport = lazyPage(() => import("@/pages/admin/Import"));
@@ -323,6 +324,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/vendors/:id", page: AdminVendorDetail, frame: "admin" },
   { path: "/admin/people", page: AdminPeople, frame: "admin" },
   { path: "/admin/audit", page: AdminAudit, frame: "admin" },
+  { path: "/admin/fraud", page: AdminFraud, frame: "admin" },
   { path: "/admin/team", page: AdminTeam, frame: "admin" },
   /* The portal used to live at /dashboard. Anyone who bookmarked it lands
      there rather than on a 404 that looks like the tool is gone. */

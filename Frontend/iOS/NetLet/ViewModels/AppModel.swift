@@ -13,7 +13,9 @@ enum Route: Hashable {
     case newest
     /// Everything of one brand, from the home page's brand tiles.
     case brand(name: String)
-    case search(query: String)
+    /// A search over the whole catalogue, or within one department — the web's
+    /// `/search?q=` and `/category/<slug>?q=`.
+    case search(query: String, department: String? = nil)
     case store(slug: String)
     /// Every store with something on sale, the web's `/stores`.
     case stores
@@ -63,7 +65,10 @@ enum Route: Hashable {
         let query = Dictionary((components.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         switch (segments.first, segments.count) {
         case ("products"?, 2): return .product(handle: segments[1])
-        case ("category"?, 2): return segments[1] == "all" ? .department(slug: nil) : .department(slug: segments[1])
+        case ("category"?, 2):
+            let slug = segments[1] == "all" ? nil : segments[1]
+            if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
+            return .department(slug: slug)
         case ("stores"?, 1): return .stores
         case ("stores"?, 2): return .store(slug: segments[1])
         case ("search"?, _): return .search(query: query["q"] ?? "")

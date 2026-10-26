@@ -160,6 +160,7 @@ jobs:
             shot 48-product-photos "$lang" photos:wireless-earbuds ""
             shot 49-product-zoom "$lang" zoom:wireless-earbuds ""
             shot 50-home-foot "$lang" homeFoot ""
+            shot 51-admin-fraud "$lang" portal:/admin/fraud admin
           done
           ls -1 build/previews
 

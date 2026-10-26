@@ -30,7 +30,7 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
@@ -86,6 +86,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/applications": <ClipboardList className="size-4" />,
   "/admin/people": <ShieldCheck className="size-4" />,
   "/admin/audit": <ScrollText className="size-4" />,
+  "/admin/fraud": <ScanEye className="size-4" />,
   "/admin/subscriptions": <Repeat className="size-4" />,
   "/admin/features": <ToggleRight className="size-4" />,
 };

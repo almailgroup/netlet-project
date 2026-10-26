@@ -135,7 +135,7 @@ private struct RouteDestination: View {
         case .newest: DepartmentView(slug: nil, view: .newest)
         case .brand(let name): DepartmentView(slug: nil, view: .brand(name))
         case .stores: StoresView()
-        case .search(let query): SearchResultsView(query: query)
+        case .search(let query, let department): SearchResultsView(query: query, department: department)
         case .store(let slug): StoreView(slug: slug)
         case .saved: SavedView()
         case .checkout: CheckoutView(path: path)

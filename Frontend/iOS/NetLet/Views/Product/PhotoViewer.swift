@@ -30,6 +30,7 @@ struct ProductPhotos: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
+    @State private var findingSimilar = false
 
     var body: some View {
         let media = product.gallery
@@ -112,6 +113,33 @@ struct ProductPhotos: View {
             }
             .padding(12)
         }
+        .overlay(alignment: .bottomTrailing) {
+            // "Find similar" (3.1.6: visual search "also from any product
+            // page"), words on it as on the web. Not over a video, whose
+            // controls are there.
+            if !(media.indices.contains(index) && media[index].isVideo) {
+                Button {
+                    Task { await findSimilar() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if findingSimilar {
+                            ProgressView().controlSize(.small).tint(Brand.navy)
+                        } else {
+                            Image(systemName: "text.viewfinder").font(.system(size: 14, weight: .medium))
+                        }
+                        Text(l.t("product.findSimilar")).font(.inter(14, .medium))
+                    }
+                    .foregroundStyle(Brand.navy)
+                    .padding(.horizontal, 14)
+                    .frame(height: 40)
+                    .background(Capsule().fill(Color.white))
+                    .shadow(color: Brand.navy.opacity(0.14), radius: 5, x: 0, y: 2)
+                }
+                .buttonStyle(.tap)
+                .disabled(findingSimilar)
+                .padding(12)
+            }
+        }
         .overlay(alignment: .bottomLeading) {
             if media.count > 1 {
                 Text(verbatim: "\u{2066}\(index + 1) / \(media.count)\u{2069}")
@@ -129,6 +157,18 @@ struct ProductPhotos: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(photoLine, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("product.productImages"))
+    }
+
+    /// The server reads this product's photo and title and names the kind of
+    /// thing; the press lands on a search for it within the department.
+    private func findSimilar() async {
+        findingSimilar = true
+        defer { findingSimilar = false }
+        var reply: SimilarReply?
+        guard await app.attempt(fallback: "error.serverProblem", {
+            reply = try await app.services.api.call(API.findSimilar, .init(productId: product.id, locale: l.current.rawValue))
+        }), let reply else { return }
+        app.push(reply.route)
     }
 
     /// The heart, as the card's: red once saved, and a toast saying so.

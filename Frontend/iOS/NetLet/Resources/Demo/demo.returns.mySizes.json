@@ -1,0 +1,36 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "variantTitle": "M",
+          "outcome": "kept",
+          "at": "2026-09-03T14:45:32.622Z"
+        },
+        {
+          "variantTitle": "M",
+          "outcome": "tooSmall",
+          "at": "2026-10-03T17:41:27.659Z"
+        },
+        {
+          "variantTitle": "M",
+          "outcome": "tooSmall",
+          "at": "2026-10-03T17:41:21.893Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.at": [
+            "Date"
+          ],
+          "1.at": [
+            "Date"
+          ],
+          "2.at": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

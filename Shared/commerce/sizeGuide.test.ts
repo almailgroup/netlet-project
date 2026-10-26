@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adviseForFit, chartProblem, cleanChart, fitTendency, recommendSize, type SizeChart } from "./sizeGuide.js";
+import { adviseForFit, chartProblem, cleanChart, fitTendency, recommendSize, sizeFromPurchases, sizeOnChart, type SizeChart } from "./sizeGuide.js";
 
 const shirts: SizeChart = {
   axis: "Size",
@@ -89,5 +89,40 @@ describe("learning from returns", () => {
     expect(adviseForFit(shirts, recommendSize(shirts, { chest: 108 }), "runsSmall")).toBeNull();
     expect(adviseForFit(shirts, recommendSize(shirts, { chest: 87 }), "runsLarge")).toBeNull();
     expect(adviseForFit(shirts, recommendSize(shirts, { chest: 96 }), null)).toBeNull();
+  });
+});
+
+describe("learning from the shopper's own purchases", () => {
+  it("reads the size out of a variant's title, whole and without case", () => {
+    expect(sizeOnChart(shirts, "M")).toBe("M");
+    expect(sizeOnChart(shirts, "Navy / xl")).toBe("XL");
+    expect(sizeOnChart(shirts, "Large")).toBeNull();
+    expect(sizeOnChart(shirts, null)).toBeNull();
+  });
+
+  it("suggests the size they kept, with the counts behind it", () => {
+    expect(sizeFromPurchases(shirts, [
+      { variantTitle: "M", outcome: "kept", at: "2026-05-01" },
+      { variantTitle: "White / M", outcome: "kept", at: "2026-07-01" },
+      { variantTitle: "L", outcome: "kept", at: "2026-02-01" },
+    ])).toEqual({ size: "M", kept: 2, tooSmall: 0, tooLarge: 0 });
+  });
+
+  it("moves up from one sent back too small, and down from one too large", () => {
+    expect(sizeFromPurchases(shirts, [{ variantTitle: "S", outcome: "tooSmall", at: "2026-05-01" }]))
+      .toEqual({ size: "M", kept: 0, tooSmall: 1, tooLarge: 0 });
+    expect(sizeFromPurchases(shirts, [{ variantTitle: "XL", outcome: "tooLarge", at: "2026-05-01" }]))
+      .toEqual({ size: "L", kept: 0, tooSmall: 0, tooLarge: 1 });
+    /* Nothing above the largest: no vote, rather than a guess. */
+    expect(sizeFromPurchases(shirts, [{ variantTitle: "XL", outcome: "tooSmall", at: "2026-05-01" }])).toBeNull();
+  });
+
+  it("breaks a tie with the most recent, and says nothing from sizes this chart lacks", () => {
+    expect(sizeFromPurchases(shirts, [
+      { variantTitle: "M", outcome: "kept", at: "2026-01-01" },
+      { variantTitle: "L", outcome: "kept", at: "2026-09-01" },
+    ])?.size).toBe("L");
+    expect(sizeFromPurchases(shirts, [{ variantTitle: "42", outcome: "kept", at: "2026-01-01" }])).toBeNull();
+    expect(sizeFromPurchases(shirts, [])).toBeNull();
   });
 });

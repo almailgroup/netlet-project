@@ -30,18 +30,17 @@ describe("what points are worth", () => {
   });
 
   /*
-   * A tenth, and not a penalty in small print: points spent here come back as
-   * sales and points paid out do not, so equal value would be paying people to
-   * take their money elsewhere.
+   * The document's rule (3.1.15): face value less a 10% cash-collection fee.
+   * It paid a tenth for a long time, which kept nine-tenths of what was earned.
    */
-  it("cashes out at a tenth", () => {
-    expect(cashOutValue(1000)).toBe("0.100");
-    expect(cashOutValue(5000)).toBe("0.500");
+  it("cashes out at face value less the 10% fee", () => {
+    expect(cashOutValue(1000)).toBe("0.900");
+    expect(cashOutValue(5000)).toBe("4.500");
   });
 
   /* Rounding a payout up invents money. */
   it("rounds a payout down rather than up", () => {
-    expect(cashOutValue(1009)).toBe("0.100");
+    expect(cashOutValue(1009)).toBe("0.908");
   });
 
   it("never pays out a negative balance", () => {

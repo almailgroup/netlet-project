@@ -15,6 +15,7 @@
  * collection rather than half-cancelling a parcel already in a van.
  */
 import { and, desc, eq, inArray, isNull, sql, notInArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { outer } from "./sqlRefs.js";
 import { categories, orderItems, orders, productVariants, products, returnRequests, vendors } from "../../database/schema.js";
 import {
@@ -28,10 +29,13 @@ import {
   type ReturnReason,
 } from "../../../Shared/commerce/returnRequests.js";
 import { returnStateFor } from "../../../Shared/commerce/returns.js";
+import type { PastSizeLine } from "../../../Shared/commerce/sizeGuide.js";
 import { orderReference } from "../../../Shared/commerce/order.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { violatesUnique } from "../core/describeError.js";
 import { getDb } from "./db.js";
+import { recordAudit } from "./audit.js";
+import { auditActor } from "./inventory.js";
 import { takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
@@ -279,6 +283,36 @@ async function loadForActor(db: Db, actor: Actor, requestId: number) {
   return row;
 }
 
+/**
+ * A person's act on a return, on the audit trail (3.6.3). After the act, and
+ * through the trail's own writer, which never fails the act it records; named
+ * by the order's reference, because that is what anybody looking it up holds.
+ */
+async function recordReturnAct(
+  db: Db,
+  actor: Actor,
+  action: "return.decide" | "return.receive" | "return.refundPaid",
+  requestId: number,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Promise<void> {
+  const [row] = await db
+    .select({ reference: orders.reference, vendorId: returnRequests.vendorId })
+    .from(returnRequests)
+    .innerJoin(orders, eq(orders.id, returnRequests.orderId))
+    .where(eq(returnRequests.id, requestId))
+    .limit(1);
+  await recordAudit(await auditActor(actor), {
+    action,
+    subjectType: "return",
+    subjectId: requestId,
+    subjectLabel: row?.reference ?? null,
+    vendorId: row?.vendorId ?? null,
+    before,
+    after,
+  });
+}
+
 function assertAction(row: { status: string; kind: string; refundPaidAt: Date | null }, actor: Actor, action: ReturnAction) {
   const who = actor.kind === "admin" ? "admin" : "seller";
   if (!returnActions(row, who).includes(action)) throw new ReturnRefused("returns.moved");
@@ -308,6 +342,7 @@ export async function decideReturn(
     .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, row.status)))
     .returning({ id: returnRequests.id });
   if (!moved) throw new ReturnRefused("returns.moved");
+  await recordReturnAct(db, actor, "return.decide", requestId, { status: row.status }, { status: decision.approve ? "approved" : "declined", reason });
   await tellReturn(requestId, decision.approve ? "approved" : "declined");
 }
 
@@ -348,6 +383,12 @@ export async function receiveReturn(
     .limit(1);
   /* Put back on the shelf, it may be back for somebody waiting on it. */
   const result = await withProductAlerts(options.restock ? [peek?.productId] : [], () => receive(db, actor, requestId, options, now));
+  await recordReturnAct(db, actor, "return.receive", requestId, { status: "collected" }, {
+    status: result.outcome,
+    restocked: options.restock,
+    refundAmount: result.refundAmount,
+    replacement: result.replacementReference,
+  });
   if (result.outcome === "exchanged" && result.replacementReference) {
     await tellReturn(requestId, "exchanged", { replacementReference: result.replacementReference });
   }
@@ -493,6 +534,7 @@ export async function markRefundPaid(actor: Actor, requestId: number, now = new 
     .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, "refunded"), sql`${returnRequests.refundPaidAt} is null`))
     .returning({ id: returnRequests.id, refundAmount: returnRequests.refundAmount });
   if (!moved) throw new ReturnRefused("returns.moved");
+  await recordReturnAct(db, actor, "return.refundPaid", requestId, { refundPaid: false }, { refundPaid: true, amount: moved.refundAmount });
   await tellReturn(requestId, "refundPaid", { amount: moved.refundAmount ?? undefined });
 }
 
@@ -517,6 +559,63 @@ export async function fitFeedbackFor(productId: number): Promise<{ tooSmall: num
     .groupBy(returnRequests.reason);
   const count = (reason: string) => rows.find(row => row.reason === reason)?.n ?? 0;
   return { tooSmall: count("tooSmall"), tooLarge: count("tooLarge") };
+}
+
+/**
+ * The shopper's own past lines in a product's department, for the size guide
+ * (3.1.20: a size "based on their past purchases"). Each is the variant's
+ * title as it was frozen on the line and what became of it: kept (delivered
+ * and not sent back), or returned too small or too large. Anything else sent
+ * back says nothing about size and is left out, as is a line still on its
+ * way. Scoped to the account in the query; the arithmetic is
+ * `sizeFromPurchases`, on the page, beside the chart.
+ */
+export async function pastSizeLines(userId: number, productId: number): Promise<PastSizeLine[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const [product] = await db
+    .select({ categoryId: products.categoryId })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+  if (!product?.categoryId) return [];
+  const parent = alias(categories, "parent");
+  const department = sql<string>`coalesce(${parent.slug}, ${categories.slug})`;
+  const [here] = await db
+    .select({ department })
+    .from(categories)
+    .leftJoin(parent, eq(parent.id, categories.parentId))
+    .where(eq(categories.id, product.categoryId))
+    .limit(1);
+  if (!here) return [];
+
+  const lines = await db
+    .select({
+      variantTitle: orderItems.variantTitle,
+      fulfilment: orderItems.fulfilment,
+      deliveredAt: orderItems.deliveredAt,
+      placedAt: orders.placedAt,
+      reason: returnRequests.reason,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .innerJoin(products, eq(products.id, orderItems.productId))
+    .innerJoin(categories, eq(categories.id, products.categoryId))
+    .leftJoin(parent, eq(parent.id, categories.parentId))
+    .leftJoin(returnRequests, and(
+      eq(returnRequests.orderItemId, orderItems.id),
+      inArray(returnRequests.reason, ["tooSmall", "tooLarge"]),
+      sql`${returnRequests.status} <> 'cancelled'`,
+    ))
+    .where(and(eq(orders.userId, userId), sql`${department} = ${here.department}`))
+    .orderBy(desc(orders.placedAt), desc(orderItems.id))
+    .limit(50);
+
+  return lines.flatMap((line): PastSizeLine[] => {
+    const at = line.deliveredAt ?? line.placedAt;
+    if (line.reason === "tooSmall" || line.reason === "tooLarge") return [{ variantTitle: line.variantTitle, outcome: line.reason, at }];
+    return line.fulfilment === "delivered" ? [{ variantTitle: line.variantTitle, outcome: "kept", at }] : [];
+  });
 }
 
 export { isOpenReturn };

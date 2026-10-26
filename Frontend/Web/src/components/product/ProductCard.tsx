@@ -350,6 +350,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           title={product.title}
           frameClassName="rounded-t-[15px] bg-[#f4f6f9]"
           photoClassName={feature ? "aspect-[33/20] bg-white object-contain" : "aspect-[4/5] object-cover"}
+          onLongPress={onQuickView}
         />
 
         <div className="pointer-events-none absolute start-2 top-2 flex flex-col items-start gap-1">
@@ -375,9 +376,10 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         {/*
           The preview, for somebody with a mouse. `reveal-control` shows it on
           hover and on keyboard focus, and leaves it out altogether on a touch
-          screen: a phone has no hover to reveal it, the whole card is already
-          one tap from the product, and an eye drawn over every photo in a grid
-          is clutter that answers nothing a tap on the photo does not.
+          screen: a phone has no hover to reveal it, and an eye drawn over every
+          photo in a grid is clutter. A finger opens the same preview by
+          pressing and holding the photo (`useLongPress`, 3.1.11); a tap still
+          opens the product.
         */}
         {onQuickView ? (
           <button

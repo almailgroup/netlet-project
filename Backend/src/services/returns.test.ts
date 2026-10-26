@@ -13,6 +13,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  auditLog,
   cartItems,
   carts,
   categories,
@@ -211,6 +212,31 @@ describe("the desk", () => {
     await as("manager").returns.decide({ requestId: id, approve: false, reason: "Used and marked" });
     const [row] = await db.select().from(returnRequests).where(eq(returnRequests.id, id));
     expect(row).toMatchObject({ status: "declined", decidedBy: "seller", declineReason: "Used and marked" });
+    const [decided] = await db.select().from(auditLog).where(eq(auditLog.subjectId, id));
+    expect(decided).toMatchObject({ action: "return.decide", before: { status: "requested" }, after: { status: "declined", reason: "Used and marked" } });
+  });
+
+  /* 3.6.3 names manual returns among what the trail must hold. */
+  it("puts a person's hand on a return on the audit trail, and not a rule's", async () => {
+    await db.delete(auditLog);
+    const order = await delivered();
+    /* Damaged decides itself: the rule's, not a person's, so not on the trail. */
+    const automatic = await ask("shopper", { reference: order.reference, orderItemId: order.sofa.id, kind: "refund", reason: "damaged" });
+    expect(await db.select().from(auditLog)).toEqual([]);
+    await as("manager").returns.collect({ requestId: automatic.id });
+    await as("manager").returns.receive({ requestId: automatic.id, restock: false });
+    await as("manager").returns.refundPaid({ requestId: automatic.id });
+
+    const trail = await db.select().from(auditLog).orderBy(auditLog.id);
+    expect(trail.map(row => row.action)).toEqual(["return.receive", "return.refundPaid"]);
+    expect(trail[0]).toMatchObject({
+      subjectType: "return",
+      subjectId: automatic.id,
+      subjectLabel: order.reference,
+      actorRole: "manager",
+      vendorId: ids.acme,
+      after: { status: "refunded", restocked: false, refundAmount: "240.000" },
+    });
   });
 });
 
@@ -336,3 +362,22 @@ describe("what size returns teach the size guide", () => {
   });
 });
 
+
+/* 3.1.20: a size "based on their past purchases". */
+describe("past sizes for the size guide", () => {
+  it("hands the shopper their own kept and size-returned lines in the department, and nobody else's", async () => {
+    const order = await delivered();
+    await db.update(orderItems).set({ variantTitle: "M" }).where(eq(orderItems.id, order.tomatoes.id));
+    const [{ productId }] = await db.select({ productId: productVariants.productId }).from(productVariants).where(eq(productVariants.id, ids.tomatoVariant));
+
+    /* Only the grocery line: the sofa and the mug are in no department, so they say nothing here. */
+    expect(await as("shopper").returns.mySizes({ productId: String(productId) })).toMatchObject([{ variantTitle: "M", outcome: "kept" }]);
+
+    /* Sent back too small — declined on a perishable, but the shopper still found it too small. */
+    await ask("shopper", { reference: order.reference, orderItemId: order.tomatoes.id, kind: "refund", reason: "tooSmall" });
+    expect(await as("shopper").returns.mySizes({ productId: String(productId) })).toMatchObject([{ variantTitle: "M", outcome: "tooSmall" }]);
+
+    expect(await as("stranger").returns.mySizes({ productId: String(productId) })).toEqual([]);
+    expect(await as("shopper").returns.mySizes({ productId: "demo-product-1" })).toEqual([]);
+  });
+});

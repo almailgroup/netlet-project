@@ -8,6 +8,8 @@ struct WarehouseRules: Decodable, Sendable {
         let columns: [String: [String]]
         let departmentWords: [String: [String]]
         let limit: Int
+        /// How many unplaced rows the model files in one call (`MAX_CATEGORISE_ROWS`).
+        let categoriseBatch: Int
         let template: String
     }
 
@@ -40,7 +42,7 @@ struct WarehouseRules: Decodable, Sendable {
     }()
 
     static let fallback = WarehouseRules(
-        upload: .init(columns: [:], departmentWords: [:], limit: 1000, template: ""),
+        upload: .init(columns: [:], departmentWords: [:], limit: 1000, categoriseBatch: 100, template: ""),
         inbound: .init(maxLines: 50, maxUnits: 10_000),
         maxClaimResponse: 2000,
         ads: .init(slots: [], rates: [:], capacity: [:], maxDays: 30, maxLeadDays: 90, headlineMax: 80, noteMax: 400, bannerAspect: 3, bannerMinWidth: 900, bannerMaxWidth: 2400)
@@ -93,6 +95,18 @@ struct UploadPlan: Sendable {
     var products: [Product] = []
     var problems: [Problem] = []
     var guessed: Int { products.filter(\.categoryGuessed).count }
+
+    /// The plan with the model's departments written into the rows it filed,
+    /// each tagged as a guess like the words' own.
+    func filing(_ filed: [Int: String]) -> UploadPlan {
+        var next = self
+        next.products = products.map { row in
+            guard row.category == nil, let department = filed[row.line] else { return row }
+            return Product(line: row.line, title: row.title, sku: row.sku, price: row.price, compareAtPrice: row.compareAtPrice, stock: row.stock,
+                           category: department, categoryGuessed: true, description: row.description, imageUrl: row.imageUrl)
+        }
+        return next
+    }
 
     static func parseCsv(_ text: String) -> [[String]] {
         var rows: [[String]] = []
@@ -479,6 +493,28 @@ struct AdQuote: Decodable, Sendable {
     let fullDays: [String]
 }
 
+/// Which days a place has room on (`ads.calendar`), the calendar a store books from.
+struct PlacementCalendar: Decodable, Sendable {
+    struct Day: Decodable, Hashable, Sendable {
+        let date: String
+        let taken: Int
+        let free: Int
+    }
+
+    let today: String
+    let dailyRate: Money
+    let capacity: Int
+    let days: [Day]
+}
+
+/// The model's departments for rows the words could not place
+/// (`inventory.products.categorise`), by line; `available` false when no
+/// model answered, which leaves the rows as they were.
+struct CategoriseReply: Decodable, Sendable {
+    let filed: [String: String]
+    let available: Bool
+}
+
 struct AdBooked: Decodable, Sendable {
     let total: Money
 }
@@ -546,6 +582,18 @@ extension API {
     }
 
     static let importProducts = Procedure<ImportInput, ImportDone>(mutation: "inventory.products.bulkCreate")
+
+    struct CategoriseRow: Encodable, Sendable {
+        let line: Int
+        let text: String
+    }
+
+    struct CategoriseInput: Encodable, Sendable {
+        var vendorId: Int?
+        let rows: [CategoriseRow]
+    }
+
+    static let categoriseImport = Procedure<CategoriseInput, CategoriseReply>(mutation: "inventory.products.categorise")
 
     // Dispatch
     struct BoardState: Encodable, Sendable {
@@ -703,6 +751,13 @@ extension API {
 
     static let adBookings = Procedure<BookingPage, PortalPageOf<AdBooking>>(query: "ads.list")
     static let adQuote = Procedure<AdAsk, AdQuote>(query: "ads.quote")
+
+    struct CalendarAsk: Encodable, Sendable {
+        let productId: Int
+        let slot: String
+    }
+
+    static let adCalendar = Procedure<CalendarAsk, PlacementCalendar>(query: "ads.calendar")
     static let bookAd = Procedure<AdBook, AdBooked>(mutation: "ads.book")
     static let cancelAd = Procedure<RowId, Acknowledged>(mutation: "ads.cancel")
     static let reviewBanner = Procedure<BannerDecision, BannerReviewed>(mutation: "ads.reviewBanner")

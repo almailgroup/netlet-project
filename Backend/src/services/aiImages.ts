@@ -114,7 +114,7 @@ export async function cleanUpPhoto(actor: Actor, bytes: Uint8Array): Promise<Dra
 /* -------------------------------------------------------- 3.1.8 ---------- */
 
 /** The department a product is filed under, by its top category's slug. */
-async function departmentOf(productId: number): Promise<string | null> {
+export async function departmentOf(productId: number): Promise<string | null> {
   const db = await getDb();
   if (!db) return null;
   const [row] = await db
@@ -130,7 +130,7 @@ async function departmentOf(productId: number): Promise<string | null> {
 }
 
 /** The product's first photograph, as bytes: one of NetLet's own, or fetched through the guarded fetch. */
-async function productPhoto(productId: number): Promise<CatalogImage | null> {
+export async function productPhoto(productId: number): Promise<CatalogImage | null> {
   const db = await getDb();
   if (!db) return null;
   const [first] = await db

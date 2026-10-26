@@ -251,9 +251,9 @@ describe("cashing out", () => {
     expect(await referral.pointsBalance(ids.friend)).toBe(400);
   });
 
-  it("takes the whole balance and pays a tenth", async () => {
+  it("takes the whole balance and pays it less the 10% fee", async () => {
     await db.insert(pointEntries).values({ userId: ids.friend, points: 2500, reason: "admin_adjustment" });
-    expect(await referral.requestCashOut(ids.friend)).toEqual({ points: 2500, value: "0.250" });
+    expect(await referral.requestCashOut(ids.friend)).toEqual({ points: 2500, value: "2.250" });
     expect(await referral.pointsBalance(ids.friend)).toBe(0);
   });
 
@@ -263,7 +263,7 @@ describe("cashing out", () => {
 
     const owed = await referral.pendingCashOuts(adminActor());
     expect(owed).toHaveLength(1);
-    expect(owed[0]).toMatchObject({ points: 2500, value: "0.250", email: "friend@example.test" });
+    expect(owed[0]).toMatchObject({ points: 2500, value: "2.250", email: "friend@example.test" });
 
     await expect(referral.pendingCashOuts(vendorActor())).rejects.toThrow(/FORBIDDEN/);
   });

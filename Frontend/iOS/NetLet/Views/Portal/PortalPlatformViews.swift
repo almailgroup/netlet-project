@@ -192,6 +192,211 @@ private struct AuditRow: View {
     }
 }
 
+// MARK: - Fraud watch
+
+/// Reviews and referrals that do not look like a shopper's own — the web's
+/// `/admin/fraud` (3.6.5). Each row says what the shared rules noticed and
+/// the counts behind it; nothing acts by itself. A review is hidden by a
+/// person's press, with a reason, and shown again the same way.
+struct PortalFraudView: View {
+    @State private var showReferrals = false
+    @State private var onlyFlagged = true
+    @State private var reviews: [ReviewWatchRow]?
+    @State private var referrals: [ReferralWatchRow]?
+    @State private var failed: APIError?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        PortalScreen(title: l.t("fraud.title"), intro: l.t("fraud.intro"), refresh: { await load() }) {
+            PortalSegmented(label: l.t("fraud.title"), value: $showReferrals, options: [
+                (false, l.t("fraud.tabReviews")),
+                (true, l.t("fraud.tabReferrals")),
+            ])
+            Toggle(l.t("fraud.onlyFlagged"), isOn: $onlyFlagged).font(.inter(14, .semibold)).foregroundStyle(Brand.navy).tint(Brand.navy)
+            if showReferrals {
+                if let referrals {
+                    let rows = onlyFlagged ? referrals.filter { !$0.flags.isEmpty } : referrals
+                    if rows.isEmpty {
+                        PortalEmpty(text: onlyFlagged ? l.t("fraud.noneFlagged", ["count": "\(referrals.count)"]) : l.t("fraud.noReferrals"))
+                    } else {
+                        ForEach(rows) { ReferralWatchCard(row: $0) }
+                    }
+                } else { pending }
+            } else {
+                if let reviews {
+                    let rows = onlyFlagged ? reviews.filter { !$0.flags.isEmpty } : reviews
+                    if rows.isEmpty {
+                        PortalEmpty(text: onlyFlagged ? l.t("fraud.noneFlagged", ["count": "\(reviews.count)"]) : l.t("fraud.noReviews"))
+                    } else {
+                        ForEach(rows) { ReviewWatchCard(row: $0) { Task { await load() } } }
+                    }
+                } else { pending }
+            }
+        }
+        .task { await load() }
+        .onChange(of: showReferrals) { Task { await load() } }
+    }
+
+    @ViewBuilder
+    private var pending: some View {
+        if let failed {
+            ErrorStateView(error: failed) { await load() }
+        } else {
+            ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
+        }
+    }
+
+    private func load() async {
+        do {
+            let api = app.services.api
+            if showReferrals {
+                referrals = try await api.call(API.referralWatch)
+            } else {
+                reviews = try await api.call(API.reviewWatch)
+            }
+            failed = nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled { failed = failure }
+        }
+    }
+}
+
+enum FraudWords {
+    /// The words for a risk level, as the orders desk says them; low says nothing.
+    static func risk(_ risk: String) -> String? {
+        switch risk {
+        case "high": return "admin.riskHigh"
+        case "watch": return "admin.riskWatch"
+        default: return nil
+        }
+    }
+
+    static func flag(_ flag: OrderRisk.Flag, language: Language) -> String {
+        let key = "fraud.\(flag.signal)"
+        guard Phrasebook.shared.has(key) else { return flag.signal }
+        return Phrasebook.shared.text(key, language: language, params: DeskWords.detail(flag.detail, language: language))
+    }
+}
+
+private struct FraudFlags: View {
+    let flags: [OrderRisk.Flag]
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        if !flags.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(flags, id: \.signal) { flag in
+                    Text("· " + FraudWords.flag(flag, language: l.current))
+                        .font(.inter(13, flag.serious ? .semibold : .regular))
+                        .foregroundStyle(flag.serious ? Brand.danger : Brand.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+}
+
+private struct ReviewWatchCard: View {
+    let row: ReviewWatchRow
+    let changed: () -> Void
+    @State private var hiding = false
+    @State private var reason = ""
+    @State private var busy = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        PortalCard {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    (Text(row.productTitle) + Text(" · " + l.t("fraud.stars", ["rating": "\(row.rating)"])))
+                        .font(.inter(14, .bold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
+                    Text(l.t("fraud.reviewBy", ["email": latin(row.reviewerEmail ?? "")]) + " · " + OrderWording.dateTime(row.createdAt, language: l.current))
+                        .font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                VStack(alignment: .trailing, spacing: 4) {
+                    if row.hidden { StatusPill(label: l.t("fraud.hiddenPill"), tone: .waiting) }
+                    if let risk = FraudWords.risk(row.risk) {
+                        StatusPill(label: l.t(risk), tone: .portal(row.risk == "high" ? "danger" : "warning"))
+                    }
+                }
+            }
+            if (row.title ?? "").isEmpty == false || (row.body ?? "").isEmpty == false {
+                (Text(row.title.map { $0 + " " } ?? "").fontWeight(.bold) + Text(row.body ?? ""))
+                    .font(.inter(13)).foregroundStyle(Brand.ink).lineLimit(3)
+            }
+            FraudFlags(flags: row.flags)
+            if row.hidden, let why = row.hiddenReason, !why.isEmpty {
+                Text(l.t("fraud.hiddenBecause", ["reason": why])).font(.inter(13)).foregroundStyle(Brand.muted)
+            }
+            if row.hidden {
+                Button(l.t("fraud.show")) { Task { await setHidden(false) } }
+                    .buttonStyle(PortalSmallButtonStyle())
+                    .disabled(busy)
+            } else if hiding {
+                // The web asks in a dialog with the reason under its sentence;
+                // here the same question opens under the review it is about.
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider()
+                    Text(l.t("fraud.hideTitle")).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                    Text(l.t("fraud.hideBody")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                    LabeledField(label: l.t("fraud.hideReason"), text: Binding(get: { reason }, set: { reason = String($0.prefix(200)) }))
+                    HStack(spacing: 8) {
+                        Spacer()
+                        Button(l.t("common.cancel")) { hiding = false; reason = "" }.buttonStyle(PortalSmallButtonStyle())
+                        Button(l.t("fraud.hide")) { Task { await setHidden(true) } }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                            .disabled(busy)
+                    }
+                }
+            } else {
+                Button(l.t("fraud.hide")) { hiding = true }.buttonStyle(PortalSmallButtonStyle(kind: .danger))
+            }
+        }
+    }
+
+    private func setHidden(_ hidden: Bool) async {
+        busy = true
+        defer { busy = false }
+        let why = reason.trimmingCharacters(in: .whitespaces)
+        let input = API.HideReview(reviewId: row.id, hidden: hidden, reason: hidden && !why.isEmpty ? why : nil)
+        if await app.attempt(done: hidden ? "fraud.hiddenDone" : "fraud.shownDone", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.setReviewHidden, input)
+        }) {
+            hiding = false
+            reason = ""
+            changed()
+        }
+    }
+}
+
+private struct ReferralWatchCard: View {
+    let row: ReferralWatchRow
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        PortalCard {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(l.t("fraud.referralLine", ["referrer": latin(row.referrerEmail ?? ""), "referred": latin(row.referredEmail ?? "")]))
+                        .font(.inter(14, .bold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
+                    Text(OrderWording.dateTime(row.createdAt, language: l.current) + " · "
+                        + (row.qualifiedAt.map { l.t("fraud.qualifiedOn", ["date": OrderWording.dateTime($0, language: l.current)]) } ?? l.t("fraud.notQualified")))
+                        .font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                if let risk = FraudWords.risk(row.risk) {
+                    StatusPill(label: l.t(risk), tone: .portal(row.risk == "high" ? "danger" : "warning"))
+                }
+            }
+            FraudFlags(flags: row.flags)
+        }
+    }
+}
+
 // MARK: - The switchboard
 
 /// Every advanced feature, on or off for the whole shop — the web's
@@ -311,7 +516,7 @@ enum FeatureWords {
     static func group(_ key: String) -> String {
         switch key {
         case "ai", "assistant", "recommendations", "boughtTogether", "voiceSearch", "photoSearch": return "search"
-        case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn": return "shopping"
+        case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn", "cashOnDelivery": return "shopping"
         case "returns", "deliveryRatings", "damageClaims": return "afterSale"
         case "ads", "affiliates", "fulfilment": return "selling"
         default: return "content"
@@ -339,6 +544,7 @@ enum FeatureWords {
         case "photoSearch": return "features.photoSearch"
         case "appBanner": return "features.appBanner"
         case "articles": return "features.articles"
+        case "cashOnDelivery": return "features.cashOnDelivery"
         default: return "features.tryOn"
         }
     }
@@ -363,6 +569,7 @@ enum FeatureWords {
         case "voiceSearch": return "features.voiceSearchOff"
         case "photoSearch": return "features.photoSearchOff"
         case "appBanner": return "features.appBannerOff"
+        case "cashOnDelivery": return "features.cashOnDeliveryOff"
         case "articles": return "features.articlesOff"
         default: return "features.tryOnOff"
         }

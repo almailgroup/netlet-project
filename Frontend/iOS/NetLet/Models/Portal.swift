@@ -133,6 +133,7 @@ enum PortalPage: Hashable, Sendable {
     case applications
     case people
     case audit
+    case fraud
     case features
     case subscriptions
     case vendors
@@ -201,6 +202,7 @@ enum PortalPage: Hashable, Sendable {
             case "applications": self = .applications
             case "people": self = .people
             case "audit": self = .audit
+            case "fraud": self = .fraud
             case "features": self = .features
             case "subscriptions": self = .subscriptions
             case "vendors": self = .vendors

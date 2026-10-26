@@ -5,6 +5,7 @@ import {
   MAX_AD_DAYS,
   addDays,
   approvalStart,
+  availability,
   bannerShapeOk,
   bookingProblem,
   bookingRoom,
@@ -177,5 +178,22 @@ describe("home banners", () => {
     expect(headlineProblem("x".repeat(81), true, none)).toBe("ads.bannerTooLong");
     expect(headlineProblem("Ring 99887766", true, found)).toBe("ads.bannerContact");
     expect(headlineProblem("  Lamps   for evenings ", true, found)).toBeNull();
+  });
+});
+
+describe("the calendar a store books from", () => {
+  it("counts the places taken and free each day, by the rule the booking checks", () => {
+    const cancelled: BookingFacts = { startsOn: "2026-10-06", endsOn: "2026-10-12", dailyRate: "10.000", cancelledOn: "2026-10-06" };
+    const calendar = availability([week, week, cancelled], "2026-10-03", 5, 2);
+    expect(calendar).toEqual([
+      { date: "2026-10-03", taken: 0, free: 2 },
+      { date: "2026-10-04", taken: 2, free: 0 },
+      { date: "2026-10-05", taken: 2, free: 0 },
+      /* Cancelled on its first day: it runs that day, and the place is still taken. */
+      { date: "2026-10-06", taken: 3, free: 0 },
+      { date: "2026-10-07", taken: 2, free: 0 },
+    ]);
+    /* A day the calendar calls full is one `fullDays` refuses. */
+    expect(fullDays([week, week], "2026-10-04", 1, 2)).toEqual(["2026-10-04"]);
   });
 });

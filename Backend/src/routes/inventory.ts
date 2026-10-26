@@ -89,7 +89,8 @@ import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../../Shared/invento
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../services/bundles.js";
 import { deleteProduct, deletionCheck } from "../services/productDeletion.js";
 import { moveProductToVendor } from "../services/productMove.js";
-import { BULK_UPLOAD_LIMIT } from "../../../Shared/inventory/bulkUpload.js";
+import { BULK_UPLOAD_LIMIT, MAX_CATEGORISE_ROWS } from "../../../Shared/inventory/bulkUpload.js";
+import { categoriseRows } from "../services/importCategories.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../../Shared/commerce/sizeGuide.js";
 
 /** One size's range for one measure, in centimetres. */
@@ -544,6 +545,21 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
         return guard(() => bulkCreateProducts(actor, input));
+      }),
+
+    /**
+     * The model's pass over the rows a spreadsheet left without a department
+     * and the words could not place (3.3.5). Writes nothing: the preview
+     * shows each choice as a guess before the seller presses Create.
+     */
+    categorise: protectedProcedure
+      .input(z.object({
+        vendorId: rowId.optional(),
+        rows: z.array(z.object({ line: z.number().int().min(1).max(1_000_000), text: z.string().max(600) })).max(MAX_CATEGORISE_ROWS),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user, input.vendorId);
+        return guard(() => categoriseRows(actor, input.rows));
       }),
 
     update: protectedProcedure

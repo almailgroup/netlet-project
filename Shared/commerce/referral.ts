@@ -35,12 +35,12 @@
  *
  * ## Cashing out
  *
- * Points spend inside NetLet at their face value and cash out at
- * `CASH_OUT_RATE` — a tenth. That is not a penalty hidden in the small print:
- * points spent in the shop come back as sales, and points paid out in cash do
- * not, so the two cannot be worth the same without the shop paying people to
- * leave. The rate is a constant so the figure on the page and the figure in
- * the payout cannot disagree.
+ * Points spend inside NetLet at their face value and cash out at their face
+ * value less a cash-collection fee of `CASH_OUT_FEE_PERCENT` — ten per cent,
+ * the owner's document's own figure (3.1.15). It paid a tenth for a long time,
+ * which kept nine-tenths of what a shopper had earned; the document deducts a
+ * tenth instead. The fee is a constant so the figure on the page and the
+ * figure in the payout cannot disagree.
  */
 import { fromFils, toFils } from "../money.js";
 
@@ -54,12 +54,11 @@ export const REFERRED_POINTS = 250;
 export const FILS_PER_POINT = 1n;
 
 /**
- * What a point is worth in cash — a tenth of its value in the shop.
- *
- * Points spent here come back as sales; points paid out do not. Making the two
- * equal would be paying people to take their money elsewhere.
+ * The cash-collection fee taken off a points payout, in per cent of the
+ * points' face value (3.1.15). Spent in the shop a point is worth its whole
+ * fil; paid out, it is worth that less this.
  */
-export const CASH_OUT_RATE = 0.1;
+export const CASH_OUT_FEE_PERCENT = 10;
 
 /** The fewest points worth the trouble of a payout. */
 export const MIN_CASH_OUT_POINTS = 1000;
@@ -110,8 +109,9 @@ export function spendValue(points: number): string {
  * same discipline `unitPrice` applies to the dinar.
  */
 export function cashOutValue(points: number): string {
-  const whole = Math.max(0, Math.trunc(points));
-  return fromFils(BigInt(Math.floor(whole * CASH_OUT_RATE)) * FILS_PER_POINT);
+  const whole = BigInt(Math.max(0, Math.trunc(points)));
+  /* Bigint division floors, so a payout is never rounded up. */
+  return fromFils((whole * FILS_PER_POINT * BigInt(100 - CASH_OUT_FEE_PERCENT)) / 100n);
 }
 
 /** Whether a balance may be cashed out, and why not when it may not. */

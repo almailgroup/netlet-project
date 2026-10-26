@@ -65,6 +65,7 @@ export const FEATURE_KEYS = [
   "appBanner",
   "articles",
   "tryOn",
+  "cashOnDelivery",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -87,6 +88,11 @@ export type FeatureDefinition = {
 
 export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   ai: { entries: [], audience: "everyone", defaultOn: true },
+  /* Cash at the door for the whole shop (3.2.2: "the ability to disable it
+     administratively"). Asked where cash is decided (`codAvailability`), not
+     by entry: off, checkout says cash is not taken and refuses a cash order,
+     and an order already placed in cash is still collected. */
+  cashOnDelivery: { entries: [], audience: "shopper", defaultOn: true },
   /* The shop assistant: the chat button, a product page's "Ask about this
      product" and the help page's question box, all one gateway token. */
   assistant: { entries: ["ai.chatSession"], audience: "shopper", defaultOn: true },

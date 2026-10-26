@@ -24,7 +24,8 @@ import { MEASURE_LABEL } from "@/lib/sizeGuideLabels";
 import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { readStored, writeStored } from "@/lib/browserStore";
-import { adviseForFit, fitTendency, recommendSize, type BodyMeasure, type FitTendency, type SizeAnswer, type SizeChart } from "@shared/commerce/sizeGuide";
+import { adviseForFit, fitTendency, recommendSize, sizeFromPurchases, type BodyMeasure, type FitTendency, type SizeAnswer, type SizeChart } from "@shared/commerce/sizeGuide";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 
 const STORE_KEY = "netlet:measurements";
@@ -87,6 +88,13 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
   /* What this product's size returns have said (3.1.20): counts, not people. */
   const fit = trpc.returns.fit.useQuery({ productId }, { staleTime: 300_000 });
   const tendency = fit.data ? fitTendency(fit.data) : null;
+  /* What the shopper's own orders in this department say (3.1.20: "based on
+     their past purchases or measurements"): their lines, read for them alone,
+     weighed here beside the chart. */
+  const { isAuthenticated } = useAuth();
+  const past = trpc.returns.mySizes.useQuery({ productId }, { enabled: isAuthenticated, staleTime: 300_000 });
+  const fromPurchases = past.data ? sizeFromPurchases(chart, past.data) : null;
+  const purchasedAvailable = fromPurchases ? availableSizes.some(size => size.toLowerCase() === fromPurchases.size.toLowerCase()) : false;
 
   const find = () => {
     const numbers = Object.fromEntries(chart.measures.map(measure => [measure, Number(values[measure] ?? "")]).filter(([, value]) => Number.isFinite(value) && (value as number) > 0));
@@ -146,6 +154,21 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
               total: String(fit.data.tooSmall + fit.data.tooLarge),
             })}
           </p>
+        ) : null}
+
+        {fromPurchases ? (
+          <div className="mt-4 rounded-2xl bg-[#eaf1fb] p-4 text-[#0a285a]">
+            <h3 className="text-sm font-extrabold">{t("sizeGuide.fromPurchasesTitle")}</h3>
+            <p className="mt-1 text-[13px] leading-5">{t("sizeGuide.fromPurchases", { size: fromPurchases.size })}</p>
+            <p className="mt-1 text-[12px] leading-5 ink-muted">
+              {t("sizeGuide.fromPurchasesBasis", { kept: String(fromPurchases.kept), tooSmall: String(fromPurchases.tooSmall), tooLarge: String(fromPurchases.tooLarge) })}
+            </p>
+            {purchasedAvailable ? (
+              <button type="button" onClick={() => { onChooseSize(fromPurchases.size); onClose(); }} className="glass-navy type-control pressable mt-3 rounded-full px-4 py-2">
+                {t("sizeGuide.choose", { size: fromPurchases.size })}
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         <form

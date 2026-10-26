@@ -3,7 +3,8 @@ import { z } from "zod";
 import { askModel, modelAvailable } from "../services/gemini.js";
 import { publicProcedure, router } from "../core/trpc.js";
 import { MAX_PHOTO_CHARS, acceptablePhoto } from "../../../Shared/commerce/photoSearch.js";
-import { describePhoto, photoSearchAvailable } from "../services/photoSearch.js";
+import { describePhoto, photoSearchAvailable, similarTo } from "../services/photoSearch.js";
+import { rowIdText } from "../core/schemas.js";
 import { checkPhotoSearchAllowed, checkSearchRefineAllowed, recordPhotoSearch, recordSearchRefine } from "../services/rateLimit.js";
 import { MAX_RESULTS, searchCatalogue } from "../services/productSearch.js";
 
@@ -62,6 +63,29 @@ export const searchRouter = router({
       }
       await recordPhotoSearch(address);
       return describePhoto(input.image, input.locale ?? "en");
+    }),
+
+  /**
+   * "Find similar" from a product page (3.1.6): the product's own photo and
+   * title become words for a search, or the product's department when no
+   * model can read them. Takes the storefront's string id; one that is not a
+   * row (a demo handle) is not found. Counted against the photo ceiling,
+   * since it is the same call.
+   */
+  similar: publicProcedure
+    .input(z.object({ productId: z.string().min(1).max(191), locale: z.enum(["en", "ar"]).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const id = rowIdText.safeParse(input.productId);
+      if (!id.success) throw new TRPCError({ code: "NOT_FOUND", message: "product.notFound" });
+      const address = ctx.req.ip ?? null;
+      const verdict = await checkPhotoSearchAllowed(address);
+      if (!verdict.allowed) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "search.photoTooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
+      }
+      await recordPhotoSearch(address);
+      const reply = await similarTo(Number(id.data), input.locale ?? "en");
+      if (!reply) throw new TRPCError({ code: "NOT_FOUND", message: "product.notFound" });
+      return reply;
     }),
 
   /**

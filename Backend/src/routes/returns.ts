@@ -17,6 +17,7 @@ import {
   markCollected,
   markRefundPaid,
   receiveReturn,
+  pastSizeLines,
   ReturnRefused,
 } from "../services/returns.js";
 
@@ -47,6 +48,17 @@ export const returnsRouter = router({
     .query(({ input }) => {
       const parsed = rowIdText.safeParse(input.productId);
       return parsed.success ? fitFeedbackFor(Number(parsed.data)) : { tooSmall: 0, tooLarge: 0 };
+    }),
+  /**
+   * The shopper's own past sizes in this product's department, for the size
+   * guide's suggestion (3.1.20). Their lines and nobody else's; a product id
+   * that is not a row has none.
+   */
+  mySizes: protectedProcedure
+    .input(z.object({ productId: z.string().min(1).max(191) }))
+    .query(({ ctx, input }) => {
+      const parsed = rowIdText.safeParse(input.productId);
+      return parsed.success ? pastSizeLines(ctx.user.id, Number(parsed.data)) : [];
     }),
   list: protectedProcedure
     .input(z.object({ open: z.boolean().optional() }).optional())

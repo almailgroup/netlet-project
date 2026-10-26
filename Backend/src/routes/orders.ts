@@ -36,7 +36,7 @@ import { MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js"
 import { cancelReturn, requestReturn, returnsForShopperOrder, ReturnRefused } from "../services/returns.js";
 import { documentsForShopperOrder } from "../services/invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
-import { riskForOrders } from "../services/fraud.js";
+import { referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouchers.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
@@ -376,6 +376,12 @@ export const ordersRouter = router({
     .input(z.object({ ids: z.array(rowId).max(100) }))
     .query(async ({ ctx, input }) => guard(async () =>
       riskForOrders(await resolveActor(ctx.user), input.ids))),
+
+  /** The newest reviews, judged for fakes (3.6.5). Administrators only, beside the query. */
+  reviewWatch: protectedProcedure.query(async ({ ctx }) => guard(async () => reviewWatch(await resolveActor(ctx.user)))),
+
+  /** The newest referrals, judged for one person inviting themselves (3.6.5). */
+  referralWatch: protectedProcedure.query(async ({ ctx }) => guard(async () => referralWatch(await resolveActor(ctx.user)))),
 
   /**
    * Move one line along (3.2.8).

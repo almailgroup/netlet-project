@@ -379,7 +379,9 @@ export default function Checkout() {
                 <legend className="type-label text-[#0a285a]">{t("checkout.payMethod")}</legend>
                 {cart?.cod.available === false ? (
                   <p className="type-body mt-3 rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-6 text-[#8c2f22]">
-                    {cart.cod.because.kind === "seller"
+                    {cart.cod.because.kind === "shop"
+                      ? t("checkout.codUnavailableShop")
+                      : cart.cod.because.kind === "seller"
                       ? t("checkout.codUnavailableSeller", { name: cart.cod.because.vendorName })
                       : t("checkout.codUnavailableCeiling", { name: cart.cod.because.vendorName, amount: money({ amount: cart.cod.because.ceiling, currencyCode: "KWD" }) })}
                   </p>

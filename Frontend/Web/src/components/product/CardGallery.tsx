@@ -31,21 +31,25 @@ import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { Thumb } from "@/components/product/Thumb";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useLongPress } from "@/hooks/useLongPress";
 import type { Image } from "@shared/commerce/types";
 
 /** The most a card offers; a product with more shows the rest on its page. */
 export const CARD_PHOTOS = 5;
 
-export function CardGallery({ images, href, title, frameClassName, photoClassName }: {
+export function CardGallery({ images, href, title, frameClassName, photoClassName, onLongPress }: {
   images: Image[];
   href: string;
   title: string;
+  /** Press and hold on a phone: the card's Quick View (3.1.11). */
+  onLongPress?: () => void;
   /** The frame's corners and ground; the photo's own shape sets its size. */
   frameClassName: string;
   /** How a photo fills the frame: cropped, or contained on white. */
   photoClassName: string;
 }) {
   const { t } = useTranslation();
+  const hold = useLongPress(onLongPress);
   const photos = images.slice(0, CARD_PHOTOS);
   const many = photos.length > 1;
   const scroller = useRef<HTMLDivElement>(null);
@@ -86,7 +90,7 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
 
   return (
     <div className="relative" onPointerEnter={many ? () => setWarm(true) : undefined}>
-      <Link href={href} tabIndex={-1} aria-hidden="true" className={`block overflow-hidden ${frameClassName}`}>
+      <Link href={href} tabIndex={-1} aria-hidden="true" {...hold} className={`block overflow-hidden ${onLongPress ? "select-none [-webkit-touch-callout:none]" : ""} ${frameClassName}`}>
         <div
           ref={scroller}
           tabIndex={-1}

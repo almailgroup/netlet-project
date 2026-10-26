@@ -57,6 +57,7 @@ import { memberPriceFor, waiveDelivery } from "../../../Shared/commerce/membersh
 import { discountAllowed } from "../../../Shared/inventory/discountLicence.js";
 import { isDeliverySpeed, type DeliverySpeed } from "../../../Shared/commerce/deliverySpeed.js";
 import { recentReviewsForStore, type StoreReview } from "./reviews.js";
+import { featureOn } from "./features.js";
 import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
@@ -716,6 +717,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
           ceiling: rules.get(row.vendorId ?? -1)?.ceiling ?? null,
         },
       })),
+      await featureOn("cashOnDelivery"),
     ),
     addresses: book.map(address => ({ id: address.id, label: address.label })),
     delivery: {

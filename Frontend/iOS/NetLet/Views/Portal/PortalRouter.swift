@@ -28,6 +28,7 @@ struct PortalRouter: View {
         case .applications: PortalApplicationsView()
         case .people: PortalPeopleView()
         case .audit: PortalAuditView()
+        case .fraud: PortalFraudView()
         case .features: PortalFeaturesView()
         case .subscriptions: PortalSubscriptionsView()
         case .vendors: PortalStoresView()

@@ -217,6 +217,9 @@ struct PortalImportView: View {
     @State private var store: Int?
     @State private var creating = false
     @State private var template: URL?
+    /// How many rows the model filed that the words could not (3.3.5).
+    @State private var modelFiled = 0
+    @State private var filing = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
@@ -265,7 +268,10 @@ struct PortalImportView: View {
                 return
             }
             fileName = url.lastPathComponent
-            plan = UploadPlan.plan(text)
+            let read = UploadPlan.plan(text)
+            plan = read
+            modelFiled = 0
+            Task { await file(read) }
         }
         .sheet(item: Binding(get: { template.map(SharedFile.init) }, set: { if $0 == nil { template = nil } })) { file in
             ActivitySheet(items: [file.url]).ignoresSafeArea()
@@ -280,7 +286,11 @@ struct PortalImportView: View {
             Text(l.t("admin.importSummary", ["rows": "\(plan.products.count)", "problems": "\(plan.problems.count)"])).font(.inter(13)).foregroundStyle(Brand.body)
             if plan.guessed > 0 {
                 Label(l.t("admin.importGuessed", ["count": "\(plan.guessed)"]), systemImage: "sparkles").font(.inter(13)).foregroundStyle(Brand.navy)
+                if modelFiled > 0 {
+                    Text(l.t("admin.importModelFiled", ["count": "\(modelFiled)"])).font(.inter(13)).foregroundStyle(Brand.navy)
+                }
             }
+            if filing { Text(l.t("admin.importFiling")).font(.inter(13)).foregroundStyle(Brand.muted) }
             if !plan.problems.isEmpty {
                 Text(l.t("admin.importProblems")).font(.inter(14, .bold)).foregroundStyle(Brand.danger)
                 ForEach(Array(plan.problems.enumerated()), id: \.offset) { _, problem in
@@ -320,6 +330,29 @@ struct PortalImportView: View {
                 .disabled(creating || plan.products.isEmpty || tooMany || vendorId == nil)
             }
         }
+    }
+
+    /// The rows the words could not place go to the model, a batch at a
+    /// time, and come back as guesses the preview tags like any other. A
+    /// refusal or nothing back leaves them as they were.
+    private func file(_ read: UploadPlan) async {
+        let actor = app.session.seller
+        let vendorId = actor?.kind == "admin" ? store : actor?.ownVendor
+        guard actor?.can("product.create", vendorId: actor?.ownVendor) == true else { return }
+        let unplaced = read.products.filter { $0.category == nil }
+        guard !unplaced.isEmpty else { return }
+        filing = true
+        defer { filing = false }
+        var filed: [Int: String] = [:]
+        let batch = max(1, rules.categoriseBatch)
+        for start in stride(from: 0, to: unplaced.count, by: batch) {
+            let rows = unplaced[start..<min(start + batch, unplaced.count)].map { API.CategoriseRow(line: $0.line, text: String("\($0.title) \($0.description)".prefix(600))) }
+            guard let reply = try? await app.services.api.call(API.categoriseImport, .init(vendorId: vendorId, rows: Array(rows))), reply.available else { break }
+            for (line, department) in reply.filed { if let number = Int(line) { filed[number] = department } }
+        }
+        guard !filed.isEmpty, plan?.products == read.products else { return }
+        plan = read.filing(filed)
+        modelFiled = filed.count
     }
 
     private func departmentName(_ name: String?) -> String {

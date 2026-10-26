@@ -1,0 +1,37 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 2,
+          "productId": 1,
+          "productTitle": "Noise-cancelling headphones",
+          "rating": 1,
+          "title": "probe",
+          "body": "probe",
+          "reviewerEmail": "noura@shop.test",
+          "createdAt": "2026-10-03T18:06:41.378Z",
+          "hidden": false,
+          "hiddenReason": null,
+          "risk": "watch",
+          "flags": [
+            {
+              "signal": "newAccountReview",
+              "serious": false,
+              "detail": {
+                "hours": 47
+              }
+            }
+          ]
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

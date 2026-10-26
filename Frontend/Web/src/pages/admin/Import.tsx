@@ -17,12 +17,13 @@
  * leaving somebody to discover it from an error.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { buttonClass, Card, Field, fieldClass, Notice, PageHeader, tableClass } from "@/components/admin/ui";
+import { buttonClass, Card, Field, fieldClass, Notice, PageHeader, tableClass, Toggle } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { trpc } from "@/lib/trpc";
-import { BULK_UPLOAD_LIMIT, planUpload, templateCsv, type UploadPlan } from "@shared/inventory/bulkUpload";
+import { BULK_UPLOAD_LIMIT, MAX_CATEGORISE_ROWS, planUpload, templateCsv, type UploadPlan } from "@shared/inventory/bulkUpload";
+import { fixImportPhotos } from "@/lib/importPhotos";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
@@ -59,6 +60,11 @@ function Import({ actor }: { actor: Actor }) {
   const [plan, setPlan] = useState<UploadPlan | null>(null);
   const [fileName, setFileName] = useState("");
   const [chosenVendor, setChosenVendor] = useState("");
+  /* How many rows the model filed that the words could not (3.3.5). */
+  const [modelFiled, setModelFiled] = useState(0);
+  /* Photos fixed on the way in, the way an upload is (3.3.4). On by default. */
+  const [fixPhotos, setFixPhotos] = useState(true);
+  const [photoProgress, setPhotoProgress] = useState<{ done: number; total: number } | null>(null);
 
   const vendors = trpc.inventory.vendors.list.useQuery(
     { pageSize: 200 },
@@ -92,12 +98,56 @@ function Import({ actor }: { actor: Actor }) {
   const storeRows = vendors.data?.rows ?? [];
   const mayCreate = can(actor, "product.create", actor.kind === "vendor" ? actor.vendorId : undefined);
 
+  const categorise = trpc.inventory.products.categorise.useMutation();
+
   const read = async (file: File) => {
     setFileName(file.name);
+    setModelFiled(0);
     /* Read as text in the browser, by the same function the server would have
        used: `planUpload` has no database in it, so this is one round trip
        instead of an upload endpoint and a second call to confirm. */
-    setPlan(planUpload(await file.text()));
+    const next = planUpload(await file.text());
+    setPlan(next);
+
+    /* The rows the words could not place go to the model, a hundred at a
+       time, and come back as guesses the preview tags like any other. A
+       refusal or nothing back leaves them as they were. */
+    const unplaced = next.products.filter(product => !product.category);
+    if (!unplaced.length || !mayCreate) return;
+    const filed: Record<number, string> = {};
+    for (let at = 0; at < unplaced.length; at += MAX_CATEGORISE_ROWS) {
+      const batch = unplaced.slice(at, at + MAX_CATEGORISE_ROWS);
+      const reply = await categorise.mutateAsync({
+        vendorId: vendorId ?? undefined,
+        rows: batch.map(product => ({ line: product.line, text: `${product.title} ${product.description}`.slice(0, 600) })),
+      }).catch(() => null);
+      if (!reply?.available) break;
+      Object.assign(filed, reply.filed);
+    }
+    const count = Object.keys(filed).length;
+    if (!count) return;
+    setModelFiled(count);
+    setPlan(current => current && {
+      ...current,
+      guessed: current.guessed + count,
+      products: current.products.map(product => filed[product.line] ? { ...product, category: filed[product.line], categoryGuessed: true } : product),
+    });
+  };
+
+  const withPhotos = plan?.products.filter(product => product.imageUrl).length ?? 0;
+
+  /* The photos first, then the rows with the fixed photos' addresses in place
+     of the file's. Nothing is written until both are done. */
+  const create = async () => {
+    if (!plan || vendorId === null) return;
+    let rows = plan.products.map(({ line: _line, categoryGuessed: _guessed, ...row }) => row);
+    if (fixPhotos && withPhotos > 0) {
+      const run = await fixImportPhotos(rows.flatMap(row => row.imageUrl ? [row.imageUrl] : []), (done, total) => setPhotoProgress({ done, total }));
+      setPhotoProgress(null);
+      rows = rows.map(row => row.imageUrl && run.replaced.has(row.imageUrl) ? { ...row, imageUrl: run.replaced.get(row.imageUrl)! } : row);
+      if (run.kept > 0) toast.info(t(run.stoppedBy ? "admin.importPhotosStopped" : "admin.importPhotosKept", { count: run.kept }));
+    }
+    upload.mutate({ vendorId, rows });
   };
 
   const download = () => {
@@ -173,15 +223,14 @@ function Import({ actor }: { actor: Actor }) {
               mayCreate ? (
                 <button
                   type="button"
-                  disabled={upload.isPending || plan.products.length === 0 || tooMany || vendorId === null}
-                  onClick={() => vendorId !== null && upload.mutate({
-                    vendorId,
-                    rows: plan.products.map(({ line: _line, categoryGuessed: _guessed, ...row }) => row),
-                  })}
+                  disabled={upload.isPending || photoProgress !== null || plan.products.length === 0 || tooMany || vendorId === null}
+                  onClick={() => void create()}
                   className={buttonClass.primary}
                 >
-                  {upload.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
-                  {t("admin.importCreate", { count: plan.products.length })}
+                  {upload.isPending || photoProgress ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
+                  {photoProgress
+                    ? t("admin.importFixingPhotos", { done: photoProgress.done, total: photoProgress.total })
+                    : t("admin.importCreate", { count: plan.products.length })}
                 </button>
               ) : null
             }
@@ -193,7 +242,18 @@ function Import({ actor }: { actor: Actor }) {
               {plan.guessed > 0 ? (
                 <Notice tone="info">
                   <span className="inline-flex items-start gap-2"><Sparkles className="mt-1 size-4 shrink-0 ink-accent" aria-hidden />{t("admin.importGuessed", { count: plan.guessed })}</span>
+                  {modelFiled > 0 ? <span className="mt-1 block">{t("admin.importModelFiled", { count: modelFiled })}</span> : null}
                 </Notice>
+              ) : null}
+              {categorise.isPending ? <p role="status" className="text-[13px] ink-muted">{t("admin.importFiling")}</p> : null}
+
+              {withPhotos > 0 ? (
+                <Toggle
+                  checked={fixPhotos}
+                  onChange={setFixPhotos}
+                  label={t("admin.importFixPhotos", { count: withPhotos })}
+                  hint={t("admin.importFixPhotosHint")}
+                />
               ) : null}
 
               {plan.problems.length > 0 ? (

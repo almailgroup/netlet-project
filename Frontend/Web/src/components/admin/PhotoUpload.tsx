@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { preparePhoto, type PreparedPhoto } from "@/lib/preparePhoto";
+import { fetchRemotePhoto } from "@/lib/importPhotos";
 import { trpc } from "@/lib/trpc";
 import type { Candidate } from "@shared/commerce/manufacturerImages";
 import { MIN_EDGE, type Fix } from "@shared/commerce/media";
@@ -194,20 +195,6 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productN
 
 type Preview = { state: "loading" } | { state: "ready"; blob: Blob; url: string } | { state: "failed"; reason: string };
 
-/** One image through NetLet's server, which is the only thing allowed to go and fetch it. */
-async function fetchRemote(url: string): Promise<Blob> {
-  const response = await fetch("/api/media/remote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-    credentials: "same-origin",
-  });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? "manufacturer.unreachable");
-  }
-  return response.blob();
-}
 
 /**
  * The manufacturer's page, read for its product images (3.1.10).
@@ -251,7 +238,7 @@ function ManufacturerImport({ busy, productName, onPick }: { busy: boolean; prod
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         try {
-          const blob = await fetchRemote(next.url);
+          const blob = await fetchRemotePhoto(next.url);
           if (mine !== generation.current) return;
           /* Measured here, so a picture too small to use is never offered with a button that can only fail. */
           const bitmap = await createImageBitmap(blob).catch(() => null);

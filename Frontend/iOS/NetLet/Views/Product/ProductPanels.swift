@@ -87,6 +87,7 @@ private struct SizeGuideSheet: View {
     @State private var remember = false
     @State private var answer: SizeAnswer?
     @State private var fit: FitFeedback?
+    @State private var past: [PastSizeLine] = []
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
@@ -111,6 +112,7 @@ private struct SizeGuideSheet: View {
                         .font(.inter(13, .semibold))
                         .foregroundStyle(Brand.accentInk)
                     }
+                    if let suggestion = chart.fromPurchases(past) { purchases(suggestion) }
                     VStack(alignment: .leading, spacing: 10) {
                         Text(l.t("sizeGuide.findMine")).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
                         Text(l.t("sizeGuide.private")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
@@ -144,6 +146,11 @@ private struct SizeGuideSheet: View {
                 remember = true
             }
             fit = try? await app.services.api.call(API.fit, .init(productId: product.id))
+            // The shopper's own past lines in this department (3.1.20: "based
+            // on their past purchases"), read for them alone and weighed here.
+            if app.session.isSignedIn {
+                past = (try? await app.services.api.call(API.mySizes, .init(productId: product.id))) ?? []
+            }
         }
     }
 
@@ -174,6 +181,27 @@ private struct SizeGuideSheet: View {
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityLabel(l.t("sizeGuide.chartLabel"))
+    }
+
+    /// What the shopper's own orders say, with the counts behind it, and
+    /// the size to choose when it is on sale.
+    private func purchases(_ suggestion: PurchaseSuggestion) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(l.t("sizeGuide.fromPurchasesTitle")).font(.inter(14, .heavy)).foregroundStyle(Brand.navy)
+            Text(l.t("sizeGuide.fromPurchases", ["size": suggestion.size])).font(.inter(13)).foregroundStyle(Brand.navy)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(l.t("sizeGuide.fromPurchasesBasis", ["kept": "\(suggestion.kept)", "tooSmall": "\(suggestion.tooSmall)", "tooLarge": "\(suggestion.tooLarge)"]))
+                .font(.inter(12)).foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            if available.contains(where: { $0.caseInsensitiveCompare(suggestion.size) == .orderedSame }) {
+                Button(l.t("sizeGuide.choose", ["size": suggestion.size])) { choose(suggestion.size) }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.top, 4)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.tint))
     }
 
     @ViewBuilder

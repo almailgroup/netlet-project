@@ -49,6 +49,9 @@ export const COD_DEFAULT: CodRule = { accepts: true, ceiling: null };
 
 /** Why cash on delivery is not available, when it is not. */
 export type CodRefusal =
+  /** NetLet has switched cash off for the whole shop (2.3, 3.2.2). The name is
+     empty: no seller is why, and an app that reads a name keeps decoding. */
+  | { kind: "shop"; vendorName: "" }
   /** At least one seller in the basket does not take it. */
   | { kind: "seller"; vendorName: string }
   /** The basket is over a seller's ceiling. */
@@ -71,7 +74,10 @@ function amount(value: string | null | undefined): bigint | null {
  * cannot act on four refusals at once, and the fix for the first is usually to
  * remove that seller's items, which changes the rest anyway.
  */
-export function codAvailability(groups: CodGroup[]): { available: true } | { available: false; because: CodRefusal } {
+export function codAvailability(groups: CodGroup[], shopTakesCash = true): { available: true } | { available: false; because: CodRefusal } {
+  /* Turned off for the whole shop (3.2.2: "the ability to disable it
+     administratively"): first, since no seller's answer matters then. */
+  if (!shopTakesCash) return { available: false, because: { kind: "shop", vendorName: "" } };
   for (const group of groups) {
     if (!group.rule.accepts) {
       return { available: false, because: { kind: "seller", vendorName: group.vendorName } };

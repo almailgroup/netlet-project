@@ -18,10 +18,12 @@ struct DepartmentView: View {
 /// over what the server's search found in the whole catalogue.
 struct SearchResultsView: View {
     let query: String
+    /// One department to search within, or nil for the whole shop.
+    var department: String? = nil
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        ModelHost(make: { BrowseModel(source: .search(query), catalog: app.services.catalog) }) { model in
+        ModelHost(make: { BrowseModel(source: .search(query, department: department), catalog: app.services.catalog) }) { model in
             BrowsePage(model: model)
         }
     }

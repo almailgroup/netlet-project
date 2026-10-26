@@ -21,6 +21,28 @@ extension API {
 
     static let photoAvailable = Procedure<NoInput, PhotoAvailability>(query: "search.photoAvailable")
     static let photoSearch = Procedure<PhotoInput, PhotoQuery>(mutation: "search.photo")
+
+    struct SimilarInput: Encodable, Sendable {
+        let productId: String
+        let locale: String
+    }
+
+    static let findSimilar = Procedure<SimilarInput, SimilarReply>(mutation: "search.similar")
+}
+
+/// What "Find similar" answers (`search.similar`): words for the kind of
+/// thing with its department, or the department alone when no model could
+/// read the photo — or nil, the whole shop.
+struct SimilarReply: Decodable, Sendable {
+    let kind: String
+    var query: String? = nil
+    var department: String? = nil
+
+    /// Where the press lands: a search within the department, or the department.
+    var route: Route {
+        if kind == "query", let query, !query.isEmpty { return .search(query: query, department: department) }
+        return .department(slug: department)
+    }
 }
 
 /// Search with a photo — the web's photo panel. The phone's own pickers

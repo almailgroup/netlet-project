@@ -131,6 +131,7 @@ final class CheckoutViewModel: AddressPartsEditing {
     /// The reason cash on delivery is refused for this bag, in the shop's words.
     func codRefusal(for cart: Cart, language: LanguageSettings) -> String? {
         guard !cart.cod.available, let because = cart.cod.because else { return nil }
+        if because.kind == "shop" { return language.t("checkout.codUnavailableShop") }
         if because.kind == "ceiling", let ceiling = because.ceiling, let amount = Money(amount: ceiling) {
             return language.t("checkout.codUnavailableCeiling", ["name": because.vendorName, "amount": amount.formatted(language.current)])
         }

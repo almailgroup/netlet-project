@@ -131,6 +131,71 @@ struct FitFeedback: Decodable, Sendable {
     }
 }
 
+/// One of the shopper's own past lines in a product's department
+/// (`returns.mySizes`): the variant's title as frozen on the order line, and
+/// whether it was kept or sent back as too small or too large.
+struct PastSizeLine: Decodable, Hashable, Sendable {
+    var variantTitle: String? = nil
+    let outcome: String
+    let at: Date
+}
+
+/// The size a shopper's own purchases suggest, and the counts behind it
+/// (`sizeFromPurchases`).
+struct PurchaseSuggestion: Equatable, Sendable {
+    let size: String
+    let kept: Int
+    let tooSmall: Int
+    let tooLarge: Int
+}
+
+extension SizeChart {
+    /// The chart's size a variant title names, matched whole and without case
+    /// (`sizeOnChart`): "Navy / xl" is XL, "Large" is nothing on a chart in letters.
+    func size(named variantTitle: String?) -> String? {
+        guard let variantTitle else { return nil }
+        let whole = variantTitle.trimmingCharacters(in: .whitespaces).lowercased()
+        let parts = variantTitle.lowercased()
+            .components(separatedBy: CharacterSet(charactersIn: "/,|·-").union(.whitespaces))
+            .filter { !$0.isEmpty }
+        let row = rows.first { $0.size.lowercased() == whole } ?? rows.first { parts.contains($0.size.lowercased()) }
+        return row?.size
+    }
+
+    /// Each past line votes: one kept for its own size, one too small for the
+    /// next size up, one too large for the next size down; a size the chart
+    /// lacks casts none. Most votes wins, a tie going to the most recent.
+    func fromPurchases(_ past: [PastSizeLine]) -> PurchaseSuggestion? {
+        struct Tally { var count = 0; var latest = Date.distantPast; var kept = 0; var tooSmall = 0; var tooLarge = 0 }
+        var votes: [String: Tally] = [:]
+        var order: [String] = []
+        for line in past {
+            guard let size = size(named: line.variantTitle), let index = rows.firstIndex(where: { $0.size == size }) else { continue }
+            let targetIndex = line.outcome == "kept" ? index : index + (line.outcome == "tooSmall" ? 1 : -1)
+            guard rows.indices.contains(targetIndex) else { continue }
+            let target = rows[targetIndex].size
+            var entry = votes[target] ?? Tally()
+            if votes[target] == nil { order.append(target) }
+            entry.count += 1
+            entry.latest = max(entry.latest, line.at)
+            switch line.outcome {
+            case "kept": entry.kept += 1
+            case "tooSmall": entry.tooSmall += 1
+            default: entry.tooLarge += 1
+            }
+            votes[target] = entry
+        }
+        var best: (String, Tally)?
+        for size in order {
+            guard let tally = votes[size] else { continue }
+            if let current = best, !(tally.count > current.1.count || (tally.count == current.1.count && tally.latest > current.1.latest)) { continue }
+            best = (size, tally)
+        }
+        guard let winner = best else { return nil }
+        return PurchaseSuggestion(size: winner.0, kept: winner.1.kept, tooSmall: winner.1.tooSmall, tooLarge: winner.1.tooLarge)
+    }
+}
+
 /// Reviews of one product, with the summary over all of them (`reviews.forProduct`).
 struct ProductReviewsPage: Decodable, Sendable {
     struct Summary: Decodable, Sendable {

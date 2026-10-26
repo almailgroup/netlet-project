@@ -332,3 +332,29 @@ export function templateCsv(): string {
   const header = (Object.keys(COLUMNS) as ColumnName[]).map(name => COLUMNS[name][0]).join(",");
   return `${header}\nBrass Reading Lamp,LAMP-01,24.500,31.000,12,,A warm brass lamp for a side table,https://example.com/lamp.jpg\n`;
 }
+
+/* ----------------------------------------------- the model's second pass --- */
+
+/** Rows one request may ask a model to file, and requests an account an hour (3.3.5). */
+export const MAX_CATEGORISE_ROWS = 100;
+export const MAX_CATEGORISE_PER_HOUR = 30;
+
+/**
+ * What a model said about the rows the words could not place, held to the
+ * shop: only a line that was asked about, only one of the departments this
+ * shop carries, spelled as it spells them. Anything else — a department it
+ * invented, a line nobody sent, "Other" — is no answer, for the reason
+ * `suggestDepartment` returns null rather than guess.
+ */
+export function departmentsFromModel(reply: Record<string, unknown> | null, asked: number[], categories: string[] = DEPARTMENTS.map(d => d.name)): Record<number, string> {
+  const filed: Record<number, string> = {};
+  if (!reply) return filed;
+  const lines = new Set(asked);
+  for (const [key, value] of Object.entries(reply)) {
+    const line = Number(key);
+    if (!Number.isInteger(line) || !lines.has(line) || typeof value !== "string") continue;
+    const name = categories.find(category => category.toLowerCase() === value.trim().toLowerCase());
+    if (name) filed[line] = name;
+  }
+  return filed;
+}

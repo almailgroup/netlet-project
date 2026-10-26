@@ -66,6 +66,12 @@ export const AUDIT_ACTIONS = [
   /* A guide published, taken down or deleted (3.5.3): NetLet speaking in public. */
   "guide.setStatus",
   "guide.delete",
+  /* A person's hand on a return (3.6.3): a request no rule could decide, the
+     item received and what became of it, the cash handed back. The decisions
+     a rule makes the moment a shopper asks are the rule's, and are not here. */
+  "return.decide",
+  "return.receive",
+  "return.refundPaid",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -79,7 +85,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;

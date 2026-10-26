@@ -166,8 +166,114 @@ export function fraudFlags(context: OrderContext): Flag[] {
  * decide what 62 means. `high` is one serious signal or three of anything —
  * several small oddities about one order is itself the pattern.
  */
-export function riskOf(flags: Flag[]): RiskLevel {
+export function riskOf(flags: { serious: boolean }[]): RiskLevel {
   if (flags.some(flag => flag.serious)) return "high";
   if (flags.length >= 3) return "high";
   return flags.length > 0 ? "watch" : "low";
+}
+
+/* --------------------------------------------------------- fake reviews --- */
+
+/**
+ * Reviews that do not look like a shopper's own (3.6.5: "fake reviews").
+ *
+ * The same rule as orders: flag and never act. Hiding a review is a person's
+ * press, with a reason, on the fraud page; every signal carries the counts
+ * behind it. A review on NetLet already needs a delivered line of the
+ * reviewer's own (`eligibilityFor`), so what is left to watch is whose hand is
+ * behind the order.
+ */
+export const REVIEW_SIGNALS = ["reviewerIsSeller", "reviewersShareAddress", "reviewBurst", "newAccountReview", "sameRatingEveryTime"] as const;
+export type ReviewSignal = (typeof REVIEW_SIGNALS)[number];
+export type ReviewFlag = { signal: ReviewSignal; serious: boolean; detail: Record<string, number | string> };
+
+export type ReviewContext = {
+  rating: number;
+  /** Whether the reviewer belongs to the store that sells it. */
+  reviewerIsSeller: boolean;
+  /** Other accounts that reviewed this product and had it delivered to the same address. */
+  otherReviewersAtAddress: number;
+  /** Reviews of this product within a day either side of this one, this one included. */
+  reviewsSameDay: number;
+  /** How old the account was when the review was written. */
+  accountAgeHours: number;
+  /** The reviewer's reviews across the shop, and how many distinct star counts they gave. */
+  reviewerReviews: number;
+  reviewerDistinctRatings: number;
+};
+
+/** More reviews of one product than this inside a day is a campaign rather than customers. */
+export const REVIEW_BURST = 5;
+/** A reviewer younger than this bought, received and reviewed in under two days. */
+export const NEW_REVIEWER_HOURS = 48;
+/** Every review the same extreme rating, across at least this many. */
+export const SAME_RATING_REVIEWS = 3;
+
+export function reviewFlags(context: ReviewContext): ReviewFlag[] {
+  const flags: ReviewFlag[] = [];
+  /* A store's own people rating its products is the plainest fake there is. */
+  if (context.reviewerIsSeller) flags.push({ signal: "reviewerIsSeller", serious: true, detail: {} });
+  if (context.otherReviewersAtAddress > 0) {
+    flags.push({ signal: "reviewersShareAddress", serious: true, detail: { accounts: context.otherReviewersAtAddress + 1 } });
+  }
+  if (context.reviewsSameDay > REVIEW_BURST) flags.push({ signal: "reviewBurst", serious: false, detail: { reviews: context.reviewsSameDay } });
+  if (context.accountAgeHours < NEW_REVIEWER_HOURS) flags.push({ signal: "newAccountReview", serious: false, detail: { hours: Math.floor(context.accountAgeHours) } });
+  if (context.reviewerReviews >= SAME_RATING_REVIEWS && context.reviewerDistinctRatings === 1 && (context.rating === 1 || context.rating === 5)) {
+    flags.push({ signal: "sameRatingEveryTime", serious: false, detail: { reviews: context.reviewerReviews, rating: context.rating } });
+  }
+  return [...flags].sort((a, b) => Number(b.serious) - Number(a.serious));
+}
+
+/* ------------------------------------------------------ referral abuse --- */
+
+/**
+ * Referrals that look like one person inviting themselves (3.6.5: "points and
+ * referral system abuse"). Nobody may refer their own account, which the
+ * referral rule already refuses; what it cannot see is a second account. A
+ * shared door, a shared phone, an address that is the same mailbox in a
+ * different coat, and a burst of invitations that each bought once — each is
+ * a reason to look before the cash-out is paid, never a refusal.
+ */
+export const REFERRAL_SIGNALS = ["sharedAddress", "sharedPhone", "similarEmail", "qualifyingRefunded", "referralBurst"] as const;
+export type ReferralSignal = (typeof REFERRAL_SIGNALS)[number];
+export type ReferralFlag = { signal: ReferralSignal; serious: boolean; detail: Record<string, number | string> };
+
+export type ReferralContext = {
+  sharedAddress: boolean;
+  sharedPhone: boolean;
+  referrerEmail: string;
+  referredEmail: string;
+  /** The order that paid the points was refunded or cancelled afterwards. */
+  qualifyingRefunded: boolean;
+  /** Accounts this referrer brought in within a week either side of this one. */
+  referrerWeek: number;
+};
+
+/** More invitations than this landing in a week is a script or a sale of codes. */
+export const REFERRAL_BURST = 5;
+
+/**
+ * Whether two addresses are one mailbox: the same local part once a `+tag` is
+ * dropped, Gmail's dots ignored and trailing digits taken off — `noura.k+2@`,
+ * `nourak@` and `nourak7@` are one person to anybody reading them.
+ */
+export function emailsAlike(a: string, b: string): boolean {
+  const base = (email: string) => {
+    const [local = "", domain = ""] = email.trim().toLowerCase().split("@");
+    const gmail = domain === "gmail.com" || domain === "googlemail.com";
+    const untagged = local.split("+")[0];
+    return (gmail ? untagged.replace(/\./g, "") : untagged).replace(/\d+$/, "");
+  };
+  const left = base(a);
+  return left.length >= 3 && left === base(b);
+}
+
+export function referralFlags(context: ReferralContext): ReferralFlag[] {
+  const flags: ReferralFlag[] = [];
+  if (context.sharedAddress) flags.push({ signal: "sharedAddress", serious: true, detail: {} });
+  if (context.sharedPhone) flags.push({ signal: "sharedPhone", serious: true, detail: {} });
+  if (emailsAlike(context.referrerEmail, context.referredEmail)) flags.push({ signal: "similarEmail", serious: true, detail: {} });
+  if (context.qualifyingRefunded) flags.push({ signal: "qualifyingRefunded", serious: false, detail: {} });
+  if (context.referrerWeek > REFERRAL_BURST) flags.push({ signal: "referralBurst", serious: false, detail: { referrals: context.referrerWeek } });
+  return [...flags].sort((a, b) => Number(b.serious) - Number(a.serious));
 }

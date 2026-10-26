@@ -54,7 +54,7 @@ export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-
  * token's subject is `s:<task>`, so the Worker's ceiling and its log count
  * each feature apart, and a runaway loop in one cannot starve the others.
  */
-export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage"] as const;
+export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage", "categorise"] as const;
 export type ServerTask = (typeof SERVER_TASKS)[number];
 
 /**

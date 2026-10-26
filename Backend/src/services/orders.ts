@@ -417,6 +417,7 @@ async function priceableLines(
         goods: seller.goods,
         rule: codRules.get(vendorId ?? -1) ?? COD_DEFAULT,
       })),
+      await featureOn("cashOnDelivery"),
     ),
   };
 }

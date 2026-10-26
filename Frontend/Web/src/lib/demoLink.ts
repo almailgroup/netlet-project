@@ -482,6 +482,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.bulkCreate":
       throw new Error("admin.saveFailed");
 
+    /* No model in a demo: the rows the words could not place stay unplaced. */
+    case "inventory.products.categorise":
+      return { filed: {}, available: false };
+
     /* The check is answered so the dialog can be looked at; the delete is
        refused, because a demo row that vanished and came back on the next
        load would look like a delete that did not work. */
@@ -539,6 +543,8 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* The demo signs in as a vendor, and the signals are admin-only — so the
        page never asks. Answered anyway, because a procedure the demo cannot
        name is one that throws the day somebody signs in as an admin. */
+    case "orders.reviewWatch":
+    case "orders.referralWatch":
     case "orders.risk":
       return [];
 
@@ -604,6 +610,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { available: false };
     case "search.photo":
       return { kind: "unavailable" };
+    /* "Find similar" with no model is the department; the demo's whole
+       catalogue stands in for it. */
+    case "search.similar":
+      return { kind: "department", department: null };
     /* Talking to NetLet (3.5.1): the demo shopper is a guest and the demo
        portal is a seller, so neither has conversations with NetLet. */
     case "support.mine":
@@ -725,6 +735,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("ads.notFound");
     case "ads.list":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "ads.calendar":
     case "ads.quote":
     case "ads.book":
     case "ads.cancel":
@@ -753,6 +764,9 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* Returns (3.2.8): no orders in the demo, so nothing to send back. */
     case "returns.fit":
       return { tooSmall: 0, tooLarge: 0 };
+    /* The demo shopper is a guest with no orders, so no past sizes. */
+    case "returns.mySizes":
+      return [];
     case "returns.list":
       return [];
     case "returns.waiting":

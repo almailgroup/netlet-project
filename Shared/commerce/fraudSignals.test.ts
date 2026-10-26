@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fraudFlags, riskOf, type OrderContext } from "./fraudSignals.js";
+import { emailsAlike, fraudFlags, referralFlags, reviewFlags, riskOf, type OrderContext } from "./fraudSignals.js";
 
 const order = (over: Partial<OrderContext> = {}): OrderContext => ({
   grandTotal: "25.000",
@@ -86,5 +86,46 @@ describe("how much attention it wants", () => {
   it("puts the serious one first", () => {
     const flags = fraudFlags(order({ accountAgeHours: 1, grandTotal: "500.000", ordersLastDay: 9 }));
     expect(flags[0].serious).toBe(true);
+  });
+});
+
+describe("fake reviews", () => {
+  const plain = { rating: 4, reviewerIsSeller: false, otherReviewersAtAddress: 0, reviewsSameDay: 1, accountAgeHours: 500, reviewerReviews: 2, reviewerDistinctRatings: 2 };
+
+  it("says nothing about an ordinary review", () => {
+    expect(reviewFlags(plain)).toEqual([]);
+  });
+
+  it("puts the store's own people and shared doors first, as serious", () => {
+    const flags = reviewFlags({ ...plain, reviewerIsSeller: true, otherReviewersAtAddress: 2, reviewsSameDay: 9 });
+    expect(flags.map(flag => flag.signal)).toEqual(["reviewerIsSeller", "reviewersShareAddress", "reviewBurst"]);
+    expect(flags[1].detail).toEqual({ accounts: 3 });
+    expect(riskOf(flags)).toBe("high");
+  });
+
+  it("notices a brand-new reviewer, and one who only ever gives five or one", () => {
+    expect(reviewFlags({ ...plain, accountAgeHours: 20 }).map(flag => flag.signal)).toEqual(["newAccountReview"]);
+    expect(reviewFlags({ ...plain, rating: 5, reviewerReviews: 4, reviewerDistinctRatings: 1 }).map(flag => flag.signal)).toEqual(["sameRatingEveryTime"]);
+    /* Always four stars is a habit, not a campaign. */
+    expect(reviewFlags({ ...plain, rating: 4, reviewerReviews: 4, reviewerDistinctRatings: 1 })).toEqual([]);
+  });
+});
+
+describe("referral abuse", () => {
+  const plain = { sharedAddress: false, sharedPhone: false, referrerEmail: "noura@example.com", referredEmail: "fahad@example.com", qualifyingRefunded: false, referrerWeek: 1 };
+
+  it("reads one mailbox in a different coat", () => {
+    expect(emailsAlike("noura.k+2@gmail.com", "nourak@gmail.com")).toBe(true);
+    expect(emailsAlike("nourak7@example.com", "nourak@example.com")).toBe(true);
+    expect(emailsAlike("noura@example.com", "fahad@example.com")).toBe(false);
+    /* Too short to mean anything. */
+    expect(emailsAlike("a1@x.com", "a2@x.com")).toBe(false);
+  });
+
+  it("flags a shared door, phone or mailbox as serious, and the rest to look at", () => {
+    expect(referralFlags(plain)).toEqual([]);
+    expect(referralFlags({ ...plain, sharedPhone: true, qualifyingRefunded: true, referrerWeek: 8 }).map(flag => flag.signal))
+      .toEqual(["sharedPhone", "qualifyingRefunded", "referralBurst"]);
+    expect(riskOf(referralFlags({ ...plain, referredEmail: "noura+x@example.com" }))).toBe("high");
   });
 });

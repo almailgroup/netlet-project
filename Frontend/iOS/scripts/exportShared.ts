@@ -81,7 +81,7 @@ import {
 import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX } from "../../../Shared/inventory/variantOptions.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Shared/commerce/sizeGuide.js";
-import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
+import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, MAX_CATEGORISE_ROWS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
 import { MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../../Shared/commerce/netletFulfilment.js";
 import { MAX_CLAIM_RESPONSE } from "../../../Shared/commerce/damageClaims.js";
 import {
@@ -279,7 +279,7 @@ export function buildResources(): Record<string, string> {
       /* The spreadsheet import's columns, its department words and its
          template; NetLet's warehouse limits; and the placements' rates,
          room and banner shape. */
-      upload: { columns: COLUMNS, departmentWords: DEPARTMENT_WORDS, limit: BULK_UPLOAD_LIMIT, template: templateCsv() },
+      upload: { columns: COLUMNS, departmentWords: DEPARTMENT_WORDS, limit: BULK_UPLOAD_LIMIT, categoriseBatch: MAX_CATEGORISE_ROWS, template: templateCsv() },
       inbound: { maxLines: MAX_INBOUND_LINES, maxUnits: MAX_INBOUND_UNITS },
       maxClaimResponse: MAX_CLAIM_RESPONSE,
       ads: {

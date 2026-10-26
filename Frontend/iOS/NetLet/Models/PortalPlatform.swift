@@ -339,3 +339,47 @@ extension API {
 
     static let reviewProduct = Procedure<ReviewDecision, Acknowledged>(mutation: "inventory.products.review")
 }
+
+// MARK: - Fraud watch
+
+/// A review on NetLet's fraud watch (`orders.reviewWatch`): what was written,
+/// by whom, and each thing the shared rules noticed about it (3.6.5).
+struct ReviewWatchRow: Decodable, Identifiable, Hashable, Sendable {
+    let id: Int
+    var productId: Int? = nil
+    let productTitle: String
+    let rating: Int
+    var title: String? = nil
+    var body: String? = nil
+    var reviewerEmail: String? = nil
+    let createdAt: Date
+    let hidden: Bool
+    var hiddenReason: String? = nil
+    let risk: String
+    let flags: [OrderRisk.Flag]
+}
+
+/// A referral on the fraud watch (`orders.referralWatch`): who invited whom,
+/// whether the points were paid, and what looks like one person twice.
+struct ReferralWatchRow: Decodable, Identifiable, Hashable, Sendable {
+    let id: Int
+    var referrerEmail: String? = nil
+    var referredEmail: String? = nil
+    let createdAt: Date
+    var qualifiedAt: Date? = nil
+    let risk: String
+    let flags: [OrderRisk.Flag]
+}
+
+extension API {
+    static let reviewWatch = Procedure<NoInput, [ReviewWatchRow]>(query: "orders.reviewWatch")
+    static let referralWatch = Procedure<NoInput, [ReferralWatchRow]>(query: "orders.referralWatch")
+
+    struct HideReview: Encodable, Sendable {
+        let reviewId: Int
+        let hidden: Bool
+        var reason: String? = nil
+    }
+
+    static let setReviewHidden = Procedure<HideReview, Acknowledged>(mutation: "reviews.setHidden")
+}

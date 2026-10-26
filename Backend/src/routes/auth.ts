@@ -26,6 +26,7 @@ import { z } from "zod";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signSession } from "../core/auth.js";
 import { getSessionCookieOptions } from "../core/cookies.js";
+import { recordAudit } from "../services/audit.js";
 import { ENV } from "../core/env.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 import {
@@ -164,18 +165,32 @@ const wrongPassword = new TRPCError({ code: "UNAUTHORIZED", message: "auth.wrong
    mails to one address, or its hourly ceiling. Not the shopper's doing. */
 const codeNotSent = new TRPCError({ code: "TOO_MANY_REQUESTS", message: "auth.codeNotSent" });
 
-/** Sets the session cookie, for a week or for this browser only. */
+/**
+ * Sets the session cookie, for a week or for this browser only.
+ *
+ * **An administrator signing in is on the audit trail** (3.6.3), from the one
+ * place every session starts — sign-in, a registration that signs straight in,
+ * and the emailed code — so no door onto an administrator's session skips it.
+ * The address is kept with it: the question an administrator's sign-in answers
+ * is "was that us", and the address is most of the answer.
+ */
 async function startSession(
   ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: object) => void } },
-  userId: number,
+  user: { id: number; email: string | null; role: string },
   remember = true,
 ): Promise<void> {
   /* Not remembered: a cookie with no expiry, which the browser drops when it
      closes, round a token that lapses in a day for a browser that keeps it. */
   if (remember === false) {
-    ctx.res.cookie(COOKIE_NAME, await signSession(userId, SHORT_SESSION_MS), getSessionCookieOptions(ctx.req));
+    ctx.res.cookie(COOKIE_NAME, await signSession(user.id, SHORT_SESSION_MS), getSessionCookieOptions(ctx.req));
   } else {
-    ctx.res.cookie(COOKIE_NAME, await signSession(userId), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+    ctx.res.cookie(COOKIE_NAME, await signSession(user.id), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
+  }
+  if (user.role === "admin") {
+    await recordAudit(
+      { id: user.id, email: user.email, role: "admin" },
+      { action: "admin.signIn", subjectType: "session", subjectId: user.id, subjectLabel: user.email, after: { address: ctx.req.ip ?? null, remembered: remember } },
+    );
   }
 }
 
@@ -265,7 +280,7 @@ export const authRouter = router({
     if (started.status === "codeSent") return { status: "verify" as const, email: input.email.trim().toLowerCase() };
 
     if (input.referral) await recordReferral(started.user.id, input.referral);
-    await startSession(ctx, started.user.id);
+    await startSession(ctx, started.user);
     return { status: "signedIn" as const, user: toPublicUser(started.user) };
   }),
 
@@ -309,7 +324,7 @@ export const authRouter = router({
        second account made from the same browser. */
     if (input.referral) await recordReferral(user.id, input.referral);
     await touchLastSignedIn(user.id);
-    await startSession(ctx, user.id, input.remember);
+    await startSession(ctx, user, input.remember);
     return toPublicUser(user);
   }),
 
@@ -460,7 +475,7 @@ export const authRouter = router({
     // failure from a lockout for the next quarter of an hour.
     await clearAccountFailures(input.email);
     await touchLastSignedIn(user.id);
-    await startSession(ctx, user.id, input.remember);
+    await startSession(ctx, user, input.remember);
     return toPublicUser(user);
   }),
 

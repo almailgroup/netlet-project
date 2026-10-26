@@ -40,9 +40,8 @@
  *
  * An affiliate's earnings sit in the same ledger as referral points but in
  * their own pot, counted in fils and cashed out at face value. Referral points
- * cash out at a tenth because points spent in the shop come back as sales; an
- * affiliate's commission is payment for work, and paying it at a tenth would be
- * keeping nine-tenths of what was promised.
+ * cash out less a 10% cash-collection fee, the document's rule for points; an
+ * affiliate's commission is payment for work and is paid whole.
  */
 import { fromFils, toFils } from "../money.js";
 import { isKept } from "./collection.js";
