@@ -182,6 +182,11 @@ struct Rules: Decodable, Sendable {
     let account: Account?
     let orders: Orders?
     let ai: AI?
+    /// The floor on a password being set (`MIN_PASSWORD_LENGTH`), the server's own.
+    var minPasswordLength: Int? = nil
+
+    /// The password floor, or the same number when the file predates it.
+    var passwordFloor: Int { minPasswordLength ?? 8 }
 
     /// The account's rules, or the same numbers when the file predates them.
     var accountRules: Account { account ?? .fallback }

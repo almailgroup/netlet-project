@@ -11,10 +11,12 @@ describe("checkPassword", () => {
   });
 
   it("blocks anything under the floor, however varied", () => {
-    const verdict = checkPassword("Aa1!Aa1!");
+    const verdict = checkPassword("Aa1!Aa1");
     expect(verdict.unmet).toContain("length");
     expect(verdict.acceptable).toBe(false);
-    expect(MIN_PASSWORD_LENGTH).toBe(10);
+    // Eight, on the owner's word: the account form's floor.
+    expect(MIN_PASSWORD_LENGTH).toBe(8);
+    expect(checkPassword("Aa1!Aa1!").unmet).not.toContain("length");
   });
 
   it("rewards length over punctuation soup", () => {
@@ -60,7 +62,7 @@ describe("checkPassword", () => {
 
   it("climbs through the bands as a password improves", () => {
     const bands = [
-      checkPassword("short1!Ab").band,
+      checkPassword("sho1!Ab").band,
       checkPassword("reasonablepass").band,
       checkPassword("ReasonablePass1").band,
       checkPassword("ReasonablePassphrase1!").band,

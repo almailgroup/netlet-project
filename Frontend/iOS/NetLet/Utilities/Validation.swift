@@ -18,7 +18,7 @@ enum Validation {
     /// the server's, and comes back as `auth.passwordTooWeak`.
     static func newPasswordProblem(_ password: String) -> String? {
         if password.isEmpty { return "auth.passwordRequired" }
-        if password.count < 10 { return "auth.ruleLength" }
+        if password.count < ReferenceData.shared.rules.passwordFloor { return "auth.ruleLength" }
         return nil
     }
 

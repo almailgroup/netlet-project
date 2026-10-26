@@ -23,7 +23,7 @@
 import { COOKIE_NAME } from "../../../Shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { checkPassword } from "../../../Shared/auth/passwordStrength.js";
+import { checkPassword, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signSession } from "../core/auth.js";
 import { getSessionCookieOptions } from "../core/cookies.js";
 import { ENV } from "../core/env.js";
@@ -77,7 +77,7 @@ const credentials = z.object({
  */
 const newPassword = z
   .string()
-  .min(10)
+  .min(MIN_PASSWORD_LENGTH)
   .max(200)
   .refine(value => checkPassword(value).acceptable, "auth.passwordTooWeak");
 

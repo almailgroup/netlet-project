@@ -99,10 +99,10 @@ private struct AuthForm: View {
             )
             .focused($focus, equals: .password)
             if model.mode == .register {
-                Label(l.t("auth.ruleLength"), systemImage: model.password.count >= 10 ? "checkmark.circle.fill" : "circle")
+                Label(l.t("auth.ruleLength"), systemImage: model.password.count >= ReferenceData.shared.rules.passwordFloor ? "checkmark.circle.fill" : "circle")
                     .font(.footnote)
-                    .foregroundStyle(model.password.count >= 10 ? Brand.success : Brand.muted)
-                    .accessibilityValue(l.t(model.password.count >= 10 ? "auth.ruleMet" : "auth.ruleNotMet"))
+                    .foregroundStyle(model.password.count >= ReferenceData.shared.rules.passwordFloor ? Brand.success : Brand.muted)
+                    .accessibilityValue(l.t(model.password.count >= ReferenceData.shared.rules.passwordFloor ? "auth.ruleMet" : "auth.ruleNotMet"))
             } else {
                 Button(l.t("auth.forgot")) { model.mode = .reset }
                     .font(.subheadline.weight(.semibold))

@@ -1,5 +1,6 @@
 {
   "sessionCookie": "app_session_id",
+  "minPasswordLength": 8,
   "maxLineQuantity": 99,
   "returnWindowDays": 14,
   "listing": {

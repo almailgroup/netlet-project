@@ -32,6 +32,7 @@ import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { discountAllowed } from "@shared/inventory/discountLicence";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
 import { ibanReadAs, isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
+import { MIN_PASSWORD_LENGTH } from "@shared/auth/passwordStrength";
 import {
   AWARDED_BADGES,
   awardedBadges,
@@ -628,7 +629,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
               {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])} — {t(ROLE_WHAT[role])}</option>)}
             </Select>
           </Field>
-          <button type="submit" disabled={addNew.isPending || fresh.email.trim() === "" || fresh.password.length < 10} className={buttonClass.primary}>
+          <button type="submit" disabled={addNew.isPending || fresh.email.trim() === "" || fresh.password.length < MIN_PASSWORD_LENGTH} className={buttonClass.primary}>
             {addNew.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <UserPlus className="size-4" aria-hidden />}
             {t("admin.createLogin")}
           </button>

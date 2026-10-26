@@ -15,6 +15,7 @@ import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, percen
 import { STOCK_REASONS } from "../../../Shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../../Shared/inventory/storeProfile.js";
+import { MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { z } from "zod";
 import { lastDay, percentSchema, rowId } from "../core/schemas.js";
 import { MAX_SUBSCRIPTION_PERCENT } from "../../../Shared/commerce/subscriptions.js";
@@ -1052,7 +1053,7 @@ export const inventoryRouter = router({
           // The same floor the storefront's own registration uses: an admin
           // opening an account must not be able to set a weaker password
           // than the person could set for themselves.
-          password: z.string().min(10).max(200),
+          password: z.string().min(MIN_PASSWORD_LENGTH).max(200),
           name: z.string().trim().max(255).nullish(),
           role: z.enum(["owner", "manager", "staff"]).optional(),
         }).nullish(),
@@ -1111,7 +1112,7 @@ export const inventoryRouter = router({
         email: z.string().trim().email().max(320),
         // The same floor the storefront's own registration uses, so an admin
         // cannot set a weaker password than the person could set themselves.
-        password: z.string().min(10).max(200),
+        password: z.string().min(MIN_PASSWORD_LENGTH).max(200),
         name: z.string().trim().max(255).nullish(),
         role: z.enum(["owner", "manager", "staff"]),
       }))

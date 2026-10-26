@@ -22,6 +22,7 @@ import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
 import { ibanReadAs, isValidIban, isValidKuwaitPhone, storeSlug } from "@shared/inventory/storeProfile";
+import { MIN_PASSWORD_LENGTH } from "@shared/auth/passwordStrength";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { ArrowLeft, LoaderCircle, Store } from "lucide-react";
@@ -104,7 +105,7 @@ function NewStore() {
   const ibanRead = problems.payoutIban ? null : ibanReadAs(draft.payoutIban);
 
   const wantsOwner = draft.ownerEmail.trim() !== "" || draft.ownerPassword !== "";
-  const ownerReady = !wantsOwner || (draft.ownerEmail.trim() !== "" && draft.ownerPassword.length >= 10);
+  const ownerReady = !wantsOwner || (draft.ownerEmail.trim() !== "" && draft.ownerPassword.length >= MIN_PASSWORD_LENGTH);
   const ready = draft.name.trim() !== "" && slug !== "" && ownerReady && Object.keys(problems).length === 0;
 
   const submit = () => {

@@ -203,7 +203,7 @@ struct PortalNewStoreView: View {
     }
     private var wantsOwner: Bool { !ownerEmail.trimmingCharacters(in: .whitespaces).isEmpty || !ownerPassword.isEmpty }
     private var ready: Bool {
-        let ownerReady = !wantsOwner || (!ownerEmail.trimmingCharacters(in: .whitespaces).isEmpty && ownerPassword.count >= 10)
+        let ownerReady = !wantsOwner || (!ownerEmail.trimmingCharacters(in: .whitespaces).isEmpty && ownerPassword.count >= ReferenceData.shared.rules.passwordFloor)
         return !name.trimmingCharacters(in: .whitespaces).isEmpty && !shownSlug.isEmpty && ownerReady && phoneProblem == nil && ibanProblem == nil
     }
 
@@ -729,7 +729,7 @@ private struct StoreTeamSection: View {
             ChoiceField(label: l.t("admin.memberRole"), current: newRole, placeholder: l.t("admin.memberRole"), options: roleOptions) { newRole = $0 ?? "manager" }
             Button { Task { await createLogin() } } label: { Label(l.t("admin.createLogin"), systemImage: "person.badge.plus") }
                 .buttonStyle(PortalSmallButtonStyle(kind: .primary))
-                .disabled(busy || newEmail.trimmingCharacters(in: .whitespaces).isEmpty || newPassword.count < 10)
+                .disabled(busy || newEmail.trimmingCharacters(in: .whitespaces).isEmpty || newPassword.count < ReferenceData.shared.rules.passwordFloor)
             Divider()
             Text(l.t("admin.addExisting")).font(.inter(14, .bold)).foregroundStyle(Brand.ink)
             LabeledField(label: l.t("admin.emailAddress"), text: $existingEmail, keyboard: .emailAddress, content: .emailAddress, leftToRight: true)

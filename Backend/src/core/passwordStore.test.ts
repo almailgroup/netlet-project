@@ -396,8 +396,8 @@ describe("registering with a code", () => {
   });
 
   it("checks rather than writes a password below the floor, which only sign-in sends", async () => {
-    await store.startRegistration({ email: "old@shop.test", password: "Short-9ch" });
-    await expect(store.finishRegistration({ email: "old@shop.test", password: "wrong-one", code: SENT_CODE }))
+    await store.startRegistration({ email: "old@shop.test", password: "Short-7" });
+    await expect(store.finishRegistration({ email: "old@shop.test", password: "wrong-1", code: SENT_CODE }))
       .rejects.toBeInstanceOf(store.PasswordMismatchError);
   });
 

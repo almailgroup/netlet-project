@@ -26,6 +26,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import path from "node:path";
 import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
+import { MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
 import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
 import { GOVERNORATE_CENTRES, KUWAIT_BOUNDS, KUWAIT_CENTRE } from "../../../Shared/commerce/geo.js";
@@ -181,6 +182,8 @@ export function buildResources(): Record<string, string> {
     }),
     "rules.json": json({
       sessionCookie: COOKIE_NAME,
+      /* The floor on a password being set — the server's own (`newPassword`). */
+      minPasswordLength: MIN_PASSWORD_LENGTH,
       maxLineQuantity: MAX_LINE_QUANTITY,
       returnWindowDays: RETURN_WINDOW_DAYS,
       listing: {
