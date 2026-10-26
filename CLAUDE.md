@@ -5758,7 +5758,15 @@ is the same as never created on any database, and only the first can fail:
 re-run on a database where two sellers shared a SKU rebuilt the old index on
 the way past, failed on the duplicate, and — one transaction — applied nothing,
 new migrations included. A clean database never showed it. `bootstrap.test.ts`
-now runs the file again on exactly that database.
+now runs the file again on exactly that database. **A table a later migration
+drops is the same**: never created, altered, indexed or pointed at by a key,
+only `DROP TABLE IF EXISTS`. The file created the messaging tables (0037),
+gave them keys and indexes and dropped them (0069), and on the owner's
+Supabase project a statement in between failed with `relation
+"conversation_messages" does not exist` — which no plain Postgres reproduced,
+the same file running clean over a 0059 database holding messages — so the
+paste applied nothing and the shop stayed on a schema its code no longer read.
+A test fails on any line naming a dropped table but its drop.
 
 **Its output is idempotent, and that is the point.** As plain migrations it
 only worked on an empty database, so a database that was behind needed

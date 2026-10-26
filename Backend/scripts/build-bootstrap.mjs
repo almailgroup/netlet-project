@@ -159,12 +159,48 @@ ordered.forEach(({ sql }, position) => {
   if (ordered.slice(position + 1).some(later => later.sql.startsWith(`DROP INDEX "${created}"`))) droppedLater.add(position);
 });
 
+/*
+ * And a table a later migration drops is never created, altered or indexed.
+ *
+ * Same reasoning, and found the same way — on a real database rather than a
+ * clean one. 0037 made the shopper–store messaging tables and 0069 dropped
+ * them, so the file created both, added their keys and indexes, and dropped
+ * them again; on the owner's Supabase project one of those statements in
+ * between failed with `relation "conversation_messages" does not exist`, and
+ * the whole run applied nothing. Every statement that names the table before
+ * its drop — creating it, altering it, indexing it, a key from another table
+ * pointing at it — is left out, and only the `DROP TABLE IF EXISTS` stays, to
+ * take it off a database that still has it. A table dropped and then made
+ * again under the same name keeps everything after the drop.
+ */
+const tableDrops = new Map();
+ordered.forEach(({ sql }, at) => {
+  const dropped = sql.match(/^DROP TABLE "([^"]+)"/)?.[1];
+  if (dropped) tableDrops.set(dropped, [...(tableDrops.get(dropped) ?? []), at]);
+});
+const tableNamed = sql =>
+  sql.match(/^(?:CREATE TABLE|ALTER TABLE) "([^"]+)"/)?.[1]
+  ?? sql.match(/^CREATE (?:UNIQUE )?INDEX "[^"]+" ON "([^"]+)"/)?.[1]
+  ?? null;
+const referencesTable = (sql, table) => sql.includes(`REFERENCES "public"."${table}"`);
+const goneLater = new Map();
+ordered.forEach(({ sql }, at) => {
+  if (/^DROP TABLE /.test(sql)) return;
+  for (const [table, drops] of tableDrops) {
+    if (!drops.some(drop => drop > at)) continue;
+    if (tableNamed(sql) === table || referencesTable(sql, table)) goneLater.set(at, table);
+  }
+});
+
 let position = 0;
 const sections = migrations.map(name => {
   const body = statementsOf(name)
     .map(sql => {
-      const skip = droppedLater.has(position++);
-      return skip
+      const at = position++;
+      if (goneLater.has(at)) {
+        return `-- ${goneLater.get(at)}: dropped by a later migration, so never created, altered or indexed here.`;
+      }
+      return droppedLater.has(at)
         ? `-- ${indexName(sql)}: created here and dropped by a later migration, so never created.`
         : idempotent(sql);
     })

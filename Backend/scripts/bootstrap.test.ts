@@ -254,6 +254,25 @@ describe("the bootstrap is atomic", () => {
   });
 
   /*
+   * A table a later migration drops is only ever dropped here. The file used
+   * to create the shopper–store messaging tables, add their keys and indexes,
+   * and drop them again, and on the owner's Supabase project one of the
+   * statements in between failed with `relation "conversation_messages" does
+   * not exist` — so the whole paste applied nothing and the shop stayed on a
+   * schema its code no longer read. Nothing may name such a table except the
+   * `DROP TABLE IF EXISTS` that takes it off a database still holding it.
+   */
+  it("never creates, alters or indexes a table a later migration drops", () => {
+    const dropped = [...file.matchAll(/^DROP TABLE IF EXISTS "([^"]+)"/gm)].map(match => match[1]);
+    expect(dropped).toEqual(expect.arrayContaining(["conversations", "conversation_messages"]));
+    const work = file.split("\n").filter(line => line.trim() && !line.trim().startsWith("--"));
+    for (const table of dropped) {
+      const naming = work.filter(line => line.includes(`"${table}"`) && !line.startsWith(`DROP TABLE IF EXISTS "${table}"`));
+      expect(naming, table).toEqual([]);
+    }
+  });
+
+  /*
    * A new enum value can be *added* inside a transaction (Postgres 12 on; the
    * home banner's `ad_slot` was the first), but not *used* in the one that
    * added it. So nothing after an ADD VALUE may name the value — a default, a
