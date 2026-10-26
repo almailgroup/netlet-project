@@ -108,6 +108,30 @@ reload at a time is a slow way to find that out.
 `node Backend/scripts/build-schema-audit.mjs` regenerates it from the Drizzle snapshot
 after a schema change, and the test suite fails until it has been.
 
+### Is the shop working?
+
+[`docs/health-check.sql`](./health-check.sql) is the next question, once the
+audit says complete: a database can have every column and still show shoppers
+nothing. Paste the whole file from the **Raw view** and run it. It changes
+nothing; the one thing it makes is a temporary function that belongs to the
+editor's session and goes when it ends.
+
+Each row is one check and the **last row is the verdict** — `ok`, or how many
+are failing, how many to look at and how many are waiting on you. The checks
+read the rules the code keeps back off the data: whether any product is on the
+shelf, whether there is an administrator, the departments and NetLet's own
+store, cash on delivery switched on, a product priced at zero or stock below
+zero, an order line whose commission and seller's share do not add up, stores
+with no owner, no rate or no IBAN, what is waiting in the portal (reviews,
+applications, returns, refunds, help, banners, proposals, claims), whether the
+daily jobs are sending email and placing standing orders, and connections or
+sessions holding locks. Every row that is not `ok` says what to do.
+
+A row reading **not run** carries Postgres's own sentence — usually a table or
+column that is missing, which means the bootstrap has not run; every other row
+still answers. `node Backend/scripts/build-health-check.mjs` regenerates it, and
+the suite runs it against a fresh, a healthy and a broken database.
+
 ### Route B — from a clone
 
 ```sh

@@ -5799,6 +5799,24 @@ bootstrap repairs it — and fails while the committed file is stale. It also
 says when Supabase's `anon` role can read tables that have no row-level
 security, the one thing wrong with a complete schema the schema cannot show.
 
+**`docs/health-check.sql` is the question after that: does the shop work?**
+A database can pass the audit and still show shoppers nothing — no product
+published, no store approved, no administrator to do either, cash on delivery
+switched off. Forty-odd checks read the code's own rules back off the data
+(what a shopper sees is `publishedCatalog`'s rule; a line's commission plus the
+seller's share is its total; a selling store has an owner, a rate and an IBAN),
+then what waits in the portal, whether the daily cron is sending email and
+placing standing orders, and sessions holding locks. **One check that cannot
+run never stops the rest**: in plain SQL a missing column fails the whole
+statement, which is exactly when this gets pasted, so each check's query goes
+through a function made in `pg_temp` that catches its error and the row reads
+"not run" with Postgres's sentence. (Its output is not called `found`: inside
+PL/pgSQL that is the built-in FOUND flag, and every result went to it.)
+`Backend/scripts/build-health-check.mjs` writes it with the snapshot's tables
+and the departments, and `bootstrap.test.ts` fails on a stale copy and on any
+check that does not run against a current schema — the catch would otherwise
+turn a misspelt column into a quiet "not run" on every database.
+
 Configuration lives in `.env.example`, annotated with what each value switches
 off — nothing throws at boot, so a missing value shows up as a dead feature.
 `pnpm setup:env` writes the `.env` from it and generates `JWT_SECRET`; it used

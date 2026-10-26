@@ -212,6 +212,108 @@ describe("the schema audit, actually executed", () => {
 });
 
 /*
+ * The health check is what somebody pastes to ask "is the shop working", after
+ * the audit has said the schema is there. Each check is a query run through a
+ * temporary function that catches its error, so a check naming a column that
+ * is not there would read "not run" on every database rather than failing the
+ * suite — which is why a current schema must run every one of them.
+ */
+describe("the health check, actually executed", () => {
+  const bootstrap = readFileSync(path.join(root, "docs/supabase-bootstrap.sql"), "utf-8");
+  const healthCheck = readFileSync(path.join(root, "docs/health-check.sql"), "utf-8");
+  type Row = { "#": number; area: string; check: string; result: string; status: string; "what to do": string };
+  const report = async (db: PGlite) => {
+    const results = await db.exec(healthCheck);
+    return results.at(-1)!.rows as unknown as Row[];
+  };
+  const flagged = (rows: Row[]) =>
+    rows.filter(row => !["ok", "info"].includes(row.status) && row.area !== "Result").map(row => `${row.status} ${row.check}: ${row.result}`);
+  const verdict = (rows: Row[]) => rows.at(-1)!;
+  /* A shop that can sell: an administrator, a store with an owner, a rate and an IBAN, and one product on its shelf. */
+  const healthyShop = `
+    INSERT INTO users (email, role, password_hash) VALUES ('owner@example.com', 'admin', 'x'), ('seller@example.com', 'user', 'x');
+    INSERT INTO vendors (slug, name, status, commission_percent, payout_iban) VALUES ('acme', 'Acme', 'approved', '10.00', 'KW81CBKU0000000000001234560101');
+    INSERT INTO vendor_members (vendor_id, user_id, role) SELECT v.id, u.id, 'owner' FROM vendors v, users u WHERE v.slug = 'acme' AND u.email = 'seller@example.com';
+    INSERT INTO products (vendor_id, handle, title, status) SELECT id, 'lamp', 'Lamp', 'published' FROM vendors WHERE slug = 'acme';
+    INSERT INTO product_variants (product_id, title, price, stock) SELECT id, 'Default', '12.500', 4 FROM products WHERE handle = 'lamp';
+    INSERT INTO product_images (product_id, url) SELECT id, 'https://example.com/lamp.jpg' FROM products WHERE handle = 'lamp';
+    INSERT INTO orders (reference, email, items_total, delivery_total, grand_total, commission_total)
+      VALUES ('NL-20261026-ABCDE', 'shopper@example.com', '12.500', '0.000', '12.500', '1.250');
+    INSERT INTO order_items (order_id, product_title, unit_price, quantity, line_total, commission_percent, commission_fixed, commission_amount, vendor_net)
+      SELECT id, 'Lamp', '12.500', 1, '12.500', '10.00', '0.000', '1.250', '11.250' FROM orders;
+  `;
+
+  it("has a health check the generator would write today", () => {
+    expect(() => execFileSync(process.execPath, [path.join(root, "Backend/scripts/build-health-check.mjs"), "--check"], { stdio: "pipe" })).not.toThrow();
+  });
+
+  it("runs every check on a database the bootstrap stood up, and says it cannot sell yet", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    const rows = await report(db);
+    expect(rows.filter(row => row.status === "not run").map(row => `${row.check}: ${row["what to do"]}`)).toEqual([]);
+    expect(flagged(rows)).toEqual(["fail Products a shopper can see: 0", "fail Administrators: 0"]);
+    expect(verdict(rows)).toMatchObject({ check: "Overall", result: "2 failing", status: "fail" });
+    await db.close();
+  }, 120_000);
+
+  it("calls a shop that can sell healthy", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    await db.exec(healthyShop);
+    const rows = await report(db);
+    expect(flagged(rows)).toEqual([]);
+    expect(verdict(rows)).toMatchObject({ result: "all clear", status: "ok" });
+    expect(rows.find(row => row.check === "Products a shopper can see")!.result).toBe("1");
+    await db.close();
+  }, 120_000);
+
+  /*
+   * One of each kind of finding, and a table gone: the missing table stops
+   * its own check and no other.
+   */
+  it("names what is wrong, and a missing table stops only its own check", async () => {
+    const db = new PGlite();
+    await db.exec(bootstrap);
+    await db.exec(healthyShop);
+    await db.exec(`
+      UPDATE product_variants SET price = '0.000';
+      INSERT INTO products (vendor_id, handle, title, status) SELECT id, 'chair', 'Chair', 'published' FROM vendors WHERE slug = 'acme';
+      INSERT INTO product_variants (product_id, title, price, compare_at_price, stock) SELECT id, 'Default', '20.000', '30.000', -1 FROM products WHERE handle = 'chair';
+      UPDATE order_items SET vendor_net = '11.000';
+      INSERT INTO feature_switches (key, enabled) VALUES ('cashOnDelivery', false);
+      INSERT INTO vendors (slug, name, status) VALUES ('ghost', 'Ghost', 'pending');
+      INSERT INTO products (vendor_id, handle, title, status) SELECT id, 'ghost-thing', 'Ghost thing', 'published' FROM vendors WHERE slug = 'ghost';
+      DELETE FROM vendor_members;
+      UPDATE vendors SET commission_percent = '0.00', payout_iban = NULL WHERE slug = 'acme';
+      UPDATE users SET supabase_uid = 'abc' WHERE email = 'seller@example.com';
+      INSERT INTO products (vendor_id, handle, title, status) SELECT id, 'waiting', 'Waiting', 'pending_review' FROM vendors WHERE slug = 'acme';
+      DROP TABLE damage_claims;
+    `);
+    const rows = await report(db);
+    expect(flagged(rows)).toEqual([
+      "fail Tables the code expects: 67 of 68",
+      "warn Published products hidden by their store: 1",
+      "fail Shown products priced at zero: 1",
+      "warn Shown products with no photo: 1",
+      "fail Stock below zero: 1",
+      "to do Savings hidden for want of a discount permit: 1",
+      "fail Cash on delivery: off",
+      "warn Accounts with two password stores: 1",
+      "warn Selling stores without an owner: 1",
+      "fail Order lines that do not add up: 1",
+      "warn Selling stores charging no commission: 1",
+      "warn Stores selling without a payout IBAN: 1",
+      "to do Products waiting for review: 1",
+      "not run Damage claims open: ",
+    ]);
+    expect(rows.find(row => row.check === "Damage claims open")!["what to do"]).toMatch(/damage_claims.*does not exist/);
+    expect(verdict(rows)).toMatchObject({ result: "5 failing, 1 not run, 6 to look at, 2 waiting on you", status: "fail" });
+    await db.close();
+  }, 120_000);
+});
+
+/*
  * All or nothing.
  *
  * A paste cut short has now broken a live database three times, and it always
