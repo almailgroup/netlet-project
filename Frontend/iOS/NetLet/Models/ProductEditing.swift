@@ -48,6 +48,8 @@ struct EditableProduct: Decodable, Sendable {
     let tags: [String]
     let commissionPercent: String?
     let commissionFixed: String?
+    /// The rate the store offers this product to affiliates at, nil when it does not (3.7.1).
+    let affiliatePercent: String?
     let acceptsOffers: Bool?
     let deliverySpeed: String?
     let sizeClass: String?

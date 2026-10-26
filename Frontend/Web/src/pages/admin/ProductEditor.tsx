@@ -19,7 +19,9 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { ADDON_KINDS, type AddonKind } from "@shared/commerce/addons";
-import { useTranslation } from "@/hooks/useTranslation";
+import { MAX_AFFILIATE_PERCENT, storeAffiliateRate } from "@shared/commerce/affiliate";
+import { MAX_PROPOSAL_REASON, proposalFigureProblem } from "@shared/inventory/commissionProposals";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { memberPriceProblem } from "@shared/commerce/membership";
 import { isValidMeasure, SELL_UNITS, unitPrice, type SellUnit } from "@shared/commerce/units";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
@@ -227,7 +229,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     { id: "shipping", label: "admin.sectionShipping" },
     { id: "sizes", label: "admin.sectionSizes" },
     { id: "extras", label: "admin.addons" },
+    ...(mayEdit ? [{ id: "affiliates", label: "admin.productAffiliates" as MessageKey }] : []),
     ...(mayPrice ? [{ id: "commission", label: "admin.productCommission" as MessageKey }] : []),
+    ...(!mayPrice && mayEdit ? [{ id: "propose", label: "commission.proposeTitle" as MessageKey }] : []),
     ...(mayMove ? [{ id: "store", label: "admin.sectionStore" as MessageKey }] : []),
     ...(mayDelete ? [{ id: "delete", label: "admin.deleteProduct" as MessageKey }] : []),
   ];
@@ -721,6 +725,15 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             )}
           </Card>
 
+          {/* Offered to affiliates at a rate the store funds (3.7.1). */}
+          {mayEdit ? <AffiliatePanel productId={row.id} percent={row.affiliatePercent ?? null} /> : null}
+
+          {/* A store asking for a rate of its own (3.3.2): for this product,
+              or — an owner — for the whole store. NetLet decides. */}
+          {!mayPrice && mayEdit ? (
+            <ProposeCommission vendorId={row.vendorId} productId={row.id} mayStoreWide={can(actor, "vendor.editProfile", row.vendorId)} />
+          ) : null}
+
           {mayPrice ? (
             <CommissionPanel
               percent={row.commissionPercent}
@@ -867,6 +880,153 @@ function CommissionPanel({
           />
         </Labelled>
       </div>
+    </Card>
+  );
+}
+
+/**
+ * A store's commission proposals (3.3.2), from the product it is about. The
+ * open one is shown with Withdraw; otherwise the last answer, and a form —
+ * this product or the whole store, a percentage or a fixed amount per sale,
+ * and why. Nothing here changes a rate: NetLet's desk decides.
+ */
+function ProposeCommission({ vendorId, productId, mayStoreWide }: { vendorId: number; productId: number; mayStoreWide: boolean }) {
+  const { t, tError } = useTranslation();
+  const money = useMoney();
+  const utils = trpc.useUtils();
+  const proposals = trpc.commission.list.useQuery({ vendorId });
+  const [scope, setScope] = useState<"product" | "store">("product");
+  const [kind, setKind] = useState<"percent" | "fixed">("percent");
+  const [value, setValue] = useState("");
+  const [reason, setReason] = useState("");
+  const refresh = () => void utils.commission.list.invalidate();
+  const propose = trpc.commission.propose.useMutation({
+    onSuccess: () => { toast.success(t("commission.proposed")); setValue(""); setReason(""); refresh(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const withdraw = trpc.commission.withdraw.useMutation({
+    onSuccess: () => { toast.success(t("commission.withdrawn")); refresh(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const figure = { percent: kind === "percent" ? value : null, fixed: kind === "fixed" ? value : null };
+  const problem = value.trim() ? proposalFigureProblem(figure) : null;
+  const mine = (proposals.data?.rows ?? []).filter(row => (scope === "product" ? row.productId === productId : row.productId === null));
+  const open = mine.find(row => row.status === "pending");
+  const last = mine.find(row => row.status === "accepted" || row.status === "declined");
+  const describe = (row: { percent: string | null; fixed: string | null }) =>
+    row.percent !== null ? t("commission.figurePercent", { rate: String(Number(row.percent)) }) : t("commission.figureFixed", { amount: money({ amount: row.fixed ?? "0", currencyCode: "KWD" }) });
+
+  return (
+    <Card id="propose" title={t("commission.proposeTitle")} description={t("commission.proposeNote")}>
+      {mayStoreWide ? (
+        <fieldset className="mb-4">
+          <legend className="text-[13px] font-semibold text-[#0a285a]">{t("commission.scope")}</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(["product", "store"] as const).map(option => (
+              <label key={option} className="flex items-center gap-2 rounded-lg border border-[#cfd9e6] px-3 py-2 text-[13px] text-[#0a285a]">
+                <input type="radio" name="proposal-scope" checked={scope === option} onChange={() => setScope(option)} className="size-4 accent-[#0a285a]" />
+                {t(option === "product" ? "commission.scopeProduct" : "commission.scopeStore")}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+      {open ? (
+        <div className="rounded-xl border border-[#ecd49a] bg-[#fff8e6] p-3 text-[13px] text-[#5c3f0c]">
+          <p className="font-semibold">{t("commission.waiting", { figure: describe(open) })}</p>
+          {open.reason ? <p dir="auto" className="mt-1">“{open.reason}”</p> : null}
+          <button type="button" onClick={() => withdraw.mutate({ proposalId: open.id })} disabled={withdraw.isPending} className={`${buttonClass.secondary} mt-3`}>
+            {t("commission.withdraw")}
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={event => {
+            event.preventDefault();
+            if (!problem && value.trim()) propose.mutate({ vendorId, productId: scope === "product" ? productId : null, ...figure, reason: reason.trim() || null });
+          }}
+        >
+          {last ? (
+            <p className={`mb-3 text-[13px] ${last.status === "accepted" ? "text-[#2f5d33]" : "text-[#8c2f22]"}`}>
+              {t(last.status === "accepted" ? "commission.lastAccepted" : "commission.lastDeclined", { figure: describe(last) })}
+              {last.decisionNote ? <span dir="auto"> “{last.decisionNote}”</span> : null}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {(["percent", "fixed"] as const).map(option => (
+              <label key={option} className="flex items-center gap-2 rounded-lg border border-[#cfd9e6] px-3 py-2 text-[13px] text-[#0a285a]">
+                <input type="radio" name="proposal-kind" checked={kind === option} onChange={() => setKind(option)} className="size-4 accent-[#0a285a]" />
+                {t(option === "percent" ? "sell.commissionKindPercent" : "sell.commissionKindFixed")}
+              </label>
+            ))}
+          </div>
+          <div className="mt-3 grid gap-4 sm:grid-cols-[180px_1fr]">
+            <Labelled label={t(kind === "percent" ? "sell.commissionRate" : "sell.commissionFixed")} hint={problem ? t(problem) : undefined}>
+              <input dir="ltr" inputMode="decimal" value={value} onChange={event => setValue(event.target.value)} aria-invalid={problem ? true : undefined} className={inputClass} />
+            </Labelled>
+            <Labelled label={t("sell.commissionWhy")}>
+              <input dir="auto" maxLength={MAX_PROPOSAL_REASON} value={reason} onChange={event => setReason(event.target.value)} className={inputClass} />
+            </Labelled>
+          </div>
+          <button type="submit" disabled={propose.isPending || !value.trim() || problem !== null} className={`${buttonClass.primary} mt-4`}>
+            {propose.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+            {t("commission.send")}
+          </button>
+        </form>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * Offering this product to affiliates (3.7.1). The store sets the rate and
+ * funds it: on a sale an affiliate's link brings, that share of the line comes
+ * off what the store nets and goes to the affiliate, and NetLet adds nothing.
+ * Off is the default — a store's margin is its own to spend.
+ */
+function AffiliatePanel({ productId, percent }: { productId: number; percent: string | null }) {
+  const { t, tError } = useTranslation();
+  const utils = trpc.useUtils();
+  const [offered, setOffered] = useState(percent !== null);
+  const [rate, setRate] = useState(percent ?? "");
+  useEffect(() => { setOffered(percent !== null); setRate(percent ?? ""); }, [percent]);
+  const normalised = storeAffiliateRate(rate);
+  const save = trpc.affiliates.setProduct.useMutation({
+    onSuccess: reply => {
+      toast.success(t(reply.percent ? "admin.affiliateOffered" : "admin.affiliateWithdrawn"));
+      void utils.inventory.products.get.invalidate({ id: productId });
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const next = offered ? normalised : null;
+  const changed = offered ? normalised !== null && normalised !== percent : percent !== null;
+
+  return (
+    <Card
+      id="affiliates"
+      title={t("admin.productAffiliates")}
+      description={t("admin.productAffiliatesNote")}
+      footer={
+        <button type="button" onClick={() => save.mutate({ productId, percent: next })} disabled={save.isPending || !changed} className={buttonClass.primary}>
+          {save.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
+          {t("admin.save")}
+        </button>
+      }
+    >
+      <label className="flex items-start gap-2.5 text-[14px] font-semibold text-[#0a285a]">
+        <input type="checkbox" checked={offered} onChange={event => setOffered(event.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[#0a285a]" />
+        {t("admin.affiliateOffer")}
+      </label>
+      {offered ? (
+        <div className="mt-4 max-w-xs">
+          <Labelled
+            label={t("admin.affiliateStoreRate")}
+            hint={rate.trim() && !normalised ? t("affiliate.badRate") : t("admin.affiliateStoreRateHint", { ceiling: String(MAX_AFFILIATE_PERCENT) })}
+          >
+            <input dir="ltr" inputMode="decimal" value={rate} onChange={event => setRate(event.target.value)} aria-invalid={rate.trim() && !normalised ? true : undefined} className={inputClass} />
+          </Labelled>
+        </div>
+      ) : null}
     </Card>
   );
 }

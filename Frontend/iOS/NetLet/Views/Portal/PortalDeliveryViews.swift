@@ -58,6 +58,10 @@ struct PortalDispatchView: View {
                     if parcel.member == true && parcel.state != "delivered" {
                         StatusPill(label: l.t("membership.priority"), tone: .shipped, systemImage: "checkmark.seal")
                     }
+                    // A fast parcel (3.2.5): the shopper paid for its own trip, and it goes first.
+                    if parcel.fast == true && parcel.state != "delivered" {
+                        StatusPill(label: l.t("dispatch.fastParcel"), tone: .preparing, systemImage: "bolt.fill")
+                    }
                     StatusPill(label: parcel.items == 1 ? l.t("dispatch.itemsOne") : l.t("dispatch.items", ["count": "\(parcel.items)"]), tone: .waiting)
                 }
             }
@@ -79,17 +83,21 @@ struct PortalDispatchView: View {
                     StatusPill(label: parcel.paymentCollectedAt != nil ? l.t("dispatch.cashPaid") : l.t("dispatch.collectCash", ["amount": parcel.orderTotal.formatted(l.current)]),
                                tone: parcel.paymentCollectedAt != nil ? .done : .preparing)
                 }
-                if !mayAssign {
-                    Text(parcel.courierName.map { l.t("dispatch.assignedTo", ["name": $0]) } ?? l.t("dispatch.unassigned")).font(.inter(12)).foregroundStyle(Brand.muted)
+                if !mayAssign || parcel.selfDelivered == true {
+                    Text(parcel.selfDelivered == true ? l.t("dispatch.storeDelivers")
+                         : parcel.courierName.map { l.t("dispatch.assignedTo", ["name": $0]) } ?? l.t("dispatch.unassigned"))
+                        .font(.inter(12)).foregroundStyle(Brand.muted)
                 }
             }
             ForEach(parcel.lines, id: \.lineId) { line in
                 Text("\(latin("\(line.quantity) ×")) \(line.productTitle)").font(.inter(13)).foregroundStyle(Brand.body)
             }
-            if mayAssign || !parcel.courierMoves.isEmpty {
+            /* Not NetLet's to give out when the store carries it itself (3.3.13). */
+            let assignable = mayAssign && parcel.selfDelivered != true
+            if assignable || !parcel.courierMoves.isEmpty {
                 Divider()
                 FlowLayout(spacing: 8) {
-                    if mayAssign {
+                    if assignable {
                         Menu {
                             Button(l.t("dispatch.unassigned")) { Task { await assign(parcel, nil) } }
                             ForEach(companies.filter { $0.status == "active" || $0.id == parcel.courierId }) { company in
@@ -113,6 +121,14 @@ struct PortalDispatchView: View {
         }
     }
 
+    private func part(_ label: String, _ value: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(l.t(label)).font(.inter(12)).foregroundStyle(Brand.muted)
+            Text(latin(value.map { String(format: "%.1f", $0) } ?? "—")).font(.inter(13, .bold)).foregroundStyle(Brand.navy)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     @ViewBuilder
     private var scoresSection: some View {
         PortalSectionHeading(title: l.t("delivery.scoresHeading"), note: l.t("delivery.scoresNote"))
@@ -127,6 +143,14 @@ struct PortalDispatchView: View {
                             StarsView(rating: Int(score.average.rounded()))
                             Text(l.t(score.count == 1 ? "delivery.scoreLineOne" : "delivery.scoreLine", ["average": String(format: "%.1f", score.average), "count": "\(score.count)"]))
                                 .font(.inter(13)).foregroundStyle(Brand.body)
+                        }
+                        // The three parts (3.4.4), from the ratings that gave them.
+                        if let parts = score.parts, parts.any {
+                            HStack(alignment: .top, spacing: 8) {
+                                part("delivery.partSpeed", parts.speed)
+                                part("delivery.partCondition", parts.condition)
+                                part("delivery.partConduct", parts.conduct)
+                            }
                         }
                     }
                 }

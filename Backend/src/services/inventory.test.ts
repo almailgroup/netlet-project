@@ -872,33 +872,20 @@ describe("the audit trail", () => {
   });
 });
 
-describe("three violations suspend a vendor", () => {
-  it("suspends automatically on the third rejection, and says it was automatic", async () => {
+/* 3.3.18 suspends on three warnings NetLet issues (`warnings.test.ts`); a
+   rejected listing is not one, whatever the reason it was turned down. */
+describe("a rejection is not a strike", () => {
+  it("leaves a store with three rejected listings open", async () => {
     const [v] = await db.insert(vendors).values({ slug: "strikes", name: "Strikes", status: "approved" }).returning();
-
     for (let i = 1; i <= 3; i += 1) {
       const [p] = await db.insert(products).values({
         vendorId: v.id, handle: `strike-${i}`, title: `Strike ${i}`, status: "pending_review",
       }).returning();
       await inv.reviewProduct(adminActor(), p.id, false, "not acceptable");
     }
-
-    const [after] = await db.select().from(vendors).where(eq(vendors.id, v.id));
-    expect(after.status).toBe("suspended");
-
-    const rows = await audit.listAudit({ vendorId: v.id, action: "vendor.setStatus" });
-    expect(rows[0].after).toMatchObject({ automatic: true, reason: "three-violations" });
-  });
-
-  it("leaves a vendor alone while they are under the limit", async () => {
-    const [v] = await db.insert(vendors).values({ slug: "onestrike", name: "One Strike", status: "approved" }).returning();
-    const [p] = await db.insert(products).values({
-      vendorId: v.id, handle: "one-strike", title: "One", status: "pending_review",
-    }).returning();
-    await inv.reviewProduct(adminActor(), p.id, false);
-
     const [after] = await db.select().from(vendors).where(eq(vendors.id, v.id));
     expect(after.status).toBe("approved");
+    expect(await audit.listAudit({ vendorId: v.id, action: "vendor.setStatus" })).toEqual([]);
   });
 });
 
@@ -1300,6 +1287,11 @@ describe("editing a store's details", () => {
     acceptsCod: { input: false, stored: false },
     codCeiling: { input: "100.000", stored: "100.000" },
     subscriptionPercent: { input: "7.5", stored: "7.50" },
+    fastDeliveryFee: { input: "3.500", stored: "3.500" },
+    fastDeliverySpeed: { input: "same_day", stored: "same_day" },
+    deliveryMode: { input: "own", stored: "own" },
+    /* A company named here must exist; the case with one is its own test below. */
+    deliveryCourierId: { input: null, stored: null },
   };
 
   async function everyDetail() {
@@ -1333,6 +1325,18 @@ describe("editing a store's details", () => {
     for (const key of keys) {
       expect([key, columnValue((stored as Record<string, unknown>)[key])]).toEqual([key, SAMPLES[key].stored]);
     }
+  });
+
+  /* A store's own carrier (3.3.13) is a company NetLet works with, or refused by name. */
+  it("names its own delivery company only when that company exists and is active", async () => {
+    const { couriers: couriersTable } = await import("../../database/schema.js");
+    const { vendor } = await inv.createVendorWithOwner(adminActor(), { name: "Own Carrier", slug: "own-carrier" });
+    const [active] = await db.insert(couriersTable).values({ name: "Fast Wheels" }).returning();
+    const [stopped] = await db.insert(couriersTable).values({ name: "Gone Co", status: "suspended" }).returning();
+    await expect(inv.updateVendorProfile(adminActor(), vendor.id, { deliveryCourierId: 999999 })).rejects.toThrow("dispatch.unknownCourier");
+    await expect(inv.updateVendorProfile(adminActor(), vendor.id, { deliveryCourierId: stopped.id })).rejects.toThrow("dispatch.courierSuspended");
+    const updated = await inv.updateVendorProfile(adminActor(), vendor.id, { deliveryMode: "own", deliveryCourierId: active.id }) as Record<string, unknown>;
+    expect(updated).toMatchObject({ deliveryMode: "own", deliveryCourierId: active.id });
   });
 
   /* A blank clears a money field rather than reaching a numeric column as "",

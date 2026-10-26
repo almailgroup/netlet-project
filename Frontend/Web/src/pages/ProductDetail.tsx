@@ -65,6 +65,9 @@ import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { ProductCard, shareProduct } from "@/components/product/ProductCard";
+import { useAuth } from "@/hooks/useAuth";
+import { rememberProductLink } from "@/lib/referral";
+import { referralCodeFor } from "@shared/commerce/referral";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -1064,6 +1067,8 @@ export default function ProductDetail() {
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart } = useCart();
   const { savedIds, toggleSaved, deliveryZone } = useCustomer();
+  /* Signed in, sharing this page shares a product link with the sharer's code (3.1.14). */
+  const { user: me } = useAuth();
   const { direction, t, tError, locale, isArabic: isArabicPage } = useTranslation();
   /* "Find similar": the server reads this product's photo and title and
      names the kind of thing, and the page searches its department for it —
@@ -1109,6 +1114,12 @@ export default function ProductDetail() {
     product ? productMeta(product, SITE_URL) : privatePageMeta("Loading"),
     product ? [productJsonLd(product, SITE_URL), breadcrumbJsonLd(product, SITE_URL)] : undefined,
   );
+
+  /* Arrived through somebody's product link: remember it against this product
+     until checkout, which sends it so the line can earn them (3.1.14). */
+  useEffect(() => {
+    if (product?.id) rememberProductLink(product.id, window.location.search);
+  }, [product?.id]);
 
   useEffect(() => {
     setSelectedVariantId(product?.variants[0]?.id ?? "");
@@ -1237,7 +1248,7 @@ export default function ProductDetail() {
 
         <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <GalleryColumn>
-            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
+            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t, me ? referralCodeFor(me.id) : null)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
             {/* Under the photo, where somebody looking at the thing wonders
                 about it — on a wide screen. A phone draws it after the buy
                 buttons instead (below), so it never pushes the price and Add

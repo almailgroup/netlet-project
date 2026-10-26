@@ -94,6 +94,16 @@ extension API {
 
     static let deskReturns = Procedure<ReturnFilter, [ReturnCase]>(query: "returns.list")
     static let decideReturn = Procedure<ReturnDecision, Acknowledged>(mutation: "returns.decide")
+
+    struct ReadingAnswer: Decodable, Sendable {
+        let summary: String
+        let suggestion: String
+    }
+
+    /// Whether "Read the note with NetLet AI" can be offered (3.5.2).
+    static let returnReadAvailable = Procedure<NoInput, Bool>(query: "returns.readAvailable")
+    /// A model's reading of an "other" note, asked again from the desk; nil when none came.
+    static let readReturn = Procedure<ReturnId, ReadingAnswer?>(mutation: "returns.read")
     static let collectReturn = Procedure<ReturnId, Acknowledged>(mutation: "returns.collect")
     static let receiveReturn = Procedure<ReturnReceipt, ReturnReceived>(mutation: "returns.receive")
     static let refundPaid = Procedure<ReturnId, Acknowledged>(mutation: "returns.refundPaid")

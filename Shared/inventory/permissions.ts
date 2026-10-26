@@ -23,11 +23,18 @@ export type VendorRole = (typeof VENDOR_ROLES)[number];
 /** Rank order. Higher clears everything a lower rank clears. */
 export const RANK: Record<VendorRole, number> = { staff: 0, manager: 1, owner: 2 };
 
+/**
+ * One capability an administrator has granted to one account (3.3.9,
+ * `staff_grants`): "allowed to set commission", and nothing else that comes
+ * with being an administrator. Only what `GRANTABLE` names can be granted.
+ */
+type Grants = { grants?: readonly Capability[] };
+
 export type Actor =
   /** A platform administrator. Not scoped to any vendor. */
   | { kind: "admin"; userId: number }
   /** Somebody acting for one vendor, at one rank. */
-  | { kind: "vendor"; userId: number; vendorId: number; role: VendorRole }
+  | ({ kind: "vendor"; userId: number; vendorId: number; role: VendorRole } & Grants)
   /**
    * Somebody acting for a delivery company (2.2, 3.4.2).
    *
@@ -38,9 +45,9 @@ export type Actor =
    * *their* company and nothing else, which the queries enforce the way vendor
    * scope is enforced.
    */
-  | { kind: "courier"; userId: number; courierId: number }
-  /** Signed in, but neither — an ordinary shopper. */
-  | { kind: "customer"; userId: number };
+  | ({ kind: "courier"; userId: number; courierId: number } & Grants)
+  /** Signed in, but neither — an ordinary shopper, or an employee holding a grant. */
+  | ({ kind: "customer"; userId: number } & Grants);
 
 /**
  * Everything the inventory system can be asked to do.
@@ -204,8 +211,18 @@ export const ADMIN_ONLY: Capability[] = [
 /** All a delivery company's people may do: see their board and move its parcels. */
 export const COURIER_CAPABILITIES: Capability[] = ["delivery.view", "delivery.move"];
 
+/**
+ * What an administrator may grant to one account on its own (3.3.9). Setting
+ * commission is the one the document names — "only the admin, or an employee
+ * specifically authorised to do so" — and the audit row then names the
+ * administrator who granted it. Everything else stays with administrators.
+ */
+export const GRANTABLE: Capability[] = ["vendor.setCommission"];
+
 export function can(actor: Actor, capability: Capability, vendorId?: number): boolean {
   if (actor.kind === "admin") return true;
+  /* A granted capability is platform-wide, like the administrator's it is cut from. */
+  if (actor.grants?.includes(capability) && GRANTABLE.includes(capability)) return true;
   if (actor.kind === "customer") return false;
   /*
    * A delivery company reaches dispatch and nothing else — not a product, not

@@ -44,6 +44,7 @@ const contextFor = (user: User | null): TrpcContext => ({
   res: { cookie: () => {}, clearCookie: () => {} } as unknown as TrpcContext["res"],
 });
 const as = (who: Who) => appRouter.createCaller(contextFor(people[who]));
+const model = { on: false, answer: null as string | null, asked: [] as { task: string; prompt: string }[] };
 
 beforeAll(async () => {
   const client = new PGlite();
@@ -57,6 +58,12 @@ beforeAll(async () => {
   vi.doMock("./db", async importOriginal => ({
     ...(await importOriginal<typeof import("./db.js")>()),
     getDb: async () => db,
+  }));
+  /* A stand-in model for the note's reading (3.5.2): off unless a test turns it on. */
+  vi.doMock("./gemini", async importOriginal => ({
+    ...(await importOriginal<typeof import("./gemini.js")>()),
+    modelAvailable: async () => model.on,
+    askModel: async (task: string, call: { prompt: string }) => { model.asked.push({ task, prompt: call.prompt }); return model.answer; },
   }));
   appRouter = (await import("../routes/index.js")).appRouter;
   ordersModule = await import("./orders.js");
@@ -205,15 +212,82 @@ describe("the desk", () => {
     await expect(as("rival").returns.collect({ requestId: id })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
-  it("decides what a rule could not, and a decline must say why", async () => {
+  /* 3.5.2: "communicating with the vendor to resolve it, then replying to the customer — requiring only a final confirmation from the admin". */
+  it("takes the seller's answer on what a rule could not decide, and NetLet confirms it", async () => {
     const order = await delivered();
     const { id } = await ask("shopper", { reference: order.reference, orderItemId: order.sofa.id, kind: "refund", reason: "other", note: "Too big" });
     await expect(as("manager").returns.decide({ requestId: id, approve: false })).rejects.toMatchObject({ message: "returns.needsReason" });
     await as("manager").returns.decide({ requestId: id, approve: false, reason: "Used and marked" });
-    const [row] = await db.select().from(returnRequests).where(eq(returnRequests.id, id));
-    expect(row).toMatchObject({ status: "declined", decidedBy: "seller", declineReason: "Used and marked" });
-    const [decided] = await db.select().from(auditLog).where(eq(auditLog.subjectId, id));
-    expect(decided).toMatchObject({ action: "return.decide", before: { status: "requested" }, after: { status: "declined", reason: "Used and marked" } });
+    let [row] = await db.select().from(returnRequests).where(eq(returnRequests.id, id));
+    expect(row).toMatchObject({ status: "review", decidedBy: "seller", declineReason: "Used and marked", vendorResponse: "Used and marked", confirmedAt: null });
+    /* The seller has answered; it is NetLet's now, and the shopper has not been told. */
+    expect(await as("manager").returns.waiting()).toBe(0);
+    expect(await as("admin").returns.waiting()).toBe(1);
+    await expect(as("manager").returns.decide({ requestId: id, approve: true })).rejects.toMatchObject({ message: "returns.moved" });
+    const detail = await as("shopper").orders.get({ reference: order.reference });
+    expect(detail.returns[0]).toMatchObject({ status: "review" });
+
+    /* Confirming keeps the seller's words for the shopper. */
+    await as("admin").returns.decide({ requestId: id, approve: false });
+    [row] = await db.select().from(returnRequests).where(eq(returnRequests.id, id));
+    expect(row).toMatchObject({ status: "declined", decidedBy: "seller", declineReason: "Used and marked", confirmedBy: people.admin.id });
+    const trail = await db.select().from(auditLog).where(eq(auditLog.subjectId, id)).orderBy(auditLog.id);
+    expect(trail.map(entry => entry.action)).toEqual(["return.decide", "return.confirm"]);
+    expect(trail[0]).toMatchObject({ before: { status: "requested" }, after: { status: "review", proposes: "decline", reason: "Used and marked" } });
+  });
+
+  it("lets NetLet overrule the seller, and lets a seller dispute what a rule approved", async () => {
+    const order = await delivered();
+    const other = await ask("shopper", { reference: order.reference, orderItemId: order.sofa.id, kind: "refund", reason: "other", note: "Smells odd" });
+    await as("manager").returns.decide({ requestId: other.id, approve: false, reason: "Nothing wrong" });
+    await as("admin").returns.decide({ requestId: other.id, approve: true });
+    const [overruled] = await db.select().from(returnRequests).where(eq(returnRequests.id, other.id));
+    expect(overruled).toMatchObject({ status: "approved", decidedBy: "admin", declineReason: null });
+
+    const damaged = await ask("shopper", { reference: order.reference, orderItemId: order.mug.id, kind: "refund", reason: "damaged" });
+    /* The mug is the rival's: the rival disputes it. */
+    await expect(as("rival").returns.decide({ requestId: damaged.id, approve: false })).rejects.toMatchObject({ message: "returns.needsReason" });
+    await as("rival").returns.decide({ requestId: damaged.id, approve: false, reason: "Photo shows it whole" });
+    const [disputed] = await db.select().from(returnRequests).where(eq(returnRequests.id, damaged.id));
+    expect(disputed).toMatchObject({ status: "review", vendorResponse: "Photo shows it whole" });
+    /* The shopper may still withdraw while NetLet looks. */
+    await as("shopper").orders.cancelReturn({ requestId: damaged.id });
+  });
+
+  it("has a model read an 'other' note, never one with contact details, and keeps only a suggestion", async () => {
+    model.on = true;
+    model.asked = [];
+    model.answer = JSON.stringify({ summary: "Says the sofa wobbles on one leg.", suggestion: "approve" });
+    try {
+      const order = await delivered();
+      const read = await ask("shopper", { reference: order.reference, orderItemId: order.sofa.id, kind: "refund", reason: "other", note: "It wobbles" });
+      expect(read.status).toBe("requested");
+      expect(model.asked).toEqual([expect.objectContaining({ task: "returnRead" })]);
+      expect(model.asked[0].prompt).not.toContain(people.shopper.email);
+      const [row] = await db.select().from(returnRequests).where(eq(returnRequests.id, read.id));
+      expect(row).toMatchObject({ aiSummary: "Says the sofa wobbles on one leg.", aiSuggestion: "approve", status: "requested" });
+      const desk = await as("manager").returns.list();
+      expect(desk.find((entry: { id: number }) => entry.id === read.id)).toMatchObject({ aiSuggestion: "approve" });
+
+      model.asked = [];
+      const withPhone = await ask("shopper", { reference: order.reference, orderItemId: order.mug.id, kind: "refund", reason: "other", note: "Call me on 99887766" });
+      expect(model.asked).toEqual([]);
+      expect(await as("rival").returns.read({ requestId: withPhone.id })).toBeNull();
+      /* A rule's reason is never read. */
+      await ask("shopper", { reference: order.reference, orderItemId: order.tomatoes.id, kind: "refund", reason: "damaged" });
+      expect(model.asked).toEqual([]);
+    } finally {
+      model.on = false;
+      model.answer = null;
+    }
+  });
+
+  it("does not dispute what NetLet already confirmed", async () => {
+    const order = await delivered();
+    const other = await ask("shopper", { reference: order.reference, orderItemId: order.sofa.id, kind: "refund", reason: "other", note: "Wobbles" });
+    await as("manager").returns.decide({ requestId: other.id, approve: true });
+    await as("admin").returns.decide({ requestId: other.id, approve: true });
+    await expect(as("manager").returns.decide({ requestId: other.id, approve: false, reason: "Changed my mind" })).rejects.toMatchObject({ message: "returns.moved" });
   });
 
   /* 3.6.3 names manual returns among what the trail must hold. */

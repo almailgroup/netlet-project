@@ -1,0 +1,38 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 1,
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "productId": null,
+            "productTitle": null,
+            "percent": "8.00",
+            "fixed": null,
+            "reason": "Our margins on electronics are thin",
+            "status": "pending",
+            "decisionNote": null,
+            "decidedAt": null,
+            "createdAt": "2026-10-26T20:06:57.929Z",
+            "current": {
+              "percent": "10.00",
+              "fixed": "1.000"
+            }
+          }
+        ],
+        "total": 1,
+        "page": 1,
+        "pageSize": 50
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

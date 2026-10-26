@@ -97,13 +97,13 @@ const DETAILS = {
   addressLine: "Block 4, Street 12, House 7",
 };
 
-async function placeBasket(lines: { variantId: number; quantity: number }[]) {
+async function placeBasket(lines: { variantId: number; quantity: number; deliveryChoice?: "regular" | "fast" }[]) {
   const [cart] = await db
     .insert(carts)
     .values({ id: `cart-${Math.random().toString(36).slice(2)}`, userId: ids.shopper })
     .returning();
   for (const line of lines) {
-    await db.insert(cartItems).values({ cartId: cart.id, variantId: line.variantId, quantity: line.quantity });
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: line.variantId, quantity: line.quantity, deliveryChoice: line.deliveryChoice ?? "regular" });
   }
   return ordersModule.placeOrder(cart.id, { ...DETAILS, userId: ids.shopper });
 }
@@ -119,6 +119,8 @@ beforeEach(async () => {
   /* One test re-measures the sofa on purpose, to prove the order does not
      follow it. Put it back, or every later order freezes the wrong class. */
   await db.update(products).set({ sizeClass: "oversize" }).where(eq(products.id, ids.sofa));
+  /* The delivery choices (3.2.5, 3.3.13) start from the store's defaults. */
+  await db.update(vendors).set({ deliveryMode: "netlet", deliveryCourierId: null, fastDeliveryFee: null }).where(eq(vendors.id, ids.acme));
   await db.update(productVariants).set({ stock: 500 }).where(eq(productVariants.id, ids.riceVariant));
   const [swift] = await db.insert(couriers).values({ name: "Swift Delivery" }).returning();
   const [rival] = await db.insert(couriers).values({ name: "Rival Logistics" }).returning();
@@ -486,3 +488,46 @@ describe("who sees which companies", () => {
   });
 });
 
+
+describe("fast or regular, and who carries a store's parcels (3.2.5, 3.3.13)", () => {
+  it("freezes a fast line, charges its fee as its own parcel, and puts it first on the board", async () => {
+    await db.update(vendors).set({ fastDeliveryFee: "3.500" }).where(eq(vendors.id, ids.acme));
+    const placed = await placeBasket([
+      { variantId: ids.sofaVariant, quantity: 1 },
+      { variantId: ids.riceVariant, quantity: 2, deliveryChoice: "fast" },
+    ]);
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(lines.find(line => line.variantId === ids.riceVariant)!.deliveryChoice).toBe("fast");
+    expect(lines.find(line => line.variantId === ids.sofaVariant)!.deliveryChoice).toBe("regular");
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    expect(order.deliveryBreakdown).toEqual(expect.arrayContaining([expect.objectContaining({ choice: "fast", fee: "3.500" })]));
+
+    await db.update(orderItems).set({ fulfilment: "preparing" });
+    const board = await dispatch.loadBoard(adminActor(), { state: "waiting" });
+    expect(board.parcels.map(parcel => parcel.fast)).toEqual([true, false]);
+  });
+
+  it("rides regular when the store offers no fast trip", async () => {
+    const placed = await placeBasket([{ variantId: ids.riceVariant, quantity: 1, deliveryChoice: "fast" }]);
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(line.deliveryChoice).toBe("regular");
+  });
+
+  it("sends a store's parcels straight to its own company on NetLet", async () => {
+    await db.update(vendors).set({ deliveryMode: "own", deliveryCourierId: ids.swift }).where(eq(vendors.id, ids.acme));
+    await placeBasket([{ variantId: ids.sofaVariant, quantity: 1 }]);
+    await db.update(orderItems).set({ fulfilment: "preparing" });
+    expect((await dispatch.loadBoard(driverActor())).parcels).toHaveLength(1);
+    expect((await dispatch.loadBoard(rivalActor())).parcels).toHaveLength(0);
+  });
+
+  it("marks a store that delivers itself, keeps it off the waiting count, and refuses to assign it", async () => {
+    await db.update(vendors).set({ deliveryMode: "own", deliveryCourierId: null }).where(eq(vendors.id, ids.acme));
+    const placed = await placeBasket([{ variantId: ids.sofaVariant, quantity: 1 }]);
+    await db.update(orderItems).set({ fulfilment: "preparing" });
+    const [parcel] = (await dispatch.loadBoard(adminActor())).parcels;
+    expect(parcel.selfDelivered).toBe(true);
+    expect(await dispatch.countWaitingParcels(adminActor())).toBe(0);
+    await expect(dispatch.assignParcel(adminActor(), placed.order.id, parcel.key, ids.swift)).rejects.toThrow("dispatch.storeDelivers");
+  });
+});

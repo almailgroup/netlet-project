@@ -48,6 +48,8 @@ export const NOTICE_KINDS = [
   "new_arrival",
   "seller_new_order",
   "seller_return",
+  "seller_warning",
+  "seller_suspended",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
@@ -99,6 +101,10 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   new_arrival: { audience: "shopper", preference: "new_arrival", email: false, key: "notice.newArrival" },
   seller_new_order: { audience: "seller", preference: null, email: true, key: "notice.sellerNewOrder" },
   seller_return: { audience: "seller", preference: null, email: true, key: "notice.sellerReturn" },
+  /* A warning NetLet issued, and the third that suspended the store (3.3.18):
+     never silenced, because a store must know where it stands. */
+  seller_warning: { audience: "seller", preference: null, email: true, key: "notice.sellerWarning" },
+  seller_suspended: { audience: "seller", preference: null, email: true, key: "notice.sellerSuspended" },
 };
 
 /** One thing to tell one person. */

@@ -8,6 +8,8 @@ import { guidesRouter } from "./guides.js";
 import { fulfilmentRouter } from "./fulfilment.js";
 import { membershipRouter } from "./membership.js";
 import { affiliatesRouter } from "./affiliates.js";
+import { commissionRouter } from "./commission.js";
+import { warningsRouter } from "./warnings.js";
 import { authRouter } from "./auth.js";
 import { router } from "../core/trpc.js";
 import { commerceRouter } from "./commerce.js";
@@ -41,6 +43,8 @@ export const appRouter = router({
   fulfilment: fulfilmentRouter,
   membership: membershipRouter,
   affiliates: affiliatesRouter,
+  commission: commissionRouter,
+  warnings: warningsRouter,
   auth: authRouter,
   commerce: commerceRouter,
   customer: customerRouter,

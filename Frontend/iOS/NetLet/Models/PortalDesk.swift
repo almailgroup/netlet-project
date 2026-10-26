@@ -196,6 +196,16 @@ struct ReturnCase: Decodable, Identifiable, Hashable, Sendable {
     let addressLine: String?
     let createdAt: Date
     let actions: [String]
+    /// What a model read in an "other" note, and its suggestion (3.5.2) — a reading, never a decision.
+    var aiSummary: String? = nil
+    var aiSuggestion: String? = nil
+    /// The seller's answer while NetLet confirms it, or after.
+    var vendorResponse: String? = nil
+
+    /// In `review`, the decline reason is the seller's proposal (`sellerProposal`).
+    var proposal: String? {
+        status == "review" ? (declineReason == nil ? "approve" : "decline") : nil
+    }
 
     /// Where to collect it from: a line sent elsewhere is collected from there.
     var collectFrom: String {

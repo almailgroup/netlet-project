@@ -283,8 +283,7 @@ private struct CheckoutSummary: View {
             Divider()
             row(l.t("cart.subtotal"), cart.subtotal.formatted(l.current))
             ForEach(Array(cart.delivery.perVendor.filter { !$0.free }.enumerated()), id: \.offset) { _, line in
-                let name = line.storeName(l.current)
-                row(line.destinationLabel.map { l.t("address.deliveryTo", ["name": name, "label": $0]) } ?? l.t("cart.deliveryFrom", ["name": name]), line.fee.formatted(l.current))
+                row(line.label(l), line.fee.formatted(l.current))
             }
             row(l.t("footer.delivery"), cart.delivery.total.formatted(l.current))
             if let waived = cart.delivery.memberWaived, !waived.isZero {

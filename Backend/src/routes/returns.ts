@@ -20,6 +20,7 @@ import {
   pastSizeLines,
   ReturnRefused,
 } from "../services/returns.js";
+import { readForDesk, readingAvailable } from "../services/returnReading.js";
 
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -77,6 +78,16 @@ export const returnsRouter = router({
       await guard(() => decideReturn(actor, input.requestId, input));
       return { success: true } as const;
     }),
+  /** Whether "Read the note with NetLet AI" can be offered on the desk (3.5.2). */
+  readAvailable: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return readingAvailable(actor);
+  }),
+  /** A model's reading of an "other" note, asked again from the desk; null when none came. */
+  read: protectedProcedure.input(request).mutation(async ({ ctx, input }) => {
+    const actor = await resolveActor(ctx.user);
+    return guard(() => readForDesk(actor, input.requestId));
+  }),
   collect: protectedProcedure.input(request).mutation(async ({ ctx, input }) => {
     const actor = await resolveActor(ctx.user);
     await guard(() => markCollected(actor, input.requestId));

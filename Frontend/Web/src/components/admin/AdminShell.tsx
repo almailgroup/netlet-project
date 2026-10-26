@@ -30,10 +30,10 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, BadgeCheck, BookOpen, ChevronDown, Menu, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Repeat, Sparkles, PackageSearch, Receipt, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, Redirect, useLocation } from "wouter";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
   admin: "admin.roleAdmin",
@@ -81,6 +81,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/promotions": <Ticket className="size-4" />,
   "/admin/ads": <Sparkles className="size-4" />,
   "/admin/affiliates": <Megaphone className="size-4" />,
+  "/admin/commission": <Percent className="size-4" />,
   "/admin/team": <Users className="size-4" />,
   "/admin/vendors": <Store className="size-4" />,
   "/admin/applications": <ClipboardList className="size-4" />,
@@ -182,7 +183,9 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   // A signed-in shopper reaching /admin is not an error — it is somebody
   // who has not been added to a vendor yet, and telling them who to ask is
   // more use than a 403.
-  if (!actor || actor.kind === "customer") {
+  /* An employee holding a grant (3.3.9) and nothing else is let in to the one
+     desk the grant opens; any other shopper is not. */
+  if (!actor || (actor.kind === "customer" && !actor.grants?.length)) {
     return (
       <Frame>
         <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.noAccess")}</h1>
@@ -201,6 +204,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     .map(group => ({ ...group, links: group.links.map(link => ({ ...link, icon: MENU_ICONS[link.href] })) }))
     .map(group => ({ ...group, links: group.links.filter(link => canAny(actor, link.need)) }))
     .filter(group => group.links.length > 0);
+
+  /* Somebody whose only way in is a grant has no overview of a store to see:
+     the portal's front door takes them to the first page they can use. */
+  const first = groups.flatMap(group => group.links)[0];
+  if (location === "/admin" && !can(actor, "product.view") && first && first.href !== "/admin") {
+    return <Redirect to={first.href} replace />;
+  }
 
   /* A product's own page is still Products: the link stays marked on every
      page under it, which the exact match used to drop the moment a row was

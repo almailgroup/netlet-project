@@ -19,6 +19,7 @@ import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import type { HealthDetailKey } from "@shared/inventory/vendorHealth";
 import { PageHeader, SectionHeading } from "@/components/admin/ui";
+import { StoreWarnings } from "@/components/admin/StoreWarnings";
 import { SalesPanel } from "@/components/admin/SalesPanel";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
@@ -79,6 +80,8 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingReturns = trpc.returns.waiting.useQuery(undefined, {
     enabled: can(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined),
   });
+  /* Stores' commission proposals waiting on whoever sets rates (3.3.2). */
+  const waitingProposals = trpc.commission.waiting.useQuery(undefined, { enabled: can(actor, "vendor.setCommission") });
   /* Affiliate applications waiting on NetLet (3.7). */
   const waitingAffiliates = trpc.affiliates.waiting.useQuery(undefined, { enabled: can(actor, "affiliate.manage") });
   /* Home banners a store has paid for, waiting on NetLet before they can run. */
@@ -124,6 +127,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.applications" as const, value: waitingApplications.data ?? 0, href: "/admin/applications", tone: "urgent" as const },
     ...(mayReview ? [{ label: "admin.countPendingReview" as const, value: data.pendingReview, href: "/admin/review", tone: "urgent" as const }] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),
+    ...(can(actor, "vendor.setCommission") ? [{ label: "commission.waitingTile" as const, value: waitingProposals.data ?? 0, href: "/admin/commission", tone: "urgent" as const }] : []),
     /* A live store charging nothing: allowed, since zero is an instruction,
        but usually a rate nobody set — and it costs every sale until noticed.
        One store goes straight to its page, where the rate is set. */
@@ -179,6 +183,9 @@ function Overview({ actor }: { actor: Actor }) {
 
       {health.data ? <HealthPanel health={health.data} /> : null}
 
+      {/* The store's own warnings (3.3.18), drawn only when it has any. */}
+      {actor.kind === "vendor" ? <div className="mt-8"><StoreWarnings manage={false} /></div> : null}
+
       <section aria-labelledby="at-a-glance" className="mt-8">
         <SectionHeading><span id="at-a-glance">{t("admin.atAGlance")}</span></SectionHeading>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -210,7 +217,7 @@ const DETAIL_LABEL: Record<HealthDetailKey, MessageKey> = {
   pendingReview: "health.pendingReview",
   outOfStock: "health.outOfStock",
   variants: "health.variants",
-  rejections: "health.rejections",
+  warnings: "health.warnings",
   suspendAt: "health.suspendAt",
   rating: "health.rating",
   outOf: "health.outOf",

@@ -21,6 +21,7 @@ import {
   type ApplicationState,
   type SellerApplication,
   MAX_COMMISSION_NOTE,
+  fixedProposalProblem,
 } from "../../../Shared/inventory/sellerApplication.js";
 import { normaliseIban, storeSlug } from "../../../Shared/inventory/storeProfile.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
@@ -29,7 +30,7 @@ import { getDb } from "./db.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
-import { documentsPending } from "../../../Shared/inventory/applicationDocuments.js";
+import { contractUnsigned, documentsPending } from "../../../Shared/inventory/applicationDocuments.js";
 import { documentFactsFor, pendingCounts } from "./applicationDocuments.js";
 
 /** Every refusal is a key the router turns into a message, never a sentence. */
@@ -102,8 +103,9 @@ export async function saveApplication(userId: number, input: SellerApplication):
     agreementVersion: input.agreementVersion === AGREEMENT_VERSION ? AGREEMENT_VERSION : null,
     agreedAt: input.agreementVersion === AGREEMENT_VERSION ? new Date() : null,
     proposedCommissionPercent: input.proposedCommissionPercent?.trim() || null,
+    proposedCommissionFixed: input.proposedCommissionFixed?.trim() ? Number(input.proposedCommissionFixed.trim()).toFixed(3) : null,
     /* A reason with no proposal is a reason for nothing, so it is not kept. */
-    commissionNote: input.proposedCommissionPercent?.trim()
+    commissionNote: input.proposedCommissionPercent?.trim() || input.proposedCommissionFixed?.trim()
       ? input.commissionNote?.replace(/\s+/g, " ").trim().slice(0, MAX_COMMISSION_NOTE) || null
       : null,
   };
@@ -232,11 +234,15 @@ export async function approveApplication(
    * applied by itself: commission is outside a vendor's control entirely.
    */
   commissionPercent?: string | null,
+  /** A fixed amount per sale beside (or instead of) the rate, when the applicant asked for one and it is accepted. */
+  commissionFixed?: string | null,
 ): Promise<{ vendorId: number }> {
   assertCan(actor, "platform.manageUsers");
   const rate = commissionPercent?.trim() || DEFAULT_COMMISSION_PERCENT;
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number.parseFloat(rate) > 100) throw new ApplicationError("application.badCommission");
-  const custom = Number.parseFloat(rate) !== Number.parseFloat(DEFAULT_COMMISSION_PERCENT);
+  const fixed = commissionFixed?.trim() || null;
+  if (fixed !== null && fixedProposalProblem(fixed)) throw new ApplicationError("application.badCommission");
+  const custom = Number.parseFloat(rate) !== Number.parseFloat(DEFAULT_COMMISSION_PERCENT) || fixed !== null;
   /* Already true of anybody who clears `platform.manageUsers`; asked anyway,
      because this is the act the commission rule is about. */
   if (custom) assertCan(actor, "vendor.setCommission");
@@ -250,7 +256,10 @@ export async function approveApplication(
   const verdict = readyToApprove(toShared(row));
   if (!verdict.ok) throw new ApplicationError("application.incomplete");
   /* A document nobody has looked at is not a document the store was approved on. */
-  if (documentsPending(await documentFactsFor(applicationId))) throw new ApplicationError("application.documentsPending");
+  const facts = await documentFactsFor(applicationId);
+  if (documentsPending(facts)) throw new ApplicationError("application.documentsPending");
+  /* The contract NetLet sent comes back signed before the store opens (3.3.1). */
+  if (contractUnsigned(facts)) throw new ApplicationError("application.contractUnsigned");
 
   /*
    * One transaction, and the application is claimed first — the update whose
@@ -285,6 +294,7 @@ export async function approveApplication(
         payoutIban: row.payoutIban,
         underPlatformLicence: row.underPlatformLicence,
         commissionPercent: rate,
+        commissionFixed: fixed === null ? null : Number(fixed).toFixed(3),
       })
       .returning({ id: vendors.id });
     /* The applicant already has an account — that is the whole point of the
@@ -306,7 +316,7 @@ export async function approveApplication(
       subjectLabel: row.storeName,
       vendorId: vendor.id,
       before: { commissionPercent: DEFAULT_COMMISSION_PERCENT },
-      after: { commissionPercent: rate, proposedCommissionPercent: row.proposedCommissionPercent, atApproval: true },
+      after: { commissionPercent: rate, commissionFixed: fixed, proposedCommissionPercent: row.proposedCommissionPercent, proposedCommissionFixed: row.proposedCommissionFixed, atApproval: true },
     });
   }
 
@@ -369,6 +379,7 @@ function toShared(row: Row): SellerApplication {
     underPlatformLicence: row.underPlatformLicence,
     agreementVersion: row.agreementVersion,
     proposedCommissionPercent: row.proposedCommissionPercent,
+    proposedCommissionFixed: row.proposedCommissionFixed,
     commissionNote: row.commissionNote,
   };
 }

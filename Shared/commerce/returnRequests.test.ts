@@ -41,6 +41,12 @@ describe("what may be done next", () => {
   it("walks the seller through decide, collect, receive and pay back", () => {
     expect(returnActions({ status: "requested", kind: "refund" }, "seller")).toEqual(["approve", "decline"]);
     expect(returnActions({ status: "approved", kind: "refund" }, "seller")).toEqual(["collect"]);
+    /* What a rule approved the seller may dispute; what NetLet confirmed is settled. */
+    expect(returnActions({ status: "approved", kind: "refund", decidedBy: "auto" }, "seller")).toEqual(["collect", "dispute"]);
+    expect(returnActions({ status: "approved", kind: "refund", decidedBy: "seller" }, "seller")).toEqual(["collect"]);
+    expect(returnActions({ status: "review", kind: "refund" }, "seller")).toEqual([]);
+    expect(returnActions({ status: "review", kind: "refund" }, "admin")).toEqual(["approve", "decline"]);
+    expect(returnActions({ status: "review", kind: "refund" }, "shopper")).toEqual(["cancel"]);
     expect(returnActions({ status: "collected", kind: "exchange" }, "seller")).toEqual(["receive"]);
     expect(returnActions({ status: "refunded", kind: "refund", refundPaidAt: null }, "seller")).toEqual(["markRefundPaid"]);
     expect(returnActions({ status: "refunded", kind: "refund", refundPaidAt: new Date() }, "seller")).toEqual([]);

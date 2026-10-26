@@ -60,6 +60,8 @@ export type PriceableLine = {
    */
   bundleId?: number | null;
   bundleName?: string | null;
+  /** The trip the shopper chose (3.2.5), already narrowed to what its store offers. Absent is regular. */
+  deliveryChoice?: "regular" | "fast";
   /**
    * Where this line is going (3.2.6), when it is not going where the order is.
    *
@@ -97,6 +99,8 @@ export type FrozenLine = {
   /** The bundle it was sold in, copied for the same reason. */
   bundleId: number | null;
   bundleName: string | null;
+  /** The trip chosen (3.2.5), copied for the same reason. */
+  deliveryChoice: "regular" | "fast";
   /** The door it went to, copied for the same reason. Null: the order's own. */
   destination: FrozenDestination | null;
   /** What it takes to carry it, copied for the same reason. */
@@ -170,6 +174,7 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     addonsTotal: extras,
     bundleId: line.bundleId ?? null,
     bundleName: line.bundleName ?? null,
+    deliveryChoice: line.deliveryChoice === "fast" ? "fast" : "regular",
     destination: line.destination ?? null,
     sizeClass: line.sizeClass ?? null,
     weightGrams: line.weightGrams ?? null,

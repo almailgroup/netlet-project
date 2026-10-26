@@ -14,6 +14,8 @@ import { useState } from "react";
 import { Copy, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/admin/Pager";
+import { Thumb } from "@/components/product/Thumb";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useFeature } from "@/hooks/useFeature";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -110,7 +112,7 @@ function Dashboard({ view }: { view: NonNullable<inferRouterOutputs<AppRouter>["
         {view.status === "suspended" ? <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("affiliate.suspendedNote")}</p> : null}
         {view.status === "active" ? (
           <>
-            <p className="mt-2 max-w-prose text-sm leading-6 text-[#536b8c]">{t("affiliate.howToShare", { rate: view.ratePercent, days: String(ATTRIBUTION_DAYS) })}</p>
+            <p className="mt-2 max-w-prose text-sm leading-6 text-[#536b8c]">{t("affiliate.howToShare", { days: String(ATTRIBUTION_DAYS) })}</p>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <bdi dir="ltr" className="rounded-xl bg-white px-4 py-2 font-mono text-lg font-bold tracking-[.2em] text-[#0a285a]">{view.code}</bdi>
               <button
@@ -127,6 +129,8 @@ function Dashboard({ view }: { view: NonNullable<inferRouterOutputs<AppRouter>["
           </>
         ) : null}
       </div>
+
+      {view.status === "active" ? <OfferedProducts code={view.code} /> : null}
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {([
@@ -174,5 +178,61 @@ function Dashboard({ view }: { view: NonNullable<inferRouterOutputs<AppRouter>["
         </ul>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * What stores have offered to affiliates (3.7.1), each at its own rate, with
+ * a link to it carrying this affiliate's code. Highest rate first; a page at
+ * a time, because a shop can offer hundreds.
+ */
+function OfferedProducts({ code }: { code: string }) {
+  const { t, isArabic } = useTranslation();
+  const money = useMoney();
+  const [page, setPage] = useState(1);
+  const offered = trpc.affiliates.products.useQuery({ page }, { placeholderData: previous => previous });
+  const copy = async (handle: string) => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/products/${encodeURIComponent(handle)}?aff=${code}`);
+      toast.success(t("affiliate.copied"));
+    } catch {
+      toast.error(t("affiliate.copyFailed"));
+    }
+  };
+
+  return (
+    <section aria-labelledby="affiliate-products" className="rounded-[1.35rem] border border-[#e6e9ef] bg-white p-5 sm:p-6">
+      <h3 id="affiliate-products" className="font-extrabold text-[#0a285a]">{t("affiliate.productsTitle")}</h3>
+      <QueryGate audience="shopper" queries={[offered]}>
+        {() => {
+          const result = offered.data;
+          if (!result || result.rows.length === 0) return <p className="mt-2 text-sm text-[#536b8c]">{t("affiliate.productsEmpty")}</p>;
+          return (
+            <>
+              <ul className="mt-3 divide-y divide-[#eef1f6]">
+                {result.rows.map(row => (
+                  <li key={row.productId} className="flex items-center gap-3 py-3">
+                    <Thumb src={row.image} alt="" className="size-12 shrink-0 rounded-lg border border-[#eef1f6] object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <a href={`/products/${encodeURIComponent(row.handle)}`} dir="auto" className="line-clamp-2 text-sm font-bold text-[#0a285a] hover:underline">
+                        {isArabic && row.titleAr ? row.titleAr : row.title}
+                      </a>
+                      <p className="text-[12px] text-[#536b8c]">
+                        <bdi>{row.vendorName}</bdi> · {money({ amount: row.price, currencyCode: "KWD" })} ·{" "}
+                        <span className="font-bold text-[#2f5d33]">{t("affiliate.productRate", { rate: row.percent })}</span>
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => void copy(row.handle)} className="glass type-control pressable inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2">
+                      <Copy className="size-4" aria-hidden />{t("affiliate.copyProductLink")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <Pager page={result} onPage={setPage} />
+            </>
+          );
+        }}
+      </QueryGate>
+    </section>
   );
 }

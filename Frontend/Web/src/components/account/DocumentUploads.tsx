@@ -30,6 +30,8 @@ export const KIND_LABEL: Record<DocumentKind, MessageKey> = {
   iban_letter: "documents.kindIbanLetter",
   authorisation: "documents.kindAuthorisation",
   other: "documents.kindOther",
+  contract: "documents.kindContract",
+  signed_contract: "documents.kindSignedContract",
 };
 
 const KIND_HINT: Record<DocumentKind, MessageKey> = {
@@ -38,7 +40,12 @@ const KIND_HINT: Record<DocumentKind, MessageKey> = {
   iban_letter: "documents.hintIbanLetter",
   authorisation: "documents.hintAuthorisation",
   other: "documents.hintOther",
+  contract: "documents.hintContract",
+  signed_contract: "documents.hintSignedContract",
 };
+
+/** The papers an applicant applies with; the contract and its signed copy come after (3.3.1). */
+export const PAPER_KINDS = DOCUMENT_KINDS.filter(kind => kind !== "contract" && kind !== "signed_contract");
 
 export const STATUS_LABEL: Record<DocumentStatus, MessageKey> = {
   pending: "documents.statusPending",
@@ -67,7 +74,14 @@ export function documentHref(id: number): string {
   return `/api/applications/documents/${id}`;
 }
 
-export function DocumentUploads({ saved, editable }: { saved: boolean; editable: boolean }) {
+export function DocumentUploads({ saved, editable, step = "papers" }: {
+  saved: boolean;
+  editable: boolean;
+  /* The papers applied with, or the contract step (3.3.1) — which works while
+     NetLet holds the application, so a page draws it outside whatever stops
+     the papers changing then. */
+  step?: "papers" | "contract";
+}) {
   const { t, tError } = useTranslation();
   const size = useFileSize();
   const utils = trpc.useUtils();
@@ -104,12 +118,10 @@ export function DocumentUploads({ saved, editable }: { saved: boolean; editable:
     }
   };
 
-  if (!saved) return <p className="mt-4 text-[13px] leading-6 text-[#536b8c]">{t("documents.saveFirst")}</p>;
+  if (!saved) return step === "papers" ? <p className="mt-4 text-[13px] leading-6 text-[#536b8c]">{t("documents.saveFirst")}</p> : null;
 
   const current = currentByKind(documents.data ?? []);
-  return (
-    <ul className="mt-4 divide-y divide-[#e6ebf2] rounded-xl border border-[#d5dfeb]">
-      {DOCUMENT_KINDS.map(kind => {
+  const row = (kind: DocumentKind, mayUpload: boolean) => {
         const entry = current.get(kind);
         const latest = entry?.latest;
         const inputId = `document-${kind}`;
@@ -135,7 +147,7 @@ export function DocumentUploads({ saved, editable }: { saved: boolean; editable:
                 {entry?.replacing ? <p className="mt-1 ink-muted">{t("documents.replacing", { name: entry.replacing.fileName })}</p> : null}
               </div>
             ) : null}
-            {editable ? (
+            {mayUpload ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 <input
                   ref={element => { inputs.current[kind] = element; }}
@@ -158,7 +170,7 @@ export function DocumentUploads({ saved, editable }: { saved: boolean; editable:
                   {busy === kind ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
                   {t(latest ? "documents.replace" : "documents.upload")}
                 </button>
-                {latest && latest.status !== "accepted" ? (
+                {latest && latest.status !== "accepted" && editable ? (
                   <button
                     type="button"
                     onClick={() => remove.mutate({ id: latest.id })}
@@ -174,7 +186,29 @@ export function DocumentUploads({ saved, editable }: { saved: boolean; editable:
             ) : null}
           </li>
         );
-      })}
+  };
+  if (step === "contract") {
+    const contract = current.get("contract")?.latest;
+    if (!contract) return null;
+    /* The contract step (3.3.1): NetLet's final contract, to read, sign and
+       send back — while NetLet holds the application, too. */
+    return (
+      <section aria-labelledby="contract-step" className="mt-4 rounded-xl border border-[#0a285a]/20 bg-[#f6f8fb] p-3.5 sm:p-4">
+        <h3 id="contract-step" className="text-[14px] font-bold text-[#0a285a]">{t("documents.contractTitle")}</h3>
+        <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("documents.contractNote")}</p>
+        <a href={documentHref(contract.id)} download className="mt-2 inline-flex max-w-full items-center gap-1.5 text-[13px] font-semibold text-[#0a285a] underline-offset-2 hover:underline">
+          <Paperclip className="size-3.5 shrink-0" aria-hidden />
+          <bdi className="truncate">{contract.fileName}</bdi>
+        </a>
+        <ul className="mt-3 rounded-xl border border-[#d5dfeb] bg-white">
+          {row("signed_contract", current.get("signed_contract")?.latest?.status !== "accepted")}
+        </ul>
+      </section>
+    );
+  }
+  return (
+    <ul className="mt-4 divide-y divide-[#e6ebf2] rounded-xl border border-[#d5dfeb]">
+      {PAPER_KINDS.map(kind => row(kind, editable))}
     </ul>
   );
 }

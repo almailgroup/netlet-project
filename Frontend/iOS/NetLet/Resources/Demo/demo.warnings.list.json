@@ -1,0 +1,35 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 1,
+            "reason": "Listing photos showed a different model from the one shipped",
+            "productId": 218,
+            "productTitle": "Bluetooth speaker",
+            "productTitleAr": "سماعة بلوتوث",
+            "createdAt": "2026-10-26T20:06:57.983Z",
+            "expiresAt": "2027-10-26T20:06:57.989Z",
+            "withdrawnAt": null,
+            "issuedBy": "owner@netlet.test",
+            "state": "standing"
+          }
+        ],
+        "standing": 1,
+        "suspendAt": 3,
+        "since": null
+      },
+      "meta": {
+        "values": {
+          "rows.0.createdAt": [
+            "Date"
+          ],
+          "rows.0.expiresAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -209,6 +209,8 @@ extension API {
     static let affiliate = Procedure<NoInput, AffiliateDashboard?>(query: "affiliates.mine")
     static let joinAffiliates = Procedure<JoinAffiliates, Acknowledged>(mutation: "affiliates.join")
     static let requestAffiliatePayout = Procedure<NoInput, PayoutRequested>(mutation: "affiliates.payout")
+    /// The products stores offer to affiliates, each at its own rate (3.7.1); nil until approved.
+    static let affiliateProducts = Procedure<PageOnly, AffiliateProductPage?>(query: "affiliates.products")
 
     // MARK: Subscribe & Save
 

@@ -319,3 +319,37 @@ describe("uploaded documents", () => {
     expect(await db.select().from(applicationDocuments)).toEqual([]);
   });
 });
+
+describe("a fixed amount, and the contract step (3.3.1, 3.3.2)", () => {
+  const pdf = (text = "contract") => new Uint8Array([...`%PDF-1.7\n${text}`].map(c => c.charCodeAt(0)));
+
+  it("takes a fixed amount per sale as a proposal, never beside a percentage", async () => {
+    const row = await apps.saveApplication(ids.applicant, { ...complete, proposedCommissionFixed: "0.5", commissionNote: "low margins" });
+    expect(row).toMatchObject({ proposedCommissionFixed: "0.500", commissionNote: "low margins" });
+    await expect(apps.saveApplication(ids.applicant, { ...complete, proposedCommissionPercent: "8", proposedCommissionFixed: "0.5" }))
+      .rejects.toMatchObject({ reason: "application.oneProposal" });
+  });
+
+  it("waits for the contract NetLet sent to come back signed and accepted", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const application = await apps.submitApplication(ids.applicant);
+    /* Nobody but NetLet attaches the contract, and the applicant cannot sign before there is one. */
+    await expect(docs.uploadDocument(ids.applicant, { kind: "contract", fileName: "c.pdf", declaredType: "application/pdf", bytes: pdf() }))
+      .rejects.toMatchObject({ reason: "documents.notAccepted" });
+    await expect(docs.uploadDocument(ids.applicant, { kind: "signed_contract", fileName: "s.pdf", declaredType: "application/pdf", bytes: pdf() }))
+      .rejects.toMatchObject({ reason: "documents.noContract" });
+    await expect(docs.attachContract(shopperActor(), application.id, { fileName: "c.pdf", declaredType: "application/pdf", bytes: pdf() })).rejects.toThrow("FORBIDDEN");
+
+    const contract = await docs.attachContract(adminActor(), application.id, { fileName: "contract.pdf", declaredType: "application/pdf", bytes: pdf() });
+    expect(contract).toMatchObject({ kind: "contract", status: "accepted" });
+    await expect(apps.approveApplication(adminActor(), application.id)).rejects.toMatchObject({ reason: "application.contractUnsigned" });
+
+    /* Signed and sent back while NetLet holds the application. */
+    const signed = await docs.uploadDocument(ids.applicant, { kind: "signed_contract", fileName: "signed.pdf", declaredType: "application/pdf", bytes: pdf("signed") });
+    await expect(apps.approveApplication(adminActor(), application.id)).rejects.toMatchObject({ reason: "application.documentsPending" });
+    await docs.reviewDocument(adminActor(), { id: signed.id, decision: "accept" });
+    const { vendorId } = await apps.approveApplication(adminActor(), application.id, "10", "0.250");
+    const [store] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
+    expect(store).toMatchObject({ commissionPercent: "10.00", commissionFixed: "0.250" });
+  });
+});

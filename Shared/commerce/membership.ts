@@ -101,10 +101,17 @@ export function memberPriceFor(input: { member: boolean; listPrice: string; memb
 export function waiveDelivery(quote: DeliveryQuote, goodsTotal: string, freeOver: string | null): DeliveryQuote & { waived: string } {
   if (freeOver !== null && compareMoney(goodsTotal, freeOver) < 0) return { ...quote, waived: "0.000" };
   let waived = 0n;
+  let total = 0n;
   const perVendor = quote.perVendor.map(row => {
     const fee = toFils(row.fee);
+    /* A member's free delivery is the regular trip. Fast is a different trip
+       the shopper chose to pay for (3.2.5), and stays charged. */
+    if (row.choice === "fast") {
+      total += fee;
+      return row;
+    }
     waived += fee;
     return fee > 0n ? { ...row, fee: "0.000", free: true, toFree: null, waived: row.fee } : { ...row, toFree: null };
   });
-  return { perVendor, total: "0.000", waived: fromFils(waived) };
+  return { perVendor, total: fromFils(total), waived: fromFils(waived) };
 }

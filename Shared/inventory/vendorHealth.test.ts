@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { awardedBadges, storefrontBadges, vendorHealth, visibleBadges, type BadgeEvidence, type HealthInputs } from "./vendorHealth.js";
 
 const base: HealthInputs = {
-  published: 10, pendingReview: 0, rejections: 0, outOfStock: 0, variants: 10, rating: 5,
+  published: 10, pendingReview: 0, warnings: 0, outOfStock: 0, variants: 10, rating: 5,
 };
 
 describe("account health", () => {
@@ -15,7 +15,7 @@ describe("account health", () => {
   // A new seller has done nothing wrong. Opening on a failing grade would be a
   // judgement about absence rather than performance.
   it("opens a brand-new vendor at the top, not the bottom", () => {
-    const health = vendorHealth({ published: 0, pendingReview: 0, rejections: 0, outOfStock: 0, variants: 0, rating: null });
+    const health = vendorHealth({ published: 0, pendingReview: 0, warnings: 0, outOfStock: 0, variants: 0, rating: null });
     expect(health.score).toBe(100);
   });
 
@@ -25,9 +25,9 @@ describe("account health", () => {
     expect(health.score).toBeLessThan(80);
   });
 
-  it("reaches zero compliance at the three rejections that suspend", () => {
-    expect(vendorHealth({ ...base, rejections: 3 }).components.find(c => c.key === "compliance")?.score).toBe(0);
-    expect(vendorHealth({ ...base, rejections: 1 }).components.find(c => c.key === "compliance")?.score).toBe(67);
+  it("reaches zero compliance at the three warnings that suspend", () => {
+    expect(vendorHealth({ ...base, warnings: 3 }).components.find(c => c.key === "compliance")?.score).toBe(0);
+    expect(vendorHealth({ ...base, warnings: 1 }).components.find(c => c.key === "compliance")?.score).toBe(67);
   });
 
   it("does not punish a vendor for having no reviews yet", () => {
@@ -36,13 +36,13 @@ describe("account health", () => {
 
   // Transparency is the requirement: every component shows its own numbers.
   it("shows the raw figures behind every component", () => {
-    const health = vendorHealth({ ...base, rejections: 1, outOfStock: 2 });
-    expect(health.components.find(c => c.key === "compliance")?.detail).toMatchObject({ rejections: 1, suspendAt: 3 });
+    const health = vendorHealth({ ...base, warnings: 1, outOfStock: 2 });
+    expect(health.components.find(c => c.key === "compliance")?.detail).toMatchObject({ warnings: 1, suspendAt: 3 });
     expect(health.components.find(c => c.key === "stock")?.detail).toMatchObject({ outOfStock: 2, variants: 10 });
   });
 
   it("bands a middling vendor as fair rather than good", () => {
-    const health = vendorHealth({ ...base, rejections: 2, outOfStock: 4, rating: 3 });
+    const health = vendorHealth({ ...base, warnings: 2, outOfStock: 4, rating: 3 });
     expect(health.band).toBe("fair");
   });
 });

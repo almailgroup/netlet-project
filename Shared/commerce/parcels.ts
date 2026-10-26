@@ -55,6 +55,8 @@ export type ParcelLine = {
   courierId?: number | null;
   /** The NetLet centre it came off, frozen at the sale (4.2); null or absent is the seller's own. */
   centreId?: number | null;
+  /** The trip the shopper chose (3.2.5), frozen at the sale; absent or regular is the ordinary one. */
+  deliveryChoice?: string | null;
 };
 
 export type Parcel = {
@@ -80,6 +82,8 @@ export type Parcel = {
   items: number;
   /** The NetLet centre it is collected from, or null when the seller hands it over (4.2). */
   centreId: number | null;
+  /** True for a fast parcel (3.2.5): it leaves on its own trip, and goes first. */
+  fast: boolean;
 };
 
 /**
@@ -118,7 +122,11 @@ export function parcelsOf(lines: ParcelLine[]): Parcel[] {
        Seller-shipped keys are unchanged, so ratings and claims filed against
        them before this still find their parcel. */
     const centreId = line.centreId ?? null;
-    const key = parcelKey(line.vendorId, line.destination ? hashLabel(line.destination) : null) + (centreId === null ? "" : `|c${centreId}`);
+    /* And how fast (3.2.5): a fast line and a regular one for the same door
+       leave at different times, so they are two parcels. Regular keys are
+       unchanged, for the reason seller-shipped ones are. */
+    const fast = line.deliveryChoice === "fast";
+    const key = parcelKey(line.vendorId, line.destination ? hashLabel(line.destination) : null) + (centreId === null ? "" : `|c${centreId}`) + (fast ? "|fast" : "");
     const held = byKey.get(key);
     if (held) {
       held.lines.push(line);
@@ -135,6 +143,7 @@ export function parcelsOf(lines: ParcelLine[]): Parcel[] {
       courierId: line.courierId ?? null,
       items: 0,
       centreId,
+      fast,
     });
   }
 

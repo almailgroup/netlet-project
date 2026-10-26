@@ -1,0 +1,26 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "key": "referral.productPercent",
+          "value": "20.00",
+          "defaultValue": "20.00",
+          "min": 0,
+          "max": 50,
+          "updatedAt": null,
+          "updatedByEmail": null
+        },
+        {
+          "key": "referral.invitePercent",
+          "value": "10.00",
+          "defaultValue": "10.00",
+          "min": 0,
+          "max": 50,
+          "updatedAt": null,
+          "updatedByEmail": null
+        }
+      ]
+    }
+  }
+}

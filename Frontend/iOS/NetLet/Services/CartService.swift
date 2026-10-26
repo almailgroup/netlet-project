@@ -12,11 +12,18 @@ protocol CartServicing: Sendable {
     func addLines(_ cartId: String?, lines: [API.CartLine]) async throws -> Cart?
     /// Sends one line to a saved address, or back where the order goes with nil.
     func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart?
+    /// Fast or regular for one line (3.2.5); the delivery quote moves with it.
+    func setDeliveryChoice(_ cartId: String, lineId: String, choice: String) async throws -> Cart?
 }
 
 extension CartServicing {
     /// A stand-in with no address book keeps the bag as it is.
     func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart? {
+        try await get(cartId)
+    }
+
+    /// A stand-in with no delivery choices keeps the bag as it is.
+    func setDeliveryChoice(_ cartId: String, lineId: String, choice: String) async throws -> Cart? {
         try await get(cartId)
     }
 
@@ -62,5 +69,9 @@ struct CartService: CartServicing {
 
     func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart? {
         try await client.call(API.setLineDestination, .init(cartId: cartId, lineId: lineId, addressId: addressId))
+    }
+
+    func setDeliveryChoice(_ cartId: String, lineId: String, choice: String) async throws -> Cart? {
+        try await client.call(API.setLineDeliveryChoice, .init(cartId: cartId, lineId: lineId, choice: choice))
     }
 }

@@ -51,6 +51,8 @@ struct PortalHomeView: View {
             SalesPanel(sales: sales)
         }
         if let health { HealthPanel(health: health) }
+        // The store's own warnings (3.3.18), drawn only when it has any.
+        if actor.kind == "vendor" { StoreWarningsCard(manage: false) }
         if let counts, actor.kind != "courier" {
             PortalSectionHeading(title: l.t("admin.atAGlance"))
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
@@ -98,6 +100,7 @@ struct PortalHomeView: View {
         add("admin.claimsOpenTile", waiting["claims"], "/admin/claims")
         add("admin.returnsWaiting", waiting["returns"], "/admin/returns")
         add("admin.affiliatesWaiting", waiting["affiliates"], "/admin/affiliates")
+        add("commission.waitingTile", waiting["proposals"], "/admin/commission")
         add("admin.bannersWaiting", waiting["banners"], "/admin/ads")
         add("support.waitingTile", waiting["support"], "/admin/support")
         add("fulfilment.toReceiveTile", waiting["toReceive"], "/admin/fulfilment", urgent: false)
@@ -135,6 +138,7 @@ struct PortalHomeView: View {
             async let applications = count("platform.manageUsers") { try await api.call(API.applicationsWaiting) }
             async let returns = count("returns.handle") { try await api.call(API.returnsWaiting) }
             async let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
+            async let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
             async let banners = count("product.review") { try await api.call(API.bannersWaiting) }
             async let support = count("support.answer") { try await api.call(API.supportWaiting) }
             async let centres = asked(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
@@ -144,7 +148,7 @@ struct PortalHomeView: View {
             let floor = await centres
             waiting = [
                 "parcels": await parcels, "claims": await claims, "offers": await offers, "sellerChanges": await changes,
-                "applications": await applications, "returns": await returns, "affiliates": await affiliates,
+                "applications": await applications, "returns": await returns, "affiliates": await affiliates, "proposals": await proposals,
                 "banners": await banners, "support": await support,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
             ].compactMapValues { $0 }
@@ -339,7 +343,7 @@ private struct HealthPanel: View {
         guard !shown.isEmpty else { return "—" }
         let labels: [(String, String)] = [
             ("published", "health.published"), ("pendingReview", "health.pendingReview"), ("outOfStock", "health.outOfStock"),
-            ("variants", "health.variants"), ("rejections", "health.rejections"), ("suspendAt", "health.suspendAt"),
+            ("variants", "health.variants"), ("warnings", "health.warnings"), ("suspendAt", "health.suspendAt"),
             ("rating", "health.rating"), ("outOf", "health.outOf"),
         ]
         return labels.compactMap { key, label -> String? in

@@ -15,7 +15,7 @@
  * the site down, which is how audit logging gets switched off.
  */
 import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
-import { auditLog, users } from "../../database/schema.js";
+import { auditLog, staffGrants, users } from "../../database/schema.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { describeError } from "../core/describeError.js";
 import { getDb } from "./db.js";
@@ -72,6 +72,22 @@ export const AUDIT_ACTIONS = [
   "return.decide",
   "return.receive",
   "return.refundPaid",
+  /* An administrator's confirmation of an outcome a rule could not reach
+     (3.5.2): only then is the shopper told. */
+  "return.confirm",
+  /* A number an administrator sets without a deploy — a referral rate (3.1.15). */
+  "platform.setSetting",
+  /* A store offering a product to affiliates at a rate it funds, or withdrawing it (3.7.1). */
+  "product.setAffiliate",
+  /* A commission proposal made, and NetLet's answer to it (3.3.2). */
+  "commission.propose",
+  "commission.decide",
+  /* One capability granted to an account, or taken back, by an administrator (3.3.9). */
+  "user.grant",
+  "user.revokeGrant",
+  /* A warning issued to a store, or withdrawn (3.3.18): the third standing one suspends it. */
+  "vendor.warn",
+  "vendor.withdrawWarning",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -85,7 +101,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -115,7 +131,23 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   "payout.prepare",
   "payout.record",
   "payout.cancel",
+  /* What a referral pays, and NetLet's answer on a commission: money again. */
+  "platform.setSetting",
+  "commission.decide",
+  /* Who gave whom a capability, which is the chain 3.3.9 asks for by name. */
+  "user.grant",
+  "user.revokeGrant",
+  /* A warning counts towards suspension, so who was allowed to issue it matters. */
+  "vendor.warn",
+  "vendor.withdrawWarning",
+  "return.confirm",
 ]);
+
+/** The grantable capability each act is done under, for the chain of a granted employee. */
+const GRANT_FOR: Partial<Record<AuditAction, string>> = {
+  "vendor.setCommission": "vendor.setCommission",
+  "commission.decide": "vendor.setCommission",
+};
 
 /**
  * Who made this actor an administrator.
@@ -133,9 +165,24 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
  */
 async function authorisedBy(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
-  actorId: number | null | undefined,
+  actor: AuditActor,
+  action: AuditAction,
 ): Promise<{ id: number | null; email: string | null }> {
+  const actorId = actor.id;
   if (!actorId) return { id: null, email: null };
+  /* Somebody who is not an administrator did this under a grant (3.3.9): the
+     chain is the administrator who granted that one capability — "which admin
+     granted that employee this specific permission". */
+  const capability = GRANT_FOR[action];
+  if (capability && actor.role !== "admin") {
+    const [held] = await db
+      .select({ id: staffGrants.grantedBy, email: users.email })
+      .from(staffGrants)
+      .leftJoin(users, eq(users.id, staffGrants.grantedBy))
+      .where(and(eq(staffGrants.userId, actorId), eq(staffGrants.capability, capability)))
+      .limit(1);
+    if (held) return { id: held.id ?? null, email: held.email ?? null };
+  }
   const [grant] = await db
     .select({ id: auditLog.actorId, email: auditLog.actorEmail })
     .from(auditLog)
@@ -159,7 +206,7 @@ export async function recordAudit(actor: AuditActor, record: AuditRecord): Promi
     const db = await getDb();
     if (!db) return;
     const chain = CHAIN_ACTIONS.has(record.action)
-      ? await authorisedBy(db, actor.id)
+      ? await authorisedBy(db, actor, record.action)
       : { id: null, email: null };
     await db.insert(auditLog).values({
       action: record.action,
@@ -235,6 +282,8 @@ const SELLER_ACTIONS: AuditAction[] = [
   "product.delete",
   "product.priceChange",
   "product.setStatus",
+  "product.setAffiliate",
+  "commission.propose",
 ];
 
 /**
@@ -276,23 +325,6 @@ export async function sellerChanges(options: { since?: Date | null; vendorId?: n
     .where(options.since ? and(scope, gte(auditLog.createdAt, options.since)) : scope);
 
   return { rows, unseen: counted?.n ?? 0 };
-}
-
-/**
- * How many warnings a vendor has accumulated.
- *
- * The requirements suspend a vendor automatically after three violations, and
- * the audit trail is already the record of what they did — so the count comes
- * from here rather than from a second tally that could disagree with it.
- */
-export async function violationCount(vendorId: number): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(auditLog)
-    .where(and(eq(auditLog.vendorId, vendorId), eq(auditLog.action, "product.review"), sql`${auditLog.after} ->> 'approved' = 'false'`));
-  return row?.count ?? 0;
 }
 
 /**

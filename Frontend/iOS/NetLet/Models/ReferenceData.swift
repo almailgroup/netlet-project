@@ -139,7 +139,7 @@ struct Rules: Decodable, Sendable {
         static let fallback = Orders(
             returnKinds: ["refund", "exchange"],
             returnReasons: ["damaged", "defective", "wrongItem", "notAsDescribed", "tooSmall", "tooLarge", "changedMind", "other"],
-            openReturnStatuses: ["requested", "approved", "collected"],
+            openReturnStatuses: ["requested", "review", "approved", "collected"],
             maxReturnNote: 1000, ratingWindowDays: 30, maxDeliveryComment: 500, claimWindowDays: 7, maxClaimDescription: 2000,
             filsPerPoint: 1
         )

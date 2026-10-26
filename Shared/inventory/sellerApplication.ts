@@ -96,6 +96,8 @@ export type SellerApplication = {
    * store is charged because it was typed.
    */
   proposedCommissionPercent?: string | null;
+  /** Or a fixed amount per sale instead of a percentage (3.3.2) — one or the other. */
+  proposedCommissionFixed?: string | null;
   commissionNote?: string | null;
 };
 
@@ -116,8 +118,16 @@ export function proposalProblem(proposed: string | null | undefined): "applicati
   return null;
 }
 
+/** Whether a proposed fixed amount per sale is an amount at all. */
+export function fixedProposalProblem(fixed: string | null | undefined): "application.badCommission" | null {
+  const value = (fixed ?? "").trim();
+  if (!value) return null;
+  return /^\d{1,9}(\.\d{1,3})?$/.test(value) ? null : "application.badCommission";
+}
+
 export type ApplicationProblem =
   | "application.noName"
+  | "application.oneProposal"
   | "application.badIban"
   | "application.badPhone"
   | "application.badGovernorate"
@@ -153,8 +163,10 @@ export function applicationProblems(application: SellerApplication): Application
     }
   }
 
-  const proposal = proposalProblem(application.proposedCommissionPercent);
+  const proposal = proposalProblem(application.proposedCommissionPercent) ?? fixedProposalProblem(application.proposedCommissionFixed);
   if (proposal) problems.push(proposal);
+  /* A percentage or an amount: both is two proposals, and only half could be accepted. */
+  if (given(application.proposedCommissionPercent) && given(application.proposedCommissionFixed)) problems.push("application.oneProposal");
 
   return problems;
 }

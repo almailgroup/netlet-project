@@ -138,6 +138,11 @@
           "href": "/admin/affiliates",
           "label": "admin.affiliates",
           "need": "affiliate.manage"
+        },
+        {
+          "href": "/admin/commission",
+          "label": "commission.deskTitle",
+          "need": "vendor.setCommission"
         }
       ]
     },
@@ -228,6 +233,9 @@
   "courier": [
     "delivery.view",
     "delivery.move"
+  ],
+  "grantable": [
+    "vendor.setCommission"
   ],
   "bulk": {
     "actions": [

@@ -20,7 +20,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { buttonClass, EmptyState, fieldClass, Notice, PageHeader, Pill, SkeletonCards, smallButtonClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import {
@@ -30,10 +30,10 @@ import {
 } from "@shared/inventory/sellerApplication";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Check, ExternalLink, LoaderCircle, Paperclip, X } from "lucide-react";
+import { Check, ExternalLink, LoaderCircle, Paperclip, Upload, X } from "lucide-react";
 import { KIND_LABEL, STATUS_LABEL as DOCUMENT_STATUS_LABEL, STATUS_TONE, documentHref, useFileSize } from "@/components/account/DocumentUploads";
-import { DOCUMENT_KINDS, DOCUMENT_NOTE_MAX, currentByKind } from "@shared/inventory/applicationDocuments";
-import { useState } from "react";
+import { DOCUMENT_KINDS, DOCUMENT_NOTE_MAX, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, currentByKind } from "@shared/inventory/applicationDocuments";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const MISSING_LABEL: Record<MissingField, MessageKey> = {
@@ -60,12 +60,14 @@ export default function AdminApplications() {
 
 function Applications() {
   const { t, tError } = useTranslation();
+  const money = useMoney();
   const formatDate = useDateFormat();
   const [page, setPage] = useState(1);
   const [reasons, setReasons] = useState<Record<number, string>>({});
   /* The rate each store will be charged, per row: the standard one until the
      administrator changes it (3.3.2). */
   const [rates, setRates] = useState<Record<number, string>>({});
+  const [fixedRates, setFixedRates] = useState<Record<number, string>>({});
 
   /* The queue asks the server for what is waiting rather than filtering a page
      of everything: with paging the second reports an empty queue the moment it
@@ -178,7 +180,9 @@ function Applications() {
                             <p className="text-[13px] text-[#0a285a]">
                               {row.proposedCommissionPercent
                                 ? t("admin.applicationProposed", { rate: String(Number(row.proposedCommissionPercent)), standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })
-                                : t("admin.applicationNoProposal", { standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
+                                : row.proposedCommissionFixed
+                                  ? t("admin.applicationProposedFixed", { amount: money({ amount: row.proposedCommissionFixed, currencyCode: "KWD" }), standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })
+                                  : t("admin.applicationNoProposal", { standard: String(Number(DEFAULT_COMMISSION_PERCENT)) })}
                             </p>
                             {row.commissionNote ? <p dir="auto" className="mt-1 text-[13px] leading-5 ink-muted">“{row.commissionNote}”</p> : null}
                             <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -193,10 +197,29 @@ function Applications() {
                                   className={`${fieldClass} mt-1.5 h-9 w-24`}
                                 />
                               </div>
-                              {row.proposedCommissionPercent ? (
+                              {/* A fixed amount per sale (3.3.2), beside the rate or instead of it. */}
+                              <div>
+                                <label htmlFor={`${rateId}-fixed`} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.applicationFixed")}</label>
+                                <input
+                                  id={`${rateId}-fixed`}
+                                  dir="ltr"
+                                  inputMode="decimal"
+                                  placeholder="0.000"
+                                  value={fixedRates[row.id] ?? ""}
+                                  onChange={event => setFixedRates({ ...fixedRates, [row.id]: event.target.value })}
+                                  className={`${fieldClass} mt-1.5 h-9 w-28`}
+                                />
+                              </div>
+                              {row.proposedCommissionPercent || row.proposedCommissionFixed ? (
                                 <button
                                   type="button"
-                                  onClick={() => setRates({ ...rates, [row.id]: String(Number(row.proposedCommissionPercent)) })}
+                                  onClick={() => {
+                                    if (row.proposedCommissionPercent) setRates({ ...rates, [row.id]: String(Number(row.proposedCommissionPercent)) });
+                                    else {
+                                      setRates({ ...rates, [row.id]: "0" });
+                                      setFixedRates({ ...fixedRates, [row.id]: row.proposedCommissionFixed ?? "" });
+                                    }
+                                  }}
                                   className={smallButtonClass.secondary}
                                 >
                                   {t("admin.applicationUseProposed")}
@@ -238,7 +261,7 @@ function Applications() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null })}
+                              onClick={() => approve.mutate({ id: row.id, commissionPercent: (rates[row.id] ?? "").trim() || null, commissionFixed: (fixedRates[row.id] ?? "").trim() || null })}
                               disabled={missing.length > 0 || row.documentsWaiting > 0 || deciding !== undefined}
                               className={buttonClass.primary}
                             >
@@ -285,10 +308,42 @@ function DocumentReview({ applicationId }: { applicationId: number }) {
     onError: error => toast.error(tError(error.message)),
   });
   const current = currentByKind(documents.data ?? []);
+  const contractInput = useRef<HTMLInputElement | null>(null);
+  const [attaching, setAttaching] = useState(false);
+  /* NetLet's final contract (3.3.1), sent to the applicant to sign and upload. */
+  const attach = async (file: File | undefined) => {
+    if (!file) return;
+    setAttaching(true);
+    try {
+      if (file.size > MAX_DOCUMENT_BYTES) throw new Error("documents.tooLarge");
+      const response = await fetch("/api/applications/documents", {
+        method: "POST",
+        headers: { "Content-Type": file.type, "X-NetLet-Document-Kind": "contract", "X-NetLet-Application-Id": String(applicationId), "X-NetLet-File-Name": encodeURIComponent(file.name) },
+        body: file,
+        credentials: "same-origin",
+      });
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "documents.failed");
+      toast.success(t("documents.contractAttached"));
+      void utils.inventory.applications.documents.invalidate({ applicationId });
+    } catch (error) {
+      toast.error(tError(error instanceof Error ? error.message : "documents.failed"));
+    } finally {
+      setAttaching(false);
+      if (contractInput.current) contractInput.current.value = "";
+    }
+  };
   if (documents.isLoading) return null;
   return (
     <section className="mt-4" aria-label={t("documents.title")}>
-      <p className="text-[13px] font-semibold text-[#536b8c]">{t("documents.title")}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[13px] font-semibold text-[#536b8c]">{t("documents.title")}</p>
+        <input ref={contractInput} type="file" accept={DOCUMENT_TYPES.join(",")} className="sr-only" tabIndex={-1} aria-hidden onChange={event => void attach(event.target.files?.[0])} />
+        <button type="button" onClick={() => contractInput.current?.click()} disabled={attaching} className={smallButtonClass.secondary}>
+          {attaching ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
+          {t(current.has("contract") ? "documents.replaceContract" : "documents.attachContract")}
+        </button>
+      </div>
       {current.size === 0 ? (
         <p className="mt-1 text-[13px] ink-muted">{t("documents.noneUploaded")}</p>
       ) : (
@@ -313,7 +368,7 @@ function DocumentReview({ applicationId }: { applicationId: number }) {
                     <a href={documentHref(replacing.id)} download className="font-semibold hover:underline"><bdi>{replacing.fileName}</bdi></a>
                   </p>
                 ) : null}
-                {latest.status === "pending" ? (
+                {latest.status === "pending" && kind !== "contract" ? (
                   rejecting === latest.id ? (
                     <div className="mt-2">
                       <label htmlFor={noteId} className="block text-[13px] font-semibold">{t("documents.rejectReason")}</label>

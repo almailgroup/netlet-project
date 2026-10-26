@@ -133,6 +133,24 @@ final class CartModel {
         }
     }
 
+    /// Fast or regular for one line (3.2.5) — the web's `SpeedChoice`. Fast
+    /// from one store to one door is its own parcel with its own fee, which
+    /// the summary then shows as its own row.
+    @discardableResult
+    func setDeliveryChoice(lineId: String, fast: Bool) async -> Bool {
+        guard let id = cartId else { return false }
+        busyLine = lineId
+        defer { busyLine = nil }
+        do {
+            if let found = try await service.setDeliveryChoice(id, lineId: lineId, choice: fast ? "fast" : "regular") { cart = found }
+            return true
+        } catch {
+            Haptics.refused()
+            lastError = APIError.from(error)
+            return false
+        }
+    }
+
     /// Reads the bag again — after an order, which empties it on the server.
     func refresh() async {
         guard let id = cartId else { return }

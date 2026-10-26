@@ -30,6 +30,7 @@ import {
   type MissingField,
   MAX_COMMISSION_NOTE,
   proposalProblem,
+  fixedProposalProblem,
 } from "@shared/inventory/sellerApplication";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { GOVERNORATES, ibanReadAs, isValidIban } from "@shared/inventory/storeProfile";
@@ -67,7 +68,10 @@ type Form = {
   underPlatformLicence: boolean;
   agreed: boolean;
   proposing: boolean;
+  /* A lower percentage, or a fixed amount per sale (3.3.2) — one or the other. */
+  proposalKind: "percent" | "fixed";
   proposedCommissionPercent: string;
+  proposedCommissionFixed: string;
   commissionNote: string;
 };
 
@@ -75,7 +79,7 @@ const EMPTY: Form = {
   storeName: "", storeNameAr: "", contactEmail: "", contactPhone: "", governorate: "",
   addressLine: "", licenceNumber: "", licenceDocUrl: "", identityDocUrl: "", payoutIban: "",
   underPlatformLicence: false, agreed: false,
-  proposing: false, proposedCommissionPercent: "", commissionNote: "",
+  proposing: false, proposalKind: "percent", proposedCommissionPercent: "", proposedCommissionFixed: "", commissionNote: "",
 };
 
 export default function Sell() {
@@ -127,8 +131,10 @@ export default function Sell() {
       payoutIban: row.payoutIban ?? "",
       underPlatformLicence: row.underPlatformLicence,
       agreed: row.agreementVersion === AGREEMENT_VERSION,
-      proposing: row.proposedCommissionPercent !== null,
+      proposing: row.proposedCommissionPercent !== null || row.proposedCommissionFixed !== null,
+      proposalKind: row.proposedCommissionFixed !== null ? "fixed" : "percent",
       proposedCommissionPercent: row.proposedCommissionPercent ? String(Number(row.proposedCommissionPercent)) : "",
+      proposedCommissionFixed: row.proposedCommissionFixed ?? "",
       commissionNote: row.commissionNote ?? "",
     });
   }, [mine.data?.id, mine.data?.updatedAt]);
@@ -157,10 +163,13 @@ export default function Sell() {
     agreementVersion: form.agreed ? AGREEMENT_VERSION : null,
     /* Unticking the proposal withdraws it, rather than leaving a number the
        applicant can no longer see on the row an administrator reads. */
-    proposedCommissionPercent: form.proposing ? form.proposedCommissionPercent.trim() || null : null,
+    proposedCommissionPercent: form.proposing && form.proposalKind === "percent" ? form.proposedCommissionPercent.trim() || null : null,
+    proposedCommissionFixed: form.proposing && form.proposalKind === "fixed" ? form.proposedCommissionFixed.trim() || null : null,
     commissionNote: form.proposing ? form.commissionNote.trim() || null : null,
   };
-  const proposalIssue = form.proposing ? proposalProblem(form.proposedCommissionPercent) : null;
+  const proposalIssue = !form.proposing ? null
+    : form.proposalKind === "percent" ? proposalProblem(form.proposedCommissionPercent)
+    : fixedProposalProblem(form.proposedCommissionFixed);
   /* The server takes web addresses only (a reviewer opens these); said here,
      beside the box, rather than as a refused save. */
   const badLink = (value: string) => value.trim() !== "" && !/^https?:\/\/\S+$/i.test(value.trim());
@@ -318,18 +327,46 @@ export default function Sell() {
                   <span className="text-[13px] leading-5 text-[#0a285a]">{t("sell.commissionPropose")}</span>
                 </label>
                 {form.proposing ? (
+                  <fieldset className="mt-4">
+                    <legend className="sr-only">{t("sell.commissionKind")}</legend>
+                    <div className="flex flex-wrap gap-2">
+                      {(["percent", "fixed"] as const).map(kind => (
+                        <label key={kind} className="tint-on-hover flex cursor-pointer items-center gap-2 rounded-full border border-[#d5dfeb] bg-white px-3 py-2 text-[13px] text-[#0a285a]">
+                          <input type="radio" name="proposal-kind" checked={form.proposalKind === kind} onChange={() => set("proposalKind", kind)} className="size-4 accent-[#0a285a]" />
+                          {t(kind === "percent" ? "sell.commissionKindPercent" : "sell.commissionKindFixed")}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                ) : null}
+                {form.proposing ? (
                   <div className="mt-4 grid gap-4 sm:grid-cols-[160px_1fr]">
-                    <Labelled label={t("sell.commissionRate")}>
-                      <input
-                        dir="ltr"
-                        inputMode="decimal"
-                        value={form.proposedCommissionPercent}
-                        onChange={e => set("proposedCommissionPercent", e.target.value)}
-                        aria-invalid={proposalIssue !== null}
-                        aria-describedby="proposal-issue"
-                        className={field}
-                      />
-                    </Labelled>
+                    {form.proposalKind === "percent" ? (
+                      <Labelled label={t("sell.commissionRate")}>
+                        <input
+                          dir="ltr"
+                          inputMode="decimal"
+                          value={form.proposedCommissionPercent}
+                          onChange={e => set("proposedCommissionPercent", e.target.value)}
+                          aria-invalid={proposalIssue !== null}
+                          aria-describedby="proposal-issue"
+                          className={field}
+                        />
+                      </Labelled>
+                    ) : (
+                      <Labelled label={t("sell.commissionFixed")}>
+                        <input
+                          dir="ltr"
+                          inputMode="decimal"
+                          placeholder="0.000"
+                          value={form.proposedCommissionFixed}
+                          onChange={e => set("proposedCommissionFixed", e.target.value)}
+                          aria-invalid={proposalIssue !== null}
+                          aria-describedby="proposal-issue"
+                          className={field}
+                        />
+                      </Labelled>
+                    )}
                     <Labelled label={t("sell.commissionWhy")}>
                       <input dir="auto" maxLength={MAX_COMMISSION_NOTE} value={form.commissionNote} onChange={e => set("commissionNote", e.target.value)} className={field} />
                     </Labelled>
@@ -377,6 +414,9 @@ export default function Sell() {
                 </label>
               </section>
             </fieldset>
+            {/* Outside the fieldset that stops the papers changing once NetLet has the
+                application: the signed contract is the one paper sent back then (3.3.1). */}
+            <DocumentUploads saved={Boolean(mine.data)} editable={editable} step="contract" />
 
             {editable ? (
               <div className="mt-6">

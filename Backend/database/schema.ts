@@ -23,6 +23,7 @@ import {
   type AnyPgColumn,
   boolean,
   char,
+  check,
   customType,
   date,
   index,
@@ -31,7 +32,9 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -470,6 +473,13 @@ export const vendors = pgTable(
      * looking first, which the requirements ask for by name.
      */
     autoPublish: boolean("auto_publish").notNull().default(false),
+    /**
+     * Warnings issued before this moment no longer count toward suspension
+     * (3.3.18). Set when an administrator reinstates a suspended store, so a
+     * store let back in starts its count again rather than being suspended by
+     * its next warning.
+     */
+    warningsSince: timestamp("warnings_since", { withTimezone: true }),
 
     /**
      * The Ministry of Commerce discount permit, which Kuwaiti law requires
@@ -531,6 +541,25 @@ export const vendors = pgTable(
      * be worse than no name at all.
      */
     deliveryProvider: varchar("delivery_provider", { length: 120 }),
+    /**
+     * Fast delivery, when the store offers it (3.2.5: "choice of delivery
+     * speed (fast/regular) per individual product"). The fee a shopper pays
+     * for a parcel they asked to come fast, and the band that promises; null
+     * fee is no fast option at all, so nothing is offered that nobody priced.
+     */
+    fastDeliveryFee: numeric("fast_delivery_fee", { precision: 12, scale: 3 }),
+    fastDeliverySpeed: varchar("fast_delivery_speed", { length: 20 }),
+    /**
+     * Who carries this store's parcels (3.3.13: "their own delivery company
+     * or the platform's own delivery service"). `netlet`: they wait on
+     * NetLet's dispatch board to be given to a delivery company, which is how
+     * every parcel went before this column. `own`: the store's own company —
+     * when that company is on NetLet (`delivery_courier_id`) its parcels go
+     * straight to that company's board, and when it is not the store marks
+     * them shipped itself.
+     */
+    deliveryMode: varchar("delivery_mode", { length: 10 }).notNull().default("netlet"),
+    deliveryCourierId: integer("delivery_courier_id").references((): AnyPgColumn => couriers.id, { onDelete: "set null" }),
     /**
      * Selling under NetLet's own commercial licence rather than their own.
      *
@@ -708,6 +737,14 @@ export const products = pgTable(
      */
     acceptsOffers: boolean("accepts_offers"),
     /**
+     * Offered to affiliates, and at what rate (3.7.1: vendors "opt in
+     * specific products of their own"). Null is not offered; a percentage is
+     * what the store pays an affiliate whose link sells it, on the line's
+     * price, out of the store's own net — the store chose it. Frozen on the
+     * line at the sale (`order_items.affiliate_vendor_percent`).
+     */
+    affiliatePercent: numeric("affiliate_percent", { precision: 5, scale: 2 }),
+    /**
      * How soon *this* product ships, overriding the store's usual band.
      *
      * Nullable in the shape the commission rate and the price-request flag
@@ -749,6 +786,7 @@ export const products = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [
+    index("products_affiliate_idx").on(table.affiliatePercent).where(sql`${table.affiliatePercent} is not null`),
     uniqueIndex("products_handle_unique").on(table.handle),
     index("products_vendor_id_idx").on(table.vendorId),
     index("products_category_id_idx").on(table.categoryId),
@@ -986,6 +1024,13 @@ export const cartItems = pgTable(
      */
     bundleId: integer("bundle_id").references(() => bundles.id, { onDelete: "set null" }),
     /**
+     * Fast or regular (3.2.5), the shopper's choice for this line. Regular
+     * unless they change it, so a shopper who never opens the control places
+     * exactly the order they always did. An intention like the rest of the
+     * line: what fast costs is the store's fee when the bag is read.
+     */
+    deliveryChoice: varchar("delivery_choice", { length: 8 }).notNull().default("regular"),
+    /**
      * Where this line is going (3.2.6), when it is not going where the rest is.
      *
      * Null is the default rather than the unknown: it means "wherever this
@@ -1069,10 +1114,9 @@ export const courierMembers = pgTable(
 );
 
 /**
- * A conversation between a shopper and NetLet itself (3.5.1) — not a seller,
- * whose conversations are `conversations`. The rules are
- * `Shared/commerce/support.ts`. Read state is a timestamp per side, so unread
- * is derived, the way the seller chat's is.
+ * A conversation between a shopper and NetLet itself (3.5.1) — shoppers and
+ * stores do not message each other. The rules are `Shared/commerce/support.ts`.
+ * Read state is a timestamp per side, so unread is derived.
  */
 export const supportConversations = pgTable(
   "support_conversations",
@@ -1563,13 +1607,27 @@ export const returnRequests = pgTable(
     refundPaidAt: timestamp("refund_paid_at", { withTimezone: true }),
     /** The zero-priced order that carried the replacement, for an exchange. */
     replacementOrderId: integer("replacement_order_id").references(() => orders.id, { onDelete: "set null" }),
+    /**
+     * What the model read in the shopper's own words (3.5.2: "understanding
+     * the issue"), on a request no rule could decide: a short summary and a
+     * suggested outcome. A suggestion and never a decision — the seller
+     * answers and an administrator confirms.
+     */
+    aiSummary: varchar("ai_summary", { length: 600 }),
+    aiSuggestion: varchar("ai_suggestion", { length: 12 }),
+    /** The seller's answer — a proposed outcome on "other", or a dispute — and when. */
+    vendorResponse: varchar("vendor_response", { length: 400 }),
+    vendorRespondedAt: timestamp("vendor_responded_at", { withTimezone: true }),
+    /** The administrator who confirmed the outcome (3.5.2: "a final confirmation from the admin"). */
+    confirmedBy: integer("confirmed_by").references(() => users.id, { onDelete: "set null" }),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [
     uniqueIndex("return_requests_open_unique")
       .on(table.orderItemId)
-      .where(sql`${table.status} in ('requested', 'approved', 'collected')`),
+      .where(sql`${table.status} in ('requested', 'review', 'approved', 'collected')`),
     index("return_requests_vendor_idx").on(table.vendorId, table.status),
     index("return_requests_user_idx").on(table.userId),
   ]
@@ -1588,6 +1646,21 @@ export const returnRequests = pgTable(
 export const featureSwitches = pgTable("feature_switches", {
   key: varchar("key", { length: 64 }).primaryKey(),
   enabled: boolean("enabled").notNull(),
+  updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Numbers an administrator sets without a deploy — the feature switches'
+ * sibling (3.1.15: the product-link commission is "admin-configurable").
+ * `Shared/settings.ts` names every key with its default and its bounds, so a
+ * row that is absent reads as the default and a value out of bounds is
+ * refused before it is written. Text, because a setting is a percentage today
+ * and may be something else tomorrow, and the shared rule parses it.
+ */
+export const platformSettings = pgTable("platform_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: varchar("value", { length: 200 }).notNull(),
   updatedBy: integer("updated_by").references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -1658,70 +1731,6 @@ export const invoiceCounters = pgTable("invoice_counters", {
 });
 
 /**
- * A conversation between one shopper and one seller (3.8).
- *
- * **One thread per pair, not per product.** A shopper asking about the sofa and
- * then the cushions is having one conversation with one shop, and a seller's
- * inbox of forty threads from the same person is how messages go unread. What
- * a message is about rides on the message (`product_id`, `order_id`) rather
- * than splitting the thread.
- *
- * **Read state is a timestamp per side**, not a flag per message: "unread" is
- * every message from the other side after the time this side last looked,
- * which needs no write per message and cannot disagree with itself.
- *
- * Cascade from both ends: a conversation with a deleted account or a removed
- * store has nobody left to read it.
- */
-export const conversations = pgTable(
-  "conversations",
-  {
-    id: serial("id").primaryKey(),
-    userId: integer("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    vendorId: integer("vendor_id")
-      .notNull()
-      .references(() => vendors.id, { onDelete: "cascade" }),
-    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
-    shopperReadAt: timestamp("shopper_read_at", { withTimezone: true }),
-    vendorReadAt: timestamp("vendor_read_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  table => [
-    uniqueIndex("conversations_pair_unique").on(table.userId, table.vendorId),
-    index("conversations_vendor_idx").on(table.vendorId, table.lastMessageAt),
-    index("conversations_user_idx").on(table.userId, table.lastMessageAt),
-  ]
-);
-
-/**
- * One message. Only messages that passed the contact filter are ever stored —
- * a refused message is refused before the insert, so there is no row holding a
- * phone number somebody was told they could not send.
- */
-export const conversationMessages = pgTable(
-  "conversation_messages",
-  {
-    id: serial("id").primaryKey(),
-    conversationId: integer("conversation_id")
-      .notNull()
-      .references(() => conversations.id, { onDelete: "cascade" }),
-    /** `shopper` or `seller`. Which side, not which person: a store answers as the store. */
-    side: varchar("side", { length: 10 }).notNull(),
-    /** Who on that side wrote it, for the store's own record. Never shown to the shopper. */
-    authorId: integer("author_id").references(() => users.id, { onDelete: "set null" }),
-    body: text("body").notNull(),
-    /** What it is about, when it is about something. */
-    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
-    productTitle: varchar("product_title", { length: 255 }),
-    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  table => [index("conversation_messages_thread_idx").on(table.conversationId, table.createdAt)]
-);
-
-/**
  * How the delivery went, rated apart from what was delivered (3.4.4).
  *
  * A product review is about the thing; this is about the van. Folding the two
@@ -1754,13 +1763,26 @@ export const deliveryRatings = pgTable(
     vendorName: varchar("vendor_name", { length: 255 }),
     /** Who carried it. Null is the seller delivering it themselves. */
     courierId: integer("courier_id").references(() => couriers.id, { onDelete: "set null" }),
-    /** One to five whole stars — the same scale as a product review. */
+    /**
+     * One to five whole stars — the same scale as a product review. Since the
+     * three parts below exist it is their average, rounded, so every report
+     * that reads one figure goes on working; a rating given before them keeps
+     * its one figure and none of the parts.
+     */
     rating: integer("rating").notNull(),
+    /** The three things the document names (3.4.4), one to five stars each. */
+    speed: smallint("speed"),
+    condition: smallint("condition"),
+    conduct: smallint("conduct"),
     comment: varchar("comment", { length: 500 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [
+    check(
+      "delivery_ratings_parts_range",
+      sql`(${table.speed} is null or ${table.speed} between 1 and 5) and (${table.condition} is null or ${table.condition} between 1 and 5) and (${table.conduct} is null or ${table.conduct} between 1 and 5)`,
+    ),
     uniqueIndex("delivery_ratings_parcel_unique").on(table.orderId, table.parcelKey),
     index("delivery_ratings_courier_idx").on(table.courierId, table.createdAt),
     index("delivery_ratings_vendor_idx").on(table.vendorId, table.createdAt),
@@ -2184,6 +2206,25 @@ export const orderItems = pgTable(
      */
     carriedBy: integer("carried_by").references(() => users.id, { onDelete: "set null" }),
     /**
+     * Who shared the link to this product that the sale came through, and
+     * the product-link rate at that moment (3.1.14 track a) — frozen beside
+     * the line for the reason its commission rate is. Null on a line nobody's
+     * link brought. `set null`: an account closed later does not unwrite what
+     * it earned.
+     */
+    referrerId: integer("referrer_id").references(() => users.id, { onDelete: "set null" }),
+    referralRate: numeric("referral_rate", { precision: 5, scale: 2 }),
+    /**
+     * The store's affiliate rate on this line, frozen at the sale when an
+     * affiliate's link brought the order and the product was offered to
+     * affiliates (3.7.1). The share is part of `commission_amount` — the
+     * store pays it the way it pays NetLet, and NetLet passes it on — so
+     * `commission + vendor_net = line_total` still holds on every line.
+     */
+    affiliateVendorPercent: numeric("affiliate_vendor_percent", { precision: 5, scale: 2 }),
+    /** Fast or regular, as chosen at the sale (3.2.5); a fast line is its own parcel. */
+    deliveryChoice: varchar("delivery_choice", { length: 8 }).notNull().default("regular"),
+    /**
      * How big and how heavy, frozen at the sale.
      *
      * Copied for the reason the price is: the vehicle is decided from these,
@@ -2329,6 +2370,8 @@ export const vendorApplications = pgTable(
      * commission is outside a vendor's control entirely.
      */
     proposedCommissionPercent: numeric("proposed_commission_percent", { precision: 5, scale: 2 }),
+    /** Or a fixed amount per sale instead of a percentage (3.3.2); never both. */
+    proposedCommissionFixed: numeric("proposed_commission_fixed", { precision: 12, scale: 3 }),
     commissionNote: varchar("commission_note", { length: 500 }),
     /**
      * Which version of the seller agreement they accepted, and when.
@@ -2390,6 +2433,85 @@ export const applicationDocuments = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("application_documents_application_idx").on(table.applicationId, table.kind, table.createdAt)],
+);
+
+/**
+ * A store asking for a commission of its own (3.3.2: "propose a custom rate
+ * or fixed amount for specific products, subject to later admin approval").
+ * For the whole store or one product, a percentage or a fixed amount — one
+ * figure, never both — with the store's reason. Nothing is applied by the
+ * row: an administrator accepting it sets the rate through the same audited
+ * door as any commission edit, and declining says why.
+ * `Shared/inventory/commissionProposals.ts` is the rule.
+ */
+export const commissionProposals = pgTable(
+  "commission_proposals",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    /** Null is the whole store. */
+    productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }),
+    percent: numeric("percent", { precision: 5, scale: 2 }),
+    fixed: numeric("fixed", { precision: 12, scale: 3 }),
+    reason: varchar("reason", { length: 500 }),
+    /** pending | accepted | declined | withdrawn */
+    status: varchar("status", { length: 12 }).notNull().default("pending"),
+    decisionNote: varchar("decision_note", { length: 400 }),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    check("commission_proposals_one_figure", sql`(${table.percent} is null) <> (${table.fixed} is null)`),
+    /* One open proposal per store and product, the whole store counting as one. */
+    uniqueIndex("commission_proposals_open_unique")
+      .on(table.vendorId, sql`coalesce(${table.productId}, 0)`)
+      .where(sql`${table.status} = 'pending'`),
+    index("commission_proposals_status_idx").on(table.status, table.createdAt),
+  ],
+);
+
+/**
+ * One thing an account may do without being an administrator (3.3.9:
+ * commission "can only be edited by the admin, or by an employee
+ * specifically authorized to do so"), and who granted it — which is the
+ * "which admin granted that employee this specific permission" the audit
+ * row carries. `Shared/inventory/permissions.ts` names the capabilities a
+ * grant may carry (`GRANTABLE`); today that is `vendor.setCommission`.
+ */
+export const staffGrants = pgTable(
+  "staff_grants",
+  {
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    capability: varchar("capability", { length: 48 }).notNull(),
+    grantedBy: integer("granted_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [primaryKey({ columns: [table.userId, table.capability] })],
+);
+
+/**
+ * A warning NetLet gives a store (3.3.18: "automatic suspension of a
+ * vendor's account after 3 violation warnings"). Issued on purpose by an
+ * administrator with a reason the store reads, optionally about one product;
+ * it lapses at `expires_at`, can be withdrawn, and the third one standing
+ * suspends the store. `Shared/inventory/warnings.ts` is the rule.
+ */
+export const vendorWarnings = pgTable(
+  "vendor_warnings",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    reason: varchar("reason", { length: 400 }).notNull(),
+    issuedBy: integer("issued_by").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    withdrawnBy: integer("withdrawn_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("vendor_warnings_vendor_idx").on(table.vendorId, table.createdAt)],
 );
 
 /* -------------------------------------------------------------- vouchers --- */
@@ -2677,6 +2799,14 @@ export const pointEntries = pgTable(
      * seller payout report already describes.
      */
     settledAt: timestamp("settled_at", { withTimezone: true }),
+    /**
+     * When a referral credit may be spent (3.1.14: "only paid out after the
+     * legal return period has passed"). Written with the credit, at the end
+     * of the line's return window; the balance counts it from then. Null is
+     * spendable now, which is every row written before this and every
+     * movement that is not a referral's.
+     */
+    availableAt: timestamp("available_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [
@@ -2697,6 +2827,16 @@ export const pointEntries = pgTable(
     uniqueIndex("point_entries_affiliate_line_unique")
       .on(table.orderItemId)
       .where(sql`${table.reason} = 'affiliate_reversal'`),
+    /* A line earns each referral commission once and gives it back once. */
+    uniqueIndex("point_entries_product_referral_unique")
+      .on(table.orderItemId)
+      .where(sql`${table.reason} = 'product_referral'`),
+    uniqueIndex("point_entries_invite_commission_unique")
+      .on(table.orderItemId)
+      .where(sql`${table.reason} = 'invite_commission'`),
+    uniqueIndex("point_entries_referral_reversal_unique")
+      .on(table.orderItemId, table.reason)
+      .where(sql`${table.reason} in ('product_referral_reversal', 'invite_commission_reversal')`),
     index("point_entries_pot_idx").on(table.userId, table.pot),
   ]
 );
@@ -3151,11 +3291,9 @@ export type VendorApplication = typeof vendorApplications.$inferSelect;
 export type BundleRow = typeof bundles.$inferSelect;
 
 export type DeliveryRatingRow = typeof deliveryRatings.$inferSelect;
-export type ConversationRow = typeof conversations.$inferSelect;
 export type ReturnRequestRow = typeof returnRequests.$inferSelect;
 export type FeatureSwitchRow = typeof featureSwitches.$inferSelect;
 export type AffiliateRow = typeof affiliates.$inferSelect;
 export type PayoutRunRow = typeof payoutRuns.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
-export type ConversationMessageRow = typeof conversationMessages.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;

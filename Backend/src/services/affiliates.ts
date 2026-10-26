@@ -12,9 +12,9 @@
  * one commission per order, one reversal per line — so pressing "cash
  * collected" twice, or receiving a return twice, cannot pay twice.
  */
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
-import { affiliates, orderItems, orders, pointEntries, users } from "../../database/schema.js";
+import { affiliates, orderItems, orders, pointEntries, productImages, products, productVariants, users, vendors } from "../../database/schema.js";
 import {
   acceptableRate,
   affiliateCodeFor,
@@ -22,7 +22,10 @@ import {
   DEFAULT_AFFILIATE_PERCENT,
   lineShareFils,
   orderShareFils,
+  storeAffiliateRate,
   userIdFromAffiliateCode,
+  vendorAffiliateFils,
+  vendorShareFils,
   type AffiliateStatus,
 } from "../../../Shared/commerce/affiliate.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
@@ -200,6 +203,85 @@ export async function requestAffiliatePayout(userId: number): Promise<{ amount: 
   return { amount: fromFils(BigInt(balance)) };
 }
 
+/* ---------------------------------------------------- the stores' offers --- */
+
+export type AffiliateProduct = {
+  productId: number;
+  handle: string;
+  title: string;
+  titleAr: string | null;
+  vendorName: string;
+  image: string | null;
+  price: string;
+  percent: string;
+};
+
+/**
+ * The products stores have offered to affiliates, with each one's rate (3.7.1),
+ * for an approved affiliate to choose what to promote. Only what the shop would
+ * show — published, from an approved store — highest rate first, then newest.
+ */
+export async function listAffiliateProducts(userId: number, request: { page?: number } = {}): Promise<Page<AffiliateProduct> | null> {
+  const db = await handle();
+  const [mine] = await db.select({ status: affiliates.status }).from(affiliates).where(eq(affiliates.userId, userId)).limit(1);
+  if (mine?.status !== "active") return null;
+  const where = and(isNotNull(products.affiliatePercent), eq(products.status, "published"), eq(vendors.status, "approved"));
+  const pageSize = 24;
+  const [counted] = await db.select({ n: sql<number>`count(*)::int` }).from(products).innerJoin(vendors, eq(vendors.id, products.vendorId)).where(where);
+  const total = counted?.n ?? 0;
+  const page = clampPage(request.page ?? 1, total, pageSize);
+  const rows = await db
+    .select({
+      productId: products.id,
+      handle: products.handle,
+      title: products.title,
+      titleAr: products.titleAr,
+      vendorName: vendors.name,
+      percent: products.affiliatePercent,
+      image: sql<string | null>`(select ${productImages.url} from ${productImages} where ${productImages.productId} = ${outer(products.id)} and ${productImages.kind} = 'image' order by ${productImages.position}, ${productImages.id} limit 1)`,
+      price: sql<string | null>`(select min(${productVariants.price}) from ${productVariants} where ${productVariants.productId} = ${outer(products.id)})`,
+    })
+    .from(products)
+    .innerJoin(vendors, eq(vendors.id, products.vendorId))
+    .where(where)
+    .orderBy(desc(products.affiliatePercent), desc(products.id))
+    .limit(pageSize)
+    .offset(offsetFor(page, pageSize));
+  return {
+    rows: rows.map(row => ({ ...row, percent: row.percent ?? "0.00", price: row.price ?? "0.000" })),
+    total,
+    page,
+    pageSize,
+  };
+}
+
+/**
+ * Offer one of a store's products to affiliates at a rate it funds, or
+ * withdraw it (`percent: null`). A manager's decision, like a price: the rate
+ * comes off the store's own net on every sale an affiliate brings. Orders
+ * already placed keep the rate frozen on their lines.
+ */
+export async function setProductAffiliate(actor: Actor, productId: number, percent: string | null): Promise<{ percent: string | null }> {
+  const db = await handle();
+  const [row] = await db.select({ vendorId: products.vendorId, title: products.title, percent: products.affiliatePercent }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new AffiliateRefused("affiliate.notFound");
+  assertCan(actor, "product.edit", row.vendorId);
+  const next = percent === null ? null : storeAffiliateRate(percent);
+  if (percent !== null && next === null) throw new AffiliateRefused("affiliate.badRate");
+  if (next === row.percent) return { percent: next };
+  await db.update(products).set({ affiliatePercent: next }).where(eq(products.id, productId));
+  await recordAudit(await auditActor(actor), {
+    action: "product.setAffiliate",
+    subjectType: "product",
+    subjectId: productId,
+    subjectLabel: row.title,
+    vendorId: row.vendorId,
+    before: { affiliatePercent: row.percent },
+    after: { affiliatePercent: next },
+  });
+  return { percent: next };
+}
+
 /* -------------------------------------------------- earning and reversing --- */
 
 /**
@@ -214,12 +296,14 @@ export async function creditAffiliate(db: Db, orderId: number): Promise<void> {
     .innerJoin(affiliates, eq(affiliates.id, orders.affiliateId))
     .where(eq(orders.id, orderId))
     .limit(1);
-  if (!order || order.rate === null || order.status !== "active") return;
+  if (!order || order.status !== "active") return;
   const lines = await db
-    .select({ lineTotal: orderItems.lineTotal, commissionAmount: orderItems.commissionAmount, fulfilment: orderItems.fulfilment })
+    .select({ lineTotal: orderItems.lineTotal, commissionAmount: orderItems.commissionAmount, fulfilment: orderItems.fulfilment, affiliateVendorPercent: orderItems.affiliateVendorPercent })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
-  const share = orderShareFils(lines, order.rate);
+  /* What each store funded on the products it opted in (3.7.1), and — only on
+     an order placed before that — NetLet's own share out of its cut. */
+  const share = vendorShareFils(lines) + (order.rate === null ? 0n : orderShareFils(lines, order.rate));
   if (share <= 0n) return;
   try {
     await db.insert(pointEntries).values({ userId: order.userId, pot: "affiliate", points: Number(share), reason: "affiliate_commission", orderId });
@@ -235,19 +319,19 @@ export async function creditAffiliate(db: Db, orderId: number): Promise<void> {
  */
 export async function reverseAffiliateLine(db: Db, orderItemId: number): Promise<void> {
   const [line] = await db
-    .select({ orderId: orderItems.orderId, lineTotal: orderItems.lineTotal, commissionAmount: orderItems.commissionAmount, rate: orders.affiliateRate })
+    .select({ orderId: orderItems.orderId, lineTotal: orderItems.lineTotal, commissionAmount: orderItems.commissionAmount, affiliateVendorPercent: orderItems.affiliateVendorPercent, rate: orders.affiliateRate })
     .from(orderItems)
     .innerJoin(orders, eq(orders.id, orderItems.orderId))
     .where(eq(orderItems.id, orderItemId))
     .limit(1);
-  if (!line || line.rate === null) return;
+  if (!line || (line.rate === null && line.affiliateVendorPercent === null)) return;
   const [credited] = await db
     .select({ userId: pointEntries.userId })
     .from(pointEntries)
     .where(and(eq(pointEntries.orderId, line.orderId), eq(pointEntries.reason, "affiliate_commission")))
     .limit(1);
   if (!credited) return;
-  const share = lineShareFils(line, line.rate);
+  const share = vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent) + (line.rate === null ? 0n : lineShareFils(line, line.rate));
   if (share <= 0n) return;
   try {
     await db.insert(pointEntries).values({ userId: credited.userId, pot: "affiliate", points: -Number(share), reason: "affiliate_reversal", orderId: line.orderId, orderItemId });

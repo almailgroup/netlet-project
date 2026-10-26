@@ -43,6 +43,7 @@ const REASON_LABEL: Record<ReturnReason, MessageKey> = {
 
 const STATUS_LABEL: Record<string, MessageKey> = {
   requested: "returns.statusRequested",
+  review: "returns.statusReview",
   approved: "returns.statusApproved",
   declined: "returns.statusDeclined",
   collected: "returns.statusCollected",
@@ -90,6 +91,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
       <p className="mt-0.5 text-[12px] leading-5 ink-muted">
         {latest.status === "approved" ? t("returns.nextApproved") : null}
         {latest.status === "requested" ? t("returns.nextRequested") : null}
+        {latest.status === "review" ? t("returns.nextReview") : null}
         {latest.status === "collected" ? t("returns.nextCollected") : null}
         {latest.status === "refunded"
           ? (latest.refundPaidAt ? t("returns.refundPaid", { amount: money(latest.refundAmount ?? "0") }) : t("returns.refundDue", { amount: money(latest.refundAmount ?? "0") }))

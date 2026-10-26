@@ -40,7 +40,7 @@ let ordersModule: typeof import("./orders.js");
 
 type Who = "shopper" | "stranger" | "admin" | "manager" | "creator";
 const people = {} as Record<Who, User>;
-const ids = { sofa: 0, mug: 0 };
+const ids = { sofa: 0, mug: 0, sofaProduct: 0, mugProduct: 0 };
 
 const contextFor = (user: User | null): TrpcContext => ({
   user,
@@ -75,10 +75,10 @@ beforeAll(async () => {
   const product = async (handle: string, price: string) => {
     const [row] = await db.insert(products).values({ vendorId: acme.id, handle, title: handle, titleAr: `${handle}-ar`, status: "published" }).returning();
     const [variant] = await db.insert(productVariants).values({ productId: row.id, title: "Default", sku: handle, price, stock: 50 }).returning();
-    return variant.id;
+    return [row.id, variant.id] as const;
   };
-  ids.sofa = await product("sofa", "240.000");
-  ids.mug = await product("mug", "4.000");
+  [ids.sofaProduct, ids.sofa] = await product("sofa", "240.000");
+  [ids.mugProduct, ids.mug] = await product("mug", "4.000");
 }, 60_000);
 
 beforeEach(async () => {
@@ -95,7 +95,14 @@ beforeEach(async () => {
   await db.delete(affiliates);
   await db.delete(cartItems);
   await db.delete(carts);
+  await db.update(products).set({ affiliatePercent: null });
 });
+
+/** The store offers both products to affiliates at 3% of the line (3.7.1). */
+async function offerBoth(percent = "3") {
+  await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent });
+  await as("manager").affiliates.setProduct({ productId: ids.mugProduct, percent });
+}
 
 
 async function placed(code: string | null, buyer: Who = "shopper") {
@@ -160,14 +167,21 @@ describe("joining", () => {
 });
 
 describe("earning", () => {
-  it("attributes an order to an approved affiliate and freezes the rate", async () => {
+  it("attributes an order to an approved affiliate and freezes each store's rate on its line", async () => {
     const { code, id } = await approvedCreator();
-    const { order } = await placed(code);
-    expect(order).toMatchObject({ affiliateId: id, affiliateRate: "3.00" });
-    /* A later change of rate does not reach back. */
-    await as("admin").affiliates.update({ affiliateId: id, ratePercent: "10" });
-    const [again] = await db.select().from(orders).where(eq(orders.id, order.id));
-    expect(again.affiliateRate).toBe("3.00");
+    await offerBoth();
+    const { order, lines } = await placed(code);
+    /* NetLet's own share stopped with 3.7.1: no order-level rate is frozen. */
+    expect(order).toMatchObject({ affiliateId: id, affiliateRate: null });
+    const sofa = lines.find(line => line.productTitle === "sofa")!;
+    expect(sofa.affiliateVendorPercent).toBe("3.00");
+    /* The share passes through the commission, off the seller's net, and the line still adds up. */
+    expect(Number(sofa.commissionAmount) + Number(sofa.vendorNet)).toBeCloseTo(240, 3);
+    expect(sofa.vendorNet).toBe((240 - Number(sofa.commissionAmount)).toFixed(3));
+    /* A later change of the store's rate does not reach back. */
+    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "10" });
+    const [again] = await db.select().from(orderItems).where(eq(orderItems.id, sofa.id));
+    expect(again.affiliateVendorPercent).toBe("3.00");
   });
 
   it("does not attribute to a pending affiliate, to the buyer themselves, or to nonsense", async () => {
@@ -180,22 +194,33 @@ describe("earning", () => {
     expect((await placed("AFZZZZZZ")).order.affiliateId).toBeNull();
   });
 
-  it("pays once, when the cash is collected, out of NetLet's cut", async () => {
+  it("pays once, when the cash is collected, out of the store's own net", async () => {
     const { code } = await approvedCreator();
+    await offerBoth();
     const { order, lines } = await placed(code);
     expect(await db.select().from(pointEntries)).toEqual([]);
     await collect(order.id);
     await collect(order.id);
-    const entries = await db.select().from(pointEntries);
-    /* 3% of 240.000 and of 8.000, each under NetLet's 10% on the line. */
+    const entries = await db.select().from(pointEntries).where(eq(pointEntries.pot, "affiliate"));
+    /* 3% of 240.000 and of 8.000, the store's rate on each line. */
     expect(entries).toEqual([expect.objectContaining({ pot: "affiliate", reason: "affiliate_commission", points: 7200 + 240, orderId: order.id, userId: people.creator.id })]);
     expect(lines.every(line => Number(line.vendorNet) > 0)).toBe(true);
     const dashboard = await as("creator").affiliates.mine();
     expect(dashboard).toMatchObject({ paidOrders: 1, earned: "7.440", balance: "7.440", payout: { ok: true } });
   });
 
+  it("earns nothing on a product its store has not offered", async () => {
+    const { code } = await approvedCreator();
+    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "3" });
+    const { order, lines } = await placed(code);
+    expect(lines.find(line => line.productTitle === "mug")!.affiliateVendorPercent).toBeNull();
+    await collect(order.id);
+    expect((await as("creator").affiliates.mine()).earned).toBe("7.200");
+  });
+
   it("takes back a refunded line's share, exactly, once", async () => {
     const { code } = await approvedCreator();
+    await offerBoth();
     const { order, lines } = await placed(code);
     await collect(order.id);
     await db.update(orderItems).set({ fulfilment: "delivered", deliveredAt: new Date() }).where(eq(orderItems.orderId, order.id));
@@ -210,6 +235,7 @@ describe("earning", () => {
 
   it("is its own pot: not spendable as points, and paid out at face value", async () => {
     const { code } = await approvedCreator();
+    await offerBoth();
     const { order } = await placed(code);
     await collect(order.id);
     expect((await as("creator").rewards.mine()).balance).toBe(0);
@@ -222,9 +248,33 @@ describe("earning", () => {
   });
 });
 
+describe("the stores' offers (3.7.1)", () => {
+  it("is a manager of the product's store's to make, within the ceiling, on the trail", async () => {
+    await expect(as("stranger").affiliates.setProduct({ productId: ids.sofaProduct, percent: "3" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    for (const percent of ["25", "0", "abc", "1.234"]) {
+      await expect(as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent })).rejects.toMatchObject({ message: "affiliate.badRate" });
+    }
+    expect(await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "4.5" })).toEqual({ percent: "4.50" });
+    expect(await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: null })).toEqual({ percent: null });
+    const trail = await db.select().from(auditLog).where(and(eq(auditLog.action, "product.setAffiliate"), eq(auditLog.subjectId, ids.sofaProduct)));
+    expect(trail.map(row => row.after)).toEqual(expect.arrayContaining([{ affiliatePercent: "4.50" }, { affiliatePercent: null }]));
+  });
+
+  it("lists what is offered to an approved affiliate, highest rate first, and to nobody else", async () => {
+    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "2" });
+    await as("manager").affiliates.setProduct({ productId: ids.mugProduct, percent: "8" });
+    expect(await as("creator").affiliates.products()).toBeNull();
+    await approvedCreator();
+    const offered = await as("creator").affiliates.products();
+    expect(offered.rows.map((row: { handle: string; percent: string }) => [row.handle, row.percent])).toEqual([["mug", "8.00"], ["sofa", "2.00"]]);
+    expect(offered.total).toBe(2);
+  });
+});
+
 describe("the switch", () => {
   it("closes applications and stops new attribution, but still pays an order already attributed", async () => {
     const { code } = await approvedCreator();
+    await offerBoth();
     const { order } = await placed(code);
     await as("admin").features.set({ key: "affiliates", enabled: false });
     await expect(as("stranger").affiliates.join({ displayName: "X", acceptDisclosure: true })).rejects.toMatchObject({ message: "features.off" });

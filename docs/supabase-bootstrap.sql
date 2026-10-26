@@ -1136,7 +1136,7 @@ DO $$ BEGIN
   ALTER TABLE "return_requests" ADD CONSTRAINT "return_requests_replacement_order_id_orders_id_fk" FOREIGN KEY ("replacement_order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
-CREATE UNIQUE INDEX IF NOT EXISTS "return_requests_open_unique" ON "return_requests" USING btree ("order_item_id") WHERE "return_requests"."status" in ('requested', 'approved', 'collected');
+-- return_requests_open_unique: created here and dropped by a later migration, so never created.
 CREATE INDEX IF NOT EXISTS "return_requests_vendor_idx" ON "return_requests" USING btree ("vendor_id","status");
 CREATE INDEX IF NOT EXISTS "return_requests_user_idx" ON "return_requests" USING btree ("user_id");
 
@@ -1788,6 +1788,155 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "guides_slug_unique" ON "guides" USING btree ("slug");
 CREATE INDEX IF NOT EXISTS "guides_published_idx" ON "guides" USING btree ("status","audience","published_at","id");
 
+-- ===== 0062_referral_tracks.sql =====
+CREATE TABLE IF NOT EXISTS "platform_settings" (
+	"key" varchar(64) PRIMARY KEY NOT NULL,
+	"value" varchar(200) NOT NULL,
+	"updated_by" integer,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "referrer_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "referral_rate" numeric(5, 2);
+ALTER TABLE "point_entries" ADD COLUMN IF NOT EXISTS "available_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "platform_settings" ADD CONSTRAINT "platform_settings_updated_by_users_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_referrer_id_users_id_fk" FOREIGN KEY ("referrer_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_product_referral_unique" ON "point_entries" USING btree ("order_item_id") WHERE "point_entries"."reason" = 'product_referral';
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_invite_commission_unique" ON "point_entries" USING btree ("order_item_id") WHERE "point_entries"."reason" = 'invite_commission';
+CREATE UNIQUE INDEX IF NOT EXISTS "point_entries_referral_reversal_unique" ON "point_entries" USING btree ("order_item_id","reason") WHERE "point_entries"."reason" in ('product_referral_reversal', 'invite_commission_reversal');
+
+-- ===== 0063_affiliate_opt_in.sql =====
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "affiliate_vendor_percent" numeric(5, 2);
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "affiliate_percent" numeric(5, 2);
+CREATE INDEX IF NOT EXISTS "products_affiliate_idx" ON "products" USING btree ("affiliate_percent") WHERE "products"."affiliate_percent" is not null;
+
+-- ===== 0064_delivery_choices.sql =====
+ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "delivery_choice" varchar(8) DEFAULT 'regular' NOT NULL;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "delivery_choice" varchar(8) DEFAULT 'regular' NOT NULL;
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "fast_delivery_fee" numeric(12, 3);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "fast_delivery_speed" varchar(20);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "delivery_mode" varchar(10) DEFAULT 'netlet' NOT NULL;
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "delivery_courier_id" integer;
+DO $$ BEGIN
+  ALTER TABLE "vendors" ADD CONSTRAINT "vendors_delivery_courier_id_couriers_id_fk" FOREIGN KEY ("delivery_courier_id") REFERENCES "public"."couriers"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ===== 0065_commission_controls.sql =====
+CREATE TABLE IF NOT EXISTS "commission_proposals" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"product_id" integer,
+	"percent" numeric(5, 2),
+	"fixed" numeric(12, 3),
+	"reason" varchar(500),
+	"status" varchar(12) DEFAULT 'pending' NOT NULL,
+	"decision_note" varchar(400),
+	"created_by" integer,
+	"decided_by" integer,
+	"decided_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "commission_proposals_one_figure" CHECK (("commission_proposals"."percent" is null) <> ("commission_proposals"."fixed" is null))
+);
+CREATE TABLE IF NOT EXISTS "staff_grants" (
+	"user_id" integer NOT NULL,
+	"capability" varchar(48) NOT NULL,
+	"granted_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "staff_grants_user_id_capability_pk" PRIMARY KEY("user_id","capability")
+);
+ALTER TABLE "vendor_applications" ADD COLUMN IF NOT EXISTS "proposed_commission_fixed" numeric(12, 3);
+DO $$ BEGIN
+  ALTER TABLE "commission_proposals" ADD CONSTRAINT "commission_proposals_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "commission_proposals" ADD CONSTRAINT "commission_proposals_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "commission_proposals" ADD CONSTRAINT "commission_proposals_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "commission_proposals" ADD CONSTRAINT "commission_proposals_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "staff_grants" ADD CONSTRAINT "staff_grants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "staff_grants" ADD CONSTRAINT "staff_grants_granted_by_users_id_fk" FOREIGN KEY ("granted_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "commission_proposals_open_unique" ON "commission_proposals" USING btree ("vendor_id",coalesce("product_id", 0)) WHERE "commission_proposals"."status" = 'pending';
+CREATE INDEX IF NOT EXISTS "commission_proposals_status_idx" ON "commission_proposals" USING btree ("status","created_at");
+
+-- ===== 0066_vendor_warnings.sql =====
+CREATE TABLE IF NOT EXISTS "vendor_warnings" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"product_id" integer,
+	"reason" varchar(400) NOT NULL,
+	"issued_by" integer,
+	"expires_at" timestamp with time zone NOT NULL,
+	"withdrawn_at" timestamp with time zone,
+	"withdrawn_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+ALTER TABLE "vendors" ADD COLUMN IF NOT EXISTS "warnings_since" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "vendor_warnings" ADD CONSTRAINT "vendor_warnings_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "vendor_warnings" ADD CONSTRAINT "vendor_warnings_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "vendor_warnings" ADD CONSTRAINT "vendor_warnings_issued_by_users_id_fk" FOREIGN KEY ("issued_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "vendor_warnings" ADD CONSTRAINT "vendor_warnings_withdrawn_by_users_id_fk" FOREIGN KEY ("withdrawn_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "vendor_warnings_vendor_idx" ON "vendor_warnings" USING btree ("vendor_id","created_at");
+
+-- ===== 0067_delivery_rating_parts.sql =====
+ALTER TABLE "delivery_ratings" ADD COLUMN IF NOT EXISTS "speed" smallint;
+ALTER TABLE "delivery_ratings" ADD COLUMN IF NOT EXISTS "condition" smallint;
+ALTER TABLE "delivery_ratings" ADD COLUMN IF NOT EXISTS "conduct" smallint;
+DO $$ BEGIN
+  ALTER TABLE "delivery_ratings" ADD CONSTRAINT "delivery_ratings_parts_range" CHECK (("delivery_ratings"."speed" is null or "delivery_ratings"."speed" between 1 and 5) and ("delivery_ratings"."condition" is null or "delivery_ratings"."condition" between 1 and 5) and ("delivery_ratings"."conduct" is null or "delivery_ratings"."conduct" between 1 and 5));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ===== 0068_return_confirmation.sql =====
+DROP INDEX IF EXISTS "return_requests_open_unique";
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "ai_summary" varchar(600);
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "ai_suggestion" varchar(12);
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "vendor_response" varchar(400);
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "vendor_responded_at" timestamp with time zone;
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "confirmed_by" integer;
+ALTER TABLE "return_requests" ADD COLUMN IF NOT EXISTS "confirmed_at" timestamp with time zone;
+DO $$ BEGIN
+  ALTER TABLE "return_requests" ADD CONSTRAINT "return_requests_confirmed_by_users_id_fk" FOREIGN KEY ("confirmed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "return_requests_open_unique" ON "return_requests" USING btree ("order_item_id") WHERE "return_requests"."status" in ('requested', 'review', 'approved', 'collected');
+
+-- ===== 0069_drop_seller_messages.sql =====
+DELETE FROM "notifications" WHERE "kind" IN ('seller_message', 'seller_shopper_message');
+DROP TABLE IF EXISTS "conversation_messages" CASCADE;
+DROP TABLE IF EXISTS "conversations" CASCADE;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1831,6 +1980,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  62 AS migrations_in_this_file,
+  70 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

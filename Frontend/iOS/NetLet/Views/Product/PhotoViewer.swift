@@ -187,9 +187,9 @@ struct ProductPhotos: View {
         .accessibilityAddTraits(saved ? .isSelected : [])
     }
 
+    /// Signed in, the address carries the sharer's code: a product link (3.1.14).
     private var shareURL: URL {
-        let handle = product.handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? product.handle
-        return app.services.configuration.url(path: "/products/\(handle)")
+        app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, userId: app.session.user?.id))
     }
 
     /// One of the white discs on the photo.

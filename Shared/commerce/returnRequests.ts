@@ -17,9 +17,22 @@
  * somebody changed their mind**, and the request is declined at once with that
  * reason rather than left for a seller to say the same thing two days later.
  *
- * **"Other" goes to the seller**, because a rule cannot read a free-text
- * reason. That is the only path where a person decides, and it is the honest
- * shape of "automatic handling": automatic where the answer is already known.
+ * **"Other" goes to the seller and then to NetLet** (3.5.2: "understanding
+ * the issue, communicating with the vendor to resolve it, then replying to the
+ * customer — requiring only a final confirmation from the admin"). A model
+ * reads the note and suggests an outcome (`returnReading.ts`); the seller
+ * answers with an outcome of their own, which moves the request to `review`;
+ * an administrator confirms or overrules it, and only then is the shopper
+ * told. A seller may also **dispute** a request a rule approved, before the
+ * item is collected, which sends it to `review` the same way. What the rules
+ * decide does not wait for anybody: Kuwaiti consumer protection does not let
+ * the shop refuse a fault inside the window, so waiting would only delay the
+ * shopper's money.
+ *
+ * In `review`, **the seller's proposed outcome is the decline reason**: a
+ * request in review carrying one is one the seller would decline, with the
+ * words the shopper would read; one without is one the seller would approve.
+ * `vendor_response` is what the seller said, either way.
  *
  * ## What happens after
  *
@@ -53,11 +66,11 @@ export type ReturnReason = (typeof RETURN_REASONS)[number];
 /** Reasons that are the seller's fault: approved at once, inside the window. */
 const SELLER_FAULT: ReadonlySet<ReturnReason> = new Set(["damaged", "defective", "wrongItem", "notAsDescribed"]);
 
-export const RETURN_STATUSES = ["requested", "approved", "declined", "collected", "refunded", "exchanged", "cancelled"] as const;
+export const RETURN_STATUSES = ["requested", "review", "approved", "declined", "collected", "refunded", "exchanged", "cancelled"] as const;
 export type ReturnStatus = (typeof RETURN_STATUSES)[number];
 
 /** Still in motion: the states the one-open-request-per-line index covers. */
-export const OPEN_RETURN_STATUSES: readonly ReturnStatus[] = ["requested", "approved", "collected"];
+export const OPEN_RETURN_STATUSES: readonly ReturnStatus[] = ["requested", "review", "approved", "collected"];
 
 export function isOpenReturn(status: string): boolean {
   return (OPEN_RETURN_STATUSES as readonly string[]).includes(status);
@@ -89,27 +102,32 @@ export function automaticDecision(reason: ReturnReason, department: string | nul
   return { status: "requested", decidedBy: null };
 }
 
-export type ReturnAction = "approve" | "decline" | "collect" | "receive" | "markRefundPaid" | "cancel";
+export type ReturnAction = "approve" | "decline" | "dispute" | "collect" | "receive" | "markRefundPaid" | "cancel";
 
 /**
  * What may be done to a request in this state, by whom.
  *
  * The seller acts on their own store's requests and an administrator on any —
- * a refusal a seller can be argued out of needs somebody above both parties. A
- * shopper's only move is withdrawing, and only before the item has left them.
+ * a refusal a seller can be argued out of needs somebody above both parties.
+ * A seller's approve or decline on a request no rule decided is a proposal
+ * that NetLet confirms (`review`); an administrator's is final. A shopper's
+ * only move is withdrawing, and only before the item has left them.
  */
 export function returnActions(
-  request: { status: string; kind: string; refundPaidAt?: Date | string | null },
+  request: { status: string; kind: string; refundPaidAt?: Date | string | null; decidedBy?: string | null },
   who: "shopper" | "seller" | "admin",
 ): ReturnAction[] {
   const status = request.status as ReturnStatus;
-  if (who === "shopper") return status === "requested" || status === "approved" ? ["cancel"] : [];
+  if (who === "shopper") return status === "requested" || status === "review" || status === "approved" ? ["cancel"] : [];
 
   switch (status) {
     case "requested":
       return ["approve", "decline"];
+    case "review":
+      return who === "admin" ? ["approve", "decline"] : [];
     case "approved":
-      return who === "admin" ? ["collect", "decline"] : ["collect"];
+      /* A seller disputes only what a rule approved; what NetLet confirmed is settled. */
+      return who === "admin" ? ["collect", "decline"] : request.decidedBy === "auto" ? ["collect", "dispute"] : ["collect"];
     case "collected":
       return ["receive"];
     case "refunded":
@@ -117,6 +135,12 @@ export function returnActions(
     default:
       return [];
   }
+}
+
+/** What the seller proposes on a request in `review`: the decline reason is the proposal. */
+export function sellerProposal(request: { status: string; declineReason: string | null }): "approve" | "decline" | null {
+  if (request.status !== "review") return null;
+  return request.declineReason ? "decline" : "approve";
 }
 
 /**

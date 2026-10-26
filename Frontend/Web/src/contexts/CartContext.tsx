@@ -72,7 +72,11 @@ type AddOptions = {
 };
 
 /** A change waiting its turn: one of the bag's presses, a line's door, or a fresh read. */
-type Change = BagOp | { kind: "destination"; lineId: string; addressId: number | null } | { kind: "refresh" };
+type Change =
+  | BagOp
+  | { kind: "destination"; lineId: string; addressId: number | null }
+  | { kind: "speed"; lineId: string; choice: "regular" | "fast" }
+  | { kind: "refresh" };
 
 type Entry = { change: Change; sent: boolean; done: Promise<void>; resolve: () => void; reject: (error: unknown) => void };
 
@@ -112,6 +116,8 @@ type CartContextValue = {
   removeItem: (lineId: string) => Promise<void>;
   /** Where this line goes (3.2.6). Null puts it back on the order's address. */
   setDestination: (lineId: string, addressId: number | null) => Promise<void>;
+  /** Fast or regular for this line (3.2.5); the quote moves with it. */
+  setDeliveryChoice: (lineId: string, choice: "regular" | "fast") => Promise<void>;
   clearCart: () => void;
   /**
    * Read the bag again from the server. The context holds its own copy, so
@@ -197,6 +203,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
         return (await client.setDestination.mutate({ cartId: id, lineId, addressId: change.addressId })) ?? current;
+      }
+      case "speed": {
+        const lineId = realLineId(current, change.lineId);
+        if (!id || !lineId) return current;
+        return (await client.setDeliveryChoice.mutate({ cartId: id, lineId, choice: change.choice })) ?? current;
       }
       case "refresh": {
         if (!id) return current;
@@ -325,7 +336,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cartId, setCartId, setServerCart, utils.commerce.cart.get]);
 
   const cart = useMemo(
-    () => waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart),
+    () => waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart),
     [serverCart, waiting],
   );
   const itemCount = cart?.itemCount ?? 0;
@@ -363,6 +374,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
    */
   const setDestination = useCallback(
     (lineId: string, addressId: number | null) => enqueue({ kind: "destination", lineId, addressId }),
+    [enqueue]
+  );
+
+  /* Through the queue for `setDestination`'s reason: the delivery quote moves with it. */
+  const setDeliveryChoice = useCallback(
+    (lineId: string, choice: "regular" | "fast") => enqueue({ kind: "speed", lineId, choice }),
     [enqueue]
   );
 
@@ -410,6 +427,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQuantity,
       removeItem,
       setDestination,
+      setDeliveryChoice,
       clearCart,
       refreshCart,
       proceedToCheckout,
@@ -427,6 +445,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQuantity,
       removeItem,
       setDestination,
+      setDeliveryChoice,
       clearCart,
       refreshCart,
       proceedToCheckout,

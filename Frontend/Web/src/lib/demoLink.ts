@@ -25,6 +25,7 @@ import { NETLET_CONTACT, contactEmail, visitDetails } from "@shared/commerce/con
 import { supportNumber } from "@shared/commerce/support";
 import { MIN_CASH_OUT_POINTS, referralCodeFor } from "@shared/commerce/referral";
 import { defaultStates, FEATURE_KEYS } from "@shared/features";
+import { SETTING_KEYS, SETTINGS } from "@shared/settings";
 
 const CART_STORAGE_KEY = "netlet-demo-cart";
 const CURRENCY = "KWD";
@@ -315,6 +316,9 @@ function resolve(path: string, rawInput: unknown): unknown {
      */
     case "commerce.cart.setDestination":
       return requireCart(String(input.cartId));
+    /* No demo store offers a fast trip (3.2.5), so every line rides regular. */
+    case "commerce.cart.setDeliveryChoice":
+      return requireCart(String(input.cartId));
 
     /* The live search ranks the whole catalogue on the server with the rules in
        `Shared/commerce/search.ts`; here the same rules rank the fixtures. */
@@ -570,6 +574,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       return FEATURE_KEYS.map(key => ({ key, enabled: true, updatedAt: null, updatedByEmail: null }));
     case "features.set":
       throw new Error("platform.configure");
+    /* The referral rates at their defaults; setting them is NetLet's. */
+    case "features.settings":
+      return SETTING_KEYS.map(key => ({ key, value: SETTINGS[key].defaultValue, defaultValue: SETTINGS[key].defaultValue, min: SETTINGS[key].min, max: SETTINGS[key].max, updatedAt: null, updatedByEmail: null }));
+    case "features.setSetting":
+      throw new Error("platform.configure");
     /* Payout runs (3.3.21): nothing is ever paid in the demo, so nothing is
        due and nothing has been sent. Recording is NetLet's and the demo
        manager is refused, as a real one would be. */
@@ -744,14 +753,34 @@ function resolve(path: string, rawInput: unknown): unknown {
        join with and no link anybody arrived through. */
     case "affiliates.lookup":
     case "affiliates.mine":
+    case "affiliates.products":
       return null;
     case "affiliates.waiting":
       return 0;
     case "affiliates.list":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    /* Commission proposals and the desk (3.3.2, 3.3.9): the demo manager has
+       none, and deciding or granting is NetLet's. */
+    case "commission.list":
+    case "commission.stores":
+      return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+    case "commission.waiting":
+      return 0;
+    /* The demo store has no warnings (3.3.18), and issuing one is NetLet's. */
+    case "warnings.list":
+      return { rows: [], standing: 0, suspendAt: 3, since: null };
+    case "warnings.issue":
+    case "warnings.withdraw":
+      throw new Error("vendor.approve");
+    case "commission.propose":
+    case "commission.withdraw":
+    case "commission.decide":
+    case "inventory.people.setGrant":
+      throw new Error("vendor.setCommission");
     case "affiliates.join":
     case "affiliates.payout":
     case "affiliates.update":
+    case "affiliates.setProduct":
       throw new Error("affiliate.notFound");
     /* Invoices (3.6.6): nothing is ever paid in the demo, so nothing is
        invoiced — the server's own answer to a number it cannot find. */
@@ -773,6 +802,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       return 0;
     case "orders.requestReturn":
     case "orders.cancelReturn":
+    /* No model reads notes in the demo. */
+    case "returns.readAvailable":
+      return false;
+    case "returns.read":
+      return null;
     case "returns.decide":
     case "returns.collect":
     case "returns.receive":
@@ -811,6 +845,8 @@ function resolve(path: string, rawInput: unknown): unknown {
       return {
         code: referralCodeFor(1),
         balance: 0,
+        held: 0,
+        nextRelease: null,
         spendValue: "0.000",
         cashOutValue: "0.000",
         cashOut: { ok: false, shortBy: MIN_CASH_OUT_POINTS },

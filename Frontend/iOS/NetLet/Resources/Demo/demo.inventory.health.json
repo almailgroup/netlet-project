@@ -6,7 +6,7 @@
         "inputs": {
           "published": 7,
           "pendingReview": 0,
-          "rejections": 0,
+          "warnings": 0,
           "outOfStock": 0,
           "variants": 10,
           "rating": null
@@ -34,7 +34,7 @@
             "key": "compliance",
             "score": 100,
             "detail": {
-              "rejections": 0,
+              "warnings": 0,
               "suspendAt": 3
             }
           },

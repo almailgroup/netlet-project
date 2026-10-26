@@ -429,6 +429,7 @@ struct PortalFeaturesView: View {
                         }
                     }
                 }
+                ReferralRatesCard()
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
             } else {
@@ -468,6 +469,70 @@ struct PortalFeaturesView: View {
         }) {
             await load()
         }
+    }
+}
+
+/// The referral programme's two rates (3.1.15), each saved on its own — the
+/// web's `ReferralRates`: the numbers beside the switches, set without a
+/// deploy and recorded on the trail. The box says what the server would
+/// refuse before Save is pressed.
+private struct ReferralRatesCard: View {
+    @State private var rows: [PlatformSetting] = []
+    @State private var drafts: [String: String] = [:]
+    @State private var saving: String?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        PortalCard {
+            Text(l.t("settings.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            Text(l.t("settings.intro")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            ForEach(rows, id: \.key) { row in
+                Divider()
+                let draft = drafts[row.key] ?? row.value
+                let normalised = row.normalise(draft)
+                HStack(alignment: .bottom, spacing: 8) {
+                    LabeledField(label: l.t(SettingWords.label(row.key)), text: Binding(get: { draft }, set: { drafts[row.key] = $0 }),
+                                 hint: l.t("settings.range", ["min": row.minText, "max": row.maxText, "default": row.defaultValue]),
+                                 problem: normalised == nil ? l.t("settings.badValue") : nil, keyboard: .decimalPad, leftToRight: true)
+                    SectionSave(pending: saving == row.key, disabled: normalised == nil || normalised == row.value || saving != nil) {
+                        Task { await save(row.key, draft) }
+                    }
+                    .padding(.bottom, 26)
+                }
+                Text(l.t(SettingWords.hint(row.key))).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                if let updated = row.updatedAt {
+                    Text("\(l.t("features.changedBy", ["date": OrderWording.date(updated, language: l.current)])) \(row.updatedByEmail.map(latin) ?? l.t("features.someone"))")
+                        .font(.inter(12)).foregroundStyle(Brand.muted)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        rows = (try? await app.services.api.call(API.platformSettings)) ?? rows
+    }
+
+    private func save(_ key: String, _ value: String) async {
+        saving = key
+        defer { saving = nil }
+        if await app.attempt(done: "settings.saved", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.setPlatformSetting, .init(key: key, value: value.trimmingCharacters(in: .whitespaces)))
+        }) {
+            drafts[key] = nil
+            await load()
+        }
+    }
+}
+
+enum SettingWords {
+    static func label(_ key: String) -> String {
+        key == "referral.invitePercent" ? "settings.invitePercent" : "settings.productPercent"
+    }
+
+    static func hint(_ key: String) -> String {
+        key == "referral.invitePercent" ? "settings.invitePercentHint" : "settings.productPercentHint"
     }
 }
 
@@ -687,6 +752,19 @@ struct PortalPeopleView: View {
                 Button { asking = .grant(person) } label: { Label(l.t("admin.makeAdmin"), systemImage: "checkmark.shield") }
                     .buttonStyle(PortalSmallButtonStyle())
                     .disabled(busy)
+                /* One permission on its own (3.3.9): setting commission, without
+                   being an administrator. The trail names who granted it beside
+                   every rate this person sets. */
+                Toggle(isOn: Binding(get: { (person.grants ?? []).contains("vendor.setCommission") }, set: { on in
+                    Task { await setGrant(person, on) }
+                })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(l.t("grants.setCommission")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                        Text(l.t("grants.setCommissionNote")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .tint(Brand.navy)
+                .disabled(busy)
             }
             Divider()
             Text(l.t("admin.memberOf")).font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
@@ -754,6 +832,14 @@ struct PortalPeopleView: View {
             let failure = APIError.from(error)
             if failure != .cancelled, people == nil { failed = failure }
         }
+    }
+
+    private func setGrant(_ person: PortalPerson, _ granted: Bool) async {
+        busy = true
+        defer { busy = false }
+        if await app.attempt(done: granted ? "grants.granted" : "grants.revoked", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.setGrant, .init(userId: person.id, capability: "vendor.setCommission", granted: granted))
+        }) { await load() }
     }
 
     private func confirm() async {

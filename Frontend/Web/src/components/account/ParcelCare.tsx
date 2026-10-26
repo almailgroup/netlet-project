@@ -20,7 +20,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useFeature } from "@/hooks/useFeature";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
-import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT, RATING_MAX } from "@shared/commerce/deliveryRatings";
+import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT, RATING_MAX, RATING_PARTS, overallOf, partsValid, type RatingPart } from "@shared/commerce/deliveryRatings";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -113,12 +113,24 @@ function ParcelCard({ reference, currency, parcel }: { reference: string; curren
   );
 }
 
+const PART_LABEL: Record<RatingPart, MessageKey> = {
+  speed: "delivery.partSpeed",
+  condition: "delivery.partCondition",
+  conduct: "delivery.partConduct",
+};
+
 function RateDelivery({ reference, parcel, readOnly = false }: { reference: string; parcel: Parcel; readOnly?: boolean }) {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
   const refusal = useRefusal();
   const utils = trpc.useUtils();
-  const [rating, setRating] = useState(parcel.rating?.rating ?? 0);
+  /* Three parts (3.4.4). A rating given before the parts existed opens with
+     each part at its one figure, so changing it starts from what was said. */
+  const [parts, setParts] = useState<Record<RatingPart, number>>(() => ({
+    speed: parcel.rating?.speed ?? parcel.rating?.rating ?? 0,
+    condition: parcel.rating?.condition ?? parcel.rating?.rating ?? 0,
+    conduct: parcel.rating?.conduct ?? parcel.rating?.rating ?? 0,
+  }));
   const [comment, setComment] = useState(parcel.rating?.comment ?? "");
 
   const rate = trpc.orders.rateDelivery.useMutation({
@@ -133,50 +145,70 @@ function RateDelivery({ reference, parcel, readOnly = false }: { reference: stri
   if (!state.allowed || readOnly) {
     /* Closed: what they said stays visible; not arrived: nothing to say yet. */
     if (!parcel.rating) return !state.allowed && state.reason === "delivery.ratingClosed" ? <p className="mt-3 text-[12px] ink-muted">{refusal(state.reason)}</p> : null;
+    const given = parcel.rating;
     return (
-      <p className="mt-3 inline-flex items-center gap-2 text-[12px] font-bold text-[#0a285a]">
-        {t("delivery.yourRating")} <Stars value={parcel.rating.rating} />
-      </p>
+      <div className="mt-3 text-[12px] font-bold text-[#0a285a]">
+        <p className="inline-flex items-center gap-2">{t("delivery.yourRating")} <Stars value={given.rating} /></p>
+        {given.speed !== null && given.condition !== null && given.conduct !== null ? (
+          <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-semibold ink-muted">
+            {RATING_PARTS.map(part => (
+              <li key={part} className="inline-flex items-center gap-1.5">{t(PART_LABEL[part])} <Stars value={given[part] ?? 0} /></li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     );
   }
 
+  const complete = partsValid(parts);
+  const overall = complete ? overallOf(parts) : null;
   const name = `delivery-${reference}-${parcel.key}`;
   return (
     <form
       className="mt-3"
       onSubmit={event => {
         event.preventDefault();
-        if (rating === 0) { toast.error(t("delivery.invalidRating")); return; }
-        rate.mutate({ reference, parcelKey: parcel.key, rating, comment: comment.trim() || null });
+        if (!partsValid(parts)) { toast.error(t("delivery.rateEveryPart")); return; }
+        rate.mutate({ reference, parcelKey: parcel.key, ...parts, comment: comment.trim() || null });
       }}
     >
-      <fieldset>
-        <legend className="text-[12px] font-extrabold text-[#0a285a]">{t("delivery.rateLegend")}</legend>
-        <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("delivery.rateNote")}</p>
-        {/* Radios, because five stars are one choice from a set — the same
-            control the product review uses, and for the same reason. */}
-        <div className="mt-2 flex gap-1">
-          {Array.from({ length: RATING_MAX }, (_, index) => index + 1).map(star => (
-            <label key={star} className="cursor-pointer">
-              <input
-                type="radio"
-                name={name}
-                value={star}
-                checked={rating === star}
-                onChange={() => setRating(star)}
-                className="peer sr-only"
-              />
-              <span className="sr-only">{t(star === 1 ? "review.starsOne" : "review.stars", { count: star })}</span>
-              <Star
-                aria-hidden
-                className={`size-6 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[#f2683a] ${
-                  star <= rating ? "fill-[#ffb800] text-[#ffb800]" : "text-[#c3ccda]"
-                }`}
-              />
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <p className="text-[12px] font-extrabold text-[#0a285a]">{t("delivery.rateLegend")}</p>
+      <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("delivery.rateNote")}</p>
+      <div className="mt-2 space-y-1.5">
+        {RATING_PARTS.map(part => (
+          /* Radios, because five stars are one choice from a set — the same
+             control the product review uses, and for the same reason. */
+          <fieldset key={part} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <legend className="float-start w-24 text-[12px] font-bold text-[#0a285a] sm:w-28">{t(PART_LABEL[part])}</legend>
+            <div className="flex gap-1">
+              {Array.from({ length: RATING_MAX }, (_, index) => index + 1).map(star => (
+                <label key={star} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`${name}-${part}`}
+                    value={star}
+                    checked={parts[part] === star}
+                    onChange={() => setParts(current => ({ ...current, [part]: star }))}
+                    className="peer sr-only"
+                  />
+                  <span className="sr-only">{t(star === 1 ? "review.starsOne" : "review.stars", { count: star })}</span>
+                  <Star
+                    aria-hidden
+                    className={`size-6 transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[#f2683a] ${
+                      star <= parts[part] ? "fill-[#ffb800] text-[#ffb800]" : "text-[#c3ccda]"
+                    }`}
+                  />
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </div>
+      {overall !== null ? (
+        <p className="mt-2 inline-flex items-center gap-2 text-[12px] font-bold text-[#0a285a]" aria-live="polite">
+          {t("delivery.overall")} <Stars value={overall} />
+        </p>
+      ) : null}
       <label className="mt-3 block">
         <span className="block text-[12px] font-extrabold ink-muted">{t("delivery.commentLabel")}</span>
         <input

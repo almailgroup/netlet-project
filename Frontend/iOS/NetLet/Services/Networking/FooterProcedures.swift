@@ -40,12 +40,13 @@ extension API {
         let underPlatformLicence: Bool
         let agreementVersion: String?
         let proposedCommissionPercent: String?
+        let proposedCommissionFixed: String?
         let commissionNote: String?
 
         private enum CodingKeys: String, CodingKey {
             case storeName, storeNameAr, contactEmail, contactPhone, governorate, addressLine, licenceNumber
             case licenceDocUrl, identityDocUrl, payoutIban, underPlatformLicence, agreementVersion
-            case proposedCommissionPercent, commissionNote
+            case proposedCommissionPercent, proposedCommissionFixed, commissionNote
         }
 
         /// Every field is sent, a blank one as null, so clearing a box clears it on the server.
@@ -64,6 +65,7 @@ extension API {
             try container.encode(underPlatformLicence, forKey: .underPlatformLicence)
             try container.encode(agreementVersion, forKey: .agreementVersion)
             try container.encode(proposedCommissionPercent, forKey: .proposedCommissionPercent)
+            try container.encode(proposedCommissionFixed, forKey: .proposedCommissionFixed)
             try container.encode(commissionNote, forKey: .commissionNote)
         }
     }

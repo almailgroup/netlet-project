@@ -21,6 +21,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
+import { StoreWarnings } from "@/components/admin/StoreWarnings";
 import { Card, Field, PageHeader, PasswordBox, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -76,6 +77,7 @@ type Draft = {
   contactEmail: string; contactPhone: string; governorate: string; addressLine: string;
   licenceNumber: string; underPlatformLicence: boolean; discountLicenceNumber: string; discountLicenceExpiresAt: string;
   deliverySpeed: string; deliveryFlat: string; deliveryFreeOver: string; deliveryProvider: string;
+  fastDeliveryFee: string; fastDeliverySpeed: string; deliveryMode: "own" | "netlet"; deliveryCourierId: string;
   acceptsCod: boolean; codCeiling: string; subscriptionPercent: string; payoutIban: string;
 };
 
@@ -87,6 +89,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const vendor = trpc.inventory.vendors.get.useQuery({ vendorId }, { enabled: vendorId > 0 });
+  /* The delivery companies on NetLet, for a store that uses its own (3.3.13). */
+  const companies = trpc.dispatch.couriers.list.useQuery(undefined, { staleTime: 60_000 });
 
   const refresh = () => {
     void utils.inventory.vendors.get.invalidate({ vendorId });
@@ -121,6 +125,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       discountLicenceExpiresAt: row.discountLicenceExpiresAt ? kuwaitDay(new Date(row.discountLicenceExpiresAt)) : "",
       deliverySpeed: row.deliverySpeed ?? "", deliveryFlat: row.deliveryFlat ?? "",
       deliveryFreeOver: row.deliveryFreeOver ?? "", deliveryProvider: row.deliveryProvider ?? "",
+      fastDeliveryFee: row.fastDeliveryFee ?? "", fastDeliverySpeed: row.fastDeliverySpeed ?? "",
+      deliveryMode: row.deliveryMode === "own" ? "own" : "netlet", deliveryCourierId: row.deliveryCourierId ? String(row.deliveryCourierId) : "",
       acceptsCod: row.acceptsCod ?? true, codCeiling: row.codCeiling ?? "",
       subscriptionPercent: row.subscriptionPercent ?? "", payoutIban: row.payoutIban ?? "",
     });
@@ -168,6 +174,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     { id: "payments", label: "admin.sectionPayments" },
     { id: "terms", label: "admin.commercialTerms" },
     { id: "badges", label: "admin.badges" },
+    { id: "warnings", label: "warnings.title" },
     { id: "team", label: "admin.storeTeam" },
   ];
 
@@ -358,6 +365,10 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               deliveryFlat: blank(draft.deliveryFlat),
               deliveryFreeOver: blank(draft.deliveryFreeOver),
               deliveryProvider: blank(draft.deliveryProvider),
+              fastDeliveryFee: blank(draft.fastDeliveryFee),
+              fastDeliverySpeed: blank(draft.fastDeliverySpeed) as DeliverySpeed | null,
+              deliveryMode: draft.deliveryMode,
+              deliveryCourierId: draft.deliveryMode === "own" && draft.deliveryCourierId ? Number(draft.deliveryCourierId) : null,
             }))}
           >
             <div className="grid gap-4 sm:grid-cols-2">
@@ -376,7 +387,43 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               <Field label={t("admin.fieldDeliveryProvider")} hint={t("admin.fieldDeliveryProviderHint")} className="sm:col-span-2">
                 <input dir="auto" value={draft.deliveryProvider} onChange={e => set("deliveryProvider", e.target.value)} className={fieldClass} />
               </Field>
+              {/* The fast trip (3.2.5): a fee of its own, charged per fast
+                  parcel, and the band it promises. Blank is no fast option. */}
+              <Field label={t("admin.fieldFastFee")} hint={t("admin.fieldFastFeeHint")}>
+                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.fastDeliveryFee} onChange={e => set("fastDeliveryFee", e.target.value)} className={fieldClass} />
+              </Field>
+              <Field label={t("admin.fieldFastSpeed")}>
+                <Select value={draft.fastDeliverySpeed} onChange={e => set("fastDeliverySpeed", e.target.value)} className={fieldClass}>
+                  <option value="">{t("admin.speedUnset")}</option>
+                  {DELIVERY_SPEEDS.filter(speed => speed !== "made_to_order").map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
+                </Select>
+              </Field>
             </div>
+            {/* Who carries this store's parcels (3.3.13). */}
+            <fieldset className="mt-5 border-t border-[#eef1f5] pt-4">
+              <legend className="text-[13px] font-semibold text-[#0a285a]">{t("admin.deliveryModeTitle")}</legend>
+              <div className="mt-2 space-y-2">
+                {(["netlet", "own"] as const).map(mode => (
+                  <label key={mode} className="flex items-start gap-2.5 text-[14px] text-[#0a285a]">
+                    <input type="radio" name="delivery-mode" checked={draft.deliveryMode === mode} onChange={() => set("deliveryMode", mode)} className="mt-1 size-4 shrink-0 accent-[#0a285a]" />
+                    <span>
+                      <span className="font-semibold">{t(mode === "netlet" ? "admin.deliveryModeNetlet" : "admin.deliveryModeOwn")}</span>
+                      <span className="block text-[12px] leading-5 ink-muted">{t(mode === "netlet" ? "admin.deliveryModeNetletNote" : "admin.deliveryModeOwnNote")}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {draft.deliveryMode === "own" ? (
+                <Field label={t("admin.deliveryCourier")} hint={t("admin.deliveryCourierHint")} className="mt-3 max-w-md">
+                  <Select value={draft.deliveryCourierId} onChange={e => set("deliveryCourierId", e.target.value)} className={fieldClass}>
+                    <option value="">{t("admin.deliveryCourierNone")}</option>
+                    {(companies.data ?? []).filter(company => company.status === "active" || String(company.id) === draft.deliveryCourierId).map(company => (
+                      <option key={company.id} value={company.id}>{isArabic && company.nameAr ? company.nameAr : company.name}</option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+            </fieldset>
           </Card>
 
           {/* Cash on delivery (3.2.2) is on by default — a seller opts out — and
@@ -497,6 +544,8 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             </div>
           </Card>
 
+          <StoreWarnings vendorId={vendorId} storeName={row.name} manage />
+
           <VendorTeam vendorId={vendorId} />
         </div>
       </div>
@@ -611,7 +660,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
 
       <div className="mt-5 grid gap-5 border-t border-[#eef1f5] pt-5 lg:grid-cols-2">
         <form
-          className="space-y-3"
+          className="min-w-0 space-y-3"
           onSubmit={event => { event.preventDefault(); addNew.mutate({ vendorId, ...fresh, name: fresh.name.trim() || null }); }}
         >
           <h3 className="text-[14px] font-bold text-[#0a285a]">{t("admin.createLogin")}</h3>
@@ -636,7 +685,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
         </form>
 
         <form
-          className="space-y-3"
+          className="min-w-0 space-y-3"
           onSubmit={event => { event.preventDefault(); addExisting.mutate({ vendorId, email: existing.email.trim(), role: existing.role }); }}
         >
           <h3 className="text-[14px] font-bold text-[#0a285a]">{t("admin.addExisting")}</h3>

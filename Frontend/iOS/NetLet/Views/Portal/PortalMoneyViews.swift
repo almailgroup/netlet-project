@@ -513,7 +513,7 @@ private struct DayField: View {
 // MARK: - Affiliates
 
 /// Who earns from sharing NetLet's links — the web's `/admin/affiliates`:
-/// approving, suspending and each one's rate, never above the ceiling.
+/// approving and suspending; each store sets its own rate (3.7.1).
 struct PortalAffiliatesView: View {
     @State private var page = 1
     @State private var list: AffiliatePage?
@@ -564,7 +564,6 @@ private struct AffiliateCard: View {
     let row: AffiliateRow
     let ceiling: String
     let changed: () async -> Void
-    @State private var rate: String
     @State private var busy = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -573,9 +572,11 @@ private struct AffiliateCard: View {
         self.row = row
         self.ceiling = ceiling
         self.changed = changed
-        _rate = State(initialValue: row.ratePercent)
     }
 
+    /// What an affiliate earns is no longer NetLet's to set: each store offers
+    /// its own products at its own rate (3.7.1), so the card is who they are,
+    /// what they made, and the door — approve, suspend, reinstate.
     var body: some View {
         PortalCard {
             HStack(alignment: .top) {
@@ -591,14 +592,6 @@ private struct AffiliateCard: View {
                 Text("\(l.t("affiliate.channel")): \(latin(channel))").font(.inter(12)).foregroundStyle(Brand.body)
             }
             Text(l.t("admin.affiliateStats", ["orders": "\(row.paidOrders)", "earned": row.earned.formatted(l.current)])).font(.inter(13)).foregroundStyle(Brand.ink)
-            HStack(alignment: .bottom, spacing: 8) {
-                LabeledField(label: l.t("admin.affiliateRate"), text: Binding(get: { rate }, set: { rate = String(PhoneNumber.foldDigits($0).filter { $0.isNumber || $0 == "." }.prefix(5)) }),
-                             hint: l.t("admin.affiliateRateHint", ["ceiling": ceiling]), keyboard: .decimalPad, leftToRight: true)
-                Button(l.t("admin.affiliateSetRate")) { Task { await update(.init(affiliateId: row.id, ratePercent: rate)) } }
-                    .buttonStyle(PortalSmallButtonStyle())
-                    .disabled(busy || rate == row.ratePercent)
-                    .padding(.bottom, 28)
-            }
             HStack {
                 Spacer()
                 if row.status != "active" {

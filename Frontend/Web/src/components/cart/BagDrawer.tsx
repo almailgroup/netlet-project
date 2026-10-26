@@ -17,6 +17,9 @@ import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { ArrowRight, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import type { CartItem } from "@shared/commerce/types";
+import type { MessageKey } from "@shared/i18n/dictionary";
+import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -94,6 +97,8 @@ export function BagLines() {
                       rest is. Read-only here: the picker belongs at checkout,
                       beside the address it is an exception to. */}
                   {item.destination ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
+                  {/* Fast or regular (3.2.5), only where the store offers fast. */}
+                  {item.fastDelivery ? <SpeedChoice item={item} title={title} /> : null}
                 </div>
                 {/* A 16px bin was a 16px target: it reaches 44px now, by
                     `.tap-target`, without growing the row. */}
@@ -127,6 +132,37 @@ export function BagLines() {
 }
 
 /**
+ * Regular or fast for one line (3.2.5): two presses in a named group, each
+ * saying what it costs, so the choice and its price are read together. Fast
+ * from one store to one door is its own parcel, charged its own fee, which the
+ * summary below then shows as its own row.
+ */
+function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
+  const { setDeliveryChoice } = useCart();
+  const { t } = useTranslation();
+  const money = useMoney();
+  const fast = item.deliveryChoice === "fast";
+  const speed = item.fastDelivery?.speed;
+  const option = (choice: "regular" | "fast", label: string) => (
+    <button
+      type="button"
+      aria-pressed={(choice === "fast") === fast}
+      onClick={() => void setDeliveryChoice(item.lineId, choice).catch(() => undefined)}
+      className={`min-h-9 rounded-full px-3 text-[12px] font-bold transition pointer-fine:min-h-7 ${(choice === "fast") === fast ? "bg-[#0a285a] text-white" : "text-[#0a285a]"}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div role="group" aria-label={t("delivery.choiceFor", { name: title })} className="mt-2 inline-flex flex-wrap items-center gap-1 rounded-full border border-[#d5dfeb] bg-white p-0.5">
+      {option("regular", t("delivery.regular"))}
+      {option("fast", t("delivery.fastFor", { fee: money(item.fastDelivery!.fee) }))}
+      {fast && speed && isDeliverySpeed(speed) ? <span className="px-2 text-[11px] ink-muted">{t(`speed.${speed}` as MessageKey)}</span> : null}
+    </div>
+  );
+}
+
+/**
  * Delivery per seller, the totals, and the way to checkout. While a press is
  * on its way the delivery and the total are the server's last, so they are
  * drawn fainter and the region says it is busy until the answer lands.
@@ -144,8 +180,11 @@ export function BagSummary({ checkoutRef }: { checkoutRef?: (node: HTMLButtonEle
           expensive. Sellers who charge nothing are left out entirely —
           a row reading "Free" for every shop is noise. */}
       {cart.delivery.perVendor.filter(row => !row.free || row.toFree).map(row => (
-        <div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}`} className="mb-2 flex items-baseline justify-between gap-3 text-[12px]">
-          <span className="ink-muted" dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryFrom", { name: storeName(row, isArabic) })}</span>
+        <div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}|${row.choice ?? ""}`} className="mb-2 flex items-baseline justify-between gap-3 text-[12px]">
+          <span className="ink-muted" dir="auto">
+            {row.destinationLabel ? t("address.deliveryTo", { name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryFrom", { name: storeName(row, isArabic) })}
+            {row.choice === "fast" ? <> · {t("delivery.fastTag")}</> : null}
+          </span>
           <span className={`shrink-0 font-bold text-[#0a285a] transition-opacity ${updating}`}>{row.free ? t("cart.deliveryFree") : money(row.fee)}</span>
         </div>
       ))}

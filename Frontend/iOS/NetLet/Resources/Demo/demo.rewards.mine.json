@@ -4,6 +4,8 @@
       "json": {
         "code": "NLAAAC",
         "balance": 0,
+        "held": 0,
+        "nextRelease": null,
         "spendValue": "0.000",
         "cashOutValue": "0.000",
         "cashOut": {

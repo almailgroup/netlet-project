@@ -38,6 +38,7 @@ struct PortalRouter: View {
         case .invoices: PortalInvoicesView()
         case .promotions: PortalPromotionsView()
         case .affiliates: PortalAffiliatesView()
+        case .commission: PortalCommissionView()
         case .membership: PortalMembershipView()
         case .support: PortalSupportView()
         case .supportThread(let id): PortalSupportThreadView(conversationId: id)

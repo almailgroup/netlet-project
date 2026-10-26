@@ -166,7 +166,22 @@ describe("rating a delivery", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ rating: 4, comment: "fine, on reflection", courierId: ids.swift, vendorId: ids.acme });
     const mine = (await parcelsOf(order.reference)).find((parcel: { key: string }) => parcel.key === key);
-    expect(mine.rating).toEqual({ rating: 4, comment: "fine, on reflection" });
+    expect(mine.rating).toEqual({ rating: 4, comment: "fine, on reflection", speed: null, condition: null, conduct: null });
+  });
+
+  /* 3.4.4: "speed, package condition, courier conduct". */
+  it("is rated on three parts, and the overall is their average", async () => {
+    const { order, key } = await carried();
+    await as("shopper").orders.rateDelivery({ reference: order.reference, parcelKey: key, speed: 3, condition: 5, conduct: 5 });
+    const [row] = await db.select().from(deliveryRatings);
+    expect(row).toMatchObject({ rating: 4, speed: 3, condition: 5, conduct: 5 });
+    await expect(as("shopper").orders.rateDelivery({ reference: order.reference, parcelKey: key, speed: 3, condition: 5 }))
+      .rejects.toMatchObject({ message: "delivery.invalidRating" });
+    const own = await as("driver").dispatch.scores();
+    expect(own.scores[0].parts).toEqual({ speed: 3, condition: 5, conduct: 5 });
+    /* Changing it to one figure (an app that has not updated) leaves no stale parts beside it. */
+    await as("shopper").orders.rateDelivery({ reference: order.reference, parcelKey: key, rating: 2 });
+    expect((await db.select().from(deliveryRatings))[0]).toMatchObject({ rating: 2, speed: null, condition: null, conduct: null });
   });
 
   /* Not "not yours": an answer that differs would confirm the order exists. */

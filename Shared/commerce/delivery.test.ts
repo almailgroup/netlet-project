@@ -116,3 +116,50 @@ describe("whether a page should draw any of this", () => {
     expect(chargesDelivery({ flat: null, freeOver: "20.000" })).toBe(false);
   });
 });
+
+describe("fast or regular, per line (3.2.5)", () => {
+  const rules = new Map([[1, { flat: "2.000", freeOver: "20.000", fastFlat: "3.500" }], [2, { flat: "1.000", freeOver: null }]]);
+  const line = (vendorId: number, value: string, choice?: "regular" | "fast") => ({
+    vendorId, vendorName: vendorId === 1 ? "Acme" : "Other", destinationId: null, destinationLabel: null, value, choice,
+  });
+
+  it("makes a fast line its own parcel, charged the fast fee whatever it holds", async () => {
+    const { groupForDelivery, quoteDelivery } = await import("./delivery.js");
+    const quote = quoteDelivery(groupForDelivery([line(1, "25.000"), line(1, "30.000", "fast")], rules));
+    expect(quote.perVendor).toHaveLength(2);
+    /* Regular cleared its threshold and is free; fast is charged regardless. */
+    expect(quote.perVendor[0]).toMatchObject({ fee: "0.000", free: true });
+    expect(quote.perVendor[1]).toMatchObject({ choice: "fast", fee: "3.500", free: false, toFree: null });
+    expect(quote.total).toBe("3.500");
+  });
+
+  it("measures the regular threshold against the regular goods alone", async () => {
+    const { groupForDelivery, quoteDelivery } = await import("./delivery.js");
+    const quote = quoteDelivery(groupForDelivery([line(1, "15.000"), line(1, "30.000", "fast")], rules));
+    expect(quote.perVendor[0]).toMatchObject({ fee: "2.000", toFree: "5.000" });
+    expect(quote.total).toBe("5.500");
+  });
+
+  it("rides regular when the store offers no fast trip", async () => {
+    const { effectiveChoice, groupForDelivery, offersFast, quoteDelivery } = await import("./delivery.js");
+    const quote = quoteDelivery(groupForDelivery([line(2, "5.000", "fast")], rules));
+    expect(quote.perVendor).toEqual([expect.not.objectContaining({ choice: "fast" })]);
+    expect(offersFast({ fastFlat: null })).toBe(false);
+    expect(offersFast({ fastFlat: "0.000" })).toBe(true);
+    expect(effectiveChoice("fast", { fastFlat: null })).toBe("regular");
+    expect(effectiveChoice("fast", { fastFlat: "1.000" })).toBe("fast");
+  });
+
+  it("freezes which parcel was fast", async () => {
+    const { freezeDelivery, groupForDelivery, quoteDelivery } = await import("./delivery.js");
+    const frozen = freezeDelivery(quoteDelivery(groupForDelivery([line(1, "5.000", "fast")], rules)));
+    expect(frozen).toEqual([{ vendorId: 1, vendorName: "Acme", destinationLabel: null, choice: "fast", fee: "3.500" }]);
+  });
+
+  it("leaves a member paying for fast, which their free delivery does not cover", async () => {
+    const { groupForDelivery, quoteDelivery } = await import("./delivery.js");
+    const { waiveDelivery } = await import("./membership.js");
+    const waived = waiveDelivery(quoteDelivery(groupForDelivery([line(1, "5.000"), line(1, "5.000", "fast")], rules)), "10.000", null);
+    expect(waived).toMatchObject({ total: "3.500", waived: "2.000" });
+  });
+});

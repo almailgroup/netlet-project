@@ -14,8 +14,10 @@ import {
   affiliateDashboard,
   applyAsAffiliate,
   countPendingAffiliates,
+  listAffiliateProducts,
   listAffiliates,
   publicAffiliate,
+  setProductAffiliate,
   requestAffiliatePayout,
   updateAffiliate,
 } from "../services/affiliates.js";
@@ -49,6 +51,17 @@ export const affiliatesRouter = router({
     }))
     .mutation(({ ctx, input }) => guard(() => applyAsAffiliate(ctx.user.id, input))),
   payout: protectedProcedure.mutation(({ ctx }) => guard(() => requestAffiliatePayout(ctx.user.id))),
+  /** The products stores have offered to affiliates, each at its own rate (3.7.1). */
+  products: protectedProcedure
+    .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
+    .query(({ ctx, input }) => listAffiliateProducts(ctx.user.id, input ?? {})),
+  /** A store offering one of its products to affiliates at a rate it funds, or withdrawing it. */
+  setProduct: protectedProcedure
+    .input(z.object({ productId: rowId, percent: z.string().trim().max(6).nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => setProductAffiliate(actor, input.productId, input.percent));
+    }),
   list: protectedProcedure
     .input(z.object({ page: z.number().int().min(1).max(100_000).optional() }).optional())
     .query(async ({ ctx, input }) => {

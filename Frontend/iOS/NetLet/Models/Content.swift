@@ -229,6 +229,8 @@ struct StoreApplication: Decodable, Sendable {
     let payoutIban: String?
     let underPlatformLicence: Bool
     let proposedCommissionPercent: String?
+    /// A fixed amount per sale proposed instead of a percentage (3.3.2).
+    let proposedCommissionFixed: String?
     let commissionNote: String?
     let agreementVersion: String?
     /// draft, submitted, approved or rejected.

@@ -1,0 +1,4 @@
+ALTER TABLE "delivery_ratings" ADD COLUMN "speed" smallint;--> statement-breakpoint
+ALTER TABLE "delivery_ratings" ADD COLUMN "condition" smallint;--> statement-breakpoint
+ALTER TABLE "delivery_ratings" ADD COLUMN "conduct" smallint;--> statement-breakpoint
+ALTER TABLE "delivery_ratings" ADD CONSTRAINT "delivery_ratings_parts_range" CHECK (("delivery_ratings"."speed" is null or "delivery_ratings"."speed" between 1 and 5) and ("delivery_ratings"."condition" is null or "delivery_ratings"."condition" between 1 and 5) and ("delivery_ratings"."conduct" is null or "delivery_ratings"."conduct" between 1 and 5));

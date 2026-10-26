@@ -139,6 +139,8 @@ struct PortalPerson: Decodable, Identifiable, Hashable, Sendable {
     var lastSignedIn: Date? = nil
     let createdAt: Date
     let vendors: [Membership]
+    /// Capabilities granted on their own (3.3.9): "vendor.setCommission".
+    var grants: [String]? = nil
 
     var shownName: String { (name?.isEmpty == false ? name : nil) ?? email }
 }
@@ -167,6 +169,8 @@ struct PendingApplication: Decodable, Identifiable, Hashable, Sendable {
     var payoutIban: String? = nil
     let underPlatformLicence: Bool
     var proposedCommissionPercent: String? = nil
+    /// A fixed amount per sale proposed instead of a percentage (3.3.2).
+    var proposedCommissionFixed: String? = nil
     var commissionNote: String? = nil
     var agreementVersion: String? = nil
     let status: String
@@ -237,6 +241,28 @@ struct ModelFlagAnswer: Decodable, Sendable {
     let available: Bool
 }
 
+/// A number an administrator sets without a deploy (`features.settings`):
+/// the referral programme's two rates (3.1.15), each inside its range.
+struct PlatformSetting: Decodable, Sendable {
+    let key: String
+    let value: String
+    let defaultValue: String
+    let min: Double
+    let max: Double
+    var updatedAt: Date? = nil
+    var updatedByEmail: String? = nil
+
+    var minText: String { min == min.rounded() ? "\(Int(min))" : "\(min)" }
+    var maxText: String { max == max.rounded() ? "\(Int(max))" : "\(max)" }
+
+    /// `normaliseSetting`: a percentage, two decimals at most, inside the range — or nil.
+    func normalise(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard trimmed.range(of: #"^\d{1,3}(\.\d{1,2})?$"#, options: .regularExpression) != nil, let number = Double(trimmed), number >= min, number <= max else { return nil }
+        return String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), number)
+    }
+}
+
 struct Availability: Decodable, Sendable {
     let available: Bool
 }
@@ -256,6 +282,15 @@ extension API {
     }
 
     static let setFeature = Procedure<SetFeature, Acknowledged>(mutation: "features.set")
+
+    static let platformSettings = Procedure<NoInput, [PlatformSetting]>(query: "features.settings")
+
+    struct SetSetting: Encodable, Sendable {
+        let key: String
+        let value: String
+    }
+
+    static let setPlatformSetting = Procedure<SetSetting, Acknowledged>(mutation: "features.setSetting")
 
     struct PeopleQuery: Encodable, Sendable {
         var query: String?
@@ -286,6 +321,15 @@ extension API {
 
     static let removeFromVendor = Procedure<VendorMember, Acknowledged>(mutation: "inventory.people.removeFromVendor")
 
+    struct SetGrant: Encodable, Sendable {
+        let userId: Int
+        let capability: String
+        let granted: Bool
+    }
+
+    /// One capability granted on its own, or taken back (3.3.9).
+    static let setGrant = Procedure<SetGrant, Acknowledged>(mutation: "inventory.people.setGrant")
+
     struct ApplicationQuery: Encodable, Sendable {
         var status: String?
         var page: Int?
@@ -312,6 +356,8 @@ extension API {
         let id: Int
         /// The store's rate; the standard one when absent.
         var commissionPercent: String?
+        /// A fixed amount per sale, beside the rate or instead of it (3.3.2).
+        var commissionFixed: String?
     }
 
     static let approveApplication = Procedure<Approval, Acknowledged>(mutation: "inventory.applications.approve")

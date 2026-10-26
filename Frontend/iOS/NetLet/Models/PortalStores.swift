@@ -201,6 +201,12 @@ struct StoreDetail: Decodable, Sendable {
     var deliveryFreeOver: String? = nil
     var deliverySpeed: String? = nil
     var deliveryProvider: String? = nil
+    /// The fast trip (3.2.5): its own fee and band; nil is no fast option.
+    var fastDeliveryFee: String? = nil
+    var fastDeliverySpeed: String? = nil
+    /// Who carries the store's parcels (3.3.13): "netlet", or "own" with its company.
+    var deliveryMode: String? = nil
+    var deliveryCourierId: Int? = nil
     var underPlatformLicence: Bool? = nil
     var acceptsCod: Bool? = nil
     var codCeiling: String? = nil
@@ -274,6 +280,10 @@ extension API {
         var deliveryFlat: OrNull<String>?
         var deliveryFreeOver: OrNull<String>?
         var deliveryProvider: OrNull<String>?
+        var fastDeliveryFee: OrNull<String>?
+        var fastDeliverySpeed: OrNull<String>?
+        var deliveryMode: String?
+        var deliveryCourierId: OrNull<Int>?
         var acceptsCod: Bool?
         var codCeiling: OrNull<String>?
         var subscriptionPercent: OrNull<String>?

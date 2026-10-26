@@ -170,6 +170,8 @@ export type DestinedLine = {
   destinationLabel: string | null;
   /** What this line is worth to that seller, goods and extras together. */
   value: string;
+  /** The trip the shopper chose for it (3.2.5); absent is regular. */
+  choice?: "regular" | "fast";
 };
 
 /**

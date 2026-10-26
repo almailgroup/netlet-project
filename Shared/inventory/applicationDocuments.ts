@@ -30,8 +30,27 @@
  * nobody needs any more is one more copy to lose.
  */
 
-export const DOCUMENT_KINDS = ["trade_licence", "signatory_id", "iban_letter", "authorisation", "other"] as const;
+export const DOCUMENT_KINDS = ["trade_licence", "signatory_id", "iban_letter", "authorisation", "other", "contract", "signed_contract"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
+
+/**
+ * The contract step (3.3.1: "the final contract is sent to the applicant, who
+ * signs and uploads it"). NetLet attaches `contract` — its own document, so it
+ * is accepted as it arrives — and the applicant answers with
+ * `signed_contract`, which is reviewed like any other paper. Everything but the
+ * contract is the applicant's to upload.
+ */
+export const APPLICANT_KINDS: readonly DocumentKind[] = DOCUMENT_KINDS.filter(kind => kind !== "contract");
+
+/**
+ * Whether an application waits on its signed contract: NetLet attached one,
+ * and no signed copy has been accepted. An application NetLet attached no
+ * contract to is not held back by one.
+ */
+export function contractUnsigned(documents: DocumentFacts[]): boolean {
+  return documents.some(document => document.kind === "contract")
+    && !documents.some(document => document.kind === "signed_contract" && document.status === "accepted");
+}
 
 export const DOCUMENT_STATUSES = ["pending", "accepted", "rejected"] as const;
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];

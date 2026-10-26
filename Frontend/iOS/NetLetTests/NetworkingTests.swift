@@ -117,6 +117,29 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(similar.route, .department(slug: "style"))
     }
 
+    /// The approved round (A–H): the commission desk and its proposals, a
+    /// store's warnings, the referral rates, the affiliates' products and a
+    /// return's reading — each as the server answered it.
+    func testTheApprovedRoundDecodes() async throws {
+        let proposals = try await client.call(API.commissionProposals, .init(status: "pending"))
+        XCTAssertEqual(proposals.rows.first?.status, "pending")
+        let waiting = try await client.call(API.proposalsWaiting)
+        XCTAssertEqual(waiting, proposals.total)
+        let stores = try await client.call(API.commissionStores, .init())
+        XCTAssertFalse(stores.rows.isEmpty)
+        let warnings = try await client.call(API.storeWarnings, .init(vendorId: 2))
+        XCTAssertEqual(warnings.standing, warnings.rows.filter { $0.state == "standing" }.count)
+        XCTAssertEqual(warnings.suspendAt, WarningRules().suspendAt)
+        let settings = try await client.call(API.platformSettings)
+        XCTAssertEqual(settings.map(\.key), ["referral.productPercent", "referral.invitePercent"])
+        XCTAssertTrue(settings.allSatisfy { $0.normalise($0.value) == $0.value })
+        _ = try await client.call(API.affiliateProducts, .init())
+        let reading = try await client.call(API.returnReadAvailable)
+        XCTAssertFalse(reading)
+        let rewards = try await client.call(API.rewards)
+        XCTAssertEqual(rewards.held, 0)
+    }
+
     func testTheFootersContact() async throws {
         let contact = try await client.call(API.contact)
         XCTAssertEqual(contact.phone, "96550808606")

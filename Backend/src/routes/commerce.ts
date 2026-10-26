@@ -10,6 +10,7 @@
  * account — NetLet asks for one at checkout, not at the door.
  */
 
+import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
 import { listBestsellers, listBrands } from "../services/homeShelves.js";
 import { z } from "zod";
 import { rowId, rowIdText } from "../core/schemas.js";
@@ -25,6 +26,7 @@ import {
   listProductsByIds,
   listStoreCards,
   removeCartLines,
+  setLineDeliveryChoice,
   STORE_INDEX_LIMIT,
   updateCartLines,
 } from "../services/catalog.js";
@@ -191,6 +193,10 @@ export const commerceRouter = router({
       .mutation(async ({ input }) => {
         return removeCartLines(input.cartId, input.lineIds);
       }),
+    /** Fast or regular for one line (3.2.5), on a bag identified by its id like every bag write. */
+    setDeliveryChoice: publicProcedure
+      .input(z.object({ cartId: z.string().min(1), lineId: rowIdText, choice: z.enum(DELIVERY_CHOICES) }))
+      .mutation(({ input }) => setLineDeliveryChoice(input.cartId, input.lineId, input.choice)),
     /**
      * Send one line to a different door (3.2.6).
      *

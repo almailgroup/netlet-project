@@ -20,23 +20,30 @@
  * both succeed against a read-then-insert. The insert carries its own balance
  * check in the `where`, so exactly one of them lands.
  */
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { orders, pointEntries, referrals, users } from "../../database/schema.js";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { orderItems, orders, pointEntries, referrals, users } from "../../database/schema.js";
 import {
   acceptableReferral,
   canCashOut,
   cashOutValue,
+  COMMISSION_REASONS,
+  maturesAt,
   MIN_CASH_OUT_POINTS,
   referralCodeFor,
+  referralSharePoints,
   REFERRED_POINTS,
   REFERRER_POINTS,
+  REVERSAL_OF,
   spendValue,
   userIdFromCode,
+  type CommissionReason,
   type PointReason,
 } from "../../../Shared/commerce/referral.js";
+import { isKept } from "../../../Shared/commerce/collection.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
-import type { Pot } from "../../../Shared/commerce/affiliate.js";
+import { netletCommissionFils, type Pot } from "../../../Shared/commerce/affiliate.js";
 import { fromFils } from "../../../Shared/money.js";
+import { settingValue } from "./settings.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -49,6 +56,8 @@ export type LedgerRow = {
   note: string | null;
   orderReference: string | null;
   settledAt: Date | null;
+  /** When a held commission may be spent; null is now. */
+  availableAt: Date | null;
   createdAt: Date;
 };
 
@@ -56,6 +65,10 @@ export type LedgerRow = {
 export type RewardsView = {
   code: string;
   balance: number;
+  /** Commissions earned and still inside their line's return window (3.1.14). */
+  held: number;
+  /** The soonest of them to mature, or null with nothing held. */
+  nextRelease: Date | null;
   /** What the balance is worth, both ways, so the choice is stated rather than implied. */
   spendValue: string;
   cashOutValue: string;
@@ -76,15 +89,35 @@ export type RewardsView = {
  * a string — and `Number(null)` is 0 while `Number(undefined)` is NaN, so the
  * coalesce is doing real work rather than tidying.
  */
-export async function balanceFor(db: Db, userId: number, pot: Pot = "points"): Promise<number> {
+export async function balanceFor(db: Db, userId: number, pot: Pot = "points", now = new Date()): Promise<number> {
   /* One ledger, two pots (3.7): referral points and affiliate money never
      count towards each other, or a commission would be spendable as points
-     and points cashable at an affiliate's face value. */
+     and points cashable at an affiliate's face value. And only what has
+     matured: a commission still inside its line's return window is not money
+     yet (3.1.14), so it cannot be spent or cashed out on a sale that may come
+     back. */
   const [row] = await db
     .select({ total: sql<string>`coalesce(sum(${pointEntries.points}), 0)` })
     .from(pointEntries)
-    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, pot)));
+    .where(and(
+      eq(pointEntries.userId, userId),
+      eq(pointEntries.pot, pot),
+      or(isNull(pointEntries.availableAt), lte(pointEntries.availableAt, now)),
+    ));
   return Number(row?.total ?? 0);
+}
+
+/** What is earned and still held, and when the soonest of it matures. */
+export async function heldFor(db: Db, userId: number, now = new Date()): Promise<{ held: number; nextRelease: Date | null }> {
+  const [row] = await db
+    .select({
+      total: sql<string>`coalesce(sum(${pointEntries.points}), 0)`,
+      next: sql<string | Date | null>`min(${pointEntries.availableAt})`,
+    })
+    .from(pointEntries)
+    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "points"), gt(pointEntries.availableAt, now)));
+  const held = Number(row?.total ?? 0);
+  return { held, nextRelease: held > 0 && row?.next ? new Date(row.next) : null };
 }
 
 /** A signed-in shopper's balance, for the pages that only want the number. */
@@ -227,6 +260,130 @@ export async function qualifyReferral(db: Db, userId: number, orderId: number): 
   return true;
 }
 
+/* ----------------------------------------------------------- commissions --- */
+
+/**
+ * Credit both commissions on an order whose cash has just been collected
+ * (3.1.14, 3.1.15): the product link's share of each line bought through one,
+ * and the inviter's share of every line their invitee bought. Each is a
+ * percentage of NetLet's own commission on the line, held until the line's
+ * return window has passed.
+ *
+ * Exactly once per line and kind, by the ledger's partial unique indexes, so
+ * collecting the cash twice — or a retry after a failure — cannot pay twice.
+ * The product link's rate was frozen on the line at the sale; the invite's is
+ * the programme's at collection, since nothing about the order chose it.
+ */
+export async function creditReferralCommissions(db: Db, orderId: number, now = new Date()): Promise<void> {
+  const [order] = await db.select({ userId: orders.userId }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) return;
+  const lines = await db
+    .select({
+      id: orderItems.id,
+      lineTotal: orderItems.lineTotal,
+      commissionAmount: orderItems.commissionAmount,
+      affiliateVendorPercent: orderItems.affiliateVendorPercent,
+      fulfilment: orderItems.fulfilment,
+      deliveredAt: orderItems.deliveredAt,
+      referrerId: orderItems.referrerId,
+      referralRate: orderItems.referralRate,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+  const kept = lines.filter(line => isKept(line.fulfilment));
+  const rows: (typeof pointEntries.$inferInsert)[] = [];
+
+  for (const line of kept) {
+    if (line.referrerId === null || line.referralRate === null || line.referrerId === order.userId) continue;
+    const points = referralSharePoints(fromFils(netletCommissionFils(line)), line.referralRate);
+    if (points <= 0) continue;
+    rows.push({ userId: line.referrerId, points, reason: "product_referral", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now) });
+  }
+
+  /* The invite pays from the first paid order on, so only a referral that has
+     qualified — `qualifyReferral` runs just before this, on the same press. */
+  if (order.userId !== null) {
+    const [referral] = await db
+      .select({ referrerId: referrals.referrerId })
+      .from(referrals)
+      .where(and(eq(referrals.referredId, order.userId), isNotNull(referrals.qualifiedAt)))
+      .limit(1);
+    if (referral && referral.referrerId !== order.userId) {
+      const rate = await settingValue("referral.invitePercent", db);
+      for (const line of kept) {
+        const points = referralSharePoints(fromFils(netletCommissionFils(line)), rate);
+        if (points <= 0) continue;
+        /* No `referral_id`: that column's index allows one entry of a kind per
+           referral, which is the welcome's rule. The line names the sale. */
+        rows.push({ userId: referral.referrerId, points, reason: "invite_commission", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now) });
+      }
+    }
+  }
+  if (rows.length) await db.insert(pointEntries).values(rows).onConflictDoNothing();
+}
+
+/**
+ * Take back a refunded line's commissions, each from the same frozen entry it
+ * was paid as, maturing at the same moment — so a commission still held and
+ * its reversal cancel out before anybody could spend either.
+ */
+export async function reverseReferralLine(db: Db, orderItemId: number): Promise<void> {
+  const credited = await db
+    .select({ userId: pointEntries.userId, points: pointEntries.points, reason: pointEntries.reason, orderId: pointEntries.orderId, availableAt: pointEntries.availableAt })
+    .from(pointEntries)
+    .where(and(eq(pointEntries.orderItemId, orderItemId), inArray(pointEntries.reason, [...COMMISSION_REASONS])));
+  const rows = credited
+    .filter(entry => entry.points > 0)
+    .map(entry => ({
+      userId: entry.userId,
+      points: -entry.points,
+      reason: REVERSAL_OF[entry.reason as CommissionReason],
+      orderId: entry.orderId,
+      orderItemId,
+      availableAt: entry.availableAt,
+    }));
+  if (rows.length) await db.insert(pointEntries).values(rows).onConflictDoNothing();
+}
+
+/**
+ * A line delivered after its cash was collected moves its held commissions on
+ * to the end of the window that now runs from the arrival — never earlier,
+ * and its reversals with them, so the pair still matures together.
+ */
+export async function extendReferralHold(db: Db, orderItemIds: number[], deliveredAt: Date): Promise<void> {
+  if (!orderItemIds.length) return;
+  const until = maturesAt(deliveredAt, deliveredAt);
+  const reasons: PointReason[] = [...COMMISSION_REASONS, ...COMMISSION_REASONS.map(reason => REVERSAL_OF[reason])];
+  await db
+    .update(pointEntries)
+    .set({ availableAt: until })
+    .where(and(inArray(pointEntries.orderItemId, orderItemIds), inArray(pointEntries.reason, reasons), lt(pointEntries.availableAt, until)));
+}
+
+/**
+ * The product link a line is bought through, if it may earn (3.1.14): an
+ * account that exists and is not the buyer. The rate is the programme's at the
+ * sale, frozen on the line beside who shared it.
+ */
+export async function productReferrers(
+  db: Db,
+  links: readonly { productId: string; code: string }[],
+  buyerId: number | null | undefined,
+): Promise<{ byProduct: Map<string, number>; rate: string }> {
+  const wanted = new Map<string, number>();
+  for (const link of links.slice(0, 50)) {
+    const referrerId = userIdFromCode(link.code);
+    if (referrerId === null || referrerId === buyerId || wanted.has(link.productId)) continue;
+    wanted.set(link.productId, referrerId);
+  }
+  if (!wanted.size) return { byProduct: new Map(), rate: "0.00" };
+  const ids = [...new Set(wanted.values())];
+  const found = await db.select({ id: users.id }).from(users).where(inArray(users.id, ids));
+  const exists = new Set(found.map(row => row.id));
+  const byProduct = new Map([...wanted].filter(([, id]) => exists.has(id)));
+  return { byProduct, rate: byProduct.size ? await settingValue("referral.productPercent", db) : "0.00" };
+}
+
 /* ---------------------------------------------------------------- reading --- */
 
 /**
@@ -242,6 +399,8 @@ export async function rewardsFor(userId: number, limit = 50): Promise<RewardsVie
   const empty: RewardsView = {
     code: referralCodeFor(userId),
     balance: 0,
+    held: 0,
+    nextRelease: null,
     spendValue: spendValue(0),
     cashOutValue: cashOutValue(0),
     cashOut: canCashOut(0),
@@ -259,6 +418,7 @@ export async function rewardsFor(userId: number, limit = 50): Promise<RewardsVie
       reason: pointEntries.reason,
       note: pointEntries.note,
       settledAt: pointEntries.settledAt,
+      availableAt: pointEntries.availableAt,
       createdAt: pointEntries.createdAt,
       orderReference: orders.reference,
     })
@@ -279,10 +439,14 @@ export async function rewardsFor(userId: number, limit = 50): Promise<RewardsVie
     .from(referrals)
     .where(eq(referrals.referrerId, userId));
 
-  const balance = await balanceFor(db, userId);
+  const now = new Date();
+  const balance = await balanceFor(db, userId, "points", now);
+  const { held, nextRelease } = await heldFor(db, userId, now);
   return {
     ...empty,
     balance,
+    held,
+    nextRelease,
     spendValue: spendValue(balance),
     cashOutValue: cashOutValue(balance),
     cashOut: canCashOut(balance),
@@ -295,6 +459,7 @@ export async function rewardsFor(userId: number, limit = 50): Promise<RewardsVie
       note: row.note,
       orderReference: row.orderReference,
       settledAt: row.settledAt,
+      availableAt: row.availableAt && row.availableAt > now ? row.availableAt : null,
       createdAt: row.createdAt,
     })),
   };

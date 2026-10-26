@@ -36,8 +36,13 @@ import { DiscButton } from "@/components/ui/DiscButton";
 import { useBuyNow } from "@/hooks/useBuyNow";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
-export async function shareProduct(product: Product, t: Translate) {
-  const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}`;
+/**
+ * Share a product. Signed in, the address carries the sharer's own code, which
+ * makes it a product link (3.1.14): a friend who buys it through the link earns
+ * the sharer points on that line once its return window has passed.
+ */
+export async function shareProduct(product: Product, t: Translate, referralCode?: string | null) {
+  const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`;
   const shareData = { title: product.title, text: t("product.shareText", { name: product.title }), url: shareUrl };
   try {
     const nativeBridge = (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } }).ReactNativeWebView;

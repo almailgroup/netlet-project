@@ -16,10 +16,14 @@ extension API {
         let requestId: Int
     }
 
+    /// Speed, package condition and courier conduct (3.4.4); the server makes
+    /// the overall their average.
     struct RateParcel: Encodable, Sendable {
         let reference: String
         let parcelKey: String
-        let rating: Int
+        let speed: Int
+        let condition: Int
+        let conduct: Int
         let comment: String?
     }
 

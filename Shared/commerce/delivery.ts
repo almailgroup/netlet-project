@@ -35,9 +35,28 @@
  * home and KWD 15 to the office is not KWD 30 toward one KWD 20 threshold —
  * that buys two deliveries with one threshold, which is the same money the
  * per-basket rule already refuses to spend on somebody else's sale.
+ *
+ * ## And a sixth: the shopper picks the speed, per line (3.2.5)
+ *
+ * **A store that offers fast delivery records its fee**, and a line in the bag
+ * carries the shopper's choice — regular unless changed. Fast and regular lines
+ * from one store to one door are **two parcels**, because they leave at
+ * different times, and each is charged its own fee. Fast is always charged:
+ * the free-over threshold is the regular fee's, a reward for spending enough
+ * to make a routine trip worth it, and fast is the shopper paying for a
+ * different trip. A line asking for fast from a store that has no fast fee is
+ * a regular line — the store never offered it.
  */
 import { compareMoney, fromFils, toFils } from "../money.js";
 import { parcelKey, type DestinationId, type DestinedLine } from "./addresses.js";
+
+/** Which trip a line takes (3.2.5). */
+export const DELIVERY_CHOICES = ["regular", "fast"] as const;
+export type DeliveryChoice = (typeof DELIVERY_CHOICES)[number];
+
+export function isDeliveryChoice(value: unknown): value is DeliveryChoice {
+  return typeof value === "string" && (DELIVERY_CHOICES as readonly string[]).includes(value);
+}
 
 /** What a seller charges to deliver, as the store's page records it. */
 export type DeliveryRule = {
@@ -45,6 +64,8 @@ export type DeliveryRule = {
   flat: string | null;
   /** Goods total at or above which this seller delivers free. Null: never. */
   freeOver: string | null;
+  /** The fast trip's fee (3.2.5), per parcel; null or absent: no fast option. */
+  fastFlat?: string | null;
 };
 
 export const FREE: DeliveryRule = { flat: null, freeOver: null };
@@ -61,6 +82,8 @@ export type DeliveryGroup = {
   destinationId?: DestinationId;
   /** What the shopper calls that door. Null for the order's own address. */
   destinationLabel?: string | null;
+  /** The fast trip, when this parcel is one (3.2.5). Absent is regular. */
+  choice?: DeliveryChoice;
   /** What the goods in this parcel come to, before delivery. */
   goods: string;
   rule: DeliveryRule;
@@ -71,6 +94,8 @@ export type VendorDelivery = {
   vendorName: string;
   destinationId?: DestinationId;
   destinationLabel?: string | null;
+  /** `fast` on a fast parcel (3.2.5); absent or regular otherwise. */
+  choice?: DeliveryChoice;
   goods: string;
   fee: string;
   /** True when a fee exists and the basket cleared this seller's threshold. */
@@ -111,6 +136,22 @@ export function quoteDelivery(groups: DeliveryGroup[]): DeliveryQuote {
   let total = 0n;
 
   const perVendor = groups.map(group => {
+    /* A fast parcel is charged the fast fee, whatever it holds (3.2.5). */
+    if (group.choice === "fast") {
+      const fast = amount(group.rule.fastFlat) ?? 0n;
+      total += fast;
+      return {
+        vendorId: group.vendorId,
+        vendorName: group.vendorName,
+        destinationId: group.destinationId ?? null,
+        destinationLabel: group.destinationLabel ?? null,
+        choice: "fast" as const,
+        goods: group.goods,
+        fee: fromFils(fast),
+        free: fast === 0n,
+        toFree: null,
+      };
+    }
     const flat = amount(group.rule.flat);
     const threshold = amount(group.rule.freeOver);
     const goods = toFils(group.goods);
@@ -161,6 +202,8 @@ export type FrozenDelivery = {
   vendorId: number | null;
   vendorName: string;
   destinationLabel?: string | null;
+  /** `fast` on a fast parcel (3.2.5); absent on a regular one and on every order before. */
+  choice?: "fast";
   fee: string;
   /** A member's waived fee (4.1), what the seller charges and NetLet carries. Absent before memberships, and when nothing was waived. */
   waived?: string;
@@ -179,6 +222,7 @@ export function freezeDelivery(quote: DeliveryQuote): FrozenDelivery {
     vendorId: row.vendorId,
     vendorName: row.vendorName,
     destinationLabel: row.destinationLabel ?? null,
+    ...(row.choice === "fast" ? { choice: "fast" as const } : {}),
     fee: row.fee,
     ...(row.waived ? { waived: row.waived } : {}),
   }));
@@ -205,7 +249,10 @@ export function groupForDelivery(
   const groups = new Map<string, DeliveryGroup>();
 
   for (const line of lines) {
-    const key = parcelKey(line.vendorId, line.destinationId);
+    const rule = rules.get(line.vendorId) ?? FREE;
+    /* Fast only where the store offers it; otherwise the line rides regular. */
+    const fast = line.choice === "fast" && offersFast(rule);
+    const key = parcelKey(line.vendorId, line.destinationId) + (fast ? "|fast" : "");
     const held = groups.get(key);
     if (held) {
       held.goods = fromFils(toFils(held.goods) + toFils(line.value));
@@ -216,12 +263,23 @@ export function groupForDelivery(
       vendorName: line.vendorName,
       destinationId: line.destinationId,
       destinationLabel: line.destinationLabel,
+      ...(fast ? { choice: "fast" as const } : {}),
       goods: line.value,
-      rule: rules.get(line.vendorId) ?? FREE,
+      rule,
     });
   }
 
   return [...groups.values()];
+}
+
+/** Whether a store offers the fast trip at all (3.2.5): a fee recorded, zero included. */
+export function offersFast(rule: Pick<DeliveryRule, "fastFlat">): boolean {
+  return amount(rule.fastFlat) !== null;
+}
+
+/** The choice a line actually rides: fast only where its store offers it. */
+export function effectiveChoice(choice: string | null | undefined, rule: Pick<DeliveryRule, "fastFlat">): DeliveryChoice {
+  return choice === "fast" && offersFast(rule) ? "fast" : "regular";
 }
 
 /** Whether a rule would ever charge anything, for a page deciding to draw it. */

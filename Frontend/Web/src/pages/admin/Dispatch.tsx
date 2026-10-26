@@ -33,7 +33,7 @@ import { privatePageMeta } from "@shared/seo";
 import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
-import { BadgeCheck, PackageCheck, Truck, Warehouse } from "lucide-react";
+import { BadgeCheck, PackageCheck, Truck, Warehouse, Zap } from "lucide-react";
 import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { PinLink } from "@/components/map/PinLink";
 import { ShareLocation } from "@/components/admin/ShareLocation";
 import { Select } from "@/components/ui/Select";
+import { RATING_PARTS, type RatingPart } from "@shared/commerce/deliveryRatings";
 
 const VEHICLE_LABEL = {
   bike: "vehicle.bike",
@@ -138,6 +139,10 @@ function Dispatch({ actor }: { actor: Actor }) {
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
                               {/* A member's parcel (4.1): first on the board, and said so. */}
+                              {/* A fast parcel (3.2.5): the shopper paid for its own trip, and it goes first. */}
+                              {parcel.fast && parcel.state !== "delivered" ? (
+                                <Pill tone="warning"><Zap className="size-3.5" aria-hidden />{t("dispatch.fastParcel")}</Pill>
+                              ) : null}
                               {parcel.member && parcel.state !== "delivered" ? (
                                 <Pill tone="navy"><BadgeCheck className="size-3.5" aria-hidden />{t("membership.priority")}</Pill>
                               ) : null}
@@ -190,9 +195,9 @@ function Dispatch({ actor }: { actor: Actor }) {
                             {/* Who is carrying it. Drawn only where there is no
                                 picker below saying the same thing: for a courier this
                                 is the only answer, and for an admin the select is. */}
-                            {mayAssign ? null : (
+                            {mayAssign && !parcel.selfDelivered ? null : (
                               <span className="text-[13px] ink-muted">
-                                {parcel.courierName ? t("dispatch.assignedTo", { name: parcel.courierName }) : t("dispatch.unassigned")}
+                                {parcel.selfDelivered ? t("dispatch.storeDelivers") : parcel.courierName ? t("dispatch.assignedTo", { name: parcel.courierName }) : t("dispatch.unassigned")}
                               </span>
                             )}
                           </p>
@@ -207,9 +212,10 @@ function Dispatch({ actor }: { actor: Actor }) {
                           </ul>
                         </div>
 
-                        {moves.length > 0 || mayAssign ? (
+                        {moves.length > 0 || (mayAssign && !parcel.selfDelivered) ? (
                           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-3 sm:px-5">
-                            {mayAssign ? (
+                            {/* Not NetLet's to give out when the store carries it itself (3.3.13). */}
+                            {mayAssign && !parcel.selfDelivered ? (
                               <Select
                                 aria-label={t("dispatch.assign", { parcel: parcel.reference })}
                                 disabled={assigning === id}
@@ -275,6 +281,12 @@ function Dispatch({ actor }: { actor: Actor }) {
  * the server. Comments carry no shopper's name: the company needs to know the
  * sofa was left in the rain, not who said so.
  */
+const PART_LABEL: Record<RatingPart, MessageKey> = {
+  speed: "delivery.partSpeed",
+  condition: "delivery.partCondition",
+  conduct: "delivery.partConduct",
+};
+
 function DeliveryScores() {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
@@ -296,6 +308,17 @@ function DeliveryScores() {
                       <StarRow value={score.average} />
                       <span>{t(score.count === 1 ? "delivery.scoreLineOne" : "delivery.scoreLine", { average: score.average.toFixed(1), count: score.count })}</span>
                     </p>
+                    {/* The three parts (3.4.4), from the ratings that gave them. */}
+                    {RATING_PARTS.some(part => score.parts[part] !== null) ? (
+                      <dl className="mt-2 grid grid-cols-3 gap-2 text-[12px]">
+                        {RATING_PARTS.map(part => (
+                          <div key={part}>
+                            <dt className="ink-muted">{t(PART_LABEL[part])}</dt>
+                            <dd className="font-bold text-[#0a285a]"><bdi dir="ltr">{score.parts[part] === null ? "—" : score.parts[part]!.toFixed(1)}</bdi></dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
                   </li>
                 ))}
               </ul>

@@ -279,6 +279,13 @@ export type CartItem = {
    * nothing about destinations at all.
    */
   destination?: { id: number; label: string } | null;
+  /**
+   * The trip this line takes (3.2.5) — regular unless the shopper chose fast
+   * — and what fast costs from its store, when the store offers it at all.
+   * Absent on a bag from before the choice existed, which rides regular.
+   */
+  deliveryChoice?: "regular" | "fast";
+  fastDelivery?: { fee: Money; speed: string | null } | null;
   lineTotal: Money;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a
@@ -302,6 +309,8 @@ export type CartDeliveryLine = {
    * duplicate charge rather than as a second journey.
    */
   destinationLabel?: string | null;
+  /** `fast` on a fast parcel (3.2.5), which is charged its own fee. */
+  choice?: "regular" | "fast";
   /** What is in this parcel, which is what the threshold measures. */
   goods: Money;
   fee: Money;

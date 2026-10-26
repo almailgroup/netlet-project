@@ -125,9 +125,8 @@ export const demoStockHistory = [
 const demoHealthInputs = {
   published: demoInventoryProducts.filter(row => row.status === "published").length,
   pendingReview: demoInventoryProducts.filter(row => row.status === "pending_review").length,
-  // One fixture product is rejected, and a rejection is what the audit trail
-  // would have recorded.
-  rejections: demoInventoryProducts.filter(row => row.status === "rejected").length,
+  // A rejection is not a warning (3.3.18), and the demo store has none.
+  warnings: 0,
   outOfStock: demoInventoryProducts
     .filter(row => row.status === "published")
     .flatMap(row => row.variants)

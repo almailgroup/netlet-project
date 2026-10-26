@@ -58,7 +58,7 @@ const migrations = readdirSync(migrationsDir).filter(name => name.endsWith(".sql
 /**
  * Makes one statement safe to run against a database that may already have it.
  *
- * Only six shapes appear across the migrations, which is why this is a
+ * Only a handful of shapes appear across the migrations, which is why this is a
  * rewrite rather than a parser. Anything unrecognised is passed through
  * untouched and reported, so a new shape is noticed rather than silently
  * left non-idempotent.
@@ -78,6 +78,12 @@ function idempotent(statement) {
   // one provisioned before is exactly who is pasting this. The column's own
   // indexes go with it, so no DROP INDEX is needed beside this.
   if (/^ALTER TABLE .+ DROP COLUMN /.test(sql)) return sql.replace(/ DROP COLUMN /, " DROP COLUMN IF EXISTS ");
+  // A table goes the same way: one provisioned after the drop never had it.
+  if (/^DROP TABLE "/.test(sql)) return sql.replace(/^DROP TABLE /, "DROP TABLE IF EXISTS ");
+  // Deleting rows that may already be gone deletes nothing the second time.
+  // Only ever written by hand into a migration, and only to clear rows a
+  // removed feature left behind.
+  if (/^DELETE FROM "/.test(sql)) return sql;
 
   // Dropping a NOT NULL that is already gone, or a default that is already
   // gone, is a no-op in Postgres, so both are re-runnable as written. Named

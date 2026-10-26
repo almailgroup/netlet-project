@@ -161,6 +161,7 @@ jobs:
             shot 49-product-zoom "$lang" zoom:wireless-earbuds ""
             shot 50-home-foot "$lang" homeFoot ""
             shot 51-admin-fraud "$lang" portal:/admin/fraud admin
+            shot 52-admin-commission "$lang" portal:/admin/commission admin
           done
           ls -1 build/previews
 

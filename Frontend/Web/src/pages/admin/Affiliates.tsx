@@ -1,19 +1,20 @@
 /**
- * Affiliates (3.7), for an administrator: who has applied, who earns, at what
- * rate, and what they have made.
+ * Affiliates (3.7), for an administrator: who has applied, who earns, and
+ * what they have made. What they earn is no longer NetLet's to set: each store
+ * offers its own products at its own rate (3.7.1), funded from its own net.
  *
  * Pending first, because the reason to open this page is usually an
  * application waiting. The channel is shown as written so whoever approves can
  * go and look at where the links will be published. Every change — approval,
- * suspension, a new rate — is on the audit trail with the chain, because it is
- * who NetLet pays and how much.
+ * or suspension — is on the audit trail with the chain, because it is who
+ * NetLet pays.
  */
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
-import { EmptyState, fieldClass, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { EmptyState, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -72,13 +73,10 @@ function AffiliateCard({ row }: { row: Row }) {
   const money = useMoney();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
-  const [rate, setRate] = useState(row.ratePercent);
   const update = trpc.affiliates.update.useMutation({
     onSuccess: () => { toast.success(t("admin.affiliateSaved")); void utils.affiliates.list.invalidate(); },
     onError: error => toast.error(tError(error.message)),
   });
-  const rateId = `affiliate-rate-${row.id}`;
-  const hintId = `${rateId}-hint`;
   const status = STATUS[row.status] ?? STATUS.pending;
 
   return (
@@ -103,22 +101,6 @@ function AffiliateCard({ row }: { row: Row }) {
       <p className="mt-1 text-[13px] leading-5 text-[#3d5376]">{t("admin.affiliateStats", { orders: String(row.paidOrders), earned: money({ amount: row.earned, currencyCode: "KWD" }) })}</p>
 
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#eef1f5] pt-4">
-        <div>
-          <label htmlFor={rateId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.affiliateRate")}</label>
-          <input
-            id={rateId}
-            aria-describedby={hintId}
-            value={rate}
-            onChange={event => setRate(event.target.value.replace(/[^\d.]/g, ""))}
-            inputMode="decimal"
-            dir="ltr"
-            maxLength={5}
-            className={`${fieldClass} mt-1.5 h-9 w-24`}
-          />
-        </div>
-        <button type="button" disabled={update.isPending || rate === row.ratePercent} onClick={() => update.mutate({ affiliateId: row.id, ratePercent: rate })} className={smallButtonClass.secondary}>
-          {t("admin.affiliateSetRate")}
-        </button>
         <span className="flex-1" />
         {row.status !== "active" ? (
           <button type="button" disabled={update.isPending} onClick={() => update.mutate({ affiliateId: row.id, status: "active" })} className={smallButtonClass.primary}>
@@ -129,7 +111,6 @@ function AffiliateCard({ row }: { row: Row }) {
             {t("admin.affiliateSuspend")}
           </button>
         )}
-        <p id={hintId} className="basis-full text-[12px] ink-muted">{t("admin.affiliateRateHint", { ceiling: String(MAX_AFFILIATE_PERCENT) })}</p>
       </div>
     </li>
   );

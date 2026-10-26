@@ -30,6 +30,10 @@ const REASON_LABEL: Record<string, MessageKey> = {
   cashed_out: "rewards.reasonCashedOut",
   admin_adjustment: "rewards.reasonAdminAdjustment",
   order_cancelled: "rewards.reasonOrderCancelled",
+  product_referral: "rewards.reasonProductReferral",
+  invite_commission: "rewards.reasonInviteCommission",
+  product_referral_reversal: "rewards.reasonProductReferralReversal",
+  invite_commission_reversal: "rewards.reasonInviteCommissionReversal",
 };
 
 export function AccountRewards() {
@@ -93,6 +97,9 @@ export function AccountRewards() {
                 {t("rewards.invited", { count: view.invited })} · {t("rewards.qualified", { count: view.qualified })}
               </p>
               <p className="mt-1 text-xs leading-5 text-[#536b8c]">{t("rewards.privacy")}</p>
+              {/* The two commissions beside the welcome (3.1.14): a product
+                  shared from its page, and every order a friend places. */}
+              <p className="mt-3 max-w-prose text-sm leading-6 text-[#536b8c]">{t("rewards.commissionHelp")}</p>
             </div>
 
             <div className="rounded-[1.35rem] border border-[#e6e9ef] bg-white p-5 sm:p-6">
@@ -103,6 +110,13 @@ export function AccountRewards() {
                 {t("rewards.worthInShop", { value: amount(view.spendValue) })} ·{" "}
                 {t("rewards.worthInCash", { value: amount(view.cashOutValue) })}
               </p>
+              {/* Earned and not yet spendable: a sale that may still come back. */}
+              {view.held > 0 ? (
+                <p className="mt-2 text-sm font-semibold text-[#0a285a]">
+                  {t("rewards.held", { points: view.held })}
+                  {view.nextRelease ? <> {t("rewards.nextRelease", { date: formatDate(view.nextRelease) })}</> : null}
+                </p>
+              ) : null}
               <p className="mt-2 max-w-prose text-xs leading-5 text-[#536b8c]">{t("rewards.rateNote")}</p>
 
               {view.cashOut.ok ? (
@@ -146,6 +160,7 @@ export function AccountRewards() {
                         {entry.reason === "spent_on_order" && !entry.orderReference
                           ? <> · {amount(spendValue(-entry.points))}</>
                           : null}
+                        {entry.availableAt ? <> · {t("rewards.availableFrom", { date: formatDate(entry.availableAt) })}</> : null}
                       </span>
                     </li>
                   ))}

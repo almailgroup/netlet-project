@@ -261,7 +261,7 @@ private struct CardMenu: View {
         } label: {
             Label(l.t(saved ? "product.removeSaved" : "product.save", ["name": product.title]), systemImage: saved ? "heart.slash" : "heart")
         }
-        ShareLink(item: app.services.configuration.url(path: "/products/\(product.handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? product.handle)")) {
+        ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, userId: app.session.user?.id))) {
             Label(l.t("product.share", ["name": product.title]), systemImage: "square.and.arrow.up")
         }
     }

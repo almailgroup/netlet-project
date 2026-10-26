@@ -66,7 +66,8 @@ import {
   updateProduct,
   vendorHealthFor,
 } from "../services/inventory.js";
-import { assertCan, VENDOR_ROLES } from "../../../Shared/inventory/permissions.js";
+import { assertCan, GRANTABLE, VENDOR_ROLES, type Capability } from "../../../Shared/inventory/permissions.js";
+import { GrantRefused, setGrant } from "../services/grants.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../services/audit.js";
 import { AWARDED_BADGES } from "../../../Shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../../Shared/commerce/deliverySpeed.js";
@@ -170,7 +171,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
-    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.") || message.startsWith("admin.option")) {
+    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.") || message.startsWith("admin.option") || message.startsWith("dispatch.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
@@ -223,6 +224,12 @@ export const storeDetails = {
      with no carrier and a fixed list would be asserting which companies exist
      in Kuwait. */
   deliveryProvider: blankOr(z.string().trim().max(120)),
+  /* The fast trip (3.2.5): blank is no fast option; its band from the same list. */
+  fastDeliveryFee: blankOr(moneySchema),
+  fastDeliverySpeed: blankOr(z.enum(DELIVERY_SPEEDS)),
+  /* Who carries the store's parcels (3.3.13), and which company when its own is on NetLet. */
+  deliveryMode: z.enum(["own", "netlet"]).optional(),
+  deliveryCourierId: rowId.nullish(),
   /* Selling under NetLet's own licence (3.3.16) — a recorded fact about the
      arrangement, not an inference from a blank licence number. */
   underPlatformLicence: z.boolean().optional(),
@@ -360,6 +367,7 @@ export const inventoryRouter = router({
         /* A proposal, shaped like a rate; whether it is a sensible one is
            `proposalProblem`, so the page can say it in the shopper's words. */
         proposedCommissionPercent: z.string().trim().max(8).nullable().optional(),
+        proposedCommissionFixed: z.string().trim().max(14).nullable().optional(),
         commissionNote: z.string().max(MAX_COMMISSION_NOTE + 100).nullable().optional(),
       }))
       .mutation(({ ctx, input }) => applicationGuard(() => saveApplication(ctx.user.id, input))),
@@ -405,10 +413,10 @@ export const inventoryRouter = router({
     approve: protectedProcedure
       /* The store's rate, chosen by the administrator approving it; the
          standard one when omitted (3.3.2). */
-      .input(z.object({ id: rowId, commissionPercent: percentSchema.nullable().optional() }))
+      .input(z.object({ id: rowId, commissionPercent: percentSchema.nullable().optional(), commissionFixed: moneySchema.nullable().optional() }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
-        return guard(() => applicationGuard(() => approveApplication(actor, input.id, input.commissionPercent)));
+        return guard(() => applicationGuard(() => approveApplication(actor, input.id, input.commissionPercent, input.commissionFixed)));
       }),
 
     reject: protectedProcedure
@@ -1018,6 +1026,20 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => removeMemberAsAdmin(actor, input.vendorId, input.userId));
+      }),
+
+    /** One capability granted to one account, or taken back (3.3.9). */
+    setGrant: protectedProcedure
+      .input(z.object({ userId: rowId, capability: z.enum(GRANTABLE as [Capability, ...Capability[]]), granted: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        try {
+          await guard(() => setGrant(actor, input.userId, input.capability, input.granted));
+        } catch (error) {
+          if (error instanceof GrantRefused) throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
+          throw error;
+        }
+        return { ok: true as const };
       }),
   }),
 

@@ -44,8 +44,18 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     let addons: [CartAddon]?
     /// The saved address this line goes to, when not where the order goes.
     var destination: CartAddress? = nil
+    /// Regular unless the shopper chose fast (3.2.5); nil rides regular.
+    var deliveryChoice: String? = nil
+    /// What fast costs from this line's store, when the store offers it at all.
+    var fastDelivery: FastDelivery? = nil
+
+    struct FastDelivery: Decodable, Hashable, Sendable {
+        let fee: Money
+        let speed: String?
+    }
 
     var id: String { lineId }
+    var isFast: Bool { deliveryChoice == "fast" }
 
     /// The title in the page's language, from the two the bag carries.
     func title(_ language: Language) -> String {
@@ -95,10 +105,20 @@ struct CartDeliveryLine: Decodable, Hashable, Sendable {
     let toFree: Money?
     /// The door this delivery goes to, when a line was sent elsewhere.
     var destinationLabel: String? = nil
+    /// "fast" on a fast parcel (3.2.5), which is charged its own fee.
+    var choice: String? = nil
 
     func storeName(_ language: Language) -> String {
         if language == .ar, let arabic = vendorNameAr, !arabic.isEmpty { return arabic }
         return vendorName
+    }
+
+    /// The row's words: whose delivery, to which door, and "fast" when it is.
+    @MainActor
+    func label(_ l: LanguageSettings) -> String {
+        let name = storeName(l.current)
+        let base = destinationLabel.map { l.t("address.deliveryTo", ["name": name, "label": $0]) } ?? l.t("cart.deliveryFrom", ["name": name])
+        return choice == "fast" ? "\(base) · \(l.t("delivery.fastTag"))" : base
     }
 }
 

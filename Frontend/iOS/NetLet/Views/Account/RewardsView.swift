@@ -42,6 +42,9 @@ struct RewardsView: View {
                     .font(.inter(13))
                     .foregroundStyle(Brand.ink)
                 Text(l.t("rewards.privacy")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                /* The two commissions beside the welcome (3.1.14): a product
+                   shared from its page, and every order a friend places. */
+                Text(l.t("rewards.commissionHelp")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .card()
@@ -51,6 +54,13 @@ struct RewardsView: View {
                 Text("\(l.t("rewards.worthInShop", ["value": view.spendValue.formatted(l.current)])) · \(l.t("rewards.worthInCash", ["value": view.cashOutValue.formatted(l.current)]))")
                     .font(.inter(13))
                     .foregroundStyle(Brand.ink)
+                /* Earned and not yet spendable: a sale that may still come back. */
+                if let held = view.held, held > 0 {
+                    Text([l.t("rewards.held", ["points": "\(held)"]), view.nextRelease.map { l.t("rewards.nextRelease", ["date": OrderWording.date($0, language: l.current)]) }].compactMap { $0 }.joined(separator: " "))
+                        .font(.inter(13, .semibold))
+                        .foregroundStyle(Brand.navy)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(l.t("rewards.rateNote")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                 if view.cashOut.ok {
                     Button(l.t("rewards.cashOut", ["points": "\(view.balance)", "value": view.cashOutValue.formatted(l.current)])) {
@@ -100,6 +110,7 @@ struct RewardsView: View {
         if entry.reason == "cashed_out" {
             parts.append(entry.settledAt.map { l.t("rewards.paidOn", ["date": OrderWording.date($0, language: l.current)]) } ?? l.t("rewards.awaitingPayment"))
         }
+        if let available = entry.availableAt { parts.append(l.t("rewards.availableFrom", ["date": OrderWording.date(available, language: l.current)])) }
         return parts.joined(separator: " · ")
     }
 
@@ -110,6 +121,10 @@ struct RewardsView: View {
         case "spent_on_order": return "rewards.reasonSpentOnOrder"
         case "cashed_out": return "rewards.reasonCashedOut"
         case "order_cancelled": return "rewards.reasonOrderCancelled"
+        case "product_referral": return "rewards.reasonProductReferral"
+        case "invite_commission": return "rewards.reasonInviteCommission"
+        case "product_referral_reversal": return "rewards.reasonProductReferralReversal"
+        case "invite_commission_reversal": return "rewards.reasonInviteCommissionReversal"
         default: return "rewards.reasonAdminAdjustment"
         }
     }
@@ -159,7 +174,7 @@ struct AffiliateView: View {
                 if view.status == "pending" { note(l.t("affiliate.pendingNote")) }
                 if view.status == "suspended" { note(l.t("affiliate.suspendedNote")) }
                 if view.status == "active" {
-                    note(l.t("affiliate.howToShare", ["rate": view.ratePercent, "days": days]))
+                    note(l.t("affiliate.howToShare", ["days": days]))
                     HStack {
                         Text("\u{2066}\(view.code)\u{2069}").font(.system(size: 20, weight: .heavy, design: .monospaced)).foregroundStyle(Brand.navy).textSelection(.enabled)
                         Spacer()
@@ -177,6 +192,8 @@ struct AffiliateView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .card()
+
+            if view.status == "active" { OfferedProducts(code: view.code) }
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 stat("affiliate.paidOrders", "\(view.paidOrders)")
@@ -246,6 +263,76 @@ struct AffiliateView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(padding: 14)
+    }
+}
+
+/// What stores have offered to affiliates (3.7.1), each at its own rate, with
+/// a link to it carrying this affiliate's code — the web's `OfferedProducts`.
+/// Highest rate first, a page at a time.
+private struct OfferedProducts: View {
+    let code: String
+    @State private var page = 1
+    @State private var result: AffiliateProductPage?
+    @State private var failed = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(l.t("affiliate.productsTitle")).font(.inter(16, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            if let result {
+                if result.rows.isEmpty {
+                    Text(l.t("affiliate.productsEmpty")).font(.inter(13)).foregroundStyle(Brand.muted)
+                } else {
+                    ForEach(result.rows) { row in
+                        HStack(spacing: 10) {
+                            RemoteImage(reference: row.image)
+                                .frame(width: 48, height: 48)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(l.current == .ar ? (row.titleAr ?? row.title) : row.title).font(.inter(14, .bold)).foregroundStyle(Brand.navy).lineLimit(2)
+                                (Text("\(row.vendorName) · \(row.price.formatted(l.current)) · ").foregroundColor(Brand.muted)
+                                    + Text(l.t("affiliate.productRate", ["rate": row.percent])).foregroundColor(Brand.success).bold())
+                                    .font(.inter(12))
+                            }
+                            Spacer(minLength: 6)
+                            ShareLink(item: app.services.configuration.url(path: "/products/\(row.handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? row.handle)?aff=\(code)")) {
+                                Label(l.t("affiliate.copyProductLink"), systemImage: "square.and.arrow.up")
+                                    .labelStyle(.iconOnly)
+                                    .font(.inter(15, .bold))
+                                    .foregroundStyle(Brand.navy)
+                                    .frame(width: 44, height: 44)
+                                    .background(Circle().fill(Brand.tint))
+                            }
+                            .accessibilityLabel("\(l.t("affiliate.copyProductLink")): \(row.title)")
+                        }
+                        if row.id != result.rows.last?.id { Divider() }
+                    }
+                    if result.total > result.pageSize {
+                        PortalPager(page: result.page, pageSize: result.pageSize, total: result.total) { next in
+                            page = next
+                            Task { await load() }
+                        }
+                    }
+                }
+            } else if failed {
+                Text(l.t("admin.loadFailed")).font(.inter(13)).foregroundStyle(Brand.muted)
+            } else {
+                ProgressView()
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            result = try await app.services.api.call(API.affiliateProducts, API.PageOnly(page: page))
+            failed = false
+        } catch {
+            failed = true
+        }
     }
 }
 

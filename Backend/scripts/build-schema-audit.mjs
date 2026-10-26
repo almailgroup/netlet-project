@@ -118,9 +118,12 @@ const retired = [
   ...[...migrationSql.matchAll(/ALTER TABLE "([^"]+)" DROP COLUMN(?: IF EXISTS)? "([^"]+)"/g)]
     .filter(([, table, column]) => !expectedColumns.has(`${table}.${column}`))
     .map(([, table, name]) => ({ kind: "column", table, name })),
+  ...[...migrationSql.matchAll(/DROP TABLE(?: IF EXISTS)? "([^"]+)"/g)]
+    .filter(([, table]) => !tables.some(spec => spec.name === table))
+    .map(([, name]) => ({ kind: "table", table: "", name })),
 ];
-if (/DROP (TABLE|TYPE|CONSTRAINT)/i.test(migrationSql)) {
-  refuse("a migration drops a table, a type or a constraint; teach the retired list that shape first.");
+if (/DROP (TYPE|CONSTRAINT)/i.test(migrationSql)) {
+  refuse("a migration drops a type or a constraint; teach the retired list that shape first.");
 }
 
 /* The departments are read the way the bootstrap generator reads them. */
@@ -282,7 +285,7 @@ problems (sort, area, object, finding) AS (
   SELECT 7, 'leftover', CASE WHEN kind = 'column' THEN table_name || '.' || object_name ELSE object_name END,
     'a later migration dropped this ' || kind || '; it is still here'
   FROM retired r
-  WHERE (kind = 'index' AND to_regclass(format('public.%I', object_name)) IS NOT NULL)
+  WHERE (kind IN ('index', 'table') AND to_regclass(format('public.%I', object_name)) IS NOT NULL)
      OR (kind = 'column' AND EXISTS (SELECT 1 FROM pg_attribute a
            WHERE a.attrelid = to_regclass(format('public.%I', r.table_name)) AND a.attname = r.object_name AND NOT a.attisdropped))
   UNION ALL

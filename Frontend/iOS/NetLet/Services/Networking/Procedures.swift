@@ -111,6 +111,15 @@ enum API {
     }
 
     static let setLineDestination = Procedure<LineDestination, Cart?>(mutation: "commerce.cart.setDestination")
+
+    struct LineDeliveryChoice: Encodable, Sendable {
+        let cartId: String
+        let lineId: String
+        /// "regular" or "fast" (3.2.5).
+        let choice: String
+    }
+
+    static let setLineDeliveryChoice = Procedure<LineDeliveryChoice, Cart?>(mutation: "commerce.cart.setDeliveryChoice")
     static let updateCart = Procedure<CartUpdate, Cart?>(mutation: "commerce.cart.updateLines")
 
     // MARK: Accounts

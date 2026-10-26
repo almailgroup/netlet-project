@@ -279,10 +279,15 @@ struct Rewards: Decodable, Sendable {
         let orderReference: String?
         let settledAt: Date?
         let createdAt: Date
+        /// When a held commission may be spent (3.1.14); nil is now.
+        let availableAt: Date?
     }
 
     let code: String
     let balance: Int
+    /// Earned on a sale that may still come back, and when the soonest of it matures.
+    let held: Int?
+    let nextRelease: Date?
     let spendValue: Money
     let cashOutValue: Money
     let cashOut: CashOut
@@ -290,6 +295,51 @@ struct Rewards: Decodable, Sendable {
     let invited: Int
     let qualified: Int
     let entries: [Entry]
+}
+
+/// The code a signed-in shopper's links carry — `referralCodeFor` in
+/// `Shared/commerce/referral.ts` — so a product shared from the app is a
+/// product link (3.1.14), as one shared from the web is: a friend who buys it
+/// through the link earns the sharer points on that line.
+enum ReferralCode {
+    private static let alphabet = Array("ABCDEFGHJKMNPQRTUVWXYZ23456789")
+
+    static func code(for userId: Int) -> String {
+        var value = max(1, userId)
+        var code = ""
+        while value > 0 {
+            code = String(alphabet[value % alphabet.count]) + code
+            value /= alphabet.count
+        }
+        return "NL" + String(repeating: String(alphabet[0]), count: max(0, 4 - code.count)) + code
+    }
+
+    /// A product's address, carrying the sharer's code when somebody is signed in.
+    static func productPath(handle: String, userId: Int?) -> String {
+        let encoded = handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? handle
+        guard let userId else { return "/products/\(encoded)" }
+        return "/products/\(encoded)?ref=\(code(for: userId))"
+    }
+}
+
+/// A product a store offers to affiliates at its own rate (`affiliates.products`, 3.7.1).
+struct AffiliateProduct: Decodable, Identifiable, Hashable, Sendable {
+    let productId: Int
+    let handle: String
+    let title: String
+    let titleAr: String?
+    let vendorName: String
+    let image: String?
+    let price: Money
+    let percent: String
+    var id: Int { productId }
+}
+
+struct AffiliateProductPage: Decodable, Sendable {
+    let rows: [AffiliateProduct]
+    let total: Int
+    let page: Int
+    let pageSize: Int
 }
 
 // MARK: Affiliates
@@ -315,7 +365,8 @@ struct AffiliateDashboard: Decodable, Sendable {
     let code: String
     let displayName: String
     let channel: String?
-    let ratePercent: String
+    /// NetLet's own rate, no longer paid: each store now sets its own per product (3.7.1).
+    let ratePercent: String?
     let paidOrders: Int
     let waitingOrders: Int
     let earned: Money

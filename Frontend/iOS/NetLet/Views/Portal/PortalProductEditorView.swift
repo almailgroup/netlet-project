@@ -96,9 +96,19 @@ struct PortalProductEditorView: View {
         section("extras", l.t("admin.addons")) {
             AddonsSection(product: product, mayEdit: mayEdit) { await reload() }
         }
+        if mayEdit {
+            section("affiliates", l.t("admin.productAffiliates")) {
+                AffiliateSection(product: product) { await reload() }
+            }
+        }
         if actor?.can("vendor.setCommission") == true {
             section("commission", l.t("admin.productCommission")) {
                 CommissionSection(product: product) { await reload() }
+            }
+        } else if mayEdit {
+            /* A store asking for a rate of its own (3.3.2); NetLet decides. */
+            section("propose", l.t("commission.proposeTitle")) {
+                ProposeCommissionSection(product: product, mayStoreWide: actor?.can("vendor.editProfile", vendorId: product.vendorId) == true)
             }
         }
         if actor?.can("product.reassign") == true {
@@ -1089,6 +1099,177 @@ private struct CommissionSection: View {
         if await app.attempt(done: "admin.saved", fallback: "admin.saveFailed", {
             _ = try await app.services.api.call(API.saveProductCommission, .init(id: product.id, percent: .text(percent), fixed: .text(fixed)))
         }) { await saved() }
+    }
+}
+
+// MARK: - Affiliates (3.7.1)
+
+/// Offering this product to affiliates at a rate the store funds: on a sale an
+/// affiliate's link brings, that share of the line comes off what the store
+/// nets. Off is the default — a store's margin is its own to spend.
+private struct AffiliateSection: View {
+    let product: EditableProduct
+    let saved: () async -> Void
+    @State private var offered = false
+    @State private var rate = ""
+    @State private var saving = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    private var ceiling: Double { PortalRules.shared.money?.maxAffiliatePercent ?? 20 }
+    private var ceilingText: String { ceiling == ceiling.rounded() ? "\(Int(ceiling))" : "\(ceiling)" }
+    private var normalised: String? { AffiliateRules.storeRate(rate, ceiling: ceiling) }
+    private var changed: Bool {
+        offered ? (normalised != nil && normalised != product.affiliatePercent) : product.affiliatePercent != nil
+    }
+
+    var body: some View {
+        Group {
+            Text(l.t("admin.productAffiliatesNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            Toggle(l.t("admin.affiliateOffer"), isOn: $offered)
+                .font(.inter(14, .semibold))
+                .tint(Brand.navy)
+            if offered {
+                LabeledField(label: l.t("admin.affiliateStoreRate"), text: $rate,
+                             hint: rate.trimmingCharacters(in: .whitespaces).isEmpty || normalised != nil ? l.t("admin.affiliateStoreRateHint", ["ceiling": ceilingText]) : nil,
+                             problem: !rate.trimmingCharacters(in: .whitespaces).isEmpty && normalised == nil ? l.t("affiliate.badRate") : nil,
+                             keyboard: .decimalPad, leftToRight: true)
+            }
+            SectionSave(pending: saving, disabled: !changed) { Task { await save() } }
+        }
+        .onAppear {
+            offered = product.affiliatePercent != nil
+            rate = product.affiliatePercent ?? ""
+        }
+    }
+
+    private func save() async {
+        saving = true
+        defer { saving = false }
+        var answer: API.AffiliatePercent?
+        guard await app.attempt(fallback: "admin.saveFailed", {
+            answer = try await app.services.api.call(API.setProductAffiliate, .init(productId: product.id, percent: OrNull(offered ? normalised : nil)))
+        }) else { return }
+        app.toast(l.t(answer?.percent != nil ? "admin.affiliateOffered" : "admin.affiliateWithdrawn"))
+        await saved()
+    }
+}
+
+// MARK: - Proposing a commission (3.3.2)
+
+/// A store's commission proposals, from the product it is about: the open one
+/// with Withdraw, otherwise the last answer and a form — this product or (an
+/// owner) the whole store, a percentage or an amount per sale, and why.
+/// Nothing here changes a rate; NetLet's desk decides.
+private struct ProposeCommissionSection: View {
+    let product: EditableProduct
+    let mayStoreWide: Bool
+    @State private var proposals: [CommissionProposal] = []
+    @State private var storeWide = false
+    @State private var fixedAmount = false
+    @State private var value = ""
+    @State private var reason = ""
+    @State private var busy = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    private var mine: [CommissionProposal] {
+        proposals.filter { storeWide ? $0.productId == nil : $0.productId == product.id }
+    }
+
+    private var problem: String? {
+        value.trimmingCharacters(in: .whitespaces).isEmpty ? nil : ProposalRules.problem(percent: fixedAmount ? nil : value, fixed: fixedAmount ? value : nil)
+    }
+
+    var body: some View {
+        Group {
+            Text(l.t("commission.proposeNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            if mayStoreWide {
+                Picker(l.t("commission.scope"), selection: $storeWide) {
+                    Text(l.t("commission.scopeProduct")).tag(false)
+                    Text(l.t("commission.scopeStore")).tag(true)
+                }
+                .pickerStyle(.segmented)
+            }
+            if let open = mine.first(where: { $0.status == "pending" }) {
+                PortalNotice(text: [l.t("commission.waiting", ["figure": CommissionWording.figure(open.percent, open.fixed, l)]), open.reason.map { "“\($0)”" }]
+                    .compactMap { $0 }.joined(separator: " "), tone: .warning)
+                Button(l.t("commission.withdraw")) { Task { await withdraw(open) } }
+                    .buttonStyle(PortalSmallButtonStyle())
+                    .disabled(busy)
+            } else {
+                if let last = mine.first(where: { $0.status == "accepted" || $0.status == "declined" }) {
+                    Text([l.t(last.status == "accepted" ? "commission.lastAccepted" : "commission.lastDeclined", ["figure": CommissionWording.figure(last.percent, last.fixed, l)]),
+                          last.decisionNote.map { "“\($0)”" }].compactMap { $0 }.joined(separator: " "))
+                        .font(.inter(13))
+                        .foregroundStyle(last.status == "accepted" ? Brand.success : Brand.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Picker(l.t("sell.commissionRate"), selection: $fixedAmount) {
+                    Text(l.t("sell.commissionKindPercent")).tag(false)
+                    Text(l.t("sell.commissionKindFixed")).tag(true)
+                }
+                .pickerStyle(.segmented)
+                LabeledField(label: l.t(fixedAmount ? "sell.commissionFixed" : "sell.commissionRate"), text: $value,
+                             problem: problem.map { l.t($0) }, keyboard: .decimalPad, leftToRight: true)
+                LabeledField(label: l.t("sell.commissionWhy"), text: Binding(get: { reason }, set: { reason = String($0.prefix(ProposalRules.maxReason)) }))
+                Button(l.t("commission.send")) { Task { await send() } }
+                    .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                    .disabled(busy || value.trimmingCharacters(in: .whitespaces).isEmpty || problem != nil)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        proposals = (try? await app.services.api.call(API.commissionProposals, .init(vendorId: product.vendorId)))?.rows ?? []
+    }
+
+    private func send() async {
+        busy = true
+        defer { busy = false }
+        let trimmed = value.trimmingCharacters(in: .whitespaces)
+        let words = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard await app.attempt(done: "commission.proposed", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.proposeCommission, .init(
+                vendorId: product.vendorId,
+                productId: OrNull(storeWide ? nil : product.id),
+                percent: OrNull(fixedAmount ? nil : trimmed),
+                fixed: OrNull(fixedAmount ? trimmed : nil),
+                reason: OrNull(words.isEmpty ? nil : words)))
+        }) else { return }
+        value = ""
+        reason = ""
+        await load()
+    }
+
+    private func withdraw(_ proposal: CommissionProposal) async {
+        busy = true
+        defer { busy = false }
+        if await app.attempt(done: "commission.withdrawn", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.withdrawProposal, .init(proposalId: proposal.id))
+        }) { await load() }
+    }
+}
+
+/// "8%" or "KWD 0.500 per sale": a commission figure as the desk and the store read it.
+@MainActor
+enum CommissionWording {
+    static func figure(_ percent: String?, _ fixed: String?, _ l: LanguageSettings) -> String {
+        if let percent { return l.t("commission.figurePercent", ["rate": trimmedNumber(percent)]) }
+        return l.t("commission.figureFixed", ["amount": Money(fils: Money.parseFils(fixed ?? "0") ?? 0).formatted(l.current)])
+    }
+
+    /// What a store is charged now: its percentage and its amount, whichever it has.
+    static func current(_ percent: String?, _ fixed: String?, _ l: LanguageSettings) -> String {
+        let parts = [percent.flatMap { Double($0) ?? 0 > 0 ? l.t("commission.figurePercent", ["rate": trimmedNumber($0)]) : nil },
+                     fixed.map { l.t("commission.figureFixed", ["amount": Money(fils: Money.parseFils($0) ?? 0).formatted(l.current)]) }].compactMap { $0 }
+        return parts.isEmpty ? l.t("commission.figurePercent", ["rate": "0"]) : parts.joined(separator: " + ")
+    }
+
+    static func trimmedNumber(_ text: String) -> String {
+        guard let value = Double(text) else { return text }
+        return value == value.rounded() ? "\(Int(value))" : String(value)
     }
 }
 

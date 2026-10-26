@@ -511,7 +511,9 @@
       "signatory_id",
       "iban_letter",
       "authorisation",
-      "other"
+      "other",
+      "contract",
+      "signed_contract"
     ],
     "documentTypes": [
       "application/pdf",

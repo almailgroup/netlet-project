@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gt, inArray, lt, ne, sql } from "drizzle-orm";
 import { applicationDocuments, vendorApplications } from "../../database/schema.js";
 import {
+  APPLICANT_KINDS,
   DOCUMENT_NOTE_MAX,
   MAX_DOCUMENTS_PER_APPLICATION,
   MAX_DOCUMENT_UPLOADS_PER_HOUR,
@@ -39,7 +40,8 @@ export type DocumentRefusal =
   | "documents.tooManyFiles"
   | "documents.notFound"
   | "documents.notWaiting"
-  | "documents.needsNote";
+  | "documents.needsNote"
+  | "documents.noContract";
 
 export class DocumentRefused extends Error {
   constructor(readonly reason: DocumentRefusal) {
@@ -107,7 +109,17 @@ export async function uploadDocument(
 
   const application = await ownApplication(userId);
   if (!application) throw new DocumentRefused("documents.saveFirst");
-  if (!editableByApplicant(application.status as ApplicationState)) throw new DocumentRefused("documents.locked");
+  if (!APPLICANT_KINDS.includes(request.kind)) throw new DocumentRefused("documents.notAccepted");
+  /* The signed contract is the one paper that arrives while NetLet holds the
+     application — it is the answer to a contract NetLet attached to it. */
+  const signing = request.kind === "signed_contract";
+  if (signing) {
+    if (application.status !== "submitted" && !editableByApplicant(application.status as ApplicationState)) throw new DocumentRefused("documents.locked");
+    const facts = await documentFactsFor(application.id);
+    if (!facts.some(document => document.kind === "contract")) throw new DocumentRefused("documents.noContract");
+  } else if (!editableByApplicant(application.status as ApplicationState)) {
+    throw new DocumentRefused("documents.locked");
+  }
 
   const db = await handle();
   const [{ recent }] = await db
@@ -136,6 +148,51 @@ export async function uploadDocument(
     })
     .returning(VIEW);
   return row;
+}
+
+/**
+ * NetLet attaches the final contract to an application (3.3.1), for the
+ * applicant to sign and upload. NetLet's own paper, so it is accepted as it
+ * arrives; a second one replaces the first, the way an accepted replacement
+ * replaces any document.
+ */
+export async function attachContract(
+  actor: Actor,
+  applicationId: number,
+  request: { fileName: string | null; declaredType: string; bytes: Uint8Array },
+  now = new Date(),
+): Promise<DocumentView> {
+  assertCan(actor, "platform.manageUsers");
+  const problem = documentProblem(request.bytes, request.declaredType);
+  if (problem) throw new DocumentRefused(problem);
+  const type = sniffDocument(request.bytes)!;
+  const db = await handle();
+  const [application] = await db.select({ id: vendorApplications.id, status: vendorApplications.status }).from(vendorApplications).where(eq(vendorApplications.id, applicationId)).limit(1);
+  if (!application) throw new DocumentRefused("documents.notFound");
+  if (application.status === "approved" || application.status === "rejected") throw new DocumentRefused("documents.locked");
+  return db.transaction(async tx => {
+    const [row] = await tx
+      .insert(applicationDocuments)
+      .values({
+        applicationId,
+        kind: "contract",
+        fileName: safeFileName(request.fileName, type),
+        contentType: type,
+        byteSize: request.bytes.length,
+        sha256: createHash("sha256").update(request.bytes).digest("hex"),
+        bytes: request.bytes,
+        status: "accepted",
+        reviewedBy: actor.userId,
+        reviewedAt: now,
+        uploadedBy: actor.userId,
+        createdAt: now,
+      })
+      .returning(VIEW);
+    await tx
+      .delete(applicationDocuments)
+      .where(and(eq(applicationDocuments.applicationId, applicationId), eq(applicationDocuments.kind, "contract"), ne(applicationDocuments.id, row.id)));
+    return row;
+  });
 }
 
 /** The applicant's own documents, newest first. */

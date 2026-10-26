@@ -1,4 +1,5 @@
 import QuickLook
+import UniformTypeIdentifiers
 import SwiftUI
 
 /// Seller applications waiting on NetLet — the web's `/admin/applications`.
@@ -50,6 +51,7 @@ private struct ApplicationCard: View {
     let row: PendingApplication
     let changed: () async -> Void
     @State private var rate: String
+    @State private var fixed = ""
     @State private var reason = ""
     @State private var deciding = false
     @State private var documents: [ApplicationDocument]?
@@ -168,6 +170,8 @@ private struct ApplicationCard: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(row.proposedCommissionPercent.map {
                 l.t("admin.applicationProposed", ["rate": ApplicationModel.trimmedRate($0), "standard": Self.standard])
+            } ?? row.proposedCommissionFixed.map {
+                l.t("admin.applicationProposedFixed", ["amount": Money(fils: Money.parseFils($0) ?? 0).formatted(l.current), "standard": Self.standard])
             } ?? l.t("admin.applicationNoProposal", ["standard": Self.standard]))
             .font(.inter(13, .semibold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
             if let note = row.commissionNote, !note.isEmpty {
@@ -175,12 +179,21 @@ private struct ApplicationCard: View {
             }
             HStack(alignment: .bottom, spacing: 8) {
                 LabeledField(label: l.t("admin.applicationRate"), text: $rate, keyboard: .decimalPad, leftToRight: true)
-                    .frame(maxWidth: 140)
-                if let proposed = row.proposedCommissionPercent {
-                    Button(l.t("admin.applicationUseProposed")) { rate = ApplicationModel.trimmedRate(proposed) }
-                        .buttonStyle(PortalSmallButtonStyle())
-                        .padding(.bottom, 4)
+                    .frame(maxWidth: 120)
+                // A fixed amount per sale (3.3.2), beside the rate or instead of it.
+                LabeledField(label: l.t("admin.applicationFixed"), text: $fixed, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
+                    .frame(maxWidth: 120)
+            }
+            if row.proposedCommissionPercent != nil || row.proposedCommissionFixed != nil {
+                Button(l.t("admin.applicationUseProposed")) {
+                    if let proposed = row.proposedCommissionPercent {
+                        rate = ApplicationModel.trimmedRate(proposed)
+                    } else {
+                        rate = "0"
+                        fixed = row.proposedCommissionFixed ?? ""
+                    }
                 }
+                .buttonStyle(PortalSmallButtonStyle())
             }
         }
         .padding(12)
@@ -192,8 +205,9 @@ private struct ApplicationCard: View {
         deciding = true
         defer { deciding = false }
         let chosen = PhoneNumber.foldDigits(rate).trimmingCharacters(in: .whitespaces)
+        let amount = PhoneNumber.foldDigits(fixed).trimmingCharacters(in: .whitespaces)
         if await app.attempt(done: "admin.applicationApproved", fallback: "admin.saveFailed", {
-            _ = try await app.services.api.call(API.approveApplication, .init(id: row.id, commissionPercent: chosen.isEmpty ? nil : chosen))
+            _ = try await app.services.api.call(API.approveApplication, .init(id: row.id, commissionPercent: chosen.isEmpty ? nil : chosen, commissionFixed: amount.isEmpty ? nil : amount))
         }) {
             await changed()
         }
@@ -222,12 +236,24 @@ private struct DocumentReviewSection: View {
     @State private var busy = false
     @State private var opening: Int?
     @State private var preview: URL?
+    @State private var choosingContract = false
+    @State private var attaching = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(l.t("documents.title")).font(.inter(13, .bold)).foregroundStyle(Brand.ink)
+            HStack {
+                Text(l.t("documents.title")).font(.inter(13, .bold)).foregroundStyle(Brand.ink)
+                Spacer()
+                /* NetLet's final contract (3.3.1), sent to the applicant to sign and upload. */
+                Button { choosingContract = true } label: {
+                    Label(l.t((documents ?? []).contains(where: { $0.kind == "contract" }) ? "documents.replaceContract" : "documents.attachContract"),
+                          systemImage: attaching ? "hourglass" : "arrow.up.doc")
+                }
+                .buttonStyle(PortalSmallButtonStyle())
+                .disabled(attaching)
+            }
             if let documents {
                 let kinds = (SiteContent.shared?.selling.documentKinds ?? []).filter { current($0, in: documents) != nil }
                 if kinds.isEmpty {
@@ -246,6 +272,24 @@ private struct DocumentReviewSection: View {
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         .task { await load() }
         .quickLookPreview($preview)
+        .fileImporter(isPresented: $choosingContract, allowedContentTypes: [.pdf, .jpeg, .png, .webP]) { result in
+            guard case .success(let url) = result else { return }
+            Task { await attach(url) }
+        }
+    }
+
+    private func attach(_ url: URL) async {
+        let opened = url.startAccessingSecurityScopedResource()
+        defer { if opened { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        let type = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        attaching = true
+        defer { attaching = false }
+        if await app.attempt(done: "documents.contractAttached", fallback: "documents.failed", {
+            _ = try await app.services.seller.attachContract(applicationId: applicationId, fileName: url.lastPathComponent, contentType: type, data: data)
+        }) {
+            await load()
+        }
     }
 
     @ViewBuilder

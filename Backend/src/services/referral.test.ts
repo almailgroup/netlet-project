@@ -17,16 +17,18 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cartItems, carts, orderItems, orders as ordersTable, pointEntries, products, productVariants,
   referrals as referralsTable, users, vendors,
-  invoices,
+  invoices, platformSettings,
 } from "../../database/schema.js";
-import { REFERRED_POINTS, REFERRER_POINTS, referralCodeFor } from "../../../Shared/commerce/referral.js";
+import { REFERRED_POINTS, REFERRER_POINTS, referralCodeFor, referralSharePoints } from "../../../Shared/commerce/referral.js";
+import { RETURN_WINDOW_DAYS } from "../../../Shared/commerce/returns.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
 let referral: typeof import("./referral.js");
 let orders: typeof import("./orders.js");
+let settings: typeof import("./settings.js");
 
-const ids = { admin: 0, owner: 0, inviter: 0, friend: 0, stranger: 0, vendor: 0, variant: 0 };
+const ids = { admin: 0, owner: 0, inviter: 0, friend: 0, stranger: 0, vendor: 0, product: 0, variant: 0 };
 
 beforeAll(async () => {
   const client = new PGlite();
@@ -43,6 +45,7 @@ beforeAll(async () => {
   }));
   referral = await import("./referral.js");
   orders = await import("./orders.js");
+  settings = await import("./settings.js");
 
   const [admin] = await db.insert(users).values({ email: "admin@netlet.test", role: "admin" }).returning();
   const [owner] = await db.insert(users).values({ email: "owner@acme.test" }).returning();
@@ -62,11 +65,12 @@ beforeAll(async () => {
 
   Object.assign(ids, {
     admin: admin.id, owner: owner.id, inviter: inviter.id, friend: friend.id,
-    stranger: stranger.id, vendor: acme.id, variant: variant.id,
+    stranger: stranger.id, vendor: acme.id, product: lamp.id, variant: variant.id,
   });
 }, 60_000);
 
 beforeEach(async () => {
+  await db.delete(platformSettings);
   await db.delete(pointEntries);
   await db.delete(referralsTable);
   /* An invoiced order cannot be deleted under its invoice (3.6.6). */
@@ -88,15 +92,24 @@ async function basket(userId: number, quantity = 1): Promise<string> {
   return cart.id;
 }
 
-async function buy(userId: number, quantity = 1, usePoints = false) {
+async function buy(userId: number, quantity = 1, usePoints = false, productReferrals: { productId: string; code: string }[] = []) {
   return orders.placeOrder(await basket(userId, quantity), {
     email: "friend@example.test",
     userId,
     paymentMethod: "cod",
     addressLine: "Block 4, Street 12, Building 3",
     usePoints,
+    productReferrals,
   });
 }
+
+/** The order's one line, as frozen. */
+async function lineOf(orderId: number) {
+  const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  return line;
+}
+
+const DAY = 86_400_000;
 
 describe("recording who brought whom", () => {
   it("records a referral from a code", async () => {
@@ -293,7 +306,9 @@ describe("what the account page is told", () => {
     const view = await referral.rewardsFor(ids.inviter);
     expect(view).toMatchObject({ code: referralCodeFor(ids.inviter), balance: REFERRER_POINTS, invited: 1, qualified: 1 });
     expect(JSON.stringify(view)).not.toContain("friend@example.test");
-    expect(view.entries[0]).toMatchObject({ reason: "referrer_bonus", points: REFERRER_POINTS });
+    /* The welcome, and beside it the first of the ongoing commissions — still held. */
+    expect(view.entries.find(entry => entry.reason === "referrer_bonus")).toMatchObject({ points: REFERRER_POINTS, availableAt: null });
+    expect(view.entries.find(entry => entry.reason === "invite_commission")?.availableAt).not.toBeNull();
   });
 
   it("names the order a spend went on, so the ledger explains itself", async () => {
@@ -302,5 +317,110 @@ describe("what the account page is told", () => {
 
     const view = await referral.rewardsFor(ids.friend);
     expect(view.entries[0]).toMatchObject({ reason: "spent_on_order", points: -6000, orderReference: placed.order.reference });
+  });
+});
+
+/*
+ * The two commissions beside the welcome (3.1.14, 3.1.15): a percentage of
+ * NetLet's own commission on each line, held until the line's return window
+ * has passed. Migration 0062.
+ */
+describe("referral commissions", () => {
+  it("pays the inviter on every order the friend places, held until the return window passes", async () => {
+    await referral.recordReferral(ids.friend, referralCodeFor(ids.inviter));
+    const first = await buy(ids.friend);
+    const second = await buy(ids.friend, 2);
+    await orders.recordCashCollected(adminActor(), first.order.id);
+    await orders.recordCashCollected(adminActor(), second.order.id);
+
+    const earned = await db.select().from(pointEntries).where(eq(pointEntries.reason, "invite_commission"));
+    expect(earned).toHaveLength(2);
+    for (const placed of [first, second]) {
+      const line = await lineOf(placed.order.id);
+      const entry = earned.find(row => row.orderItemId === line.id);
+      expect(entry?.points).toBe(referralSharePoints(line.commissionAmount, "10.00"));
+      expect(entry?.userId).toBe(ids.inviter);
+    }
+    /* The welcome is spendable at once; the commissions are not, yet. */
+    const now = new Date();
+    expect(await referral.balanceFor(db as never, ids.inviter, "points", now)).toBe(REFERRER_POINTS);
+    const held = earned.reduce((sum, row) => sum + row.points, 0);
+    expect((await referral.heldFor(db as never, ids.inviter, now)).held).toBe(held);
+    const later = new Date(now.getTime() + (RETURN_WINDOW_DAYS + 1) * DAY);
+    expect(await referral.balanceFor(db as never, ids.inviter, "points", later)).toBe(REFERRER_POINTS + held);
+  });
+
+  it("freezes a product link's sharer and rate on the line, and pays them at collection", async () => {
+    const placed = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.stranger) }]);
+    const line = await lineOf(placed.order.id);
+    expect(line).toMatchObject({ referrerId: ids.stranger, referralRate: "20.00" });
+
+    await orders.recordCashCollected(adminActor(), placed.order.id);
+    const [entry] = await db.select().from(pointEntries).where(eq(pointEntries.reason, "product_referral"));
+    expect(entry).toMatchObject({ userId: ids.stranger, orderItemId: line.id, points: referralSharePoints(line.commissionAmount, "20.00") });
+    expect(entry.availableAt!.getTime()).toBeGreaterThan(Date.now() + (RETURN_WINDOW_DAYS - 1) * DAY);
+
+    /* Collecting twice pays once. */
+    await referral.creditReferralCommissions(db as never, placed.order.id);
+    expect(await db.select().from(pointEntries).where(eq(pointEntries.reason, "product_referral"))).toHaveLength(1);
+  });
+
+  it("never pays a shopper for their own link, nor a link for a product not in the order", async () => {
+    const own = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.friend) }]);
+    expect((await lineOf(own.order.id)).referrerId).toBeNull();
+    const elsewhere = await buy(ids.friend, 1, false, [{ productId: "999999", code: referralCodeFor(ids.stranger) }]);
+    expect((await lineOf(elsewhere.order.id)).referrerId).toBeNull();
+  });
+
+  it("uses the rate an administrator set, at the sale", async () => {
+    expect(await settings.setSetting(adminActor(), "referral.productPercent", "35")).toBe("35.00");
+    const placed = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.stranger) }]);
+    expect((await lineOf(placed.order.id)).referralRate).toBe("35.00");
+  });
+
+  it("refuses a rate out of range or out of shape, and a seller setting one", async () => {
+    await expect(settings.setSetting(adminActor(), "referral.invitePercent", "60")).rejects.toThrow("settings.badValue");
+    await expect(settings.setSetting(adminActor(), "referral.invitePercent", "1.234")).rejects.toThrow("settings.badValue");
+    await expect(settings.setSetting(vendorActor(), "referral.invitePercent", "5")).rejects.toThrow(/FORBIDDEN/);
+    expect(await settings.settingValue("referral.invitePercent")).toBe("10.00");
+  });
+
+  it("takes a refunded line's commission back, maturing with it, so neither is ever spendable", async () => {
+    await referral.recordReferral(ids.friend, referralCodeFor(ids.inviter));
+    const placed = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.stranger) }]);
+    await orders.recordCashCollected(adminActor(), placed.order.id);
+    const line = await lineOf(placed.order.id);
+
+    await referral.reverseReferralLine(db as never, line.id);
+    await referral.reverseReferralLine(db as never, line.id);
+    const rows = await db.select().from(pointEntries).where(eq(pointEntries.orderItemId, line.id));
+    expect(rows.map(row => row.reason).sort()).toEqual(["invite_commission", "invite_commission_reversal", "product_referral", "product_referral_reversal"]);
+    for (const reversal of rows.filter(row => row.reason.endsWith("_reversal"))) {
+      const original = rows.find(row => row.reason === reversal.reason.replace("_reversal", ""))!;
+      expect(reversal.points).toBe(-original.points);
+      expect(reversal.availableAt?.getTime()).toBe(original.availableAt?.getTime());
+    }
+    const later = new Date(Date.now() + (RETURN_WINDOW_DAYS + 1) * DAY);
+    expect(await referral.balanceFor(db as never, ids.stranger, "points", later)).toBe(0);
+    expect((await referral.heldFor(db as never, ids.stranger)).held).toBe(0);
+  });
+
+  it("moves the hold on when the parcel arrives after the cash was collected", async () => {
+    const placed = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.stranger) }]);
+    await orders.recordCashCollected(adminActor(), placed.order.id);
+    const line = await lineOf(placed.order.id);
+    const arrived = new Date(Date.now() + 5 * DAY);
+    await referral.extendReferralHold(db as never, [line.id], arrived);
+    const [entry] = await db.select().from(pointEntries).where(eq(pointEntries.reason, "product_referral"));
+    expect(entry.availableAt?.getTime()).toBe(arrived.getTime() + RETURN_WINDOW_DAYS * DAY);
+    /* Never earlier. */
+    await referral.extendReferralHold(db as never, [line.id], new Date());
+    const [still] = await db.select().from(pointEntries).where(eq(pointEntries.reason, "product_referral"));
+    expect(still.availableAt?.getTime()).toBe(arrived.getTime() + RETURN_WINDOW_DAYS * DAY);
+  });
+
+  it("cannot spend what is held", async () => {
+    await db.insert(pointEntries).values({ userId: ids.friend, points: 9000, reason: "product_referral", availableAt: new Date(Date.now() + DAY) });
+    expect(await referral.takePoints(db as never, ids.friend, 100, "spent_on_order")).toBeNull();
   });
 });

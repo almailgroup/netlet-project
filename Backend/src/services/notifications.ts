@@ -633,7 +633,7 @@ export async function tellReturn(
   }
 }
 
-/* ------------------------------------------------------- conversations --- */
+/* ---------------------------------------------------------- price asks --- */
 
 /** A seller answered a price request, either way. */
 export async function tellOfferAnswered(offerId: number, state: "offered" | "declined"): Promise<void> {

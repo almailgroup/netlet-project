@@ -263,6 +263,10 @@ struct BoardParcel: Decodable, Identifiable, Hashable, Sendable {
     let orderTotal: Money
     let collectFrom: CollectFrom?
     let member: Bool?
+    /// A fast parcel (3.2.5): its own trip, and first in line.
+    var fast: Bool? = nil
+    /// The store carries this parcel itself (3.3.13): not NetLet's to give out.
+    var selfDelivered: Bool? = nil
 
     var id: String { "\(orderId)-\(key)" }
 
@@ -292,11 +296,22 @@ struct DeliveryCompany: Decodable, Identifiable, Hashable, Sendable {
 }
 
 struct DeliveryScores: Decodable, Sendable {
+    /// Speed, package condition and courier conduct (3.4.4), each averaged
+    /// over the ratings that gave them.
+    struct Parts: Decodable, Hashable, Sendable {
+        let speed: Double?
+        let condition: Double?
+        let conduct: Double?
+
+        var any: Bool { speed != nil || condition != nil || conduct != nil }
+    }
+
     struct Score: Decodable, Hashable, Sendable {
         let courierId: Int?
         let courierName: String?
         let count: Int
         let average: Double
+        var parts: Parts? = nil
     }
 
     struct Recent: Decodable, Hashable, Sendable {

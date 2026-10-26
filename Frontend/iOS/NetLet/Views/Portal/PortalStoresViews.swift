@@ -333,6 +333,10 @@ private struct StoreDraft {
     var deliveryFlat = ""
     var deliveryFreeOver = ""
     var deliveryProvider = ""
+    var fastDeliveryFee = ""
+    var fastDeliverySpeed: String?
+    var ownDelivery = false
+    var deliveryCourierId: Int?
     var acceptsCod = true
     var codCeiling = ""
     var subscriptionPercent = ""
@@ -360,6 +364,10 @@ private struct StoreDraft {
         deliveryFlat = store.deliveryFlat ?? ""
         deliveryFreeOver = store.deliveryFreeOver ?? ""
         deliveryProvider = store.deliveryProvider ?? ""
+        fastDeliveryFee = store.fastDeliveryFee ?? ""
+        fastDeliverySpeed = store.fastDeliverySpeed
+        ownDelivery = store.deliveryMode == "own"
+        deliveryCourierId = store.deliveryCourierId
         acceptsCod = store.acceptsCod ?? true
         codCeiling = store.codCeiling ?? ""
         subscriptionPercent = store.subscriptionPercent ?? ""
@@ -379,6 +387,8 @@ struct PortalStoreView: View {
     @State private var failed: APIError?
     @State private var draft = StoreDraft()
     @State private var saving: String?
+    /// The delivery companies on NetLet, for a store that uses its own (3.3.13).
+    @State private var companies: [DeliveryCompany] = []
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -397,6 +407,7 @@ struct PortalStoreView: View {
                 payments
                 terms(store)
                 badges(store)
+                StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: true)
                 StoreTeamSection(vendorId: vendorId) { await load() }
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
@@ -404,7 +415,10 @@ struct PortalStoreView: View {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
             }
         }
-        .task { await load() }
+        .task {
+            await load()
+            companies = (try? await app.services.api.call(API.deliveryCompanies)) ?? []
+        }
     }
 
     // MARK: Header and figures
@@ -548,13 +562,49 @@ struct PortalStoreView: View {
     private var delivery: some View {
         section("admin.sectionDelivery", note: "admin.sectionDeliveryNote", key: "delivery", save: {
             save("delivery", .init(vendorId: vendorId, deliverySpeed: OrNull(draft.deliverySpeed), deliveryFlat: .text(PhoneNumber.foldDigits(draft.deliveryFlat)),
-                                   deliveryFreeOver: .text(PhoneNumber.foldDigits(draft.deliveryFreeOver)), deliveryProvider: .text(draft.deliveryProvider)))
+                                   deliveryFreeOver: .text(PhoneNumber.foldDigits(draft.deliveryFreeOver)), deliveryProvider: .text(draft.deliveryProvider),
+                                   fastDeliveryFee: .text(PhoneNumber.foldDigits(draft.fastDeliveryFee)), fastDeliverySpeed: OrNull(draft.fastDeliverySpeed),
+                                   deliveryMode: draft.ownDelivery ? "own" : "netlet",
+                                   deliveryCourierId: OrNull(draft.ownDelivery ? draft.deliveryCourierId : nil)))
         }) {
             ChoiceField(label: l.t("admin.fieldDeliverySpeed"), current: draft.deliverySpeed ?? "", placeholder: l.t("admin.speedUnset"),
                         options: [("", l.t("admin.speedUnset"))] + ListingRules.shared.deliverySpeeds.map { ($0, l.t(ShippingWords.speed($0))) }) { draft.deliverySpeed = $0 }
             LabeledField(label: l.t("admin.fieldDeliveryFlat"), text: $draft.deliveryFlat, placeholder: "0.000", hint: l.t("admin.fieldDeliveryFlatHint"), keyboard: .decimalPad, leftToRight: true)
             LabeledField(label: l.t("admin.fieldDeliveryFreeOver"), text: $draft.deliveryFreeOver, placeholder: "0.000", hint: l.t("admin.fieldDeliveryFreeOverHint"), keyboard: .decimalPad, leftToRight: true)
             LabeledField(label: l.t("admin.fieldDeliveryProvider"), text: $draft.deliveryProvider, hint: l.t("admin.fieldDeliveryProviderHint"))
+            /* The fast trip (3.2.5): a fee of its own, charged per fast parcel,
+               and the band it promises. Blank is no fast option. */
+            LabeledField(label: l.t("admin.fieldFastFee"), text: $draft.fastDeliveryFee, placeholder: "0.000", hint: l.t("admin.fieldFastFeeHint"), keyboard: .decimalPad, leftToRight: true)
+            ChoiceField(label: l.t("admin.fieldFastSpeed"), current: draft.fastDeliverySpeed ?? "", placeholder: l.t("admin.speedUnset"),
+                        options: [("", l.t("admin.speedUnset"))] + ListingRules.shared.deliverySpeeds.filter { $0 != "made_to_order" }.map { ($0, l.t(ShippingWords.speed($0))) }) { draft.fastDeliverySpeed = $0 }
+            // Who carries this store's parcels (3.3.13).
+            Divider()
+            Text(l.t("admin.deliveryModeTitle")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+            ForEach([false, true], id: \.self) { own in
+                Button { draft.ownDelivery = own } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: draft.ownDelivery == own ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(Brand.navy)
+                            .padding(.top, 2)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(l.t(own ? "admin.deliveryModeOwn" : "admin.deliveryModeNetlet")).font(.inter(14, .semibold)).foregroundStyle(Brand.navy)
+                            Text(l.t(own ? "admin.deliveryModeOwnNote" : "admin.deliveryModeNetletNote")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                .accessibilityAddTraits(draft.ownDelivery == own ? .isSelected : [])
+            }
+            if draft.ownDelivery {
+                let choices = companies.filter { $0.status == "active" || $0.id == draft.deliveryCourierId }
+                ChoiceField(label: l.t("admin.deliveryCourier"), hint: l.t("admin.deliveryCourierHint"),
+                            current: draft.deliveryCourierId.map(String.init) ?? "", placeholder: l.t("admin.deliveryCourierNone"),
+                            options: [("", l.t("admin.deliveryCourierNone"))] + choices.map { (String($0.id), l.current == .ar ? ($0.nameAr ?? $0.name) : $0.name) }) { chosen in
+                    draft.deliveryCourierId = chosen.flatMap(Int.init)
+                }
+            }
         }
     }
 

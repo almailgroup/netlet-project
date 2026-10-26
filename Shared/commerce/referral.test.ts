@@ -109,3 +109,35 @@ describe("who may refer whom", () => {
     expect(acceptableReferral(0, 8)).toBe(false);
   });
 });
+
+describe("referral commissions (3.1.14, 3.1.15)", () => {
+  it("is the rate on NetLet's commission, rounded down, never more than it", async () => {
+    const { referralSharePoints } = await import("./referral.js");
+    expect(referralSharePoints("1.200", "20.00")).toBe(240);
+    expect(referralSharePoints("0.007", "20.00")).toBe(1);
+    expect(referralSharePoints("0.004", "20.00")).toBe(0);
+    expect(referralSharePoints("1.000", "100.00")).toBe(1000);
+    expect(referralSharePoints("0.000", "50.00")).toBe(0);
+  });
+
+  it("matures at the end of the return window from arrival, or from collection while unknown", async () => {
+    const { maturesAt } = await import("./referral.js");
+    const collected = new Date("2026-10-01T10:00:00Z");
+    expect(maturesAt(null, collected, 14).toISOString()).toBe("2026-10-15T10:00:00.000Z");
+    expect(maturesAt("2026-10-03T10:00:00Z", collected, 14).toISOString()).toBe("2026-10-17T10:00:00.000Z");
+  });
+
+  it("counts only what has matured, and says what is held", async () => {
+    const { balanceOf, heldOf } = await import("./referral.js");
+    const now = new Date("2026-10-10T00:00:00Z");
+    const entries = [
+      { reason: "referrer_bonus" as const, points: 500 },
+      { reason: "product_referral" as const, points: 240, availableAt: "2026-10-20T00:00:00Z" },
+      { reason: "invite_commission" as const, points: 120, availableAt: "2026-10-05T00:00:00Z" },
+      { reason: "product_referral_reversal" as const, points: -240, availableAt: "2026-10-20T00:00:00Z" },
+    ];
+    expect(balanceOf(entries, now)).toBe(620);
+    expect(heldOf(entries, now)).toBe(0);
+    expect(heldOf(entries.slice(0, 3), now)).toBe(240);
+  });
+});

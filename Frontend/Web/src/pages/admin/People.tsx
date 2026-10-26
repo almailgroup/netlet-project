@@ -88,6 +88,10 @@ function People({ selfId }: { selfId: number }) {
     onError: fail,
   });
   const removeFromVendor = trpc.inventory.people.removeFromVendor.useMutation(settle);
+  const setGrant = trpc.inventory.people.setGrant.useMutation({
+    onSuccess: (_reply, input) => { refresh(); toast.success(t(input.granted ? "grants.granted" : "grants.revoked")); },
+    onError: fail,
+  });
 
   const rows = people.data?.rows ?? [];
   const vendorRows = vendors.data?.rows ?? [];
@@ -176,6 +180,25 @@ function People({ selfId }: { selfId: number }) {
                         </button>
                       )}
                     </div>
+
+                    {/* One permission on its own (3.3.9): setting commission,
+                        without being an administrator. The trail then names who
+                        granted it beside every rate this person sets. */}
+                    {person.role !== "admin" ? (
+                      <label className="mt-3 flex items-start gap-2.5 text-[13px] text-[#0a285a]">
+                        <input
+                          type="checkbox"
+                          checked={person.grants.includes("vendor.setCommission")}
+                          disabled={setGrant.isPending}
+                          onChange={event => setGrant.mutate({ userId: person.id, capability: "vendor.setCommission", granted: event.target.checked })}
+                          className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
+                        />
+                        <span>
+                          <span className="font-semibold">{t("grants.setCommission")}</span>
+                          <span className="block text-[12px] ink-muted">{t("grants.setCommissionNote")}</span>
+                        </span>
+                      </label>
+                    ) : null}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="text-[13px] font-semibold text-[#536b8c]">{t("admin.memberOf")}</span>

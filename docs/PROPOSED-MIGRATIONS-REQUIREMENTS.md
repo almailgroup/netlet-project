@@ -1,9 +1,31 @@
-# Schema changes for the remaining requirements — proposal
+# Schema changes for the remaining requirements
 
-**Not applied. Each part waits for the owner's approval**, and each can be approved on its
-own. Written 26 October 2026, after the requirements audit (`docs/REQUIREMENTS.md`) closed
-everything code alone could close. What is left there as partial needs one of these
-changes, or a provider (cards, WhatsApp, voice, the bank's API), or a lawyer.
+**Approved and applied, all eight parts, 26 October 2026**, with the answers marked
+*proposed* below — the owner's word was "apply all of them with your suggestions". They
+are migrations 0062–0069 (`Backend/database/`), carried by `docs/supabase-bootstrap.sql`
+and checked by `docs/schema-audit.sql`. Written the same day, after the requirements audit
+(`docs/REQUIREMENTS.md`) closed everything code alone could close; what is left there as
+partial needs a provider (cards, WhatsApp, voice, the bank's API) or a lawyer.
+
+**As built, where it differs from or adds to the text below:**
+
+- **C.** A store's `delivery_mode` defaults to `netlet`, not `own`: every store dispatched
+  through NetLet's board before, so that is what an unset store keeps doing. A member's
+  free delivery waives the regular trip only — fast is a different trip the shopper chose
+  to pay for and stays charged — and a fast parcel pays the fast fee whatever it holds;
+  the free-over threshold is the regular trip's.
+- **A.** The invite's percentage is read when the cash is collected, not frozen at the
+  sale (the product link's is frozen on the line). Product links are kept in the browser
+  for `PRODUCT_LINK_DAYS` (30) and sent with the order; the app shares product links with
+  the shopper's code but does not record links arriving in it, having no web links into it.
+- **B.** The store-funded share is carried inside the line's `commission_amount` (and out
+  of its `vendor_net`), so every report that adds commission and net still adds up; a
+  referral's percentage is taken of NetLet's own share, the commission less that pass-through.
+- **G.** While a return is in `review`, the seller's proposal is the row's `decline_reason`
+  (null proposes approving) and their words are `vendor_response`; NetLet's confirmation
+  keeps the reason when it agrees, and is audited as `return.confirm`.
+- **F.** The overall is the three parts' average rounded half up, and is what `rating`
+  holds, so every score that read one figure still does.
 
 Every statement is additive except part H, which drops the two messaging tables the owner
 asked to remove. New columns are nullable or carry a default, so each part is safe to run

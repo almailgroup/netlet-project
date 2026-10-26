@@ -435,6 +435,62 @@
       "when": 1792348082062,
       "tag": "0061_guides",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793040273019,
+      "tag": "0062_referral_tracks",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1793040285344,
+      "tag": "0063_affiliate_opt_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793040303939,
+      "tag": "0064_delivery_choices",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793040329041,
+      "tag": "0065_commission_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1793040353033,
+      "tag": "0066_vendor_warnings",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1793040386209,
+      "tag": "0067_delivery_rating_parts",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1793040387903,
+      "tag": "0068_return_confirmation",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1793040405887,
+      "tag": "0069_drop_seller_messages",
+      "breakpoints": true
     }
   ]
 }

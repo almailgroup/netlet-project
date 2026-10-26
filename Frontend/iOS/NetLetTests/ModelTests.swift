@@ -357,3 +357,71 @@ final class SearchRankTests: XCTestCase {
         XCTAssertGreaterThan(SearchRank.score(title, SearchRank.queryWords("lamp")), SearchRank.score(described, SearchRank.queryWords("lamp")))
     }
 }
+
+/// The approved round's rules (A–H), each the Swift twin of a shared function,
+/// held to that function's own cases.
+final class ApprovedRoundRuleTests: XCTestCase {
+    /// `referralCodeFor`: the values `Shared/commerce/referral.ts` gives.
+    func testAReferralCodeIsTheWebsOwn() {
+        XCTAssertEqual([1, 31, 900, 123_456].map(ReferralCode.code(for:)), ["NLAAAB", "NLAABB", "NLABAA", "NLEVFG"])
+        XCTAssertEqual(ReferralCode.productPath(handle: "brass lamp", userId: 31), "/products/brass%20lamp?ref=NLAABB")
+        XCTAssertEqual(ReferralCode.productPath(handle: "lamp", userId: nil), "/products/lamp")
+    }
+
+    /// `proposalFigureProblem`: one figure, a percentage or an amount.
+    func testAProposalIsOneFigure() {
+        XCTAssertNil(ProposalRules.problem(percent: "8", fixed: nil))
+        XCTAssertNil(ProposalRules.problem(percent: nil, fixed: "0.500"))
+        XCTAssertEqual(ProposalRules.problem(percent: "8", fixed: "1"), "commission.oneFigure")
+        XCTAssertEqual(ProposalRules.problem(percent: " ", fixed: nil), "commission.oneFigure")
+        XCTAssertEqual(ProposalRules.problem(percent: "101", fixed: nil), "commission.badPercent")
+        XCTAssertEqual(ProposalRules.problem(percent: "8.123", fixed: nil), "commission.badPercent")
+        XCTAssertEqual(ProposalRules.problem(percent: nil, fixed: "1.2345"), "commission.badFixed")
+    }
+
+    /// `storeAffiliateRate`: above nothing, at most the ceiling, two decimals.
+    func testAStoresAffiliateRate() {
+        XCTAssertEqual(AffiliateRules.storeRate("5", ceiling: 20), "5.00")
+        XCTAssertEqual(AffiliateRules.storeRate("12.5", ceiling: 20), "12.50")
+        XCTAssertNil(AffiliateRules.storeRate("0", ceiling: 20))
+        XCTAssertNil(AffiliateRules.storeRate("21", ceiling: 20))
+        XCTAssertNil(AffiliateRules.storeRate("5.123", ceiling: 20))
+    }
+
+    /// `overallOf`: the parts' average, half up.
+    func testADeliverysOverallIsItsPartsAverage() {
+        XCTAssertEqual(DeliveryRatingParts.overall(speed: 3, condition: 5, conduct: 5), 4)
+        XCTAssertEqual(DeliveryRatingParts.overall(speed: 4, condition: 5, conduct: 5), 5)
+        XCTAssertEqual(DeliveryRatingParts.overall(speed: 1, condition: 1, conduct: 2), 1)
+    }
+
+    /// `warningReasonProblem`.
+    func testAWarningNeedsAReason() {
+        let rules = WarningRules()
+        XCTAssertEqual(rules.reasonProblem("  "), "warnings.needsReason")
+        XCTAssertEqual(rules.reasonProblem(String(repeating: "x", count: 401)), "warnings.tooLong")
+        XCTAssertNil(rules.reasonProblem("Listed a counterfeit"))
+        XCTAssertEqual(rules.suspendAt, 3)
+        XCTAssertEqual(rules.days, 365)
+    }
+
+    /// `normaliseSetting`.
+    func testASettingIsAPercentageInsideItsRange() {
+        let setting = PlatformSetting(key: "referral.productPercent", value: "20.00", defaultValue: "20.00", min: 0, max: 50)
+        XCTAssertEqual(setting.normalise("15"), "15.00")
+        XCTAssertEqual(setting.normalise("12.5"), "12.50")
+        XCTAssertNil(setting.normalise("51"))
+        XCTAssertNil(setting.normalise("-1"))
+        XCTAssertNil(setting.normalise("abc"))
+    }
+
+    /// One capability granted on its own (3.3.9) reaches that and nothing else.
+    func testAGrantReachesOneThing() {
+        let clerk = SellerIdentity(kind: "customer", userId: 9, vendorId: nil, role: nil, grants: ["vendor.setCommission"])
+        XCTAssertTrue(clerk.inPortal)
+        XCTAssertTrue(clerk.can("vendor.setCommission"))
+        XCTAssertFalse(clerk.can("platform.viewAll"))
+        XCTAssertFalse(SellerIdentity(kind: "customer", userId: 9, vendorId: nil, role: nil).inPortal)
+        XCTAssertEqual(PortalPage("/admin/commission"), .commission)
+    }
+}

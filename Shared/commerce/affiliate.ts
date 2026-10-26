@@ -123,6 +123,86 @@ export function orderShareFils(lines: AffiliateLine[], ratePercent: string): big
   return lines.filter(line => isKept(line.fulfilment)).reduce((sum, line) => sum + lineShareFils(line, ratePercent), 0n);
 }
 
+/**
+ * The share a **store** funds on one of its own products (3.7.1, migration
+ * 0063): its rate on the line's total, rounded down. Frozen on the line as
+ * `affiliate_vendor_percent` and passed through NetLet's commission — added to
+ * it and taken off the seller's net at the sale — so `commission + net` is
+ * still the line's total, and NetLet pays the affiliate exactly what the store
+ * gave up. A line whose seller would net less than the share is never given a
+ * percent at the sale (`affiliateFitsLine`), so this needs no ceiling to stay
+ * the figure that was actually moved.
+ */
+export function vendorAffiliateFils(lineTotal: string, percent: string | null | undefined): bigint {
+  if (!percent) return 0n;
+  const total = toFils(lineTotal);
+  const share = (total * (toFils(percent) / 10n)) / 10_000n;
+  return share > 0n ? share : 0n;
+}
+
+/** Whether a store's affiliate rate fits a line: the share must come out of what the seller nets. */
+export function affiliateFitsLine(lineTotal: string, vendorNet: string, percent: string): boolean {
+  return vendorAffiliateFils(lineTotal, percent) <= toFils(vendorNet);
+}
+
+/**
+ * NetLet's own commission on a line: what it took, less the store-funded
+ * affiliate share that only passes through it. What a referral's percentage is
+ * taken of (3.1.15), so a referral can never be paid out of an affiliate's money.
+ */
+export function netletCommissionFils(line: { lineTotal: string; commissionAmount: string; affiliateVendorPercent?: string | null }): bigint {
+  const own = toFils(line.commissionAmount) - vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent);
+  return own > 0n ? own : 0n;
+}
+
+/**
+ * An order's frozen lines with each store's affiliate share passed through
+ * NetLet's commission (3.7.1): `optedIn` is the products' own rates, and a line
+ * takes part only when its product has one and the share fits inside what its
+ * seller nets. The commission total follows, so the order's figures still add
+ * up to what each line already did.
+ */
+export function withAffiliateShares<
+  L extends { productId: number; lineTotal: string; commissionAmount: string; vendorNet: string },
+  T extends { commissionTotal: string },
+>(draft: { lines: L[]; totals: T }, optedIn: ReadonlyMap<number, string>): { lines: (L & { affiliateVendorPercent: string | null })[]; totals: T } {
+  let commission = 0n;
+  const lines = draft.lines.map(line => {
+    const percent = optedIn.get(line.productId) ?? null;
+    if (!percent || !affiliateFitsLine(line.lineTotal, line.vendorNet, percent)) {
+      commission += toFils(line.commissionAmount);
+      return { ...line, affiliateVendorPercent: null };
+    }
+    const share = vendorAffiliateFils(line.lineTotal, percent);
+    const commissionAmount = toFils(line.commissionAmount) + share;
+    commission += commissionAmount;
+    return {
+      ...line,
+      commissionAmount: fromFils(commissionAmount),
+      vendorNet: fromFils(toFils(line.vendorNet) - share),
+      affiliateVendorPercent: share > 0n ? percent : null,
+    };
+  });
+  return { lines, totals: { ...draft.totals, commissionTotal: fromFils(commission) } };
+}
+
+/** The store-funded shares across the lines that were actually sold. */
+export function vendorShareFils(lines: { lineTotal: string; fulfilment: string; affiliateVendorPercent?: string | null }[]): bigint {
+  return lines.filter(line => isKept(line.fulfilment)).reduce((sum, line) => sum + vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent), 0n);
+}
+
+/**
+ * A rate a store may offer affiliates on one of its products (3.7.1): above
+ * nothing — a product offered at 0% is not offered — and at most the ceiling,
+ * two decimals. Normalised to two places, or null when it is not one.
+ */
+export function storeAffiliateRate(percent: string): string | null {
+  const trimmed = percent.trim();
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(trimmed)) return null;
+  const value = Number(trimmed);
+  return value > 0 && value <= MAX_AFFILIATE_PERCENT ? value.toFixed(2) : null;
+}
+
 /** A rate an administrator may set: a percentage, two decimals, 0 to the ceiling. */
 export function acceptableRate(percent: string): boolean {
   if (!/^\d{1,2}(\.\d{1,2})?$/.test(percent)) return false;

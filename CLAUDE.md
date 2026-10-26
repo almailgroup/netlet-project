@@ -1695,14 +1695,41 @@ the seller fixes by typing a different code.
 `DEFAULT_COMMISSION_PERCENT` is what a new store is charged and what `/sell`
 quotes before anybody applies; it was a literal in two places, which is a page
 that could quote a rate the database no longer charges. A proposal is a lower
-rate and a reason on the application, and nothing more: the administrator sets
-the rate on the approval form, the standard one unless they change it, and a
-non-standard rate is audited as `vendor.setCommission` with the chain — the
-same decision as any other commission edit, taken at a different moment.
+rate or a fixed amount per sale, and a reason, on the application, and nothing
+more: the administrator sets the rate on the approval form, the standard one
+unless they change it, and a non-standard rate is audited as
+`vendor.setCommission` with the chain — the same decision as any other
+commission edit, taken at a different moment.
+
+**A store already selling proposes too, for itself or one product** (3.3.2,
+migration 0065): from a product's editor, a lower percentage or a fixed amount,
+into `commission_proposals` — one figure each (a check), one open per store and
+product (a partial unique index), withdrawable while it waits. They wait on
+`/admin/commission` with what the store is charged now beside what it asks,
+and the overview counts them. Accepting writes through `setVendorCommission` or
+`setProductCommission` — the same audited door — and declining needs a note the
+store reads. `Shared/inventory/commissionProposals.ts` is the rule. The page is
+its own rather than a section of a store's because of who may open it (below,
+under the audit chain).
 
 A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
+
+**Three standing warnings suspend a store** (3.3.18, migration 0066). A warning
+is its own act — an administrator issues it from the store's page, with a
+reason and optionally the product it concerns (`vendor_warnings`) — and it was
+the review queue's rejections before, which counted a missing photo the same as
+a counterfeit, told the seller nothing and never expired. A warning stands
+`WARNING_DAYS` (365) unless withdrawn; the third standing one suspends the store
+**in the same transaction, under a lock on the store's row**, so two issued at
+once cannot both count two. **Reinstating restarts the count**
+(`vendors.warnings_since`), or the next warning would suspend a store again for
+the ones it was already suspended for. The store hears each one by a notice that
+cannot be switched off, sees "1 of 3 standing" on its overview, and the health
+score's compliance component counts them. `Shared/inventory/warnings.ts` is the
+rule; issuing, withdrawing and the automatic suspension (`vendor.setStatus`,
+reason `three-warnings`) are on the trail.
 
 ## Orders
 
@@ -1819,6 +1846,23 @@ perishable department, where it is **declined at once with that reason** rather
 than left for a seller to say the same thing two days later. Only "other" waits
 for a person, because no rule reads free text. No model decides anything here:
 what this decides is money.
+
+**"Other" is read, answered and confirmed** (3.5.2, migration 0068). A model
+reads the shopper's note as it is asked (`returnReading.ts`, the gateway's
+`returnRead` task, five seconds and then nothing): a short summary and a
+suggestion of approve, exchange or decline, the note fenced as data, shown on
+the desk labelled as a model's and deciding nothing. The seller then *proposes*
+— approve, or decline with their words — and the request moves to `review`,
+where **only an administrator decides**; the seller's buttons are gone there.
+The proposal is the row's `decline_reason` (null proposes approving) and their
+words `vendor_response`, so confirming it keeps the reason and overruling it
+replaces it; confirming is audited as `return.confirm` and is the moment the
+shopper is told. A seller can also dispute an approval the rules made — before
+it is collected, under that predicate — which sends it to `review` the same
+way. **What a rule decided never waits for NetLet**: that is the owner's answer,
+and a damaged parcel held for a person to read the obvious is the delay the
+rules exist to remove. `returnActions` takes who decided last, so the seller
+and the desk draw exactly the buttons the API accepts.
 
 **Receiving *is* the refund or the exchange**, not a state before it. A refund
 moves the line to `returned` — which `lineOutcome` already counts as a refund in
@@ -2633,6 +2677,25 @@ sofa gets dispatched on a motorcycle.
 **The carrier is free text.** A fixed list would be this codebase asserting
 which companies exist in Kuwait, and the name claims nothing about tracking.
 
+**Fast or regular is the shopper's, line by line** (3.2.5, migration 0064). A
+store that records a fast fee (`vendors.fast_delivery_fee`, with a speed band
+of its own) offers Fast beside Regular on each of its lines in the bag, and
+`cart_items.delivery_choice` keeps it; a store with no fast fee offers nothing
+to choose, and `effectiveChoice` reads any stored "fast" there as regular. A
+fast line rides a parcel of its own — its key gains `|fast` — at the fast fee
+whatever it holds; the free-over threshold is the regular trip's. The choice is
+frozen on the order line, the breakdown names the fast parcel, and the board
+marks it. **A member's free delivery waives the regular trip only**: fast is a
+trip the shopper chose to pay for. The document's "free fast delivery" (4.1)
+may mean otherwise, and the 4.1 row says it is NetLet's to confirm.
+
+**A store delivers itself or through NetLet** (3.3.13). `delivery_mode` is
+`netlet` by default — what every store did before — or `own`: with a company
+chosen (`delivery_courier_id`, one NetLet works with) the store's parcels are
+given to it at the sale, and with none the store carries them itself, the board
+marks them "the store delivers" and `assignParcel` refuses to hand one to
+anybody (`dispatch.storeDelivers`). Each store's page sets it under Delivery.
+
 ## Fulfilled by NetLet
 
 `Shared/commerce/netletFulfilment.ts` is the rule, pure; `Backend/src/services/netletFulfilment.ts`
@@ -2719,10 +2782,10 @@ the product page, the account's Messages section, the portal's
 and the Profile tab, the `chat` switch, the `chat.answer` capability, the
 per-account message ceiling and the two notice kinds, on the web and in the
 app. A shopper reaches a person through Help from NetLet (see "Talking to
-NetLet"). **The tables stay until a drop migration is approved**
-(`conversations`, `conversation_messages`), and the old notices are left out
-of the inbox, its count and the email queue by `isNoticeKind`, rather than
-drawn with a sentence the dictionary no longer carries. A stored `chat` switch
+NetLet"). **The tables are gone** (`conversations`, `conversation_messages`,
+dropped by migration 0069 with the old notices of the two kinds); `isNoticeKind`
+still leaves out of the inbox, its count and the email queue any kind the
+dictionary no longer carries. A stored `chat` switch
 is read past like any switch this build does not have. The seller agreement
 and the terms stopped mentioning messages, and `AGREEMENT_VERSION` and
 `LEGAL_UPDATED` moved with them.
@@ -2961,6 +3024,14 @@ rating per parcel, upserted, with the carrier frozen at the first write so a
 reassignment afterwards is a correction to the board rather than a different
 delivery. A company reads its own score and comments without the shopper's
 name; nothing about a rival's.
+
+**It is rated three ways** (3.4.4, migration 0067): speed, the package's
+condition and the courier's conduct, one to five each, radios in three
+fieldsets. The overall is their average rounded half up (`overallOf`) and is
+what `rating` holds, so every score, report and badge that read one figure
+still does; a rating from before the parts keeps its figure with no parts, and
+opens for changing with each part at that figure. A company's score shows the
+three averages beside the overall, each over the ratings that carry it.
 
 **A damage claim is a liability, not a complaint.** It is against the company
 frozen as carrying the parcel at filing — a parcel the seller delivered has
@@ -3405,6 +3476,19 @@ and restoring somebody would name whoever took the rights away as the person
 who conferred them. A null is ordinary: the first administrator was made one by
 whoever ran the bootstrap.
 
+**One employee can be given one permission** (3.3.9, migration 0065): "a
+specifically authorised employee" sets commission. `GRANTABLE` in
+`permissions.ts` is the list that can be granted (only `vendor.setCommission`),
+`staff_grants` one row per account and capability, granted and revoked on
+`/admin/people` by `platform.manageUsers` (`user.grant`, `user.revokeGrant`).
+`can()` asks an actor's grants before its rank, so the grant opens exactly
+`/admin/commission` — every store's rate and the proposals, never a store's
+IBAN, contacts or team — and the portal's menu shows that one page. **A change
+made under a grant names who granted it**, read from those rows the way the
+administrator chain is read from `user.setAdmin`: the trail answers "which
+admin granted that employee this specific permission" in the document's own
+words. A grant is not an administrator; an administrator needs no grant.
+
 **An administrator's sign-in and the acts on a return are on it too**:
 `admin.signIn` (with the address and whether they asked to stay signed in,
 written by `startSession`, the one door every sign-in passes), and
@@ -3449,6 +3533,33 @@ by a person's press with a reason (`reviews.setHidden`), and a referral is
 something to look at before its cash-out is paid. Admin-only, because the
 signals describe other accounts.
 
+## Referrals
+
+`Shared/commerce/referral.ts` is the arithmetic, pure; `Backend/src/services/referral.ts`
+the ledger. **Two tracks** (3.1.14, migration 0062). A *product link* is a
+shopper's own code on a product's address (`/products/x?ref=NL…`): the browser
+keeps which product each code arrived on for `PRODUCT_LINK_DAYS`
+(`lib/referral.ts`, the latest link per product) and checkout sends them, and a
+line for that product freezes the sharer and the rate (`order_items.referrer_id`,
+`referral_rate`) — never the buyer's own code, which the server refuses. The
+*invite* pays the inviter a share of every order the invitee places from the
+first paid one, the rate read at collection. **Both are a percentage of NetLet's
+own commission** on the line (`netletCommissionFils`: what it took, less a
+store-funded affiliate share that only passes through it), so a referral is never
+paid from money NetLet did not keep. The rates are an administrator's
+(`referral.productPercent`, `referral.invitePercent` in `Shared/settings.ts`,
+20% and 10% unless changed, on `/admin/features`). The 500 and 250 welcome stay
+as they were.
+
+**Held until the return window passes** (3.1.15). A commission is written when
+the cash is collected with the day it matures (`point_entries.available_at`,
+`maturesAt`: the line's arrival plus `RETURN_WINDOW_DAYS`, pushed out when the
+line is delivered later); the balance sums only what has matured, the account
+page says what is held and when the next part frees, and a line refunded before
+then is reversed with the same maturity, so the pair cancels before either could
+be spent. Every write is exactly once by partial unique indexes on the line and
+the kind.
+
 ## Affiliates
 
 `Shared/commerce/affiliate.ts` is the rules and is pure; `Backend/src/services/affiliates.ts`
@@ -3465,14 +3576,23 @@ commission would be spendable at checkout and points cashable at an
 affiliate's rate. The pot is a column rather than a reason prefix because a
 balance is a `sum` over a `where`, and the `where` is the whole rule.
 
-**Paid out of NetLet's cut, capped at it.** Each line earns the frozen rate on
-its frozen total, never more than the commission NetLet took on that line; the
-seller's net is never touched. Delivery earns nothing.
+**A store chooses which products, and pays for them** (3.7.1, migration 0063).
+A store opts a product in from its editor at a rate it sets
+(`products.affiliate_percent`, above nothing, at most `MAX_AFFILIATE_PERCENT`);
+only opted-in products earn an affiliate anything, and affiliates see them and
+their rates on their dashboard (`affiliates.products`). The share comes out of
+the seller's net on the line and is **carried inside its `commission_amount`**
+(`withAffiliateShares`, frozen as `affiliate_vendor_percent`), so commission
+plus net still equals the line and every report still adds up; a share that
+would not fit inside what the seller nets is not taken. NetLet's own share
+stops: an order placed before this keeps the rate it froze (`orders.affiliate_rate`),
+and one placed after has none. Delivery earns nothing.
 
 **Attribution is a claim the server checks.** The browser keeps the last
 `?aff=` and when it was seen, and sends it inside thirty days — only the browser
 saw the click. The server attributes only to an approved affiliate who is not
-the buyer, while the switch is on, and freezes the rate on the order.
+the buyer, while the switch is on, and freezes who on the order; each line
+freezes its own store's rate.
 
 **Earned at collection, reversed on refund, each exactly once.** Credited beside
 the referral, when the cash is recorded; a refunded line takes back its share
@@ -3665,6 +3785,16 @@ a file is not JSON. An applicant uploads each paper on `/sell` — trade
 licence, signatory's civil ID, IBAN letter, authorisation to sign, anything
 else — and an administrator accepts or turns down each on
 `/admin/applications`, with a reason the applicant reads.
+
+**The contract goes out and comes back as a file** (3.3.1, migration 0065). An
+administrator attaches NetLet's final contract to an application (kind
+`contract`, the same upload route with `X-NetLet-Application-Id`, refused to
+anybody without `platform.manageUsers`); the applicant sees "Your contract" on
+`/sell`, downloads it, and uploads the signed copy (`signed_contract`), which is
+outside the fieldset that locks the papers once submitted, because it is the one
+paper sent back after. It is decided like any other, and **approving waits for
+the signed copy to be accepted** (`contractUnsigned`); an application with no
+contract attached is not held back by one.
 
 **Never `/media`.** Everything there is public under a random id and is a JPEG
 or WebP by design; a civil ID must not be public at any address and a licence
@@ -5353,6 +5483,19 @@ decode and the CI pictures draw. The new-product form is the web's step for
 step, its "Generate with AI" through the gateway's catalogue route with a
 token signed for that store (`ai.catalogSession`); Create lands on the
 product's editor.
+
+**The approved schema round (migrations 0062–0069) came to the app with the
+web, screen for screen**: the commission desk (`PortalCommissionView`, opened by
+a grant as on the web — `SellerIdentity.inPortal` counts grants, and
+`PortalRules.can` asks them first, from the `grantable` list exported to
+`portal.json`), proposals and the affiliate opt-in in the product editor,
+warnings on the store's page and the vendor's home, a store's fast fee and
+delivery mode, Fast or Regular on each bag line, the board's fast and
+store-delivers marks, the three-part delivery rating, the returns desk's model
+reading, the seller's proposal and NetLet's confirmation, the contract step on
+the application, the referral rates on the features page, the grant toggle on
+people, and rewards that say what is held and when it frees. Each new answer
+has a recorded fixture that `FixtureDecodingTests` decodes.
 
 **It holds no rule of its own that the server also holds.** Swift cannot import
 `Shared/`, and a hand-copied list of departments, governorates or sentences

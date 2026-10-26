@@ -70,6 +70,7 @@ const AdminClaims = lazyPage(() => import("@/pages/admin/Claims"));
 const AdminReturns = lazyPage(() => import("@/pages/admin/Returns"));
 const AdminFeatures = lazyPage(() => import("@/pages/admin/Features"));
 const AdminAffiliates = lazyPage(() => import("@/pages/admin/Affiliates"));
+const AdminCommission = lazyPage(() => import("@/pages/admin/Commission"));
 const AdminPayouts = lazyPage(() => import("@/pages/admin/Payouts"));
 const AdminAds = lazyPage(() => import("@/pages/admin/Ads"));
 const AdminSubscriptions = lazyPage(() => import("@/pages/admin/Subscriptions"));
@@ -308,6 +309,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/returns", page: AdminReturns, frame: "admin" },
   { path: "/admin/features", page: AdminFeatures, frame: "admin" },
   { path: "/admin/affiliates", page: AdminAffiliates, frame: "admin" },
+  { path: "/admin/commission", page: AdminCommission, frame: "admin" },
   { path: "/admin/payouts", page: AdminPayouts, frame: "admin" },
   { path: "/admin/ads", page: AdminAds, frame: "admin" },
   { path: "/admin/subscriptions", page: AdminSubscriptions, frame: "admin" },

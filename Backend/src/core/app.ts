@@ -29,7 +29,8 @@ import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../services/subscriptions.js";
 import { MediaError, readMedia, saveUpload } from "../services/media.js";
-import { DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
+import { attachContract, DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
+import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../services/manufacturerImages.js";
 import { authenticateRequest } from "./auth.js";
@@ -253,6 +254,18 @@ export function createApp(): Express {
       if (!(DOCUMENT_KINDS as readonly string[]).includes(kind)) { res.status(400).json({ error: "documents.notAccepted" }); return; }
       let fileName: string | null = null;
       try { fileName = decodeURIComponent(String(req.headers["x-netlet-file-name"] ?? "")) || null; } catch { fileName = null; }
+      /* NetLet attaching the final contract to somebody's application (3.3.1):
+         an administrator, naming the application. Refused for anybody else by
+         the service, which asks `platform.manageUsers`. */
+      if (kind === "contract") {
+        const applicationId = String(req.headers["x-netlet-application-id"] ?? "");
+        if (!/^\d{1,9}$/.test(applicationId)) { res.status(400).json({ error: "documents.notFound" }); return; }
+        const actor = await resolveActor(user);
+        if (!can(actor, "platform.manageUsers")) { res.status(403).json({ error: "documents.notFound" }); return; }
+        const attached = await attachContract(actor, Number(applicationId), { fileName, declaredType: req.headers["content-type"] ?? "", bytes: new Uint8Array(req.body) });
+        res.status(201).json(attached);
+        return;
+      }
       const saved = await uploadDocument(user.id, { kind: kind as DocumentKind, fileName, declaredType: req.headers["content-type"] ?? "", bytes: new Uint8Array(req.body) });
       res.status(201).json(saved);
     } catch (error) {

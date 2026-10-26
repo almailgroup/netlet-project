@@ -61,6 +61,8 @@ struct SellerIdentity: Decodable, Hashable, Sendable {
     let role: String?
     /// A delivery company's member's company.
     var courierId: Int? = nil
+    /// Capabilities an administrator granted this account on their own (3.3.9).
+    var grants: [String]? = nil
 
     /// Somebody who belongs to a store.
     var isStoreMember: Bool { kind == "vendor" && vendorId != nil }

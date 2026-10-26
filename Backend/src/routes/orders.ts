@@ -41,6 +41,7 @@ import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouc
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
 import { MAX_HELD_CLAIMS } from "../../../Shared/commerce/wishlist.js";
+import { MAX_PRODUCT_REFERRALS } from "../../../Shared/commerce/referral.js";
 import { FULFILMENT_STATES } from "../../../Shared/commerce/fulfilment.js";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
@@ -145,7 +146,12 @@ export const ordersRouter = router({
     .input(z.object({
       reference: z.string().min(1).max(64),
       parcelKey: z.string().min(1).max(600),
-      rating: z.number().int().min(1).max(5),
+      /* The overall alone (a phone that has not updated), or the three parts
+         it is the average of (3.4.4). */
+      rating: z.number().int().min(1).max(5).nullish(),
+      speed: z.number().int().min(1).max(5).nullish(),
+      condition: z.number().int().min(1).max(5).nullish(),
+      conduct: z.number().int().min(1).max(5).nullish(),
       comment: z.string().max(MAX_DELIVERY_COMMENT).nullish(),
     }))
     .mutation(async ({ ctx, input }) => careGuard(async () => {
@@ -238,6 +244,13 @@ export const ordersRouter = router({
         token: z.string().min(8).max(64),
         productId: z.string().min(1).max(191),
       })).max(MAX_HELD_CLAIMS).optional(),
+      /* Product links this browser arrived through (3.1.14): which product,
+         and the code on its address. Claims the server checks, never
+         instructions — a line earns only for an account that is not the buyer. */
+      productReferrals: z.array(z.object({
+        productId: z.string().min(1).max(191),
+        code: z.string().trim().min(2).max(16),
+      })).max(MAX_PRODUCT_REFERRALS).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -256,6 +269,7 @@ export const ordersRouter = router({
           voucherCode: input.voucherCode ?? null,
           affiliateCode: input.affiliateCode ?? null,
           giftClaims: input.giftClaims ?? [],
+          productReferrals: input.productReferrals ?? [],
         });
         return {
           reference: placed.order.reference,

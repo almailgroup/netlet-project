@@ -18,12 +18,13 @@ import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { Card, PageHeader, SkeletonCards } from "@/components/admin/ui";
+import { buttonClass, Card, Field, fieldClass, PageHeader, SkeletonCards } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import type { FeatureKey } from "@shared/features";
+import { normaliseSetting, type SettingKey } from "@shared/settings";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
 
@@ -202,6 +203,8 @@ function Features() {
         </QueryGate>
       )}
 
+      <ReferralRates />
+
       <ConfirmDialog
         open={confirming !== null}
         title={confirming ? t("features.confirmTitle", { name: t(NAME[confirming]) }) : ""}
@@ -213,5 +216,90 @@ function Features() {
         onConfirm={() => confirming && set.mutate({ key: confirming, enabled: false })}
       />
     </>
+  );
+}
+
+const SETTING_LABEL: Record<SettingKey, { label: MessageKey; hint: MessageKey }> = {
+  "referral.productPercent": { label: "settings.productPercent", hint: "settings.productPercentHint" },
+  "referral.invitePercent": { label: "settings.invitePercent", hint: "settings.invitePercentHint" },
+};
+
+/**
+ * The referral programme's two rates (3.1.15), each saved on its own — the
+ * numbers beside the switches, set without a deploy and recorded on the trail.
+ * The box says what the server would refuse before Save is pressed.
+ */
+function ReferralRates() {
+  const { t, tError } = useTranslation();
+  const formatDate = useDateFormat();
+  const utils = trpc.useUtils();
+  const settings = trpc.features.settings.useQuery();
+  const [drafts, setDrafts] = useState<Partial<Record<SettingKey, string>>>({});
+  const save = trpc.features.setSetting.useMutation({
+    onSuccess: (_reply, input) => {
+      toast.success(t("settings.saved"));
+      setDrafts(current => ({ ...current, [input.key]: undefined }));
+      void utils.features.settings.invalidate();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+
+  return (
+    <div className="mt-5">
+      <Card title={t("settings.title")} description={t("settings.intro")}>
+        {settings.isLoading ? (
+          <SkeletonCards label={t("admin.loading")} />
+        ) : (
+          <QueryGate queries={[settings]}>
+            {() => (
+              <ul className="-my-3 divide-y divide-[#eef1f5]">
+                {(settings.data ?? []).map(row => {
+                  const key = row.key as SettingKey;
+                  const draft = drafts[key] ?? row.value;
+                  const valid = normaliseSetting(key, draft) !== null;
+                  const changed = valid && normaliseSetting(key, draft) !== row.value;
+                  return (
+                    <li key={key} className="py-3.5">
+                      <form
+                        className="flex flex-wrap items-end gap-3"
+                        onSubmit={event => {
+                          event.preventDefault();
+                          if (changed) save.mutate({ key, value: draft });
+                        }}
+                      >
+                        <Field
+                          className="min-w-0 flex-1 basis-56"
+                          label={t(SETTING_LABEL[key].label)}
+                          hint={t("settings.range", { min: row.min, max: row.max, default: row.defaultValue })}
+                          error={valid ? undefined : t("settings.badValue")}
+                        >
+                          <input
+                            inputMode="decimal"
+                            dir="ltr"
+                            value={draft}
+                            onChange={event => setDrafts(current => ({ ...current, [key]: event.target.value }))}
+                            className={`${fieldClass} max-w-40`}
+                          />
+                        </Field>
+                        <button type="submit" disabled={!changed || save.isPending} className={buttonClass.primary}>
+                          {save.isPending && save.variables?.key === key ? t("admin.saving") : t("admin.save")}
+                        </button>
+                      </form>
+                      <p className="mt-2 text-[13px] leading-5 text-[#536b8c]">{t(SETTING_LABEL[key].hint)}</p>
+                      {row.updatedAt ? (
+                        <p className="mt-1 text-[12px] ink-muted">
+                          {t("features.changedBy", { date: formatDate(row.updatedAt) })}{" "}
+                          {row.updatedByEmail ? <bdi dir="ltr">{row.updatedByEmail}</bdi> : t("features.someone")}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </QueryGate>
+        )}
+      </Card>
+    </div>
   );
 }

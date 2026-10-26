@@ -158,7 +158,8 @@ struct AffiliateRow: Decodable, Identifiable, Hashable, Sendable {
     var channel: String? = nil
     /// pending, active or suspended.
     let status: String
-    let ratePercent: String
+    /// NetLet's own rate, no longer paid or edited (3.7.1).
+    var ratePercent: String? = nil
     let createdAt: Date
     var paidOrders: Int = 0
     let earned: Money

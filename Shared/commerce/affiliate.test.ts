@@ -58,3 +58,38 @@ describe("rates and payouts", () => {
     expect(canPayOut(-300n)).toEqual({ ok: false, shortBy: "5.000" });
   });
 });
+
+describe("a store's own affiliate rate (3.7.1)", () => {
+  it("takes the share off the seller's net and passes it through the commission, so the line still adds up", async () => {
+    const { withAffiliateShares, netletCommissionFils } = await import("./affiliate.js");
+    const draft = {
+      lines: [
+        { productId: 1, lineTotal: "240.000", commissionAmount: "24.000", vendorNet: "216.000" },
+        { productId: 2, lineTotal: "8.000", commissionAmount: "0.800", vendorNet: "7.200" },
+      ],
+      totals: { commissionTotal: "24.800", itemsTotal: "248.000" },
+    };
+    const shared = withAffiliateShares(draft, new Map([[1, "3.00"]]));
+    expect(shared.lines[0]).toMatchObject({ commissionAmount: "31.200", vendorNet: "208.800", affiliateVendorPercent: "3.00" });
+    expect(shared.lines[1]).toMatchObject({ commissionAmount: "0.800", vendorNet: "7.200", affiliateVendorPercent: null });
+    expect(shared.totals).toEqual({ commissionTotal: "32.000", itemsTotal: "248.000" });
+    /* NetLet's own commission is what it took before the pass-through. */
+    expect(netletCommissionFils(shared.lines[0])).toBe(24_000n);
+  });
+
+  it("leaves a line out when the seller would net less than the share", async () => {
+    const { withAffiliateShares } = await import("./affiliate.js");
+    const shared = withAffiliateShares({
+      lines: [{ productId: 1, lineTotal: "10.000", commissionAmount: "9.900", vendorNet: "0.100" }],
+      totals: { commissionTotal: "9.900" },
+    }, new Map([[1, "5.00"]]));
+    expect(shared.lines[0]).toMatchObject({ commissionAmount: "9.900", vendorNet: "0.100", affiliateVendorPercent: null });
+  });
+
+  it("is a rate above nothing and up to the ceiling", async () => {
+    const { storeAffiliateRate } = await import("./affiliate.js");
+    expect(storeAffiliateRate("3")).toBe("3.00");
+    expect(storeAffiliateRate("20")).toBe("20.00");
+    for (const value of ["0", "20.01", "-1", "1.234", "x"]) expect(storeAffiliateRate(value)).toBeNull();
+  });
+});

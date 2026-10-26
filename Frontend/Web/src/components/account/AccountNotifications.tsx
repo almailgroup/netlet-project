@@ -12,21 +12,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import {
-  Bell,
-  CheckCircle2,
-  LifeBuoy,
-  Package,
-  RotateCcw,
-  ShoppingBag,
-  Sparkles,
-  Store,
-  Tag,
-  Truck,
-  Wallet,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { Ban, Bell, CheckCircle2, LifeBuoy, Package, RotateCcw, ShoppingBag, Sparkles, Store, Tag, TriangleAlert, Truck, Wallet, XCircle, type LucideIcon } from "lucide-react";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";
@@ -54,6 +40,8 @@ const ICONS: Partial<Record<NoticeKind, LucideIcon>> = {
   new_arrival: Sparkles,
   seller_new_order: Store,
   seller_return: RotateCcw,
+  seller_warning: TriangleAlert,
+  seller_suspended: Ban,
 };
 
 export function AccountNotifications() {

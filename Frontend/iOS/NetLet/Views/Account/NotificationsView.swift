@@ -131,6 +131,8 @@ struct NotificationsView: View {
         case "order_delivered": return "checkmark.circle"
         case "line_cancelled": return "xmark.circle"
         case "return_approved", "return_declined", "seller_return": return "arrow.uturn.backward"
+        case "seller_warning": return "exclamationmark.triangle"
+        case "seller_suspended": return "nosign"
         case "refund_done": return "wallet.pass"
         case "price_drop", "offer_answered": return "tag"
         case "support_answered": return "lifepreserver"

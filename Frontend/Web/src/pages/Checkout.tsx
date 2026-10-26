@@ -37,6 +37,7 @@ import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
 import { currentAffiliate } from "@/lib/affiliate";
 import { heldClaims } from "@/lib/giftClaims";
+import { productLinks } from "@/lib/referral";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Info, LoaderCircle, MapPin, PackageCheck, RotateCcw, ShoppingBag, Truck, Wallet } from "lucide-react";
@@ -233,6 +234,9 @@ export default function Checkout() {
     voucherCode: applied || undefined,
     affiliateCode: via.data ? affiliateCode : null,
     giftClaims: heldClaims(),
+    /* Product links this browser arrived through (3.1.14); the server keeps
+       only those for products in this order, and never the buyer's own. */
+    productReferrals: productLinks(),
   });
   const blockerField = blocker === "checkout.needGovernorate" ? "checkout-governorate"
     : blocker === "checkout.needAddress" || blocker === "address.needsParts" ? `checkout-address-${missingParts(form.parts)[0] ?? "area"}`
@@ -410,7 +414,7 @@ export default function Checkout() {
                   </div>
                 ))
               ) : items.length ? items.map((item) => <div key={item.lineId} className="flex gap-3"><div className="size-14 shrink-0 overflow-hidden rounded-xl bg-white/10"><Thumb src={item.image?.url} alt={item.image?.altText ?? lineTitle(item, isArabic)} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} /></div><div className="min-w-0 flex-1"><p dir="auto" className="type-product">{lineTitle(item, isArabic)}</p><p className="type-label mt-1 text-[#b9cce5]">{t("cart.quantityShort", { count: item.quantity })}</p></div><p className="type-price">{money(item.lineTotal)}</p></div>) : <div className="flex items-center gap-3 rounded-xl bg-white/8 p-3"><div className="grid size-10 place-items-center rounded-full bg-white/10"><ShoppingBag className="size-4" /></div><p className="type-body text-[#d9e7f7]">{t("checkout.summaryEmpty")}</p></div>}</div><div className="type-body space-y-3 pt-5"><div className="flex justify-between text-[#d9e7f7]"><span>{t("cart.subtotal")}</span><span>{settling ? <span className="inline-block h-3.5 w-20 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : money(subtotal)}</span></div>{/* Delivery is a real figure now (3.2.4), per seller, so the summary
-                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}`} className="flex justify-between text-[12px] text-[#b9cce5]"><span dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryFrom", { name: storeName(row, isArabic) })}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{settling ? <span className="inline-block h-3.5 w-16 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div>{/* A member's free delivery (4.1), said with what it saved. */}{cart?.delivery.memberWaived ? <p className="text-[12px] font-bold text-[#d9e7f7]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}{/* Points are offered where the money is, not in a panel of their own:
+                    stops saying "calculated later" about something already known. */}{(cart?.delivery.perVendor ?? []).filter(row => !row.free).map(row => (<div key={`${row.vendorId ?? row.vendorName}|${row.destinationLabel ?? ""}|${row.choice ?? ""}`} className="flex justify-between text-[12px] text-[#b9cce5]"><span dir="auto">{row.destinationLabel ? t("address.deliveryTo", { name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryFrom", { name: storeName(row, isArabic) })}{row.choice === "fast" ? <> · {t("delivery.fastTag")}</> : null}</span><span>{money(row.fee)}</span></div>))}<div className="flex justify-between text-[#d9e7f7]"><span>{t("footer.delivery")}</span><span>{settling ? <span className="inline-block h-3.5 w-16 animate-pulse rounded bg-white/15 align-middle" aria-hidden /> : cart ? money(cart.delivery.total) : t("checkout.calculatedLater")}</span></div>{/* A member's free delivery (4.1), said with what it saved. */}{cart?.delivery.memberWaived ? <p className="text-[12px] font-bold text-[#d9e7f7]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}{/* Points are offered where the money is, not in a panel of their own:
                     the question "do I spend them" is one somebody asks while
                     reading the total, and nowhere else. The control is absent
                     rather than disabled for a balance of nothing — a checkbox

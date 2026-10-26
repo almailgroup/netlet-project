@@ -6,17 +6,22 @@
  * a parcel nobody collected, an item received and never refunded. Open work
  * sorts first, then refunds still owed in cash, then history.
  *
+ * The rest — "other", which no rule can read, and an approval a seller
+ * disputes — are read by a model, answered by the seller and confirmed by
+ * NetLet, and only then told to the shopper.
+ *
  * Each button comes from `returnActions`, the same function the server
  * refuses with, so the desk cannot offer a step the API would reject. Deciding
  * and receiving are a manager's (`returns.handle`); an administrator sees every
  * store's and may overrule an approval, because a refusal a seller can be
  * argued out of needs somebody above both parties.
  */
+import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
-import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
+import { EmptyState, fieldClass, isolate, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -43,6 +48,7 @@ const REASON_LABEL: Record<string, MessageKey> = {
 
 const STATUS_LABEL: Record<string, MessageKey> = {
   requested: "returns.statusRequested",
+  review: "returns.statusReview",
   approved: "returns.statusApproved",
   declined: "returns.statusDeclined",
   collected: "returns.statusCollected",
@@ -51,8 +57,15 @@ const STATUS_LABEL: Record<string, MessageKey> = {
   cancelled: "returns.statusCancelled",
 };
 
+const SUGGESTION_LABEL: Record<string, MessageKey> = {
+  approve: "returns.suggestApprove",
+  decline: "returns.suggestDecline",
+  exchange: "returns.suggestExchange",
+};
+
 const STATUS_TONE: Record<string, "warning" | "navy" | "good" | "neutral" | "danger"> = {
   requested: "warning",
+  review: "warning",
   approved: "navy",
   collected: "navy",
   refunded: "good",
@@ -103,7 +116,8 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [declining, setDeclining] = useState(false);
-  const [reason, setReason] = useState("");
+  /* Confirming a seller's decline starts from the words they wrote for the shopper. */
+  const [reason, setReason] = useState(row.status === "review" ? row.declineReason ?? "" : "");
   const [receiving, setReceiving] = useState(false);
   const [restock, setRestock] = useState(true);
 
@@ -113,7 +127,18 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
   };
   const done = (key: MessageKey) => () => { toast.success(t(key)); refresh(); };
   const fail = (error: { message: string }) => toast.error(tError(error.message));
-  const decide = trpc.returns.decide.useMutation({ onSuccess: done("admin.returnsSaved"), onError: fail });
+  const seller = actor.kind !== "admin";
+  /* A seller's answer goes to NetLet to confirm (3.5.2); an administrator's is final. */
+  const decide = trpc.returns.decide.useMutation({
+    onSuccess: () => { setDeclining(false); done(seller ? "admin.returnsSentToNetlet" : "admin.returnsSaved")(); },
+    onError: fail,
+  });
+  const readOn = trpc.returns.readAvailable.useQuery(undefined, { staleTime: 300_000, enabled: row.reason === "other" && !row.aiSummary });
+  const read = trpc.returns.read.useMutation({
+    onSuccess: reading => { if (reading) refresh(); else toast.error(t("admin.returnsReadFailed")); },
+    onError: fail,
+  });
+  const proposal = row.status === "review" ? (row.declineReason ? "decline" : "approve") : null;
   const collect = trpc.returns.collect.useMutation({ onSuccess: done("admin.returnsSaved"), onError: fail });
   const receive = trpc.returns.receive.useMutation({
     onSuccess: reply => {
@@ -153,7 +178,32 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
           {row.decidedBy === "auto" ? <span className="ink-muted">· {t("returns.decidedAutomatically")}</span> : null}
         </p>
         {row.note ? <p dir="auto" className="mt-3 rounded-xl bg-[#f4f6f9] px-3.5 py-2.5 text-[14px] leading-6 text-[#3d5376]">{row.note}</p> : null}
-        {row.declineReason ? <p dir="auto" className="mt-2 text-[13px] text-[#8c2f22]">{isMessageKey(row.declineReason) ? t(row.declineReason) : row.declineReason}</p> : null}
+
+        {/* What a model read in the note (3.5.2): a suggestion, labelled as one. */}
+        {row.aiSummary ? (
+          <div className="mt-2 rounded-xl border border-[#d5dfeb] px-3.5 py-2.5 text-[13px] leading-5 text-[#3d5376]">
+            <p className="flex flex-wrap items-center gap-x-2 font-semibold text-[#0a285a]">
+              <Sparkles className="size-3.5" aria-hidden />{t("admin.returnsAiRead")}
+              {row.aiSuggestion && SUGGESTION_LABEL[row.aiSuggestion] ? <Pill tone="navy">{t(SUGGESTION_LABEL[row.aiSuggestion])}</Pill> : null}
+            </p>
+            <p dir="auto" className="mt-1">{row.aiSummary}</p>
+            <p className="mt-1 text-[12px] ink-muted">{t("admin.returnsAiNote")}</p>
+          </div>
+        ) : row.reason === "other" && (row.status === "requested" || row.status === "review") && readOn.data ? (
+          <button type="button" disabled={read.isPending} onClick={() => read.mutate({ requestId: row.id })} className={`${smallButtonClass.secondary} mt-2`}>
+            <Sparkles className="size-3.5" aria-hidden />{t(read.isPending ? "admin.returnsReading" : "admin.returnsReadNote")}
+          </button>
+        ) : null}
+
+        {/* The seller's answer, while NetLet confirms it or after. */}
+        {row.vendorResponse || proposal ? (
+          <div className="mt-2 text-[13px] leading-5 text-[#3d5376]">
+            {proposal ? <p className="font-semibold text-[#0a285a]">{t(proposal === "approve" ? "admin.returnsSellerProposesApprove" : "admin.returnsSellerProposesDecline")}</p> : null}
+            {row.vendorResponse ? <p>{t("admin.returnsSellerSaid", { words: isolate(row.vendorResponse) })}</p> : null}
+            {row.status === "review" && seller ? <p className="mt-0.5 ink-muted">{t("admin.returnsWaitingNetlet")}</p> : null}
+          </div>
+        ) : null}
+        {row.declineReason && row.status !== "review" ? <p dir="auto" className="mt-2 text-[13px] text-[#8c2f22]">{isMessageKey(row.declineReason) ? t(row.declineReason) : row.declineReason}</p> : null}
 
         {/* Where to collect it, while there is something to collect. */}
         {row.status === "approved" ? (
@@ -185,14 +235,14 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
                 {t("admin.returnsRestock")}
               </label>
             ) : null}
-            {row.actions.includes("decline") ? (
+            {row.actions.includes("decline") || row.actions.includes("dispute") ? (
               <button type="button" disabled={pending} aria-expanded={declining} onClick={() => setDeclining(!declining)} className={smallButtonClass.quietDanger}>
-                {t("admin.returnsDecline")}
+                {t(row.actions.includes("dispute") ? "admin.returnsDispute" : seller ? "admin.returnsProposeDecline" : "admin.returnsDecline")}
               </button>
             ) : null}
             {row.actions.includes("approve") ? (
               <button type="button" disabled={pending} onClick={() => decide.mutate({ requestId: row.id, approve: true })} className={smallButtonClass.primary}>
-                {t("admin.returnsApprove")}
+                {t(seller ? "admin.returnsProposeApprove" : "admin.returnsApprove")}
               </button>
             ) : null}
             {row.actions.includes("collect") ? (
@@ -218,10 +268,12 @@ function ReturnCard({ row, actor }: { row: Row; actor: Actor }) {
               onSubmit={event => { event.preventDefault(); decide.mutate({ requestId: row.id, approve: false, reason }); }}
             >
               <div className="min-w-[220px] flex-1">
-                <label htmlFor={`decline-${row.id}`} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.returnsDeclineWhy")}</label>
+                <label htmlFor={`decline-${row.id}`} className="block text-[13px] font-semibold text-[#0a285a]">{t(row.actions.includes("dispute") ? "admin.returnsDisputeWhy" : "admin.returnsDeclineWhy")}</label>
                 <input id={`decline-${row.id}`} value={reason} onChange={event => setReason(event.target.value)} maxLength={400} dir="auto" required className={`${fieldClass} mt-1.5`} />
               </div>
-              <button type="submit" disabled={pending || !reason.trim()} className={`${smallButtonClass.danger} h-11`}>{t("admin.returnsDecline")}</button>
+              <button type="submit" disabled={pending || !reason.trim()} className={`${smallButtonClass.danger} h-11`}>
+                {t(row.actions.includes("dispute") ? "admin.returnsDispute" : seller ? "admin.returnsProposeDecline" : "admin.returnsDecline")}
+              </button>
             </form>
           ) : null}
         </div>

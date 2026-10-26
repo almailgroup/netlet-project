@@ -17,6 +17,7 @@ import {
   cartItemAddons,
   cartItems,
   carts,
+  couriers,
   orderItemAddons,
   orderItems,
   orders,
@@ -47,7 +48,7 @@ import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js"
 import { shopperPrice } from "../../../Shared/commerce/shopperPrice.js";
 import { memberPriceFor, waiveDelivery } from "../../../Shared/commerce/membership.js";
 import { discountAllowed } from "../../../Shared/inventory/discountLicence.js";
-import { freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
+import { effectiveChoice, freezeDelivery, groupForDelivery, quoteDelivery, type DeliveryQuote, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
 import { freezeDestination, type DestinedLine } from "../../../Shared/commerce/addresses.js";
 import { massGramsFor, type SellUnit } from "../../../Shared/commerce/units.js";
 import { destinationsForCart } from "./addresses.js";
@@ -60,11 +61,12 @@ import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, retur
 import { addMoney, multiplyMoney, subtractMoney, toFils } from "../../../Shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
 import { freeDeliveryOver, isMemberNow } from "./membership.js";
-import { balanceFor, qualifyReferral, returnPoints, takePoints } from "./referral.js";
+import { balanceFor, creditReferralCommissions, extendReferralHold, productReferrers, qualifyReferral, returnPoints, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
 import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
+import { withAffiliateShares } from "../../../Shared/commerce/affiliate.js";
 import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
 import type { HeldClaim } from "../../../Shared/commerce/wishlist.js";
@@ -122,6 +124,13 @@ export type PlaceOrderDetails = {
    * only the browser saw the click.
    */
   affiliateCode?: string | null;
+  /**
+   * Product links the shopper arrived through (3.1.14): a product's id and the
+   * code on its address. Only a claim, like the affiliate's: a line earns its
+   * sharer a commission only when the code names an account that is not the
+   * buyer, and the rate is frozen beside who shared it.
+   */
+  productReferrals?: { productId: string; code: string }[];
   /**
    * Presents this device claimed off somebody's list while signed out, so the
    * ones in this order are marked bought (`markClaimsBought`).
@@ -189,6 +198,9 @@ async function priceableLines(
       bundleId: cartItems.bundleId,
       /* Which door this line goes to (3.2.6); null is the order's own. */
       addressId: cartItems.addressId,
+      /* Which trip (3.2.5), and whether its store offers fast at all. */
+      deliveryChoice: cartItems.deliveryChoice,
+      fastDeliveryFee: vendors.fastDeliveryFee,
       unitPrice: productVariants.price,
       productTitle: products.title,
       variantTitle: productVariants.title,
@@ -326,6 +338,7 @@ async function priceableLines(
     },
     bundleId: inBundle?.bundleId ?? null,
     bundleName: inBundle?.bundleName ?? null,
+    deliveryChoice: effectiveChoice(row.deliveryChoice, { fastFlat: row.fastDeliveryFee }),
     /* Copied, never referenced: an address edited in March must not rewrite
        where a parcel was sent in September. */
     destination: row.addressId && doors.has(row.addressId)
@@ -357,7 +370,7 @@ async function priceableLines(
    */
   const codRules = new Map(rows.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
   const rules = new Map<number | null, DeliveryRule>(
-    rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver }]),
+    rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver, fastFlat: row.fastDeliveryFee }]),
   );
 
   const destined: DestinedLine[] = rows.map(row => {
@@ -380,6 +393,7 @@ async function priceableLines(
       destinationId,
       destinationLabel: destinationId ? doors.get(destinationId)!.label : null,
       value,
+      choice: row.deliveryChoice === "fast" ? "fast" : "regular",
     };
   });
 
@@ -562,13 +576,44 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     throw new OrderRefused("order.paymentUnavailable");
   }
 
-  const draft = draftOrder(lines, delivery.total);
+  const priced = draftOrder(lines, delivery.total);
 
   /* Who brought this order, if anybody (3.7): resolved before anything is
      taken, so a lookup that fails cannot strand stock. */
   const affiliate = details.affiliateCode && (await featureOn("affiliates"))
     ? await earningAffiliate(db, details.affiliateCode, details.userId)
     : null;
+  /* The stores' own affiliate rates (3.7.1), on the products they opted in.
+     The share comes off the seller's net and passes through NetLet's
+     commission, so `commission + net` is still the line's total; a line whose
+     seller would net less than the share does not take part. */
+  const optedIn = affiliate
+    ? new Map((await db
+        .select({ id: products.id, percent: products.affiliatePercent })
+        .from(products)
+        .where(inArray(products.id, [...new Set(priced.lines.map(line => line.productId))])))
+        .filter(row => row.percent !== null)
+        .map(row => [row.id, row.percent as string]))
+    : new Map<number, string>();
+  /* Who shared each product, if it came through a product link (3.1.14). */
+  const referred = details.productReferrals?.length
+    ? await productReferrers(db, details.productReferrals, details.userId)
+    : { byProduct: new Map<string, number>(), rate: "0.00" };
+  const draft = withAffiliateShares(priced, optedIn);
+  /* Who carries each store's parcels (3.3.13): a store using its own company,
+     when that company is on NetLet and active, has its parcels go straight to
+     that company's board. Anything else waits for NetLet to assign, or for the
+     store to carry it itself. */
+  const ownCarrier = new Map((await db
+    .select({ vendorId: vendors.id, courierId: vendors.deliveryCourierId })
+    .from(vendors)
+    .innerJoin(couriers, eq(couriers.id, vendors.deliveryCourierId))
+    .where(and(
+      inArray(vendors.id, [...new Set(priced.lines.map(line => line.vendorId))]),
+      eq(vendors.deliveryMode, "own"),
+      eq(couriers.status, "active"),
+    )))
+    .map(row => [row.vendorId, row.courierId]));
 
   // Take every line's units first. Anything already taken goes back to the pool
   // it came from if a later line cannot be served, so a part-served basket
@@ -718,8 +763,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           member,
           deliveryWaived,
           paymentMethod: details.paymentMethod ?? null,
+          /* Who brought it, for the affiliate's counts. NetLet's own share
+             stopped with 3.7.1: what an affiliate earns now is each store's
+             rate on the products it opted in, frozen on the lines below, so
+             no order-level rate is frozen any more. Orders placed before keep
+             theirs and are paid out of NetLet's cut as they were. */
           affiliateId: affiliate?.id ?? null,
-          affiliateRate: affiliate?.ratePercent ?? null,
+          affiliateRate: null,
           contactName: details.contactName ?? null,
           contactPhone: details.contactPhone ?? null,
           deliveryZoneId: details.deliveryZoneId ?? null,
@@ -757,6 +807,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           preordered: pools.get(line.variantId) === "preorder",
           preorderReleaseAt: pools.get(line.variantId) === "preorder" ? line.preorderReleaseAt : null,
           centreId: shelves.get(line.variantId) ?? null,
+          /* Off NetLet's own shelf it is NetLet's to give out; off the store's,
+             its own company takes it when it has one on NetLet. */
+          courierId: (shelves.get(line.variantId) ?? null) === null ? ownCarrier.get(line.vendorId) ?? null : null,
+          affiliateVendorPercent: line.affiliateVendorPercent,
+          deliveryChoice: line.deliveryChoice,
+          referrerId: referred.byProduct.get(String(line.productId)) ?? null,
+          referralRate: referred.byProduct.has(String(line.productId)) ? referred.rate : null,
         })),
       ).returning({ id: orderItems.id, variantId: orderItems.variantId });
 
@@ -1213,6 +1270,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         addonsTotal: "0.000",
         bundleId: line.bundleId,
         bundleName: line.bundleName,
+        deliveryChoice: line.deliveryChoice === "fast" ? "fast" : "regular",
         /* The slice is arithmetic over money; where the parcel went and what
            it takes to carry it do not enter into it, and both desks read the
            line's own copy. */
@@ -1380,6 +1438,9 @@ async function moveLine(
 
   if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool, line.centreId);
   if (cancelling) await closeIfNothingLeft(db, line.orderId);
+  /* Arrived after its cash was collected: a held referral commission now
+     matures at the end of the window that runs from today (3.1.14). */
+  if (deliveredAt && !line.deliveredAt) await extendReferralHold(db, [lineId], deliveredAt);
   return { ...line, fulfilment, deliveredAt };
 }
 
@@ -1484,6 +1545,9 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
    * `qualifyReferral` claims its row with a predicate of its own regardless.
    */
   if (order.userId) await qualifyReferral(db, order.userId, orderId);
+  /* The product links' and the inviter's commissions (3.1.14), at the same
+     moment, held until each line's return window has passed. */
+  await affiliateQuietly(() => creditReferralCommissions(db, orderId), `credit the referral commissions for order ${orderId}`);
   /* An affiliate's share is earned at the same moment and for the same
      reason (3.7) — and exactly once, by the ledger's own index. */
   await affiliateQuietly(() => creditAffiliate(db, orderId), `credit the affiliate for order ${orderId}`);

@@ -10,6 +10,15 @@ protocol SellerServicing: Sendable {
     func upload(jpeg: Data) async throws -> UploadedPhoto
     func uploadDocument(kind: String, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
     func downloadDocument(id: Int, fileName: String) async throws -> URL
+    /// NetLet's final contract attached to an application, for the applicant to sign (3.3.1).
+    func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
+}
+
+extension SellerServicing {
+    /// A stand-in with no contract step refuses, as the server would a store.
+    func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument {
+        throw APIError.server(code: "FORBIDDEN", message: "documents.notFound", status: 403)
+    }
 }
 
 struct SellerService: SellerServicing {
@@ -52,6 +61,20 @@ struct SellerService: SellerServicing {
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         request.setValue(kind, forHTTPHeaderField: "X-NetLet-Document-Kind")
         request.setValue(fileName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "document", forHTTPHeaderField: "X-NetLet-File-Name")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = data
+        return try await send(request, fallback: "documents.failed")
+    }
+
+    /// The same door as an applicant's papers, naming the application: the
+    /// server lets only an administrator attach a contract.
+    func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument {
+        var request = URLRequest(url: client.configuration.url(path: "/api/applications/documents"))
+        request.httpMethod = "POST"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("contract", forHTTPHeaderField: "X-NetLet-Document-Kind")
+        request.setValue("\(applicationId)", forHTTPHeaderField: "X-NetLet-Application-Id")
+        request.setValue(fileName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "contract", forHTTPHeaderField: "X-NetLet-File-Name")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = data
         return try await send(request, fallback: "documents.failed")

@@ -1,0 +1,61 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "id": 2,
+            "name": "Acme Electronics",
+            "nameAr": "أكمي للإلكترونيات",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000"
+          },
+          {
+            "id": 3,
+            "name": "Dar Home",
+            "nameAr": "دار البيت",
+            "status": "approved",
+            "commissionPercent": "15.00",
+            "commissionFixed": null
+          },
+          {
+            "id": 4,
+            "name": "Gulf Grocers",
+            "nameAr": "بقالة الخليج",
+            "status": "approved",
+            "commissionPercent": "8.00",
+            "commissionFixed": null
+          },
+          {
+            "id": 1,
+            "name": "NetLet",
+            "nameAr": "نتلت",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": "1.000"
+          },
+          {
+            "id": 30,
+            "name": "Rose Beauty",
+            "nameAr": "روز بيوتي",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": null
+          },
+          {
+            "id": 31,
+            "name": "Souq Style",
+            "nameAr": "سوق ستايل",
+            "status": "approved",
+            "commissionPercent": "10.00",
+            "commissionFixed": null
+          }
+        ],
+        "total": 6,
+        "page": 1,
+        "pageSize": 50
+      }
+    }
+  }
+}

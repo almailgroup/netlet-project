@@ -142,6 +142,7 @@ struct LineReturnPanel: View {
         switch request.status {
         case "approved": parts.append(l.t("returns.nextApproved"))
         case "requested": parts.append(l.t("returns.nextRequested"))
+        case "review": parts.append(l.t("returns.nextReview"))
         case "collected": parts.append(l.t("returns.nextCollected"))
         case "refunded":
             let amount = (request.refundAmount ?? .zero).formatted(l.current)
@@ -255,6 +256,7 @@ struct LineReturnPanel: View {
 
     static func statusKey(_ status: String) -> String {
         switch status {
+        case "review": return "returns.statusReview"
         case "approved": return "returns.statusApproved"
         case "declined": return "returns.statusDeclined"
         case "collected": return "returns.statusCollected"
@@ -359,21 +361,38 @@ private struct RateDelivery: View {
     let parcel: Parcel
     let readOnly: Bool
     let reload: () async -> Void
-    @State private var rating = 0
+    /// Three parts (3.4.4); a rating given before them opens with each at its one figure.
+    @State private var parts: [String: Int] = [:]
     @State private var comment = ""
     @State private var sending = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    private var complete: Bool { DeliveryRatingParts.all.allSatisfy { (parts[$0] ?? 0) > 0 } }
 
     var body: some View {
         let state = parcel.ratingState
         let rules = ReferenceData.shared.rules
         if !state.allowed || readOnly {
             if let given = parcel.rating {
-                HStack(spacing: 6) {
-                    Text(l.t("delivery.yourRating")).font(.inter(13)).foregroundStyle(Brand.body)
-                    StarsView(rating: given.rating, size: 13)
-                        .accessibilityLabel(l.t("review.outOf", ["value": "\(given.rating)"]))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(l.t("delivery.yourRating")).font(.inter(13)).foregroundStyle(Brand.body)
+                        StarsView(rating: given.rating, size: 13)
+                            .accessibilityLabel(l.t("review.outOf", ["value": "\(given.rating)"]))
+                    }
+                    if let speed = given.speed, let condition = given.condition, let conduct = given.conduct {
+                        let values = [speed, condition, conduct]
+                        ForEach(0..<values.count, id: \.self) { index in
+                            let part = DeliveryRatingParts.all[index]
+                            let value = values[index]
+                            HStack(spacing: 6) {
+                                Text(l.t(DeliveryRatingParts.label(part))).font(.inter(12)).foregroundStyle(Brand.muted)
+                                StarsView(rating: value, size: 11)
+                                    .accessibilityLabel(l.t("review.outOf", ["value": "\(value)"]))
+                            }
+                        }
+                    }
                 }
             } else if !state.allowed, state.reason == "delivery.ratingClosed" {
                 Text(parcelRefusal("delivery.ratingClosed", l)).font(.inter(13)).foregroundStyle(Brand.muted)
@@ -385,19 +404,33 @@ private struct RateDelivery: View {
                     .font(.inter(13))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 2) {
-                    ForEach(1...rules.accountRules.ratingMax, id: \.self) { star in
-                        Button {
-                            rating = star
-                        } label: {
-                            Image(systemName: star <= rating ? "star.fill" : "star")
-                                .font(.system(size: 24))
-                                .foregroundStyle(star <= rating ? Brand.star : Brand.line)
-                                .frame(width: 44, height: 44)
+                ForEach(DeliveryRatingParts.all, id: \.self) { part in
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(l.t(DeliveryRatingParts.label(part))).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                        HStack(spacing: 2) {
+                            ForEach(1...rules.accountRules.ratingMax, id: \.self) { star in
+                                let chosen = parts[part] ?? 0
+                                Button {
+                                    parts[part] = star
+                                } label: {
+                                    Image(systemName: star <= chosen ? "star.fill" : "star")
+                                        .font(.system(size: 22))
+                                        .foregroundStyle(star <= chosen ? Brand.star : Brand.line)
+                                        .frame(width: 44, height: 40)
+                                }
+                                .buttonStyle(.tap)
+                                .accessibilityLabel("\(l.t(DeliveryRatingParts.label(part))): \(star == 1 ? l.t("review.starsOne") : l.t("review.stars", ["count": "\(star)"]))")
+                                .accessibilityAddTraits(chosen == star ? .isSelected : [])
+                            }
                         }
-                        .buttonStyle(.tap)
-                        .accessibilityLabel(star == 1 ? l.t("review.starsOne") : l.t("review.stars", ["count": "\(star)"]))
-                        .accessibilityAddTraits(rating == star ? .isSelected : [])
+                    }
+                }
+                if complete {
+                    let overall = DeliveryRatingParts.overall(speed: parts["speed"] ?? 0, condition: parts["condition"] ?? 0, conduct: parts["conduct"] ?? 0)
+                    HStack(spacing: 6) {
+                        Text(l.t("delivery.overall")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                        StarsView(rating: overall, size: 13)
+                            .accessibilityLabel(l.t("review.outOf", ["value": "\(overall)"]))
                     }
                 }
                 LabeledField(
@@ -418,16 +451,18 @@ private struct RateDelivery: View {
                 }
             }
             .onAppear {
-                rating = parcel.rating?.rating ?? 0
+                if let given = parcel.rating {
+                    parts = ["speed": given.speed ?? given.rating, "condition": given.condition ?? given.rating, "conduct": given.conduct ?? given.rating]
+                }
                 comment = parcel.rating?.comment ?? ""
             }
         }
     }
 
     private func save() async {
-        guard rating > 0 else {
+        guard complete else {
             Haptics.refused()
-            app.toast(l.t("delivery.invalidRating"))
+            app.toast(l.t("delivery.rateEveryPart"))
             return
         }
         sending = true
@@ -435,7 +470,9 @@ private struct RateDelivery: View {
         let words = comment.trimmingCharacters(in: .whitespacesAndNewlines)
         let days = ["days": "\(ReferenceData.shared.rules.orderRules.ratingWindowDays)"]
         if await app.attempt(done: "delivery.saved", params: days, {
-            _ = try await app.services.api.call(API.rateDelivery, .init(reference: reference, parcelKey: parcel.key, rating: rating, comment: words.isEmpty ? nil : words))
+            _ = try await app.services.api.call(API.rateDelivery, .init(reference: reference, parcelKey: parcel.key,
+                                                                         speed: parts["speed"] ?? 0, condition: parts["condition"] ?? 0, conduct: parts["conduct"] ?? 0,
+                                                                         comment: words.isEmpty ? nil : words))
         }) {
             await reload()
         }

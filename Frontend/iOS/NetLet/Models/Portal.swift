@@ -48,6 +48,8 @@ struct PortalRules: Decodable, Sendable {
     let needs: [String: String]
     let adminOnly: [String]
     let courier: [String]
+    /// What an administrator may grant one account on its own (`GRANTABLE`, 3.3.9).
+    var grantable: [String]?
     var bulk: Bulk?
     /// Where a line may move from each state (`nextStates`).
     var fulfilment: [String: [String]]?
@@ -83,6 +85,9 @@ struct PortalRules: Decodable, Sendable {
     /// `can`: an administrator reaches everything, a delivery company's
     /// people their board, and a store's people their own store at their rank.
     func can(_ actor: SellerIdentity, _ capability: String, vendorId: Int? = nil) -> Bool {
+        /* One capability an administrator granted on its own (3.3.9), and
+           only one the rules let be granted. */
+        if actor.grants?.contains(capability) == true, grantable?.contains(capability) == true { return true }
         switch actor.kind {
         case "admin": return true
         case "courier": return courier.contains(capability)
@@ -143,6 +148,8 @@ enum PortalPage: Hashable, Sendable {
     case invoices
     case promotions
     case affiliates
+    /// Stores' rates and their proposals (3.3.2, 3.3.9).
+    case commission
     case membership
     case support
     /// One conversation in NetLet's inbox — the app's own address for what
@@ -210,6 +217,7 @@ enum PortalPage: Hashable, Sendable {
             case "invoices": self = .invoices
             case "promotions": self = .promotions
             case "affiliates": self = .affiliates
+            case "commission": self = .commission
             case "membership": self = .membership
             case "support": self = .support
             case "guides": self = .guides
@@ -226,7 +234,8 @@ enum PortalPage: Hashable, Sendable {
 extension SellerIdentity {
     /// Whether this account has a portal at all: a store's people, a
     /// delivery company's, or an administrator.
-    var inPortal: Bool { kind == "vendor" || kind == "courier" || kind == "admin" }
+    /// An employee granted one capability on its own (3.3.9) has a portal too.
+    var inPortal: Bool { kind == "vendor" || kind == "courier" || kind == "admin" || !(grants ?? []).isEmpty }
 
     func can(_ capability: String, vendorId: Int? = nil) -> Bool {
         PortalRules.shared.can(self, capability, vendorId: vendorId)

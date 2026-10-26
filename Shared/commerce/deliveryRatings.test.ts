@@ -9,6 +9,8 @@ import {
   MAX_DELIVERY_COMMENT,
   parcelArrivedAt,
   scoresByCarrier,
+  overallOf,
+  partsValid,
 } from "./deliveryRatings.js";
 
 const day = 24 * 60 * 60 * 1000;
@@ -56,6 +58,17 @@ describe("a comment", () => {
   });
 });
 
+describe("three parts (3.4.4)", () => {
+  it("make the overall as their average, half up, and each must be whole stars", () => {
+    expect(overallOf({ speed: 3, condition: 5, conduct: 5 })).toBe(4);
+    expect(overallOf({ speed: 4, condition: 5, conduct: 5 })).toBe(5);
+    expect(overallOf({ speed: 1, condition: 1, conduct: 2 })).toBe(1);
+    expect(partsValid({ speed: 3, condition: 5, conduct: 5 })).toBe(true);
+    expect(partsValid({ speed: 3, condition: 5 })).toBe(false);
+    expect(partsValid({ speed: 3, condition: 6, conduct: 5 })).toBe(false);
+  });
+});
+
 describe("each company's score", () => {
   it("is summed per carrier, busiest first, and a seller's own van is its own row", () => {
     const scores = scoresByCarrier([
@@ -65,6 +78,15 @@ describe("each company's score", () => {
     ]);
     expect(scores.map(score => score.courierId)).toEqual([2, null, 1]);
     expect(scores[0].summary).toMatchObject({ count: 3, average: 4 });
+  });
+
+  it("averages each part over the ratings that gave it", () => {
+    const [score] = scoresByCarrier([
+      { courierId: 1, rating: 4, speed: 3, condition: 5, conduct: 4 },
+      { courierId: 1, rating: 2, speed: 2, condition: 2, conduct: 1 },
+      { courierId: 1, rating: 5 },
+    ]);
+    expect(score.parts).toEqual({ speed: 2.5, condition: 3.5, conduct: 2.5 });
   });
 
   /* "0.0 from 0" reads as a bad company rather than a new one. */

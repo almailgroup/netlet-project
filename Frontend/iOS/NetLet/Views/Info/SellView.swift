@@ -1,4 +1,5 @@
 import PhotosUI
+import QuickLook
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
@@ -50,7 +51,10 @@ final class ApplicationModel {
     var underPlatformLicence = false
     var agreed = false
     var proposing = false
+    /// A lower percentage, or a fixed amount per sale (3.3.2) — one or the other.
+    var proposingFixed = false
     var proposedCommission = ""
+    var proposedFixed = ""
     var commissionNote = ""
 
     private(set) var application: LoadState<StoreApplication?> = .idle
@@ -103,8 +107,10 @@ final class ApplicationModel {
         payoutIban = row.payoutIban ?? ""
         underPlatformLicence = row.underPlatformLicence
         agreed = row.agreementVersion == agreementVersion
-        proposing = row.proposedCommissionPercent != nil
+        proposing = row.proposedCommissionPercent != nil || row.proposedCommissionFixed != nil
+        proposingFixed = row.proposedCommissionFixed != nil
         proposedCommission = row.proposedCommissionPercent.map(Self.trimmedRate) ?? ""
+        proposedFixed = row.proposedCommissionFixed ?? ""
         commissionNote = row.commissionNote ?? ""
     }
 
@@ -134,6 +140,11 @@ final class ApplicationModel {
     /// Whether a proposed rate is a percentage below the standard one (`proposalProblem`).
     var proposalProblem: String? {
         guard proposing else { return nil }
+        if proposingFixed {
+            /* `fixedProposalProblem`: an amount in dinars, three decimals at most. */
+            let fixed = proposedFixed.trimmingCharacters(in: .whitespaces)
+            return fixed.isEmpty || fixed.range(of: #"^\d{1,9}(\.\d{1,3})?$"#, options: .regularExpression) != nil ? nil : "application.badCommission"
+        }
         let value = proposedCommission.trimmingCharacters(in: .whitespaces)
         guard !value.isEmpty else { return nil }
         guard value.range(of: #"^\d{1,3}(\.\d{1,2})?$"#, options: .regularExpression) != nil, let rate = Double(value), rate <= 100 else {
@@ -167,7 +178,8 @@ final class ApplicationModel {
             payoutIban: value(payoutIban),
             underPlatformLicence: underPlatformLicence,
             agreementVersion: agreed ? agreementVersion : nil,
-            proposedCommissionPercent: proposing ? value(proposedCommission) : nil,
+            proposedCommissionPercent: proposing && !proposingFixed ? value(proposedCommission) : nil,
+            proposedCommissionFixed: proposing && proposingFixed ? value(PhoneNumber.foldDigits(proposedFixed)) : nil,
             commissionNote: proposing ? value(commissionNote) : nil
         )
     }
@@ -265,7 +277,8 @@ private struct ApplicationForm: View {
                         if model.application.value ?? nil == nil {
                             Text(l.t("documents.saveFirst")).font(.inter(13)).foregroundStyle(Brand.body)
                         } else {
-                            ForEach(SiteContent.shared?.selling.documentKinds ?? [], id: \.self) { kind in
+                            // The papers applied with; the contract and its signed copy come after (3.3.1).
+                            ForEach((SiteContent.shared?.selling.documentKinds ?? []).filter { $0 != "contract" && $0 != "signed_contract" }, id: \.self) { kind in
                                 DocumentRow(kind: kind, model: model)
                             }
                         }
@@ -277,7 +290,16 @@ private struct ApplicationForm: View {
                         }
                         .tint(Brand.navy)
                         if model.proposing {
-                            LabeledField(label: l.t("sell.commissionRate"), text: $model.proposedCommission, keyboard: .decimalPad, leftToRight: true)
+                            Picker(l.t("sell.commissionKind"), selection: $model.proposingFixed) {
+                                Text(l.t("sell.commissionKindPercent")).tag(false)
+                                Text(l.t("sell.commissionKindFixed")).tag(true)
+                            }
+                            .pickerStyle(.segmented)
+                            if model.proposingFixed {
+                                LabeledField(label: l.t("sell.commissionFixed"), text: $model.proposedFixed, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
+                            } else {
+                                LabeledField(label: l.t("sell.commissionRate"), text: $model.proposedCommission, keyboard: .decimalPad, leftToRight: true)
+                            }
                             LabeledField(label: l.t("sell.commissionWhy"), text: $model.commissionNote)
                             if let problem = model.proposalProblem {
                                 Text(l.t(problem, ["rate": model.standardRate])).font(.footnote).foregroundStyle(Brand.danger)
@@ -295,6 +317,9 @@ private struct ApplicationForm: View {
                     }
                 }
                 .disabled(!model.editable)
+                /* Outside what stops the papers changing once NetLet has the
+                   application: the signed contract is the one paper sent back then. */
+                ContractStep(model: model)
                 if model.editable { actions }
             }
         }
@@ -365,6 +390,8 @@ private struct ApplicationForm: View {
 private struct DocumentRow: View {
     let kind: String
     let model: ApplicationModel
+    /// Whether a file can be added here; the papers follow the form, the signed contract its own rule.
+    var mayUpload: Bool?
     @State private var importing = false
     @State private var photo: PhotosPickerItem?
     @Environment(AppModel.self) private var app
@@ -399,7 +426,7 @@ private struct DocumentRow: View {
                     Text(l.t("documents.replacing", ["name": replacing.fileName])).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
             }
-            if model.editable {
+            if mayUpload ?? model.editable {
                 HStack(spacing: 8) {
                     Menu {
                         Button(l.t("ios.documents.fromFiles")) { importing = true }
@@ -419,7 +446,7 @@ private struct DocumentRow: View {
                     }
                     .disabled(model.uploading != nil)
                     .accessibilityLabel("\(l.t(entry == nil ? "documents.upload" : "documents.replace")): \(l.t(DocumentWords.label(kind)))")
-                    if let latest = entry?.latest, latest.status != "accepted" {
+                    if let latest = entry?.latest, latest.status != "accepted", model.editable {
                         Button(l.t("documents.remove")) {
                             Task { await app.attempt(done: "documents.removed") { try await model.remove(latest) } }
                         }
@@ -464,6 +491,46 @@ private struct DocumentRow: View {
 
 }
 
+/// The contract step (3.3.1): NetLet's final contract, to read, sign and send
+/// back — while NetLet holds the application, too. Drawn only once NetLet has
+/// attached one.
+private struct ContractStep: View {
+    let model: ApplicationModel
+    @State private var preview: URL?
+    @State private var opening = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        if let contract = model.current("contract")?.latest {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(l.t("documents.contractTitle")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+                Text(l.t("documents.contractNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                Button {
+                    Task { await open(contract) }
+                } label: {
+                    Label(contract.fileName, systemImage: opening ? "hourglass" : "paperclip").font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                }
+                .buttonStyle(.tap)
+                .disabled(opening)
+                DocumentRow(kind: "signed_contract", model: model, mayUpload: model.current("signed_contract")?.latest.status != "accepted")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
+            .quickLookPreview($preview)
+        }
+    }
+
+    private func open(_ document: ApplicationDocument) async {
+        opening = true
+        defer { opening = false }
+        var file: URL?
+        if await app.attempt(fallback: "documents.failed", { file = try await app.services.seller.downloadDocument(id: document.id, fileName: document.fileName) }) {
+            preview = file
+        }
+    }
+}
+
 /// A document kind's words and a file's size, shared by the applicant's
 /// form and the administrator's review.
 enum DocumentWords {
@@ -473,6 +540,8 @@ enum DocumentWords {
         case "signatory_id": return "documents.kindSignatoryId"
         case "iban_letter": return "documents.kindIbanLetter"
         case "authorisation": return "documents.kindAuthorisation"
+        case "contract": return "documents.kindContract"
+        case "signed_contract": return "documents.kindSignedContract"
         default: return "documents.kindOther"
         }
     }
@@ -483,6 +552,8 @@ enum DocumentWords {
         case "signatory_id": return "documents.hintSignatoryId"
         case "iban_letter": return "documents.hintIbanLetter"
         case "authorisation": return "documents.hintAuthorisation"
+        case "contract": return "documents.hintContract"
+        case "signed_contract": return "documents.hintSignedContract"
         default: return "documents.hintOther"
         }
     }

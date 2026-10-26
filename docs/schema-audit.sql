@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 66 tables, 700 columns, 126 indexes, 147 foreign keys, 19 enums, what later migrations dropped, and the seed rows.
+-- Checks 68 tables, 735 columns, 129 indexes, 155 foreign keys, 19 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -32,18 +32,17 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('bundle_items', 'bundle_id:n,id:pnd,position:nd,quantity:nd,variant_id:n', 'bundle_items_unique:u', 'bundle_id>bundles:c,variant_id>product_variants:c'),
   ('bundles', 'active:nd,bundle_price:n,created_at:nd,id:pnd,name:n,name_ar,updated_at:nd,vendor_id', 'bundles_vendor_idx', 'vendor_id>vendors:c'),
   ('cart_item_addons', 'addon_id:n,cart_item_id:n,id:pnd', 'cart_item_addons_unique:u', 'addon_id>product_addons:c,cart_item_id>cart_items:c'),
-  ('cart_items', 'address_id,bundle_id,cart_id:n,created_at:nd,id:pnd,quantity:nd,updated_at:nd,variant_id:n', 'cart_items_cart_id_idx,cart_items_cart_variant_unique:u', 'address_id>customer_addresses:n,bundle_id>bundles:n,cart_id>carts:c,variant_id>product_variants:c'),
+  ('cart_items', 'address_id,bundle_id,cart_id:n,created_at:nd,delivery_choice:nd,id:pnd,quantity:nd,updated_at:nd,variant_id:n', 'cart_items_cart_id_idx,cart_items_cart_variant_unique:u', 'address_id>customer_addresses:n,bundle_id>bundles:n,cart_id>carts:c,variant_id>product_variants:c'),
   ('carts', 'created_at:nd,id:pn,updated_at:nd,user_id', 'carts_user_id_idx', 'user_id>users:c'),
   ('categories', 'created_at:nd,id:pnd,name:n,name_ar,parent_id,position:nd,slug:n', 'categories_slug_unique:u', ''),
-  ('conversation_messages', 'author_id,body:n,conversation_id:n,created_at:nd,id:pnd,order_id,product_id,product_title,side:n', 'conversation_messages_thread_idx', 'author_id>users:n,conversation_id>conversations:c,order_id>orders:n,product_id>products:n'),
-  ('conversations', 'created_at:nd,id:pnd,last_message_at:nd,shopper_read_at,user_id:n,vendor_id:n,vendor_read_at', 'conversations_pair_unique:u,conversations_user_idx,conversations_vendor_idx', 'user_id>users:c,vendor_id>vendors:c'),
+  ('commission_proposals', 'created_at:nd,created_by,decided_at,decided_by,decision_note,fixed,id:pnd,percent,product_id,reason,status:nd,vendor_id:n', 'commission_proposals_open_unique:uw,commission_proposals_status_idx', 'created_by>users:n,decided_by>users:n,product_id>products:c,vendor_id>vendors:c'),
   ('courier_members', 'courier_id:n,created_at:nd,id:pnd,user_id:n', 'courier_members_unique:u,courier_members_user_idx', 'courier_id>couriers:c,user_id>users:c'),
   ('couriers', 'contact_email,contact_phone,created_at:nd,id:pnd,name:n,name_ar,status:nd,updated_at:nd', 'couriers_status_idx', ''),
   ('customer_addresses', 'address_line:n,address_notes,apartment,area,avenue,block,building,contact_name,contact_phone,created_at:nd,floor,governorate,id:pnd,label:n,paci_number,pin,street,updated_at:nd,user_id:n', 'customer_addresses_user_idx', 'user_id>users:c'),
   ('customer_notification_preferences', 'created_at:nd,enabled:nd,id:pnd,kind:n,updated_at:nd,user_id:n', 'customer_notification_user_id_idx,customer_notification_user_kind_unique:u', 'user_id>users:c'),
   ('customer_preferences', 'cart_id,created_at:nd,delivery_zone_id,id:pnd,locale,notify_email:nd,updated_at:nd,user_id:n,wishlist_phone', 'customer_preferences_user_id_unique:u,customer_preferences_wishlist_phone_unique:uw', 'user_id>users:c'),
   ('damage_claims', 'awarded_amount,claimed_amount:n,courier_id,courier_responded_at,courier_response,created_at:nd,decided_at,decided_by,decision_note,description:n,evidence_url,filed_as:n,filed_by,id:pnd,line_ids:n,order_id:n,parcel_key:n,status:nd,updated_at:nd,vendor_id,vendor_name', 'damage_claims_courier_idx,damage_claims_open_unique:uw,damage_claims_order_idx', 'courier_id>couriers:n,decided_by>users:n,filed_by>users:n,order_id>orders:c,vendor_id>vendors:n'),
-  ('delivery_ratings', 'comment,courier_id,created_at:nd,id:pnd,order_id:n,parcel_key:n,rating:n,updated_at:nd,user_id:n,vendor_id,vendor_name', 'delivery_ratings_courier_idx,delivery_ratings_parcel_unique:u,delivery_ratings_vendor_idx', 'courier_id>couriers:n,order_id>orders:c,user_id>users:c,vendor_id>vendors:n'),
+  ('delivery_ratings', 'comment,condition,conduct,courier_id,created_at:nd,id:pnd,order_id:n,parcel_key:n,rating:n,speed,updated_at:nd,user_id:n,vendor_id,vendor_name', 'delivery_ratings_courier_idx,delivery_ratings_parcel_unique:u,delivery_ratings_vendor_idx', 'courier_id>couriers:n,order_id>orders:c,user_id>users:c,vendor_id>vendors:n'),
   ('discount_codes', 'code:n,created_at:nd,ends_at,id:pnd,kind:nd,max_redemptions,min_spend,per_shopper:nd,starts_at,value:n', 'discount_codes_code_unique:u', ''),
   ('discount_redemptions', 'amount:n,code_id:n,created_at:nd,id:pnd,order_id,user_id', 'discount_redemptions_order_unique:u,discount_redemptions_user_idx', 'code_id>discount_codes:c,order_id>orders:n,user_id>users:n'),
   ('driver_positions', 'accuracy_m,courier_id:n,position:n,recorded_at:nd,user_id:pn', '', 'courier_id>couriers:c,user_id>users:c'),
@@ -64,30 +63,33 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('notification_deliveries', 'address:n,attempts:nd,channel:n,created_at:nd,id:pnd,last_error,next_attempt_at:nd,notification_id:n,sent_at,status:nd', 'notification_deliveries_due_idx:w,notification_deliveries_once_idx:u', 'notification_id>notifications:c'),
   ('notifications', 'created_at:nd,dedupe_key:n,id:pnd,kind:n,link,message_key:n,params:nd,read_at,user_id:n', 'notifications_unread_idx:w,notifications_user_created_idx,notifications_user_dedupe_idx:u', 'user_id>users:c'),
   ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
-  ('order_items', 'bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,destination,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,order_id>orders:c,product_id>products:n,variant_id>product_variants:n,vendor_id>vendors:n'),
+  ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
   ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email:n,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
   ('payout_files', 'created_at:nd,created_by,id:pnd', '', 'created_by>users:n'),
   ('payout_run_items', 'amount:n,booking_id,charge_id,id:pnd,order_id,order_reference:n,run_id:n,vendor_id', 'payout_run_items_order_idx,payout_run_items_run_booking_unique:u,payout_run_items_run_charge_unique:u,payout_run_items_run_order_unique:u', 'booking_id>ad_bookings:n,charge_id>fulfilment_charges:n,order_id>orders:n,run_id>payout_runs:c,vendor_id>vendors:n'),
   ('payout_runs', 'bank_reference,file_id,iban_used,id:pnd,paid_at,paid_by,prepared_at,prepared_by,status:nd,total:n,vendor_id,vendor_name:n', 'payout_runs_status_idx,payout_runs_vendor_idx', 'file_id>payout_files:n,paid_by>users:n,prepared_by>users:n,vendor_id>vendors:n'),
-  ('point_entries', 'created_at:nd,id:pnd,note,order_id,order_item_id,points:n,pot:nd,reason:n,referral_id,settled_at,user_id:n', 'point_entries_affiliate_line_unique:uw,point_entries_affiliate_order_unique:uw,point_entries_pot_idx,point_entries_referral_reason_unique:uw,point_entries_user_idx', 'order_id>orders:n,order_item_id>order_items:n,referral_id>referrals:n,user_id>users:c'),
+  ('platform_settings', 'key:pn,updated_at:nd,updated_by,value:n', '', 'updated_by>users:n'),
+  ('point_entries', 'available_at,created_at:nd,id:pnd,note,order_id,order_item_id,points:n,pot:nd,reason:n,referral_id,settled_at,user_id:n', 'point_entries_affiliate_line_unique:uw,point_entries_affiliate_order_unique:uw,point_entries_invite_commission_unique:uw,point_entries_pot_idx,point_entries_product_referral_unique:uw,point_entries_referral_reason_unique:uw,point_entries_referral_reversal_unique:uw,point_entries_user_idx', 'order_id>orders:n,order_item_id>order_items:n,referral_id>referrals:n,user_id>users:c'),
   ('price_offers', 'answered_at,answered_by,asked_price:n,created_at:nd,expires_at,id:pnd,list_price:n,offered_price,product_id,product_title:n,quantity:nd,shopper_note,status:nd,updated_at:nd,used_on_order_id,user_id:n,variant_id:n,vendor_id,vendor_note', 'price_offers_open_unique:uw,price_offers_user_idx,price_offers_variant_idx,price_offers_vendor_idx', 'answered_by>users:n,product_id>products:n,used_on_order_id>orders:n,user_id>users:c,variant_id>product_variants:c,vendor_id>vendors:n'),
   ('product_addons', 'created_at:nd,id:pnd,kind:nd,label:n,label_ar,position:nd,price:n,product_id:n', 'product_addons_product_idx', 'product_id>products:c'),
   ('product_images', 'alt_text,created_at:nd,id:pnd,kind:nd,position:nd,poster_url,product_id:n,url:n', 'product_images_product_id_idx', 'product_id>products:c'),
   ('product_variants', 'centre_id,compare_at_price,created_at:nd,id:pnd,low_stock_at,member_price,options:nd,position:nd,preorder_release_at,preorder_stock:nd,price:n,product_id:n,sku,step_amount:nd,stock:nd,title:nd,unit:nd,updated_at:nd', 'product_variants_product_id_idx,product_variants_product_sku_unique:u', 'centre_id>fulfilment_centres:r,product_id>products:c'),
-  ('products', 'accepts_offers,attributes:nd,category_id,commission_fixed,commission_percent,created_at:nd,delivery_speed,description,description_ar,handle:n,id:pnd,review_note,size_chart,size_class,status:nd,tags:nd,title:n,title_ar,updated_at:nd,vendor_id:n', 'products_category_id_idx,products_handle_unique:u,products_status_idx,products_vendor_id_idx', 'category_id>categories:n,vendor_id>vendors:c'),
+  ('products', 'accepts_offers,affiliate_percent,attributes:nd,category_id,commission_fixed,commission_percent,created_at:nd,delivery_speed,description,description_ar,handle:n,id:pnd,review_note,size_chart,size_class,status:nd,tags:nd,title:n,title_ar,updated_at:nd,vendor_id:n', 'products_affiliate_idx:w,products_category_id_idx,products_handle_unique:u,products_status_idx,products_vendor_id_idx', 'category_id>categories:n,vendor_id>vendors:c'),
   ('referrals', 'created_at:nd,id:pnd,qualified_at,qualified_order_id,referred_id:n,referrer_id:n', 'referrals_referred_unique:u,referrals_referrer_idx', 'qualified_order_id>orders:n,referred_id>users:c,referrer_id>users:c'),
-  ('return_requests', 'collected_at,created_at:nd,decided_at,decided_by,decline_reason,id:pnd,kind:n,note,order_id:n,order_item_id:n,reason:n,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked:nd,status:nd,updated_at:nd,user_id,vendor_id', 'return_requests_open_unique:uw,return_requests_user_idx,return_requests_vendor_idx', 'order_id>orders:c,order_item_id>order_items:c,replacement_order_id>orders:n,user_id>users:n,vendor_id>vendors:n'),
+  ('return_requests', 'ai_suggestion,ai_summary,collected_at,confirmed_at,confirmed_by,created_at:nd,decided_at,decided_by,decline_reason,id:pnd,kind:n,note,order_id:n,order_item_id:n,reason:n,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked:nd,status:nd,updated_at:nd,user_id,vendor_id,vendor_responded_at,vendor_response', 'return_requests_open_unique:uw,return_requests_user_idx,return_requests_vendor_idx', 'confirmed_by>users:n,order_id>orders:c,order_item_id>order_items:c,replacement_order_id>orders:n,user_id>users:n,vendor_id>vendors:n'),
   ('reviews', 'body,created_at:nd,hidden_at,hidden_reason,id:pnd,order_item_id:n,product_id,product_title:n,rating:n,title,updated_at:nd,user_id:n,vendor_id,vendor_replied_at,vendor_reply', 'reviews_order_item_unique:u,reviews_product_idx,reviews_user_idx,reviews_vendor_idx', 'order_item_id>order_items:c,product_id>products:n,user_id>users:c,vendor_id>vendors:n'),
   ('saved_products', 'created_at:nd,id:pnd,product_id:n,user_id:n', 'saved_products_user_id_idx,saved_products_user_product_unique:u', 'user_id>users:c'),
+  ('staff_grants', 'capability:n,created_at:nd,granted_by,user_id:n', '', 'granted_by>users:n,user_id>users:c'),
   ('stock_movements', 'actor_id,created_at:nd,delta:n,id:pnd,note,reason:n,resulting:n,variant_id:n', 'stock_movements_created_idx,stock_movements_variant_id_idx', 'actor_id>users:n,variant_id>product_variants:c'),
   ('subscriptions', 'address_id,created_at:nd,id:pnd,interval_weeks:n,last_order_id,last_outcome,last_run_on,next_run_on:n,paused_reason,price_ceiling:n,product_id,product_title:n,quantity:n,status:nd,updated_at:nd,user_id:n,variant_id,variant_title,vendor_id', 'subscriptions_due_idx,subscriptions_one_open:uw,subscriptions_user_idx', 'address_id>customer_addresses:n,last_order_id>orders:n,product_id>products:n,user_id>users:c,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('support_conversations', 'created_at:nd,id:pnd,last_message_at:nd,order_id,order_reference,shopper_read_at,staff_read_at,status:nd,topic:n,user_id:n', 'support_conversations_status_idx,support_conversations_user_idx', 'order_id>orders:n,user_id>users:c'),
   ('support_messages', 'answer,author:n,author_id,body,conversation_id:n,created_at:nd,id:pnd', 'support_messages_conversation_idx', 'author_id>users:n,conversation_id>support_conversations:c'),
   ('users', 'audit_seen_at,created_at:nd,email:n,id:pnd,last_signed_in:nd,name,password_hash,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_supabase_uid_unique:uw', ''),
-  ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
+  ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_fixed,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
   ('vendor_members', 'created_at:nd,id:pnd,role:nd,user_id:n,vendor_id:n', 'vendor_members_user_id_idx,vendor_members_vendor_user_unique:u', 'user_id>users:c,vendor_id>vendors:c'),
-  ('vendors', 'accepts_cod:nd,accepts_offers:nd,address_line,auto_publish:nd,badges:nd,cod_ceiling,commission_fixed,commission_percent:nd,contact_email,contact_phone,created_at:nd,delivery_flat,delivery_free_over,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,governorate,id:pnd,licence_expires_at,licence_number,logo_url,name:n,name_ar,payout_iban,slug:n,status:nd,subscription_percent,under_platform_licence:nd,updated_at:nd', 'vendors_slug_unique:u', ''),
+  ('vendor_warnings', 'created_at:nd,expires_at:n,id:pnd,issued_by,product_id,reason:n,vendor_id:n,withdrawn_at,withdrawn_by', 'vendor_warnings_vendor_idx', 'issued_by>users:n,product_id>products:n,vendor_id>vendors:c,withdrawn_by>users:n'),
+  ('vendors', 'accepts_cod:nd,accepts_offers:nd,address_line,auto_publish:nd,badges:nd,cod_ceiling,commission_fixed,commission_percent:nd,contact_email,contact_phone,created_at:nd,delivery_courier_id,delivery_flat,delivery_free_over,delivery_mode:nd,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,fast_delivery_fee,fast_delivery_speed,governorate,id:pnd,licence_expires_at,licence_number,logo_url,name:n,name_ar,payout_iban,slug:n,status:nd,subscription_percent,under_platform_licence:nd,updated_at:nd,warnings_since', 'vendors_slug_unique:u', 'delivery_courier_id>couriers:n'),
   ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at:nd,id:pnd,note,product_id:n,quantity:nd,updated_at:nd,wishlist_id:n', 'wishlist_items_list_id_idx,wishlist_items_list_product_unique:u', 'claimed_by>users:n,wishlist_id>wishlists:c'),
   ('wishlists', 'created_at:nd,id:pnd,owner_name,share_token:n,title:n,updated_at:nd,user_id:n,visibility:nd', 'wishlists_share_token_unique:u,wishlists_user_id_idx', 'user_id>users:c')
 ),
@@ -115,7 +117,9 @@ expected_enums (type_name, labels) AS (VALUES
 retired (kind, table_name, object_name) AS (VALUES
   ('index', '', 'product_variants_sku_unique'),
   ('index', '', 'users_firebase_uid_unique'),
-  ('column', 'users', 'firebase_uid')
+  ('column', 'users', 'firebase_uid'),
+  ('table', '', 'conversation_messages'),
+  ('table', '', 'conversations')
 ),
 departments (slug) AS (VALUES ('electronics'), ('home-and-kitchen'), ('beauty'), ('style'), ('grocery')),
 
@@ -219,7 +223,7 @@ problems (sort, area, object, finding) AS (
   SELECT 7, 'leftover', CASE WHEN kind = 'column' THEN table_name || '.' || object_name ELSE object_name END,
     'a later migration dropped this ' || kind || '; it is still here'
   FROM retired r
-  WHERE (kind = 'index' AND to_regclass(format('public.%I', object_name)) IS NOT NULL)
+  WHERE (kind IN ('index', 'table') AND to_regclass(format('public.%I', object_name)) IS NOT NULL)
      OR (kind = 'column' AND EXISTS (SELECT 1 FROM pg_attribute a
            WHERE a.attrelid = to_regclass(format('public.%I', r.table_name)) AND a.attname = r.object_name AND NOT a.attisdropped))
   UNION ALL
@@ -234,7 +238,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 66 tables' AS object,
+    count(*) || ' of 68 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -248,7 +252,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 66 tables, 700 columns, 126 indexes, 147 foreign keys, 19 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 68 tables, 735 columns, 129 indexes, 155 foreign keys, 19 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

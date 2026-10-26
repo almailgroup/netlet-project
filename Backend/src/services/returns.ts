@@ -24,6 +24,7 @@ import {
   MAX_RETURN_NOTE,
   refundFor,
   returnActions,
+  sellerProposal,
   type ReturnAction,
   type ReturnKind,
   type ReturnReason,
@@ -39,7 +40,9 @@ import { auditActor } from "./inventory.js";
 import { takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
+import { reverseReferralLine } from "./referral.js";
 import { tellReturn, withProductAlerts } from "./notifications.js";
+import { readReturnNote } from "./returnReading.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -140,6 +143,9 @@ export async function requestReturn(
     /* The store hears it was asked. The shopper has the decision on screen
        already, so only a later one by a person is sent to them. */
     await tellReturn(row.id, "requested");
+    /* "Other" is read by a model before anybody opens it (3.5.2), briefly:
+       a reading that does not come back in time is asked for again from the desk. */
+    if (input.reason === "other") await readReturnNote(row.id, 5_000);
     return row;
   } catch (error) {
     if (violatesUnique(error, "return_requests_open_unique")) throw new ReturnRefused("returns.alreadyOpen");
@@ -178,7 +184,7 @@ export async function cancelReturn(userId: number, requestId: number): Promise<v
     .where(and(
       eq(returnRequests.id, requestId),
       eq(returnRequests.userId, userId),
-      inArray(returnRequests.status, ["requested", "approved"]),
+      inArray(returnRequests.status, ["requested", "review", "approved"]),
     ))
     .returning({ id: returnRequests.id });
   if (!row) throw new ReturnRefused("returns.moved");
@@ -188,8 +194,13 @@ export async function cancelReturn(userId: number, requestId: number): Promise<v
 
 export type ReturnDeskRow = Awaited<ReturnType<typeof listReturns>>[number];
 
-/** Work still waiting on the store: one definition for the tile and the tab. */
-const WAITING = sql`(${returnRequests.status} in ('requested','approved','collected') or (${returnRequests.status} = 'refunded' and ${returnRequests.refundPaidAt} is null))`;
+/**
+ * Work still waiting: one definition for the tile and the tab. A request in
+ * `review` waits on NetLet, not on the store, so it is an administrator's.
+ */
+const waiting = (who: "seller" | "admin") => who === "admin"
+  ? sql`(${returnRequests.status} in ('requested','review','approved','collected') or (${returnRequests.status} = 'refunded' and ${returnRequests.refundPaidAt} is null))`
+  : sql`(${returnRequests.status} in ('requested','approved','collected') or (${returnRequests.status} = 'refunded' and ${returnRequests.refundPaidAt} is null))`;
 
 /** How many requests the desk reads. Open ones first, then the newest. */
 export const RETURN_PAGE = 100;
@@ -220,6 +231,12 @@ export async function listReturns(actor: Actor, filter: { open?: boolean } = {})
       status: returnRequests.status,
       decidedBy: returnRequests.decidedBy,
       declineReason: returnRequests.declineReason,
+      /* What a model read in the note, the seller's answer, and NetLet's confirmation (3.5.2). */
+      aiSummary: returnRequests.aiSummary,
+      aiSuggestion: returnRequests.aiSuggestion,
+      vendorResponse: returnRequests.vendorResponse,
+      vendorRespondedAt: returnRequests.vendorRespondedAt,
+      confirmedAt: returnRequests.confirmedAt,
       collectedAt: returnRequests.collectedAt,
       receivedAt: returnRequests.receivedAt,
       restocked: returnRequests.restocked,
@@ -242,10 +259,10 @@ export async function listReturns(actor: Actor, filter: { open?: boolean } = {})
       /* "To do" is what the waiting tile counts, refunds still owed in cash
          included — they left this view the moment the item was received, so
          the button that records the cash handed back had nowhere to be. */
-      filter.open ? WAITING : undefined,
+      filter.open ? waiting(actor.kind === "admin" ? "admin" : "seller") : undefined,
     ))
     .orderBy(
-      sql`case when ${returnRequests.status} in ('requested','approved','collected') then 0 when ${returnRequests.status} = 'refunded' and ${returnRequests.refundPaidAt} is null then 1 else 2 end`,
+      sql`case when ${returnRequests.status} in ('requested','review','approved','collected') then 0 when ${returnRequests.status} = 'refunded' and ${returnRequests.refundPaidAt} is null then 1 else 2 end`,
       desc(returnRequests.createdAt),
       desc(returnRequests.id),
     )
@@ -266,7 +283,7 @@ export async function countWaitingReturns(actor: Actor): Promise<number> {
     .from(returnRequests)
     .where(and(
       actor.kind === "vendor" ? eq(returnRequests.vendorId, actor.vendorId) : undefined,
-      WAITING,
+      waiting(actor.kind === "admin" ? "admin" : "seller"),
     ));
   return row?.n ?? 0;
 }
@@ -291,7 +308,7 @@ async function loadForActor(db: Db, actor: Actor, requestId: number) {
 async function recordReturnAct(
   db: Db,
   actor: Actor,
-  action: "return.decide" | "return.receive" | "return.refundPaid",
+  action: "return.decide" | "return.confirm" | "return.receive" | "return.refundPaid",
   requestId: number,
   before: Record<string, unknown>,
   after: Record<string, unknown>,
@@ -318,7 +335,16 @@ function assertAction(row: { status: string; kind: string; refundPaidAt: Date | 
   if (!returnActions(row, who).includes(action)) throw new ReturnRefused("returns.moved");
 }
 
-/** Answer a request a rule could not decide, or (an administrator) overrule one. */
+/**
+ * Answer a request (3.5.2).
+ *
+ * A seller's answer to a request no rule decided is a proposal: it moves to
+ * `review` with their words and, when they would decline, the reason the
+ * shopper would read. A seller disputing what a rule approved does the same
+ * before the item is collected. An administrator's answer is final — on a
+ * request in `review` it is the confirmation, audited as `return.confirm` —
+ * and only a final answer is told to the shopper.
+ */
 export async function decideReturn(
   actor: Actor,
   requestId: number,
@@ -327,22 +353,60 @@ export async function decideReturn(
 ): Promise<void> {
   const db = await handle();
   const row = await loadForActor(db, actor, requestId);
-  assertAction(row, actor, decision.approve ? "approve" : "decline");
-  const reason = decision.reason?.trim().slice(0, 400) || null;
-  if (!decision.approve && !reason) throw new ReturnRefused("returns.needsReason");
+  const reason = decision.reason?.replace(/\s+/g, " ").trim().slice(0, 400) || null;
+  const seller = actor.kind !== "admin";
 
+  if (seller) {
+    const action: ReturnAction = row.status === "approved" ? "dispute" : decision.approve ? "approve" : "decline";
+    if (action === "dispute" && decision.approve) throw new ReturnRefused("returns.moved");
+    assertAction(row, actor, action);
+    if (!decision.approve && !reason) throw new ReturnRefused("returns.needsReason");
+    const [moved] = await db
+      .update(returnRequests)
+      .set({
+        status: "review",
+        decidedBy: "seller",
+        decidedAt: now,
+        declineReason: decision.approve ? null : reason,
+        vendorResponse: reason,
+        vendorRespondedAt: now,
+      })
+      .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, row.status), isNull(returnRequests.collectedAt)))
+      .returning({ id: returnRequests.id });
+    if (!moved) throw new ReturnRefused("returns.moved");
+    await recordReturnAct(db, actor, "return.decide", requestId, { status: row.status }, {
+      status: "review",
+      proposes: decision.approve ? "approve" : "decline",
+      disputed: action === "dispute",
+      reason,
+    });
+    return;
+  }
+
+  assertAction(row, actor, decision.approve ? "approve" : "decline");
+  /* Confirming a seller's decline may keep the seller's words for the shopper. */
+  const declineReason = decision.approve ? null : reason ?? (row.status === "review" ? row.declineReason : null);
+  if (!decision.approve && !declineReason) throw new ReturnRefused("returns.needsReason");
+  const confirming = row.status === "review";
+  const proposal = sellerProposal(row);
   const [moved] = await db
     .update(returnRequests)
     .set({
       status: decision.approve ? "approved" : "declined",
-      decidedBy: actor.kind === "admin" ? "admin" : "seller",
+      /* NetLet confirming what the seller proposed leaves the seller as the one who answered. */
+      decidedBy: confirming && proposal === (decision.approve ? "approve" : "decline") ? "seller" : "admin",
       decidedAt: now,
-      declineReason: decision.approve ? null : reason,
+      declineReason,
+      confirmedBy: actor.userId,
+      confirmedAt: now,
     })
     .where(and(eq(returnRequests.id, requestId), eq(returnRequests.status, row.status)))
     .returning({ id: returnRequests.id });
   if (!moved) throw new ReturnRefused("returns.moved");
-  await recordReturnAct(db, actor, "return.decide", requestId, { status: row.status }, { status: decision.approve ? "approved" : "declined", reason });
+  await recordReturnAct(db, actor, confirming ? "return.confirm" : "return.decide", requestId, { status: row.status, proposes: proposal }, {
+    status: decision.approve ? "approved" : "declined",
+    reason: declineReason,
+  });
   await tellReturn(requestId, decision.approve ? "approved" : "declined");
 }
 
@@ -518,8 +582,11 @@ async function receive(
   /* A refund corrects the invoice with a credit note (3.6.6), never by
      editing it — issued after the refund has landed, repaired on read. */
   await issueQuietly(() => issueCreditNote(requestId, now), `the credit note for return ${requestId}`);
-  /* A refunded line takes back the affiliate's share of it (3.7). */
+  /* A refunded line takes back the affiliate's share of it (3.7), and the
+     referral commissions it earned (3.1.14) — still held, inside the window
+     the return came in, so they cancel before anybody could spend them. */
   await affiliateQuietly(() => reverseAffiliateLine(db, line.id), `reverse the affiliate share on line ${line.id}`);
+  await affiliateQuietly(() => reverseReferralLine(db, line.id), `reverse the referral commissions on line ${line.id}`);
   return { outcome: "refunded", refundAmount, replacementReference: null };
 }
 

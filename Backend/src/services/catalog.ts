@@ -45,7 +45,7 @@ import { getDb } from "./db.js";
 import { addMoney, multiplyMoney } from "../../../Shared/money.js";
 import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
-import { groupForDelivery, quoteDelivery, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
+import { effectiveChoice, groupForDelivery, offersFast, quoteDelivery, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
 import type { DestinedLine } from "../../../Shared/commerce/addresses.js";
 import { listAddresses } from "./addresses.js";
 import { codAvailability } from "../../../Shared/commerce/payment.js";
@@ -522,6 +522,10 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       bundleId: cartItems.bundleId,
       /* Which door this line is going to (3.2.6). Null is the order's own. */
       addressId: cartItems.addressId,
+      /* Which trip it takes (3.2.5), and what fast costs from its store. */
+      deliveryChoice: cartItems.deliveryChoice,
+      fastDeliveryFee: vendors.fastDeliveryFee,
+      fastDeliverySpeed: vendors.fastDeliverySpeed,
       variantId: productVariants.id,
       variantTitle: productVariants.title,
       price: productVariants.price,
@@ -667,6 +671,10 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     destination: row.addressId && doors.has(row.addressId)
       ? { id: row.addressId, label: doors.get(row.addressId)!.label }
       : null,
+    deliveryChoice: effectiveChoice(row.deliveryChoice, { fastFlat: row.fastDeliveryFee }),
+    fastDelivery: offersFast({ fastFlat: row.fastDeliveryFee })
+      ? { fee: money(row.fastDeliveryFee!), speed: isDeliverySpeed(row.fastDeliverySpeed) ? row.fastDeliverySpeed : null }
+      : null,
     quantity: row.quantity,
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     addons: row.extras.map(addon => ({
@@ -728,6 +736,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
            no language, and the page picks. */
         vendorNameAr: rows.find(line => line.vendorId === row.vendorId)?.vendorNameAr?.trim() || null,
         destinationLabel: row.destinationLabel ?? null,
+        ...(row.choice === "fast" ? { choice: "fast" as const } : {}),
         goods: money(row.goods),
         fee: money(row.fee),
         free: row.free,
@@ -753,12 +762,13 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 function deliveryFor(
   rows: {
     vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
+    fastDeliveryFee?: string | null; deliveryChoice?: string | null;
     charged: string; quantity: number; extrasTotal?: string; addressId?: number | null;
   }[],
   doors: Map<number, { label: string }>,
 ) {
   const rules = new Map<number | null, DeliveryRule>();
-  for (const row of rows) rules.set(row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver });
+  for (const row of rows) rules.set(row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver, fastFlat: row.fastDeliveryFee ?? null });
 
   const lines: DestinedLine[] = rows.map(row => {
     /* The extras count toward a seller's free-delivery threshold: they are
@@ -771,6 +781,7 @@ function deliveryFor(
       destinationId,
       destinationLabel: destinationId ? doors.get(destinationId)!.label : null,
       value,
+      choice: row.deliveryChoice === "fast" ? "fast" : "regular",
     };
   });
 
@@ -916,6 +927,23 @@ export async function removeCartLines(cartId: string, lineIds: string[]): Promis
   const ids = lineIds.map(Number).filter(Number.isInteger);
   if (ids.length) {
     await db.delete(cartItems).where(and(inArray(cartItems.id, ids), eq(cartItems.cartId, cartId)));
+  }
+  return getCart(cartId);
+}
+
+/**
+ * Choose the trip one line takes (3.2.5). Scoped by the cart, like every other
+ * write to a bag, so a guessed line id edits nothing. Fast on a store that
+ * offers no fast trip is stored as asked and read as regular
+ * (`effectiveChoice`), so a store adding a fast fee later does not change a
+ * line nobody touched.
+ */
+export async function setLineDeliveryChoice(cartId: string, lineId: string, choice: "regular" | "fast"): Promise<Cart | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const id = Number(lineId);
+  if (Number.isInteger(id)) {
+    await db.update(cartItems).set({ deliveryChoice: choice }).where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   }
   return getCart(cartId);
 }

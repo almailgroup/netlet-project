@@ -29,13 +29,31 @@ struct ReturnRequest: Decodable, Identifiable, Hashable, Sendable {
     var isOpen: Bool { ReferenceData.shared.rules.orderRules.openReturnStatuses.contains(status) }
 
     /// Withdrawable until the item has been collected, as the web offers it.
-    var mayWithdraw: Bool { status == "requested" || status == "approved" }
+    var mayWithdraw: Bool { status == "requested" || status == "review" || status == "approved" }
 }
 
 /// What asking for a return answers: the request as written, its status
 /// already decided where a rule could decide it.
 struct RequestedReturn: Decodable, Sendable {
     let status: String
+}
+
+/// What a delivery is rated on (3.4.4) — `RATING_PARTS` — and the overall,
+/// their average to a whole star, half up (`overallOf`).
+enum DeliveryRatingParts {
+    static let all = ["speed", "condition", "conduct"]
+
+    static func label(_ part: String) -> String {
+        switch part {
+        case "speed": return "delivery.partSpeed"
+        case "condition": return "delivery.partCondition"
+        default: return "delivery.partConduct"
+        }
+    }
+
+    static func overall(speed: Int, condition: Int, conduct: Int) -> Int {
+        Int((Double(speed + condition + conduct) / 3).rounded(.toNearestOrAwayFromZero))
+    }
 }
 
 /// One seller's goods to one door — what one driver carried
@@ -50,6 +68,10 @@ struct Parcel: Decodable, Identifiable, Hashable, Sendable {
     struct Rating: Decodable, Hashable, Sendable {
         let rating: Int
         let comment: String?
+        /// The three parts (3.4.4); nil on a rating given before they existed.
+        var speed: Int? = nil
+        var condition: Int? = nil
+        var conduct: Int? = nil
     }
 
     /// Whether it can be rated now: open from arrival for a window.

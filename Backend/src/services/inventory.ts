@@ -29,15 +29,18 @@ import {
   stockMovements,
   users,
   courierMembers,
+  couriers,
+  staffGrants,
   vendorMembers,
   vendors,
 } from "../../database/schema.js";
-import { assertCan, type Actor, type VendorRole } from "../../../Shared/inventory/permissions.js";
+import { assertCan, GRANTABLE, type Actor, type Capability, type VendorRole } from "../../../Shared/inventory/permissions.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../../../Shared/inventory/discountLicence.js";
 import { violatesUnique } from "../core/describeError.js";
-import { recordAudit, violationCount } from "./audit.js";
+import { recordAudit } from "./audit.js";
+import { standingWarnings } from "./warnings.js";
 import { memberPriceProblem } from "../../../Shared/commerce/membership.js";
 import { isValidMeasure, type SellUnit } from "../../../Shared/commerce/units.js";
 import { awardedBadges, vendorHealth, type HealthInputs } from "../../../Shared/inventory/vendorHealth.js";
@@ -69,6 +72,20 @@ export async function resolveActor(
 
   const db = await getDb();
   if (!db) return { kind: "customer", userId: user.id };
+  const resolved = await resolveRoleActor(db, user, vendorId);
+  /* What an administrator granted this account on its own (3.3.9), read with
+     every resolution like the membership is, so taking it back takes effect
+     on the next request. Only grantable capabilities are kept. */
+  const granted = await db.select({ capability: staffGrants.capability }).from(staffGrants).where(eq(staffGrants.userId, user.id));
+  const grants = granted.map(row => row.capability as Capability).filter(capability => GRANTABLE.includes(capability));
+  return grants.length && resolved.kind !== "admin" ? { ...resolved, grants } : resolved;
+}
+
+async function resolveRoleActor(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  user: { id: number; role: string },
+  vendorId?: number,
+): Promise<Actor> {
 
   const memberships = await db
     .select()
@@ -1123,31 +1140,11 @@ async function reviewProductNow(actor: Actor, productId: number, approve: boolea
   });
 
   /*
-   * Three violations suspend the vendor, which the requirements ask for.
-   *
-   * The count comes from the audit trail rather than a separate tally, so the
-   * number that triggers a suspension is the same number an administrator can
-   * read back and check. A second counter would eventually disagree with the
-   * evidence, and the evidence is the point.
+   * A rejection is not a warning (3.3.18). It used to be: the third rejection
+   * in a store's life suspended it, a missing photo counting like a
+   * counterfeit. A warning is now issued on purpose, with a reason the store
+   * reads (`warnings.ts`), and three standing ones suspend.
    */
-  if (!approve) {
-    const strikes = await violationCount(was.vendorId);
-    if (strikes >= 3) {
-      const [vendor] = await db.select().from(vendors).where(eq(vendors.id, was.vendorId)).limit(1);
-      if (vendor && vendor.status !== "suspended") {
-        await db.update(vendors).set({ status: "suspended" }).where(eq(vendors.id, was.vendorId));
-        await recordAudit({ id: null, email: null }, {
-          action: "vendor.setStatus",
-          subjectType: "vendor",
-          subjectId: was.vendorId,
-          subjectLabel: vendor.name,
-          vendorId: was.vendorId,
-          before: { status: vendor.status },
-          after: { status: "suspended", automatic: true, reason: "three-violations", strikes },
-        });
-      }
-    }
-  }
 }
 
 /**
@@ -1721,6 +1718,8 @@ export type PersonRow = {
   lastSignedIn: Date;
   createdAt: Date;
   vendors: { userId: number; vendorId: number; role: string; vendorName: string }[];
+  /** What this account holds by grant (3.3.9). */
+  grants: string[];
 };
 
 export async function listPeople(actor: Actor, options: { query?: string } & PageRequest = {}) {
@@ -1768,8 +1767,18 @@ export async function listPeople(actor: Actor, options: { query?: string } & Pag
     .innerJoin(vendors, eq(vendorMembers.vendorId, vendors.id))
     .where(inArray(vendorMembers.userId, rows.map(row => row.id)));
 
+  /* What each holds by grant (3.3.9), so the page can show and change it. */
+  const granted = await db
+    .select({ userId: staffGrants.userId, capability: staffGrants.capability })
+    .from(staffGrants)
+    .where(inArray(staffGrants.userId, rows.map(row => row.id)));
+
   return {
-    rows: rows.map(row => ({ ...row, vendors: memberships.filter(m => m.userId === row.id) })),
+    rows: rows.map(row => ({
+      ...row,
+      vendors: memberships.filter(m => m.userId === row.id),
+      grants: granted.filter(grant => grant.userId === row.id).map(grant => grant.capability),
+    })),
     total,
     page,
     pageSize,
@@ -1944,9 +1953,8 @@ export async function vendorHealthFor(actor: Actor, vendorId?: number) {
   const inputs: HealthInputs = {
     published: countOf("published"),
     pendingReview: countOf("pending_review"),
-    // The audit trail is already the record of rejections; a second tally
-    // could disagree with the evidence an administrator can read back.
-    rejections: await violationCount(scope),
+    // Warnings still standing, against the three that suspend (3.3.18).
+    warnings: await standingWarnings(scope),
     outOfStock: stock?.outOfStock ?? 0,
     variants: stock?.variants ?? 0,
     rating: null,
@@ -2130,7 +2138,11 @@ async function setVendorStatusNow(actor: Actor, vendorId: number, status: "pendi
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
-  await db.update(vendors).set({ status }).where(eq(vendors.id, vendorId));
+  /* Reinstating a suspended store restarts its count of warnings (3.3.18):
+     the ones that suspended it have been answered, and the next one must not
+     suspend it again on their account. */
+  const reinstated = was?.status === "suspended" && status === "approved";
+  await db.update(vendors).set({ status, ...(reinstated ? { warningsSince: new Date() } : {}) }).where(eq(vendors.id, vendorId));
 
   await recordAudit(await auditActor(actor), {
     action: "vendor.setStatus",
@@ -2139,7 +2151,7 @@ async function setVendorStatusNow(actor: Actor, vendorId: number, status: "pendi
     subjectLabel: was?.name ?? null,
     vendorId,
     before: was ? { status: was.status } : null,
-    after: { status },
+    after: { status, ...(reinstated ? { warningsRestarted: true } : {}) },
   });
 }
 
@@ -2208,6 +2220,7 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
     if (taken) throw new Error("EMAIL_TAKEN");
   }
 
+  await assertCourierUsable(db, input.deliveryCourierId);
   const [vendor] = await db
     .insert(vendors)
     .values({
@@ -2351,11 +2364,30 @@ export type StoreDetailsPatch = {
   deliveryFreeOver?: string | null;
   deliverySpeed?: string | null;
   deliveryProvider?: string | null;
+  /* The fast trip (3.2.5): its fee, null for none, and the band it promises. */
+  fastDeliveryFee?: string | null;
+  fastDeliverySpeed?: string | null;
+  /* Who carries the store's parcels (3.3.13): its own company, or NetLet's
+     service — and, when its own company is on NetLet, which. */
+  deliveryMode?: "own" | "netlet";
+  deliveryCourierId?: number | null;
   underPlatformLicence?: boolean;
   acceptsCod?: boolean;
   codCeiling?: string | null;
   subscriptionPercent?: string | null;
 };
+
+/**
+ * A delivery company a store names as its own carrier (3.3.13) must exist and
+ * be one NetLet works with — refused as a key, never a foreign-key 500, and
+ * never a suspended company, to which work may not be given.
+ */
+async function assertCourierUsable(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, courierId: number | null | undefined): Promise<void> {
+  if (courierId === null || courierId === undefined) return;
+  const [company] = await db.select({ status: couriers.status }).from(couriers).where(eq(couriers.id, courierId)).limit(1);
+  if (!company) throw new Error("dispatch.unknownCourier");
+  if (company.status !== "active") throw new Error("dispatch.courierSuspended");
+}
 
 /** Trimmed, with a blank meaning "no value" rather than an empty string. */
 const textOrNull = (value: string | null | undefined) => value?.trim() || null;
@@ -2400,6 +2432,10 @@ export function storeDetailColumns(patch: StoreDetailsPatch) {
     ...(has("deliveryFreeOver") ? { deliveryFreeOver: textOrNull(patch.deliveryFreeOver) } : {}),
     ...(has("deliverySpeed") ? { deliverySpeed: textOrNull(patch.deliverySpeed) } : {}),
     ...(has("deliveryProvider") ? { deliveryProvider: textOrNull(patch.deliveryProvider) } : {}),
+    ...(has("fastDeliveryFee") ? { fastDeliveryFee: textOrNull(patch.fastDeliveryFee) } : {}),
+    ...(has("fastDeliverySpeed") ? { fastDeliverySpeed: textOrNull(patch.fastDeliverySpeed) } : {}),
+    ...(has("deliveryMode") ? { deliveryMode: patch.deliveryMode } : {}),
+    ...(has("deliveryCourierId") ? { deliveryCourierId: patch.deliveryCourierId ?? null } : {}),
     ...(has("underPlatformLicence") ? { underPlatformLicence: patch.underPlatformLicence } : {}),
     ...(has("acceptsCod") ? { acceptsCod: patch.acceptsCod } : {}),
     ...(has("codCeiling") ? { codCeiling: textOrNull(patch.codCeiling) } : {}),
@@ -2422,6 +2458,7 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
   const [was] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
   if (!was) throw new Error("NOT_FOUND");
 
+  await assertCourierUsable(db, patch.deliveryCourierId);
   const next = {
     ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
     ...storeDetailColumns(patch),

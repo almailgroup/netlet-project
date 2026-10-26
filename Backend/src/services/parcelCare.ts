@@ -24,6 +24,9 @@ import {
   cleanDeliveryComment,
   deliveryRatingState,
   isValidRating,
+  overallOf,
+  partsValid,
+  type RatingPart,
   parcelArrivedAt,
   scoresByCarrier,
   type DeliveryRatingState,
@@ -81,6 +84,7 @@ export async function parcelsOfOrder(db: Db, orderId: number): Promise<CareParce
       destination: orderItems.destination,
       courierId: orderItems.courierId,
       centreId: orderItems.centreId,
+      deliveryChoice: orderItems.deliveryChoice,
       lineTotal: orderItems.lineTotal,
       deliveredAt: orderItems.deliveredAt,
     })
@@ -126,7 +130,7 @@ export type ShopperParcel = {
   arrivedAt: Date | null;
   /** The lines in it, so a claim can name which were damaged — less any an accepted claim already paid for. */
   lines: { lineId: number; productTitle: string; lineTotal: string }[];
-  rating: { rating: number; comment: string | null } | null;
+  rating: { rating: number; comment: string | null; speed: number | null; condition: number | null; conduct: number | null } | null;
   ratingState: DeliveryRatingState;
   /** The latest claim on it, if any — what the shopper is waiting to hear. */
   claim: { id: number; status: string; claimedAmount: string; awardedAmount: string | null; decisionNote: string | null } | null;
@@ -146,7 +150,14 @@ export async function parcelsForShopper(userId: number, reference: string, now =
   if (parcels.length === 0) return [];
 
   const ratings = await db
-    .select({ parcelKey: deliveryRatings.parcelKey, rating: deliveryRatings.rating, comment: deliveryRatings.comment })
+    .select({
+      parcelKey: deliveryRatings.parcelKey,
+      rating: deliveryRatings.rating,
+      comment: deliveryRatings.comment,
+      speed: deliveryRatings.speed,
+      condition: deliveryRatings.condition,
+      conduct: deliveryRatings.conduct,
+    })
     .from(deliveryRatings)
     .where(eq(deliveryRatings.orderId, order.id));
   const claims = await db
@@ -179,7 +190,7 @@ export async function parcelsForShopper(userId: number, reference: string, now =
       state: parcel.state,
       arrivedAt: parcel.arrivedAt,
       lines: unpaid.map(line => ({ lineId: line.lineId, productTitle: line.productTitle, lineTotal: line.lineTotal })),
-      rating: rating ? { rating: rating.rating, comment: rating.comment } : null,
+      rating: rating ? { rating: rating.rating, comment: rating.comment, speed: rating.speed, condition: rating.condition, conduct: rating.conduct } : null,
       ratingState: deliveryRatingState(parcel.arrivedAt, now),
       claim: claim
         ? { id: claim.id, status: claim.status, claimedAmount: claim.claimedAmount, awardedAmount: claim.awardedAmount, decisionNote: claim.decisionNote }
@@ -197,13 +208,21 @@ export async function parcelsForShopper(userId: number, reference: string, now =
  * is first written and kept on a change: the score is about who carried it,
  * and a parcel's assignment moving afterwards is a correction to the board,
  * not a different delivery.
+ *
+ * Rated on its three parts (3.4.4), and the overall is their average
+ * (`overallOf`). A rating of one figure alone is still taken — the app on a
+ * phone that has not updated sends one — and stores no parts.
  */
 export async function rateDelivery(
   userId: number,
-  input: { reference: string; parcelKey: string; rating: number; comment?: string | null },
+  input: { reference: string; parcelKey: string; rating?: number | null; speed?: number | null; condition?: number | null; conduct?: number | null; comment?: string | null },
   now = new Date(),
 ): Promise<void> {
-  if (!isValidRating(input.rating)) throw new ParcelCareRefused("delivery.invalidRating");
+  const parts = input.speed != null || input.condition != null || input.conduct != null ? { speed: input.speed, condition: input.condition, conduct: input.conduct } : null;
+  if (parts && !partsValid(parts)) throw new ParcelCareRefused("delivery.invalidRating");
+  const rating = parts && partsValid(parts) ? overallOf(parts) : input.rating;
+  if (rating == null || !isValidRating(rating)) throw new ParcelCareRefused("delivery.invalidRating");
+  const stored = parts && partsValid(parts) ? parts : { speed: null, condition: null, conduct: null };
   const db = await handle();
   const order = await ownOrder(db, userId, input.reference);
   const parcel = (await parcelsOfOrder(db, order.id)).find(one => one.key === input.parcelKey);
@@ -222,21 +241,22 @@ export async function rateDelivery(
       vendorId: parcel.vendorId,
       vendorName: parcel.vendorName,
       courierId: parcel.courierId,
-      rating: input.rating,
+      rating,
+      ...stored,
       comment,
     })
     .onConflictDoUpdate({
       target: [deliveryRatings.orderId, deliveryRatings.parcelKey],
-      set: { rating: input.rating, comment, updatedAt: now },
+      set: { rating, ...stored, comment, updatedAt: now },
     });
 }
 
 /* ------------------------------------------------------------- the score --- */
 
 export type DeliveryScores = {
-  scores: { courierId: number | null; courierName: string | null; count: number; average: number; distribution: Record<number, number> }[];
+  scores: { courierId: number | null; courierName: string | null; count: number; average: number; distribution: Record<number, number>; parts: Record<RatingPart, number | null> }[];
   /** The latest comments, without the shopper's identity — never a name, never an email. */
-  recent: { rating: number; comment: string | null; createdAt: Date; courierId: number | null; vendorName: string | null }[];
+  recent: { rating: number; speed: number | null; condition: number | null; conduct: number | null; comment: string | null; createdAt: Date; courierId: number | null; vendorName: string | null }[];
 };
 
 /** How many recent comments the page shows. A page, not an archive. */
@@ -256,12 +276,21 @@ export async function deliveryScores(actor: Actor): Promise<DeliveryScores> {
   const mine = scope === "all" ? undefined : inArray(deliveryRatings.courierId, scope.length ? scope : [-1]);
 
   const rows = await db
-    .select({ courierId: deliveryRatings.courierId, rating: deliveryRatings.rating })
+    .select({
+      courierId: deliveryRatings.courierId,
+      rating: deliveryRatings.rating,
+      speed: deliveryRatings.speed,
+      condition: deliveryRatings.condition,
+      conduct: deliveryRatings.conduct,
+    })
     .from(deliveryRatings)
     .where(mine);
   const recent = await db
     .select({
       rating: deliveryRatings.rating,
+      speed: deliveryRatings.speed,
+      condition: deliveryRatings.condition,
+      conduct: deliveryRatings.conduct,
       comment: deliveryRatings.comment,
       createdAt: deliveryRatings.createdAt,
       courierId: deliveryRatings.courierId,
@@ -278,6 +307,7 @@ export async function deliveryScores(actor: Actor): Promise<DeliveryScores> {
       courierId: score.courierId,
       courierName: score.courierId === null ? null : names.get(score.courierId) ?? null,
       ...score.summary,
+      parts: score.parts,
     })),
     recent,
   };

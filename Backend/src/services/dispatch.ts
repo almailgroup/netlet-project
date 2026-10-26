@@ -19,7 +19,7 @@
  * a fourth thing to keep in step with those lines. The one fact the grouping
  * cannot derive — which company was asked to carry it — lives on the line.
  */
-import { and, asc, desc, eq, inArray, notInArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import {
   courierMembers,
   couriers,
@@ -27,6 +27,7 @@ import {
   orderItems,
   orders,
   users,
+  vendors,
 } from "../../database/schema.js";
 import {
   courierMoves,
@@ -40,6 +41,7 @@ import { assertCan, readableCouriers, type Actor } from "../../../Shared/invento
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
 import { tellOrderMoved } from "./notifications.js";
+import { extendReferralHold } from "./referral.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -234,6 +236,12 @@ export type BoardParcel = Parcel & {
   collectFrom: { name: string; addressLine: string; governorate: string } | null;
   /** Placed by a member (4.1), frozen on the order: first in the queue for the next driver. */
   member: boolean;
+  /**
+   * The store carries this one itself (3.3.13): it chose its own company and
+   * that company is not on NetLet. Shown, so the board is the whole picture,
+   * and never offered for assignment — it is not NetLet's to give out.
+   */
+  selfDelivered: boolean;
   /** The order's own address, which is where a parcel with no door of its own goes. */
   orderAddress: {
     contactName: string | null;
@@ -318,6 +326,7 @@ export async function loadBoard(
       destination: orderItems.destination,
       courierId: orderItems.courierId,
       centreId: orderItems.centreId,
+      deliveryChoice: orderItems.deliveryChoice,
     })
     .from(orderItems)
     .where(inArray(orderItems.orderId, window.map(row => row.id)))
@@ -331,6 +340,15 @@ export async function loadBoard(
   const centres = new Map(
     (await db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres))
       .map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]),
+  );
+
+  /* The stores that deliver for themselves with a company not on NetLet. */
+  const selfDelivering = new Set(
+    (await db
+      .select({ id: vendors.id })
+      .from(vendors)
+      .where(and(eq(vendors.deliveryMode, "own"), isNull(vendors.deliveryCourierId))))
+      .map(row => row.id),
   );
 
   const owed = await stillOwedFor(db, window.map(order => ({
@@ -365,6 +383,7 @@ export async function loadBoard(
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
         collectFrom: parcel.centreId === null ? null : centres.get(parcel.centreId) ?? null,
         member: order.member,
+        selfDelivered: parcel.centreId === null && parcel.courierId === null && parcel.vendorId !== null && selfDelivering.has(parcel.vendorId),
         orderAddress: {
           contactName: order.contactName,
           contactPhone: order.contactPhone,
@@ -380,7 +399,9 @@ export async function loadBoard(
   /* A member's parcels still on their way go first (4.1) — "fast" is the next
      free driver taking theirs. A stable sort, so everything else keeps the
      board's own order and nothing reshuffles under somebody reading it. */
-  const priority = (parcel: BoardParcel) => (parcel.member && parcel.state !== "delivered" ? 1 : 0);
+  /* A fast parcel the shopper paid for (3.2.5) goes ahead of a member's, which
+     goes ahead of the rest. */
+  const priority = (parcel: BoardParcel) => (parcel.state === "delivered" ? 0 : parcel.fast ? 2 : parcel.member ? 1 : 0);
   board.sort((a, b) => priority(b) - priority(a));
   return { parcels: board, truncated };
 }
@@ -408,6 +429,7 @@ async function parcelIn(db: Db, orderId: number, key: string): Promise<ParcelLin
       destination: orderItems.destination,
       courierId: orderItems.courierId,
       centreId: orderItems.centreId,
+      deliveryChoice: orderItems.deliveryChoice,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId))
@@ -447,6 +469,12 @@ export async function assignParcel(
   }
 
   const lines = await parcelIn(db, orderId, key);
+  /* Not NetLet's to give out: the store carries it itself (3.3.13). */
+  const vendorId = lines[0]?.vendorId ?? null;
+  if (courierId !== null && vendorId !== null && lines.every(line => (line.centreId ?? null) === null)) {
+    const [store] = await db.select({ mode: vendors.deliveryMode, courierId: vendors.deliveryCourierId }).from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+    if (store?.mode === "own" && store.courierId === null) throw new DispatchError("dispatch.storeDelivers");
+  }
   await db
     .update(orderItems)
     .set({ courierId })
@@ -511,6 +539,9 @@ export async function moveParcel(
       inArray(orderItems.id, lines.map(line => line.lineId)),
       notInArray(orderItems.fulfilment, ["cancelled", "returned"]),
     ));
+  /* Arrived after the cash was collected: a held referral commission now
+     matures at the end of the window that runs from today (3.1.14). */
+  if (deliveredAt) await extendReferralHold(db, lines.map(line => line.lineId), deliveredAt);
   /* The shopper hears the parcel left, or that everything arrived. */
   await tellOrderMoved(orderId, to);
 }
@@ -524,5 +555,6 @@ export async function moveParcel(
  */
 export async function countWaitingParcels(actor: Actor): Promise<number> {
   const board = await loadBoard(actor, { state: "waiting" });
-  return board.parcels.length;
+  /* A parcel the store carries itself is not waiting on anybody here. */
+  return board.parcels.filter(parcel => !parcel.selfDelivered).length;
 }

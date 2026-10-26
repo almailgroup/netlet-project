@@ -159,3 +159,13 @@ describe("what a delivery company may reach", () => {
     expect(readableCouriers(owner)).toEqual([]);
   });
 });
+
+describe("a fast line (3.2.5)", () => {
+  it("is its own parcel, beside the regular one for the same door, keeping the regular key", async () => {
+    const { parcelsOf } = await import("./parcels.js");
+    const base = { vendorId: 1, vendorName: "Acme", productTitle: "x", variantTitle: null, quantity: 1, fulfilment: "pending" as const };
+    const [regular, fast] = parcelsOf([{ ...base, lineId: 1 }, { ...base, lineId: 2, deliveryChoice: "fast" }]);
+    expect(regular).toMatchObject({ key: "v1|dorder", fast: false });
+    expect(fast).toMatchObject({ key: "v1|dorder|fast", fast: true });
+  });
+});

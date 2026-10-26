@@ -49,8 +49,13 @@ private struct ReturnCaseCard: View {
     @State private var receiving = false
     @State private var restock = true
     @State private var busy = false
+    @State private var readOn = false
+    @State private var reading = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    /// A seller's answer goes to NetLet to confirm (3.5.2); an administrator's is final.
+    private var seller: Bool { app.session.seller?.kind != "admin" }
 
     var body: some View {
         PortalCard {
@@ -72,7 +77,42 @@ private struct ReturnCaseCard: View {
             if let note = row.note, !note.isEmpty {
                 Text(note).font(.inter(14)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
             }
-            if let declined = row.declineReason, !declined.isEmpty {
+            // What a model read in the note (3.5.2): a suggestion, labelled as one.
+            if let summary = row.aiSummary {
+                VStack(alignment: .leading, spacing: 4) {
+                    FlowLayout(spacing: 6) {
+                        Label(l.t("admin.returnsAiRead"), systemImage: "sparkles").font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                        if let suggestion = row.aiSuggestion { StatusPill(label: l.t(ReturnWords.suggestion(suggestion)), tone: .shipped) }
+                    }
+                    Text(summary).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                    Text(l.t("admin.returnsAiNote")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            } else if row.reason == "other", row.status == "requested" || row.status == "review", readOn {
+                Button { Task { await read() } } label: {
+                    Label(l.t(reading ? "admin.returnsReading" : "admin.returnsReadNote"), systemImage: "sparkles")
+                }
+                .buttonStyle(PortalSmallButtonStyle())
+                .disabled(reading)
+            }
+            // The seller's answer, while NetLet confirms it or after.
+            if row.vendorResponse != nil || row.proposal != nil {
+                VStack(alignment: .leading, spacing: 3) {
+                    if let proposal = row.proposal {
+                        Text(l.t(proposal == "approve" ? "admin.returnsSellerProposesApprove" : "admin.returnsSellerProposesDecline")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                    }
+                    if let words = row.vendorResponse {
+                        // In first-strong isolates, so a Latin answer on the Arabic page keeps its quotes.
+                        Text(l.t("admin.returnsSellerSaid", ["words": "\u{2068}\(words)\u{2069}"])).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                    if row.status == "review" && seller {
+                        Text(l.t("admin.returnsWaitingNetlet")).font(.inter(12)).foregroundStyle(Brand.muted)
+                    }
+                }
+            }
+            if let declined = row.declineReason, !declined.isEmpty, row.status != "review" {
                 Text(Phrasebook.shared.has(declined) ? l.t(declined) : declined).font(.inter(13)).foregroundStyle(Brand.danger).fixedSize(horizontal: false, vertical: true)
             }
             if row.status == "approved" {
@@ -88,6 +128,11 @@ private struct ReturnCaseCard: View {
                 Text("\(l.t("returns.replacementSent")) \(latin(replacement))").font(.inter(13)).foregroundStyle(Brand.body)
             }
             if !row.actions.isEmpty { actions }
+        }
+        .task {
+            if row.reason == "other", row.aiSummary == nil {
+                readOn = (try? await app.services.api.call(API.returnReadAvailable)) ?? false
+            }
         }
         .alert(l.t(row.kind == "exchange" ? "admin.returnsConfirmExchange" : "admin.returnsConfirmRefund", ["amount": row.lineTotal.formatted(l.current)]), isPresented: $receiving) {
             Button(l.t(row.kind == "exchange" ? "admin.returnsReceiveExchange" : "admin.returnsReceiveRefund")) { Task { await receive() } }
@@ -106,11 +151,15 @@ private struct ReturnCaseCard: View {
                 Toggle(l.t("admin.returnsRestock"), isOn: $restock).font(.inter(14)).tint(Brand.navy)
             }
             FlowLayout(spacing: 8) {
-                if row.actions.contains("decline") {
-                    Button(l.t("admin.returnsDecline")) { declining.toggle() }.buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                if row.actions.contains("decline") || row.actions.contains("dispute") {
+                    Button(l.t(declineLabel)) {
+                        if !declining, row.status == "review" { reason = row.declineReason ?? "" }
+                        declining.toggle()
+                    }
+                    .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                 }
                 if row.actions.contains("approve") {
-                    Button(l.t("admin.returnsApprove")) { Task { await act { try await $0.call(API.decideReturn, .init(requestId: row.id, approve: true)) } } }
+                    Button(l.t(seller ? "admin.returnsProposeApprove" : "admin.returnsApprove")) { Task { await act(done: decidedKey) { try await $0.call(API.decideReturn, .init(requestId: row.id, approve: true)) } } }
                         .buttonStyle(PortalSmallButtonStyle(kind: .primary))
                 }
                 if row.actions.contains("collect") {
@@ -128,11 +177,11 @@ private struct ReturnCaseCard: View {
             }
             .disabled(busy)
             if declining {
-                LabeledField(label: l.t("admin.returnsDeclineWhy"), text: Binding(get: { reason }, set: { reason = String($0.prefix(400)) }))
+                LabeledField(label: l.t(row.actions.contains("dispute") ? "admin.returnsDisputeWhy" : "admin.returnsDeclineWhy"), text: Binding(get: { reason }, set: { reason = String($0.prefix(400)) }))
                 HStack {
                     Spacer()
-                    Button(l.t("admin.returnsDecline")) {
-                        Task { await act { try await $0.call(API.decideReturn, .init(requestId: row.id, approve: false, reason: reason)) } }
+                    Button(l.t(declineLabel)) {
+                        Task { await act(done: decidedKey) { try await $0.call(API.decideReturn, .init(requestId: row.id, approve: false, reason: reason)) } }
                     }
                     .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                     .disabled(busy || reason.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -141,11 +190,25 @@ private struct ReturnCaseCard: View {
         }
     }
 
-    private func act(_ work: @escaping (APICalling) async throws -> Acknowledged) async {
+    private var decidedKey: String { seller ? "admin.returnsSentToNetlet" : "admin.returnsSaved" }
+
+    private var declineLabel: String {
+        row.actions.contains("dispute") ? "admin.returnsDispute" : seller ? "admin.returnsProposeDecline" : "admin.returnsDecline"
+    }
+
+    private func read() async {
+        reading = true
+        defer { reading = false }
+        var answer: API.ReadingAnswer?
+        guard await app.attempt(fallback: "admin.saveFailed", { answer = try await app.services.api.call(API.readReturn, .init(requestId: row.id)) }) else { return }
+        if answer == nil { app.toast(l.t("admin.returnsReadFailed")) } else { changed() }
+    }
+
+    private func act(done: String = "admin.returnsSaved", _ work: @escaping (APICalling) async throws -> Acknowledged) async {
         busy = true
         defer { busy = false }
         let api = app.services.api
-        if await app.attempt(done: "admin.returnsSaved", fallback: "admin.saveFailed", { _ = try await work(api) }) {
+        if await app.attempt(done: done, fallback: "admin.saveFailed", { _ = try await work(api) }) {
             declining = false
             changed()
         }
@@ -179,8 +242,17 @@ enum ReturnWords {
         }
     }
 
+    static func suggestion(_ suggestion: String) -> String {
+        switch suggestion {
+        case "decline": return "returns.suggestDecline"
+        case "exchange": return "returns.suggestExchange"
+        default: return "returns.suggestApprove"
+        }
+    }
+
     static func status(_ status: String) -> String {
         switch status {
+        case "review": return "returns.statusReview"
         case "approved": return "returns.statusApproved"
         case "declined": return "returns.statusDeclined"
         case "collected": return "returns.statusCollected"
@@ -193,7 +265,7 @@ enum ReturnWords {
 
     static func tone(_ status: String) -> String {
         switch status {
-        case "requested": return "warning"
+        case "requested", "review": return "warning"
         case "approved", "collected": return "navy"
         case "refunded", "exchanged": return "good"
         case "declined": return "danger"

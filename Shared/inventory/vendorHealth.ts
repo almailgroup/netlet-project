@@ -14,6 +14,7 @@
  * "Fast Shipping" its own delivery times, so neither can be shown on a store
  * whose numbers do not support it.
  */
+import { SUSPEND_AT_WARNINGS } from "./warnings.js";
 
 /** The one badge a person awards: an administrator checked the documents. */
 export const AWARDED_BADGES = ["verified"] as const;
@@ -84,8 +85,8 @@ export type HealthInputs = {
   published: number;
   /** Products currently waiting on an admin. */
   pendingReview: number;
-  /** Rejections recorded against them. */
-  rejections: number;
+  /** Warnings NetLet issued that still stand (3.3.18). */
+  warnings: number;
   /** Variants at zero on a published product. */
   outOfStock: number;
   /** Variants in total, so out-of-stock is read as a proportion. */
@@ -107,7 +108,7 @@ export type HealthDetailKey =
   | "pendingReview"
   | "outOfStock"
   | "variants"
-  | "rejections"
+  | "warnings"
   | "suspendAt"
   | "rating"
   | "outOf";
@@ -157,11 +158,11 @@ export function vendorHealth(inputs: HealthInputs): Health {
     detail: { outOfStock: inputs.outOfStock, variants: inputs.variants },
   });
 
-  // Compliance: rejections, against the three that trigger suspension.
+  // Compliance: standing warnings, against the three that suspend.
   components.push({
     key: "compliance",
-    score: clamp(100 - (inputs.rejections / 3) * 100),
-    detail: { rejections: inputs.rejections, suspendAt: 3 },
+    score: clamp(100 - (inputs.warnings / SUSPEND_AT_WARNINGS) * 100),
+    detail: { warnings: inputs.warnings, suspendAt: SUSPEND_AT_WARNINGS },
   });
 
   // Rating: absent is not bad. A vendor with no reviews is unproven, and

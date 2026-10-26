@@ -150,6 +150,10 @@ struct CartLineRow: View {
                 if let destination = item.destination {
                     Text(l.t("address.sendingTo", ["label": destination.label])).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
+                // Fast or regular (3.2.5), only where the store offers fast.
+                if let fast = item.fastDelivery {
+                    SpeedChoice(item: item, fast: fast, title: title)
+                }
                 // How much the steps come to, for something sold by weight (`MeasureLabel`).
                 if let measure = item.measure,
                    let amount = ListingRules.shared.measureOf(unit: measure.unit, step: measure.stepAmount, quantity: item.quantity) {
@@ -186,6 +190,49 @@ struct CartLineRow: View {
     }
 }
 
+/// Regular or fast for one line (3.2.5): two presses in a named group, each
+/// saying what it costs, so the choice and its price are read together.
+private struct SpeedChoice: View {
+    let item: CartItem
+    let fast: CartItem.FastDelivery
+    let title: String
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        HStack(spacing: 4) {
+            option(fast: false, label: l.t("delivery.regular"))
+            option(fast: true, label: l.t("delivery.fastFor", ["fee": fast.fee.formatted(l.current)]))
+            if item.isFast, let speed = fast.speed, ListingRules.shared.deliverySpeeds.contains(speed) {
+                Text(l.t("speed.\(speed)")).font(.inter(11)).foregroundStyle(Brand.muted).padding(.horizontal, 4)
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(Color.white))
+        .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("delivery.choiceFor", ["name": title]))
+    }
+
+    private func option(fast choice: Bool, label: String) -> some View {
+        let on = item.isFast == choice
+        return Button {
+            guard !on else { return }
+            Task { await app.cart.setDeliveryChoice(lineId: item.lineId, fast: choice) }
+        } label: {
+            Text(label)
+                .font(.inter(12, .bold))
+                .foregroundStyle(on ? Color.white : Brand.navy)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 32)
+                .background(Capsule().fill(on ? Brand.navy : Color.clear))
+        }
+        .buttonStyle(.tap)
+        .disabled(app.cart.busyLine == item.lineId)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
 /// Subtotal, each seller's delivery and the total — every figure the server's.
 struct SummaryCard: View {
     let cart: Cart
@@ -198,7 +245,7 @@ struct SummaryCard: View {
                 let name = line.storeName(l.current)
                 VStack(alignment: .leading, spacing: 4) {
                     row(
-                        line.destinationLabel.map { l.t("address.deliveryTo", ["name": name, "label": $0]) } ?? l.t("cart.deliveryFrom", ["name": name]),
+                        line.label(l),
                         line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current)
                     )
                     if let toFree = line.toFree, !toFree.isZero {
