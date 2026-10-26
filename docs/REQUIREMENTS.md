@@ -27,8 +27,9 @@ the document's 10% fee (3.1.15); one switch turns cash on delivery off for the
 whole shop (3.2.2); the bulk importer asks a model about the rows its words
 cannot place (3.3.5); and the try-on takes a photo of a hand. The messaging
 between shoppers and stores went on the owner's word (3.8), and new passwords
-need eight characters. What is still partial needs a schema change, which is
-drafted for the owner before anything is applied, or waits on a provider: card
+need eight characters. What is still partial needs a schema change, drafted
+for the owner in [`PROPOSED-MIGRATIONS-REQUIREMENTS.md`](PROPOSED-MIGRATIONS-REQUIREMENTS.md)
+and applied only once approved, or waits on a provider: card
 payments and everything gated on them are deliberately untouched — see the
 note under 3.2.*
 
