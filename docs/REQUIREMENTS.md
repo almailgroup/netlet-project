@@ -1,7 +1,8 @@
 # NetLet requirements, against the code
 
 Every requirement in *Netlet — Requirements Document (Developer Version)*
-(version 11 August 2026), mapped to what is actually in this repository.
+(version 11 August 2026, [`Netlet-Requirements.pdf`](Netlet-Requirements.pdf),
+the owner's own document), mapped to what is actually in this repository.
 
 Status is deliberately harsh. **Built** means it works end to end against a
 real database and a real server. **Partial** names the gap rather than

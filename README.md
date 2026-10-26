@@ -96,7 +96,8 @@ skips silently.
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
 | [`Backend/gateway/README.md`](Backend/gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
 | [`Frontend/iOS/README.md`](Frontend/iOS/README.md) | The iOS app — running it, its demo mode, and what it copies from `Shared/` |
-| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | What was asked for |
+| [`docs/Netlet-Requirements.pdf`](docs/Netlet-Requirements.pdf) | What was asked for — the owner's requirements document (11 August 2026) |
+| [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Each of those requirements against the code |
 | [`CLAUDE.md`](CLAUDE.md) | Why the code is the way it is — read this before changing it |
 
 `CLAUDE.md` is the architecture document. It records the decisions and, more
