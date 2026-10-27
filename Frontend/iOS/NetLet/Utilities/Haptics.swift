@@ -1,38 +1,48 @@
 import SwiftUI
 import UIKit
 
-/// The tap a finger feels, at the owner's strengths: the tab bar at half,
-/// every other button at a tenth — a low tick that says the press took
-/// without competing with the tab bar's.
+/// The tap a finger feels: **everything at half strength, on the owner's
+/// word** — the tab bar, every button, a press that does something to a
+/// product, an order placed and a refusal. It was the tab bar and a product's
+/// presses at half and every other button at a tenth, and the owner asked for
+/// one strength across the app.
 ///
-/// **A press that does something to a product is felt at the tab bar's
-/// strength, on the owner's word** — Add to cart, Buy now, a step of the
-/// quantity anywhere, the bin, the heart, Place order — so a shopper knows the
-/// act took. An order placed answers with the system's success pattern, and an
-/// add the shop refused with its error pattern, beside the words that say so.
+/// An order placed and an add the shop refused were the system's success and
+/// error patterns, which take no strength; they are impacts at the same half
+/// now — one for the order, two in quick succession for a refusal, so a no
+/// still feels different from a yes (the web's `refusedHaptic` is two knocks
+/// too), beside the words that say so.
 ///
-/// One generator, so the strengths are steps on one scale. The system's own
-/// "System Haptics" switch silences all of it, as it does every app's.
+/// One generator, so every press is the same tap. The system's own "System
+/// Haptics" switch silences all of it, as it does every app's.
 @MainActor
 enum Haptics {
+    /// Every haptic in the app.
+    static let strength: CGFloat = 0.5
     /// The tab bar's (the system's own, in `RootView`).
-    static let tabStrength: CGFloat = 0.5
-    /// A press that does something to a product: as firm as the tab bar's.
-    static let actionStrength: CGFloat = 0.5
+    static let tabStrength: CGFloat = strength
+    /// A press that does something to a product.
+    static let actionStrength: CGFloat = strength
     /// Every other button's.
-    static let buttonStrength: CGFloat = 0.1
+    static let buttonStrength: CGFloat = strength
 
     private static let generator = UIImpactFeedbackGenerator(style: .medium)
-    private static let outcome = UINotificationFeedbackGenerator()
 
     static func tab() { impact(tabStrength) }
     static func action() { impact(actionStrength) }
     static func tap() { impact(buttonStrength) }
 
     /// It worked, and mattered: an order placed.
-    static func succeeded() { outcome.notificationOccurred(.success) }
-    /// The shop said no: an add or a quantity change that did not take.
-    static func refused() { outcome.notificationOccurred(.error) }
+    static func succeeded() { impact(strength) }
+    /// The shop said no: an add or a quantity change that did not take — two
+    /// taps, so it does not feel like the press that worked.
+    static func refused() {
+        impact(strength)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(90))
+            Haptics.impact(Haptics.strength)
+        }
+    }
 
     private static func impact(_ intensity: CGFloat) {
         generator.impactOccurred(intensity: intensity)
@@ -77,8 +87,8 @@ extension ButtonStyle where Self == TapStyle {
 }
 
 /// A product's plain button — a step of the quantity, the bin — in the
-/// system's borderless look like every other plain button, ticking at the
-/// tab bar's strength rather than a tenth.
+/// system's borderless look like every other plain button, ticking as the
+/// action it is.
 struct ActionHapticStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role) {

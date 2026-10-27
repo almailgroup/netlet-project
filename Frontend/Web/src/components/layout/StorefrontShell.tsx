@@ -17,12 +17,14 @@
  * through `usePageChrome`. Everything else the shell works out from the
  * address: the footer clears a floating bar on the pages that have one.
  *
- * **On a phone the account and the cart have no header, on the owner's word**
- * (`BARE_ON_PHONE`) — the way the delivery apps people here use draw their
- * profile and their bag: the page starts at the top of the screen, and the tab
- * bar under it is the way anywhere else. A wide screen keeps the header there,
- * having no tab bar to fall back on. One structure at a time (`useMediaQuery`),
- * so a phone's page holds no hidden search field for a keyboard to land in.
+ * **On a phone the account and the cart have no header and no footer, on the
+ * owner's word** (`BARE_ON_PHONE`) — the way the delivery apps people here use
+ * draw their profile and their bag: the page starts at the top of the screen,
+ * ends with its own content, and the tab bar is the way anywhere else. The
+ * room the footer left for the floating tab bar (and the assistant's button)
+ * is the page's own padding then. A wide screen keeps both, having no tab bar
+ * to fall back on. One structure at a time (`useMediaQuery`), so a phone's
+ * page holds no hidden search field for a keyboard to land in.
  *
  * Checkout, sign-in and the portal stay outside it on purpose: checkout and
  * sign-in keep a bare header (every exit on a payment page is an invitation to
@@ -136,14 +138,21 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
           {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} />}
         </div>
         {/* With no header, the page clears the status bar itself on a phone
-            that draws the page under it (`viewport-fit=cover`). */}
-        <main id="main" tabIndex={-1} className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${bare ? "pt-[env(safe-area-inset-top)]" : ""}`}>
+            that draws the page under it (`viewport-fit=cover`); with no
+            footer, it clears the tab bar and the assistant's button too. */}
+        <main
+          id="main"
+          tabIndex={-1}
+          className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${
+            bare ? `pt-[env(safe-area-inset-top)] ${assistant ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}` : ""
+          }`}
+        >
           <Suspense fallback={<PageFallback />}>
             {held ? null : <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>}
           </Suspense>
         </main>
         <div className={printed ? "contents print:hidden" : "contents"}>
-          {held ? null : <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />}
+          {held || bare ? null : <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />}
           <MobileTabBar />
           {held ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
         </div>

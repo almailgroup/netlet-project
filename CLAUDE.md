@@ -1612,9 +1612,12 @@ asking first. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
 and the welcome heading went; the dates and the role moved to the top of "Your
 details" (`AccountIdentity`). **On a phone `/account` and `/cart` have no
-header, on the owner's word** (`BARE_ON_PHONE` in `StorefrontShell`): the page
-starts under the status bar and the tab bar is the way anywhere else; a wide
-screen keeps the header, having no tab bar.
+header and no footer, on the owner's word** (`BARE_ON_PHONE` in
+`StorefrontShell`): the page starts under the status bar, ends with its own
+content — `<main>` keeps the room the footer left for the floating tab bar and
+the assistant's button — and the tab bar is the way anywhere else; a wide
+screen keeps both, having no tab bar. A guest changes the language from any
+other page's footer.
 
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
@@ -5605,14 +5608,14 @@ form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
 `kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
 refuses.
 
-**The Profile and Cart tabs have no header, the header's end is the saved
-location, the Profile page is the delivery apps' layout and the assistant says
-"Need help?" — the web's four changes, on the owner's word.** `ShopPage`'s
-`header: false` draws a page with neither row (the Profile tab's first screen,
-signed in or out, its sections, which carry their own "← Your account", and the
-Cart tab's first screen); `LogoRow`'s end is a pin, the address in use or the
-area, and a chevron, felt at the product strength (`PressFillStyle`'s
-`strength`) and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
+**The Profile and Cart tabs have no header and no footer, the header's end is
+the saved location, the Profile page is the delivery apps' layout and the
+assistant says "Need help?" — the web's changes, on the owner's word.**
+`ShopPage`'s `header: false, footer: false` draws a page with neither row and
+no footer (the Profile tab's first screen, signed in or out, its sections,
+which carry their own "← Your account", and the Cart tab's first screen), with
+room left at its foot for the assistant's button; `LogoRow`'s end is a pin,
+the address in use or the area, and a chevron, felt on the press and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
 book as choices, add or manage, and a guest's governorates — over
 `DeliveryModel`, which is the web's `addressInUse` (tested on the same cases)
 with checkout's own last-address key, so a choice here is where checkout
@@ -5712,9 +5715,8 @@ word** (`PhotoCartControl` in `ProductCard.swift`): the white plus in the
 photo's end corner adds one and opens the navy stepper, which folds into the
 cart-and-count square `settleSeconds` (2.5) after the last press — never under
 VoiceOver, which would pull it from under somebody between its buttons — and a
-press on the square opens it again. Every face is `.action`, felt at the
-product strength, and a refused add says so with the error pattern and a
-toast. Under the price only Buy now is left (`CardActions`); the long press's
+press on the square opens it again. Every face is `.action`, felt on the
+press, and a refused add says so with two taps and a toast. Under the price only Buy now is left (`CardActions`); the long press's
 preview keeps its Add to cart. The dots sit at the photo's start.
 
 **The rest of the shop was checked against the web the same way**, by listing
@@ -5756,16 +5758,20 @@ start the task — so a panel written `Group { if !items.isEmpty { … } }.task
 page's guides, the bundles, the price request and the shop's other channels
 were all that shape; each is a `VStack` now, which exists while empty.
 
-**A press is felt, at the owner's strengths**: the tab bar at half
-(`Haptics.tab`) and every other button at a tenth (`Haptics.tap`), from one
-generator so they are steps on one scale. **A press that does something to a
-product is felt at the tab bar's half, on the owner's word** — Add to cart,
-Buy now, the photo's plus, its stepper and its count on a card, a step of the
-quantity on the product page or the bag, the bin, the heart and Place order (`Haptics.action`, through
-`pressHaptic(_:strength:)` and the borderless `.action` style) — so a shopper
-knows the act took; a placed order answers with the system's success pattern
-and a refused add or quantity change with its error pattern
-(`Haptics.succeeded`, `Haptics.refused`). Every button style the app has
+**Every haptic in the app is at half strength, on the owner's word**
+(`Haptics.strength`, 0.5): the tab bar (`Haptics.tab`), every button
+(`Haptics.tap`), a press that does something to a product — Add to cart, Buy
+now, the photo's plus, its stepper and its count on a card, a step of the
+quantity on the product page or the bag, the bin, the heart and Place order
+(`Haptics.action`, through `pressHaptic(_:strength:)` and the borderless
+`.action` style) — the bag's count changing on the product page, and the
+outcomes: a placed order is one tap and a refused add or quantity change two
+in quick succession (`Haptics.succeeded`, `Haptics.refused`). It was the tab
+bar and a product's presses at half and every other button at a tenth, and
+the outcomes were the system's success and error patterns, which take no
+strength; the owner asked for one strength for everything, so they are
+impacts from the same generator now, and a refusal still feels different by
+being two. Every button style the app has
 ticks the moment a finger comes down (`pressHaptic`), `.tap` is the app's plain
 button in place of the system's `.plain`, and a button with no style of its own
 gets the tick from `HapticDefaultStyle`, set at the root and on each sheet's

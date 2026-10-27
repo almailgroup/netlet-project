@@ -102,7 +102,7 @@ struct SupportView: View {
 
     var body: some View {
         ModelHost(make: { SupportModel(api: app.services.api, orders: app.services.orders) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, footer: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("support.section"), hint: l.t("account.hint.help")) {
                     VStack(alignment: .leading, spacing: 14) {
                         AskForm(model: model)

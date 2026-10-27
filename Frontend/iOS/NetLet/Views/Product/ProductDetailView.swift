@@ -85,7 +85,7 @@ private struct ProductPage: View {
             if buttonsGone { stickyBar.transition(.move(edge: .bottom).combined(with: .opacity)) }
         }
         .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
-        .sensoryFeedback(.success, trigger: app.cart.itemCount)
+        .sensoryFeedback(.impact(weight: .medium, intensity: Haptics.strength), trigger: app.cart.itemCount)
         .fullScreenCover(item: $photos) { start in
             PhotoSheet(product: product, index: $model.imageIndex, startFull: start == .zoom) { photos = nil }
                 .environment(\.layoutDirection, l.layoutDirection)

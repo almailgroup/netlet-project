@@ -103,8 +103,8 @@ struct SecondaryButtonStyle: ButtonStyle {
 /// controls (`(hover: none)` and `:active`): the press fill, nothing moving.
 struct PressFillStyle: ButtonStyle {
     var cornerRadius: CGFloat = 16
-    /// How firmly a press is felt: a tenth, or the product strength for a
-    /// press that changes something the shopper notices, like where things go.
+    /// How firmly a press is felt — half, as every haptic in the app is now
+    /// (`Haptics.strength`); kept a setting so a press can be told apart again.
     var strength: CGFloat = Haptics.buttonStrength
 
     func makeBody(configuration: Configuration) -> some View {

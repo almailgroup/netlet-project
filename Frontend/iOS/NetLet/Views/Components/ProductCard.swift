@@ -547,8 +547,8 @@ struct CardActions: View {
 /// now follows. A product with sizes or colours opens its page instead, and a
 /// sold-out one draws nothing here — its badge on the photo says so.
 ///
-/// **Every press is felt** at the product strength (`.action`), a refusal with
-/// the error pattern, and VoiceOver is told what each did. Under VoiceOver the
+/// **Every press is felt** (`.action`), a refusal as two taps, and VoiceOver
+/// is told what each did. Under VoiceOver the
 /// stepper does not fold by itself, which would pull it from under somebody
 /// moving between its buttons.
 struct PhotoCartControl: View {

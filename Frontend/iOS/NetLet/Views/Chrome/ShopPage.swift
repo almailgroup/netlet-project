@@ -15,10 +15,11 @@ import UIKit
 /// A screen pushed onto a stack gets a back chevron before the logo: the web
 /// leaves going back to the browser, and the app has no browser around it.
 ///
-/// **The Profile and Cart tabs' first screens have no header**, on the owner's
-/// word (`header: false`) — the web's phone draws `/account` and `/cart` with
-/// none: the page starts under the status bar, and the tab bar is the way
-/// anywhere else. A screen pushed from them keeps it, with its way back.
+/// **The Profile and Cart tabs have no header and no footer**, on the owner's
+/// word (`header: false, footer: false`) — the web's phone draws `/account`
+/// and `/cart` with neither: the page starts under the status bar, ends with
+/// its own content, and the tab bar is the way anywhere else. The account's
+/// sections carry their own "← Your account".
 struct ShopPage<Content: View>: View {
     /// A tab's first screen, which has nothing to go back to.
     var root = false
@@ -64,6 +65,11 @@ struct ShopPage<Content: View>: View {
                                 SiteFooter().id(ShopPageTop.foot)
                             } else {
                                 content()
+                                // No footer to end on, so the page leaves room
+                                // for the assistant's button floating over its foot.
+                                if assistant && app.assistantOn {
+                                    Color.clear.frame(height: 64)
+                                }
                             }
                         } header: {
                             if header { SearchRow() }

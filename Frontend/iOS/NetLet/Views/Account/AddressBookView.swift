@@ -17,7 +17,7 @@ struct AddressBookView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.account.addresses() } }) { book in
-            ShopPage(header: false, refresh: { await book.load() }) {
+            ShopPage(header: false, footer: false, refresh: { await book.load() }) {
                 AccountSection(title: l.t("address.book"), hint: l.t("account.hint.addresses")) {
                     VStack(alignment: .leading, spacing: 14) {
                         Text(l.t("address.bookNote"))

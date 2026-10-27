@@ -50,7 +50,7 @@ struct AccountView: View {
     ]
 
     private func home(_ user: User) -> some View {
-        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
+        ShopPage(root: true, header: false, footer: false, refresh: { await app.session.restore(); await loadPreviews() }) {
             VStack(alignment: .leading, spacing: 12) {
                 profileCard(user)
                 MembershipCard()
@@ -529,7 +529,7 @@ struct ProfileView: View {
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
-            ShopPage(header: false) {
+            ShopPage(header: false, footer: false) {
                 AccountSection(title: l.t("account.sectionProfile"), hint: l.t("account.hint.details")) {
                     VStack(spacing: 16) {
                         if let user = app.session.user { AccountIdentityCard(user: user) }

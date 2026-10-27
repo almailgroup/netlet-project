@@ -9,7 +9,7 @@ struct WishlistsView: View {
 
     var body: some View {
         ModelHost(make: { WishlistsModel(api: app.services.api) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, footer: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("account.sectionWishlists"), hint: l.t("account.hint.wishlists")) {
                     VStack(alignment: .leading, spacing: 14) {
                         Text(l.t(app.features.isOn("wishlists") ? "wish.intro" : "wish.switchedOff"))
@@ -272,7 +272,7 @@ struct WishlistDetailView: View {
 
     var body: some View {
         ModelHost(make: { WishlistDetailModel(listId: listId, api: app.services.api, account: app.services.account, language: l.current) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, footer: false, refresh: { await model.load() }) {
                 AccountSection(title: model.detail.value?.list.title ?? l.t("account.sectionWishlists"), hint: l.t("account.hint.wishlists")) {
                     LoadStateView(state: model.detail.state, retry: { await model.load() }) { detail in
                         WishlistDetailBody(detail: detail, model: model)
