@@ -49,10 +49,8 @@
 import { useCatalog } from "@/hooks/useCatalog";
 import { HEADER_SHELF } from "@/lib/routeData";
 import { AccountMenu } from "@/components/layout/AccountMenu";
-import { useAuth } from "@/hooks/useAuth";
-import { useLastAddressId } from "@/hooks/useLastAddressId";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
-import { addressInUse } from "@/lib/lastAddress";
+import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
 import { PixelBadge } from "@/components/ui/PixelBadge";
@@ -64,7 +62,6 @@ import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { trpc } from "@/lib/trpc";
 import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
 import { pressHaptic } from "@/lib/haptics";
 import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -100,7 +97,7 @@ export function StoreHeader({ activeDepartment }: {
   const [location, navigate] = useLocation();
   const query = useSearch();
   const { itemCount, openCart } = useCart();
-  const { savedIds, toggleLocale, deliveryZone } = useCustomer();
+  const { savedIds, toggleLocale } = useCustomer();
   /* The logo is the way home, and on the home page the way back to its top: a
      link to the page already open would push a second copy of it into the
      history and move nothing. The page's own `scroll-behavior` decides how —
@@ -131,18 +128,9 @@ export function StoreHeader({ activeDepartment }: {
   const [search, setSearch] = useState(() => searchTermFrom(query));
   useEffect(() => { setSearch(searchTermFrom(query)); }, [location, query]);
   const selectProduct = (product: Product) => navigate(`/products/${encodeURIComponent(product.handle)}`);
-  const zoneName = deliveryZone ? (isArabic ? deliveryZone.labelAr : deliveryZone.label) : t("home.chooseAreaShort");
-  /*
-   * The address being delivered to, by the name the shopper gave it — "Home"
-   * says more than "Hawalli" to the person who lives there. Only while it is
-   * in the area in use (`addressInUse`): an area with no saved address in it
-   * is named as itself.
-   */
-  const { isAuthenticated } = useAuth();
-  const book = trpc.customer.addresses.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 5 * 60 * 1000 });
-  const lastAddressId = useLastAddressId();
-  const deliveringTo = isAuthenticated ? addressInUse(book.data ?? [], lastAddressId, deliveryZone?.id) : null;
-  const areaName = deliveringTo ? deliveringTo.label : zoneName;
+  /* The address in use by its name, or the area (`useDeliveryArea`). */
+  const area = useDeliveryArea();
+  const areaName = area.name;
   /* The language a press would give you, spoken in that language. */
   const otherLanguage = isArabic ? "en" : "ar";
 
@@ -184,8 +172,8 @@ export function StoreHeader({ activeDepartment }: {
 
   const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} dealsDrawn={dealsDrawn} />;
 
-  const area = (
-    <button onClick={() => setDeliveryOpen(true)} title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")} className={plain}>
+  const areaButton = (
+    <button onClick={() => setDeliveryOpen(true)} title={area.title} className={plain}>
       <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
       {/* "Deliver to" is in the name and not drawn: the pin and the area say it,
           and the width it took is the search field's now. The name still
@@ -215,7 +203,7 @@ export function StoreHeader({ activeDepartment }: {
       <button
         type="button"
         onClick={() => { pressHaptic(); setDeliveryOpen(true); }}
-        title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")}
+        title={area.title}
         className="pressable -me-2 flex h-11 min-w-0 items-center gap-1.5 rounded-xl px-2 text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
       >
         <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
@@ -286,7 +274,7 @@ export function StoreHeader({ activeDepartment }: {
               both old headers had settled on, kept so nothing moves for
               somebody who knew it. */}
           <div className="flex shrink-0 items-center gap-0.5">
-            {area}
+            {areaButton}
             {/* A link, because it goes to a page: it opens in a new tab, and a
                 pointer resting on it starts fetching the page. */}
             <Link href="/saved" aria-current={location === "/saved" ? "page" : undefined} aria-label={t("header.savedItems", { count: savedIds.length })} title={t("header.savedItems", { count: savedIds.length })} className={plain}>

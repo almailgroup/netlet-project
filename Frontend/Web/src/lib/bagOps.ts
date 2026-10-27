@@ -73,6 +73,8 @@ export function ghostLine(product: Product, variantId: string, quantity: number)
     addonsTotal: null,
     bundleName: null,
     destination: null,
+    /* The card knows its store by address only; the server's answer adds the id. */
+    vendor: product.vendorSlug ? { id: null, name: product.vendor ?? "", nameAr: null, slug: product.vendorSlug } : null,
     lineTotal: variant.price,
     measure: variant.measure ?? EACH,
   }, quantity);

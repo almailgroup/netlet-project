@@ -1,4 +1,16 @@
 {
+  "cart.itemCount": {
+    "param": "count",
+    "en": {
+      "one": "1 item"
+    },
+    "ar": {
+      "one": "منتج واحد",
+      "two": "منتجان",
+      "many": "{count} منتجاً",
+      "other": "{count} منتج"
+    }
+  },
   "rewards.held": {
     "param": "points",
     "en": {

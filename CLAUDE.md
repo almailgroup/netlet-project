@@ -1368,8 +1368,14 @@ there are no uppercase eyebrows over them — a 10px tracked-out label restating
 the heading below it is the most recognisable mark of generated design there
 is, and it does nothing at all in Arabic, which has no capitals.
 
-**`SiteFooter` is the one footer** — Home, departments and search, the product
-page and Saved; checkout has none, for the bare-header reason. Every entry is an
+**`SiteFooter` is the one footer** — every shopping page on a wide screen, and
+**on a phone the home page alone, on the owner's word** (`footed` in
+`StorefrontShell`): under a department, a product or the categories it was
+screens of links between the last thing looked at and the tab bar, which is
+the way anywhere else. A phone's other pages keep the room it left for the
+floating bars (`clearance`, 6rem or 11rem past the safe area), measured clear
+of the tab bar on every route at 390; a guest changes the language from the
+home page's. Checkout has none, for the bare-header reason. Every entry is an
 anchor that goes somewhere: "Returns", "Contact" and "Our story" used to toast
 "coming soon". Links into the account go to its section pages
 (`/account/orders`, `/account/help`); an old `/account#orders` is answered with
@@ -1456,6 +1462,27 @@ the whole app with `window.location.assign`, the fault Buy now had; the cart's
 provider wraps the router, so it navigates the browser's history with the base
 path on. **A delivery row names the store in the page's language**
 (`storeName`), from both names the bag carries, as a line carries both titles.
+
+**The bag is drawn by store, and on a phone it opens on where it is going —
+on the owner's word.** Each store's lines sit together under "Sold by …",
+which opens the store's page, with that store's own delivery beside them —
+free in green, its fee, and while a threshold is left, how much more with a
+bar of how far along — because each store charges its own and a list of fees
+under the total could not say which lines each was for (`bagGroups` in
+`lib/bagGroups.ts`, pure; the server now sends each line's `vendor`, and a
+line drawn before the server answers knows its store by the card's slug). A
+bag any of whose lines names no store — the demo build's — is one list as
+before. On the page each store is a card; in the drawer, a section. A line's
+price sits under its name and its stepper under that: beside the stepper, the
+price was cut at a 320px card's edge, which the page-width audit did not see
+because the card clips: measure text past the edge of any box that clips it,
+not only the page's width. **The phone's page has a bar of its own**
+(`CartTopBar`): "Deliver to" and the address in use at the start, opening the
+address book as the header's does (`useDeliveryArea`, which the header now
+asks too), and a heart at the end to the wishlists, or Saved for a guest, with
+the hearts counted. **The drawer is mounted after the pages** (`App`): its
+lines are links now, and before the pages they made the skip link not the
+first link on the page, which axe reported as content outside a landmark.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
@@ -5331,7 +5358,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — and is 772 KB (224 KB) now, the profile's cards and their words — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, and is 773 KB (224 KB) now, the bag by store and its bar — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -5661,6 +5688,28 @@ is possible and what an order costs are only ever the server's answer; the
 form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
 `kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
 refuses.
+
+**Every field has "Hide keyboard" above the keyboard, on the owner's word**
+(`KeyboardBar`): a number pad has no return key, a box of several lines turns
+return into a new line, and a sheet's form does not always have a scroll to
+drag the keyboard down by. It is each field's `inputAccessoryView`, set as
+editing begins from one listener installed at launch, rather than a SwiftUI
+keyboard toolbar — one of those per field draws its button once per field on
+the screen, and one per screen misses the sheets, the search and the portal.
+A field that brings its own bar keeps it; the words and the direction are the
+page's. The web needs none: Safari on an iPhone has its own Done above the
+keyboard, and Android's back gesture puts it away.
+
+**Only the home page has the footer, and the Cart tab is the web's new bag —
+on the owner's word.** `ShopPage`'s `footer` is off unless asked for, and only
+`HomeView` asks. `CartView` opens on `CartTopBar` (the address in use, opening
+`DeliverySheet`, and a heart to the wishlists or Saved, the hearts counted),
+then the title and the count, each store a card (`BagGroup.groups`, the web's
+`bagGroups`, tested on its cases) with "Sold by …" to the store's page and its
+parcels (`ParcelLine`: the fee, free in green, the way to free delivery as a
+bar), the line's price under its name, and the summary, the note and Checkout
+in one card. The stepper's minus is a bin at one, so a line carries no second
+bin.
 
 **The Profile and Cart tabs have no header and no footer, the header's end is
 the saved location, the Profile page is the delivery apps' layout and the

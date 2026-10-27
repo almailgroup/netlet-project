@@ -48,6 +48,8 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     var deliveryChoice: String? = nil
     /// What fast costs from this line's store, when the store offers it at all.
     var fastDelivery: FastDelivery? = nil
+    /// The store selling it, so the bag draws each store's lines together.
+    var vendor: CartStore? = nil
 
     struct FastDelivery: Decodable, Hashable, Sendable {
         let fee: Money
@@ -66,6 +68,62 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     /// "Default" is the variant a single-variant product is given, and says nothing.
     var variantLabel: String? {
         variantTitle == "Default" || variantTitle.isEmpty ? nil : variantTitle
+    }
+}
+
+/// The store a line comes from (`CartItem.vendor` on the web): its name in
+/// both languages and its address, for its page.
+struct CartStore: Decodable, Hashable, Sendable {
+    let id: Int?
+    let name: String
+    let nameAr: String?
+    let slug: String
+
+    func name(_ language: Language) -> String {
+        if language == .ar, let arabic = nameAr, !arabic.isEmpty { return arabic }
+        return name
+    }
+}
+
+/// One store's part of the bag: its lines, and the parcels the server priced
+/// for it — the web's `bagGroups`.
+struct BagGroup: Identifiable, Hashable, Sendable {
+    let store: CartStore
+    let items: [CartItem]
+    let delivery: [CartDeliveryLine]
+
+    var id: String { store.slug }
+
+    /// Each store's lines together, in the order the first of them was added,
+    /// with its parcels regular first; nil when any line names no store, and
+    /// the bag is then drawn as one list (`bagGroups` in `lib/bagGroups.ts`).
+    static func groups(_ cart: Cart) -> [BagGroup]? {
+        guard !cart.items.isEmpty, cart.items.allSatisfy({ $0.vendor != nil }) else { return nil }
+        var order: [String] = []
+        var stores: [String: CartStore] = [:]
+        var lines: [String: [CartItem]] = [:]
+        for item in cart.items {
+            guard let store = item.vendor else { continue }
+            if stores[store.slug] == nil { order.append(store.slug); stores[store.slug] = store }
+            if stores[store.slug]?.id == nil, store.id != nil { stores[store.slug] = store }
+            lines[store.slug, default: []].append(item)
+        }
+        return order.compactMap { slug in
+            guard let store = stores[slug] else { return nil }
+            let parcels = cart.delivery.perVendor.filter { $0.vendorId != nil && $0.vendorId == store.id }
+            // Regular first, each kept in the server's order — Swift's sort is not stable.
+            let ordered = parcels.filter { $0.choice != "fast" } + parcels.filter { $0.choice == "fast" }
+            return BagGroup(store: store, items: lines[slug] ?? [], delivery: ordered)
+        }
+    }
+
+    /// How far a parcel is toward free delivery, 0 to 1, from the server's own
+    /// figures; nil with no threshold left (`freeDeliveryProgress`).
+    static func freeProgress(_ line: CartDeliveryLine) -> Double? {
+        guard let toFree = line.toFree, !toFree.isZero, let goods = line.goods else { return nil }
+        let threshold = goods.fils + toFree.fils
+        guard threshold > 0 else { return nil }
+        return min(1, max(0, Double(goods.fils) / Double(threshold)))
     }
 }
 
@@ -105,6 +163,8 @@ struct CartDeliveryLine: Decodable, Hashable, Sendable {
     let fee: Money
     let free: Bool
     let toFree: Money?
+    /// What is in the parcel, which is what its free-delivery threshold measures.
+    var goods: Money? = nil
     /// The door this delivery goes to, when a line was sent elsewhere.
     var destinationLabel: String? = nil
     /// "fast" on a fast parcel (3.2.5), which is charged its own fee.

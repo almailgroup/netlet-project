@@ -34,6 +34,12 @@
             },
             "addons": [],
             "addonsTotal": null,
+            "vendor": {
+              "id": 4,
+              "name": "Gulf Grocers",
+              "nameAr": "بقالة الخليج",
+              "slug": "gulf-grocers"
+            },
             "lineTotal": {
               "amount": "9.500",
               "currencyCode": "KWD"

@@ -502,9 +502,11 @@ function App() {
         <CustomerProvider>
           <CartProvider>
             <StorefrontToaster />
-            {/* One drawer for the whole app: the cart button is on every page. */}
-            <BagDrawerWhenWanted />
             <Router />
+            {/* One drawer for the whole app: the cart button is on every page.
+                After the pages, so the skip link stays the first link on the
+                page — the drawer's lines are links to their products. */}
+            <BagDrawerWhenWanted />
           </CartProvider>
         </CustomerProvider>
       </ThemeProvider>

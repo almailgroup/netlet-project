@@ -1,7 +1,13 @@
 import SwiftUI
 
-/// The bag: each line with its stepper, each seller's delivery, the total the
-/// server worked out, and Checkout under the thumb.
+/// The bag — the web's `/cart` on a phone: where the order is going and the
+/// wishlists on a bar of its own, then each store's lines together under its
+/// name with that store's delivery beside them, the summary the server worked
+/// out, and Checkout under the thumb.
+///
+/// **The bar is on the owner's word**: the Cart tab has no header, so the
+/// delivery location the header carries is at its start — the same address
+/// book (`DeliverySheet`) — and a heart to the wishlists at its end.
 struct CartView: View {
     @Binding var path: NavigationPath
     @State private var pageBottom: CGFloat = .infinity
@@ -13,8 +19,15 @@ struct CartView: View {
         let cart = app.cart.cart
         ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("cart.title")])
-                Text(l.t("cart.title")).pageTitle().padding(.bottom, 24)
+                CartTopBar(path: $path).padding(.bottom, 14)
+                Text(l.t("cart.title")).pageTitle()
+                if let cart, !cart.isEmpty {
+                    Text(l.t("cart.itemCount", ["count": "\(cart.itemCount)"]))
+                        .font(.inter(15))
+                        .foregroundStyle(Brand.body)
+                        .padding(.top, 6)
+                }
+                Color.clear.frame(height: 20)
                 if app.cart.settling && cart == nil {
                     // Never "empty" before it knows — somebody who just pressed Add would read it as a failure.
                     LoadingView().accessibilityLabel(l.t("cart.loading"))
@@ -31,7 +44,7 @@ struct CartView: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.top, 24)
+            .padding(.top, 12)
             .padding(.bottom, 48)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -52,7 +65,8 @@ struct CartView: View {
     }
 
     private func filled(_ cart: Cart) -> some View {
-        VStack(spacing: 14) {
+        let groups = BagGroup.groups(cart)
+        return VStack(spacing: 12) {
             if let recovery = cart.recovery, recovery.remind, let count = recovery.itemCount, let hours = recovery.hours {
                 // Said where it is seen rather than in an email nobody can send.
                 VStack(alignment: .leading, spacing: 2) {
@@ -70,26 +84,35 @@ struct CartView: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 240 / 255, green: 211 / 255, blue: 198 / 255), lineWidth: 1))
             }
-            VStack(spacing: 0) {
-                ForEach(cart.items) { item in
-                    CartLineRow(item: item)
-                    if item.id != cart.items.last?.id { Divider().padding(.vertical, 12) }
+            if let groups {
+                ForEach(groups) { group in
+                    StoreCard(group: group, path: $path)
                 }
-            }
-            .card()
-            SummaryCard(cart: cart)
-            checkoutButton(cart)
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear
-                            .onAppear { buttonTop = proxy.frame(in: .global).minY }
-                            .onChange(of: proxy.frame(in: .global).minY) { _, top in buttonTop = top }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(cart.items) { item in
+                        CartLineRow(item: item)
+                        if item.id != cart.items.last?.id { Divider().padding(.vertical, 12) }
                     }
                 }
-            Text(l.t("cart.checkoutNote"))
-                .font(.inter(13))
-                .foregroundStyle(Brand.muted)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .card()
+            }
+            VStack(alignment: .leading, spacing: 14) {
+                SummaryCard(cart: cart, grouped: groups != nil)
+                Text(l.t("cart.checkoutNote"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                checkoutButton(cart)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear
+                                .onAppear { buttonTop = proxy.frame(in: .global).minY }
+                                .onChange(of: proxy.frame(in: .global).minY) { _, top in buttonTop = top }
+                        }
+                    }
+            }
+            .card()
         }
     }
 
@@ -98,9 +121,8 @@ struct CartView: View {
             path.append(Route.checkout)
         } label: {
             HStack(spacing: 8) {
-                Text(l.t("cart.checkoutShort"))
-                Text("·").accessibilityHidden(true)
-                Text(cart.total.formatted(l.current))
+                Text(l.t("cart.checkout"))
+                Image(systemName: "arrow.forward").font(.system(size: 14, weight: .semibold))
             }
         }
         .buttonStyle(AccentButtonStyle())
@@ -127,6 +149,167 @@ struct CartView: View {
     }
 }
 
+/// Where the order is going, at the start, and the wishlists, at the end —
+/// the web's `CartTopBar`. The location is the header's own
+/// (`DeliveryModel.label`) and opens the same address book; here it says
+/// "Deliver to" out loud. The heart goes to the wishlists, or for somebody
+/// signed out — who has hearts on the phone and no lists — to Saved, with how
+/// many are saved on its shoulder.
+private struct CartTopBar: View {
+    @Binding var path: NavigationPath
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let place = app.delivery.label(l.current) ?? l.t("home.chooseAreaShort")
+        let signedIn = app.session.isSignedIn
+        HStack(spacing: 12) {
+            Button {
+                app.deliveryOpen = true
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Brand.accentInk)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(l.t("home.deliverTo"))
+                            .font(.inter(12, .medium))
+                            .foregroundStyle(Brand.muted)
+                        HStack(spacing: 4) {
+                            Text(place)
+                                .font(.inter(15, .bold))
+                                .foregroundStyle(Brand.navy)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Brand.navy)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .padding(.trailing, 8)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFillStyle(cornerRadius: 14, strength: Haptics.actionStrength))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
+            .accessibilityHint(l.t("delivery.buttonTitle"))
+            .accessibilityAddTraits(.isButton)
+            Spacer(minLength: 8)
+            Button {
+                path.append(signedIn ? Route.wishlists : Route.saved)
+            } label: {
+                Image(systemName: "heart")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
+                    .overlay(alignment: .topTrailing) {
+                        PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 6, y: -6)
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.tap)
+            .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
+        }
+    }
+}
+
+/// One store's part of the bag: its name, which opens its page, its parcels —
+/// what each costs, free in green, and how far to free delivery — then its
+/// lines (`bagGroups` on the web).
+private struct StoreCard: View {
+    let group: BagGroup
+    @Binding var path: NavigationPath
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    path.append(Route.store(slug: group.store.slug))
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "storefront")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text(l.t("browse.soldBy", ["name": "\u{2068}\(group.store.name(l.current))\u{2069}"]))
+                            .font(.inter(14, .heavy))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Brand.muted)
+                    }
+                    .foregroundStyle(Brand.navy)
+                    .frame(minHeight: 36)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
+                    ParcelLine(parcel: parcel)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            Divider().overlay(Brand.cardLine)
+            VStack(spacing: 0) {
+                ForEach(group.items) { item in
+                    CartLineRow(item: item).padding(.vertical, 14)
+                    if item.id != group.items.last?.id { Divider().overlay(Brand.cardLine) }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// One parcel's delivery: what it costs, to which door when not the order's
+/// own, and while there is a threshold left, how much more and how far along.
+private struct ParcelLine: View {
+    let parcel: CartDeliveryLine
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let fast = parcel.choice == "fast"
+        let free = parcel.free || parcel.fee.isZero
+        let cost = free
+            ? l.t(fast ? "cart.storeFastDeliveryFree" : "cart.storeDeliveryFree")
+            : l.t(fast ? "cart.storeFastDelivery" : "cart.storeDelivery", ["fee": parcel.fee.formatted(l.current)])
+        let door = parcel.destinationLabel.map { l.t("address.sendingTo", ["label": $0]) + " · " } ?? ""
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 6) {
+                Image(systemName: free ? "checkmark" : "truck.box")
+                    .font(.system(size: 12, weight: .semibold))
+                    .accessibilityHidden(true)
+                Text(door + cost)
+                    .font(.inter(13, .semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(free ? Brand.success : Brand.body)
+            if let toFree = parcel.toFree, !toFree.isZero, let progress = BagGroup.freeProgress(parcel) {
+                Text(l.t("cart.storeToFree", ["amount": toFree.formatted(l.current)]))
+                    .font(.inter(12, .bold))
+                    .foregroundStyle(Brand.accentInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+                    .tint(Brand.navy)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
+/// One line: its photo and name (both to the product), what it is and what it
+/// costs under the name, then its trip and its stepper — the web's `BagLine`.
+/// The total sits under the name rather than at the stepper's end, because on
+/// a narrow phone the two did not fit on one line.
 struct CartLineRow: View {
     let item: CartItem
     @Environment(AppModel.self) private var app
@@ -137,22 +320,47 @@ struct CartLineRow: View {
         HStack(alignment: .top, spacing: 12) {
             NavigationLink(value: Route.product(handle: item.productHandle)) {
                 Color.clear
-                    .frame(width: 76, height: 76)
+                    .frame(width: 80, height: 80)
                     .overlay { RemoteImage(reference: item.image?.url, label: title) }
+                    .background(Brand.photo)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             }
             .buttonStyle(.tap)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink).lineLimit(2)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                // The stepper's minus is a bin at one, the app's way of taking
+                // a line out, so the line carries no second one.
+                NavigationLink(value: Route.product(handle: item.productHandle)) {
+                    Text(title)
+                        .font(.inter(14, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.tap)
                 if let variant = item.variantLabel {
-                    Text(variant).font(.caption).foregroundStyle(Brand.muted)
+                    Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
+                }
+                ForEach(item.addons ?? [], id: \.id) { addon in
+                    Text("+ " + addon.label).font(.inter(12)).foregroundStyle(Brand.accentInk)
+                }
+                if let bundle = item.bundleName {
+                    Text(bundle).font(.inter(12)).foregroundStyle(Brand.accentInk)
                 }
                 if let destination = item.destination {
                     Text(l.t("address.sendingTo", ["label": destination.label])).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
-                // Fast or regular (3.2.5), only where the store offers fast.
-                if let fast = item.fastDelivery {
-                    SpeedChoice(item: item, fast: fast, title: title)
+                Text(item.lineTotal.formatted(l.current))
+                    .font(.inter(15, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .padding(.top, 2)
+                // What one costs, once there is more than one.
+                if item.quantity > 1 {
+                    Text(l.t("cart.each", ["price": item.unitPrice.formatted(l.current)]))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
                 }
                 // How much the steps come to, for something sold by weight (`MeasureLabel`).
                 if let measure = item.measure,
@@ -161,30 +369,23 @@ struct CartLineRow: View {
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                 }
-                if let bundle = item.bundleName {
-                    Text(bundle).font(.caption).foregroundStyle(Brand.muted)
+                // Fast or regular (3.2.5), only where the store offers fast.
+                if let fast = item.fastDelivery {
+                    SpeedChoice(item: item, fast: fast, title: title).padding(.top, 4)
                 }
-                ForEach(item.addons ?? [], id: \.id) { addon in
-                    Text("+ " + addon.label).font(.caption).foregroundStyle(Brand.muted)
-                }
-                HStack {
-                    QuantityStepper(
-                        quantity: item.quantity,
-                        maximum: ReferenceData.shared.rules.maxLineQuantity,
-                        name: title,
-                        busy: app.cart.busyLine == item.lineId,
-                        compact: true
-                    ) { next in
-                        Task {
-                            await app.cart.setQuantity(lineId: item.lineId, to: next)
-                            if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
-                        }
+                QuantityStepper(
+                    quantity: item.quantity,
+                    maximum: ReferenceData.shared.rules.maxLineQuantity,
+                    name: title,
+                    busy: app.cart.busyLine == item.lineId,
+                    compact: true
+                ) { next in
+                    Task {
+                        await app.cart.setQuantity(lineId: item.lineId, to: next)
+                        if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
                     }
-                    Spacer()
-                    Text(item.lineTotal.formatted(l.current))
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(Brand.navy)
                 }
+                .padding(.top, 6)
             }
         }
     }
@@ -236,15 +437,33 @@ private struct SpeedChoice: View {
     }
 }
 
-/// Subtotal, each seller's delivery and the total — every figure the server's.
+/// The order summary: the subtotal, the delivery and the total — every figure
+/// the server's. Drawn by store, each store's delivery is beside its lines,
+/// so only the sum is here; a bag drawn as one list names each seller's.
 struct SummaryCard: View {
     let cart: Cart
+    var grouped = false
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
+        let count = l.t("cart.itemCount", ["count": String(cart.itemCount)])
         VStack(spacing: 10) {
-            row(l.t("cart.subtotal"), cart.subtotal.formatted(l.current))
-            ForEach(Array(cart.delivery.perVendor.enumerated()), id: \.offset) { _, line in
+            Text(l.t("checkout.orderSummary"))
+                .font(.inter(17, .heavy))
+                .foregroundStyle(Brand.navy)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+            row(l.t("cart.subtotal") + " (" + count + ")", cart.subtotal.formatted(l.current))
+            if grouped {
+                row(l.t("cart.delivery"), cart.delivery.total.formatted(l.current))
+            }
+            if let waived = cart.delivery.memberWaived, !waived.isZero {
+                Text(l.t("membership.deliveryWaived", ["amount": waived.formatted(l.current)]))
+                    .font(.inter(12, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            ForEach(Array((grouped ? [] : cart.delivery.perVendor).enumerated()), id: \.offset) { _, line in
                 let name = line.storeName(l.current)
                 VStack(alignment: .leading, spacing: 4) {
                     row(
@@ -262,7 +481,6 @@ struct SummaryCard: View {
             Divider()
             row(l.t("cart.total"), cart.total.formatted(l.current), bold: true)
         }
-        .card()
     }
 
     private func row(_ label: String, _ value: String, bold: Bool = false) -> some View {

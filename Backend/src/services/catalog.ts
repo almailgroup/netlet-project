@@ -543,6 +543,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       vendorId: vendors.id,
       vendorName: vendors.name,
       vendorNameAr: vendors.nameAr,
+      vendorSlug: vendors.slug,
       deliveryFlat: vendors.deliveryFlat,
       deliveryFreeOver: vendors.deliveryFreeOver,
       /* Cash on delivery is decided per seller (3.2.2). */
@@ -676,6 +677,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       ? { fee: money(row.fastDeliveryFee!), speed: isDeliverySpeed(row.fastDeliverySpeed) ? row.fastDeliverySpeed : null }
       : null,
     quantity: row.quantity,
+    vendor: { id: row.vendorId, name: row.vendorName, nameAr: row.vendorNameAr?.trim() || null, slug: row.vendorSlug },
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     addons: row.extras.map(addon => ({
       id: String(addon.id),

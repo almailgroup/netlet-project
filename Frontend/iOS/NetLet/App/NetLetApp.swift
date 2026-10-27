@@ -7,7 +7,10 @@ struct NetLetApp: App {
     // Made in the initialiser, which is on the main actor, rather than as the
     // property's initial value, which Swift 5 mode evaluates outside it.
     init() {
-        _app = State(initialValue: AppModel.live())
+        let model = AppModel.live()
+        _app = State(initialValue: model)
+        // "Hide keyboard" over every field the app has (`KeyboardBar`).
+        KeyboardBar.install(language: model.language)
     }
 
     var body: some Scene {

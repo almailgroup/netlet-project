@@ -23,12 +23,18 @@ import UIKit
 /// with the header**: floating over a column of rows it covered their ends —
 /// "Help from NetLet" on the Profile page, which is the help there anyway — so
 /// a page without the header draws none.
+///
+/// **Only the home page has the footer**, on the owner's word (`footer`), as on
+/// the web's phone.
 struct ShopPage<Content: View>: View {
     /// A tab's first screen, which has nothing to go back to.
     var root = false
     /// The logo row and the search row; off for Profile and Cart.
     var header = true
-    var footer = true
+    /// The footer, which only the home page draws, on the owner's word: on
+    /// every other page it was screens of links between the last thing looked
+    /// at and the tab bar — the web's phone, the same.
+    var footer = false
     var refresh: (() async -> Void)?
     /// The assistant's button in the end corner; off where the page's own
     /// floating bar has that corner, the web's rule that the thing a page is for wins.

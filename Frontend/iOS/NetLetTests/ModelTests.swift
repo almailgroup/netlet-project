@@ -468,3 +468,24 @@ final class ProfileRulesTests: XCTestCase {
         XCTAssertNotEqual(CountryNames.name("KW", language: .ar), "KW", "the phone names it in Arabic too")
     }
 }
+
+/// The bag by store — `lib/bagGroups.ts`, on its own test's cases.
+final class BagGroupTests: XCTestCase {
+    func testTheRecordedBagIsOneStoreWithItsOwnParcel() async throws {
+        let cart = try await Fixtures.cart()
+        let groups = try XCTUnwrap(BagGroup.groups(cart))
+        XCTAssertEqual(groups.map(\.store.slug), ["gulf-grocers"])
+        XCTAssertEqual(groups.first?.items.count, cart.items.count)
+        XCTAssertEqual(groups.first?.delivery.count, 1, "the store's own parcel is beside its lines")
+    }
+
+    func testTheWayToFreeDeliveryIsTheServersOwnFigures() throws {
+        let json = #"""
+        {"vendorId":4,"vendorName":"Acme","vendorNameAr":null,"goods":{"amount":"6.500","currencyCode":"KWD"},"fee":{"amount":"1.000","currencyCode":"KWD"},"free":false,"toFree":{"amount":"3.500","currencyCode":"KWD"}}
+        """#
+        let line = try JSONDecoder().decode(CartDeliveryLine.self, from: Data(json.utf8))
+        XCTAssertEqual(try XCTUnwrap(BagGroup.freeProgress(line)), 0.65, accuracy: 0.0001)
+        let none = try JSONDecoder().decode(CartDeliveryLine.self, from: Data(json.replacingOccurrences(of: #""toFree":{"amount":"3.500","currencyCode":"KWD"}"#, with: #""toFree":null"#).utf8))
+        XCTAssertNil(BagGroup.freeProgress(none))
+    }
+}

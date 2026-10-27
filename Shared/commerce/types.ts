@@ -286,6 +286,13 @@ export type CartItem = {
    */
   deliveryChoice?: "regular" | "fast";
   fastDelivery?: { fee: Money; speed: string | null } | null;
+  /**
+   * The store selling this line, so the bag can draw each store's lines
+   * together with that store's own delivery beside them. Absent from a bag
+   * the demo build invents, which is then drawn as one list. The id is null
+   * only on a line the bag draws before the server has answered for it.
+   */
+  vendor?: { id: number | null; name: string; nameAr: string | null; slug: string } | null;
   lineTotal: Money;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a

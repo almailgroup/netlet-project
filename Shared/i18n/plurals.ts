@@ -40,6 +40,16 @@ export type PluralEntry = {
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
   /* ------------------------------------------------------------ shoppers --- */
+  "cart.itemCount": {
+    param: "count",
+    en: { one: "1 item" },
+    ar: {
+      one: "منتج واحد",
+      two: "منتجان",
+      many: "{count} منتجاً",
+      other: "{count} منتج",
+    },
+  },
   "rewards.held": {
     param: "points",
     en: { one: "1 point is held until its sale's return window passes." },

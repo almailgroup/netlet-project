@@ -28,6 +28,14 @@
  * to fall back on. One structure at a time (`useMediaQuery`), so a phone's
  * page holds no hidden search field for a keyboard to land in.
  *
+ * **On a phone the footer is the home page's alone, on the owner's word**
+ * (`footed`). Under a department, a product or the categories it was five
+ * screens of links between the last thing a shopper looked at and the tab bar,
+ * which is the way anywhere else; the home page keeps it, being where somebody
+ * looks for who the shop is and how to reach it. Every other page keeps the
+ * room the footer left for the floating bars (`clearance`). A wide screen has
+ * no tab bar and keeps it everywhere.
+ *
  * Checkout, sign-in and the portal stay outside it on purpose: checkout and
  * sign-in keep a bare header (every exit on a payment page is an invitation to
  * take it; the search field is what somebody leaves a password for), and the
@@ -128,9 +136,13 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
   const printed = PRINTED.test(location);
   const wide = useMediaQuery("(min-width: 1024px)");
   const bare = !wide && BARE_ON_PHONE.test(location);
+  /* The footer on a wide screen, and on a phone only on the home page. */
+  const footed = !bare && (wide || location === "/");
   /* The assistant's button floats over the foot of the page too, so the
      footer leaves it room; it goes with the header, so a bare page has none. */
   const assistant = useAssistantShown() && !bare;
+  /* What the foot of the page clears on a phone, footer or not. */
+  const clearance = TALL_FOOT.test(location) || assistant ? "tall" : "tabs";
 
   return (
     <ChromeContext.Provider value={report}>
@@ -147,7 +159,11 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
           id="main"
           tabIndex={-1}
           className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${
-            bare ? "pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]" : ""
+            bare
+              ? "pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]"
+              : footed
+                ? ""
+                : clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"
           }`}
         >
           <Suspense fallback={<PageFallback />}>
@@ -155,7 +171,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
           </Suspense>
         </main>
         <div className={printed ? "contents print:hidden" : "contents"}>
-          {held || bare ? null : <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />}
+          {held || !footed ? null : <SiteFooter clearance={clearance} assistant={assistant} />}
           <MobileTabBar />
           {held || bare ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
         </div>
