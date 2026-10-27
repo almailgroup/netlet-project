@@ -3423,6 +3423,7 @@ export const en = {
   // --- auth ----------------------------------------------------------
   "auth.createTitle": "Create your account",
   "common.cancel": "Cancel",
+  "common.close": "Close",
   "account.signOutTitle": "Sign out of NetLet?",
   "account.signOutBody": "Your bag stays where it is. You will need your password to come back.",
   "account.sectionProfile": "Your profile",
@@ -7152,6 +7153,7 @@ export const ar: Record<MessageKey, string> = {
   // --- auth ----------------------------------------------------------
   "auth.createTitle": "أنشئ حسابك",
   "common.cancel": "إلغاء",
+  "common.close": "إغلاق",
   "account.signOutTitle": "تسجيل الخروج من نت‑لت؟",
   "account.signOutBody": "ستبقى سلتك كما هي. وستحتاج كلمة مرورك للعودة.",
   "account.sectionProfile": "ملفك الشخصي",

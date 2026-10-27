@@ -162,7 +162,7 @@ struct AddressFormSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l.t("common.cancel")) { dismiss() }
+                    BarButton(l.t("common.cancel")) { dismiss() }
                 }
             }
         }

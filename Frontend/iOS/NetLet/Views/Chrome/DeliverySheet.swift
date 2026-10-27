@@ -33,7 +33,7 @@ struct DeliverySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l.t("auth.close")) { dismiss() }
+                    BarButton(l.t("common.close")) { dismiss() }
                         .accessibilityLabel(l.t("delivery.close"))
                 }
             }

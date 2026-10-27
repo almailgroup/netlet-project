@@ -112,7 +112,8 @@ struct PinPickerSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l.t("pin.cancel")) { dismiss() }
+                    BarButton(l.t("common.close")) { dismiss() }
+                        .accessibilityLabel(l.t("pin.cancel"))
                 }
             }
             .onChange(of: finder.found) { _, found in

@@ -127,7 +127,7 @@ struct PhotoSearchSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l.t("search.close")) { dismiss() }
+                    BarButton(l.t("common.close")) { dismiss() }
                 }
             }
             .fullScreenCover(isPresented: $camera) {

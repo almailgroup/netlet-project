@@ -86,7 +86,7 @@ struct RootView: View {
                 AuthView(inSheet: true)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button(l.t("auth.close")) { app.authPresented = false }
+                            BarButton(l.t("common.close")) { app.authPresented = false }
                         }
                     }
             }

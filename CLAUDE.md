@@ -5963,8 +5963,16 @@ gets the tick from `HapticDefaultStyle`, set at the root and on each sheet's
 content — so a new button is silent only if it asks for `.plain`. The tab bar
 is the system's, and ticks at its own strength from its selection's setter. A menu's choices tick
 in their own actions, being the system's items and wearing no style; the
-sign-in switch ticks through its binding, so a refusal that switches it does
-not. The website has none of this: Safari on an iPhone lets no page vibrate.
+sign-in switch is two buttons now and ticks through their style. **A word in a
+sheet's bar is a `BarButton`**, never a plain `Button`: inheriting
+`HapticDefaultStyle`, which wraps the label in a borderless button of its own,
+a bar on iOS 26 took "Close" for an icon and drew it in a round bubble an
+icon's size, cut to "Cl…" — the owner's screenshot of "Deliver to", and every
+other sheet's Close and Cancel with it. `BarButton` wears the system's own
+style, which draws the word whole in a capsule, and ticks in its action; the
+bars say "Close" (`common.close`) with the longer name ("Close the size guide")
+kept for VoiceOver. The website has none of this: Safari on an iPhone lets no
+page vibrate.
 
 **The client is typed by procedure.** The server has no REST routes, so
 `Procedures.swift` declares each tRPC procedure the app calls with its input

@@ -56,9 +56,9 @@ struct PortalCommissionView: View {
                 .navigationTitle(l.t("commission.declineTitle"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button(l.t("common.cancel")) { declining = nil } }
+                    ToolbarItem(placement: .cancellationAction) { BarButton(l.t("common.cancel")) { declining = nil } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button(l.t("commission.decline")) { Task { await decide(row, accept: false) } }
+                        BarButton(l.t("commission.decline")) { Task { await decide(row, accept: false) } }
                             .disabled(busy || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }

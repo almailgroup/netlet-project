@@ -330,7 +330,7 @@ struct PortalProductsView: View {
             }
             .padding(20)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(l.t("common.cancel")) { bulk = nil } }
+                ToolbarItem(placement: .cancellationAction) { BarButton(l.t("common.cancel")) { bulk = nil } }
             }
         }
         .presentationDetents([.medium])
@@ -480,7 +480,7 @@ struct DeleteProductSheet: View {
                 .padding(20)
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(l.t("common.cancel")) { dismiss() }.disabled(deleting) }
+                ToolbarItem(placement: .cancellationAction) { BarButton(l.t("common.cancel")) { dismiss() }.disabled(deleting) }
             }
         }
         .environment(\.layoutDirection, l.layoutDirection)

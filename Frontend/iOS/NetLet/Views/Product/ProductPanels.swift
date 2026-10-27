@@ -136,7 +136,7 @@ private struct SizeGuideSheet: View {
             .navigationTitle(l.t("sizeGuide.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(l.t("sizeGuide.close")) { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { BarButton(l.t("common.close")) { dismiss() }.accessibilityLabel(l.t("sizeGuide.close")) }
             }
         }
         .task {

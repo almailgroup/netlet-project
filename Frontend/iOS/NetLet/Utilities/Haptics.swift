@@ -111,6 +111,9 @@ extension PrimitiveButtonStyle where Self == ActionHapticStyle {
 /// What every button with no style of its own wears, set once at the app's
 /// root: the system's own look (borderless, in the tint), and the tick when it
 /// is pressed. A button with a style of its own keeps it and ticks through it.
+///
+/// **Never in a bar** — see `BarButton`: wrapped like this, a word in a sheet's
+/// bar is taken for an icon on iOS 26 and cut to fit an icon's bubble.
 struct HapticDefaultStyle: PrimitiveButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role) {
@@ -120,5 +123,34 @@ struct HapticDefaultStyle: PrimitiveButtonStyle {
             configuration.label
         }
         .buttonStyle(.borderless)
+    }
+}
+
+/// A word in a sheet's bar — Close, Cancel, Decline — drawn by the system and
+/// in full. Every button in the app inherits `HapticDefaultStyle`, which wraps
+/// its label in a borderless button of its own; in a bar on iOS 26 the system
+/// then takes the word for an icon and draws it in a round bubble an icon's
+/// size, so "Close" read "Cl…" (the owner's screenshot of "Deliver to", and
+/// "in many parts"). The system's own style draws it in a capsule that fits
+/// the word; the tick moves into the action, so it is still felt.
+struct BarButton: View {
+    let title: String
+    var role: ButtonRole?
+    let action: @MainActor () -> Void
+
+    init(_ title: String, role: ButtonRole? = nil, action: @escaping @MainActor () -> Void) {
+        self.title = title
+        self.role = role
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: role) {
+            Haptics.tap()
+            action()
+        } label: {
+            Text(title).fixedSize()
+        }
+        .buttonStyle(.automatic)
     }
 }
