@@ -37,7 +37,7 @@ import type { Image } from "@shared/commerce/types";
 /** The most a card offers; a product with more shows the rest on its page. */
 export const CARD_PHOTOS = 5;
 
-export function CardGallery({ images, href, title, frameClassName, photoClassName, onLongPress }: {
+export function CardGallery({ images, href, title, frameClassName, photoClassName, onLongPress, dotsAtStart = false }: {
   images: Image[];
   href: string;
   title: string;
@@ -47,6 +47,12 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
   frameClassName: string;
   /** How a photo fills the frame: cropped, or contained on white. */
   photoClassName: string;
+  /**
+   * The dots at the photo's start, level with the bag's plus in its end
+   * corner (`PhotoCartControl`, on a touch screen), rather than in the middle,
+   * where a narrow card's plus would sit over them.
+   */
+  dotsAtStart?: boolean;
 }) {
   const { t } = useTranslation();
   const hold = useLongPress(onLongPress);
@@ -138,7 +144,7 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
               <ChevronRight className="size-4 rtl:-scale-x-100" />
             </button>
           ) : null}
-          <div aria-hidden="true" className="pointer-events-none absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-white/85 px-1.5 py-1">
+          <div aria-hidden="true" className={`pointer-events-none absolute flex items-center gap-1 rounded-full bg-white/85 px-1.5 py-1 ${dotsAtStart ? "bottom-[23px] start-2" : "bottom-2 left-1/2 -translate-x-1/2"}`}>
             {photos.map((photo, at) => (
               <span
                 key={`${photo.url}-${at}`}

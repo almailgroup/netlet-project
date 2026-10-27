@@ -1013,7 +1013,32 @@ share disc slid out, and two pills grew a minus and a plus that *pushed the
 label aside* as a pointer came near, so the grid moved while somebody read it.
 The owner asked for the pair back, each showing a minus and a plus on hover,
 and what made it moving was the shift, not the pair — so the pair came back
-without it.
+without it. **On a touch screen Add to cart is a plus on the photo** (below).
+
+**On a phone the bag is on the photo, on the owner's word** — the way Noon and
+the delivery apps do it (`PhotoCartControl`, drawn wherever the pointer is not
+a fine one that can hover, so a mouse keeps Add to cart over Buy now). A white
+plus in the photo's end corner (mirrored on the Arabic page) adds one at once
+and grows into a navy stepper across the photo's foot — a bin at one or a
+minus, the count, a plus — and once the presses stop for `SETTLE_MS` (2.5s),
+or a finger lands anywhere else, it folds into a navy square: a cart with the
+count inside its basket. A press on that opens the stepper again. Under the
+price only Buy now is left, following the same plain line. It is the bag's
+plain line for the variant, `CardAction`'s, so the photo and Buy now cannot
+disagree; a product with sizes gets a plus that opens the preview, and a
+sold-out one no plus at all (its badge says so). The gallery's dots move to the
+photo's start, level with the plus (`dotsAtStart`), or a narrow card's plus
+sat over them. **Every press buzzes where a page may** (`lib/haptics.ts`,
+`navigator.vibrate`: Android's Chrome; Safari on an iPhone lets no page
+vibrate, which only the app can answer), a refusal as two knocks with a toast.
+The keyboard is followed only when it pressed (a click with `detail` 0), the
+stepper never folds under `:focus-visible`, and a live region says each step.
+The stepper opens out of the corner by a clip (`.photo-stepper`, its own
+keyframes for each direction) rather than by its width, so nothing beside it
+moves. Measured at 320 and 390 in both languages: add, step, fold after 2.5s,
+reopen, bin back to the plus, a tap elsewhere folding it, the sizes plus
+opening the preview, axe clean with the stepper open, no sideways scroll; at
+1440 the card is Add to cart over Buy now with nothing on the photo.
 
 **A card's photographs can be browsed on the card**, on the owner's word —
 seeing a product's second photo used to mean opening the product.
@@ -1067,7 +1092,7 @@ adding it again. **The minus and plus never move anything**: they are
 fine pointer hovers it or the keyboard is in it, so the label stays where it is
 and the card keeps its height (measured: 454px before and after adding). A
 touch screen has no hover, so they are left out there, and the quantity is set
-on the bag's own stepper once the item is in — which Buy now then follows.
+on the photo's stepper — which Buy now then follows.
 
 `BuyPill` is the pill: a coloured surface holding minus, press and plus side by
 side, because a button inside a button is not something HTML allows. Its focus
@@ -1078,9 +1103,9 @@ words short — the Arabic read "1 في الـ…" before. Each press's accessib
 the words drawn ("Buy 2 now: Smart watch"), so somebody driving the page by
 voice can say what they see.
 
-**Add becomes the quantity once the line is in the bag** — minus (a bin at
-one), the count, plus — the way the delivery apps people here use every day
-work, and that stepper is drawn always, because "how many have I got" is a state
+**Add becomes the quantity once the line is in the bag** under a mouse —
+minus (a bin at one), the count, plus — the way the delivery apps people here
+use every day work (a touch screen does it on the photo, above), and that stepper is drawn always, because "how many have I got" is a state
 rather than an offer. `CardAction` reads the *plain* line for that variant, no extras and no
 bundle, because that is the only line a card makes, so a card's minus never
 takes apart something built on the product page. Nothing on it waits for the
@@ -5645,6 +5670,16 @@ amount on a bag line) — offers the try-on beside the size guide (`tryOn.offere
 off by default), and keeps the web's order: bundles before the quantity,
 Subscribe & Save before Follow, bought-together before the reviews.
 
+**A card adds from its photo, as the web's phone card does, on the owner's
+word** (`PhotoCartControl` in `ProductCard.swift`): the white plus in the
+photo's end corner adds one and opens the navy stepper, which folds into the
+cart-and-count square `settleSeconds` (2.5) after the last press — never under
+VoiceOver, which would pull it from under somebody between its buttons — and a
+press on the square opens it again. Every face is `.action`, felt at the
+product strength, and a refused add says so with the error pattern and a
+toast. Under the price only Buy now is left (`CardActions`); the long press's
+preview keeps its Add to cart. The dots sit at the photo's start.
+
 **The rest of the shop was checked against the web the same way**, by listing
 every dictionary key a web page or component asks for that no Swift file
 names (a key the web uses and the app does not is usually a feature the app
@@ -5688,8 +5723,8 @@ were all that shape; each is a `VStack` now, which exists while empty.
 (`Haptics.tab`) and every other button at a tenth (`Haptics.tap`), from one
 generator so they are steps on one scale. **A press that does something to a
 product is felt at the tab bar's half, on the owner's word** — Add to cart,
-Buy now, a step of the quantity on a card, the product page or the bag, the
-bin, the heart and Place order (`Haptics.action`, through
+Buy now, the photo's plus, its stepper and its count on a card, a step of the
+quantity on the product page or the bag, the bin, the heart and Place order (`Haptics.action`, through
 `pressHaptic(_:strength:)` and the borderless `.action` style) — so a shopper
 knows the act took; a placed order answers with the system's success pattern
 and a refused add or quantity change with its error pattern

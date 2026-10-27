@@ -19,10 +19,19 @@
  * rather than adding the first one that happens to be in stock. A shopper who
  * pressed Add on a shirt and found a medium in the bag was given a choice
  * nobody offered them.
+ *
+ * **On a touch screen the bag is on the photo, on the owner's word**: a plus in
+ * its end corner that adds one and opens a stepper, folding into the count
+ * once the presses stop (`PhotoCartControl`). Add to cart is not drawn there,
+ * and Buy now stays under the price. A mouse keeps the pair above — the same
+ * split `.reveal-control` and `.pill-step` make, read here with
+ * `useMediaQuery` because it changes what is drawn rather than how.
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { CardGallery } from "@/components/product/CardGallery";
+import { PhotoCartControl } from "@/components/product/PhotoCartControl";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
@@ -156,7 +165,12 @@ function BuyPill({ tone, label, children, onPress, href, step, always = false, p
  * stepper's bin by Add, so the button somebody just pressed is gone by the next
  * frame, and without this the keyboard lands on `<body>`.
  */
-function CardAction({ product, onChoose }: { product: Product; onChoose?: () => void }) {
+function CardAction({ product, onChoose, onPhoto = false }: {
+  product: Product;
+  onChoose?: () => void;
+  /** The bag is on the photo (a touch screen): Buy now alone is drawn here. */
+  onPhoto?: boolean;
+}) {
   const { t } = useTranslation();
   const { cart, addItem, updateQuantity, removeItem } = useCart();
   const buyNow = useBuyNow();
@@ -223,9 +237,11 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     const href = onChoose ? undefined : `/products/${encodeURIComponent(product.handle)}`;
     control = (
       <>
-        <BuyPill tone="add" label={t("card.chooseName", { name })} onPress={onChoose} href={href}>
-          <span className="truncate">{t("product.chooseOption")}</span>
-        </BuyPill>
+        {onPhoto ? null : (
+          <BuyPill tone="add" label={t("card.chooseName", { name })} onPress={onChoose} href={href}>
+            <span className="truncate">{t("product.chooseOption")}</span>
+          </BuyPill>
+        )}
         <BuyPill tone="buy" label={t("card.buyName", { name })} onPress={onChoose} href={href}>
           <Zap className="size-4 shrink-0 fill-current" aria-hidden />
           <span className="truncate">{t("product.buyNow")}</span>
@@ -273,7 +289,7 @@ function CardAction({ product, onChoose }: { product: Product; onChoose?: () => 
     );
     control = (
       <>
-        {add}
+        {onPhoto ? null : add}
         <BuyPill
           tone="buy"
           label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
@@ -332,6 +348,8 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   const rating = productRating(product.attributes);
   const express = isExpressEligible(product);
   const href = `/products/${encodeURIComponent(product.handle)}`;
+  /* The CSS's own line between a mouse and a finger (`.reveal-control`). */
+  const onPhoto = !useMediaQuery("(hover: hover) and (pointer: fine)");
 
   return (
     <article className="product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20">
@@ -356,6 +374,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           frameClassName="rounded-t-[15px] bg-[#f4f6f9]"
           photoClassName={feature ? "aspect-[33/20] bg-white object-contain" : "aspect-[4/5] object-cover"}
           onLongPress={onQuickView}
+          dotsAtStart={onPhoto}
         />
 
         <div className="pointer-events-none absolute start-2 top-2 flex flex-col items-start gap-1">
@@ -397,6 +416,8 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
             <Eye className="size-[18px]" aria-hidden />
           </button>
         ) : null}
+
+        {onPhoto ? <PhotoCartControl product={product} onChoose={onQuickView} /> : null}
       </div>
 
       <div className={`flex flex-1 flex-col ${compact ? "px-2.5 pb-2.5 pt-2" : "px-3 pb-3 pt-2.5"}`}>
@@ -420,7 +441,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
         {/* Draws nothing for a counted product, which is nearly every product. */}
         {variant ? <UnitPrice variant={variant} className="mt-0.5" /> : null}
 
-        <CardAction product={product} onChoose={onQuickView} />
+        <CardAction product={product} onChoose={onQuickView} onPhoto={onPhoto} />
       </div>
     </article>
   );

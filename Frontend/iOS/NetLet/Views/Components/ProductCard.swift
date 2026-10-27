@@ -89,14 +89,15 @@ struct QuantityStepper: View {
     }
 }
 
-/// A product in a grid or on a shelf — the web's `ProductCard`, line for line.
+/// A product in a grid or on a shelf — the web's `ProductCard` on a phone.
 ///
 /// A photograph to the card's edges at 4:5, which a finger swipes through (up
-/// to five, with dots saying which), the saving and the heart over it; then
-/// the store, the name, the rating and the price; then Add to cart over Buy
-/// now — both the card's white button, told apart by the bag and the bolt.
-/// Once the product is in the bag, Add becomes the bag's own stepper. A
-/// product with sizes asks which first, and both buttons open it.
+/// to five, with dots saying which), the saving and the heart over it, and
+/// **the bag in its end corner** (`PhotoCartControl`, on the owner's word):
+/// a plus that adds one and opens a stepper, which folds into the count once
+/// the presses stop. Then the store, the name, the rating and the price, and
+/// Buy now under them. A product with sizes asks which first, and both the
+/// plus and Buy now open it.
 struct ProductCard: View {
     let product: Product
     /// The Deals band's lead: two columns wide, a wider photo, a larger price.
@@ -118,6 +119,9 @@ struct ProductCard: View {
                     Spacer(minLength: 0)
                     HeartButton(product: product)
                 }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                PhotoCartControl(product: product).padding(8)
             }
             VStack(alignment: .leading, spacing: 0) {
                 if let line = note ?? product.vendor, !line.isEmpty {
@@ -352,7 +356,9 @@ struct CardGallery: View {
                     }
                     .scrollTargetBehavior(.paging)
                     .scrollPosition(id: $current)
-                    .overlay(alignment: .bottom) { dots(count: photos.count, at: current ?? 0) }
+                    // At the photo's start, level with the bag's plus in its
+                    // end corner — in the middle, a narrow card's plus sat over them.
+                    .overlay(alignment: .bottomLeading) { dots(count: photos.count, at: current ?? 0) }
                 } else {
                     frame(photos.first)
                 }
@@ -388,7 +394,8 @@ struct CardGallery: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 4)
         .background(Capsule().fill(Color.white.opacity(0.85)))
-        .padding(.bottom, 8)
+        .padding(.leading, 8)
+        .padding(.bottom, 23)
         .animation(.easeOut(duration: 0.2), value: index)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -452,9 +459,10 @@ struct RatingLine: View {
     }
 }
 
-/// Add to cart over Buy now — or the bag's stepper over Buy now once the
-/// product is in the bag, "Choose an option" when a size comes first, and
-/// "Sold out" when nothing can be bought. The web's `CardAction`.
+/// Buy now under the price — the bag itself is on the photo
+/// (`PhotoCartControl`). "Choose an option" when a size comes first opens the
+/// product, and "Sold out" says so when nothing can be bought. The web's
+/// `CardAction` on a touch screen.
 struct CardActions: View {
     let product: Product
     @State private var busy = false
@@ -463,32 +471,15 @@ struct CardActions: View {
 
     var body: some View {
         let variant = product.leadVariant
-        VStack(spacing: 6) {
+        Group {
             if let variant, variant.availableForSale {
                 if product.needsChoice {
-                    pill(label: l.t("card.chooseName", ["name": product.title])) {
-                        app.push(.product(handle: product.handle))
-                    } face: {
-                        Text(l.t("product.chooseOption")).lineLimit(1)
-                    }
                     buyPill { app.push(.product(handle: product.handle)) }
-                } else if let line = app.cart.cart?.plainLine(for: variant.id) {
-                    stepper(line: line, variant: variant)
+                } else if app.cart.cart?.plainLine(for: variant.id) != nil {
+                    // Already in the bag: checkout is the whole of what is left.
                     buyPill { app.openCheckout() }
                 } else {
-                    pill(label: l.t("card.addName", ["name": product.title])) {
-                        add(variant, thenCheckout: false)
-                    } face: {
-                        HStack(spacing: 6) {
-                            if busy {
-                                ProgressView().tint(Brand.navy).controlSize(.small)
-                            } else {
-                                Image(systemName: "bag").font(.system(size: 14, weight: .medium))
-                            }
-                            Text(l.t(variant.preorder == nil ? "product.addToCart" : "product.preorder")).lineLimit(1)
-                        }
-                    }
-                    buyPill { add(variant, thenCheckout: true) }
+                    buyPill { buy(variant) }
                 }
             } else {
                 Text(l.t("product.soldOut"))
@@ -504,86 +495,231 @@ struct CardActions: View {
     }
 
     private func buyPill(_ press: @escaping () -> Void) -> some View {
-        pill(label: l.t("card.buyName", ["name": product.title]), press: press) {
-            HStack(spacing: 6) {
-                Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
-                Text(l.t("product.buyNow")).lineLimit(1)
-            }
-        }
-    }
-
-    /// The card's white button: a white surface, a light navy rim, navy words
-    /// in the header's own button lettering (`PURCHASE_TONE`, `.pressable`).
-    private func pill<Face: View>(label: String, press: @escaping () -> Void, @ViewBuilder face: () -> Face) -> some View {
         Button(action: press) {
-            face()
-                .font(.inter(14, .medium))
-                .foregroundStyle(Brand.navy)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .padding(.horizontal, 4)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(CardPillStyle())
-        .accessibilityLabel(label)
-    }
-
-    private func stepper(line: CartItem, variant: ProductVariant) -> some View {
-        let count = line.quantity
-        let lineBusy = busy || app.cart.busyLine == line.lineId
-        return HStack(spacing: 0) {
-            Button {
-                Task { await app.cart.setQuantity(lineId: line.lineId, to: count - 1) }
-            } label: {
-                Image(systemName: count <= 1 ? "trash" : "minus")
-                    .font(.system(size: 14, weight: .medium))
-                    .frame(width: 40, height: 44)
-            }
-            .buttonStyle(.action)
-            .accessibilityLabel(l.t(count <= 1 ? "cart.remove" : "cart.decrease", ["name": product.title]))
-            Group {
-                if lineBusy {
+            HStack(spacing: 6) {
+                if busy {
                     ProgressView().tint(Brand.navy).controlSize(.small)
                 } else {
-                    ViewThatFits(in: .horizontal) {
-                        Text(l.t("card.inCart", ["count": "\(count)"])).lineLimit(1)
-                        Text("\(count)")
-                    }
+                    Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
                 }
+                Text(l.t("product.buyNow")).lineLimit(1)
             }
             .font(.inter(14, .medium))
-            .monospacedDigit()
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
-            Button {
-                Task { await app.cart.setQuantity(lineId: line.lineId, to: count + 1) }
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .medium))
-                    .frame(width: 40, height: 44)
-            }
-            .buttonStyle(.action)
-            .disabled(count >= variant.maxQuantity)
-            .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
+            .foregroundStyle(Brand.navy)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
         }
-        .foregroundStyle(Brand.navy)
-        .disabled(lineBusy)
-        .background(Capsule().fill(Color.white))
-        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+        .buttonStyle(CardPillStyle())
+        .accessibilityLabel(l.t("card.buyName", ["name": product.title]))
     }
 
-    private func add(_ variant: ProductVariant, thenCheckout: Bool) {
+    private func buy(_ variant: ProductVariant) {
         Task {
             busy = true
             let added = await app.cart.add(variantId: variant.id)
             busy = false
             if added {
-                announce(l.t("cart.added", ["name": product.title]))
-                if thenCheckout { app.openCheckout() }
+                app.openCheckout()
             } else {
                 Haptics.refused()
                 app.toast(l.t("cart.addFailed"))
             }
+        }
+    }
+}
+
+/// The bag on a card's photo, in its end corner — how the app adds to the
+/// cart, on the owner's word; the web's `PhotoCartControl` on a phone.
+///
+/// Three faces, one at a time, grown and folded in place:
+///
+/// - **A plus**, white, while the product is not in the bag. A press puts one
+///   in and opens the stepper.
+/// - **The stepper** — the bin at one or a minus, the count, a plus — in navy
+///   across the foot of the photo. Every press changes the bag's line and
+///   starts the wait again.
+/// - **The count**, a navy square with the cart and how many, once the
+///   stepper has been left alone for `settleSeconds`. A press opens it again.
+///
+/// It reads the bag's plain line for the variant (`plainLine`), the one Buy
+/// now follows. A product with sizes or colours opens its page instead, and a
+/// sold-out one draws nothing here — its badge on the photo says so.
+///
+/// **Every press is felt** at the product strength (`.action`), a refusal with
+/// the error pattern, and VoiceOver is told what each did. Under VoiceOver the
+/// stepper does not fold by itself, which would pull it from under somebody
+/// moving between its buttons.
+struct PhotoCartControl: View {
+    let product: Product
+    @State private var open = false
+    @State private var adding = false
+    @State private var settle: Task<Void, Never>?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+
+    /// How long the stepper stays open after the last press — the web's `SETTLE_MS`.
+    static let settleSeconds: Double = 2.5
+
+    var body: some View {
+        if let variant = product.leadVariant, variant.availableForSale {
+            let line = product.needsChoice ? nil : app.cart.cart?.plainLine(for: variant.id)
+            let stepping = open && line != nil
+            Group {
+                if product.needsChoice {
+                    plus(label: l.t("card.chooseName", ["name": product.title])) {
+                        app.push(.product(handle: product.handle))
+                    }
+                } else if let line, stepping {
+                    stepper(line: line, variant: variant)
+                } else if let line {
+                    countFace(line.quantity)
+                } else {
+                    plus(label: l.t(variant.preorder == nil ? "card.addName" : "card.preorderName", ["name": product.title])) {
+                        add(variant)
+                    }
+                }
+            }
+            .frame(maxWidth: stepping ? 152 : 44, minHeight: 44, maxHeight: 44)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(line == nil ? Color.white : Brand.navy))
+            .overlay {
+                if line == nil {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: Brand.navy.opacity(line == nil ? 0.14 : 0.26), radius: 5, y: 2)
+            .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: stepping)
+            .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: line == nil)
+            .onDisappear {
+                settle?.cancel()
+                open = false
+            }
+        }
+    }
+
+    private func plus(label: String, press: @escaping () -> Void) -> some View {
+        Button(action: press) {
+            Group {
+                if adding {
+                    ProgressView().tint(Brand.navy).controlSize(.small)
+                } else {
+                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                }
+            }
+            .foregroundStyle(Brand.navy)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.action)
+        .disabled(adding)
+        .accessibilityLabel(label)
+    }
+
+    /// The cart with how many in its basket, as the web draws it.
+    private func countFace(_ count: Int) -> some View {
+        Button {
+            open = true
+            settleLater()
+        } label: {
+            ZStack {
+                Image(systemName: "cart").font(.system(size: 22, weight: .regular))
+                Text("\(count)")
+                    .font(.inter(count > 9 ? 9 : 11, .bold))
+                    .monospacedDigit()
+                    .offset(x: 1.5, y: -3)
+            }
+            .foregroundStyle(Color.white)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.action)
+        .transition(.opacity)
+        .accessibilityLabel(l.t("card.changeQuantity", ["count": "\(count)", "name": product.title]))
+    }
+
+    private func stepper(line: CartItem, variant: ProductVariant) -> some View {
+        let count = line.quantity
+        let busy = app.cart.busyLine == line.lineId
+        return HStack(spacing: 0) {
+            Button {
+                change(line, to: count - 1)
+            } label: {
+                Image(systemName: count <= 1 ? "trash" : "minus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.action)
+            .accessibilityLabel(l.t(count <= 1 ? "cart.remove" : "cart.decrease", ["name": product.title]))
+            Group {
+                if busy {
+                    ProgressView().tint(.white).controlSize(.small)
+                } else {
+                    Text("\(count)").font(.inter(16, .bold)).monospacedDigit().foregroundStyle(Color.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
+            Button {
+                change(line, to: count + 1)
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.action)
+            .disabled(count >= variant.maxQuantity)
+            .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
+        }
+        .disabled(busy)
+        .transition(.opacity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("card.inCart", ["count": "\(count)"]))
+    }
+
+    private func add(_ variant: ProductVariant) {
+        adding = true
+        Task {
+            let added = await app.cart.add(variantId: variant.id)
+            adding = false
+            if added {
+                open = true
+                settleLater()
+                announce(l.t("cart.added", ["name": product.title]))
+            } else {
+                Haptics.refused()
+                app.toast(l.t("cart.addFailed"))
+            }
+        }
+    }
+
+    private func change(_ line: CartItem, to quantity: Int) {
+        if quantity < 1 { open = false }
+        settleLater()
+        Task {
+            await app.cart.setQuantity(lineId: line.lineId, to: quantity)
+            announce(quantity < 1
+                ? l.t("cart.removedName", ["name": product.title])
+                : l.t("cart.quantityShort", ["count": "\(quantity)"]))
+        }
+    }
+
+    /// Folds the stepper into the count once the presses stop; each press
+    /// starts the wait again. Not under VoiceOver.
+    private func settleLater() {
+        settle?.cancel()
+        guard !voiceOver else { return }
+        settle = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(Self.settleSeconds))
+            guard !Task.isCancelled else { return }
+            open = false
         }
     }
 }

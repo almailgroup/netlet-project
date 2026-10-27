@@ -639,6 +639,36 @@
 }
 
 /*
+ * The stepper on a card's photo (`PhotoCartControl`) grows out of the plus in
+ * the photo's end corner across its foot: a clip opening from the end side,
+ * so the plus the finger is on is the part already there. The clip is
+ * physical, so the Arabic page opens it from the left. The global motion
+ * guard makes it a cut for somebody who asked for less motion.
+ */
+.photo-stepper {
+  animation: photo-stepper-ltr 190ms var(--ease-out);
+}
+[dir="rtl"] .photo-stepper {
+  animation-name: photo-stepper-rtl;
+}
+@keyframes photo-stepper-ltr {
+  from {
+    clip-path: inset(0 0 0 calc(100% - 2.75rem) round 0.75rem);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 0.75rem);
+  }
+}
+@keyframes photo-stepper-rtl {
+  from {
+    clip-path: inset(0 calc(100% - 2.75rem) 0 0 round 0.75rem);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 0.75rem);
+  }
+}
+
+/*
  * The voice panel's level meter. It is not reading a real signal — nothing is
  * listening yet — but it is what the meter has to do when something is: the
  * bars have to move independently, or a row that rises and falls as one block
