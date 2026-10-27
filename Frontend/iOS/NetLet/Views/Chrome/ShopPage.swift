@@ -66,6 +66,9 @@ struct ShopPage<Content: View>: View {
     @State private var scroll = ScrollFollower()
     /// Whether the tab bar is out of the way: the one thing that does draw.
     @State private var barAway = false
+    /// Whether the logo row has gone and the search row is the top of the
+    /// screen — which row's glass reaches up behind the status bar.
+    @State private var searchAtTop = false
 
     /// The assistant floats only where the header is; see above.
     private var showsAssistant: Bool { assistant && header }
@@ -77,7 +80,7 @@ struct ShopPage<Content: View>: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                         if header && logo {
-                            LogoRow(back: back) {
+                            LogoRow(back: back, reach: logoReaches ? statusBar : 0) {
                                 if root && app.selectedTab == .home {
                                     withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
                                 } else {
@@ -100,7 +103,7 @@ struct ShopPage<Content: View>: View {
                                 content()
                             }
                         } header: {
-                            if header { SearchRow(back: logo ? nil : back, whole: !logo) }
+                            if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar) }
                         }
                     }
                     .modifier(ScrollContentPlace(space: ShopPageTop.space, viewport: screen.size.height, changed: follow))
@@ -130,12 +133,15 @@ struct ShopPage<Content: View>: View {
         }
         .animation(.easeOut(duration: 0.2), value: showsAssistant)
         .safeAreaInset(edge: .top, spacing: 0) {
-            // The strip under the status bar wears the header's glass too, at
-            // the tint the bar's top has, so the two meet with no step. With
-            // no header it is the page's own ground, solid, so what scrolls up
-            // goes under it rather than under the clock and the battery.
+            // With a header, the strip under the status bar is the header's
+            // own glass reaching up (`GlassSurface`'s `reach`) — the logo row's
+            // while it is in view, the search row's once it is the top of the
+            // screen — and nothing is drawn here: a pane of its own met the
+            // row under it in a visible line. With no header it is the page's
+            // own ground, solid, so what scrolls up goes under it rather than
+            // under the clock and the battery.
             if header {
-                Color.clear.frame(height: 0).background(GlassSurface(top: 0.6, foot: 0.6).ignoresSafeArea(edges: .top))
+                Color.clear.frame(height: 0)
             } else {
                 Color.clear.frame(height: 0).background(Brand.ground.ignoresSafeArea(edges: .top))
             }
@@ -150,7 +156,22 @@ struct ShopPage<Content: View>: View {
         }
     }
 
+    /// The logo row's glass reaches behind the status bar until the row has
+    /// as good as gone; then the search row's does. The handover comes a few
+    /// points early, under the logo row's empty foot, so a frame read late
+    /// never leaves the strip uncovered.
+    private var logoReaches: Bool { logo && !searchAtTop }
+
+    /// The status bar's height, which the top row's glass reaches up behind.
+    private var statusBar: CGFloat {
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let window = scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first
+        return window?.safeAreaInsets.top ?? 0
+    }
+
     private func follow(_ place: ScrollPlace) {
+        let atTop = place.y > ShopPageTop.logoHandover
+        if atTop != searchAtTop { searchAtTop = atTop }
         let next = scroll.state.next(y: place.y, viewport: place.viewport, height: place.height)
         scroll.state = next
         let away = next.away && !voiceOver
@@ -169,6 +190,9 @@ private enum ShopPageTop {
     static let id = "shop-page-top"
     static let foot = "shop-page-foot"
     static let space = "shop-page-scroll"
+    /// How far down the logo row's 58 points the search row takes over the
+    /// status bar's glass: past the logo and the location, into the padding.
+    static let logoHandover: CGFloat = 50
 }
 
 /// Nothing behind the tab bar but the page itself, on the owner's word: on
@@ -205,6 +229,8 @@ private struct OptionalRefresh: ViewModifier {
 /// strength. It was the language; that is a row on the Profile page now.
 struct LogoRow: View {
     var back: (() -> Void)?
+    /// How far its glass reaches up behind the status bar.
+    var reach: CGFloat = 0
     let onLogo: () -> Void
 
     @Environment(AppModel.self) private var app
@@ -277,7 +303,7 @@ struct LogoRow: View {
         .frame(height: 58)
         // The top of one surface that runs 60% to 45% across both rows, as the
         // web's header does; the rim is the strip's above it.
-        .background(GlassSurface(top: 0.6, foot: 0.53, rim: false))
+        .background(GlassSurface(top: 0.6, foot: 0.53, rim: false, reach: reach))
     }
 }
 
@@ -289,9 +315,11 @@ struct LogoRow: View {
 struct SearchRow: View {
     /// A pushed screen's way back, when there is no logo row to carry it.
     var back: (() -> Void)?
-    /// The whole header, with no logo row over it: its glass starts at the
-    /// tint the strip under the status bar has, so the two meet with no step.
-    var whole = false
+    /// How far its glass reaches up behind the status bar — the status bar's
+    /// height once it is the top of the screen, nothing under the logo row.
+    /// Reaching, its tint starts at the top's 60% rather than going on from
+    /// the logo row's foot.
+    var reach: CGFloat = 0
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -314,8 +342,7 @@ struct SearchRow: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            GlassSurface(top: whole ? 0.6 : 0.53, foot: 0.45, rim: false)
-                .ignoresSafeArea(edges: .top)
+            GlassSurface(top: reach > 0 ? 0.6 : 0.53, foot: 0.45, rim: false, reach: reach)
         )
         .overlay(alignment: .bottom) {
             Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)

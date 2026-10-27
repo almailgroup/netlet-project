@@ -14,12 +14,22 @@ struct GlassSurface: View {
     /// The bright top edge — only where the surface is the top of the glass,
     /// or two rows of one header read as two strips.
     var rim = true
+    /// How far the same glass reaches up past the view's top — behind the
+    /// status bar, for the header row at the top of the screen — at the top's
+    /// tint. One blur and one tint from the clock to the row's foot: two panes
+    /// of glass meeting under the status bar drew a line where they met, and
+    /// the strip above read darker than the row (the owner's screenshot).
+    var reach: CGFloat = 0
 
     var body: some View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial)
-            LinearGradient(colors: [Color.white.opacity(top), Color.white.opacity(foot)], startPoint: .top, endPoint: .bottom)
+            VStack(spacing: 0) {
+                Color.white.opacity(top).frame(height: reach)
+                LinearGradient(colors: [Color.white.opacity(top), Color.white.opacity(foot)], startPoint: .top, endPoint: .bottom)
+            }
         }
+        .padding(.top, -reach)
         .overlay(alignment: .top) {
             if rim { Rectangle().fill(Color.white.opacity(0.95)).frame(height: 1) }
         }

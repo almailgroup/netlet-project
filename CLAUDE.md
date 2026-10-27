@@ -5798,7 +5798,14 @@ tint); the footer follows the content. **The header is the web's phone header
 piece for piece, on the owner's word**: one surface from 60% at the top of the
 logo row to 45% at the foot of the search row, with no rim between the rows
 (the first build drew each row's rim, which split one header into three
-strips); the location in `.pressable`'s 14px at weight 500; and the field the
+strips); **and no pane of its own behind the status bar**, on the owner's word:
+the strip there was a second glass, which blurred and tinted on its own and met
+the pinned search row in a visible line, darker above it. The row at the top
+of the screen reaches up behind the clock instead (`GlassSurface`'s `reach`, at
+the top's 60%) — the logo row while it is in view, the search row once the
+logo row has gone (`searchAtTop`, handed over 50 points down, inside the logo
+row's empty foot) — so it is one blur and one tint from the clock to the row's
+foot; the location in `.pressable`'s 14px at weight 500; and the field the
 web's — a microphone and a camera in the muted ink where clear would stand,
 each only where it works (`voiceSearch` and a phone that can listen;
 `photoSearch` and `search.photoAvailable`, asked once at launch), a hairline
