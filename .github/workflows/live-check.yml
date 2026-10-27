@@ -58,3 +58,28 @@ jobs:
             esac
             curl -sS -m 30 -o /dev/null -L -w "%{http_code}  %{content_type}  %{size_download} bytes  $address\n" "$address" || echo "failed  $address"
           done
+
+      # An iPhone app may refuse a host a browser accepts: App Transport
+      # Security wants TLS 1.2 or later with a forward-secret cipher, and some
+      # hosts treat an app's CFNetwork user agent differently from a browser's.
+      - name: How each photo host answers an iPhone app
+        run: |
+          app_agent="NetLet/43 CFNetwork/3826.500.111.2.2 Darwin/25.0.0"
+          jq -r '.result.data.json[] | .images[0].url // empty' catalogue-en.json | grep '^https://' | sort -u -t/ -k3,3 | while read -r photo; do
+            host=$(echo "$photo" | cut -d/ -f3)
+            echo "== $host"
+            chain=$(openssl s_client -connect "$host:443" -servername "$host" -showcerts </dev/null 2>/dev/null)
+            echo "certificates sent: $(echo "$chain" | grep -c 'BEGIN CERTIFICATE')"
+            echo "$chain" | openssl x509 -noout -subject -issuer -enddate 2>/dev/null
+            echo "$chain" | grep -E "^(Peer signature type|Server Temp Key|    Protocol|    Cipher)" | head -4
+            for version in tls1_2 tls1_3; do
+              if openssl s_client -connect "$host:443" -servername "$host" "-$version" </dev/null >/dev/null 2>&1; then echo "$version: yes"; else echo "$version: no"; fi
+            done
+            if openssl s_client -connect "$host:443" -servername "$host" -tls1_2 \
+              -cipher 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305' </dev/null >/dev/null 2>&1
+            then echo "forward-secret cipher on TLS 1.2: yes"; else echo "forward-secret cipher on TLS 1.2: no"; fi
+            echo "as a browser: $(curl -sS -m 30 -o /dev/null -w '%{http_code} %{content_type}' -A 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1' "$photo")"
+            echo "as the app:   $(curl -sS -m 30 -o /dev/null -w '%{http_code} %{content_type}' -A "$app_agent" -H 'Accept: image/*' "$photo")"
+            echo "no agent:     $(curl -sS -m 30 -o /dev/null -w '%{http_code} %{content_type}' -A '' "$photo")"
+            curl -sSI -m 30 -A "$app_agent" "$photo" | grep -iE '^(server|cf-|cache-control|content-length|x-frame|vary|strict-transport)' | head -8
+          done
