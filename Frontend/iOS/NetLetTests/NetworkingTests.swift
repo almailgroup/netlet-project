@@ -1,3 +1,4 @@
+import UIKit
 import XCTest
 @testable import NetLet
 
@@ -808,5 +809,215 @@ final class FixtureDecodingTests: XCTestCase {
         } catch {
             XCTFail("unexpected \(error)")
         }
+    }
+}
+
+/// The app's one image pipeline: what made 23 of 24 live photos never appear
+/// under `AsyncImage`, each answered here.
+final class ImagePipelineTests: XCTestCase {
+    let photo = URL(string: "https://photos.example/serum.jpg")!
+
+    /// A photo of a given size, as a seller's server would send it.
+    func jpeg(width: Int, height: Int) -> Data {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in
+            UIColor.orange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        }
+        return image.jpegData(compressionQuality: 0.8)!
+    }
+
+    func answer(_ data: Data, status: Int = 200) -> (Data, URLResponse) {
+        (data, HTTPURLResponse(url: photo, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "image/jpeg"])!)
+    }
+
+    func testAPictureIsDecodedAtTheSizeItIsDrawnAt() throws {
+        let decoded = try XCTUnwrap(ImagePipeline.decode(jpeg(width: 2400, height: 1800), pixels: 512))
+        XCTAssertEqual(max(decoded.size.width * decoded.scale, decoded.size.height * decoded.scale), 512, accuracy: 1)
+        XCTAssertNil(ImagePipeline.decode(Data("<svg/>".utf8), pixels: 512))
+    }
+
+    func testTheSizeRoundsUpToAFewSteps() {
+        XCTAssertEqual(ImagePipeline.pixels(for: CGSize(width: 48, height: 48), scale: 3), 256)
+        XCTAssertEqual(ImagePipeline.pixels(for: CGSize(width: 173, height: 216), scale: 3), 1024)
+        XCTAssertEqual(ImagePipeline.pixels(for: CGSize(width: 390, height: 390), scale: 3), 1536)
+        XCTAssertEqual(ImagePipeline.pixels(for: CGSize(width: 2000, height: 2000), scale: 3), 3072)
+    }
+
+    /// A slow seller's server drops a connection: tried again, not given up on.
+    func testADroppedConnectionIsTriedAgain() async {
+        let calls = CallCounter()
+        let data = jpeg(width: 800, height: 800)
+        let pipeline = ImagePipeline(fetch: { _ in
+            if await calls.next() < 3 { throw URLError(.networkConnectionLost) }
+            return self.answer(data)
+        }, disk: nil, pauses: [.milliseconds(1), .milliseconds(1)])
+        let image = await pipeline.image(photo, pixels: 256)
+        XCTAssertNotNil(image)
+        let count = await calls.value
+        XCTAssertEqual(count, 3)
+    }
+
+    /// A box that scrolls off and back, or two boxes showing one photo: one fetch.
+    func testEveryoneAskingForOnePictureSharesOneFetch() async {
+        let calls = CallCounter()
+        let data = jpeg(width: 600, height: 600)
+        let pipeline = ImagePipeline(fetch: { _ in
+            _ = await calls.next()
+            try await Task.sleep(for: .milliseconds(50))
+            return self.answer(data)
+        }, disk: nil)
+        async let first = pipeline.image(photo, pixels: 256)
+        async let second = pipeline.image(photo, pixels: 256)
+        let (a, b) = await (first, second)
+        XCTAssertNotNil(a)
+        XCTAssertNotNil(b)
+        XCTAssertNotNil(pipeline.cached(photo, pixels: 256), "kept for the next frame that asks")
+        let count = await calls.value
+        XCTAssertEqual(count, 1)
+    }
+
+    /// A view that stops waiting does not stop the fetch: the picture is kept
+    /// for when the box comes back.
+    func testAViewGoingAwayDoesNotStopThePicture() async throws {
+        let data = jpeg(width: 600, height: 600)
+        let pipeline = ImagePipeline(fetch: { _ in
+            try await Task.sleep(for: .milliseconds(80))
+            return self.answer(data)
+        }, disk: nil)
+        let waiting = Task { await pipeline.image(photo, pixels: 256) }
+        try await Task.sleep(for: .milliseconds(10))
+        waiting.cancel()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertNotNil(pipeline.cached(photo, pixels: 256))
+    }
+
+    func testAMissingPictureIsNotAskedForAgainAndAgain() async {
+        let calls = CallCounter()
+        let pipeline = ImagePipeline(fetch: { _ in
+            _ = await calls.next()
+            return self.answer(Data("gone".utf8), status: 404)
+        }, disk: nil, pauses: [.milliseconds(1)])
+        let first = await pipeline.image(photo, pixels: 256)
+        let second = await pipeline.image(photo, pixels: 256)
+        XCTAssertNil(first)
+        XCTAssertNil(second)
+        let count = await calls.value
+        XCTAssertEqual(count, 1, "a 404 is final, and asked again only after a while")
+    }
+
+    /// The bytes outlive the app: a second launch draws from the disk.
+    func testTheBytesAreKeptOnDisk() async {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("images-\(UUID().uuidString)")
+        let disk = URLCache(memoryCapacity: 4 * 1024 * 1024, diskCapacity: 16 * 1024 * 1024, directory: folder)
+        let data = jpeg(width: 400, height: 400)
+        let first = ImagePipeline(fetch: { _ in self.answer(data) }, disk: disk)
+        _ = await first.image(photo, pixels: 256)
+        let offline = ImagePipeline(fetch: { _ in throw URLError(.notConnectedToInternet) }, disk: disk, pauses: [])
+        let again = await offline.image(photo, pixels: 512)
+        XCTAssertNotNil(again)
+    }
+}
+
+/// A count several tasks can add to.
+actor CallCounter {
+    private(set) var value = 0
+    func next() -> Int {
+        value += 1
+        return value
+    }
+}
+
+/// Today's public shelves, kept on the phone so the home page opens on them.
+final class ShelfMemoryTests: XCTestCase {
+    let configuration = APIConfiguration(baseURL: URL(string: "https://shop.example")!)
+    let catalogue = #"{"result":{"data":{"json":{"recorded":true}}}}"#
+
+    func memory(at date: Date) -> ShelfMemory {
+        ShelfMemory(folder: FileManager.default.temporaryDirectory.appendingPathComponent("shelves-\(UUID().uuidString)"), now: { date })
+    }
+
+    func request(_ path: String, method: String = "GET") -> URLRequest {
+        var request = URLRequest(url: URL(string: "https://shop.example/api/trpc/\(path)?input=%7B%7D")!)
+        request.httpMethod = method
+        return request
+    }
+
+    /// Kuwait is UTC+3: nine in the evening UTC is already tomorrow there.
+    func testTheDayIsKuwaits() {
+        let evening = ISO8601DateFormatter().date(from: "2026-10-27T21:00:00Z")!
+        XCTAssertEqual(ShelfMemory.kuwaitDay(evening), "2026-10-28")
+        XCTAssertEqual(ShelfMemory.kuwaitDay(evening.addingTimeInterval(-1)), "2026-10-27")
+    }
+
+    /// A saving is permitted for a day; a remembered one never outlives it.
+    func testAnAnswerIsKeptForTheDayItWasReadOn() {
+        let morning = ISO8601DateFormatter().date(from: "2026-10-27T06:00:00Z")!
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("shelves-\(UUID().uuidString)")
+        ShelfMemory(folder: folder, now: { morning }).remember(Data(catalogue.utf8), for: request("commerce.products.list"))
+        XCTAssertNotNil(ShelfMemory(folder: folder, now: { morning.addingTimeInterval(8 * 3600) }).recall(request("commerce.products.list")))
+        XCTAssertNil(ShelfMemory(folder: folder, now: { morning.addingTimeInterval(20 * 3600) }).recall(request("commerce.products.list")))
+    }
+
+    /// Nothing about the shopper is kept: the bag, the account, a search, a write.
+    func testOnlyThePublicShelvesAreKept() {
+        let memory = memory(at: Date())
+        for path in ["commerce.cart.get", "auth.me", "search.products", "orders.list"] {
+            memory.remember(Data(catalogue.utf8), for: request(path))
+            XCTAssertNil(memory.recall(request(path)), path)
+        }
+        memory.remember(Data(catalogue.utf8), for: request("commerce.products.list", method: "POST"))
+        XCTAssertNil(memory.recall(request("commerce.products.list", method: "POST")))
+    }
+
+    /// Through the client: an answer read today comes back without a round trip.
+    func testTheClientRemembersTheCatalogue() async throws {
+        let body = #"{"result":{"data":{"json":{"beauty":27,"electronics":2}}}}"#
+        let transport = StubTransport { _ in (200, body) }
+        let client = TRPCClient(configuration: configuration, transport: transport, memory: memory(at: Date()))
+        XCTAssertNil(client.remembered(API.departmentCounts))
+        _ = try await client.call(API.departmentCounts)
+        XCTAssertEqual(client.remembered(API.departmentCounts), ["beauty": 27, "electronics": 2])
+    }
+
+    /// A refusal is never drawn tomorrow morning as if it were the shelf.
+    func testARefusalIsNotKept() async {
+        let transport = StubTransport { _ in (500, #"{"error":{"json":{"message":"error.serverProblem","code":-32603,"data":{"code":"INTERNAL_SERVER_ERROR","httpStatus":500}}}}"#) }
+        let client = TRPCClient(configuration: configuration, transport: transport, memory: memory(at: Date()))
+        _ = try? await client.call(API.departmentCounts)
+        XCTAssertNil(client.remembered(API.departmentCounts))
+    }
+}
+
+/// A catalogue that remembers this morning's shelf and cannot reach the server now.
+final class RememberingCatalog: CatalogServicing, @unchecked Sendable {
+    let kept: [Product]
+    init(kept: [Product]) { self.kept = kept }
+
+    func products(first: Int, department: String?, language: Language) async throws -> [Product] { throw URLError(.notConnectedToInternet) }
+    func product(handle: String, language: Language) async throws -> Product? { nil }
+    func departmentCounts() async throws -> [String: Int] { throw URLError(.notConnectedToInternet) }
+    func bestsellers(language: Language) async throws -> [Product] { throw URLError(.notConnectedToInternet) }
+    func stores(language: Language) async throws -> [StoreCard] { throw URLError(.notConnectedToInternet) }
+    func store(slug: String, language: Language) async throws -> StorePage? { nil }
+    func brands() async throws -> [BrandCount] { throw URLError(.notConnectedToInternet) }
+    func contact() async throws -> ShopContact { ShopContact.fallback }
+    func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult {
+        SearchResult(products: [], total: 0, correctedTo: nil)
+    }
+    func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? { kept }
+}
+
+final class HomeShelfMemoryTests: XCTestCase {
+    /// Offline at launch, the home page is this morning's shelf rather than "slow".
+    @MainActor
+    func testTheHomePageOpensOnTodaysShelfWhenTheServerIsSlow() async throws {
+        let products = try await Fixtures.products()
+        var warmed: [Product] = []
+        let shelf = HomeShelf(catalog: RememberingCatalog(kept: products), warm: { warmed += $0 })
+        await shelf.load(language: .en)
+        XCTAssertEqual(shelf.catalogue.value?.count, products.count)
+        XCTAssertFalse(warmed.isEmpty, "the remembered shelf's photos are fetched ahead too")
     }
 }

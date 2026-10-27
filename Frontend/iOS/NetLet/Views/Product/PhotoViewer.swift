@@ -31,6 +31,7 @@ struct ProductPhotos: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
     @State private var findingSimilar = false
+    @Environment(\.displayScale) private var scale
 
     var body: some View {
         let media = product.gallery
@@ -43,6 +44,13 @@ struct ProductPhotos: View {
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+        // The photographs a swipe will bring, fetched while the first is looked at.
+        .task(id: product.id) {
+            let pixels = ImagePipeline.pixels(for: CGSize(width: 350, height: 350), scale: scale)
+            let photos = media.filter { !$0.isVideo }.dropFirst().compactMap { app.services.configuration.resolve($0.url) }
+            guard !photos.isEmpty else { return }
+            await ImagePipeline.shared.prefetch(Array(photos), pixels: pixels)
         }
     }
 
@@ -633,19 +641,14 @@ private struct ZoomPage: View {
     }
 }
 
-/// Photographs for the full-screen viewer, kept while the app runs so swiping
-/// back to one never fetches it again.
+/// Photographs for the full-screen viewer, through the app's one image
+/// pipeline at the largest size it decodes — enough to zoom into — so the
+/// bytes a card already fetched are not fetched again.
 enum PhotoLoader {
-    private static let kept = NSCache<NSURL, UIImage>()
+    static let pixels = 3072
 
     static func image(at url: URL) async -> UIImage? {
-        if let image = kept.object(forKey: url as NSURL) { return image }
-        guard let (data, response) = try? await URLSession.shared.data(from: url) else { return nil }
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) { return nil }
-        guard let decoded = UIImage(data: data) else { return nil }
-        let image = await decoded.byPreparingForDisplay() ?? decoded
-        kept.setObject(image, forKey: url as NSURL)
-        return image
+        await ImagePipeline.shared.image(url, pixels: pixels)
     }
 }
 

@@ -11,6 +11,23 @@ protocol CatalogServicing: Sendable {
     func store(slug: String, language: Language) async throws -> StorePage?
     func brands() async throws -> [BrandCount]
     func contact() async throws -> ShopContact
+
+    /// Today's answers to the same calls, kept on the phone (`ShelfMemory`):
+    /// drawn at once while the calls are asked again. Nil when there is none.
+    func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]?
+    func rememberedBestsellers(language: Language) -> [Product]?
+    func rememberedDepartmentCounts() -> [String: Int]?
+    func rememberedStores(language: Language) -> [StoreCard]?
+    func rememberedBrands() -> [BrandCount]?
+}
+
+/// A stand-in remembers nothing.
+extension CatalogServicing {
+    func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? { nil }
+    func rememberedBestsellers(language: Language) -> [Product]? { nil }
+    func rememberedDepartmentCounts() -> [String: Int]? { nil }
+    func rememberedStores(language: Language) -> [StoreCard]? { nil }
+    func rememberedBrands() -> [BrandCount]? { nil }
 }
 
 struct CatalogService: CatalogServicing {
@@ -50,5 +67,25 @@ struct CatalogService: CatalogServicing {
 
     func contact() async throws -> ShopContact {
         try await client.call(API.contact)
+    }
+
+    func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? {
+        client.remembered(API.products, .init(first: first, collectionHandle: department, locale: language.rawValue))
+    }
+
+    func rememberedBestsellers(language: Language) -> [Product]? {
+        client.remembered(API.bestsellers, .init(locale: language.rawValue))
+    }
+
+    func rememberedDepartmentCounts() -> [String: Int]? {
+        client.remembered(API.departmentCounts)
+    }
+
+    func rememberedStores(language: Language) -> [StoreCard]? {
+        client.remembered(API.stores, .init(locale: language.rawValue))
+    }
+
+    func rememberedBrands() -> [BrandCount]? {
+        client.remembered(API.brands)
     }
 }

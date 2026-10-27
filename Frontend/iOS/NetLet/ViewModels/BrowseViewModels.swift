@@ -228,6 +228,11 @@ final class BrowseModel {
     }
 
     func load(language: Language) async {
+        // A department opened earlier today draws at once and is asked again behind.
+        if products.value == nil, case .shelf = source,
+           let kept = catalog.rememberedProducts(first: Self.pageSize, department: department?.slug, language: language) {
+            products = .loaded(kept)
+        }
         if products.value == nil { products = .loading }
         do {
             switch source {

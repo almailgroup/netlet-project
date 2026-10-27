@@ -197,7 +197,7 @@ final class AppModel {
         session = SessionModel(account: services.account)
         cart = CartModel(service: services.cart, defaults: cartDefaults)
         saved = SavedModel(account: services.account, defaults: cartDefaults)
-        shelf = HomeShelf(catalog: services.catalog)
+        shelf = HomeShelf(catalog: services.catalog, warm: HomeShelf.warmPhotos(resolve: services.configuration.resolve))
         signals = AccountSignals(api: services.api)
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
         let api = services.api
@@ -236,7 +236,7 @@ final class AppModel {
         let demo = defaults.bool(forKey: "NetLetDemo") || arguments.contains("-NetLetDemo")
         // `-NetLetDemoAs shopper` answers as a signed-in shopper who also runs a store.
         let transport: HTTPTransport = demo ? DemoTransport(variant: defaults.string(forKey: "NetLetDemoAs")) : URLSessionTransport()
-        let client = TRPCClient(configuration: configuration, transport: transport)
+        let client = TRPCClient(configuration: configuration, transport: transport, memory: demo ? nil : .shared)
         return AppModel(services: Services(client: client), isDemo: demo)
     }
 

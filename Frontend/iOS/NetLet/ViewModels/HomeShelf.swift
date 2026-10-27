@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 /// The home page's catalogue and the shelves cut from it, read once and shared
 /// — the web's `useCatalog(24)`, which the header, the home page and the
@@ -26,6 +27,9 @@ final class HomeShelf {
     private var loadedFor: Language?
 
     private let catalog: CatalogServicing
+    /// Fetches the catalogue's first photos ahead of the shelves (`warm`), or
+    /// does nothing — what a test hands it.
+    private let warm: @MainActor ([Product]) -> Void
     nonisolated static let size = 24
     /// A strip below this is a broken shelf, not a short one (`MIN_SHELF_PRODUCTS`).
     nonisolated static let floor = 4
@@ -34,8 +38,21 @@ final class HomeShelf {
     /// The stores row and the brands row are drawn from three up.
     nonisolated static let minimumRow = 3
 
-    init(catalog: CatalogServicing) {
+    init(catalog: CatalogServicing, warm: @escaping @MainActor ([Product]) -> Void = { _ in }) {
         self.catalog = catalog
+        self.warm = warm
+    }
+
+    /// The photos every shelf on the home page will ask for, fetched while the
+    /// shopper is still reading the front door — at a card's size, a few at a
+    /// time, and kept (`ImagePipeline`), so the shelves draw with them there.
+    static func warmPhotos(resolve: @escaping (String?) -> URL?) -> @MainActor ([Product]) -> Void {
+        { products in
+            let pixels = ImagePipeline.pixels(for: CGSize(width: 180, height: 225), scale: max(UITraitCollection.current.displayScale, 2))
+            var seen = Set<URL>()
+            let urls = products.compactMap { resolve($0.images.first?.url) }.filter { seen.insert($0).inserted }
+            Task(priority: .utility) { await ImagePipeline.shared.prefetch(urls, pixels: pixels) }
+        }
     }
 
     struct Shelves: Equatable {
@@ -52,6 +69,15 @@ final class HomeShelf {
     /// Reads it all for this language, or nothing when it already has.
     func load(language: Language, force: Bool = false) async {
         if !force, loadedFor == language, catalogue.value != nil { return }
+        // What the server answered earlier today, drawn at once; asked again below.
+        if loadedFor != language || catalogue.value == nil, let kept = catalog.rememberedProducts(first: Self.size, department: nil, language: language) {
+            catalogue = .loaded(kept)
+            bestsellers = catalog.rememberedBestsellers(language: language) ?? []
+            stores = catalog.rememberedStores(language: language) ?? []
+            brands = catalog.rememberedBrands() ?? brands
+            counts = catalog.rememberedDepartmentCounts() ?? counts
+            warm(kept + bestsellers)
+        }
         if catalogue.value == nil { catalogue = .loading }
         async let counted = try? catalog.departmentCounts()
         async let sold = try? catalog.bestsellers(language: language)
@@ -59,13 +85,16 @@ final class HomeShelf {
         async let brandRows = try? catalog.brands()
         async let channels = try? catalog.contact()
         do {
-            catalogue = .loaded(try await catalog.products(first: Self.size, department: nil, language: language))
+            let products = try await catalog.products(first: Self.size, department: nil, language: language)
+            warm(products)
+            catalogue = .loaded(products)
             loadedFor = language
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, catalogue.value == nil { catalogue = .failed(failure) }
         }
         bestsellers = await sold ?? bestsellers
+        warm(bestsellers)
         stores = await storeCards ?? stores
         brands = await brandRows ?? brands
         counts = await counted ?? counts

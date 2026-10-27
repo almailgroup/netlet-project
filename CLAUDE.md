@@ -6048,6 +6048,42 @@ is never drawn as an empty list, the web's `QueryGate` rule. The bag keeps only
 its id on the device, forgets it at sign-out and adopts the account's bag on
 sign-in, as `CartContext` does.
 
+**Every remote picture goes through `ImagePipeline`, and that fixed "only one
+product is shown".** The owner reported the app showing one product and none
+of the rest. The live catalogue was fine — 24 products — but 23 of their first
+photos were a seller's own, on a slow Apache server sending originals of
+100 KB to 1.4 MB with no cache headers, and one was on Shopify's CDN, 38 KB and
+fast. `AsyncImage` cancels its load whenever its card is laid out afresh, and
+since the tab bar began stepping aside on a scroll every scroll lays the page
+out afresh; a cancelled load is a failure it never retries. So the fast photo
+arrived before the first scroll and the slow ones never did. Found with
+`.github/workflows/live-check.yml`, a manual run that reads the live
+catalogue from outside (this sandbox cannot reach the live site; GitHub's
+runners can) and tests each photo host the way an iPhone app connects — TLS,
+the chain, an app's user agent — which ruled out App Transport Security.
+`ImagePipeline` (`Services/ImagePipeline.swift`): one load per address and
+size, shared by every view asking, owned by the pipeline so a view going away
+stops waiting and nothing else; a dropped or slow answer tried twice more;
+decoded by ImageIO at the size it is drawn at (`pixels(for:scale:)`, a few
+steps so neighbouring boxes share a copy), so an original is never decoded
+whole; the decoded picture in memory and the bytes on disk (`NetLetImages`,
+300 MB) across launches. `RemoteImage` draws a picture already decoded on its
+first frame and fades one in when it arrives; the full-screen viewer asks the
+same pipeline at 3072 px. The home page's photos are fetched as the catalogue
+arrives (`HomeShelf.warmPhotos`), and a product's other photos when its page
+opens. A picture replaced at the same address is not fetched again until the
+disk copy is evicted — NetLet's own uploads are a fresh address each time.
+
+**The app opens on today's shelves, the web's `shelfMemory`.** It opened on
+grey outlines on every launch for as long as the server took to answer. The
+answers to the public procedures — the catalogue's pages, Bestsellers, the
+departments' counts, the stores, the brands, the shop's contact details
+(`ShelfMemory.procedures`) — are kept as the server sent them, once they have
+read as an answer, and `HomeShelf` and a department page draw them at once
+and ask again behind them. **For the Kuwaiti day they were read on and no
+longer**, because a store's discount permit ends with the day; nothing about
+the shopper is kept. Off in the demo and in tests.
+
 **It runs against recordings as well as a server.** `-NetLetDemo YES` answers
 every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a
 real server with the development seed, and `FixtureDecodingTests` decodes each

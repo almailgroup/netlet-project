@@ -40,10 +40,25 @@ struct NoInput: Encodable, Sendable {}
 final class TRPCClient: Sendable {
     let configuration: APIConfiguration
     let transport: HTTPTransport
+    /// Where today's public shelves are kept (`ShelfMemory`); none in tests and the demo.
+    let memory: ShelfMemory?
 
-    init(configuration: APIConfiguration, transport: HTTPTransport) {
+    init(configuration: APIConfiguration, transport: HTTPTransport, memory: ShelfMemory? = nil) {
         self.configuration = configuration
         self.transport = transport
+        self.memory = memory
+    }
+
+    /// What the server answered today for this call, if it is one whose
+    /// answer is kept — drawn while the call is asked again.
+    func remembered<Input, Output>(_ procedure: Procedure<Input, Output>, _ input: Input) -> Output? {
+        guard let memory, let request = try? makeRequest(procedure, input: input), let data = memory.recall(request) else { return nil }
+        return try? TRPCClient.decode(data, status: 200, as: Output.self)
+    }
+
+    func remembered<Output>(_ procedure: Procedure<NoInput, Output>) -> Output? {
+        guard let memory, let request = try? makeRequest(procedure, input: nil), let data = memory.recall(request) else { return nil }
+        return try? TRPCClient.decode(data, status: 200, as: Output.self)
     }
 
     func call<Input, Output>(_ procedure: Procedure<Input, Output>, _ input: Input) async throws -> Output {
@@ -115,7 +130,10 @@ final class TRPCClient: Sendable {
         } catch {
             throw APIError.from(error)
         }
-        return try TRPCClient.decode(answer.0, status: answer.1.statusCode, as: type)
+        let decoded = try TRPCClient.decode(answer.0, status: answer.1.statusCode, as: type)
+        // Kept only once it has read as an answer, so a refusal is never drawn tomorrow morning.
+        memory?.remember(answer.0, for: request)
+        return decoded
     }
 
     private struct Success<Value: Decodable>: Decodable {
