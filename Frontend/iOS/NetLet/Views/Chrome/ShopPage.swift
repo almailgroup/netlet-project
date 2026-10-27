@@ -27,6 +27,11 @@ import UIKit
 /// **Only the home page has the footer**, on the owner's word (`footer`), as on
 /// the web's phone.
 ///
+/// **A product, a department and the departments have no logo row**, on the
+/// owner's word (`logo: false`): the search field is the whole header there,
+/// as on the web's phone, and a pushed screen's back chevron moves to the
+/// start of the search row, since the row that carried it is not drawn.
+///
 /// **The tab bar slides away on a scroll down and back on a scroll up**, on
 /// the owner's word — once the page has gone down a little, never on the first
 /// point (`TabBarScroll`, the web's rule number for number). The scroll is
@@ -38,6 +43,9 @@ struct ShopPage<Content: View>: View {
     var root = false
     /// The logo row and the search row; off for Profile and Cart.
     var header = true
+    /// The logo row — the logo, where the shop delivers and the heart — over
+    /// the search row; off on a product and the category pages.
+    var logo = true
     /// The footer, which only the home page draws, on the owner's word: on
     /// every other page it was screens of links between the last thing looked
     /// at and the tab bar — the web's phone, the same.
@@ -68,7 +76,7 @@ struct ShopPage<Content: View>: View {
             GeometryReader { screen in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        if header {
+                        if header && logo {
                             LogoRow(back: back) {
                                 if root && app.selectedTab == .home {
                                     withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
@@ -92,7 +100,7 @@ struct ShopPage<Content: View>: View {
                                 content()
                             }
                         } header: {
-                            if header { SearchRow() }
+                            if header { SearchRow(back: logo ? nil : back, whole: !logo) }
                         }
                     }
                     .modifier(ScrollContentPlace(space: ShopPageTop.space, viewport: screen.size.height, changed: follow))
@@ -245,6 +253,25 @@ struct LogoRow: View {
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
             .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
             .accessibilityHint(l.t("delivery.buttonTitle"))
+            // The wishlists, or Saved for a guest — the cart page's own pair,
+            // on the owner's word — with the hearts counted.
+            let signedIn = app.session.isSignedIn
+            Button {
+                app.push(signedIn ? .wishlists : .saved)
+            } label: {
+                Image(systemName: "heart")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 40, height: 44)
+                    .overlay(alignment: .topTrailing) {
+                        PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 2, y: 2)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
+            .accessibilityValue(app.saved.ids.isEmpty ? "" : "\(app.saved.ids.count)")
+            .padding(.trailing, -6)
         }
         .padding(.horizontal, 16)
         .frame(height: 58)
@@ -260,12 +287,46 @@ struct LogoRow: View {
 /// typed the microphone and the camera stand where clear would, each only
 /// where it works, and a hairline keeps them apart from the navy search disc.
 struct SearchRow: View {
+    /// A pushed screen's way back, when there is no logo row to carry it.
+    var back: (() -> Void)?
+    /// The whole header, with no logo row over it: its glass starts at the
+    /// tint the strip under the status bar has, so the two meet with no step.
+    var whole = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
+        HStack(spacing: 2) {
+            if let back {
+                Button(action: back) {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Brand.navy)
+                        .frame(width: 36, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel(l.t("ios.back"))
+                .padding(.leading, -8)
+            }
+            field
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            GlassSurface(top: whole ? 0.6 : 0.53, foot: 0.45, rim: false)
+                .ignoresSafeArea(edges: .top)
+        )
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
+        }
+    }
+
+    /// The field itself: what was typed or the example, the other ways in or
+    /// clear, and the navy search disc.
+    private var field: some View {
         let empty = app.searchText.isEmpty
-        HStack(spacing: 0) {
+        return HStack(spacing: 0) {
             Button {
                 app.searchOpen = true
             } label: {
@@ -324,15 +385,6 @@ struct SearchRow: View {
         .frame(height: 44)
         .background(Capsule().fill(Color.white))
         .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            GlassSurface(top: 0.53, foot: 0.45, rim: false)
-                .ignoresSafeArea(edges: .top)
-        )
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
-        }
     }
 
     private var voiceOn: Bool { app.features.isOn("voiceSearch") && Dictation.isAvailable }

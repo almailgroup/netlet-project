@@ -19,7 +19,7 @@ struct ProductDetailView: View {
                 ProductPage(product: product, model: model)
             } else {
                 // Waiting, failed or gone: still the shop's frame, with its way back.
-                ShopPage(refresh: { await model.load(language: l.current) }) {
+                ShopPage(logo: false, refresh: { await model.load(language: l.current) }) {
                     LoadStateView(state: model.product, retry: { await model.load(language: l.current) }) { _ in
                         EmptyStateView(
                             systemImage: "shippingbox",
@@ -63,7 +63,7 @@ private struct ProductPage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: crumbs)
                 ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }

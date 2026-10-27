@@ -42,7 +42,7 @@ private struct BrowsePage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(refresh: { await model.load(language: l.current) }) {
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: [crumb])
                 Text(title)

@@ -804,8 +804,15 @@ the area, and a chevron, opening the address book (`DeliveryZoneDialog`) and
 buzzing on the press where a page may (`pressHaptic`). It was the language,
 which is a row on the account page now (and stays in the footer, for somebody
 signed out); before that the area left the phone's bar when the logo was
-centred, and the owner asked for it back in the language's place. The top row scrolls away with the page and the
-search row stays — somebody four screens in knows they are on NetLet. **Every
+centred, and the owner asked for it back in the language's place. **A heart
+follows the location, on the owner's word** — the wishlists, or Saved for a
+guest, with the hearts counted: the cart page's own pair, now on every page
+with the row. The top row scrolls away with the page and the
+search row stays — somebody four screens in knows they are on NetLet. **A
+product, a department and `/categories` have no top row at all**, on the
+owner's word: the search field is the whole bar, the header sticks at `top-0`
+rather than `-top-[58px]` (`logoRow`, from `SEARCH_ONLY_ON_PHONE` in
+`StorefrontShell`), and the page starts 58px higher. **Every
 page that wears the header has the search field** — the sell page, a 404, an
 invoice and the returns page used to get the header without it, so the one way
 to look for something vanished exactly where a shopper was lost. The header
@@ -5777,10 +5784,15 @@ drops under its label (`ViewThatFits`) on a narrow screen or a large text
 size, where build 35 broke "English" into "Engl / ish". `ShopAssistantButton`
 carries "Need help?" beside the mark.
 
+**A product, a department and Categories draw the search row alone**, the
+web's rule (`ShopPage`'s `logo: false`): with no logo row to carry it, a
+pushed screen's back chevron is at the start of the search row, and the row's
+glass starts at the status-bar strip's tint so the two meet with no step.
+
 **It draws the web's phone layout, not a stock iOS one, on the owner's word**
 ("it just needs to be exactly like the web app"). Every shopping screen sits in
 `ShopPage`, the web's `StorefrontShell` at 390: the logo row (logo at the
-start, the saved location at the end) scrolls away and the search row stays pinned,
+start, the saved location and the heart at the end) scrolls away and the search row stays pinned,
 both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
 tint); the footer follows the content. **The header is the web's phone header
 piece for piece, on the owner's word**: one surface from 60% at the top of the

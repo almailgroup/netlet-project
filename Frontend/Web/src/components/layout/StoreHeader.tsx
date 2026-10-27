@@ -17,9 +17,13 @@
  * its end**, on the owner's word — the saved address in use, or the area. It
  * was the language for a while; the language is on the account page now, as a
  * setting, and a phone's bar says where things are going. A press is felt
- * (`pressHaptic`) and opens the address book. Search keeps a whole row, because it is how most people move through
+ * (`pressHaptic`) and opens the address book. **A heart follows it**, on the
+ * owner's word: the wishlists, or Saved for a guest, with the hearts counted —
+ * the cart page's own bar has the same pair. Search keeps a whole row, because it is how most people move through
  * a catalogue on a small screen, and it is the row that stays: the top row
- * scrolls away with the page like anything else.
+ * scrolls away with the page like anything else. **On a product or a category
+ * page there is no top row at all** (`logoRow`), on the owner's word — the
+ * search field is the whole bar there, and the page starts under it.
  *
  * **Nothing here moves on its own.** The bar used to collapse on scroll and
  * expand on hover, animating heights while a scroll listener and a settle
@@ -57,6 +61,7 @@ import { PixelBadge } from "@/components/ui/PixelBadge";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
@@ -89,15 +94,18 @@ function Count({ value }: { value: number }) {
   return <PixelBadge value={value} className="absolute -end-2.5 -top-2.5" />;
 }
 
-export function StoreHeader({ activeDepartment }: {
+export function StoreHeader({ activeDepartment, logoRow = true }: {
   /** The department this page is in, by its query ("Electronics", "All"), so the row can mark it. */
   activeDepartment?: string | null;
+  /** The phone's logo, delivery and heart row; off on product and category pages. */
+  logoRow?: boolean;
 }) {
   const { t, isArabic } = useTranslation();
   const [location, navigate] = useLocation();
   const query = useSearch();
   const { itemCount, openCart } = useCart();
   const { savedIds, toggleLocale } = useCustomer();
+  const { isAuthenticated } = useAuth();
   /* The logo is the way home, and on the home page the way back to its top: a
      link to the page already open would push a second copy of it into the
      history and move nothing. The page's own `scroll-behavior` decides how —
@@ -190,27 +198,42 @@ export function StoreHeader({ activeDepartment }: {
     </button>
   );
 
-  /* Phone: the logo at the start and where the shop delivers at the end — one
-     fixed height, because the bar's sticky offset is exactly this row
-     (`-top-[58px]`). The logo sits on the line the search field and the
-     page's title start from, as it does on a wide screen. The name takes what
-     the logo leaves and is cut short before it reaches it. */
+  /* Phone: the logo at the start, then where the shop delivers and the heart
+     at the end — one fixed height, because the bar's sticky offset is exactly
+     this row (`-top-[58px]`). The logo sits on the line the search field and
+     the page's title start from, as it does on a wide screen. The name takes
+     what the logo and the heart leave and is cut short before it reaches them. */
+  const wishlists = isAuthenticated ? t("cart.wishlists") : t("nav.saved");
   const phoneTop = (
     <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
         <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[130px] object-contain" />
       </Link>
-      <button
-        type="button"
-        onClick={() => { pressHaptic(); setDeliveryOpen(true); }}
-        title={area.title}
-        className="pressable -me-2 flex h-11 min-w-0 items-center gap-1.5 rounded-xl px-2 text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
-      >
-        <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
-        <span className="sr-only">{t("home.deliverTo")} </span>
-        <span dir="auto" className="min-w-0 max-w-[180px] truncate">{areaName}</span>
-        <ChevronDown className="size-4 shrink-0" aria-hidden />
-      </button>
+      <div className="-me-2 flex min-w-0 items-center">
+        <button
+          type="button"
+          onClick={() => { pressHaptic(); setDeliveryOpen(true); }}
+          title={area.title}
+          className="pressable flex h-11 min-w-0 items-center gap-1.5 rounded-xl px-2 text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
+        >
+          <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
+          <span className="sr-only">{t("home.deliverTo")} </span>
+          <span dir="auto" className="min-w-0 max-w-[160px] truncate">{areaName}</span>
+          <ChevronDown className="size-4 shrink-0" aria-hidden />
+        </button>
+        {/* The wishlists, or Saved for a guest, who has no lists, only hearts
+            kept on the device; the count is the hearts. */}
+        <Link
+          href={isAuthenticated ? "/account/wishlists" : "/saved"}
+          onClick={() => pressHaptic()}
+          aria-label={savedIds.length ? `${wishlists} (${savedIds.length})` : wishlists}
+          title={wishlists}
+          className="pressable relative grid size-11 shrink-0 place-items-center rounded-xl text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
+        >
+          <Heart className="size-[20px]" aria-hidden />
+          <PixelBadge value={savedIds.length} className="absolute end-0.5 top-0.5" />
+        </Link>
+      </div>
     </div>
   );
 
@@ -241,7 +264,7 @@ export function StoreHeader({ activeDepartment }: {
         rather than a row before it, which is the same picture with no
         stranded content.
       */}
-      <header ref={headerRef} className="sticky-header glass-bar sticky -top-[58px] z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0">
+      <header ref={headerRef} className={`sticky-header glass-bar sticky ${logoRow ? "-top-[58px]" : "top-0"} z-40 border-b border-[#0a285a]/[.08] lg:top-0 lg:border-b-0`}>
         {/* The bar's liquid glass, behind everything in it (`.glass-bar` in
             index.css). Layers inside the header rather than a filter on the
             header itself: a `backdrop-filter` there would make the bar the
@@ -256,7 +279,7 @@ export function StoreHeader({ activeDepartment }: {
             <feDisplacementMap in="SourceGraphic" in2="turbulence" scale={70} xChannelSelector="R" yChannelSelector="G" />
           </filter>
         </svg>
-        {phoneTop}
+        {logoRow ? phoneTop : null}
         {/* The same room above the field as below it, because once the logo
             row has gone this row is the whole bar: it had 4px over the field
             and 10px under it, and stuck at the top of a phone the field sat

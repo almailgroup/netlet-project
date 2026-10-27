@@ -8,7 +8,7 @@ struct CategoriesView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(root: true, refresh: { await app.shelf.load(language: l.current, force: true) }) {
+        ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) }) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: [l.t("nav.categories")])
                 Text(l.t("nav.categories")).pageTitle().padding(.bottom, 24)

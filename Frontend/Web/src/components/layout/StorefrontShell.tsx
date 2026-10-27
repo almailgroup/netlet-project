@@ -89,6 +89,9 @@ const TALL_FOOT = /^\/(category\/|search|products\/)/;
 const pageOf = (path: string) => (path.startsWith("/account/") ? "/account" : path);
 /* The account and the bag: no header on a phone. */
 const BARE_ON_PHONE = /^\/(account|cart)(\/|$)/;
+/* A product, a department and the departments: on a phone the header is its
+   search row alone — no logo, no delivery, no heart — on the owner's word. */
+const SEARCH_ONLY_ON_PHONE = /^\/(products\/|category\/|categories(\/|$))/;
 /* A document: the chrome is not printed with it. */
 const PRINTED = /^\/invoices\/(?!verify\/)/;
 
@@ -150,7 +153,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         {/* `contents`, so the bar's sticky box is the page's and not a
             wrapper's the height of the bar. */}
         <div className={printed ? "contents print:hidden" : "contents"}>
-          {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} />}
+          {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} logoRow={!SEARCH_ONLY_ON_PHONE.test(location)} />}
         </div>
         {/* With no header, the page clears the status bar itself on a phone
             that draws the page under it (`viewport-fit=cover`); with no
