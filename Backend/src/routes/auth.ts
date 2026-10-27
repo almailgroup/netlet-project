@@ -33,6 +33,8 @@ import {
   CodeNotSentError,
   EmailTakenError,
   finishRegistration,
+  finishReset,
+  linkLanding,
   PasswordMismatchError,
   resendRegistrationCode,
   revertEmail,
@@ -215,6 +217,12 @@ async function assertCurrentPassword(user: User, password: string): Promise<void
  * `trust proxy` to one hop; without that it is the tunnel's address and every
  * visitor shares one bucket.
  */
+/** Where a link in Supabase's mail lands, for this request: see `linkLanding`. */
+function landingFor(req: { protocol?: string; headers?: { host?: string } }): string | undefined {
+  const host = req.headers?.host;
+  return linkLanding(host ? `${req.protocol ?? "https"}://${host}` : undefined);
+}
+
 function callerOf(ctx: { req: { ip?: string } }, email?: string): Caller {
   return { email, address: ctx.req.ip ?? null };
 }
@@ -272,7 +280,7 @@ export const authRouter = router({
     await recordAuthAttempt(caller, "codeSend");
     let started;
     try {
-      started = await startRegistration(input);
+      started = await startRegistration({ ...input, returnTo: landingFor(ctx.req) });
     } catch (error) {
       if (error instanceof EmailTakenError) throw emailTaken;
       if (error instanceof CodeNotSentError) throw codeNotSent;
@@ -342,7 +350,7 @@ export const authRouter = router({
       await assertNotThrottled(caller, "codeSend");
       await recordAuthAttempt(caller, "codeSend");
       try {
-        await resendRegistrationCode(input.email);
+        await resendRegistrationCode(input.email, landingFor(ctx.req));
       } catch (error) {
         if (error instanceof CodeNotSentError) throw codeNotSent;
         console.error(`[auth] sign-up code could not be resent: ${String(error)}`);
@@ -467,7 +475,7 @@ export const authRouter = router({
       await assertNotThrottled(caller, "reset");
       await recordAuthAttempt(caller, "reset");
       try {
-        await sendReset(input.email, input.locale);
+        await sendReset(input.email, input.locale, landingFor(ctx.req));
       } catch (error) {
         // A fault on our side is logged, never surfaced: the shopper cannot
         // act on it, and the reply must not vary by address.
@@ -476,13 +484,49 @@ export const authRouter = router({
       return { sent: true } as const;
     }),
 
+  /**
+   * The end of a reset: the new password, set with the token Supabase handed
+   * back when the link in the mail was opened, and then signed in with.
+   *
+   * The token is the proof the link was opened and is spent on this alone
+   * (`setPasswordFromLink`). The new password is held to the floor every new
+   * password is. Signing in afterwards goes through `signIn` like any other,
+   * so a sign-up whose code never came back is sent its code here too rather
+   * than let in — the reset link proves the inbox, but only the code makes a
+   * shopper's account. A stale link counts against the address, as a wrong
+   * code does.
+   */
+  completeReset: publicProcedure
+    .input(z.object({ token: z.string().trim().min(20).max(4000), password: newPassword, remember: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const caller = callerOf(ctx);
+      await assertNotThrottled(caller, "reset");
+
+      const { outcome, email } = await finishReset(input.token, input.password);
+      if (outcome === "same") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.resetSamePassword" });
+      if (outcome === "weak") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.passwordTooWeak" });
+      if (outcome !== "changed" || !email) {
+        await recordAuthAttempt(caller, "reset");
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.resetLinkExpired" });
+      }
+
+      const user = await signIn(email, input.password, landingFor(ctx.req));
+      if (user === "unconfirmed") return { status: "verify" as const, email };
+      if (!user) throw invalidCredentials;
+      await clearAccountFailures(email);
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return { status: "signedIn" as const, user: toPublicUser(user) };
+    }),
+
   login: publicProcedure.input(signInInput).mutation(async ({ ctx, input }) => {
     assertConfigured();
 
     const caller = callerOf(ctx, input.email);
     await assertNotThrottled(caller, "login");
 
-    const user = await signIn(input.email, input.password);
+    const user = await signIn(input.email, input.password, landingFor(ctx.req));
     if (!user) {
       // Only a failure is counted, which is what makes the per-address ceiling
       // safe: an office where everybody signs in successfully never nears it.

@@ -23,8 +23,9 @@ let store: typeof import("./passwordStore.js");
 
 /** What the stubbed services were asked, so the order can be asserted. */
 let asked: string[];
-/** Which passwords each service accepts, keyed `email:password`. */
-const supabaseKnows = new Map<string, { uid: string; name: string | null }>();
+/** Which passwords each service accepts, keyed `email:password`. `signedUp` is
+    an account Supabase mailed a sign-up confirmation, as GoTrue reports it. */
+const supabaseKnows = new Map<string, { uid: string; name: string | null; signedUp?: boolean }>();
 /** Stands in for the real `SupabaseEmailTaken`, which the stub replaces. */
 class SupabaseEmailTakenStub extends Error {}
 let supabaseOn = true;
@@ -79,12 +80,19 @@ beforeEach(async () => {
       const waiting = supabaseWaiting.get(email);
       if (!waiting || code !== SENT_CODE) return null;
       supabaseWaiting.delete(email);
-      supabaseKnows.set(`${email}:${waiting.password}`, { uid: waiting.uid, name: waiting.name });
-      return { uid: waiting.uid, email, name: waiting.name };
+      supabaseKnows.set(`${email}:${waiting.password}`, { uid: waiting.uid, name: waiting.name, signedUp: true });
+      return { uid: waiting.uid, email, name: waiting.name, signedUp: true };
     },
     resendSupabaseSignupCode: async () => { asked.push("supabase.resend"); },
     isSupabaseMailLimited: () => false,
-    createSupabaseUser: async (input: { email: string; password: string; name?: string | null }) => {
+    createSupabaseUser: async (input: { email: string; password: string; name?: string | null; confirmed?: boolean }) => {
+      if (input.confirmed === false) {
+        asked.push("supabase.createWaiting");
+        if (supabaseWaiting.has(input.email)) throw new SupabaseEmailTakenStub();
+        const uid = `sb-again-${supabaseWaiting.size + 1}`;
+        supabaseWaiting.set(input.email, { uid, password: input.password, name: input.name ?? null });
+        return { uid, email: input.email, name: input.name ?? null, signedUp: false };
+      }
       asked.push("supabase.create");
       /* Supabase refuses a second account on one address, and the refusal is
          the gate `createLogin` relies on — a stub that allowed it would be
@@ -105,7 +113,10 @@ beforeEach(async () => {
         supabaseKnows.set(`${key.split(":")[0]}:${patch.password}`, value);
       }
     },
-    deleteSupabaseUser: async () => { asked.push("supabase.delete"); },
+    deleteSupabaseUser: async (uid: string) => {
+      asked.push("supabase.delete");
+      for (const [key, value] of [...supabaseKnows]) if (value.uid === uid) supabaseKnows.delete(key);
+    },
     sendSupabasePasswordReset: async () => { asked.push("supabase.reset"); },
     isSupabaseEmailTaken: (error: unknown) => error instanceof SupabaseEmailTakenStub,
     SupabaseEmailTaken: SupabaseEmailTakenStub,
@@ -399,6 +410,52 @@ describe("registering with a code", () => {
     await store.startRegistration({ email: "old@shop.test", password: "Short-7" });
     await expect(store.finishRegistration({ email: "old@shop.test", password: "wrong-1", code: SENT_CODE }))
       .rejects.toBeInstanceOf(store.PasswordMismatchError);
+  });
+
+  /*
+   * Supabase's own "Confirm signup" email is a link until its template prints
+   * the code, and opening it confirms the address in Supabase. That was enough
+   * for the next sign-in to make the account — a shopper reported being let in
+   * without ever typing the code they had been told was on its way. Only the
+   * code makes a shopper's account: sign-in puts the account back to waiting
+   * and sends the code.
+   */
+  it("makes no account for a sign-up confirmed by Supabase's link, and sends the code instead", async () => {
+    await store.startRegistration({ email: "link@shop.test", password: "Harbour-Falcon-2026", name: "Noura" });
+    const waiting = supabaseWaiting.get("link@shop.test")!;
+    supabaseWaiting.delete("link@shop.test");
+    supabaseKnows.set("link@shop.test:Harbour-Falcon-2026", { uid: waiting.uid, name: "Noura", signedUp: true });
+    asked = [];
+
+    expect(await store.signIn("link@shop.test", "Harbour-Falcon-2026")).toBe("unconfirmed");
+    expect(await row("link@shop.test")).toBeUndefined();
+    expect(asked).toEqual(["supabase.verify", "supabase.delete", "supabase.createWaiting", "supabase.resend"]);
+
+    /* Waiting again, under the password just checked: the code finishes it. */
+    expect(await store.signIn("link@shop.test", "Harbour-Falcon-2026")).toBe("unconfirmed");
+    const user = await store.finishRegistration({ email: "link@shop.test", password: "Harbour-Falcon-2026", code: SENT_CODE });
+    expect(user?.supabaseUid).toBe(supabaseKnows.get("link@shop.test:Harbour-Falcon-2026")?.uid);
+    expect(user?.name).toBe("Noura");
+  });
+
+  it("puts it back to waiting once when two sign-ins land at the same moment", async () => {
+    supabaseKnows.set("twice@shop.test:Harbour-Falcon-2026", { uid: "sb-twice", name: null, signedUp: true });
+    const answers = await Promise.all([
+      store.signIn("twice@shop.test", "Harbour-Falcon-2026"),
+      store.signIn("twice@shop.test", "Harbour-Falcon-2026"),
+    ]);
+    expect(answers).toEqual(["unconfirmed", "unconfirmed"]);
+    expect(supabaseWaiting.has("twice@shop.test")).toBe(true);
+    expect(await row("twice@shop.test")).toBeUndefined();
+  });
+
+  it("signs in a sign-up that was finished with its code", async () => {
+    await store.startRegistration({ email: "done@shop.test", password: "Harbour-Falcon-2026" });
+    const made = await store.finishRegistration({ email: "done@shop.test", password: "Harbour-Falcon-2026", code: SENT_CODE });
+    asked = [];
+
+    expect(await store.signIn("done@shop.test", "Harbour-Falcon-2026")).toMatchObject({ id: made!.id });
+    expect(asked).toEqual(["supabase.verify"]);
   });
 
   it("says an account is waiting for its code only when the password is right", async () => {

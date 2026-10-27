@@ -150,6 +150,10 @@ describe("auth with Supabase Auth as the password store", () => {
       sendReset: async () => {},
       canSendReset: () => true,
       deleteLogin: async () => {},
+      linkLanding: (origin?: string) => (origin ? `${origin}/signin` : undefined),
+      finishReset: async (token: string) => (token === "a-token-for-the-link-that-was-opened"
+        ? { outcome: "changed", email: "supa@example.com" }
+        : { outcome: "expired", email: null }),
       ...over,
     }));
     vi.doMock("../core/accounts.js", async () => {
@@ -228,6 +232,76 @@ describe("auth with Supabase Auth as the password store", () => {
       .rejects.toMatchObject({ code: "FORBIDDEN", message: "auth.emailNotConfirmed" });
     expect(recorded).toEqual([]);
     expect(set).toHaveLength(0);
+  });
+
+  /* Every mail Supabase sends brings its link back to NetLet's sign-in page on
+     the host that was asked — not to the project's Site URL, which on a new
+     project is localhost and a blank page on a phone. */
+  it("tells Supabase to bring every link back to the sign-in page", async () => {
+    const returns: (string | undefined)[] = [];
+    stubStore({
+      startRegistration: async (input: { returnTo?: string }) => { returns.push(input.returnTo); return { status: "codeSent" }; },
+      resendRegistrationCode: async (_email: string, returnTo?: string) => { returns.push(returnTo); },
+      sendReset: async (_email: string, _locale: string, returnTo?: string) => { returns.push(returnTo); },
+      signIn: async (_email: string, _password: string, returnTo?: string) => { returns.push(returnTo); return "unconfirmed"; },
+    });
+    const { ctx } = createContext(null);
+    ctx.req.headers.host = "shop.example";
+    const api = await caller(ctx);
+
+    await api.auth.register({ email: "a@example.com", password: "Harbour-Falcon-2026" });
+    await api.auth.resendCode({ email: "a@example.com" });
+    await api.auth.requestPasswordReset({ email: "a@example.com" });
+    await api.auth.login({ email: "a@example.com", password: "Harbour-Falcon-2026" }).catch(() => {});
+    expect(returns).toEqual(Array(4).fill("https://shop.example/signin"));
+  });
+
+  describe("finishing a reset from the link", () => {
+    const token = "a-token-for-the-link-that-was-opened";
+
+    it("sets the password, signs in with it, and keeps the session", async () => {
+      stubStore();
+      const { ctx, set } = createContext(null);
+      const api = await caller(ctx);
+
+      await expect(api.auth.completeReset({ token, password: "Harbour-Falcon-2026" }))
+        .resolves.toMatchObject({ status: "signedIn", user: { email: "supa@example.com" } });
+      expect(set).toHaveLength(1);
+      expect(recorded).toEqual([]);
+    });
+
+    it("says a link that no longer works has expired, and counts it", async () => {
+      stubStore();
+      const { ctx, set } = createContext(null);
+      const api = await caller(ctx);
+
+      await expect(api.auth.completeReset({ token: "a-token-that-supabase-no-longer-takes", password: "Harbour-Falcon-2026" }))
+        .rejects.toMatchObject({ code: "UNAUTHORIZED", message: "auth.resetLinkExpired" });
+      expect(recorded).toEqual(["reset"]);
+      expect(set).toHaveLength(0);
+    });
+
+    it("says what is wrong with a password Supabase refuses", async () => {
+      stubStore({ finishReset: async () => ({ outcome: "same", email: null }) });
+      let api = await caller(createContext(null).ctx);
+      await expect(api.auth.completeReset({ token, password: "Harbour-Falcon-2026" }))
+        .rejects.toMatchObject({ code: "BAD_REQUEST", message: "auth.resetSamePassword" });
+
+      stubStore();
+      api = await caller(createContext(null).ctx);
+      await expect(api.auth.completeReset({ token, password: "password1" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    });
+
+    /* The reset link proves the inbox; only the code makes a shopper's account. */
+    it("sends a sign-up whose code never came back to the code step, signed in to nothing", async () => {
+      stubStore({ signIn: async () => "unconfirmed" });
+      const { ctx, set } = createContext(null);
+      const api = await caller(ctx);
+
+      await expect(api.auth.completeReset({ token, password: "Harbour-Falcon-2026" }))
+        .resolves.toEqual({ status: "verify", email: "supa@example.com" });
+      expect(set).toHaveLength(0);
+    });
   });
 
   it("resends the same way for any address, and says when the mail service is resting", async () => {

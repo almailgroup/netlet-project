@@ -399,6 +399,7 @@ export function createApp(): Express {
   app.use("/api/trpc/auth.register", authRateLimit);
   app.use("/api/trpc/auth.verifyEmail", authRateLimit);
   app.use("/api/trpc/auth.resendCode", authRateLimit);
+  app.use("/api/trpc/auth.completeReset", authRateLimit);
   app.use("/api/trpc", apiRateLimit);
   /**
    * Server errors are logged, not just returned.

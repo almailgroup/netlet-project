@@ -327,7 +327,10 @@ an account the service has already accepted the password for — which is what
 makes the Authentication page somewhere an admin can work from rather than only
 read. It clears the other credential columns when it adopts a row, or the row
 would have two password stores and the answer to "which" would be whichever was
-checked first.
+checked first. **A sign-up is not adopted**: an account Supabase mailed a
+sign-up confirmation (`confirmation_sent_at`, and not an invitation —
+`SupabaseUser.signedUp`) becomes a login only through the code; see "Only the
+code makes a shopper's account" under Signing in.
 
 **Adoption is sign-in's alone, and registering must refuse instead.** What makes
 adoption safe on sign-in is that a service has just checked the password — the
@@ -414,8 +417,24 @@ with the code is the one kept**: an address can be registered twice before
 anybody confirms it, by somebody else first, and the person reading that inbox
 is the one whose password the account should have. A sign-in with the right
 password on an account still waiting goes to the same step (GoTrue checks the
-password before the confirmation, so "unconfirmed" tells nobody anything). The
-code is one input drawn as six boxes — one field takes a paste, a phone's
+password before the confirmation, so "unconfirmed" tells nobody anything).
+**Only the code makes a shopper's account, and a shopper found the way
+round it.** The project's "Confirm signup" template was still Supabase's
+default — a "Confirm your mail" link and no code — so they were told a code
+was coming, got a link, and the link went to a blank page (the Site URL, still
+`http://localhost:3000`); opening it confirmed the address in Supabase, and
+their next sign-in found a password Supabase accepted and no NetLet row, which
+is what adoption is for, and let them in without the code. `signIn` now asks
+`linkExternalUser` with `create: false` for a sign-up, and where there is no
+row puts the account back to waiting (`askForTheCodeAgain`: removed and made
+again unconfirmed through the admin door, which sends nothing and so cannot
+be stopped half-way by the mail ceiling, then `resend`) and answers
+"unconfirmed", which the form already turns into the code step. A link
+confirms an inbox as well as a code does; it is refused because the form told
+the shopper the code was the way in, and two ways in are one too many. The
+template is still the fix for the code arriving at all, and
+`docs/SUPABASE-AUTH.md` says so first. The code
+is one input drawn as six boxes — one field takes a paste, a phone's
 one-time-code suggestion and a screen reader whole — read left to right on
 either page, Arabic-Indic digits folded (`Shared/auth/emailCode.ts`). Every code
 sent counts (`codeSend`) and every wrong one (`codeMiss`), in the sign-in
@@ -469,6 +488,23 @@ What the form does, each for a reason:
   is. Both services are asked when both are configured, for that same reason.
   The project's default mailer is rate-limited and meant for development; a
   real deployment points Supabase at its own SMTP, a dashboard setting.
+- **The link in the reset mail ends on "Choose a new password"**, and it used
+  to end on nothing: it went through Supabase, which signed into Supabase and
+  sent the browser on with a token in the address's fragment, and no page read
+  it, so no password ever changed. Every Supabase mail now names where it comes
+  back to (`redirect_to`, `linkLanding`: `SITE_URL`, else Vercel's production
+  host, else the request's, then `/signin`), and `lib/emailReturn.ts` reads what
+  came back before the router does and puts the address back to plain
+  `/signin` — the token is a key to the account for an hour and must not stay
+  in the address bar or the history. A reset token goes to
+  `auth.completeReset`, which spends it on `PUT /auth/v1/user` and nothing
+  else, holds the new password to the floor, and signs in through `signIn`
+  like any other, so a sign-up whose code never came back is sent its code
+  there too; "same" and "weak" are Supabase's refusals said in words, and a
+  stale token offers a new link with the address kept. A confirmed address and
+  an expired link are a line above the sign-in form. **Supabase sends a link
+  only to an address on the Site URL's host or in its Redirect URLs**, and
+  otherwise to the Site URL, so the Site URL is part of the setup.
 
 `ProfileManager` on `/account` is the other half: display name, sign-in email
 and password, each its own small form with its own Save. One Save across all

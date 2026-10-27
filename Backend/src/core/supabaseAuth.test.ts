@@ -81,7 +81,7 @@ describe("creating a user", () => {
     stubFetch([{ status: 200, body: { id: "u1", email: "a@b.test", user_metadata: { name: "Noura" } } }]);
     const user = await auth.createSupabaseUser({ email: "a@b.test", password: "pw", name: "Noura" });
 
-    expect(user).toEqual({ uid: "u1", email: "a@b.test", name: "Noura" });
+    expect(user).toEqual({ uid: "u1", email: "a@b.test", name: "Noura", signedUp: false });
     expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/admin/users`);
     expect(bodyOf(0).email_confirm).toBe(true);
     expect(bodyOf(0).user_metadata).toEqual({ name: "Noura" });
@@ -125,7 +125,7 @@ describe("verifying a password", () => {
     stubFetch([{ status: 200, body: { user: { id: "u1", email: "a@b.test" } } }]);
     const user = await auth.verifySupabasePassword("a@b.test", "pw");
 
-    expect(user).toEqual({ uid: "u1", email: "a@b.test", name: null });
+    expect(user).toEqual({ uid: "u1", email: "a@b.test", name: null, signedUp: false });
     expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/token?grant_type=password`);
     expect(headerOf(0, "apikey")).toBe(ANON);
     expect(headerOf(0, "apikey")).not.toBe(SERVICE);
@@ -160,7 +160,7 @@ describe("verifying a password", () => {
 
   it("reads a name out of user_metadata, and ignores one that is not a name", async () => {
     stubFetch([{ status: 200, body: { user: { id: "u1", email: "a@b.test", user_metadata: { name: 42 } } } }]);
-    await expect(auth.verifySupabasePassword("a@b.test", "pw")).resolves.toEqual({ uid: "u1", email: "a@b.test", name: null });
+    await expect(auth.verifySupabasePassword("a@b.test", "pw")).resolves.toEqual({ uid: "u1", email: "a@b.test", name: null, signedUp: false });
   });
 });
 
@@ -185,6 +185,103 @@ describe("the reset email", () => {
   it("throws on a fault, which the caller logs rather than reports", async () => {
     stubFetch([{ status: 500, body: {} }]);
     await expect(auth.sendSupabasePasswordReset("a@b.test", "en")).rejects.toThrow(/HTTP 500/);
+  });
+});
+
+/*
+ * Every mail carries where its link comes back to. Without it Supabase uses
+ * the project's Site URL — on a new project `http://localhost:3000`, which on a
+ * shopper's phone is a blank page; that is what a shopper reported.
+ */
+describe("where a link in the mail comes back to", () => {
+  const landing = "https://shop.example/signin";
+
+  it("is sent with the sign-up, the resend and the reset", async () => {
+    stubFetch([
+      { status: 200, body: { id: "u1", identities: [{ id: "i1" }] } },
+      { status: 200, body: {} },
+      { status: 200, body: {} },
+    ]);
+    await auth.signUpSupabaseUser({ email: "a@b.test", password: "Harbour-Falcon-2026", returnTo: landing });
+    await auth.resendSupabaseSignupCode("a@b.test", landing);
+    await auth.sendSupabasePasswordReset("a@b.test", "en", landing);
+    const query = `?redirect_to=${encodeURIComponent(landing)}`;
+    expect(calls.map(call => call.url)).toEqual([
+      `${URL_BASE}/auth/v1/signup${query}`,
+      `${URL_BASE}/auth/v1/resend${query}`,
+      `${URL_BASE}/auth/v1/recover${query}`,
+    ]);
+  });
+
+  it("leaves the address alone when there is nowhere to name", async () => {
+    stubFetch([{ status: 200, body: {} }]);
+    await auth.resendSupabaseSignupCode("a@b.test");
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/resend`);
+  });
+});
+
+/*
+ * Which accounts came through a sign-up form. GoTrue stamps
+ * `confirmation_sent_at` on an account it mailed a sign-up confirmation; one
+ * made in the dashboard or by the administrator's door is confirmed with
+ * nothing sent, and an invitation is somebody vouching for the address.
+ */
+describe("telling a sign-up from an account added by hand", () => {
+  it("reads a sent confirmation as a sign-up, and an invitation as not one", async () => {
+    stubFetch([
+      { status: 200, body: { user: { id: "u1", email: "a@b.test", confirmation_sent_at: "2026-10-26T10:00:00Z" } } },
+      { status: 200, body: { user: { id: "u2", email: "b@b.test" } } },
+      { status: 200, body: { user: { id: "u3", email: "c@b.test", confirmation_sent_at: "2026-10-26T10:00:00Z", invited_at: "2026-10-26T10:00:00Z" } } },
+    ]);
+    await expect(auth.signInSupabase("a@b.test", "pw")).resolves.toMatchObject({ signedUp: true });
+    await expect(auth.signInSupabase("b@b.test", "pw")).resolves.toMatchObject({ signedUp: false });
+    await expect(auth.signInSupabase("c@b.test", "pw")).resolves.toMatchObject({ signedUp: false });
+  });
+
+  it("makes an account waiting for its code through the admin door, sending nothing", async () => {
+    stubFetch([{ status: 200, body: { id: "u4", email: "a@b.test" } }]);
+    await auth.createSupabaseUser({ email: "a@b.test", password: "Harbour-Falcon-2026", confirmed: false });
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/admin/users`);
+    expect(bodyOf(0)).toMatchObject({ email_confirm: false });
+  });
+});
+
+/*
+ * The end of a reset. Supabase hands the browser a token for the account when
+ * the link is opened; it is spent on the password and on nothing else, against
+ * the public endpoint with the anon key — never the service key.
+ */
+describe("setting a password from a reset link", () => {
+  it("changes the password of the account the token names, with the anon key", async () => {
+    stubFetch([{ status: 200, body: { id: "u1", email: "a@b.test" } }]);
+    await expect(auth.setPasswordFromLink("the-token", "Harbour-Falcon-2026"))
+      .resolves.toEqual({ outcome: "changed", user: { uid: "u1", email: "a@b.test", name: null, signedUp: false } });
+    expect(calls[0].url).toBe(`${URL_BASE}/auth/v1/user`);
+    expect(calls[0].init.method).toBe("PUT");
+    expect(headerOf(0, "apikey")).toBe(ANON);
+    expect(headerOf(0, "authorization")).toBe("Bearer the-token");
+    expect(bodyOf(0)).toEqual({ password: "Harbour-Falcon-2026" });
+  });
+
+  it("says a token Supabase no longer takes has expired", async () => {
+    for (const status of [401, 403]) {
+      stubFetch([{ status, body: { msg: "invalid JWT" } }]);
+      await expect(auth.setPasswordFromLink("old", "Harbour-Falcon-2026")).resolves.toMatchObject({ outcome: "expired" });
+    }
+  });
+
+  it("tells the current password again and a weak one apart", async () => {
+    stubFetch([
+      { status: 422, body: { error_code: "same_password", msg: "New password should be different from the old password." } },
+      { status: 422, body: { error_code: "weak_password", msg: "Password should be at least 6 characters." } },
+    ]);
+    await expect(auth.setPasswordFromLink("t", "Harbour-Falcon-2026")).resolves.toMatchObject({ outcome: "same" });
+    await expect(auth.setPasswordFromLink("t", "Harbour-Falcon-2026")).resolves.toMatchObject({ outcome: "weak" });
+  });
+
+  it("throws on a fault, which is not an expired link", async () => {
+    stubFetch([{ status: 500, body: {} }]);
+    await expect(auth.setPasswordFromLink("t", "Harbour-Falcon-2026")).rejects.toThrow(/HTTP 500/);
   });
 });
 
@@ -268,7 +365,7 @@ describe("signing up with a code", () => {
   it("says when the project confirmed the address itself and sent nothing", async () => {
     stubFetch([{ status: 200, body: { access_token: "t", user: { id: "u2", email: "a@b.test" } } }]);
     await expect(auth.signUpSupabaseUser({ email: "a@b.test", password: "x" }))
-      .resolves.toEqual({ kind: "confirmed", user: { uid: "u2", email: "a@b.test", name: null } });
+      .resolves.toEqual({ kind: "confirmed", user: { uid: "u2", email: "a@b.test", name: null, signedUp: false } });
   });
 
   it("checks the code as an email code, with the anon key", async () => {

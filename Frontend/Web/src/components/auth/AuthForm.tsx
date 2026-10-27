@@ -45,10 +45,15 @@
  *   so "use a different email" loses nothing else. A sign-in with the right
  *   password on an account whose code never came back goes to the same step
  *   rather than being told the password is wrong.
+ * - **A link in Supabase's own email lands here and is answered**
+ *   (`lib/emailReturn.ts`): a reset link opens "Choose a new password", which
+ *   sets it and signs in; a confirmed address or an expired link is said in a
+ *   line above the form. Before, the reset link changed no password and the
+ *   sign-up link left a shopper on a page that said nothing.
  */
 import { trpc } from "@/lib/trpc";
 import {
-  ArrowLeft, Check, CircleAlert, Eye, EyeOff, LoaderCircle, Lock, MailCheck,
+  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, Lock, MailCheck,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -59,6 +64,7 @@ import { suggestEmail } from "@shared/auth/emailTypo";
 import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS as CODE_RESEND_SECONDS } from "@shared/auth/emailCode";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { clearReferral, storedReferral } from "@/lib/referral";
+import { clearEmailReturn, peekEmailReturn, type EmailReturn } from "@/lib/emailReturn";
 import { HumanCheck } from "./HumanCheck";
 
 export type AuthMode = "signin" | "register" | "reset";
@@ -153,6 +159,9 @@ export function AuthForm({
   const [awaiting, setAwaiting] = useState<AwaitingCode | null>(null);
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  /** What a link in Supabase's email came back with, read once on arrival. */
+  const [arrival, setArrival] = useState<EmailReturn | null>(() => (mode === "signin" ? peekEmailReturn() : null));
+  useEffect(() => { if (arrival) clearEmailReturn(); }, [arrival]);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -191,6 +200,8 @@ export function AuthForm({
 
   const go = (next: AuthMode) => {
     movedByUs.current = true;
+    /* The line about a link is for the sign-in it arrived on. */
+    if (arrival?.kind !== "reset") setArrival(null);
     onModeChange(next);
   };
 
@@ -322,6 +333,27 @@ export function AuthForm({
     );
   }
 
+  if (arrival?.kind === "reset") {
+    return (
+      <NewPassword
+        arrival={arrival}
+        Heading={Heading}
+        headingId={headingId}
+        onSignedIn={displayName => { setArrival(null); void settle(displayName); }}
+        onVerify={(address, chosen) => {
+          setArrival(null);
+          setAwaiting({ email: address, password: chosen, remember: true, from: "signin" });
+        }}
+        onAskAgain={() => {
+          setArrival(null);
+          if (arrival.email) setEmail(arrival.email);
+          go("reset");
+        }}
+        onBack={() => { setArrival(null); go("signin"); }}
+      />
+    );
+  }
+
   if (isReset && sentTo) {
     return (
       <ResetSent
@@ -352,6 +384,20 @@ export function AuthForm({
           <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
           {t("auth.resetBack")}
         </button>
+      ) : null}
+
+      {arrival && mode === "signin" ? (
+        <p
+          role="status"
+          className={`mb-5 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-[14px] leading-5 ${
+            arrival.kind === "confirmed" ? "border-[#cfe3d6] bg-[#e9f4ee] text-[#1f5e3a]" : "border-[#f0dcb0] bg-[#fdf6e7] text-[#8c5a12]"
+          }`}
+        >
+          {arrival.kind === "confirmed"
+            ? <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
+            : <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}
+          {t(arrival.kind === "confirmed" ? "auth.linkConfirmed" : "auth.linkExpired")}
+        </p>
       ) : null}
 
       {isReset ? null : <ModeSwitch mode={mode} onChoose={go} />}
@@ -700,6 +746,138 @@ export function PasswordChecklist({ id, verdict, typed }: { id: string; verdict:
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * The end of a reset: the link in the mail has been opened, and Supabase has
+ * handed back a token for the account (`lib/emailReturn.ts`). The new password
+ * is held to the floor every new password is, with the same checklist; saving
+ * it signs in. A link that had expired by the time Save was pressed offers a
+ * new one, keeping the address, and a sign-up whose code never came back goes
+ * to the code step from here too (`auth.completeReset` says why).
+ */
+function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskAgain, onBack }: {
+  arrival: Extract<EmailReturn, { kind: "reset" }>;
+  Heading: "h1" | "h2";
+  headingId: string;
+  onSignedIn: (displayName: string | null) => void;
+  onVerify: (email: string, password: string) => void;
+  onAskAgain: () => void;
+  onBack: () => void;
+}) {
+  const { t, tError } = useTranslation();
+  const ownId = useId();
+  const id = (part: string) => `${ownId}-${part}`;
+  const [password, setPassword] = useState("");
+  const [reveal, setReveal] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const verdict = useMemo(() => checkPassword(password), [password]);
+
+  const complete = trpc.auth.completeReset.useMutation({
+    onSuccess: answer => (answer.status === "signedIn" ? onSignedIn(answer.user.name) : onVerify(answer.email, password)),
+    onError: error => {
+      setRefusal(error.message);
+      input.current?.focus();
+    },
+  });
+
+  useEffect(() => {
+    window.setTimeout(() => input.current?.focus(), 30);
+  }, []);
+
+  const issue: MessageKey | null = !password ? "auth.passwordRequired" : !verdict.acceptable ? "auth.passwordNeedsRules" : null;
+  const showIssue = submitted && issue;
+  const expired = refusal === "auth.resetLinkExpired";
+  const marker = "⁣";
+  const [before, after = ""] = t("auth.newPasswordFor", { email: marker }).split(marker);
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setRefusal(null);
+    setSubmitted(true);
+    if (issue) { input.current?.focus(); return; }
+    complete.mutate({ token: arrival.token, password });
+  };
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="-ms-1 mb-5 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[14px] font-semibold text-[#0a285a]"
+      >
+        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
+        {t("auth.resetBack")}
+      </button>
+      <Heading id={headingId} className="text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
+        {t("auth.newPasswordTitle")}
+      </Heading>
+      <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">
+        {arrival.email ? <>{before}<bdi dir="ltr" className="font-bold text-[#0a285a]">{arrival.email}</bdi>{after}</> : t("auth.newPasswordNote")}
+      </p>
+
+      <form onSubmit={submit} noValidate className="mt-7 space-y-5">
+        {/* So a password manager files the new password under the right account. */}
+        {arrival.email ? <input type="email" name="email" autoComplete="username" value={arrival.email} readOnly hidden /> : null}
+        <div>
+          <label htmlFor={id("password")} className={labelClass}>{t("account.newPassword")}</label>
+          <div className="relative mt-2">
+            <input
+              id={id("password")}
+              ref={input}
+              name="new-password"
+              type={reveal ? "text" : "password"}
+              dir="ltr"
+              value={password}
+              onChange={event => { setPassword(event.target.value); if (refusal && !expired) setRefusal(null); }}
+              autoComplete="new-password"
+              maxLength={200}
+              aria-invalid={showIssue || (refusal && !expired) ? true : undefined}
+              aria-describedby={[showIssue && id("issue"), id("rules")].filter(Boolean).join(" ")}
+              className={`${inputClass} pe-12 rtl:pe-4 rtl:ps-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setReveal(shown => !shown)}
+              aria-pressed={reveal}
+              aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
+              title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
+              className="absolute end-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+            >
+              {reveal ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
+            </button>
+          </div>
+          {showIssue ? <Issue id={id("issue")}>{t(issue)}</Issue> : null}
+          <PasswordChecklist id={id("rules")} verdict={verdict} typed={password.length > 0} />
+        </div>
+
+        {refusal ? (
+          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <div>
+              <p>{tError(refusal)}</p>
+              {expired ? (
+                <button type="button" onClick={onAskAgain} className="mt-1 rounded font-bold underline underline-offset-4">
+                  {t("auth.resetAskAgain")}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={complete.isPending || expired}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-not-allowed disabled:opacity-80"
+        >
+          {complete.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+          {t(complete.isPending ? "auth.signingIn" : "auth.newPasswordSave")}
+        </button>
+      </form>
     </div>
   );
 }

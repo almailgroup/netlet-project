@@ -106,9 +106,27 @@ export class SupabaseEmailTaken extends Error {
  */
 const AUTH_DEADLINE_MS = 10_000;
 
-export type SupabaseUser = { uid: string; email: string; name: string | null };
+export type SupabaseUser = {
+  uid: string;
+  email: string;
+  name: string | null;
+  /**
+   * Supabase emailed this account a sign-up confirmation: it was asked for on
+   * a sign-up form — NetLet's own — rather than added by hand in the dashboard
+   * or by an administrator's door, which make an account confirmed and send
+   * nothing. Such an account becomes a NetLet login only through the code
+   * (`passwordStore.signIn` says why), never by being adopted at sign-in.
+   */
+  signedUp: boolean;
+};
 
-type GoTrueUser = { id?: string; email?: string; user_metadata?: Record<string, unknown> | null };
+type GoTrueUser = {
+  id?: string;
+  email?: string;
+  user_metadata?: Record<string, unknown> | null;
+  confirmation_sent_at?: string | null;
+  invited_at?: string | null;
+};
 
 function toUser(body: GoTrueUser, fallbackEmail: string): SupabaseUser | null {
   if (!body.id) return null;
@@ -117,7 +135,24 @@ function toUser(body: GoTrueUser, fallbackEmail: string): SupabaseUser | null {
     uid: body.id,
     email: body.email ?? fallbackEmail,
     name: typeof name === "string" && name.trim() ? name.trim() : null,
+    /* An invitation sends a mail of its own and is somebody vouching for the
+       address, so it is not a sign-up. */
+    signedUp: Boolean(body.confirmation_sent_at) && !body.invited_at,
   };
+}
+
+/**
+ * An endpoint, with where a link in the mail it sends should bring somebody
+ * back to.
+ *
+ * Supabase honours `redirect_to` only for an address on the Site URL's host or
+ * in the Redirect URLs list (Authentication → URL Configuration), and falls
+ * back to the Site URL otherwise — a new project's is `http://localhost:3000`,
+ * which is a blank page on a shopper's phone. `docs/SUPABASE-AUTH.md` says
+ * what to set.
+ */
+function endpoint(path: string, returnTo?: string): string {
+  return `${base()}${path}${returnTo ? `?redirect_to=${encodeURIComponent(returnTo)}` : ""}`;
 }
 
 /** The text of a failed response, for a log line rather than for a shopper. */
@@ -130,7 +165,7 @@ async function reasonFrom(response: Response): Promise<string> {
 }
 
 /**
- * Creates the account, confirmed.
+ * Creates the account, confirmed unless asked otherwise.
  *
  * `email_confirm: true` is the one line here that cannot be left out. Without
  * it Supabase creates the user unconfirmed, and the password grant then refuses
@@ -141,11 +176,16 @@ async function reasonFrom(response: Response): Promise<string> {
  * its owner, or adding a member to one, makes an account for somebody an
  * administrator is vouching for. A shopper registering proves the address
  * themselves, with the code `signUpSupabaseUser` has Supabase send.
+ *
+ * `confirmed: false` is the one other use: putting a sign-up back to waiting
+ * for its code (`passwordStore.signIn`). It sends nothing, so Supabase's mail
+ * ceiling cannot stop it half-way; `resendSupabaseSignupCode` sends the code.
  */
 export async function createSupabaseUser(input: {
   email: string;
   password: string;
   name?: string | null;
+  confirmed?: boolean;
 }): Promise<SupabaseUser> {
   const response = await fetch(`${base()}/auth/v1/admin/users`, {
     method: "POST",
@@ -154,7 +194,7 @@ export async function createSupabaseUser(input: {
     body: JSON.stringify({
       email: input.email,
       password: input.password,
-      email_confirm: true,
+      email_confirm: input.confirmed ?? true,
       user_metadata: input.name ? { name: input.name } : {},
     }),
   });
@@ -262,8 +302,10 @@ export async function signUpSupabaseUser(input: {
   email: string;
   password: string;
   name?: string | null;
+  /** Where a link in the mail lands; see `endpoint`. */
+  returnTo?: string;
 }): Promise<SignUpOutcome> {
-  const response = await fetch(`${base()}/auth/v1/signup`, {
+  const response = await fetch(endpoint("/auth/v1/signup", input.returnTo), {
     method: "POST",
     headers: anonHeaders(),
     signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
@@ -305,8 +347,8 @@ export async function signUpSupabaseUser(input: {
  * mails to one address is `SupabaseMailLimited`, which the form turns into
  * "wait a moment" rather than a fault.
  */
-export async function resendSupabaseSignupCode(email: string): Promise<void> {
-  const response = await fetch(`${base()}/auth/v1/resend`, {
+export async function resendSupabaseSignupCode(email: string, returnTo?: string): Promise<void> {
+  const response = await fetch(endpoint("/auth/v1/resend", returnTo), {
     method: "POST",
     headers: anonHeaders(),
     signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
@@ -386,16 +428,19 @@ export async function supabaseConfirmsEmailItself(): Promise<boolean | null> {
  * is careful to avoid. A configuration or network failure still throws, because
  * that is a fault to fix rather than an answer to give.
  *
- * The locale rides along as `gotrue_meta_security` is not the place for it —
- * Supabase localises from the template, not the request — so the locale is
- * taken and not sent. It stays in the signature because when the templates are
- * translated in the dashboard, this is where the redirect would carry the
- * language, and the callers already have it to hand.
+ * The link in the mail goes through Supabase and comes back to `returnTo`
+ * with a token for the account, which the sign-in page spends on the new
+ * password (`setPasswordFromLink`). Without a page there to take it, the link
+ * signed into Supabase and changed nothing.
+ *
+ * The locale is taken and not sent: Supabase localises from the template, not
+ * the request. It stays in the signature for when the templates are
+ * translated in the dashboard, and the callers already have it to hand.
  */
-export async function sendSupabasePasswordReset(email: string, _locale: "en" | "ar"): Promise<void> {
+export async function sendSupabasePasswordReset(email: string, _locale: "en" | "ar", returnTo?: string): Promise<void> {
   if (!isSupabaseAuthConfigured()) return;
 
-  const response = await fetch(`${base()}/auth/v1/recover`, {
+  const response = await fetch(endpoint("/auth/v1/recover", returnTo), {
     method: "POST",
     headers: anonHeaders(),
     signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
@@ -410,6 +455,46 @@ export async function sendSupabasePasswordReset(email: string, _locale: "en" | "
   if (!response.ok) {
     throw new Error(`Supabase password reset failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
   }
+}
+
+/** How setting a password from a reset link went. */
+export type LinkPasswordOutcome = "changed" | "expired" | "same" | "weak";
+
+/**
+ * Sets the password of the account a reset link signed into.
+ *
+ * The reset mail's link goes through Supabase, which checks it and sends the
+ * browser back to NetLet with a short-lived access token for that account in
+ * the address's fragment. That token is the proof the link was opened, and it
+ * is spent here on one thing: `PUT /auth/v1/user`, which changes the password
+ * of the account the token names and no other. It is not kept — NetLet's
+ * session is its own cookie, the rule `verifySupabasePassword` follows.
+ *
+ * "expired" is a token Supabase no longer accepts (an hour old, or signed out);
+ * "same" and "weak" are Supabase's own refusals — the current password again,
+ * or below the project's own floor — which the page says in words.
+ */
+export async function setPasswordFromLink(accessToken: string, password: string): Promise<{ outcome: LinkPasswordOutcome; user: SupabaseUser | null }> {
+  const response = await fetch(`${base()}/auth/v1/user`, {
+    method: "PUT",
+    headers: anonHeaders({ authorization: `Bearer ${accessToken}` }),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ password }),
+  });
+
+  if (response.status === 401 || response.status === 403) return { outcome: "expired", user: null };
+  if (response.status === 400 || response.status === 422) {
+    const reason = await reasonFrom(response);
+    if (/same_password|different from the old/i.test(reason)) return { outcome: "same", user: null };
+    if (/weak_password|password/i.test(reason)) return { outcome: "weak", user: null };
+    if (/jwt|token|session/i.test(reason)) return { outcome: "expired", user: null };
+    throw new Error(`Supabase could not set the password: HTTP ${response.status}: ${reason}`);
+  }
+  if (!response.ok) {
+    throw new Error(`Supabase could not set the password: HTTP ${response.status}: ${await reasonFrom(response)}`);
+  }
+
+  return { outcome: "changed", user: toUser((await response.json()) as GoTrueUser, "") };
 }
 
 /**
@@ -451,9 +536,11 @@ export async function updateSupabaseUser(
 /**
  * Removes the account from Supabase.
  *
- * Only one caller, and it is a rollback: `createVendorWithOwner` writes the
- * vendor, then the login, and undoes the first if the second fails. A
- * credential left behind by a half-made store is a login into nothing.
+ * Two callers. A rollback: `createVendorWithOwner` writes the vendor, then the
+ * login, and undoes the first if the second fails — a credential left behind
+ * by a half-made store is a login into nothing. And a sign-up Supabase
+ * confirmed by its own link, which `passwordStore.signIn` makes again waiting
+ * for its code.
  *
  * A 404 is success — whatever this was asked to remove is not there.
  */

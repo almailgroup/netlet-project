@@ -12,6 +12,7 @@ import App, { preloadFirstPage } from "./App";
 import { storedLocale } from "@/contexts/CustomerContext";
 import { prefetchRouteData } from "@/lib/routeData";
 import { rememberShelves, restoreShelves } from "@/lib/shelfMemory";
+import { catchEmailReturn } from "@/lib/emailReturn";
 import "./index.css";
 
 /**
@@ -141,6 +142,9 @@ loadAnalytics();
  * (`routeData`), as is the page's own code (`preloadFirstPage`). The demo
  * answers from fixtures and needs neither of the first two.
  */
+/* Before anything reads the address: a link in Supabase's own email comes back
+   with a token in it, which is taken out at once and the page made /signin. */
+catchEmailReturn();
 const firstPage = preloadFirstPage();
 if (!DEMO_MODE) {
   restoreShelves(queryClient);

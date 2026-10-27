@@ -48,13 +48,17 @@ import {
   isSupabaseMailLimited,
   resendSupabaseSignupCode,
   sendSupabasePasswordReset,
+  setPasswordFromLink,
   signInSupabase,
   signUpSupabaseUser,
   updateSupabaseUser,
   verifySupabasePassword,
   verifySupabaseSignupCode,
+  type LinkPasswordOutcome,
+  type SupabaseUser,
 } from "./supabaseAuth.js";
 import { hasLocalCode, issueLocalCode, takeLocalCode } from "./localCodes.js";
+import { siteOrigin } from "./email.js";
 import { checkPassword } from "../../../Shared/auth/passwordStrength.js";
 import { createUser, deleteUserRow, findLoginByEmail, linkExternalUser } from "../services/logins.js";
 import { updateUserPasswordHash } from "../services/profile.js";
@@ -191,7 +195,13 @@ export async function createLogin(input: {
  * `createLogin` above stays the administrator's door: opening a store with its
  * owner is somebody vouching for an address, which is a different act.
  */
-export type Registration = { email: string; password: string; name?: string | null };
+export type Registration = {
+  email: string;
+  password: string;
+  name?: string | null;
+  /** Where a link in Supabase's mail brings somebody back to. */
+  returnTo?: string;
+};
 
 /**
  * Sends the code, or — on a project that confirms addresses by itself — makes
@@ -237,11 +247,11 @@ export async function startRegistration(input: Registration): Promise<{ status: 
  * Sends the code again. Silent for an address with nothing waiting, so the
  * reply never says which addresses are part-way through registering.
  */
-export async function resendRegistrationCode(email: string): Promise<void> {
+export async function resendRegistrationCode(email: string, returnTo?: string): Promise<void> {
   const address = email.trim().toLowerCase();
   if (activeStore() === "supabase") {
     try {
-      await resendSupabaseSignupCode(address);
+      await resendSupabaseSignupCode(address, returnTo);
     } catch (error) {
       if (isSupabaseMailLimited(error)) throw new CodeNotSentError();
       throw error;
@@ -341,14 +351,16 @@ export async function deleteLogin(user: User): Promise<void> {
  * The row is read only once Supabase has said no, so an ordinary sign-in still
  * costs one round trip.
  */
-export async function signIn(email: string, password: string): Promise<User | "unconfirmed" | null> {
+export async function signIn(email: string, password: string, returnTo?: string): Promise<User | "unconfirmed" | null> {
   if (activeStore() === "supabase") {
     const verified = await signInSupabase(email, password);
     /* The right password on an address whose code was never typed in: the
        form takes them to the code rather than calling the password wrong. */
     if (verified === "unconfirmed") return "unconfirmed";
     if (verified) {
-      return linkExternalUser({ uid: verified.uid, email: verified.email, name: verified.name });
+      const user = await linkExternalUser({ uid: verified.uid, email: verified.email, name: verified.name, create: !verified.signedUp });
+      if (user) return user;
+      return askForTheCodeAgain(verified, password, returnTo);
     }
   }
 
@@ -360,6 +372,47 @@ export async function signIn(email: string, password: string): Promise<User | "u
     return null;
   }
   return (await verifyPassword(password, row.passwordHash)) ? row : null;
+}
+
+/**
+ * A sign-up whose code never came back, which Supabase holds confirmed anyway.
+ *
+ * **Only the code makes a shopper's account**, and this is the case that
+ * slipped past it. Supabase's own "Confirm signup" email is a link until the
+ * dashboard template is changed to print the code, and opening that link
+ * confirms the address in Supabase — so the next sign-in found a password
+ * Supabase accepted and an account NetLet had no row for, which is exactly
+ * what adoption exists for, and signed them in without the code they had
+ * been told to type. A shopper reported precisely that.
+ *
+ * Adoption is still right for an account added by hand in the dashboard; what
+ * tells the two apart is that Supabase mailed this one a sign-up confirmation
+ * (`SupabaseUser.signedUp`). So instead of a row, the account is put back to
+ * waiting for its code — removed and made again unconfirmed, with the password
+ * that has just been checked, since Supabase has no way to take a confirmation
+ * back — and the code is sent. The answer is "unconfirmed", which the form
+ * already turns into the code step.
+ *
+ * Made again *before* the mail is asked for, through the admin door that sends
+ * nothing: Supabase's mail ceiling can refuse a sign-up outright, and an
+ * account removed and not made again would be one whose password stopped
+ * working. A refused mail leaves it waiting, and the code
+ * step's "Send it again" sends it.
+ */
+async function askForTheCodeAgain(account: SupabaseUser, password: string, returnTo?: string): Promise<"unconfirmed"> {
+  await deleteSupabaseUser(account.uid);
+  try {
+    await createSupabaseUser({ email: account.email, password, name: account.name, confirmed: false });
+  } catch (error) {
+    /* Two sign-ins at once: the other one made it again first, and it is waiting. */
+    if (!isSupabaseEmailTaken(error)) throw error;
+  }
+  try {
+    await resendSupabaseSignupCode(account.email, returnTo);
+  } catch (error) {
+    if (!isSupabaseMailLimited(error)) console.error(`[auth] the sign-up code could not be sent again: ${String(error)}`);
+  }
+  return "unconfirmed";
 }
 
 /**
@@ -441,8 +494,35 @@ export async function setDisplayName(user: User, name: string | null): Promise<v
  * stops it being used to ask who is registered, so it holds for an address with
  * no account and for a deployment with no service alike.
  */
-export async function sendReset(email: string, locale: "en" | "ar"): Promise<void> {
-  if (isSupabaseAuthConfigured()) await sendSupabasePasswordReset(email, locale);
+/**
+ * Where a link in Supabase's own mail brings somebody back to: NetLet's
+ * sign-in page, which reads what Supabase hands back (a confirmed address, a
+ * reset to finish, a link that has expired) and says what to do next.
+ *
+ * The shop's own address where one is known (`SITE_URL`, or Vercel's
+ * production host), so a link always lands on the shop rather than on a
+ * preview; otherwise the host the request came to.
+ */
+export function linkLanding(requestOrigin?: string): string | undefined {
+  const origin = siteOrigin() || requestOrigin;
+  return origin ? `${origin}/signin` : undefined;
+}
+
+export async function sendReset(email: string, locale: "en" | "ar", returnTo = linkLanding()): Promise<void> {
+  if (isSupabaseAuthConfigured()) await sendSupabasePasswordReset(email, locale, returnTo);
+}
+
+/**
+ * Sets a new password from a reset link's token, and answers the address it
+ * was for so the caller can sign them in with it.
+ *
+ * Only Supabase sends reset links; with the local digest there is no link and
+ * so nothing to finish — "expired", the same answer a stale link gets.
+ */
+export async function finishReset(accessToken: string, password: string): Promise<{ outcome: LinkPasswordOutcome; email: string | null }> {
+  if (activeStore() !== "supabase") return { outcome: "expired", email: null };
+  const { outcome, user } = await setPasswordFromLink(accessToken, password);
+  return { outcome, email: user?.email || null };
 }
 
 /**

@@ -109,11 +109,46 @@ None of these need quoting: they are single-line values copied from a page.
 
 ---
 
+## Where the links in Supabase's emails go
+
+Every email Supabase sends for NetLet — the reset link, and the sign-up email
+until it shows the code — has a link that goes through Supabase and then on to
+a page of the site. NetLet asks for its own sign-in page each time, and that
+page reads what Supabase hands back: a reset to finish ("Choose a new
+password"), a confirmed address, or a link that has expired.
+
+**Supabase only sends people to an address it has been told about.** Anything
+else goes to the project's **Site URL**, and a new project's Site URL is
+`http://localhost:3000` — which on a shopper's phone is a blank page. A
+shopper reported exactly that after pressing the link in the sign-up email.
+
+**Authentication → URL Configuration**:
+
+- **Site URL**: the shop's own address, for example
+  `https://netlet-project.vercel.app` (or your own domain once it points at the
+  shop). Any page on that host is then allowed.
+- **Redirect URLs**: add the same address with `/**` after it, and the same
+  again for any other address the shop answers on (a custom domain beside the
+  Vercel one).
+
+NetLet names the address from `SITE_URL` when it is set, otherwise from
+Vercel's production address, otherwise from the host the request came to — so
+set `SITE_URL` to the same address if the shop has a custom domain.
+
+---
+
 ## The reset email
 
 Supabase composes and sends it, so there is no mail provider to configure — the
 same property that let the reset link on the sign-in dialog be real rather than
 decorative.
+
+The link in it opens NetLet's sign-in page on **Choose a new password**. That
+page sets the new password with the one-time token Supabase handed back and
+signs the shopper in; the token is used for that alone and never kept. Before
+this, the link signed into Supabase and changed nothing, because no page read
+what came back. Supabase's default "Reset Password" email works as it is — it
+needs only the Site URL above.
 
 **The default project mailer is rate-limited and meant for development.** A real
 deployment points Supabase at its own SMTP under **Project Settings →
@@ -135,8 +170,8 @@ typed back on the site — an address nobody has shown they read is not one
 NetLet opens an account on. Signing in with the right password on an account
 whose code never came back goes to the same step and sends a fresh code.
 
-Three settings in the Supabase dashboard make it work. All three are switches
-or text boxes; none is code.
+Three settings in the Supabase dashboard make it work, beside the Site URL
+above. All three are switches or text boxes; none is code.
 
 **1. "Confirm email" stays on.** **Authentication → Sign In / Providers →
 Email → Confirm email.** It is on in a new project. Off, Supabase confirms
@@ -174,8 +209,20 @@ Body (HTML):
 </div>
 ```
 
-Without `{{ .Token }}` the email carries a link instead, which lands on the
-project's Site URL rather than on the code box.
+**Without `{{ .Token }}` nobody can finish creating an account.** The default
+email is a "Confirm your mail" link and no code. A shopper reported exactly
+that: they were told a 6-digit code was on its way, got a link instead, and
+the link went to a blank page (the Site URL, above). Opening that link confirms
+the address in Supabase, and the next sign-in used to make the NetLet account
+there and then, without the code. It does not any more: **only the code makes
+a shopper's account.** A sign-in to an account Supabase sent a sign-up email for
+and NetLet has no account for is put back to waiting and sent a fresh code — so
+with the default template that fresh email is a link again, and the shopper
+goes round in a circle. Changing the template is what lets the code arrive.
+
+Accounts you add by hand under **Authentication → Users → Add user** (with "Auto
+Confirm User" ticked) are not sign-ups: Supabase sends them nothing, and they
+become NetLet logins the first time they sign in, as before.
 
 **3. Your own mail server.** **Project Settings → Authentication → SMTP
 Settings.** Supabase's built-in mailer only sends to the email addresses of

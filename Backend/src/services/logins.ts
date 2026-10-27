@@ -115,11 +115,16 @@ export async function createUser(input: {
  * and so the mutual exclusion the schema promises survives the adoption. Leaving
  * the digest would give one row two password stores, and `storeFor` would then
  * answer whichever it checked first.
+ *
+ * `create: false` finds and adopts but never makes a row, and answers null
+ * where it would have: a sign-up whose code never came back is not an account
+ * to make at sign-in, however its address came to be confirmed.
  */
 export async function linkExternalUser(input: {
   uid: string;
   email: string;
   name?: string | null;
+  create?: boolean;
 }): Promise<User | null> {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -139,6 +144,7 @@ export async function linkExternalUser(input: {
     return (await byEmail(db, email)) ?? null;
   }
 
+  if (input.create === false) return null;
   return createUser({ email, ...credentials, name: input.name ?? null });
 }
 
