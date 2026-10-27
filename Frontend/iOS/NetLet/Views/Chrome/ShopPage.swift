@@ -4,7 +4,8 @@ import UIKit
 /// The shop's frame on every shopping screen — the web's `StorefrontShell` and
 /// `StoreHeader` as a phone draws them.
 ///
-/// The logo row (the logo at the start, the language at the end) scrolls away
+/// The logo row (the logo at the start, where the shop delivers at the end)
+/// scrolls away
 /// with the page and the search row stays, pinned under the status bar, so
 /// somebody four screens in still has the one way to look for something. Both
 /// sit on the header's liquid glass, and so does the strip under the status
@@ -13,9 +14,16 @@ import UIKit
 ///
 /// A screen pushed onto a stack gets a back chevron before the logo: the web
 /// leaves going back to the browser, and the app has no browser around it.
+///
+/// **The Profile and Cart tabs' first screens have no header**, on the owner's
+/// word (`header: false`) — the web's phone draws `/account` and `/cart` with
+/// none: the page starts under the status bar, and the tab bar is the way
+/// anywhere else. A screen pushed from them keeps it, with its way back.
 struct ShopPage<Content: View>: View {
     /// A tab's first screen, which has nothing to go back to.
     var root = false
+    /// The logo row and the search row; off for Profile and Cart.
+    var header = true
     var footer = true
     var refresh: (() async -> Void)?
     /// The assistant's button in the end corner; off where the page's own
@@ -34,14 +42,18 @@ struct ShopPage<Content: View>: View {
             GeometryReader { screen in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                        LogoRow(back: back) {
-                            if root && app.selectedTab == .home {
-                                withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
-                            } else {
-                                app.goHome()
+                        if header {
+                            LogoRow(back: back) {
+                                if root && app.selectedTab == .home {
+                                    withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
+                                } else {
+                                    app.goHome()
+                                }
                             }
+                            .id(ShopPageTop.id)
+                        } else {
+                            Color.clear.frame(height: 0).id(ShopPageTop.id)
                         }
-                        .id(ShopPageTop.id)
                         Section {
                             if footer {
                                 // At least a screen tall, the web's `min-h-[100svh]`:
@@ -54,7 +66,7 @@ struct ShopPage<Content: View>: View {
                                 content()
                             }
                         } header: {
-                            SearchRow()
+                            if header { SearchRow() }
                         }
                     }
                 }
@@ -82,8 +94,11 @@ struct ShopPage<Content: View>: View {
         .animation(.easeOut(duration: 0.2), value: assistant)
         .safeAreaInset(edge: .top, spacing: 0) {
             // The strip under the status bar wears the header's glass too, at
-            // the tint the bar's top has, so the two meet with no step.
-            Color.clear.frame(height: 0).background(GlassSurface(top: 0.6, foot: 0.6).ignoresSafeArea(edges: .top))
+            // the tint the bar's top has, so the two meet with no step. With
+            // no header, the page's own ground runs up under it.
+            if header {
+                Color.clear.frame(height: 0).background(GlassSurface(top: 0.6, foot: 0.6).ignoresSafeArea(edges: .top))
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -122,8 +137,10 @@ private struct OptionalRefresh: ViewModifier {
 }
 
 /// The phone header's first row: the logo at the start, 40 tall, on the line
-/// every page's title starts from, and the language at the end — the language
-/// you would get, spoken in it ("العربية" on the English app).
+/// every page's title starts from, and **where the shop delivers at the end**,
+/// on the owner's word — the saved address in use ("Home"), else the area —
+/// which opens "Deliver to" (`DeliverySheet`) and is felt at the product
+/// strength. It was the language; that is a row on the Profile page now.
 struct LogoRow: View {
     var back: (() -> Void)?
     let onLogo: () -> Void
@@ -150,20 +167,30 @@ struct LogoRow: View {
             .buttonStyle(.tap)
             .accessibilityLabel(l.t("header.home"))
             Spacer(minLength: 12)
+            let place = app.delivery.label(l.current) ?? l.t("home.chooseAreaShort")
             Button {
-                app.setLanguage(l.current.other)
+                app.deliveryOpen = true
             } label: {
                 // `.pressable`'s type, as every control on the web's bar.
-                Text(l.t("header.language"))
-                    .font(.inter(14, .medium))
-                    .foregroundStyle(Brand.navy)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+                HStack(spacing: 6) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Brand.accentInk)
+                    Text(place)
+                        .font(.inter(14, .medium))
+                        .foregroundStyle(Brand.navy)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Brand.navy)
+                }
+                .padding(.horizontal, 10)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 12))
-            .environment(\.locale, l.current.other.locale)
-            .accessibilityHint(l.t("header.changeLanguage"))
+            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
+            .accessibilityHint(l.t("delivery.buttonTitle"))
         }
         .padding(.horizontal, 16)
         .frame(height: 58)

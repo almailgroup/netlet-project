@@ -1,5 +1,7 @@
 /**
- * Who you are, at the top of your own account page.
+ * Who you are, at the top of "Your details" — the account's home has the name
+ * and the address on a card of its own (`AccountHome`), and the dates and the
+ * role are here, beside the forms that change them.
  *
  * The facts used to sit in a bare card at the foot of the page, under the
  * preferences and the saved items — which put "is this even my account?" last,
@@ -72,9 +74,9 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
               truncating: cut on an Arabic page, a Latin name lost its first
               letters ("…ra Al-Sabah"), and a name is the one thing on the
               card a shopper reads to be sure it is theirs. */}
-          <h2 className="text-xl font-extrabold text-[#0a285a] [overflow-wrap:anywhere]">
+          <h3 className="text-xl font-extrabold text-[#0a285a] [overflow-wrap:anywhere]">
             <bdi>{user.name?.trim() || t("account.noName")}</bdi>
-          </h2>
+          </h3>
           <p className="mt-0.5 text-[12px] font-semibold ink-muted">
             {t("account.identityEmail")}
           </p>

@@ -235,3 +235,26 @@ final class CheckoutViewModelTests: XCTestCase {
         XCTAssertEqual(model.refusal?.serverMessage, "order.outOfStock")
     }
 }
+
+/// The header's location: the web's `addressInUse` over the book and the area.
+final class DeliveryRuleTests: XCTestCase {
+    private let book = [
+        SavedAddress(id: 1, label: "Office", contactName: nil, contactPhone: nil, governorate: "capital", addressLine: nil, addressNotes: nil, parts: nil),
+        SavedAddress(id: 8, label: "Home", contactName: nil, contactPhone: nil, governorate: "hawalli", addressLine: nil, addressNotes: nil, parts: nil),
+        SavedAddress(id: 9, label: "Mum's", contactName: nil, contactPhone: nil, governorate: "hawalli", addressLine: nil, addressNotes: nil, parts: nil),
+    ]
+
+    func testTheAddressUsedLastWinsWhileItIsInTheArea() {
+        XCTAssertEqual(DeliveryModel.addressInUse(book, lastUsed: 9, zone: "hawalli")?.label, "Mum's")
+    }
+
+    func testOtherwiseTheAreasFirstAddress() {
+        XCTAssertEqual(DeliveryModel.addressInUse(book, lastUsed: 1, zone: "hawalli")?.label, "Home")
+        XCTAssertEqual(DeliveryModel.addressInUse(book, lastUsed: nil, zone: "capital")?.label, "Office")
+    }
+
+    func testNoAreaOrNoAddressThereIsNone() {
+        XCTAssertNil(DeliveryModel.addressInUse(book, lastUsed: 8, zone: nil))
+        XCTAssertNil(DeliveryModel.addressInUse(book, lastUsed: 8, zone: "jahra"))
+    }
+}

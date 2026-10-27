@@ -10,7 +10,7 @@ struct NotificationsView: View {
 
     var body: some View {
         ModelHost(make: { NotificationsModel(api: app.services.api) }) { model in
-            ShopPage(refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("notices.title"), hint: l.t("notices.tile")) {
                     VStack(alignment: .leading, spacing: 14) {
                         LoadStateView(state: model.page, retry: { await model.load() }) { page in

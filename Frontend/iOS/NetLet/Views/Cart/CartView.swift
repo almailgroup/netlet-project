@@ -11,7 +11,7 @@ struct CartView: View {
 
     var body: some View {
         let cart = app.cart.cart
-        ShopPage(root: true, refresh: { await app.cart.refresh() }) {
+        ShopPage(root: true, header: false, refresh: { await app.cart.refresh() }) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: [l.t("cart.title")])
                 Text(l.t("cart.title")).pageTitle().padding(.bottom, 24)

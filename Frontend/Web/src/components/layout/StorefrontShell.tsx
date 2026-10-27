@@ -17,6 +17,13 @@
  * through `usePageChrome`. Everything else the shell works out from the
  * address: the footer clears a floating bar on the pages that have one.
  *
+ * **On a phone the account and the cart have no header, on the owner's word**
+ * (`BARE_ON_PHONE`) — the way the delivery apps people here use draw their
+ * profile and their bag: the page starts at the top of the screen, and the tab
+ * bar under it is the way anywhere else. A wide screen keeps the header there,
+ * having no tab bar to fall back on. One structure at a time (`useMediaQuery`),
+ * so a phone's page holds no hidden search field for a keyboard to land in.
+ *
  * Checkout, sign-in and the portal stay outside it on purpose: checkout and
  * sign-in keep a bare header (every exit on a payment page is an invitation to
  * take it; the search field is what somebody leaves a password for), and the
@@ -26,6 +33,7 @@ import { ShopAssistant, useAssistantShown } from "@/components/assistant/ShopAss
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StoreHeader } from "@/components/layout/StoreHeader";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { useTranslation } from "@/hooks/useTranslation";
 import { createContext, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
@@ -67,6 +75,8 @@ const TALL_FOOT = /^\/(category\/|search|products\/)/;
  * and a menu that blinks on every press is the opposite of the point.
  */
 const pageOf = (path: string) => (path.startsWith("/account/") ? "/account" : path);
+/* The account and the bag: no header on a phone. */
+const BARE_ON_PHONE = /^\/(account|cart)(\/|$)/;
 /* A document: the chrome is not printed with it. */
 const PRINTED = /^\/invoices\/(?!verify\/)/;
 
@@ -112,6 +122,8 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
    */
   const enter = usePageEntrance(pageOf(location));
   const printed = PRINTED.test(location);
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const bare = !wide && BARE_ON_PHONE.test(location);
   /* The assistant's button floats over the foot of the page too, so the footer leaves it room. */
   const assistant = useAssistantShown();
 
@@ -121,9 +133,11 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         {/* `contents`, so the bar's sticky box is the page's and not a
             wrapper's the height of the bar. */}
         <div className={printed ? "contents print:hidden" : "contents"}>
-          <StoreHeader activeDepartment={chrome.activeDepartment} />
+          {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} />}
         </div>
-        <main id="main" tabIndex={-1} className="flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0">
+        {/* With no header, the page clears the status bar itself on a phone
+            that draws the page under it (`viewport-fit=cover`). */}
+        <main id="main" tabIndex={-1} className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${bare ? "pt-[env(safe-area-inset-top)]" : ""}`}>
           <Suspense fallback={<PageFallback />}>
             {held ? null : <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>}
           </Suspense>

@@ -8,16 +8,15 @@
  * who came to change a password scrolled past every parcel they had ever
  * ordered to find it.
  *
- * Now `/account` is a short page of tiles, grouped by what somebody came to do,
- * each saying in one line what it holds and, where there is one, what is
- * waiting ("1 on the way", "2 unread"). A tile opens `/account/<section>`,
- * which is that section alone: beside a menu of all of them on a wide screen,
- * under a way back on a phone. The sections themselves are the components they
- * always were; only the page around them changed.
+ * Now `/account` is a short page (`AccountHome`): who is signed in, the last
+ * things ordered and saved, the points, and every section as a row, with what
+ * is waiting said on it ("1 on the way", "2 unread"). A row opens
+ * `/account/<section>`, which is that section alone: beside a menu of all of
+ * them on a wide screen, under a way back on a phone. The sections themselves
+ * are the components they always were; only the page around them changed.
  *
- * It wears the shop's own header, tab bar and footer now. It kept a bare
- * "settings page" header of its own, which took the search, the cart and the
- * phone's tab bar away the moment somebody looked at their orders.
+ * It wears the shop's own tab bar and footer, and its header on a wide screen;
+ * a phone draws it with no header, on the owner's word (`StorefrontShell`).
  *
  * The old in-page addresses still land: `/account#orders` is answered with
  * `/account/orders`, so a link in an old email or a bookmark is not a dead end.
@@ -27,12 +26,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PixelDot } from "@/components/ui/PixelBadge";
 import { ProfileManager } from "@/components/account/ProfileManager";
+import { AccountHome } from "@/components/account/AccountHome";
 import { AccountIdentity, initialsFor } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
 import { AccountSupport } from "@/components/account/AccountSupport";
-import { MembershipCard } from "@/components/account/MembershipCard";
 import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
@@ -45,7 +44,7 @@ import { privatePageMeta } from "@shared/seo";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
-import { PageBody, PageHeading, TITLE } from "@/components/layout/Page";
+import { PageBody, TITLE } from "@/components/layout/Page";
 import { useEffect, useState, type ComponentType } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
@@ -55,7 +54,6 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   ArrowLeft,
   Bell,
-  ChevronRight,
   Gift,
   Heart,
   LifeBuoy,
@@ -126,7 +124,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
     case "affiliate": return <AccountAffiliate />;
-    case "details": return <ProfileManager user={user} />;
+    case "details": return <div className="space-y-6"><AccountIdentity user={user} /><ProfileManager user={user} /></div>;
     case "addresses": return <AddressBook />;
     case "preferences": return <AccountPreferences />;
     case "selling": return <SellerMode />;
@@ -259,71 +257,9 @@ export default function Account() {
             </div>
           </div>
         ) : (
-          <div className="max-w-5xl">
-            <PageHeading title={user.name ? t("account.welcomeBackName", { name: user.name }) : t("account.welcomeBack")} />
-            <div className="space-y-4">
-              <AccountIdentity user={user} />
-              {/* Only for a member (4.1): nobody can buy one yet. */}
-              <MembershipCard />
-            </div>
-
-            {GROUPS.map(group => {
-              const items = entries.filter(entry => entry.group === group.id);
-              if (!items.length) return null;
-              return (
-                <section key={group.id} aria-labelledby={`account-group-${group.id}`} className="mt-8">
-                  <h2 id={`account-group-${group.id}`} className="text-[15px] font-bold text-[#0a285a]">{t(group.label)}</h2>
-                  <ul className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {items.map(entry => (
-                      <li key={entry.id}>
-                        <Tile entry={entry} badge={badge(entry.id)} />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
-
-            <div className="mt-10 border-t border-[#e6e9ef] pt-6">
-              <button
-                type="button"
-                onClick={() => setSignOutOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-[#e6e9ef] bg-white px-4 py-2.5 text-[14px] font-semibold text-[#8c2f22] hover:border-[#f2b69e] hover:bg-[#fdf5f3]"
-              >
-                <LogOut className="size-4" aria-hidden />
-                {t("header.signOut")}
-              </button>
-            </div>
-          </div>
+          <AccountHome user={user} has={id => entries.some(entry => entry.id === id)} badge={badge} onSignOut={() => setSignOutOpen(true)} />
         )}
     </PageBody>
-  );
-}
-
-/**
- * One way into the account: an icon, what it is, one line on what it holds,
- * and what is waiting there when anything is.
- */
-function Tile({ entry, badge }: { entry: Entry; badge: string | null }) {
-  const { t } = useTranslation();
-  const Icon = entry.icon;
-  return (
-    <Link
-      href={entry.href ?? `/account/${entry.id}`}
-      className="group flex h-full items-center gap-3.5 rounded-2xl border border-[#e6e9ef] bg-white p-4 transition-colors hover:border-[#c9d6e6] hover:bg-[#f0f2f5]"
-    >
-      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#eef2f8] text-[#0a285a]">
-        <Icon className="size-5" aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-[15px] font-bold text-[#0a285a]">{t(entry.label)}</span>
-          {badge ? <span className="rounded-full bg-[#f2683a] px-2 py-0.5 text-[12px] font-bold text-[#0a285a]">{badge}</span> : null}
-        </span>
-        <span className="mt-0.5 block text-[13px] leading-snug ink-muted">{t(entry.hint)}</span>
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-[#8aa0bd] transition-colors group-hover:text-[#0a285a] rtl:-scale-x-100" aria-hidden />
-    </Link>
   );
 }
 

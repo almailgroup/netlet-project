@@ -103,6 +103,9 @@ struct SecondaryButtonStyle: ButtonStyle {
 /// controls (`(hover: none)` and `:active`): the press fill, nothing moving.
 struct PressFillStyle: ButtonStyle {
     var cornerRadius: CGFloat = 16
+    /// How firmly a press is felt: a tenth, or the product strength for a
+    /// press that changes something the shopper notices, like where things go.
+    var strength: CGFloat = Haptics.buttonStrength
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -111,7 +114,7 @@ struct PressFillStyle: ButtonStyle {
                     .fill(Brand.navy.opacity(configuration.isPressed ? 0.06 : 0))
                     .allowsHitTesting(false)
             )
-            .pressHaptic(configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: strength)
     }
 }
 

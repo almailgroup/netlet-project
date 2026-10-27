@@ -151,6 +151,10 @@ final class AppModel {
     private(set) var features = FeatureStates.unknown
     /// What is waiting in the account: unread notices and messages, parcels on the way.
     let signals: AccountSignals
+    /// Where the shop delivers, for the header's location button.
+    let delivery: DeliveryModel
+    /// The header's "Deliver to" sheet.
+    var deliveryOpen = false
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
     private(set) var ai: AIAvailability?
     /// Whether a model can read a photo for search (`search.photoAvailable`),
@@ -191,6 +195,7 @@ final class AppModel {
         saved = SavedModel(account: services.account, defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog)
         signals = AccountSignals(api: services.api)
+        delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
         let api = services.api
         let gateway = AIGateway(mint: { try await api.call(API.chatSession) })
         self.gateway = gateway
@@ -460,6 +465,7 @@ final class AppModel {
 
     func signOut() async {
         signals.clear()
+        delivery.signedOut()
         await session.signOut()
         cart.forget()
         saved.signedOut()
@@ -483,6 +489,7 @@ final class AppModel {
         }
         await saved.adoptAccount()
         await signals.refresh()
+        await delivery.refresh(signedIn: true)
     }
 }
 

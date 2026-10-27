@@ -8,7 +8,7 @@ struct OrdersView: View {
 
     var body: some View {
         ModelHost(make: { OrdersViewModel(service: app.services.orders) }) { model in
-            ShopPage(refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("account.sectionOrders"), hint: l.t("account.hint.orders")) {
                     LoadStateView(state: model.orders, retry: { await model.load() }) { orders in
                         if orders.isEmpty {

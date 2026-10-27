@@ -2,8 +2,9 @@ import SwiftUI
 
 /// The button in the end corner of every shopping page that opens a
 /// conversation with the shop — the web's `ShopAssistant`. Glass round a
-/// navy mark, drawn only while the gateway is set up and the assistant is
-/// switched on; a dot says an answer finished while it was closed.
+/// navy mark and "Need help?" beside it, drawn only while the gateway is set
+/// up and the assistant is switched on; a dot says an answer finished while
+/// it was closed.
 struct ShopAssistantButton: View {
     /// The product on screen, so the conversation starts about it.
     var product: Product?
@@ -15,17 +16,28 @@ struct ShopAssistantButton: View {
             Button {
                 app.openChat(about: product)
             } label: {
-                AssistantMark(size: 44)
-                    .padding(5)
-                    .background(GlassSurface(top: 0.6, foot: 0.45).clipShape(Circle()))
-                    .overlay(Circle().strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
-                    .shadow(color: Brand.navy.opacity(0.22), radius: 12, x: 0, y: 6)
-                    .overlay(alignment: .topTrailing) {
-                        if app.chatUnread { PixelDot().offset(x: 2, y: -2) }
-                    }
+                // "Need help?" beside the mark, on the owner's word — the
+                // web's button at every width, glass round a navy mark.
+                HStack(spacing: 10) {
+                    AssistantMark(size: 40)
+                        .overlay(alignment: .topTrailing) {
+                            if app.chatUnread { PixelDot().offset(x: 2, y: -2) }
+                        }
+                    Text(l.t("shopChat.needHelp"))
+                        .font(.inter(15, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .padding(5)
+                .padding(.trailing, 11)
+                .background(GlassSurface(top: 0.7, foot: 0.7).clipShape(Capsule()))
+                .overlay(Capsule().strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+                .shadow(color: Brand.navy.opacity(0.22), radius: 12, x: 0, y: 6)
+                .contentShape(Capsule())
             }
             .buttonStyle(.action)
-            .accessibilityLabel(l.t("shopChat.launch") + (app.chatUnread ? ", " + l.t("shopChat.unread") : ""))
+            .accessibilityLabel(l.t("shopChat.needHelpName") + (app.chatUnread ? ", " + l.t("shopChat.unread") : ""))
             .transition(.scale(scale: 0.8).combined(with: .opacity))
         }
     }

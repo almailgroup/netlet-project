@@ -19,7 +19,7 @@ struct AuthView: View {
             } else {
                 // Signed out, the account page is the form itself, in the
                 // shop's frame like every other page.
-                ShopPage(root: true) { AuthForm(model: model) }
+                ShopPage(root: true, header: false) { AuthForm(model: model) }
             }
         }
     }

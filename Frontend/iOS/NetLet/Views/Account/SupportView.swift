@@ -102,7 +102,7 @@ struct SupportView: View {
 
     var body: some View {
         ModelHost(make: { SupportModel(api: app.services.api, orders: app.services.orders) }) { model in
-            ShopPage(refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("support.section"), hint: l.t("account.hint.help")) {
                     VStack(alignment: .leading, spacing: 14) {
                         AskForm(model: model)
@@ -330,7 +330,7 @@ struct SupportThreadView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.supportThread, .init(id: conversationId)) } }) { thread in
-            ShopPage(footer: false, refresh: { await thread.load() }) {
+            ShopPage(header: false, footer: false, refresh: { await thread.load() }) {
                 AccountSection(title: thread.value.map { l.t(SupportView.topicLabel($0.topic)) } ?? l.t("support.section"), hint: l.t("support.askNote")) {
                     LoadStateView(state: thread.state, retry: { await thread.load() }) { data in
                         VStack(alignment: .leading, spacing: 14) {

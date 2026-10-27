@@ -673,7 +673,7 @@ at 10.0s and 20.0s and still between, in both languages; a second Add at 4.5s
 hopped at 4.5s and next at 14.5s. axe found nothing on the pages that draw it.
 
 **Delivery sits in the primary bar, because that is the row that survives a
-scroll** — on a wide screen; a phone's bar no longer carries it (see below). It spent one release at the end of the department rail, put there to
+scroll** — on a wide screen, and on a phone at the end of the logo row (see below). It spent one release at the end of the department rail, put there to
 fill the 650px the notifications bell and the saved icon left behind — and the
 argument for it was that an area could otherwise only be set from a hero link
 that scrolls away. The rail collapses on scroll too, so that fixed nothing and
@@ -759,14 +759,18 @@ a link never leads to the half-empty shelf the home page refuses to draw. On
 hamburger and a cart, and every other page's had saved, account and cart —
 all of it in `MobileTabBar`, a thumb's reach below (Saved now one press under
 Profile). The top row carries
-what the bottom does not: the logo at its start (40px tall) and the language
-at its end, and the search field has a whole row under it. **The logo sits at
-the start, on the owner's word**, on the line the search field and every page's
-title start from, as it does on a wide screen; it was centred and 48px for a
-while, and the owner asked for it at the side and a little smaller. **The
-delivery area is not on the phone's bar**, on the owner's word, which came with
-the centred logo and stayed when it moved; a phone sets the area at checkout and
-in the account's preferences instead, and a wide screen keeps its button. The top row scrolls away with the page and the
+what the bottom does not: the logo at its start (40px tall) and **where the
+shop delivers at its end**, and the search field has a whole row under it.
+**The logo sits at the start, on the owner's word**, on the line the search
+field and every page's title start from, as it does on a wide screen; it was
+centred and 48px for a while, and the owner asked for it at the side and a
+little smaller. **The end of the row is the saved location, on the owner's
+word** — a pin, the address in use by its own name ("Home", `addressInUse`) or
+the area, and a chevron, opening the address book (`DeliveryZoneDialog`) and
+buzzing on the press where a page may (`pressHaptic`). It was the language,
+which is a row on the account page now (and stays in the footer, for somebody
+signed out); before that the area left the phone's bar when the logo was
+centred, and the owner asked for it back in the language's place. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **Every
 page that wears the header has the search field** — the sell page, a 404, an
 invoice and the returns page used to get the header without it, so the one way
@@ -1595,6 +1599,23 @@ screen and under a "← Your account" link on a phone. The section components
 are the ones they always were; only the page around them changed. `ENTRIES` in
 `Account.tsx` is the one list the home and the menu both read.
 
+**The home is drawn like the delivery apps', on the owner's word** (a picture
+of Noon's profile; `AccountHome`): a card with the initials in a pale circle,
+the name, the email and a pencil to "Your details"; two tiles, "My orders" and
+"Saved items", each showing the last four pictures (`orders.list`'s own photos,
+the hearts read by id) or saying there is nothing yet; "NetLet points" with the
+balance in a pill; then every section as a row in white cards — an outline
+icon, the name, what is waiting, a chevron — with dashed lines between, the
+language as a two-way switch in its own row (each choice in its own language),
+"Account security" (the details) and signing out in red at the foot, still
+asking first. Cards follow what somebody came to do: shopping with, being told
+things, running something, the account itself. The tiles in four headed groups
+and the welcome heading went; the dates and the role moved to the top of "Your
+details" (`AccountIdentity`). **On a phone `/account` and `/cart` have no
+header, on the owner's word** (`BARE_ON_PHONE` in `StorefrontShell`): the page
+starts under the status bar and the tab bar is the way anywhere else; a wide
+screen keeps the header, having no tab bar.
+
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
 rather than drawing an empty page. Signed out, every account address is the
@@ -2408,10 +2429,11 @@ white** (each answer, each starter, the box, the product's chip) except the
 title and the lines beside it, which are navy and a dark slate (`#2b3a55`):
 measured by hiding the panel's ink and reading the darkest pixel behind each
 line, scrolling the whole home page behind the wide card every 300px, they keep
-6:1 at their worst, over the navy hero. The button is glass round a navy mark,
-"Ask NetLet AI" beside it on a wide screen (a bare icon in a corner is one
-people learn to ignore) and the mark alone on a phone, the name its accessible
-name. **While the panel is open the button is out of the page, not merely
+6:1 at their worst, over the navy hero. The button is glass round a navy mark
+with **"Need help?" beside it at every width, on the owner's word** (it was
+"Ask NetLet AI" on a wide screen and the mark alone on a phone; a bare icon in
+a corner is one people learn to ignore), its name starting with those words
+(`shopChat.needHelpName`, "Need help? Ask NetLet AI"). **While the panel is open the button is out of the page, not merely
 invisible**: hidden, its blur went on drawing a ghost of the pill under the
 panel. The panel rises out of its corner by a transform and only its contents
 fade, because an opacity on the panel would make it a backdrop root and drain
@@ -5271,8 +5293,8 @@ already has it.
   scheduler follows it in.
 - **The address book and the bag drawer load after the first paint.** Both are
   on every page and opened on few visits; each is fetched when the browser is
-  idle (`lib/idle.ts`), so the first press still opens it at once. The address
-  book only on a wide screen, since a phone's bar has no button to open it.
+  idle (`lib/idle.ts`), so the first press still opens it at once — the
+  address book on both bars now, since a phone's logo row carries the location.
 
 - **Overlays load when opened.** The sign-in dialog, Home's preview and the
   voice and photo sheets are `lazy`. The header is on every page and most
@@ -5583,16 +5605,31 @@ form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
 `kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
 refuses.
 
+**The Profile and Cart tabs have no header, the header's end is the saved
+location, the Profile page is the delivery apps' layout and the assistant says
+"Need help?" — the web's four changes, on the owner's word.** `ShopPage`'s
+`header: false` draws a page with neither row (the Profile tab's first screen,
+signed in or out, its sections, which carry their own "← Your account", and the
+Cart tab's first screen); `LogoRow`'s end is a pin, the address in use or the
+area, and a chevron, felt at the product strength (`PressFillStyle`'s
+`strength`) and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
+book as choices, add or manage, and a guest's governorates — over
+`DeliveryModel`, which is the web's `addressInUse` (tested on the same cases)
+with checkout's own last-address key, so a choice here is where checkout
+starts. The Profile page is `AccountView`'s cards and rows, the dates in "Your
+details" (`AccountIdentityCard`); the language is its switch row (and the
+footer's). `ShopAssistantButton` carries "Need help?" beside the mark.
+
 **It draws the web's phone layout, not a stock iOS one, on the owner's word**
 ("it just needs to be exactly like the web app"). Every shopping screen sits in
 `ShopPage`, the web's `StorefrontShell` at 390: the logo row (logo at the
-start, the language at the end) scrolls away and the search row stays pinned,
+start, the saved location at the end) scrolls away and the search row stays pinned,
 both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
 tint); the footer follows the content. **The header is the web's phone header
 piece for piece, on the owner's word**: one surface from 60% at the top of the
 logo row to 45% at the foot of the search row, with no rim between the rows
 (the first build drew each row's rim, which split one header into three
-strips); the language in `.pressable`'s 14px at weight 500; and the field the
+strips); the location in `.pressable`'s 14px at weight 500; and the field the
 web's — a microphone and a camera in the muted ink where clear would stand,
 each only where it works (`voiceSearch` and a phone that can listen;
 `photoSearch` and `search.photoAvailable`, asked once at launch), a hairline

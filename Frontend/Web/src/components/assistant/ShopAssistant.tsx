@@ -5,10 +5,12 @@
  *
  * **It is liquid glass round a navy mark**, the header's recipe at the search
  * panel's 70% (`.glass-panel`), so it reads as part of the same glass as the
- * bar and the conversation it opens. On a wide screen it carries its name,
- * "Ask NetLet AI", because a round icon in a corner is one people learn to
- * ignore; on a phone it is the mark alone, a thumb's size, and the name is
- * its accessible name and tooltip.
+ * bar and the conversation it opens. **It says "Need help?" beside the mark,
+ * at every width, on the owner's word** — the way the delivery apps people
+ * here use label theirs; it was "Ask NetLet AI" on a wide screen and the mark
+ * alone on a phone, and a round icon in a corner is one people learn to
+ * ignore. Its name starts with those words and says what answers
+ * (`shopChat.needHelpName`), so a voice saying what it sees presses it.
  *
  * **It is absent until the server says the assistant is there** (`ai.available`,
  * the gateway set up and the `ai` and `assistant` switches on), the rule every
@@ -72,11 +74,11 @@ export function ShopAssistant({ product, department }: {
         onTouchStart={() => void ShopChatPanel.preload()}
         onFocus={() => void ShopChatPanel.preload()}
         onClick={() => { setStarted(true); setOpen(true); setUnread(false); }}
-        aria-label={unread ? `${t("shopChat.launch")} · ${t("shopChat.unread")}` : t("shopChat.launch")}
+        aria-label={unread ? `${t("shopChat.needHelpName")} · ${t("shopChat.unread")}` : t("shopChat.needHelpName")}
         title={t("shopChat.launch")}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`assistant-launcher glass-panel fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 items-center gap-2.5 rounded-full border border-white/70 p-1.5 shadow-[0_10px_30px_rgba(10,40,90,.22)] hover:shadow-[0_14px_36px_rgba(10,40,90,.3)] lg:bottom-6 lg:end-6 lg:pe-5 print:hidden ${open ? "hidden" : "flex"}`}
+        className={`assistant-launcher glass-panel fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 items-center gap-2.5 rounded-full border border-white/70 p-1.5 shadow-[0_10px_30px_rgba(10,40,90,.22)] hover:shadow-[0_14px_36px_rgba(10,40,90,.3)] pe-4 lg:bottom-6 lg:end-6 lg:pe-5 print:hidden ${open ? "hidden" : "flex"}`}
       >
         <span aria-hidden className="glass-bar-surface glass-bar-round">
           <span className="glass-bar-bend" />
@@ -86,7 +88,7 @@ export function ShopAssistant({ product, department }: {
           <Sparkles className="size-5" />
           {unread ? <PixelDot className="absolute -end-0.5 -top-0.5" /> : null}
         </span>
-        <span aria-hidden className="hidden text-[15px] font-bold text-[#0a285a] lg:inline">{t("shopChat.launch")}</span>
+        <span aria-hidden className="relative whitespace-nowrap text-[15px] font-bold text-[#0a285a]">{t("shopChat.needHelp")}</span>
       </button>
       {started ? (
         <Suspense fallback={null}>

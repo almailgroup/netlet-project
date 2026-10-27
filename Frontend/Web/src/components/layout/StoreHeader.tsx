@@ -13,10 +13,11 @@
  *
  * **On a phone the top bar does not repeat the bottom one.** The bottom bar is
  * the navigation — home, profile, cart, categories — so the top carries what
- * the bottom does not: the logo at its start and the language at its end, on
- * the owner's word. The delivery area left the phone's bar when the logo was
- * centred, which it was for a while, also on the owner's word; checkout and the account's preferences still
- * set it, and a wide screen keeps its button. Search keeps a whole row, because it is how most people move through
+ * the bottom does not: the logo at its start and **where the shop delivers at
+ * its end**, on the owner's word — the saved address in use, or the area. It
+ * was the language for a while; the language is on the account page now, as a
+ * setting, and a phone's bar says where things are going. A press is felt
+ * (`pressHaptic`) and opens the address book. Search keeps a whole row, because it is how most people move through
  * a catalogue on a small screen, and it is the row that stays: the top row
  * scrolls away with the page like anything else.
  *
@@ -64,7 +65,8 @@ import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { trpc } from "@/lib/trpc";
-import { Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { pressHaptic } from "@/lib/haptics";
 import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
@@ -110,11 +112,8 @@ export function StoreHeader({ activeDepartment }: {
     window.scrollTo({ top: 0, behavior: "auto" });
   };
   const [deliveryOpen, setDeliveryOpen] = useState(false);
-  /* Only where the bar draws the delivery button: a phone has none to open. */
-  useEffect(() => {
-    if (!window.matchMedia("(min-width: 1024px)").matches) return;
-    return whenIdle(() => void DeliveryZoneDialog.preload());
-  }, []);
+  /* Both bars draw the delivery button, so the book is fetched once the page is idle. */
+  useEffect(() => whenIdle(() => void DeliveryZoneDialog.preload()), []);
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = useCatalog(HEADER_SHELF, { staleTime: 5 * 60 * 1000 });
@@ -203,16 +202,27 @@ export function StoreHeader({ activeDepartment }: {
     </button>
   );
 
-  /* Phone: the logo at the start and the language at the end — one fixed
-     height, because the bar's sticky offset is exactly this row
+  /* Phone: the logo at the start and where the shop delivers at the end — one
+     fixed height, because the bar's sticky offset is exactly this row
      (`-top-[58px]`). The logo sits on the line the search field and the
-     page's title start from, as it does on a wide screen. */
+     page's title start from, as it does on a wide screen. The name takes what
+     the logo leaves and is cut short before it reaches it. */
   const phoneTop = (
     <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
         <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[130px] object-contain" />
       </Link>
-      {language}
+      <button
+        type="button"
+        onClick={() => { pressHaptic(); setDeliveryOpen(true); }}
+        title={deliveringTo ? `${t("delivery.buttonTitle")}: ${deliveringTo.label}, ${zoneName}` : t("delivery.buttonTitle")}
+        className="pressable -me-2 flex h-11 min-w-0 items-center gap-1.5 rounded-xl px-2 text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
+      >
+        <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
+        <span className="sr-only">{t("home.deliverTo")} </span>
+        <span dir="auto" className="min-w-0 max-w-[180px] truncate">{areaName}</span>
+        <ChevronDown className="size-4 shrink-0" aria-hidden />
+      </button>
     </div>
   );
 

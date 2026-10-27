@@ -66,6 +66,11 @@ struct RootView: View {
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
+        .sheet(isPresented: $app.deliveryOpen) {
+            DeliverySheet()
+                .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
+        }
         .sheet(isPresented: $app.authPresented) {
             NavigationStack {
                 AuthView(inSheet: true)
