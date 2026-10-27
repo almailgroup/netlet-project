@@ -1601,7 +1601,7 @@ are the ones they always were; only the page around them changed. `ENTRIES` in
 
 **The home is drawn like the delivery apps', on the owner's word** (a picture
 of Noon's profile; `AccountHome`): a card with the initials in a pale circle,
-the name, the email and a pencil to "Your details"; two tiles, "My orders" and
+the name, the email and a pencil to "Your profile"; two tiles, "My orders" and
 "Saved items", each showing the last four pictures (`orders.list`'s own photos,
 the hearts read by id) or saying there is nothing yet; "NetLet points" with the
 balance in a pill; then every section as a row in white cards — an outline
@@ -1610,14 +1610,28 @@ language as a two-way switch in its own row (each choice in its own language),
 "Account security" (the details) and signing out in red at the foot, still
 asking first. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
-and the welcome heading went; the dates and the role moved to the top of "Your
-details" (`AccountIdentity`). **On a phone `/account` and `/cart` have no
+and the welcome heading went; the dates and the role moved to the foot of "Your
+profile" (`AccountIdentity`). **On a phone `/account` and `/cart` have no
 header and no footer, on the owner's word** (`BARE_ON_PHONE` in
 `StorefrontShell`): the page starts under the status bar, ends with its own
-content — `<main>` keeps the room the footer left for the floating tab bar and
-the assistant's button — and the tab bar is the way anywhere else; a wide
-screen keeps both, having no tab bar. A guest changes the language from any
-other page's footer.
+content — `<main>` keeps the room the footer left for the floating tab bar —
+and the tab bar is the way anywhere else; a wide screen keeps both, having no
+tab bar. A guest changes the language from any other page's footer. **And no
+assistant's button there**: it goes with the header (see "The shop
+assistant"), because floating over a column of rows it covered their ends —
+the owner's screenshot had it over "Help from NetLet", which is the help on
+that page anyway.
+
+**"Your profile" is drawn to the owner's second reference** (Noon's "Your
+profile"): white cards whose boxes carry their label inside the rim, small and
+muted, with what is typed under it and a navy rim on focus — `FloatingField` on
+the web (`ProfileManager`) and in the app. The label never moves, so the
+sign-in form's rule against one that lifts as you type still holds. The name,
+the sign-in email and the password stay three cards with three Saves. The
+reference also asks for a first and a last name side by side, a phone, a
+gender, a birthday and a nationality; those need columns `users` does not
+have, so they wait on a migration the owner has been shown and not yet
+approved.
 
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
@@ -2448,6 +2462,8 @@ that corner; each says so through `useFloatingBar` (`data-floating-bar` on
 `<html>`, a count, so two at once and one leaving does not bring the button
 back early), and the button fades out while any of them shows. The thing a
 page is for wins the corner. On a wide screen the footer leaves room under it.
+**It goes with the header**: on a phone's account and cart pages, which have
+none, it is not drawn (see "The account").
 
 **On a phone it is a sheet that rises from the foot of the screen over the
 dimmed page**, with a gap above it and a handle, sized to what the keyboard
@@ -4126,10 +4142,23 @@ nothing else, which is the argument for that habit in its sharpest form:
   three presents dismissed the bag three times. `addItem` takes `reveal` now;
   the gift page confirms with a toast.
 
-Items are added from Saved rather than from a picker over the catalog: the
-heart is already how somebody says "I want this", so a wishlist is a promotion
-of that rather than a second act of curation — and it keeps a fourth control
-off every product card.
+**The heart asks which list, on the owner's word.** Signed in, an empty heart
+opens `WishChooser` (web) or `WishSheet` (app): a private wishlist ("Only you
+can see it") or a public one (family and friends see it with your number or a
+link, and buy from it), each naming the list it lands on or saying one is
+started. `wishlists.wish` puts the product on the shopper's oldest list of that
+kind — making one, under a title in the page's language, when there is none,
+under an advisory lock on the shopper so two quick hearts make one list — and
+in Saved, because the heart's fill is Saved's. A filled heart is
+`wishlists.unwish`: out of Saved and off every list of the shopper's, and the
+toast says both. Signed out the heart saves on the device as it always did,
+there being no lists without an account; with the `wishlists` switch off it
+saves to Saved and asks nothing. `toggleSaved` answers what it did
+(`SaveOutcome`), so a page toasts only when the heart did not ask
+(`toastHeart`). The account's Wishlists section says the same thing in the
+same words: public lists, then private, each under a heading saying who can
+see them, with a line on how to start one. A list can still be filled from
+Saved and made public or private afterwards.
 
 ## Admin portal
 
@@ -5277,7 +5306,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — and is 725 KB (212 KB) now, the requirement fixes' words in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, and is 769 KB (223 KB) now — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -5613,15 +5642,21 @@ the saved location, the Profile page is the delivery apps' layout and the
 assistant says "Need help?" — the web's changes, on the owner's word.**
 `ShopPage`'s `header: false, footer: false` draws a page with neither row and
 no footer (the Profile tab's first screen, signed in or out, its sections,
-which carry their own "← Your account", and the Cart tab's first screen), with
-room left at its foot for the assistant's button; `LogoRow`'s end is a pin,
+which carry their own "← Your account", and the Cart tab's first screen), no
+assistant's button — it goes with the header — and the page's own ground under
+the status bar, solid, so what scrolls up goes under it rather than under the
+clock (build 35 drew nothing there); `LogoRow`'s end is a pin,
 the address in use or the area, and a chevron, felt on the press and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
 book as choices, add or manage, and a guest's governorates — over
 `DeliveryModel`, which is the web's `addressInUse` (tested on the same cases)
 with checkout's own last-address key, so a choice here is where checkout
-starts. The Profile page is `AccountView`'s cards and rows, the dates in "Your
-details" (`AccountIdentityCard`); the language is its switch row (and the
-footer's). `ShopAssistantButton` carries "Need help?" beside the mark.
+starts. The Profile page is `AccountView`'s cards and rows, the dates at the
+foot of "Your profile" (`AccountIdentityCard`), under a round back button and
+the title and `FloatingField`s; the language is its switch row (and the
+footer's), **each word whole on one line** — the switch is `fixedSize` and
+drops under its label (`ViewThatFits`) on a narrow screen or a large text
+size, where build 35 broke "English" into "Engl / ish". `ShopAssistantButton`
+carries "Need help?" beside the mark.
 
 **It draws the web's phone layout, not a stock iOS one, on the owner's word**
 ("it just needs to be exactly like the web app"). Every shopping screen sits in
@@ -5758,8 +5793,10 @@ start the task — so a panel written `Group { if !items.isEmpty { … } }.task
 page's guides, the bundles, the price request and the shop's other channels
 were all that shape; each is a `VStack` now, which exists while empty.
 
-**Every haptic in the app is at half strength, on the owner's word**
-(`Haptics.strength`, 0.5): the tab bar (`Haptics.tab`), every button
+**Every haptic in the app is at half strength but the tab bar's, which is
+three quarters, on the owner's word** (`Haptics.strength` 0.5,
+`Haptics.tabStrength` 0.75 — the press that changes the whole screen, asked a
+little firmer after build 35): the tab bar (`Haptics.tab`), every button
 (`Haptics.tap`), a press that does something to a product — Add to cart, Buy
 now, the photo's plus, its stepper and its count on a card, a step of the
 quantity on the product page or the bag, the bin, the heart and Place order

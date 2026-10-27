@@ -132,6 +132,21 @@ extension API {
     static let removeWishlist = Procedure<ListId, Acknowledged>(mutation: "wishlists.remove")
     static let addToWishlist = Procedure<ListItem, Acknowledged>(mutation: "wishlists.addItem")
     static let removeFromWishlist = Procedure<ListItemId, Acknowledged>(mutation: "wishlists.removeItem")
+    /// The heart's answer: a private or a public wishlist (made if there is
+    /// none, under `title`), and Saved.
+    struct Wish: Encodable, Sendable {
+        let productId: String
+        let visibility: String
+        let title: String
+    }
+
+    struct Unwish: Encodable, Sendable {
+        let productId: String
+    }
+
+    static let wish = Procedure<Wish, WishAnswer>(mutation: "wishlists.wish")
+    /// A filled heart: out of Saved and off every list of the shopper's.
+    static let unwish = Procedure<Unwish, UnwishAnswer>(mutation: "wishlists.unwish")
     static let wishlistPhone = Procedure<NoInput, String?>(query: "wishlists.phone")
     static let setWishlistPhone = Procedure<ListPhone, String?>(mutation: "wishlists.setPhone")
 

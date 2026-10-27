@@ -188,6 +188,79 @@ struct LabeledField: View {
     }
 }
 
+/// The profile page's box, drawn to the owner's reference: the label sits
+/// inside the box's top edge — small, muted, a star when it is needed — with
+/// what is typed under it, and the rim turns navy while it has focus. The
+/// label never moves (the sign-in form's rule against a label that lifts as
+/// you type); it is only drawn inside the rim rather than above it.
+struct FloatingField: View {
+    let label: String
+    @Binding var text: String
+    var required = false
+    var placeholder = ""
+    var problem: String?
+    var keyboard: UIKeyboardType = .default
+    var content: UITextContentType?
+    var secure = false
+    var leftToRight = false
+    var disabled = false
+
+    @State private var revealed = false
+    @FocusState private var focused: Bool
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    (Text(label) + Text(required ? " *" : "").foregroundColor(Brand.accentInk))
+                        .font(.inter(12, .medium))
+                        .foregroundStyle(Brand.muted)
+                        .lineLimit(1)
+                    Group {
+                        if secure && !revealed {
+                            SecureField(placeholder, text: $text)
+                        } else {
+                            TextField(placeholder, text: $text)
+                        }
+                    }
+                    .font(.inter(16, .medium))
+                    .foregroundStyle(disabled ? Brand.muted : Brand.ink)
+                    .textContentType(content)
+                    .keyboardType(keyboard)
+                    .textInputAutocapitalization(leftToRight || secure ? .never : .words)
+                    .autocorrectionDisabled(leftToRight || secure)
+                    .focused($focused)
+                    .disabled(disabled)
+                    .environment(\.layoutDirection, leftToRight ? .leftToRight : l.layoutDirection)
+                    .accessibilityLabel(label)
+                }
+                if secure {
+                    Button {
+                        revealed.toggle()
+                    } label: {
+                        Image(systemName: revealed ? "eye.slash" : "eye")
+                            .foregroundStyle(Brand.muted)
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(l.t(revealed ? "auth.hidePassword" : "auth.showPassword"))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(minHeight: 64)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(disabled ? Brand.ground : Color.white))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(problem != nil ? Brand.danger : focused ? Brand.navy : Brand.line, lineWidth: problem != nil || focused ? 1.5 : 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onTapGesture { if !disabled { focused = true } }
+            FieldProblem(key: problem)
+        }
+    }
+}
+
 /// Owns a screen's view model for as long as the screen is on its stack.
 ///
 /// The services come from the environment, which a view's `init` cannot read,

@@ -21,6 +21,7 @@
  * on the shop answers by. The reviews are the newest, whatever their stars: a
  * store page that picked its best ones would be an advert.
  */
+import { toastHeart } from "@/lib/heartToast";
 import { MapPin, PackageOpen, Search, SlidersHorizontal, Store as StoreIcon, Truck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
@@ -123,11 +124,7 @@ export default function Store() {
     return sortProducts(inDepartment, view.sort);
   }, [shelf, view]);
 
-  const onSave = (product: Product) => {
-    const wasSaved = savedIds.includes(product.id);
-    toggleSaved(product.id);
-    toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
-  };
+  const onSave = (product: Product) => toastHeart(toggleSaved(product.id), product.title, t);
 
   if (page.isLoading) {
     return (

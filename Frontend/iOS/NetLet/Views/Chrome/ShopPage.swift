@@ -19,7 +19,10 @@ import UIKit
 /// word (`header: false, footer: false`) — the web's phone draws `/account`
 /// and `/cart` with neither: the page starts under the status bar, ends with
 /// its own content, and the tab bar is the way anywhere else. The account's
-/// sections carry their own "← Your account".
+/// sections carry their own "← Your account". **The assistant's button goes
+/// with the header**: floating over a column of rows it covered their ends —
+/// "Help from NetLet" on the Profile page, which is the help there anyway — so
+/// a page without the header draws none.
 struct ShopPage<Content: View>: View {
     /// A tab's first screen, which has nothing to go back to.
     var root = false
@@ -36,6 +39,9 @@ struct ShopPage<Content: View>: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
+
+    /// The assistant floats only where the header is; see above.
+    private var showsAssistant: Bool { assistant && header }
 
     var body: some View {
         let back: (() -> Void)? = root ? nil : { dismiss() }
@@ -65,11 +71,6 @@ struct ShopPage<Content: View>: View {
                                 SiteFooter().id(ShopPageTop.foot)
                             } else {
                                 content()
-                                // No footer to end on, so the page leaves room
-                                // for the assistant's button floating over its foot.
-                                if assistant && app.assistantOn {
-                                    Color.clear.frame(height: 64)
-                                }
                             }
                         } header: {
                             if header { SearchRow() }
@@ -91,19 +92,22 @@ struct ShopPage<Content: View>: View {
         }
         .background(Brand.ground.ignoresSafeArea())
         .overlay(alignment: .bottomTrailing) {
-            if assistant {
+            if showsAssistant {
                 ShopAssistantButton(product: assistantProduct)
                     .padding(.trailing, 16)
                     .padding(.bottom, 16)
             }
         }
-        .animation(.easeOut(duration: 0.2), value: assistant)
+        .animation(.easeOut(duration: 0.2), value: showsAssistant)
         .safeAreaInset(edge: .top, spacing: 0) {
             // The strip under the status bar wears the header's glass too, at
             // the tint the bar's top has, so the two meet with no step. With
-            // no header, the page's own ground runs up under it.
+            // no header it is the page's own ground, solid, so what scrolls up
+            // goes under it rather than under the clock and the battery.
             if header {
                 Color.clear.frame(height: 0).background(GlassSurface(top: 0.6, foot: 0.6).ignoresSafeArea(edges: .top))
+            } else {
+                Color.clear.frame(height: 0).background(Brand.ground.ignoresSafeArea(edges: .top))
             }
         }
         .toolbar(.hidden, for: .navigationBar)

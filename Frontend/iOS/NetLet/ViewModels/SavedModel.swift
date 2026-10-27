@@ -53,5 +53,28 @@ final class SavedModel {
         }
     }
 
+    /// The heart's question answered — a private or a public wishlist, made if
+    /// the shopper has none (`wishlists.wish`) — and in Saved, so the heart fills.
+    /// Drawn filled at once, and empty again if the shop refuses.
+    func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer {
+        if !ids.contains(productId) { ids.append(productId) }
+        do {
+            let answer = try await account.wish(productId, visibility: visibility, title: title)
+            if let stored = try? await account.savedProducts() { ids = stored }
+            return answer
+        } catch {
+            ids = ids.filter { $0 != productId }
+            throw error
+        }
+    }
+
+    /// A filled heart pressed, signed in: out of Saved and off every list of
+    /// the shopper's, since the heart is how they said they wanted it.
+    func unwish(_ productId: String) async {
+        ids = ids.filter { $0 != productId }
+        try? await account.unwish(productId)
+        if let stored = try? await account.savedProducts() { ids = stored }
+    }
+
     private var deviceIds: [String] { defaults.stringArray(forKey: Self.key) ?? [] }
 }

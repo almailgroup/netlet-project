@@ -175,10 +175,7 @@ struct ProductPhotos: View {
     private var saveButton: some View {
         let saved = app.saved.contains(product.id)
         return Button {
-            Task {
-                await app.saved.toggle(product.id)
-                app.toast(l.t(saved ? "saved.removed" : "saved.savedForLater", ["name": product.title]))
-            }
+            Task { await app.heart(product) }
         } label: {
             disc(symbol: saved ? "heart.fill" : "heart", tint: saved ? Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255) : Brand.navy)
         }

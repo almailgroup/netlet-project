@@ -268,37 +268,21 @@ struct AccountView: View {
     private func row(_ id: String) -> some View {
         switch id {
         case "language":
-            HStack(spacing: 14) {
-                rowIcon("character.bubble")
-                Text(l.t("account.language"))
-                    .font(.inter(16, .medium))
-                    .foregroundStyle(Brand.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                HStack(spacing: 0) {
-                    ForEach([Language.en, Language.ar], id: \.self) { language in
-                        let active = l.current == language
-                        Button {
-                            guard !active else { return }
-                            app.setLanguage(language)
-                        } label: {
-                            Text(l.t(language == .en ? "account.english" : "account.arabic"))
-                                .font(.inter(15, .semibold))
-                                .foregroundStyle(active ? Brand.ink : ProfileInk.icon)
-                                .padding(.horizontal, 16)
-                                .frame(minHeight: 40)
-                                .background(Capsule().fill(active ? Color.white : Color.clear).shadow(color: Brand.navy.opacity(active ? 0.14 : 0), radius: 2, y: 1))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(PressFillStyle(cornerRadius: 20, strength: Haptics.actionStrength))
-                        .environment(\.locale, language.locale)
-                        .accessibilityAddTraits(active ? .isSelected : [])
-                    }
+            // Each word whole on one line, never broken in two: beside the
+            // label while they fit, under it on a narrow screen or a large
+            // text size.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    languageLabel
+                    languageSwitch
                 }
-                .padding(4)
-                .background(Capsule().fill(ProfileInk.chip))
+                .frame(minHeight: 64)
+                VStack(alignment: .leading, spacing: 10) {
+                    languageLabel
+                    languageSwitch
+                }
+                .padding(.vertical, 14)
             }
-            .frame(minHeight: 64)
         case "signout":
             Button {
                 confirmingSignOut = true
@@ -316,6 +300,47 @@ struct AccountView: View {
                 .buttonStyle(.tap)
             }
         }
+    }
+
+    private var languageLabel: some View {
+        HStack(spacing: 14) {
+            rowIcon("character.bubble")
+            Text(l.t("account.language"))
+                .font(.inter(16, .medium))
+                .foregroundStyle(Brand.ink)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// The two languages, each in its own language and its own script.
+    private var languageSwitch: some View {
+        HStack(spacing: 0) {
+            ForEach([Language.en, Language.ar], id: \.self) { language in
+                let active = l.current == language
+                Button {
+                    guard !active else { return }
+                    app.setLanguage(language)
+                } label: {
+                    Text(l.t(language == .en ? "account.english" : "account.arabic"))
+                        .font(.inter(15, .semibold))
+                        .foregroundStyle(active ? Brand.ink : ProfileInk.icon)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 40)
+                        .background(Capsule().fill(active ? Color.white : Color.clear).shadow(color: Brand.navy.opacity(active ? 0.14 : 0), radius: 2, y: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressFillStyle(cornerRadius: 20, strength: Haptics.actionStrength))
+                .environment(\.locale, language.locale)
+                .accessibilityAddTraits(active ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .background(Capsule().fill(ProfileInk.chip))
+        .fixedSize()
     }
 
     private func rowIcon(_ symbol: String, colour: Color = ProfileInk.icon) -> some View {
@@ -522,7 +547,13 @@ struct AccountEntry: Identifiable, Hashable {
     }
 }
 
-/// Display name, sign-in email and password, each its own small form.
+/// "Your profile", drawn to the owner's reference (Noon's "Your profile"): a
+/// round back button beside the title, then white cards whose boxes carry
+/// their labels inside the rim (`FloatingField`). The name, the sign-in email
+/// and the password are still three cards with three Saves — three different
+/// decisions, and one Save across them would change a password somebody only
+/// opened the page to fix a spelling in. The account's dates and role close
+/// the page.
 struct ProfileView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -530,12 +561,34 @@ struct ProfileView: View {
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
             ShopPage(header: false, footer: false) {
-                AccountSection(title: l.t("account.sectionProfile"), hint: l.t("account.hint.details")) {
-                    VStack(spacing: 16) {
-                        if let user = app.session.user { AccountIdentityCard(user: user) }
-                        ProfileForm(model: model)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 14) {
+                        Button {
+                            app.openAccount(nil)
+                        } label: {
+                            Image(systemName: "chevron.backward")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(Brand.navy)
+                                .frame(width: 44, height: 44)
+                                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityLabel(l.t("account.backToAccount"))
+                        Text(l.t("account.sectionProfile"))
+                            .font(.inter(22, .heavy))
+                            .foregroundStyle(Brand.navy)
+                            .accessibilityAddTraits(.isHeader)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .padding(.bottom, 4)
+                    ProfileForm(model: model)
+                    if let user = app.session.user { AccountIdentityCard(user: user) }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -548,20 +601,28 @@ private struct ProfileForm: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            section(.name, title: "account.displayName", note: "account.displayNameNote", done: "account.nameSaved") {
-                LabeledField(label: l.t("account.displayName"), text: $model.name, content: .name)
+            section(.name, title: nil, note: "account.displayNameNote", done: "account.nameSaved") {
+                FloatingField(label: l.t("account.displayName"), text: $model.name, content: .name)
             } save: {
                 if let user = await model.saveName() { app.session.updated(user) }
             }
             section(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
-                LabeledField(label: l.t("account.newEmail"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
-                LabeledField(label: l.t("account.currentPassword"), text: $model.emailPassword, hint: l.t("account.currentPasswordWhy"), content: .password, secure: true, leftToRight: true)
+                FloatingField(label: l.t("auth.email"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
+                FloatingField(label: l.t("account.currentPassword"), text: $model.emailPassword, content: .password, secure: true, leftToRight: true)
+                Text(l.t("account.currentPasswordWhy"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             } save: {
                 if let user = await model.saveEmail() { app.session.updated(user) }
             }
-            section(.password, title: "account.changePassword", note: "account.passwordNote", done: "account.passwordChanged") {
-                LabeledField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
-                LabeledField(label: l.t("account.newPassword"), text: $model.newPassword, hint: l.t("auth.ruleLength"), content: .newPassword, secure: true, leftToRight: true)
+            section(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
+                FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
+                FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
+                Text(l.t("auth.ruleLength"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             } save: {
                 _ = await model.savePassword()
             }
@@ -570,19 +631,27 @@ private struct ProfileForm: View {
 
     private func section<Fields: View>(
         _ form: ProfileViewModel.Form,
-        title: String,
+        title: String?,
         note: String,
         done: String,
         @ViewBuilder fields: () -> Fields,
         save: @escaping () async -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(l.t(title)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-            Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            if let title {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(l.t(title)).font(.inter(17, .bold)).foregroundStyle(Brand.ink).accessibilityAddTraits(.isHeader)
+                    Text(l.t(note)).font(.inter(14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, 2)
+            }
             fields()
+            if title == nil {
+                Text(l.t(note)).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            }
             FieldProblem(key: model.problems[form])
             if model.saved == form {
-                Label(l.t(done), systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Brand.success)
+                Label(l.t(done), systemImage: "checkmark.circle").font(.inter(13, .semibold)).foregroundStyle(Brand.success)
             }
             Button {
                 Task { await save() }
@@ -592,7 +661,9 @@ private struct ProfileForm: View {
             .buttonStyle(PrimaryButtonStyle())
             .disabled(model.saving != nil)
         }
-        .card()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .panel()
     }
 }
 

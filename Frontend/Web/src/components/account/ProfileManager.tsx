@@ -22,13 +22,34 @@ import { checkPassword } from "@shared/auth/passwordStrength";
 import { PasswordChecklist } from "@/components/auth/AuthForm";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { AtSign, Check, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { toast } from "sonner";
 
 type PublicUser = { id: number; email: string; name: string | null; role: string };
 
-const field =
-  "type-body h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3.5 text-[14px] text-[#0a285a] outline-none transition focus:border-[#f2683a] focus:ring-2 focus:ring-[#f2683a]/25";
+/*
+ * A box with its label inside the rim, drawn to the owner's reference (Noon's
+ * "Your profile"): the label small and muted at the top, what is typed under
+ * it, a navy rim while it has focus. The label never moves — the sign-in
+ * form's rule against one that lifts as you type — it only sits inside.
+ */
+function FloatingField({ label, end, leftToRight = false, className = "", ...input }: {
+  label: string;
+  end?: ReactNode;
+  /** An email or a password types left to right on either page. */
+  leftToRight?: boolean;
+} & InputHTMLAttributes<HTMLInputElement>) {
+  const id = useId();
+  return (
+    <div className={`relative flex min-h-16 items-center gap-2 rounded-2xl border border-[#d5dfeb] bg-white px-4 py-2 transition focus-within:border-[#0a285a] focus-within:ring-2 focus-within:ring-[#0a285a]/15 ${className}`}>
+      <div className="min-w-0 flex-1">
+        <label htmlFor={id} className="block text-[12px] font-medium ink-muted">{label}</label>
+        <input id={id} {...input} dir={leftToRight ? "ltr" : input.dir} className="type-body mt-0.5 block w-full bg-transparent text-[16px] font-medium text-[#0a285a] outline-none placeholder:text-[#8a9ab3]" />
+      </div>
+      {end}
+    </div>
+  );
+}
 
 const primary =
   "glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50";
@@ -60,7 +81,6 @@ function NameForm({ user, onSaved, onFail }: {
   onFail: (error: { message: string }) => void;
 }) {
   const { t } = useTranslation();
-  const id = useId();
   const [name, setName] = useState(user.name ?? "");
   useEffect(() => { setName(user.name ?? ""); }, [user.name]);
 
@@ -77,15 +97,14 @@ function NameForm({ user, onSaved, onFail }: {
       title={t("account.displayName")}
       note={t("account.displayNameNote")}
     >
-      <div className="flex flex-wrap gap-2">
-        <input
-          id={id}
+      <div className="space-y-3">
+        <FloatingField
+          label={t("account.displayName")}
           dir="auto"
+          autoComplete="name"
           value={name}
           placeholder={t("account.noName")}
           onChange={event => setName(event.target.value)}
-          aria-label={t("account.displayName")}
-          className={`${field} min-w-0 flex-1`}
         />
         <button onClick={() => save.mutate({ name })} disabled={!changed || save.isPending} className={primary}>
           {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
@@ -121,29 +140,27 @@ function EmailForm({ user, onSaved, onFail }: {
       title={t("account.signInEmail")}
       note={t("account.signInEmailNote")}
     >
-      <p className="break-words text-sm font-bold text-[#0a285a]">
-        <bdi dir="ltr">{user.email}</bdi>
-      </p>
+      <div className="flex min-h-16 flex-col justify-center rounded-2xl border border-[#e6e9ef] bg-[#f8f9fb] px-4 py-2">
+        <span className="block text-[12px] font-medium ink-muted">{t("auth.email")}</span>
+        <span className="mt-0.5 block break-words text-[16px] font-medium text-[#0a285a]"><bdi dir="ltr">{user.email}</bdi></span>
+      </div>
       {open ? (
-        <div className="mt-3 space-y-2">
-          <input
-            dir="ltr"
+        <div className="mt-3 space-y-2.5">
+          <FloatingField
+            label={t("account.newEmail")}
+            leftToRight
             type="email"
+            autoComplete="email"
             value={email}
-            placeholder={t("account.newEmail")}
-            aria-label={t("account.newEmail")}
             onChange={event => setEmail(event.target.value)}
-            className={field}
           />
-          <input
-            dir="ltr"
+          <FloatingField
+            label={t("account.currentPassword")}
+            leftToRight
             type="password"
             autoComplete="current-password"
             value={password}
-            placeholder={t("account.currentPassword")}
-            aria-label={t("account.currentPassword")}
             onChange={event => setPassword(event.target.value)}
-            className={field}
           />
           <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">
@@ -196,39 +213,35 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
       note={t("account.passwordNote")}
     >
       {open ? (
-        <div className="space-y-2">
-          <input
-            dir="ltr"
+        <div className="space-y-2.5">
+          <FloatingField
+            label={t("account.currentPassword")}
+            leftToRight
             type="password"
             autoComplete="current-password"
             value={current}
-            placeholder={t("account.currentPassword")}
-            aria-label={t("account.currentPassword")}
             onChange={event => setCurrent(event.target.value)}
-            className={field}
           />
-          <div className="relative">
-            <input
-              dir="ltr"
-              type={reveal ? "text" : "password"}
-              autoComplete="new-password"
-              value={next}
-              placeholder={t("account.newPassword")}
-              aria-label={t("account.newPassword")}
-              aria-describedby={rulesId}
-              onChange={event => setNext(event.target.value)}
-              className={`${field} pe-12 rtl:pe-3.5 rtl:ps-12`}
-            />
-            <button
-              type="button"
-              onClick={() => setReveal(shown => !shown)}
-              aria-pressed={reveal}
-              aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-              className="pressable tap-target absolute top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:text-[#0a285a] end-2"
-            >
-              {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
-            </button>
-          </div>
+          <FloatingField
+            label={t("account.newPassword")}
+            leftToRight
+            type={reveal ? "text" : "password"}
+            autoComplete="new-password"
+            value={next}
+            aria-describedby={rulesId}
+            onChange={event => setNext(event.target.value)}
+            end={
+              <button
+                type="button"
+                onClick={() => setReveal(shown => !shown)}
+                aria-pressed={reveal}
+                aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
+                className="pressable tap-target grid size-9 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:text-[#0a285a]"
+              >
+                {reveal ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
+              </button>
+            }
+          />
           <PasswordChecklist id={rulesId} verdict={verdict} typed={next.length > 0} />
           <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
           <div className="flex flex-wrap gap-2">

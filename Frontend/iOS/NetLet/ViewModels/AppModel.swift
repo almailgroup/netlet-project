@@ -155,6 +155,8 @@ final class AppModel {
     let delivery: DeliveryModel
     /// The header's "Deliver to" sheet.
     var deliveryOpen = false
+    /// The product whose heart is asking which wishlist (`WishSheet`).
+    var wishAsking: Product?
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
     private(set) var ai: AIAvailability?
     /// Whether a model can read a photo for search (`search.photoAvailable`),
@@ -360,6 +362,24 @@ final class AppModel {
         case .account: accountPath.append(route)
         case .cart: cartPath.append(route)
         case .categories: categoriesPath.append(route)
+        }
+    }
+
+    /// The heart, wherever it is drawn — the web's `toggleSaved`. Signed in, an
+    /// empty heart asks whether the product goes on the private or the public
+    /// wishlist (`WishSheet`, on the owner's word), and a filled one comes out
+    /// of Saved and off the shopper's lists. Signed out it saves on the phone,
+    /// there being no lists without an account.
+    func heart(_ product: Product) async {
+        if saved.contains(product.id) {
+            let signedIn = session.isSignedIn
+            if signedIn { await saved.unwish(product.id) } else { await saved.toggle(product.id) }
+            toast(language.t(signedIn ? "wish.unwished" : "saved.removed", ["name": "\u{2068}\(product.title)\u{2069}"]))
+        } else if session.isSignedIn && features.isOn("wishlists") {
+            wishAsking = product
+        } else {
+            await saved.toggle(product.id)
+            toast(language.t("saved.savedForLater", ["name": "\u{2068}\(product.title)\u{2069}"]))
         }
     }
 

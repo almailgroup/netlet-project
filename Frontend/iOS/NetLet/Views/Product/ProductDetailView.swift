@@ -414,9 +414,7 @@ private struct ProductPage: View {
                 }
                 .buttonStyle(PurchaseButtonStyle())
                 Button {
-                    Task {
-                        await app.saved.toggle(product.id)
-                    }
+                    Task { await app.heart(product) }
                 } label: {
                     Image(systemName: app.saved.contains(product.id) ? "heart.fill" : "heart")
                         .font(.system(size: 19, weight: .medium))

@@ -258,10 +258,7 @@ private struct CardMenu: View {
         }
         let saved = app.saved.contains(product.id)
         Button {
-            Task {
-                await app.saved.toggle(product.id)
-                app.toast(l.t(saved ? "saved.removed" : "saved.savedForLater", ["name": product.title]))
-            }
+            Task { await app.heart(product) }
         } label: {
             Label(l.t(saved ? "product.removeSaved" : "product.save", ["name": product.title]), systemImage: saved ? "heart.slash" : "heart")
         }
@@ -411,10 +408,7 @@ struct HeartButton: View {
     var body: some View {
         let saved = app.saved.contains(product.id)
         Button {
-            Task {
-                await app.saved.toggle(product.id)
-                app.toast(l.t(saved ? "saved.removed" : "saved.savedForLater", ["name": product.title]))
-            }
+            Task { await app.heart(product) }
         } label: {
             Image(systemName: saved ? "heart.fill" : "heart")
                 .font(.system(size: 15, weight: .medium))

@@ -15,6 +15,7 @@
  * Enter in the header lands on the layout every department already has —
  * filters, sort, the empty state — rather than on a model's answer.
  */
+import { toastHeart } from "@/lib/heartToast";
 import { useCatalog } from "@/hooks/useCatalog";
 import { DEPARTMENT_SHELF, SEARCH_LIMIT } from "@/lib/routeData";
 import { useFloatingBar } from "@/hooks/useFloatingBar";
@@ -367,11 +368,7 @@ export default function Category() {
                 departmentSlug={slug}
                 layout="strip"
                 saved={savedIds}
-                onSave={product => {
-                  const wasSaved = savedIds.includes(product.id);
-                  toggleSaved(product.id);
-                  toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
-                }}
+                onSave={product => toastHeart(toggleSaved(product.id), product.title, t)}
                 onQuickView={setQuickProduct}
               />
             ) : null}
@@ -408,11 +405,7 @@ export default function Category() {
                     product={product}
                     compact
                     saved={savedIds.includes(product.id)}
-                    onSave={() => {
-                      const wasSaved = savedIds.includes(product.id);
-                      toggleSaved(product.id);
-                      toast(t(wasSaved ? "saved.removed" : "saved.savedForLater", { name: product.title }));
-                    }}
+                    onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
                     onQuickView={() => setQuickProduct(product)}
                   />
                 ))}

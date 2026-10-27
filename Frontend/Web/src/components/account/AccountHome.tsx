@@ -9,7 +9,7 @@
  *
  * It was tiles in four headed groups, each with a line on what it held, under
  * a welcome heading and an identity card with the dates. The dates moved into
- * "Your details" (`AccountIdentity`), where somebody checking their account
+ * "Your profile" (`AccountIdentity`), where somebody checking their account
  * looks; the rows say what they are by their names.
  *
  * **Every row is a section the account has** (`entries`, the page's own list

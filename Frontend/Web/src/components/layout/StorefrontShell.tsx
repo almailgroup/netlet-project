@@ -21,8 +21,10 @@
  * owner's word** (`BARE_ON_PHONE`) — the way the delivery apps people here use
  * draw their profile and their bag: the page starts at the top of the screen,
  * ends with its own content, and the tab bar is the way anywhere else. The
- * room the footer left for the floating tab bar (and the assistant's button)
- * is the page's own padding then. A wide screen keeps both, having no tab bar
+ * room the footer left for the floating tab bar is the page's own padding
+ * then. **The assistant's button goes with the header**: floating over a
+ * column of rows it covered their ends — "Help from NetLet" on the account
+ * page, which is the help there anyway — so those two pages draw none. A wide screen keeps both, having no tab bar
  * to fall back on. One structure at a time (`useMediaQuery`), so a phone's
  * page holds no hidden search field for a keyboard to land in.
  *
@@ -126,8 +128,9 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
   const printed = PRINTED.test(location);
   const wide = useMediaQuery("(min-width: 1024px)");
   const bare = !wide && BARE_ON_PHONE.test(location);
-  /* The assistant's button floats over the foot of the page too, so the footer leaves it room. */
-  const assistant = useAssistantShown();
+  /* The assistant's button floats over the foot of the page too, so the
+     footer leaves it room; it goes with the header, so a bare page has none. */
+  const assistant = useAssistantShown() && !bare;
 
   return (
     <ChromeContext.Provider value={report}>
@@ -139,12 +142,12 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         </div>
         {/* With no header, the page clears the status bar itself on a phone
             that draws the page under it (`viewport-fit=cover`); with no
-            footer, it clears the tab bar and the assistant's button too. */}
+            footer, it clears the tab bar too. */}
         <main
           id="main"
           tabIndex={-1}
           className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${
-            bare ? `pt-[env(safe-area-inset-top)] ${assistant ? "pb-[calc(9rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}` : ""
+            bare ? "pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]" : ""
           }`}
         >
           <Suspense fallback={<PageFallback />}>
@@ -154,7 +157,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         <div className={printed ? "contents print:hidden" : "contents"}>
           {held || bare ? null : <SiteFooter clearance={TALL_FOOT.test(location) || assistant ? "tall" : "tabs"} assistant={assistant} />}
           <MobileTabBar />
-          {held ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
+          {held || bare ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
         </div>
       </div>
     </ChromeContext.Provider>

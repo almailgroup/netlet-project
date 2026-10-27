@@ -124,7 +124,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
     case "affiliate": return <AccountAffiliate />;
-    case "details": return <div className="space-y-6"><AccountIdentity user={user} /><ProfileManager user={user} /></div>;
+    case "details": return <div className="space-y-6"><ProfileManager user={user} /><AccountIdentity user={user} /></div>;
     case "addresses": return <AddressBook />;
     case "preferences": return <AccountPreferences />;
     case "selling": return <SellerMode />;

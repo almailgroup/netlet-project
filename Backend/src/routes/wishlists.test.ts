@@ -17,7 +17,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { authAttempts, customerPreferences, users, wishlistItems, type User } from "../../database/schema.js";
+import { authAttempts, customerPreferences, savedProducts, users, wishlistItems, wishlists, type User } from "../../database/schema.js";
 import type { TrpcContext } from "../core/context.js";
 import { CLAIM_HOLD_DAYS } from "../../../Shared/commerce/wishlist.js";
 import { MAX_LOOKUPS_PER_ADDRESS } from "../../../Shared/auth/rateLimit.js";
@@ -377,5 +377,70 @@ describe("the phone number itself", () => {
 
     await aunt.wishlists.setPhone({ phone: null });
     expect(await asStranger("10.6.6.6").wishlists.findByPhone({ phone: "99112233" })).toEqual([]);
+  });
+});
+
+describe("the heart's question", () => {
+  let shopper: User;
+  const caller = () => appRouter.createCaller(contextFor(shopper));
+  const savedIds = async () =>
+    (await db.select().from(savedProducts).where(eq(savedProducts.userId, shopper.id))).map(row => row.productId);
+
+  beforeAll(async () => {
+    [shopper] = await db.insert(users).values({ email: "hearts@example.test" }).returning();
+  });
+
+  it("makes the private list on the first heart, saves the product and reuses the list after", async () => {
+    const first = await caller().wishlists.wish({ productId: "41", visibility: "private", title: "My wishlist" });
+    expect(first).toMatchObject({ title: "My wishlist", created: true });
+    const second = await caller().wishlists.wish({ productId: "42", visibility: "private", title: "Another title" });
+    expect(second).toEqual({ listId: first.listId, title: "My wishlist", created: false });
+
+    const lists = await caller().wishlists.mine();
+    expect(lists).toHaveLength(1);
+    expect(lists[0]).toMatchObject({ visibility: "private", itemCount: 2 });
+    expect((await savedIds()).sort()).toEqual(["41", "42"]);
+  });
+
+  it("puts a public heart on a public list, never the private one", async () => {
+    const answer = await caller().wishlists.wish({ productId: "43", visibility: "public", title: "My public wishlist" });
+    expect(answer.created).toBe(true);
+    const lists = await caller().wishlists.mine();
+    expect(lists.map((list: { visibility: string; itemCount: number }) => [list.visibility, list.itemCount])).toEqual([["private", 2], ["public", 1]]);
+  });
+
+  it("makes one list when two hearts land at once", async () => {
+    const [other] = await db.insert(users).values({ email: "twice@example.test" }).returning();
+    const twice = appRouter.createCaller(contextFor(other));
+    const answers = await Promise.all([
+      twice.wishlists.wish({ productId: "51", visibility: "public", title: "Mine" }),
+      twice.wishlists.wish({ productId: "52", visibility: "public", title: "Mine" }),
+    ]);
+    expect(answers[0].listId).toBe(answers[1].listId);
+    expect(await db.select().from(wishlists).where(eq(wishlists.userId, other.id))).toHaveLength(1);
+  });
+
+  it("is a no-op the second time, the item counted once", async () => {
+    await caller().wishlists.wish({ productId: "41", visibility: "private", title: "My wishlist" });
+    const [privateList] = await caller().wishlists.mine();
+    expect(privateList.itemCount).toBe(2);
+  });
+
+  it("takes a filled heart off Saved and every list of the shopper's, and nobody else's", async () => {
+    await caller().wishlists.wish({ productId: "41", visibility: "public", title: "My public wishlist" });
+    const nouraList = await asShopper("noura").wishlists.create({ title: "Hers" });
+    await asShopper("noura").wishlists.addItem({ listId: nouraList, productId: "41" });
+
+    expect(await caller().wishlists.unwish({ productId: "41" })).toEqual({ lists: 2 });
+    expect(await savedIds()).not.toContain("41");
+    const lists = await caller().wishlists.mine();
+    expect(lists.map((list: { itemCount: number }) => list.itemCount)).toEqual([1, 1]);
+
+    const { items } = await asShopper("noura").wishlists.get({ listId: nouraList });
+    expect(items.map((item: { productId: string }) => item.productId)).toEqual(["41"]);
+  });
+
+  it("refuses a signed-out heart", async () => {
+    await expect(asStranger().wishlists.wish({ productId: "1", visibility: "private", title: "x" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });

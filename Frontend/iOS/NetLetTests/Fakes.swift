@@ -135,6 +135,20 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         saved = isSaved ? Array(Set(saved + [productId])).sorted() : saved.filter { $0 != productId }
         return saved
     }
+
+    var wishes: [(String, String)] = []
+    var unwished: [String] = []
+
+    func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer {
+        wishes.append((productId, visibility))
+        saved = Array(Set(saved + [productId])).sorted()
+        return WishAnswer(listId: visibility == "public" ? 2 : 1, title: title, created: true)
+    }
+
+    func unwish(_ productId: String) async throws {
+        unwished.append(productId)
+        saved = saved.filter { $0 != productId }
+    }
 }
 
 /// Orders that remember what was placed.

@@ -5,6 +5,7 @@
  * a grid, and the footer. Every shelf after the departments is drawn only when
  * it has something true to show.
  */
+import { toastHeart } from "@/lib/heartToast";
 import { useCatalog } from "@/hooks/useCatalog";
 import { HEADER_SHELF } from "@/lib/routeData";
 import { homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
@@ -243,7 +244,7 @@ export default function Home() {
   const articlesOn = useFeature("articles");
   const appBannerOn = useFeature("appBanner");
 
-  const toggleSaved = (id: string, title: string) => { const isSaved = saved.includes(id); togglePersistentSaved(id); toast(t(isSaved ? "saved.removed" : "saved.savedForLater", { name: title })); };
+  const toggleSaved = (id: string, title: string) => toastHeart(togglePersistentSaved(id), title, t);
 
   const renderRail = (rail: (typeof homeRailDefinitions)[number], index: number) => {
       const products = shelves[rail.id];

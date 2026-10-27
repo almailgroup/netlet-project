@@ -15,11 +15,11 @@
  * thing they can do by accident to a link already sitting in a family group
  * chat. `ConfirmDialog` carries the verb, the way signing out does.
  *
- * Items are added from Saved rather than from a picker over the whole
- * catalog. The heart is already how somebody says "I want this", so a
- * wishlist is a promotion of that rather than a second, parallel act of
- * curation — and it means the fill path exists without putting a fourth
- * control on every product card.
+ * **The heart fills them**, on the owner's word: pressing it asks whether
+ * the product goes on the private or the public wishlist (`WishChooser`),
+ * so the lists are grouped here the same way — public, then private, each
+ * saying who can see it. A list can still be filled from Saved, and made
+ * private or public afterwards.
  *
  * Nothing on this page says who claimed what, because the server never sends
  * it. That is not a rendering decision: `itemsForOwner` does not select those
@@ -66,27 +66,43 @@ export function WishlistManager() {
       <QueryGate audience="shopper" queries={[lists]}>
         {() => (
           <>
-            {(lists.data ?? []).length === 0 ? (
-              <div className="rounded-[1.35rem] border border-dashed border-[#c3ccda] bg-[#fbfaf6] p-6 text-center">
-                <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-[#e7edf5]">
-                  <Gift className="size-5 text-[#0a285a]" aria-hidden />
-                </div>
-                <p className="mt-3 text-sm font-extrabold text-[#0a285a]">{t("wish.empty")}</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 ink-muted">{t("wish.emptyNote")}</p>
-              </div>
-            ) : (
-              <ul className="space-y-3">
-                {(lists.data ?? []).map(list => (
-                  <ListRow
-                    key={list.id}
-                    list={list}
-                    hasPhone={Boolean(phone.data)}
-                    onOpen={() => setOpenList(list.id)}
-                    onChanged={() => void lists.refetch()}
-                  />
-                ))}
-              </ul>
-            )}
+            {/* Public first and private second, each under a heading that says
+                who can see it — the heart asks which, so the page answers the
+                same question in the same words. */}
+            {(["public", "private"] as const).map(visibility => {
+              const group = (lists.data ?? []).filter(list => list.visibility === visibility);
+              const isPublic = visibility === "public";
+              return (
+                <section key={visibility} aria-labelledby={`wish-group-${visibility}`} className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-2xl ${isPublic ? "bg-[#d8ead8] text-[#2f5d33]" : "bg-[#e7edf5] text-[#0a285a]"}`}>
+                      {isPublic ? <Gift className="size-5" aria-hidden /> : <Lock className="size-5" aria-hidden />}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 id={`wish-group-${visibility}`} className="text-base font-extrabold text-[#0a285a]">{t(isPublic ? "wish.publicGroup" : "wish.privateGroup")}</h3>
+                      <p className="mt-0.5 max-w-prose text-sm leading-5 ink-muted">{t(isPublic ? "wish.publicGroupNote" : "wish.privateGroupNote")}</p>
+                    </div>
+                  </div>
+                  {group.length === 0 ? (
+                    <p className="rounded-[1.35rem] border border-dashed border-[#c3ccda] bg-[#fbfaf6] px-5 py-4 text-sm leading-5 ink-muted">
+                      {t(isPublic ? "wish.noPublic" : "wish.noPrivate")}
+                    </p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {group.map(list => (
+                        <ListRow
+                          key={list.id}
+                          list={list}
+                          hasPhone={Boolean(phone.data)}
+                          onOpen={() => setOpenList(list.id)}
+                          onChanged={() => void lists.refetch()}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              );
+            })}
             {on ? <NewList onCreated={() => void lists.refetch()} /> : null}
           </>
         )}
@@ -229,9 +245,9 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
         <div className="min-w-0">
           {/* The heading holds the button, never the other way round: a
               heading inside a button is no heading to a screen reader. */}
-          <h3 dir="auto" className="type-product text-lg text-[#0a285a]">
+          <h4 dir="auto" className="type-product text-lg text-[#0a285a]">
             <button type="button" onClick={onOpen} className="text-start hover:text-[#a44a2b]">{list.title}</button>
-          </h3>
+          </h4>
           <p className="mt-0.5 text-xs ink-muted">
             {list.itemCount === 1 ? t("wish.itemCountOne") : t("wish.itemCount", { count: list.itemCount })}
           </p>

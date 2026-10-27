@@ -34,6 +34,7 @@ import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import {
   customerPreferences,
+  savedProducts,
   wishlistItems,
   wishlists,
 } from "../../database/schema.js";
@@ -278,6 +279,94 @@ export async function removeItem(userId: number, listId: number, itemId: number)
   if (!owned) throw new WishlistError("notFound");
 
   await database.delete(wishlistItems).where(and(eq(wishlistItems.id, itemId), eq(wishlistItems.wishlistId, listId)));
+}
+
+/* ---------------------------------------------------------- the heart --- */
+
+/** The first key of the lock `wishProduct` takes; the shopper's id is the second. */
+const WISH_LOCK = 7_301;
+
+/**
+ * The heart's question answered: put a product on the shopper's private or
+ * public wishlist, and keep it saved, in one go (on the owner's word — the
+ * heart asks which before it fills).
+ *
+ * The list is the shopper's oldest of that kind; with none, one is made under
+ * the title the page sends, in the shopper's language. Two quick presses must
+ * not make two lists, so the read and the insert sit under a lock on the
+ * shopper, the way a placement's capacity does. The product stays in Saved
+ * as well, because the heart's fill is Saved's and the Saved page is where
+ * somebody looks for what they hearted.
+ */
+export async function wishProduct(
+  userId: number,
+  productId: string,
+  visibility: Visibility,
+  titleIfNew: string,
+): Promise<{ listId: number; title: string; created: boolean }> {
+  return (await db()).transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${WISH_LOCK}, ${userId})`);
+    const [found] = await tx
+      .select({ id: wishlists.id, title: wishlists.title })
+      .from(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.visibility, visibility)))
+      .orderBy(wishlists.createdAt, wishlists.id)
+      .limit(1);
+
+    let list = found;
+    let created = false;
+    if (!list) {
+      const [{ n }] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(wishlists)
+        .where(eq(wishlists.userId, userId));
+      if (n >= MAX_LISTS_PER_SHOPPER) throw new WishlistError("tooManyLists");
+      [list] = await tx
+        .insert(wishlists)
+        .values({ userId, title: titleIfNew, visibility, shareToken: newToken() })
+        .returning({ id: wishlists.id, title: wishlists.title });
+      created = true;
+    }
+
+    const [{ n }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(wishlistItems)
+      .where(eq(wishlistItems.wishlistId, list.id));
+    const [already] = await tx
+      .select({ id: wishlistItems.id })
+      .from(wishlistItems)
+      .where(and(eq(wishlistItems.wishlistId, list.id), eq(wishlistItems.productId, productId)));
+    if (!already && n >= MAX_ITEMS_PER_LIST) throw new WishlistError("listFull");
+
+    await tx
+      .insert(wishlistItems)
+      .values({ wishlistId: list.id, productId, quantity: 1 })
+      .onConflictDoNothing({ target: [wishlistItems.wishlistId, wishlistItems.productId] });
+    await tx
+      .insert(savedProducts)
+      .values({ userId, productId })
+      .onConflictDoNothing({ target: [savedProducts.userId, savedProducts.productId] });
+    return { listId: list.id, title: list.title, created };
+  });
+}
+
+/**
+ * A filled heart pressed: out of Saved and off every list of the shopper's,
+ * since the heart is how they said they wanted it. Answers how many lists it
+ * came off, so the page can say so.
+ */
+export async function unwishProduct(userId: number, productId: string): Promise<{ lists: number }> {
+  return (await db()).transaction(async tx => {
+    await tx
+      .delete(savedProducts)
+      .where(and(eq(savedProducts.userId, userId), eq(savedProducts.productId, productId)));
+    const mine = tx.select({ id: wishlists.id }).from(wishlists).where(eq(wishlists.userId, userId));
+    const removed = await tx
+      .delete(wishlistItems)
+      .where(and(eq(wishlistItems.productId, productId), inArray(wishlistItems.wishlistId, mine)))
+      .returning({ id: wishlistItems.id });
+    return { lists: removed.length };
+  });
 }
 
 /* ---------------------------------------------------------- the phone --- */

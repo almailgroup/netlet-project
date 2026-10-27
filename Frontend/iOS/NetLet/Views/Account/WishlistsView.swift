@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// The shopper's wishlists — the web's `WishlistManager`: the number family
-/// find their lists by, each list private or published with its share link,
-/// and a new one made by name.
+/// find their lists by, the lists in two groups — public, then private, each
+/// saying who can see it, since the heart asks which (`WishSheet`) — each with
+/// its share link, and a new one made by name.
 struct WishlistsView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -19,16 +20,11 @@ struct WishlistsView: View {
                         PhoneCard(model: model)
                         LoadStateView(state: model.lists.state, retry: { await model.load() }) { lists in
                             VStack(alignment: .leading, spacing: 12) {
-                                if lists.isEmpty {
-                                    VStack(spacing: 6) {
-                                        Image(systemName: "gift").font(.system(size: 30)).foregroundStyle(Brand.muted).accessibilityHidden(true)
-                                        Text(l.t("wish.empty")).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
-                                        Text(l.t("wish.emptyNote")).font(.inter(13)).foregroundStyle(Brand.muted).multilineTextAlignment(.center)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .card(padding: 24)
-                                } else {
-                                    ForEach(lists) { list in ListRow(list: list, model: model) }
+                                // Public first and private second, each under a
+                                // heading saying who can see it — the heart asks
+                                // which, so this answers in the same words.
+                                ForEach(["public", "private"], id: \.self) { visibility in
+                                    VisibilityGroup(visibility: visibility, lists: lists.filter { list in list.visibility == visibility }, model: model)
                                 }
                                 if app.features.isOn("wishlists") { NewListForm(model: model) }
                             }
@@ -82,6 +78,51 @@ final class WishlistsModel {
     func remove(_ list: WishlistSummary) async throws {
         _ = try await api.call(API.removeWishlist, .init(listId: list.id))
         await load()
+    }
+}
+
+/// One kind of list under a heading that says who can see it, or a line
+/// saying how to start one.
+private struct VisibilityGroup: View {
+    let visibility: String
+    let lists: [WishlistSummary]
+    let model: WishlistsModel
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let isPublic = visibility == "public"
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: isPublic ? "gift" : "lock")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(isPublic ? Brand.success : Brand.navy)
+                    .frame(width: 40, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(isPublic ? Brand.successFill : Brand.tint))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.t(isPublic ? "wish.publicGroup" : "wish.privateGroup"))
+                        .font(.inter(16, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(l.t(isPublic ? "wish.publicGroupNote" : "wish.privateGroupNote"))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, 6)
+            if lists.isEmpty {
+                Text(l.t(isPublic ? "wish.noPublic" : "wish.noPrivate"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+            } else {
+                ForEach(lists) { list in ListRow(list: list, model: model) }
+            }
+        }
     }
 }
 

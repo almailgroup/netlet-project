@@ -1,12 +1,9 @@
 /**
- * Who you are, at the top of "Your details" — the account's home has the name
- * and the address on a card of its own (`AccountHome`), and the dates and the
- * role are here, beside the forms that change them.
- *
- * The facts used to sit in a bare card at the foot of the page, under the
- * preferences and the saved items — which put "is this even my account?" last,
- * when it is the question somebody arriving has already asked. They belong
- * beside the name.
+ * Who you are, at the foot of "Your profile" — the account's home has the
+ * name and the address on a card of its own (`AccountHome`), and the dates and
+ * the role are here, under the forms that change them. The forms lead, as the
+ * owner's reference draws the page: somebody opening it came to change
+ * something, and "is this my account?" is answered on the home already.
  *
  * The avatar is initials rather than an uploaded picture: NetLet has nowhere
  * to put an image yet, and a grey silhouette that never changes is furniture.

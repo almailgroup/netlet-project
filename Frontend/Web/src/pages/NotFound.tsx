@@ -8,6 +8,7 @@
  * onward: a mistyped or dead product link is a dead end otherwise. The
  * suggestions are the shop's own cards, so they can be bought from here.
  */
+import { toastHeart } from "@/lib/heartToast";
 import { BUTTON_PLAIN, BUTTON_PRIMARY, PageBody, PageHeading } from "@/components/layout/Page";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
@@ -64,11 +65,7 @@ export default function NotFound() {
                 key={product.id}
                 product={product}
                 saved={savedIds.includes(product.id)}
-                onSave={() => {
-                  const adding = !savedIds.includes(product.id);
-                  toggleSaved(product.id);
-                  toast(t(adding ? "saved.savedForLater" : "saved.removed", { name: product.title }));
-                }}
+                onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
                 onQuickView={() => setQuickProduct(product)}
               />
             ))}

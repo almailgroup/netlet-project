@@ -9,6 +9,7 @@
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
  */
+import { toastHeart } from "@/lib/heartToast";
 import { useProductsByIds } from "@/hooks/useCatalog";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
@@ -79,10 +80,7 @@ export default function Saved() {
                 key={product.id}
                 product={product}
                 saved
-                onSave={() => {
-                  toggleSaved(product.id);
-                  toast(t("saved.removed", { name: product.title }));
-                }}
+                onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
                 onQuickView={() => setQuickProduct(product)}
               />
             ))}
@@ -100,11 +98,7 @@ export default function Saved() {
           something: the rail draws nothing until it is personal. */}
       <RecommendedRail
         saved={savedIds}
-        onSave={(id, title) => {
-          const adding = !savedIds.includes(id);
-          toggleSaved(id);
-          toast(t(adding ? "saved.savedForLater" : "saved.removed", { name: title }));
-        }}
+        onSave={(id, title) => toastHeart(toggleSaved(id), title, t)}
         onQuickView={setQuickProduct}
       />
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />

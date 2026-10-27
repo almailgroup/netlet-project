@@ -1,11 +1,13 @@
 import SwiftUI
 import UIKit
 
-/// The tap a finger feels: **everything at half strength, on the owner's
-/// word** — the tab bar, every button, a press that does something to a
-/// product, an order placed and a refusal. It was the tab bar and a product's
-/// presses at half and every other button at a tenth, and the owner asked for
-/// one strength across the app.
+/// The tap a finger feels: **everything at half strength but the tab bar,
+/// which is three quarters, on the owner's word** — every button, a press that
+/// does something to a product, an order placed and a refusal at half. It was
+/// the tab bar and a product's presses at half and every other button at a
+/// tenth; the owner asked for one strength across the app, and then for the
+/// tab bar a little firmer, since it is the press that changes the whole
+/// screen.
 ///
 /// An order placed and an add the shop refused were the system's success and
 /// error patterns, which take no strength; they are impacts at the same half
@@ -17,10 +19,10 @@ import UIKit
 /// Haptics" switch silences all of it, as it does every app's.
 @MainActor
 enum Haptics {
-    /// Every haptic in the app.
+    /// Every haptic in the app but the tab bar's.
     static let strength: CGFloat = 0.5
     /// The tab bar's (the system's own, in `RootView`).
-    static let tabStrength: CGFloat = strength
+    static let tabStrength: CGFloat = 0.75
     /// A press that does something to a product.
     static let actionStrength: CGFloat = strength
     /// Every other button's.

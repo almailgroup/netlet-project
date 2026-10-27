@@ -901,6 +901,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       return [];
     case "wishlists.create":
       return 1;
+    case "wishlists.wish":
+      return { listId: 1, title: "", created: false };
+    case "wishlists.unwish":
+      return { lists: 0 };
     case "wishlists.setPhone":
       return null;
     case "wishlists.update":

@@ -23,6 +23,8 @@ protocol AccountServicing: Sendable {
     func sellerIdentity() async throws -> SellerIdentity
     func savedProducts() async throws -> [String]
     func setSaved(_ productId: String, saved: Bool) async throws -> [String]
+    func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer
+    func unwish(_ productId: String) async throws
 }
 
 struct AccountService: AccountServicing {
@@ -89,5 +91,13 @@ struct AccountService: AccountServicing {
 
     func setSaved(_ productId: String, saved: Bool) async throws -> [String] {
         try await client.call(API.setSaved, .init(productId: productId, saved: saved))
+    }
+
+    func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer {
+        try await client.call(API.wish, .init(productId: productId, visibility: visibility, title: title))
+    }
+
+    func unwish(_ productId: String) async throws {
+        _ = try await client.call(API.unwish, .init(productId: productId))
     }
 }

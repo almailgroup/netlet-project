@@ -6,7 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { directionFor, type LocaleCode } from "@shared/i18n/dictionary";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useFeature } from "@/hooks/useFeature";
+import { lazyPage } from "@/lib/lazyPage";
+import { whenIdle } from "@/lib/idle";
+import { createContext, type ReactNode, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+/* The heart's question, fetched when the browser is idle after a sign-in. */
+const WishChooser = lazyPage(async () => ({ default: (await import("@/components/wishlist/WishChooser")).WishChooser }));
 
 const SAVED_STORAGE_KEY = "netlet:saved-product-ids";
 const DELIVERY_STORAGE_KEY = "netlet:delivery-zone";
@@ -39,12 +45,22 @@ type CustomerContextValue = {
   setLocale: (locale: LocaleCode) => void;
   toggleLocale: () => void;
   savedIds: string[];
-  toggleSaved: (productId: string) => void;
+  /**
+   * The heart. Signed in, an empty heart *asks* — a private wishlist or a
+   * public one (`WishChooser`, on the owner's word) — and the chooser says
+   * what happened; a filled one comes out of Saved and off the shopper's
+   * lists. Signed out it saves on this device, there being no lists without
+   * an account. Answers which, so a page toasts only what it did itself.
+   */
+  toggleSaved: (productId: string) => SaveOutcome;
   deliveryZoneId: string | null;
   deliveryZone: (typeof kuwaitDeliveryZones)[number] | undefined;
   setDeliveryZoneId: (zoneId: string) => void;
   isSignedIn: boolean;
 };
+
+/** What the heart did: asked which list, saved on this device, or took it back — from the device, or from Saved and the account's lists. */
+export type SaveOutcome = "asked" | "saved" | "removed" | "unwished";
 
 const CustomerContext = createContext<CustomerContextValue | null>(null);
 
@@ -62,6 +78,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const updateSaved = trpc.customer.saved.set.useMutation({
     onSuccess: () => saved.refetch(),
   });
+  const unwish = trpc.wishlists.unwish.useMutation({
+    onSuccess: () => saved.refetch(),
+  });
+  const wishlistsOn = useFeature("wishlists");
+  const [asking, setAsking] = useState<string | null>(null);
+  useEffect(() => {
+    if (isAuthenticated && wishlistsOn) return whenIdle(() => void WishChooser.preload());
+  }, [isAuthenticated, wishlistsOn]);
 
   // The one writer of <html lang/dir>. Direction is a document property, and
   // setting it here — above every page — is what makes the `ms-`/`me-`/
@@ -121,18 +145,27 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const toggleLocale = useCallback(() => setLocale(locale === "en" ? "ar" : "en"), [locale, setLocale]);
 
-  const toggleSaved = useCallback((productId: string) => {
+  const toggleSaved = useCallback((productId: string): SaveOutcome => {
     const nextSaved = !savedIds.includes(productId);
     if (isAuthenticated) {
-      updateSaved.mutate({ productId, saved: nextSaved });
-      return;
+      if (nextSaved && wishlistsOn) {
+        setAsking(productId);
+        return "asked";
+      }
+      if (nextSaved) {
+        updateSaved.mutate({ productId, saved: true });
+        return "saved";
+      }
+      unwish.mutate({ productId });
+      return "unwished";
     }
     setGuestSavedIds(current => {
       const next = nextSaved ? Array.from(new Set([...current, productId])) : current.filter(id => id !== productId);
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
-  }, [isAuthenticated, savedIds, updateSaved]);
+    return nextSaved ? "saved" : "removed";
+  }, [isAuthenticated, savedIds, unwish, updateSaved, wishlistsOn]);
 
   const setDeliveryZoneId = useCallback((zoneId: string) => {
     if (!kuwaitDeliveryZones.some(zone => zone.id === zoneId)) return;
@@ -176,7 +209,16 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     isSignedIn: isAuthenticated,
   }), [deliveryZone, deliveryZoneId, isAuthenticated, locale, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved]);
 
-  return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>;
+  return (
+    <CustomerContext.Provider value={value}>
+      {children}
+      {asking && isAuthenticated ? (
+        <Suspense fallback={null}>
+          <WishChooser productId={asking} onClose={() => setAsking(null)} />
+        </Suspense>
+      ) : null}
+    </CustomerContext.Provider>
+  );
 }
 
 export function useCustomer() {

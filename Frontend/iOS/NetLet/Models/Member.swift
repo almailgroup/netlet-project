@@ -153,6 +153,18 @@ struct WishlistDetail: Decodable, Sendable {
 }
 
 /// What creating a list answers: its id.
+/// Where a heart's product went (`wishlists.wish`).
+struct WishAnswer: Decodable, Sendable {
+    let listId: Int
+    let title: String
+    let created: Bool
+}
+
+/// How many of the shopper's lists a heart taken back left (`wishlists.unwish`).
+struct UnwishAnswer: Decodable, Sendable {
+    let lists: Int
+}
+
 struct CreatedList: Decodable, Sendable {
     let id: Int
 
