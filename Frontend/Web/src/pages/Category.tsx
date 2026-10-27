@@ -447,7 +447,7 @@ export default function Category() {
           aria-label={filtersLabel}
           aria-hidden={!filtersPassed}
           inert={!filtersPassed}
-          className={`glass glass-navy fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] transition-[opacity,translate] duration-200 ${filtersPassed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
+          className={`glass glass-navy rides-tab-bar fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] ${filtersPassed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
         >
           <SlidersHorizontal className="size-5" aria-hidden />
           <PixelBadge value={activeCount} className="absolute -end-1 -top-1" />

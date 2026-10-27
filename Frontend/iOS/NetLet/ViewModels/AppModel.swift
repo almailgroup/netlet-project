@@ -157,6 +157,8 @@ final class AppModel {
     var deliveryOpen = false
     /// The product whose heart is asking which wishlist (`WishSheet`).
     var wishAsking: Product?
+    /// The product a hold on its card is previewing (`QuickViewSheet`).
+    var previewing: Product?
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
     private(set) var ai: AIAvailability?
     /// Whether a model can read a photo for search (`search.photoAvailable`),
@@ -293,6 +295,13 @@ final class AppModel {
             selectedTab = .home
             photoViewerStart = parts[0] == "zoom" ? .zoom : .photos
             homePath = NavigationPath([Route.product(handle: value)])
+        case "preview":
+            // The sheet a hold on a card opens, over the home page.
+            guard let value else { return }
+            selectedTab = .home
+            Task {
+                if let found = try? await services.catalog.product(handle: value, language: language.current) { previewing = found }
+            }
         case "search":
             selectedTab = .home
             homePath = NavigationPath([Route.search(query: value ?? "")])

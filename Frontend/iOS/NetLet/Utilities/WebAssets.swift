@@ -37,6 +37,9 @@ enum WebAssets {
 
     static var logo: UIImage? { image(manifest.logo) }
     static var footerLogo: UIImage? { image(manifest.footerLogo) }
+    /// NetLet's own street — the first of the home page's slides, and the
+    /// band at the top of signing in, as on the web.
+    static var street: UIImage? { manifest.heroSlides.first.flatMap(image) }
 
     /// A department's art by its slug, "all" for every department.
     static func department(_ slug: String) -> UIImage? {

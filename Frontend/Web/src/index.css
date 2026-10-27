@@ -976,6 +976,43 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * The tab bar slides out of the way on a scroll down and back on a scroll up,
+ * on the owner's word (`tabBarScroll.ts` decides; `MobileTabBar` sets
+ * `data-tab-bar` on <html>). A transform and nothing else: an opacity on the
+ * bar would make it a backdrop root and drain its glass to white for as long
+ * as the fade ran. It drops by its own height, its gap from the foot of the
+ * screen and its shadow, on the curve a phone's own sheets use. Focus inside
+ * it keeps it up, so a keyboard never tabs into a bar that is not there, and
+ * under reduced motion the base layer's guard makes it a cut.
+ *
+ * What floats over it follows it down into the room it left, on the same
+ * curve — a page's action bar and a department's Filters button
+ * (`.rides-tab-bar`), and the assistant's button — so none of them is left
+ * hanging over an empty strip. Their own transitions are listed again here,
+ * because this rule replaces the utilities'.
+ */
+.tab-bar {
+  transition: transform 380ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.rides-tab-bar {
+  transition:
+    opacity 200ms ease,
+    translate 200ms ease,
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 120ms var(--ease-out),
+    border-color 120ms var(--ease-out);
+}
+@media (max-width: 1023.98px) {
+  html[data-tab-bar="away"] .tab-bar:not(:focus-within) {
+    transform: translateY(calc(100% + max(0.75rem, env(safe-area-inset-bottom)) + 2.5rem));
+  }
+  html[data-tab-bar="away"] .rides-tab-bar,
+  html[data-tab-bar="away"] .assistant-launcher {
+    transform: translateY(4.5rem);
+  }
+}
+
+/*
  * The notification badges' hop (`PixelBadge`), on the owner's word: a badge
  * crouches, jumps and lands with a squash, throwing four pixels off its
  * corners at the top of the jump — once, then still, and again every ten
@@ -1286,6 +1323,7 @@ html[dir="rtl"] .nav-progress {
   transition:
     opacity 200ms ease,
     translate 200ms ease,
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
     visibility 0s linear 0s;
 }
 /*
@@ -1375,6 +1413,7 @@ html[dir="rtl"] .nav-progress {
     transition:
       opacity 200ms ease,
       translate 200ms ease,
+      transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
       visibility 0s linear 200ms;
   }
 }

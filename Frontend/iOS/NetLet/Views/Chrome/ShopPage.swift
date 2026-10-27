@@ -26,6 +26,13 @@ import UIKit
 ///
 /// **Only the home page has the footer**, on the owner's word (`footer`), as on
 /// the web's phone.
+///
+/// **The tab bar slides away on a scroll down and back on a scroll up**, on
+/// the owner's word — once the page has gone down a little, never on the first
+/// point (`TabBarScroll`, the web's rule number for number). The scroll is
+/// followed in a box nothing observes, so only the bar's coming and going
+/// draws the page again; it stays put for VoiceOver, which reads it as the
+/// way around the app, and comes and goes with no slide under Reduce Motion.
 struct ShopPage<Content: View>: View {
     /// A tab's first screen, which has nothing to go back to.
     var root = false
@@ -45,6 +52,12 @@ struct ShopPage<Content: View>: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var still
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    /// Where the scroll is, kept where changing it draws nothing.
+    @State private var scroll = ScrollFollower()
+    /// Whether the tab bar is out of the way: the one thing that does draw.
+    @State private var barAway = false
 
     /// The assistant floats only where the header is; see above.
     private var showsAssistant: Bool { assistant && header }
@@ -82,7 +95,10 @@ struct ShopPage<Content: View>: View {
                             if header { SearchRow() }
                         }
                     }
+                    .modifier(ScrollContentPlace(space: ShopPageTop.space, viewport: screen.size.height, changed: follow))
                 }
+                .coordinateSpace(.named(ShopPageTop.space))
+                .modifier(ScrollPlaceReader(changed: follow))
                 .task(id: app.startAtFoot) {
                     // The screenshot of the tab bar over the footer; asked for once
                     // the launch has settled, after the home page has appeared.
@@ -117,12 +133,34 @@ struct ShopPage<Content: View>: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(barAway ? .hidden : .visible, for: .tabBar)
+        .onAppear {
+            // Back on this page, from one pushed over it or another tab: the
+            // bar is there, and the scroll counts afresh from where it is.
+            scroll.state = TabBarScroll(y: scroll.state.y)
+            barAway = false
+        }
     }
+
+    private func follow(_ place: ScrollPlace) {
+        let next = scroll.state.next(y: place.y, viewport: place.viewport, height: place.height)
+        scroll.state = next
+        let away = next.away && !voiceOver
+        guard away != barAway else { return }
+        withAnimation(still ? nil : .smooth(duration: 0.38)) { barAway = away }
+    }
+}
+
+/// The scroll's running state, in a class so that following it every frame
+/// never asks SwiftUI to draw the page again.
+private final class ScrollFollower {
+    var state = TabBarScroll()
 }
 
 private enum ShopPageTop {
     static let id = "shop-page-top"
     static let foot = "shop-page-foot"
+    static let space = "shop-page-scroll"
 }
 
 /// Nothing behind the tab bar but the page itself, on the owner's word: on

@@ -66,6 +66,11 @@ struct RootView: View {
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
+        .sheet(item: $app.previewing) { product in
+            QuickViewSheet(product: product)
+                .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
+        }
         .sheet(item: $app.wishAsking) { product in
             WishSheet(product: product)
                 .environment(\.layoutDirection, l.layoutDirection)

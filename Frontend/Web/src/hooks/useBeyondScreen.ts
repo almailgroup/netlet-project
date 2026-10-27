@@ -28,7 +28,13 @@ export function useBeyondScreen(edge: "top" | "bottom", inset = 0) {
       ([entry]) => {
         const box = entry.boundingClientRect;
         /* A hidden element measures as an empty box at 0: never beyond. */
-        setBeyond(!entry.isIntersecting && (edge === "top" ? box.top < 0 : box.top > 0));
+        const hidden = box.width === 0 && box.height === 0;
+        /* Measured against the watched edge, not the screen's: the observer
+           speaks only as the element crosses that edge, and with an inset at
+           the top it has crossed while still on screen — so "above the screen"
+           was asked of a box that had not got there yet, and never asked again
+           (a department's corner Filters button never appeared). */
+        setBeyond(!hidden && !entry.isIntersecting && (edge === "top" ? box.bottom <= inset : box.top > 0));
       },
       { rootMargin: edge === "top" ? `-${inset}px 0px ${far} 0px` : `${far} 0px -${inset}px 0px` },
     );

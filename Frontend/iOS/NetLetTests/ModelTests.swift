@@ -489,3 +489,68 @@ final class BagGroupTests: XCTestCase {
         XCTAssertNil(BagGroup.freeProgress(none))
     }
 }
+
+/// The web's `tabBarScroll.test.ts`, case for case.
+final class TabBarScrollTests: XCTestCase {
+    private let viewport: CGFloat = 800
+    private let height: CGFloat = 5000
+
+    /// Rests at the first position, then scrolls through the rest a frame at a time.
+    private func scroll(_ positions: [CGFloat]) -> TabBarScroll {
+        positions.dropFirst().reduce(TabBarScroll(y: positions[0])) { state, y in
+            state.next(y: y, viewport: viewport, height: height)
+        }
+    }
+
+    func testItStaysWhileTheScrollDownIsStillShort() {
+        let start = TabBarScroll.topZone + 100
+        XCTAssertFalse(scroll([start, start + 20, start + 40, start + TabBarScroll.tuckAfter - 1]).away)
+    }
+
+    func testItSlidesAwayOnceTheScrollDownHasGoneFarEnough() {
+        let start = TabBarScroll.topZone + 100
+        XCTAssertTrue(scroll([start, start + 30, start + TabBarScroll.tuckAfter]).away)
+    }
+
+    func testOnlyTheDistanceSinceTheDirectionTurnedCounts() {
+        let start = TabBarScroll.topZone + 200
+        XCTAssertFalse(scroll([start, start + 50, start + 45, start + 95]).away)
+    }
+
+    func testItComesBackOnAScrollUpAndNotOnABounce() {
+        let start = TabBarScroll.topZone + 400
+        let away = scroll([start, start + 200])
+        XCTAssertTrue(away.away)
+        XCTAssertTrue(away.next(y: start + 200 - (TabBarScroll.showAfter - 1), viewport: viewport, height: height).away)
+        XCTAssertFalse(away.next(y: start + 200 - TabBarScroll.showAfter, viewport: viewport, height: height).away)
+    }
+
+    func testItStartsCountingAtTheEdgeOfTheTopZone() {
+        let steps = (0..<20).map { CGFloat($0 * 8) }
+        XCTAssertFalse(scroll(steps).away)
+        XCTAssertTrue(scroll(steps + [TabBarScroll.topZone + TabBarScroll.tuckAfter]).away)
+    }
+
+    func testItIsAlwaysThereNearTheTop() {
+        let away = scroll([TabBarScroll.topZone + 300, TabBarScroll.topZone + 600])
+        XCTAssertTrue(away.away)
+        XCTAssertFalse(away.next(y: TabBarScroll.topZone, viewport: viewport, height: height).away)
+    }
+
+    func testItIsThereAtTheFootOfThePage() {
+        let away = scroll([1000, 1400])
+        XCTAssertTrue(away.away)
+        XCTAssertFalse(away.next(y: height - viewport, viewport: viewport, height: height).away)
+    }
+
+    func testAJumpLongerThanAScreenIsNotAScroll() {
+        let state = scroll([TabBarScroll.topZone + 10, 3000])
+        XCTAssertFalse(state.away)
+        XCTAssertFalse(state.next(y: 3000 + TabBarScroll.tuckAfter - 1, viewport: viewport, height: height).away)
+    }
+
+    func testNothingChangesWhenNothingMoved() {
+        let away = scroll([500, 700])
+        XCTAssertEqual(away.next(y: 700, viewport: viewport, height: height), away)
+    }
+}

@@ -384,6 +384,15 @@ final class ProductDetailViewModel {
         }
     }
 
+    /// Starts from a copy already on screen — a card's, for the preview a
+    /// hold opens — so nothing waits on the network; `load` asks the server
+    /// again behind it.
+    func start(with shown: Product) {
+        guard product.value == nil else { return }
+        product = .loaded(shown)
+        if variant == nil { choose(initialVariant(of: shown)) }
+    }
+
     /// A product with one variant has it chosen; with several, nothing is
     /// chosen for the shopper — a size has to be picked before a number means anything.
     private func initialVariant(of product: Product) -> ProductVariant? {

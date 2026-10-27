@@ -13,7 +13,9 @@
  * Hidden it is `inert` and out of the accessibility tree, so a keyboard or a
  * screen reader never meets two sets of the same buttons. It slides and fades
  * in from a few pixels below rather than appearing, which the global motion
- * guard shortens to nothing for somebody who asked for less.
+ * guard shortens to nothing for somebody who asked for less. Over the tab bar
+ * it rides it (`.rides-tab-bar`): when the bar slides away on a scroll down,
+ * this drops into the room it left rather than hanging over an empty strip.
  */
 import type { ReactNode } from "react";
 import { useFloatingBar } from "@/hooks/useFloatingBar";
@@ -33,7 +35,7 @@ export function PhoneActionBar({ shown, label, overTabBar = true, children }: {
       aria-label={label}
       aria-hidden={!shown}
       inert={!shown}
-      className={`fixed inset-x-3 z-30 rounded-2xl border border-[#e6e9ef] bg-white p-2 shadow-[0_10px_30px_rgba(10,40,90,.18)] transition-[opacity,translate] duration-200 lg:hidden ${overTabBar ? "bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)]" : "bottom-[max(0.75rem,env(safe-area-inset-bottom))]"} ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
+      className={`fixed inset-x-3 z-30 rounded-2xl border border-[#e6e9ef] bg-white p-2 shadow-[0_10px_30px_rgba(10,40,90,.18)] lg:hidden ${overTabBar ? "rides-tab-bar bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.5rem)]" : "transition-[opacity,translate] duration-200 bottom-[max(0.75rem,env(safe-area-inset-bottom))]"} ${shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
     >
       {children}
     </div>

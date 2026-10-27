@@ -35,6 +35,12 @@
  * fades where it is, and it fades in rather than slides when one is reached
  * again, since a slide from a tab nobody was on describes no move. The word
  * and icon follow the pill; `aria-current` follows the address.
+ *
+ * **It slides out of the way on a scroll down and back on a scroll up**, on
+ * the owner's word — once the shopper has gone down a little, never on the
+ * first pixel (`tabBarScroll.ts` is the rule, `.tab-bar` in `index.css` the
+ * motion). It is an attribute on `<html>`, written by the listener directly,
+ * so a scroll never re-renders the bar; what floats over it follows it down.
  */
 import { PixelBadge } from "@/components/ui/PixelBadge";
 import { useCart } from "@/contexts/CartContext";
@@ -43,6 +49,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { ShoppingCart, UserRound } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { MAX_WAIT_MS } from "@/lib/readyNavigation";
+import { nextTabBar, SHOWN, type TabBarScroll } from "@/lib/tabBarScroll";
 import { Link, useLocation } from "wouter";
 
 /** A house, filled while it is the current tab — the picture's own mark. */
@@ -66,6 +73,31 @@ function CategoriesIcon() {
   );
 }
 
+/**
+ * Watches the page's scroll and says on `<html>` whether the bar is out of the
+ * way (`data-tab-bar="away"`). Started again on every page, so each new page
+ * opens with the bar showing and counts its own scroll from where it opened.
+ */
+function useTuckOnScroll(location: string) {
+  useEffect(() => {
+    const root = document.documentElement;
+    let state: TabBarScroll = { ...SHOWN, y: window.scrollY };
+    const onScroll = () => {
+      const next = nextTabBar(state, window.scrollY, { viewport: window.innerHeight, height: root.scrollHeight });
+      if (next.away !== state.away) {
+        if (next.away) root.setAttribute("data-tab-bar", "away");
+        else root.removeAttribute("data-tab-bar");
+      }
+      state = next;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      root.removeAttribute("data-tab-bar");
+    };
+  }, [location]);
+}
+
 type Tab = {
   key: string;
   label: string;
@@ -83,6 +115,7 @@ export function MobileTabBar() {
   const [pressed, setPressed] = useState<string | null>(null);
   /* The same counts the header's account menu reads, so the two agree. */
   const signals = useAccountSignals();
+  useTuckOnScroll(location);
 
   /* The address has moved: the page decides from here. A move that never
      happens (Back while it waited) gives the pill back after the wait. */
@@ -147,7 +180,7 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label={t("nav.mobile")}
-      className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-4 rounded-full border border-black/[.12] p-[5px] shadow-[0_8px_28px_rgba(10,40,90,.12),0_1px_3px_rgba(10,40,90,.06)] lg:hidden"
+      className="tab-bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-4 rounded-full border border-black/[.12] p-[5px] shadow-[0_8px_28px_rgba(10,40,90,.12),0_1px_3px_rgba(10,40,90,.06)] lg:hidden"
     >
       {/* The header's glass, behind the tabs and inside the bar's corners. */}
       <span aria-hidden className="glass-bar-surface glass-bar-round">

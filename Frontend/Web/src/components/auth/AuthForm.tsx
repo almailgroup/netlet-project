@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { pressHaptic } from "@/lib/haptics";
 import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
 import { suggestEmail } from "@shared/auth/emailTypo";
@@ -353,12 +354,17 @@ export function AuthForm({
         </button>
       ) : null}
 
+      {isReset ? null : <ModeSwitch mode={mode} onChoose={go} />}
+
       {isRegister ? <Steps step={1} /> : null}
 
-      <Heading id={headingId} className="text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
+      {/* On a phone the switch above says where the shopper is, so the heading
+          saying it again in 26px is for a screen reader alone there; the
+          line under it leads. A wide screen has the room for both. */}
+      <Heading id={headingId} className={`text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px] ${isReset ? "" : "max-sm:sr-only"}`}>
         {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
       </Heading>
-      <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">
+      <p className={`text-[15px] leading-6 text-[#536b8c] ${isReset ? "mt-2" : "sm:mt-2"}`}>
         {t(isReset ? "auth.resetNote" : isRegister ? "auth.createNote" : "auth.signInNote")}
       </p>
 
@@ -541,27 +547,47 @@ export function AuthForm({
         ) : null}
       </form>
 
-      {!isReset ? (
-        <div className="mt-7">
-          <div className="flex items-center gap-3 text-[13px] text-[#536b8c]">
-            <span className="h-px flex-1 bg-[#e3e7ee]" aria-hidden />
-            <span>{t(isRegister ? "auth.haveAccount" : "auth.newHere")}</span>
-            <span className="h-px flex-1 bg-[#e3e7ee]" aria-hidden />
-          </div>
-          <button
-            type="button"
-            onClick={() => go(isRegister ? "signin" : "register")}
-            className="mt-4 flex h-12 w-full items-center justify-center rounded-xl border border-[#c9d4e2] bg-white px-5 text-[15px] font-bold text-[#0a285a] hover:border-[#0a285a] hover:bg-[#f0f2f5]"
-          >
-            {t(isRegister ? "header.signIn" : "auth.createCta")}
-          </button>
-        </div>
-      ) : null}
-
       <p className="mt-7 flex items-start gap-2 text-[12px] leading-5 text-[#536b8c]">
         <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
         {t("auth.secureNote")}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Sign in or create an account, as two halves of one switch at the top of the
+ * form — the way a phone's own apps open on it, and one press either way. It
+ * replaced "New to NetLet? Create a NetLet account" at the form's foot, which
+ * on a phone was two screens under the box somebody had just landed in. The
+ * one chosen is white on the grey track; pressing it again does nothing.
+ */
+function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthMode) => void }) {
+  const { t } = useTranslation();
+  const choices = [
+    { mode: "signin", label: t("header.signIn") },
+    { mode: "register", label: t("auth.modeRegister") },
+  ] as const;
+  return (
+    <div role="group" aria-label={t("auth.modeSwitch")} className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef0f4] p-1">
+      {choices.map(choice => {
+        const on = mode === choice.mode;
+        return (
+          <button
+            key={choice.mode}
+            type="button"
+            aria-pressed={on}
+            onClick={() => { if (!on) { pressHaptic(); onChoose(choice.mode); } }}
+            className={`flex h-11 min-w-0 items-center justify-center rounded-xl px-3 text-[15px] transition-[background-color,box-shadow,color] duration-200 ${
+              on
+                ? "bg-white font-bold text-[#0a285a] shadow-[0_1px_3px_rgba(10,40,90,.12),0_4px_12px_rgba(10,40,90,.06)]"
+                : "font-semibold text-[#3d5170] hover:bg-[#0a285a]/[.06]"
+            }`}
+          >
+            <span className="truncate">{choice.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

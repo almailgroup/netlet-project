@@ -160,6 +160,27 @@ corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
 clip, which Safari has not always applied to a backdrop filter; it reaches past
 them only for the warp, under a fine pointer, which no phone has.
 
+**It slides out of the way on a scroll down, and back on a scroll up — on the
+owner's word, and never on the first pixel.** `lib/tabBarScroll.ts` is the
+rule, pure: the distance travelled in one direction, reset when the direction
+turns, so 64px down (`TUCK_AFTER`) sends it away and 12px up (`SHOW_AFTER`)
+brings it back, and a bounce either way does nothing; it is always there within
+96px of the top (`TOP_ZONE`) and at the page's foot, where the page has kept
+its room; a single move longer than a screen is a jump (Back restoring a
+position, the logo going to the top) and shows it. `MobileTabBar` follows the
+scroll and writes `data-tab-bar="away"` on `<html>`, so a scroll re-renders
+nothing, and starts afresh on every page. `.tab-bar` moves it by a transform
+alone, 380ms on the sheets' curve — an opacity would make the bar a backdrop
+root and drain its glass to white for as long as the fade ran — keeps it up
+while focus is inside it, and is a cut under reduced motion. **What floats
+over it rides it down** into the room it left (`.rides-tab-bar`: a page's
+`PhoneActionBar` and a department's Filters button; and the assistant's
+button), so nothing hangs over an empty strip. Measured at 390 in both
+languages: still there 152px down from the top, away at 160, back after 15px
+up, there at the foot; the Filters button and the product page's buy bar land
+72px lower, where the bar was. The app follows the same numbers
+(`TabBarScroll.swift`, see "iOS app").
+
 **The search panel wears it too, on the owner's word** — see "The dropdown
 is liquid glass" under Chrome — with its words on white plates over it. On a
 phone it is not a second pane but the header's own glass grown down behind
@@ -366,6 +387,19 @@ NetLet's own street with the van being loaded, edge to edge across the panel's
 top because its edges are the panel's navy. It is picked up at build time by
 `import.meta.glob`, so replacing it is dropping in another file, and with none
 the panel is its words alone rather than an empty frame.
+
+**On a phone the page is a screen of its own, not a card on the page**, on the
+owner's word ("make the login and sign-up page better"): the street is a band
+across the top (its phone copy), and the form is a white panel rising over its
+foot with rounded corners — the shape a phone's own apps open on — reaching the
+screen's edges, where the card's margin had taken 40px from every box. The
+navy panel follows the form without its picture. **Signing in and creating an
+account are two halves of one switch at the top of the form** (`ModeSwitch`,
+in the dialog too), which replaced "New to NetLet? Create a NetLet account" at
+the form's foot, two screens under the box somebody had landed in on a phone;
+on a phone the 26px heading saying the switch's words again is `sr-only`, and
+the line under it leads. axe clean on `/signin`, `/signup` and a signed-out
+`/account` at 390 and 1440 in both languages, and in the dialog.
 
 **Create account proves the address before anything exists.** It is two steps,
 said as "Step 1 of 2": the details (and Google's box, below), then a six-digit
@@ -1175,7 +1209,8 @@ finger and its own photo is a link, so swallowed on the card alone the lift
 opened the product page from the preview — found by holding a card over CDP
 (`Input.dispatchTouchEvent`), not by reading. It listens only until just after
 the lift, because a browser that sends no click after a hold must not eat the
-shopper's next tap. The app's long press is iOS's own context-menu preview. On
+shopper's next tap. The app's hold opens its own preview sheet
+(`QuickViewSheet`, see "iOS app"). On
 Home it is fetched on first use rather than with the page. On a phone its Add
 and Buy stack, and a stacked button is never `flex-1`: a zero basis in a column
 of no fixed height shrank both to the height of their words.
@@ -5118,7 +5153,10 @@ across still fires, and `inset` pulls the bottom edge up by the tab bar
   time); once that row has gone up under the header, a round button in the
   end corner above the tab bar stands in for it, with the active filters'
   count as a pixel badge — at the edge it covers the end of one card's button
-  rather than the middle of two.
+  rather than the middle of two. **It never appeared until the tab bar's
+  round found it**: `useBeyondScreen` asked "above the screen?" of a row that
+  had only crossed the inset line under the header — still on screen — and the
+  observer never spoke again; it asks against the watched edge now.
 
 And the targets that were under a thumb's size are a thumb's size under a
 coarse pointer, keeping what they were under a mouse (`pointer-fine:`): the
@@ -5780,7 +5818,14 @@ darkens for a moment, as it does in any app. A
 press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
-`.toolbar(.hidden, for: .tabBar)`, the bare-header rule. The home page is `HomeShelf`, which is
+`.toolbar(.hidden, for: .tabBar)`, the bare-header rule. **It slides away on a
+scroll down and back on a scroll up**, on the owner's word, by the web's
+numbers (`TabBarScroll`, tested on `tabBarScroll.test.ts`'s cases): `ShopPage`
+follows its scroll — the system's reading from iOS 18, the content's frame on
+17 — in a box nothing observes, so only the bar's coming and going draws the
+page again, and hides the bar with `.toolbar(.hidden, for: .tabBar)` inside a
+smooth animation (a cut under Reduce Motion, never under VoiceOver, which
+reads the bar as the way round the app). Every page starts with it shown. The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked
@@ -5856,10 +5901,32 @@ TypeScript's own cases. **Saved reads its products by id**
 (`commerce.products.byIds`): it looked them up in the newest page, so anything
 older read as no longer available — the bug the web fixed under Wishlists.
 
+**Holding a product card opens a preview of it, on the owner's word**
+(`QuickViewSheet`, the app's alone — the web's phone has its own Quick View on
+a long press): a sheet over the page with the photographs to swipe, the store,
+the name, the rating and the price, the stock, the choice of size or colour,
+how many, Add to cart and Buy now, the heart and Share, and **Full product
+details**, which (like a press on the photo or the name) puts the sheet down
+and pushes the product's page where the card was. It is the product page's own
+model (`ProductDetailViewModel`, started on the card's copy with `start(with:)`
+and asked again behind it), so the two cannot answer differently. It replaced
+the system's context menu, whose preview could only be looked at. The hold is a
+`LongPressGesture` beside the card's own buttons, and **the card is drawn
+afresh the moment it is felt** (`.id` moves on), so the finger lifting off it
+presses nothing — under it is the photo's link, and the web learnt that the
+lift opens the product behind the preview. VoiceOver has it as an action on the
+card's name. `-NetLetOpen preview:<handle>` opens it for the screenshots.
+
+**Signing in is the web's phone design too**: NetLet's street as a band across
+the top of the Profile tab, the form a white panel rising over its foot with
+rounded corners, the same Sign in / Create account switch (the chosen half
+sliding white on the grey track), the step bar when creating an account, the
+password line, and the navy panel of what the account does edge to edge below.
+The heading the switch repeats is VoiceOver's, on the line under it. In a sheet
+there is no band; the sheet has its own title.
+
 **The requirement fixes are in the app too**: the Fraud watch desk, "Find
-similar" on the product photo, a long press on a card (iOS's own context-menu
-preview — the photo, the name and the price lifted over the page, with the
-product's page, Add to cart, Buy now, save and share beneath it), the size the
+similar" on the product photo, the hold on a card (below), the size the
 shopper's past purchases suggest (`SizeChart.fromPurchases`, tested on the
 TypeScript's own cases), the placement calendar (Arabic columns headed by the
 day's letter, `veryShortWeekdaySymbols`) and the model filing an import's
