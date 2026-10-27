@@ -1901,6 +1901,27 @@ DELETE FROM "notifications" WHERE "kind" IN ('seller_message', 'seller_shopper_m
 DROP TABLE IF EXISTS "conversation_messages" CASCADE;
 DROP TABLE IF EXISTS "conversations" CASCADE;
 
+-- ===== 0070_profile_details.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."gender" AS ENUM('male', 'female');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "customer_profiles" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"first_name" varchar(60),
+	"last_name" varchar(60),
+	"phone" varchar(16),
+	"gender" "gender",
+	"birthday" date,
+	"nationality" char(2),
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "customer_profiles_nationality_code" CHECK ("customer_profiles"."nationality" is null or "customer_profiles"."nationality" ~ '^[A-Z]{2}$')
+);
+DO $$ BEGIN
+  ALTER TABLE "customer_profiles" ADD CONSTRAINT "customer_profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1944,6 +1965,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  70 AS migrations_in_this_file,
+  71 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

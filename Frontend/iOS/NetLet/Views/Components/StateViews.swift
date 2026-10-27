@@ -204,6 +204,8 @@ struct FloatingField: View {
     var secure = false
     var leftToRight = false
     var disabled = false
+    /// Drawn before what is typed, on the same line — the `+965` before a number.
+    var prefix: String?
 
     @State private var revealed = false
     @FocusState private var focused: Bool
@@ -217,23 +219,31 @@ struct FloatingField: View {
                         .font(.inter(12, .medium))
                         .foregroundStyle(Brand.muted)
                         .lineLimit(1)
-                    Group {
-                        if secure && !revealed {
-                            SecureField(placeholder, text: $text)
-                        } else {
-                            TextField(placeholder, text: $text)
+                    HStack(spacing: 6) {
+                        if let prefix {
+                            Text(prefix)
+                                .font(.inter(16, .medium))
+                                .foregroundStyle(Brand.muted)
+                                .accessibilityHidden(true)
                         }
+                        Group {
+                            if secure && !revealed {
+                                SecureField(placeholder, text: $text)
+                            } else {
+                                TextField(placeholder, text: $text)
+                            }
+                        }
+                        .font(.inter(16, .medium))
+                        .foregroundStyle(disabled ? Brand.muted : Brand.ink)
+                        .textContentType(content)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(leftToRight || secure ? .never : .words)
+                        .autocorrectionDisabled(leftToRight || secure)
+                        .focused($focused)
+                        .disabled(disabled)
+                        .accessibilityLabel(prefix.map { "\(label), \($0)" } ?? label)
                     }
-                    .font(.inter(16, .medium))
-                    .foregroundStyle(disabled ? Brand.muted : Brand.ink)
-                    .textContentType(content)
-                    .keyboardType(keyboard)
-                    .textInputAutocapitalization(leftToRight || secure ? .never : .words)
-                    .autocorrectionDisabled(leftToRight || secure)
-                    .focused($focused)
-                    .disabled(disabled)
                     .environment(\.layoutDirection, leftToRight ? .leftToRight : l.layoutDirection)
-                    .accessibilityLabel(label)
                 }
                 if secure {
                     Button {

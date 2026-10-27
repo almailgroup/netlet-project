@@ -14,6 +14,9 @@ protocol AccountServicing: Sendable {
     func requestPasswordReset(email: String) async throws
     func signOut() async throws
     func updateName(_ name: String) async throws -> User
+    func updateNameParts(first: String, last: String) async throws -> User
+    func profileDetails() async throws -> ProfileDetails
+    func saveProfileDetails(_ patch: API.DetailsPatch) async throws -> ProfileDetails
     func changePassword(current: String, new: String) async throws
     func changeEmail(_ email: String, currentPassword: String) async throws -> User
     func profile() async throws -> Profile
@@ -61,6 +64,16 @@ struct AccountService: AccountServicing {
 
     func updateName(_ name: String) async throws -> User {
         try await client.call(API.updateName, .init(name: name))
+    }
+
+    func updateNameParts(first: String, last: String) async throws -> User {
+        try await client.call(API.updateNameParts, .init(firstName: first, lastName: last))
+    }
+
+    func profileDetails() async throws -> ProfileDetails { try await client.call(API.profileDetails) }
+
+    func saveProfileDetails(_ patch: API.DetailsPatch) async throws -> ProfileDetails {
+        try await client.call(API.saveProfileDetails, patch)
     }
 
     func changePassword(current: String, new: String) async throws {

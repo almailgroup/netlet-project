@@ -117,6 +117,28 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
 
     func signOut() async throws {}
     func updateName(_ name: String) async throws -> User { Self.user }
+
+    var details = ProfileDetails.none
+    var detailPatches: [API.DetailsPatch] = []
+    var nameParts: [(String, String)] = []
+
+    func updateNameParts(first: String, last: String) async throws -> User {
+        nameParts.append((first, last))
+        details.firstName = first
+        details.lastName = last
+        return Self.user
+    }
+
+    func profileDetails() async throws -> ProfileDetails { details }
+
+    func saveProfileDetails(_ patch: API.DetailsPatch) async throws -> ProfileDetails {
+        detailPatches.append(patch)
+        if let phone = patch.phone { details.phone = phone.value.flatMap(PhoneNumber.normalise) }
+        if let gender = patch.gender { details.gender = gender.value }
+        if let birthday = patch.birthday { details.birthday = birthday.value }
+        if let nationality = patch.nationality { details.nationality = nationality.value }
+        return details
+    }
     func changePassword(current: String, new: String) async throws {}
     func changeEmail(_ email: String, currentPassword: String) async throws -> User { Self.user }
     func profile() async throws -> Profile { Profile(locale: nil, deliveryZoneId: nil, cartId: nil) }

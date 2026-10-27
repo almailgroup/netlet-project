@@ -49,6 +49,8 @@ import { captchaSiteKey, checkCaptcha } from "../core/captcha.js";
 import { isCodeShaped, normaliseCode } from "../../../Shared/auth/emailCode.js";
 import { touchLastSignedIn } from "../services/db.js";
 import { loadUser, updateUserEmail, updateUserName } from "../services/profile.js";
+import { saveNameParts } from "../services/profileDetails.js";
+import { composeName, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../services/rateLimit.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
@@ -366,6 +368,26 @@ export const authRouter = router({
       // The store holds a display name too when it owns the account, and a
       // mirror that disagrees is the kind of drift nobody notices until a
       // reset email is addressed to the wrong name.
+      await setDisplayName(updated, name);
+      return toPublicUser(updated);
+    }),
+
+  /**
+   * The name as "Your profile" asks for it, a first and a last name (the
+   * owner's reference). The parts are kept, and the display name every other
+   * page reads is written from them, through the same two writes as
+   * `updateName`.
+   */
+  updateNameParts: protectedProcedure
+    .input(z.object({
+      firstName: z.string().trim().min(1, "profile.nameRequired").max(NAME_PART_MAX, "profile.nameTooLong"),
+      lastName: z.string().trim().min(1, "profile.nameRequired").max(NAME_PART_MAX, "profile.nameTooLong"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await saveNameParts(ctx.user.id, input.firstName, input.lastName);
+      const name = composeName(input.firstName, input.lastName);
+      const updated = await updateUserName(ctx.user.id, name);
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
       await setDisplayName(updated, name);
       return toPublicUser(updated);
     }),

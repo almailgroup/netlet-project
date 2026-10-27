@@ -425,3 +425,46 @@ final class ApprovedRoundRuleTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/commission"), .commission)
     }
 }
+
+/// "Your profile"'s rules — `Shared/commerce/profileDetails.ts`, on its own test's cases.
+final class ProfileRulesTests: XCTestCase {
+    func testADisplayNameIsOfferedBackAsAFirstWordAndTheRest() {
+        XCTAssertEqual(ProfileDetails.split("Noura Al-Sabah").first, "Noura")
+        XCTAssertEqual(ProfileDetails.split("Noura Al-Sabah").last, "Al-Sabah")
+        XCTAssertEqual(ProfileDetails.split("  Mohammed  Abdullah Al-Mutairi ").last, "Abdullah Al-Mutairi")
+        XCTAssertEqual(ProfileDetails.split("Fahad").last, "")
+        XCTAssertEqual(ProfileDetails.split(nil).first, "")
+    }
+
+    func testBothNamesAreNeededAndEachIsShort() {
+        XCTAssertEqual(Validation.nameProblem(first: "Noura", last: ""), "profile.nameRequired")
+        XCTAssertEqual(Validation.nameProblem(first: " ", last: "Al-Sabah"), "profile.nameRequired")
+        XCTAssertEqual(Validation.nameProblem(first: String(repeating: "N", count: 61), last: "Al-Sabah"), "profile.nameTooLong")
+        XCTAssertNil(Validation.nameProblem(first: "Noura", last: "Al-Sabah"))
+    }
+
+    func testAPhoneIsReadAsTheWishlistNumberIs() {
+        XCTAssertNil(Validation.profilePhoneProblem("٥٠١٢ ٣٤٥٦"))
+        XCTAssertNil(Validation.profilePhoneProblem(""), "an empty box clears it")
+        XCTAssertEqual(Validation.profilePhoneProblem("123"), "wishlist.phoneInvalid")
+    }
+
+    func testABirthdayIsARealDateNoLaterThanToday() {
+        XCTAssertNil(Validation.birthdayProblem("1990-05-17", today: "2026-10-27"))
+        XCTAssertNil(Validation.birthdayProblem("2026-10-27", today: "2026-10-27"))
+        XCTAssertEqual(Validation.birthdayProblem("2026-10-28", today: "2026-10-27"), "profile.birthdayInvalid")
+        XCTAssertEqual(Validation.birthdayProblem("1899-12-31", today: "2026-10-27"), "profile.birthdayInvalid")
+        XCTAssertEqual(Validation.birthdayProblem("2023-02-29", today: "2026-10-27"), "profile.birthdayInvalid")
+        XCTAssertNil(Validation.birthdayProblem("2024-02-29", today: "2026-10-27"))
+        XCTAssertEqual(Validation.birthdayProblem("17/05/1990", today: "2026-10-27"), "profile.birthdayInvalid")
+    }
+
+    func testEveryCountryIsKnownOnceAndHasAName() {
+        let rules = ReferenceData.shared.rules.profileRules
+        XCTAssertEqual(Set(rules.countries).count, rules.countries.count)
+        XCTAssertGreaterThan(rules.countries.count, 200, "the export reached the app, not the fallback")
+        XCTAssertTrue(rules.commonNationalities.allSatisfy(rules.countries.contains))
+        XCTAssertEqual(CountryNames.name("KW", language: .en), "Kuwait")
+        XCTAssertNotEqual(CountryNames.name("KW", language: .ar), "KW", "the phone names it in Arabic too")
+    }
+}

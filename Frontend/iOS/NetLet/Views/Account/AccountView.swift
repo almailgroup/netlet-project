@@ -590,80 +590,407 @@ struct ProfileView: View {
                 .padding(.bottom, 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .task { await model.load() }
         }
     }
 }
 
+/// "Your profile", drawn to the owner's reference (Noon's "Your profile") and
+/// card for card the web's `ProfileManager`: the name in two boxes side by
+/// side, the phone, the gender, the birthday and the nationality, then the two
+/// things somebody signs in with. Each card is its own decision — a gender or a
+/// country saves as it is pressed, the rest have a Save — because one Save
+/// across all of them would change a password somebody opened the page to
+/// correct a spelling in.
 private struct ProfileForm: View {
     @Bindable var model: ProfileViewModel
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @State private var choosingBirthday = false
+    @State private var listingCountries = false
 
     var body: some View {
         VStack(spacing: 16) {
-            section(.name, title: nil, note: "account.displayNameNote", done: "account.nameSaved") {
-                FloatingField(label: l.t("account.displayName"), text: $model.name, content: .name)
-            } save: {
-                if let user = await model.saveName() { app.session.updated(user) }
+            card(.name, title: nil, note: model.problems[.name] == nil ? "profile.nameNote" : nil, done: "account.nameSaved") {
+                HStack(alignment: .top, spacing: 12) {
+                    FloatingField(label: l.t("profile.firstName"), text: $model.firstName, required: true, content: .givenName)
+                    FloatingField(label: l.t("profile.lastName"), text: $model.lastName, required: true, content: .familyName)
+                }
+            } action: {
+                saveButton(.name, enabled: model.nameChanged) {
+                    if let user = await model.saveName() { app.session.updated(user) }
+                }
             }
-            section(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
+            card(.phone, title: "profile.phoneTitle", note: "profile.phoneNote", done: "profile.saved") {
+                FloatingField(label: l.t("profile.phoneLabel"), text: $model.phone, placeholder: l.t("wish.phonePlaceholder"),
+                              keyboard: .phonePad, content: .telephoneNumber, leftToRight: true, prefix: "+965")
+            } action: {
+                saveButton(.phone, enabled: model.phoneChanged) { await model.savePhone() }
+            }
+            card(.gender, title: "profile.genderTitle", note: "profile.genderNote", done: "profile.saved") {
+                HStack(spacing: 12) {
+                    ForEach(ProfileDetails.genders, id: \.self) { gender in
+                        genderTile(gender)
+                    }
+                }
+            } action: { EmptyView() }
+            card(.birthday, title: "profile.birthdayTitle", note: "profile.birthdayNote", done: "profile.saved") {
+                birthdayBox
+            } action: {
+                HStack(spacing: 12) {
+                    saveButton(.birthday, enabled: model.birthdayChanged) {
+                        await model.saveBirthday()
+                        if model.problems[.birthday] == nil { choosingBirthday = false }
+                    }
+                    if model.details.birthday != nil {
+                        Button(l.t("profile.birthdayRemove")) {
+                            choosingBirthday = false
+                            Task { await model.removeBirthday() }
+                        }
+                        .buttonStyle(.tap)
+                        .font(.inter(14, .bold))
+                        .foregroundStyle(Brand.danger)
+                        .frame(minHeight: 44)
+                        .disabled(model.saving != nil)
+                    }
+                }
+            }
+            card(.nationality, title: "profile.nationalityTitle", note: "profile.nationalityNote", done: "profile.saved") {
+                FlowLayout(spacing: 8) {
+                    ForEach(nationalityChips, id: \.self) { code in
+                        nationalityChip(code)
+                    }
+                    Button(l.t("profile.viewAll")) { listingCountries = true }
+                        .buttonStyle(.tap)
+                        .font(.inter(14, .bold))
+                        .foregroundStyle(Brand.accentInk)
+                        .underline()
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 44)
+                }
+            } action: { EmptyView() }
+            card(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
                 FloatingField(label: l.t("auth.email"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
                 FloatingField(label: l.t("account.currentPassword"), text: $model.emailPassword, content: .password, secure: true, leftToRight: true)
                 Text(l.t("account.currentPasswordWhy"))
                     .font(.inter(12))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
-            } save: {
-                if let user = await model.saveEmail() { app.session.updated(user) }
+            } action: {
+                saveButton(.email, enabled: true) {
+                    if let user = await model.saveEmail() { app.session.updated(user) }
+                }
             }
-            section(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
+            card(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
                 FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
                 FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
                 Text(l.t("auth.ruleLength"))
                     .font(.inter(12))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
-            } save: {
-                _ = await model.savePassword()
+            } action: {
+                saveButton(.password, enabled: true) { _ = await model.savePassword() }
+            }
+        }
+        .sheet(isPresented: $listingCountries) {
+            CountrySheet(chosen: model.details.nationality) { code in
+                listingCountries = false
+                if code != model.details.nationality { Task { await model.choose(nationality: code) } }
+            }
+            .buttonStyle(HapticDefaultStyle())
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// Kuwait and the nationalities most people living here hold, with the
+    /// account's own first when it is none of them.
+    private var nationalityChips: [String] {
+        var chips = ReferenceData.shared.rules.profileRules.commonNationalities
+        if let chosen = model.details.nationality, !chips.contains(chosen) { chips.insert(chosen, at: 0) }
+        return chips
+    }
+
+    private func genderTile(_ gender: String) -> some View {
+        let chosen = model.details.gender == gender
+        return Button {
+            Task { await model.choose(gender: gender) }
+        } label: {
+            HStack(spacing: 12) {
+                Text(l.t(gender == "male" ? "profile.male" : "profile.female"))
+                    .font(.inter(15, .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 0)
+                ZStack {
+                    Circle().strokeBorder(chosen ? Brand.navy : Brand.chevron, lineWidth: 2).frame(width: 20, height: 20)
+                    if chosen { Circle().fill(Brand.navy).frame(width: 10, height: 10) }
+                }
+                .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 1.5 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(PressFillStyle())
+        .disabled(model.saving != nil)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+
+    private func nationalityChip(_ code: String) -> some View {
+        let chosen = model.details.nationality == code
+        return Button {
+            Task { await model.toggle(nationality: code) }
+        } label: {
+            HStack(spacing: 6) {
+                if chosen { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).accessibilityHidden(true) }
+                Text(CountryNames.name(code, language: l.current))
+                    .font(.inter(14, .semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(chosen ? Color.white : Brand.navy)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .background(Capsule().fill(chosen ? Brand.navy : Color.white))
+            .overlay(Capsule().strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PressFillStyle(cornerRadius: 22))
+        .disabled(model.saving != nil)
+        .accessibilityAddTraits(chosen ? .isSelected : [])
+    }
+
+    /// The date in a box like the others, the label inside its rim; pressed,
+    /// a wheel opens under it to choose one, and nothing is saved until Save.
+    private var birthdayBox: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                if model.birthday.isEmpty { model.birthday = BirthdayDay.string(BirthdayDay.date("1995-01-01")) }
+                choosingBirthday.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(l.t("profile.birthdayLabel"))
+                            .font(.inter(12, .medium))
+                            .foregroundStyle(Brand.muted)
+                        Text(model.birthday.isEmpty ? l.t("ios.profile.chooseDate") : OrderWording.day(model.birthday, language: l.current))
+                            .font(.inter(16, .medium))
+                            .foregroundStyle(model.birthday.isEmpty ? Brand.muted : Brand.ink)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "calendar")
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityHidden(true)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(model.problems[.birthday] != nil ? Brand.danger : choosingBirthday ? Brand.navy : Brand.line,
+                                      lineWidth: model.problems[.birthday] != nil || choosingBirthday ? 1.5 : 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.tap)
+            .accessibilityHint(l.t("ios.profile.chooseDate"))
+            if choosingBirthday {
+                DatePicker(
+                    l.t("profile.birthdayLabel"),
+                    selection: Binding(
+                        get: { BirthdayDay.date(model.birthday.isEmpty ? "1995-01-01" : model.birthday) },
+                        set: { model.birthday = BirthdayDay.string($0) }
+                    ),
+                    in: BirthdayDay.date(ReferenceData.shared.rules.profileRules.earliestBirthday)...BirthdayDay.date(StoreRules.kuwaitDay(Date())),
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.wheel)
+                .labelsHidden()
+                .frame(maxWidth: .infinity)
+                .environment(\.locale, l.current.locale)
+                .environment(\.timeZone, BirthdayDay.zone)
+                .environment(\.calendar, Calendar(identifier: .gregorian))
             }
         }
     }
 
-    private func section<Fields: View>(
+    private func saveButton(_ form: ProfileViewModel.Form, enabled: Bool, _ save: @escaping () async -> Void) -> some View {
+        Button {
+            Task { await save() }
+        } label: {
+            if model.saving == form { ProgressView().tint(.white) } else { Text(l.t("account.saveChanges")) }
+        }
+        .buttonStyle(PrimaryButtonStyle())
+        .disabled(model.saving != nil || !enabled)
+    }
+
+    private func card<Fields: View, Action: View>(
         _ form: ProfileViewModel.Form,
         title: String?,
-        note: String,
+        note: String?,
         done: String,
         @ViewBuilder fields: () -> Fields,
-        save: @escaping () async -> Void
+        @ViewBuilder action: () -> Action
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let title {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(l.t(title)).font(.inter(17, .bold)).foregroundStyle(Brand.ink).accessibilityAddTraits(.isHeader)
-                    Text(l.t(note)).font(.inter(14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                    if let note {
+                        Text(l.t(note)).font(.inter(14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 .padding(.bottom, 2)
             }
             fields()
-            if title == nil {
+            if title == nil, let note {
                 Text(l.t(note)).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             }
             FieldProblem(key: model.problems[form])
             if model.saved == form {
                 Label(l.t(done), systemImage: "checkmark.circle").font(.inter(13, .semibold)).foregroundStyle(Brand.success)
             }
-            Button {
-                Task { await save() }
-            } label: {
-                if model.saving == form { ProgressView().tint(.white) } else { Text(l.t("account.saveChanges")) }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(model.saving != nil)
+            action()
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .panel()
+    }
+}
+
+/// A birthday as the server keeps it, `yyyy-mm-dd`, and as a date picker
+/// holds it — noon in Kuwait, so no time zone can move it a day.
+private enum BirthdayDay {
+    static let zone = TimeZone(identifier: "Asia/Kuwait")!
+
+    static func date(_ day: String) -> Date {
+        let reader = DateFormatter()
+        reader.calendar = Calendar(identifier: .gregorian)
+        reader.locale = Locale(identifier: "en_US_POSIX")
+        reader.timeZone = zone
+        reader.dateFormat = "yyyy-MM-dd HH:mm"
+        return reader.date(from: day + " 12:00") ?? Date()
+    }
+
+    static func string(_ date: Date) -> String { StoreRules.kuwaitDay(date) }
+}
+
+/// Every country by the phone's own name for it, in the page's language —
+/// the web's `Intl.DisplayNames` — so the list needs no words of its own.
+enum CountryNames {
+    static func name(_ code: String, language: Language) -> String {
+        language.locale.localizedString(forRegionCode: code) ?? code
+    }
+
+    struct Country: Identifiable, Hashable {
+        let code: String
+        let name: String
+        var id: String { code }
+    }
+
+    /// Every country a nationality can be, in that language's order.
+    static func all(language: Language) -> [Country] {
+        ReferenceData.shared.rules.profileRules.countries
+            .map { Country(code: $0, name: name($0, language: language)) }
+            .sorted { $0.name.compare($1.name, locale: language.locale) == .orderedAscending }
+    }
+}
+
+/// Every country, searchable — the web's `CountryList`, as a sheet.
+private struct CountrySheet: View {
+    let chosen: String?
+    let choose: (String?) -> Void
+    @State private var query = ""
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        let countries = CountryNames.all(language: l.current)
+        let folded = SearchRank.fold(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        let shown = folded.isEmpty ? countries : countries.filter { SearchRank.fold($0.name).contains(folded) }
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Text(l.t("profile.chooseNationality"))
+                    .font(.inter(18, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Brand.navy)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel(l.t("common.cancel"))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 20)
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(Brand.muted).accessibilityHidden(true)
+                TextField(l.t("profile.countrySearch"), text: $query)
+                    .font(.inter(16))
+                    .foregroundStyle(Brand.ink)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .accessibilityLabel(l.t("profile.countrySearch"))
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 48)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if chosen != nil, folded.isEmpty {
+                        Button(l.t("profile.nationalityRemove")) { choose(nil) }
+                            .buttonStyle(.tap)
+                            .font(.inter(15, .bold))
+                            .foregroundStyle(Brand.danger)
+                            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                            .padding(.horizontal, 12)
+                    }
+                    if shown.isEmpty {
+                        Text(l.t("profile.countryNone"))
+                            .font(.inter(14))
+                            .foregroundStyle(Brand.muted)
+                            .padding(.vertical, 24)
+                    }
+                    ForEach(shown) { country in
+                        Button {
+                            choose(country.code)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(country.name)
+                                    .font(.inter(15, country.code == chosen ? .bold : .regular))
+                                    .foregroundStyle(Brand.navy)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                if country.code == chosen {
+                                    Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(Brand.navy).accessibilityHidden(true)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 48)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressFillStyle(cornerRadius: 12))
+                        .accessibilityAddTraits(country.code == chosen ? .isSelected : [])
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Color(red: 1, green: 253 / 255, blue: 249 / 255).ignoresSafeArea())
+        .environment(\.layoutDirection, l.layoutDirection)
     }
 }
 

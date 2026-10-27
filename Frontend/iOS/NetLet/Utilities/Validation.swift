@@ -22,6 +22,44 @@ enum Validation {
         return nil
     }
 
+    // MARK: Your profile — `Shared/commerce/profileDetails.ts`
+
+    /// Why a first and last name cannot be saved (`nameProblem`), or nil.
+    static func nameProblem(first: String, last: String, max: Int? = nil) -> String? {
+        let max = max ?? ReferenceData.shared.rules.profileRules.namePartMax
+        let first = first.trimmingCharacters(in: .whitespacesAndNewlines)
+        let last = last.trimmingCharacters(in: .whitespacesAndNewlines)
+        if first.isEmpty || last.isEmpty { return "profile.nameRequired" }
+        if first.count > max || last.count > max { return "profile.nameTooLong" }
+        return nil
+    }
+
+    /// Why a typed phone cannot be the account's (`profilePhone`), or nil; an
+    /// empty box clears it.
+    static func profilePhoneProblem(_ raw: String) -> String? {
+        let typed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if typed.isEmpty { return nil }
+        return PhoneNumber.normalise(typed) == nil ? "wishlist.phoneInvalid" : nil
+    }
+
+    /// Why a birthday cannot be saved (`birthdayProblem`): a real `yyyy-mm-dd`
+    /// from the earliest the form takes to `today`, the Kuwaiti day.
+    static func birthdayProblem(_ value: String, today: String, earliest: String? = nil) -> String? {
+        let earliest = earliest ?? ReferenceData.shared.rules.profileRules.earliestBirthday
+        let pieces = value.split(separator: "-", omittingEmptySubsequences: false)
+        guard pieces.count == 3, pieces[0].count == 4, pieces[1].count == 2, pieces[2].count == 2,
+              let year = Int(pieces[0]), let month = Int(pieces[1]), let day = Int(pieces[2]),
+              (1...12).contains(month) else { return "profile.birthdayInvalid" }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)),
+              calendar.component(.day, from: date) == day, calendar.component(.month, from: date) == month else {
+            return "profile.birthdayInvalid"
+        }
+        if value < earliest || value > today { return "profile.birthdayInvalid" }
+        return nil
+    }
+
     /// Six digits, in either script.
     static func normaliseCode(_ code: String) -> String {
         PhoneNumber.foldDigits(code).filter { ("0"..."9").contains($0) }

@@ -84,6 +84,7 @@ import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Sh
 import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, MAX_CATEGORISE_ROWS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
 import { MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../../Shared/commerce/netletFulfilment.js";
 import { MAX_CLAIM_RESPONSE } from "../../../Shared/commerce/damageClaims.js";
+import { COMMON_NATIONALITIES, COUNTRY_CODES, EARLIEST_BIRTHDAY, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
 import {
   AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
 } from "../../../Shared/commerce/adBookings.js";
@@ -250,6 +251,14 @@ export function buildResources(): Record<string, string> {
         catalogPath: GATEWAY_ROUTES.catalog,
         maxNotes: MAX_NOTES,
         maxDraftImages: MAX_IMAGES,
+      },
+      /* "Your profile"'s details (`Shared/commerce/profileDetails.ts`): the
+         countries a nationality can be, the chips, and the limits. */
+      profile: {
+        countries: COUNTRY_CODES,
+        commonNationalities: COMMON_NATIONALITIES,
+        namePartMax: NAME_PART_MAX,
+        earliestBirthday: EARLIEST_BIRTHDAY,
       },
     }),
     /* `rankBySearch`'s folding and synonyms, for a search the app answers

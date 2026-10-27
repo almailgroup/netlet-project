@@ -1423,7 +1423,8 @@ the contact filter; what is kept, what stays on the device (recent searches,
 remembered measurements — the language and the area do not, being synced for
 an account), who else sees what (the stores and the carrier, Vercel, Supabase,
 Google's reCAPTCHA, the map chosen, a model provider for the assistants and
-photo search, the browser's own speech service), the one sign-in cookie, and
+photo search, the browser's own speech service), the profile's own details
+(kept on the account, never shown to a store), the one sign-in cookie, and
 asking through Help to close an account, since there is no button for it. A
 paragraph about a service the deployment does not run — the analytics tool —
 is drawn only when the build configures it, and so are two more: email
@@ -1626,12 +1627,36 @@ that page anyway.
 profile"): white cards whose boxes carry their label inside the rim, small and
 muted, with what is typed under it and a navy rim on focus — `FloatingField` on
 the web (`ProfileManager`) and in the app. The label never moves, so the
-sign-in form's rule against one that lifts as you type still holds. The name,
-the sign-in email and the password stay three cards with three Saves. The
-reference also asks for a first and a last name side by side, a phone, a
-gender, a birthday and a nationality; those need columns `users` does not
-have, so they wait on a migration the owner has been shown and not yet
-approved.
+sign-in form's rule against one that lifts as you type still holds.
+
+**And it holds what the reference holds, on the owner's word** (migration
+0070): a first and a last name side by side, a phone, a gender, a birthday and
+a nationality, each its own card — the phone and the birthday with a Save, a
+gender or a country saved as it is pressed and taken away by pressing it
+again, because one Save across them would change a password somebody opened
+the page to correct a spelling in. `Shared/commerce/profileDetails.ts` is the
+rule, pure (both names needed, 60 each; a Kuwaiti number, the wishlist's
+`normalisePhone`; a real date from 1900 to today's Kuwaiti day; one of
+`COUNTRY_CODES`), and `customer.details` and `auth.updateNameParts` refuse what
+it refuses. **The name is kept in its parts and `users.name` is written from
+them**, so every page that greets a shopper reads what it always did; an
+account with no parts yet is offered its display name split at the first space,
+a guess shown and never saved for it. The countries are named by the browser
+and the phone in the page's language (`Intl.DisplayNames`,
+`localizedString(forRegionCode:)`) — Kuwait and the seven nationalities most
+people living here hold as chips, "View all" the rest, searchable. **The phone
+is the one that does anything**: checkout starts with it as the driver's
+number where the address chosen has none. None of it is shown to a store, the
+cards say so, and the privacy policy lists it.
+
+**`customer_profiles` is a table of its own, not columns on `users`**, for the
+minutes between a deploy and the owner pasting the bootstrap: every `select`
+from `users` names all its columns, so one missing column would have failed
+every sign-in until the paste. A missing table instead reads as "nothing
+saved" (`detailsFor` catches `42P01` through the cause chain), saving the name
+still writes the display name, and only the new fields refuse
+(`error.serverProblem`). `profileDetails.test.ts` drops the table and checks
+all three.
 
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
@@ -5306,7 +5331,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, and is 769 KB (223 KB) now — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — and is 772 KB (224 KB) now, the profile's cards and their words — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -5652,7 +5677,14 @@ book as choices, add or manage, and a guest's governorates — over
 with checkout's own last-address key, so a choice here is where checkout
 starts. The Profile page is `AccountView`'s cards and rows, the dates at the
 foot of "Your profile" (`AccountIdentityCard`), under a round back button and
-the title and `FloatingField`s; the language is its switch row (and the
+the title and `FloatingField`s — the web's cards one for one: the name in two
+boxes, the phone with `+965` before it (`FloatingField`'s `prefix`), two
+gender tiles, the birthday as a box that opens a wheel (`BirthdayDay` keeps it
+at noon in Kuwait, so no time zone moves it a day), and the nationality's
+chips with "View all" as a searchable sheet (`CountrySheet`, the countries
+from `rules.json`'s `profile` block); the rules are `Validation`'s twins of
+`profileDetails.ts`, tested on its cases, and checkout's view model starts
+from the account's phone as the web's does. The language is its switch row (and the
 footer's), **each word whole on one line** — the switch is `fixedSize` and
 drops under its label (`ViewThatFits`) on a narrow screen or a large text
 size, where build 35 broke "English" into "Engl / ish". `ShopAssistantButton`

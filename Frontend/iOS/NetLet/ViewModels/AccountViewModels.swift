@@ -8,14 +8,25 @@ import Observation
 @MainActor
 final class ProfileViewModel {
     enum Form: Hashable {
-        case name, email, password
+        case name, phone, gender, birthday, nationality, email, password
     }
 
-    var name = ""
+    var firstName = ""
+    var lastName = ""
+    /// The phone as typed; `+965` is drawn before the box.
+    var phone = ""
+    /// The birthday being chosen, `yyyy-mm-dd`, or empty.
+    var birthday = ""
     var newEmail = ""
     var emailPassword = ""
     var currentPassword = ""
     var newPassword = ""
+
+    /// What the server holds, which the boxes are compared with.
+    private(set) var details = ProfileDetails.none
+    private(set) var loaded = false
+    private(set) var savedFirst = ""
+    private(set) var savedLast = ""
 
     private(set) var saving: Form?
     private(set) var problems: [Form: String] = [:]
@@ -26,12 +37,101 @@ final class ProfileViewModel {
 
     init(account: AccountServicing, user: User?) {
         self.account = account
-        name = user?.name ?? ""
+        let guess = ProfileDetails.split(user?.name)
+        firstName = guess.first
+        lastName = guess.last
+        savedFirst = guess.first
+        savedLast = guess.last
         newEmail = user?.email ?? ""
     }
 
+    /// The details, once; an account with no name parts keeps the split of its
+    /// display name as the starting guess, never saved for it.
+    func load() async {
+        guard !loaded, let answer = try? await account.profileDetails() else { return }
+        loaded = true
+        adopt(answer)
+        if answer.firstName?.isEmpty == false || answer.lastName?.isEmpty == false {
+            firstName = answer.firstName ?? ""
+            lastName = answer.lastName ?? ""
+            savedFirst = firstName
+            savedLast = lastName
+        }
+    }
+
+    var nameChanged: Bool {
+        firstName.trimmingCharacters(in: .whitespacesAndNewlines) != savedFirst.trimmingCharacters(in: .whitespacesAndNewlines)
+            || lastName.trimmingCharacters(in: .whitespacesAndNewlines) != savedLast.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var phoneChanged: Bool {
+        phone.trimmingCharacters(in: .whitespacesAndNewlines) != storedPhone
+    }
+
+    var birthdayChanged: Bool { birthday != (details.birthday ?? "") }
+
+    private var storedPhone: String { details.phone.map(PhoneNumber.display) ?? "" }
+
     func saveName() async -> User? {
-        await run(.name) { try await self.account.updateName(self.name.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        if let problem = Validation.nameProblem(first: firstName, last: lastName) {
+            problems[.name] = problem
+            return nil
+        }
+        let first = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let last = lastName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let user = await run(.name) { try await self.account.updateNameParts(first: first, last: last) }
+        if user != nil {
+            firstName = first
+            lastName = last
+            savedFirst = first
+            savedLast = last
+        }
+        return user
+    }
+
+    func savePhone() async {
+        if let problem = Validation.profilePhoneProblem(phone) {
+            problems[.phone] = problem
+            return
+        }
+        await save(.phone, API.DetailsPatch(phone: .text(phone)))
+    }
+
+    /// One press is the choice; pressing the chosen one again takes it away.
+    func choose(gender: String) async {
+        await save(.gender, API.DetailsPatch(gender: OrNull(details.gender == gender ? nil : gender)))
+    }
+
+    func saveBirthday() async {
+        if !birthday.isEmpty, let problem = Validation.birthdayProblem(birthday, today: StoreRules.kuwaitDay(Date())) {
+            problems[.birthday] = problem
+            return
+        }
+        await save(.birthday, API.DetailsPatch(birthday: OrNull(birthday.isEmpty ? nil : birthday)))
+    }
+
+    func removeBirthday() async {
+        birthday = ""
+        await save(.birthday, API.DetailsPatch(birthday: OrNull(nil)))
+    }
+
+    func choose(nationality code: String?) async {
+        await save(.nationality, API.DetailsPatch(nationality: OrNull(code)))
+    }
+
+    /// A chip pressed: chosen again, it is taken away.
+    func toggle(nationality code: String) async {
+        await choose(nationality: details.nationality == code ? nil : code)
+    }
+
+    private func save(_ form: Form, _ patch: API.DetailsPatch) async {
+        if let answer = await run(form, { try await self.account.saveProfileDetails(patch) }) { adopt(answer) }
+    }
+
+    private func adopt(_ answer: ProfileDetails) {
+        details = answer
+        phone = storedPhone
+        birthday = answer.birthday ?? ""
     }
 
     /// Email and password both ask again for the current password: an open

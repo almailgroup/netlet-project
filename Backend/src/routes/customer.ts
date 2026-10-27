@@ -23,6 +23,8 @@ import {
   updateAddress,
 } from "../services/addresses.js";
 import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../../Shared/commerce/addresses.js";
+import { detailsFor, ProfileDetailsError, saveDetails } from "../services/profileDetails.js";
+import { GENDERS } from "../../../Shared/commerce/profileDetails.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);
@@ -83,6 +85,30 @@ export const customerRouter = router({
       }
       return upsertCustomerProfile(ctx.user.id, input);
     }),
+  }),
+  /**
+   * "Your profile"'s optional details — phone, gender, birthday, nationality
+   * and the name's parts (`Shared/commerce/profileDetails.ts`). The name is
+   * saved through `auth.updateNameParts`, which writes the display name too.
+   * Each card saves only its own field; a null clears it.
+   */
+  details: router({
+    get: protectedProcedure.query(({ ctx }) => detailsFor(ctx.user.id)),
+    save: protectedProcedure
+      .input(z.object({
+        phone: z.string().max(32).nullable().optional(),
+        gender: z.enum(GENDERS).nullable().optional(),
+        birthday: z.string().max(10).nullable().optional(),
+        nationality: z.string().length(2).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        try {
+          return await saveDetails(ctx.user.id, input);
+        } catch (error) {
+          if (error instanceof ProfileDetailsError) throw new TRPCError({ code: "BAD_REQUEST", message: error.key });
+          throw error;
+        }
+      }),
   }),
   /**
    * Products the shopper asked to be told about.

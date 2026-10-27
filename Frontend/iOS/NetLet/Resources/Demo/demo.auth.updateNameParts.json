@@ -1,0 +1,24 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 2,
+        "email": "noura@shop.test",
+        "name": "Noura Al-Sabah",
+        "role": "user",
+        "createdAt": "2026-10-01T18:22:27.920Z",
+        "lastSignedIn": "2026-10-18T08:56:39.566Z"
+      },
+      "meta": {
+        "values": {
+          "createdAt": [
+            "Date"
+          ],
+          "lastSignedIn": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

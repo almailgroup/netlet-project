@@ -171,6 +171,21 @@ struct Rules: Decodable, Sendable {
         )
     }
 
+    /// "Your profile"'s details (`Shared/commerce/profileDetails.ts`).
+    struct ProfileLimits: Decodable, Sendable {
+        let countries: [String]
+        let commonNationalities: [String]
+        let namePartMax: Int
+        let earliestBirthday: String
+
+        static let fallback = ProfileLimits(
+            countries: ["KW", "IN", "EG", "BD", "PH", "PK", "SA", "SY"],
+            commonNationalities: ["KW", "IN", "EG", "BD", "PH", "PK", "SA", "SY"],
+            namePartMax: 60,
+            earliestBirthday: "1900-01-01"
+        )
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
@@ -183,6 +198,10 @@ struct Rules: Decodable, Sendable {
     let ai: AI?
     /// The floor on a password being set (`MIN_PASSWORD_LENGTH`), the server's own.
     var minPasswordLength: Int? = nil
+    var profile: ProfileLimits? = nil
+
+    /// The profile's rules, or the fallback when the export predates them.
+    var profileRules: ProfileLimits { profile ?? .fallback }
 
     /// The password floor, or the same number when the file predates it.
     var passwordFloor: Int { minPasswordLength ?? 8 }

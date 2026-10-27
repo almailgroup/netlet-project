@@ -69,6 +69,11 @@ final class CheckoutViewModel: AddressPartsEditing {
             if chosenAddress == nil, let pick = book.first(where: { $0.id == last }) ?? book.first {
                 use(pick)
             }
+            // The account's own phone, as the web's checkout does, where the
+            // address carries none.
+            if contactPhone.isEmpty, let phone = try? await account.profileDetails().phone {
+                contactPhone = PhoneNumber.display(phone)
+            }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled { addresses = .failed(failure) }

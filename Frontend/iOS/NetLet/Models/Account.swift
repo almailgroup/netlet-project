@@ -74,3 +74,31 @@ struct Acknowledged: Decodable, Sendable {
     init(from decoder: Decoder) throws {}
     init() {}
 }
+
+/// "Your profile"'s details beyond the sign-in email and the password
+/// (`customer.details.get`, `Shared/commerce/profileDetails.ts`). Everything
+/// is optional and none of it is shown to a store; the phone is what checkout
+/// starts with as the number the driver calls.
+struct ProfileDetails: Decodable, Equatable, Sendable {
+    var firstName: String?
+    var lastName: String?
+    /// Stored as `+965` and eight digits.
+    var phone: String?
+    /// `male` or `female`.
+    var gender: String?
+    /// `yyyy-mm-dd`.
+    var birthday: String?
+    /// An ISO 3166 country code.
+    var nationality: String?
+
+    static let none = ProfileDetails()
+
+    static let genders = ["male", "female"]
+
+    /// A display name as a first word and the rest — `splitName`, the starting
+    /// guess for an account with no parts yet, never saved by itself.
+    static func split(_ name: String?) -> (first: String, last: String) {
+        let words = (name ?? "").split(whereSeparator: \.isWhitespace).map(String.init)
+        return (words.first ?? "", words.dropFirst().joined(separator: " "))
+    }
+}

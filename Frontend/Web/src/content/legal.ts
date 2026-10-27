@@ -48,7 +48,7 @@ export const PRIVACY: LegalSection[] = [
   {
     id: "keep",
     title: "privacy.keep.title",
-    body: [{ key: "privacy.keep.account" }, { key: "privacy.keep.orders" }, { key: "privacy.keep.writing" }, { key: "privacy.keep.selling" }],
+    body: [{ key: "privacy.keep.account" }, { key: "privacy.keep.profile" }, { key: "privacy.keep.orders" }, { key: "privacy.keep.writing" }, { key: "privacy.keep.selling" }],
   },
   { id: "device", title: "privacy.device.title", body: [{ key: "privacy.device.body" }] },
   { id: "why", title: "privacy.why.title", body: [{ key: "privacy.why.orders" }, { key: "privacy.why.abuse" }, { key: "privacy.why.picked" }] },

@@ -292,7 +292,7 @@ describe("the health check, actually executed", () => {
     `);
     const rows = await report(db);
     expect(flagged(rows)).toEqual([
-      "fail Tables the code expects: 67 of 68",
+      "fail Tables the code expects: 68 of 69",
       "warn Published products hidden by their store: 1",
       "fail Shown products priced at zero: 1",
       "warn Shown products with no photo: 1",

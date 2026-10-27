@@ -41,6 +41,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { notificationKinds } from "../../Shared/customer.js";
+import { GENDERS } from "../../Shared/commerce/profileDetails.js";
 import { SELL_UNITS as sellUnits } from "../../Shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../../Shared/commerce/fulfilment.js";
 import type { SizeChart } from "../../Shared/commerce/sizeGuide.js";
@@ -63,6 +64,7 @@ export const supportStatus = pgEnum("support_status", SUPPORT_STATUSES);
 export const inboundStatus = pgEnum("inbound_status", INBOUND_STATUSES);
 export const subscriptionStatus = pgEnum("subscription_status", ["active", "paused", "cancelled"]);
 export const notificationKind = pgEnum("notification_kind", notificationKinds);
+export const gender = pgEnum("gender", GENDERS);
 
 /**
  * Shoppers, identified by email address.
@@ -188,6 +190,39 @@ export const customerPreferences = pgTable(
     uniqueIndex("customer_preferences_wishlist_phone_unique")
       .on(table.wishlistPhone)
       .where(sql`${table.wishlistPhone} is not null`),
+  ]
+);
+
+/*
+ * What "Your profile" holds beyond the sign-in email and the password
+ * (`Shared/commerce/profileDetails.ts`): the name in its parts, a phone,
+ * a gender, a birthday, a nationality. One row per shopper, made the first
+ * time one is saved.
+ *
+ * A table of its own rather than columns on `users`, so every read of
+ * `users` — sign-in, the session check, the portal's people — stays what it
+ * was, and the live site keeps working in the minutes between a deploy and
+ * the bootstrap being run. Every column is optional; `users.name` is still the
+ * display name, written from the two parts whenever they are saved.
+ */
+export const customerProfiles = pgTable(
+  "customer_profiles",
+  {
+    userId: integer("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    firstName: varchar("first_name", { length: 60 }),
+    lastName: varchar("last_name", { length: 60 }),
+    /** Stored as `normalisePhone` writes it (`+965…`); checkout starts with it. */
+    phone: varchar("phone", { length: 16 }),
+    gender: gender("gender"),
+    birthday: date("birthday", { mode: "string" }),
+    /** An ISO 3166-1 code from `COUNTRY_CODES`. */
+    nationality: char("nationality", { length: 2 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    check("customer_profiles_nationality_code", sql`${table.nationality} is null or ${table.nationality} ~ '^[A-Z]{2}$'`),
   ]
 );
 

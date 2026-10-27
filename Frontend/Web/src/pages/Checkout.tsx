@@ -25,7 +25,7 @@ import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { normalisePhone } from "@shared/commerce/wishlist";
+import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, settle } from "@shared/commerce/vouchers";
@@ -102,6 +102,10 @@ export default function Checkout() {
    * shopper unticks it.
    */
   const book = trpc.customer.addresses.list.useQuery(undefined, { enabled: isAuthenticated });
+  /* The number on "Your profile" is the driver's number to start from, when
+     the address chosen carries none of its own. */
+  const details = trpc.customer.details.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000 });
+  const accountPhone = details.data?.phone ? formatPhone(details.data.phone) : "";
   const [picked, setPicked] = useState<number | "new" | null>(null);
   const [saveForNext, setSaveForNext] = useState(true);
   const addAddress = trpc.customer.addresses.add.useMutation();
@@ -118,6 +122,10 @@ export default function Checkout() {
     if (address.governorate) setDeliveryZoneId(address.governorate);
     rememberAddress(address.id);
   };
+  useEffect(() => {
+    if (!accountPhone) return;
+    setForm(current => (current.contactPhone ? current : { ...current, contactPhone: accountPhone }));
+  }, [accountPhone, picked]);
   useEffect(() => {
     if (picked !== null || !book.data) return;
     /* The saved address used last on this device, so the next checkout starts there. */

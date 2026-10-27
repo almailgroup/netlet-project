@@ -238,6 +238,9 @@
                 "key": "privacy.keep.account"
               },
               {
+                "key": "privacy.keep.profile"
+              },
+              {
                 "key": "privacy.keep.orders"
               },
               {

@@ -1,0 +1,14 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "firstName": "Noura",
+        "lastName": "Al-Sabah",
+        "phone": "+96555001122",
+        "gender": "female",
+        "birthday": "1994-03-12",
+        "nationality": "KW"
+      }
+    }
+  }
+}

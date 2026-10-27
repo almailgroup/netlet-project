@@ -917,6 +917,9 @@ function resolve(path: string, rawInput: unknown): unknown {
     // Nobody is signed in to be waiting, so the demand line stays off.
     case "customer.follows.demand":
       return 0;
+    case "customer.details.get":
+    case "customer.details.save":
+      return { firstName: null, lastName: null, phone: null, gender: null, birthday: null, nationality: null };
     case "customer.profile.update":
     case "customer.saved.set":
     case "customer.notifications.set":
@@ -1048,6 +1051,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.vendors.create":
     case "inventory.vendors.updateProfile":
     case "auth.updateName":
+    case "auth.updateNameParts":
     case "auth.changeEmail":
     case "auth.changePassword":
     case "inventory.vendors.addNewMember":

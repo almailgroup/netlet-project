@@ -784,6 +784,21 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/couriers"), .couriers)
     }
 
+    /// "Your profile"'s details, as the server answered the demo shopper.
+    func testTheProfilesDetailsDecode() async throws {
+        let shopper = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "shopper"))
+        let details = try await shopper.call(API.profileDetails)
+        XCTAssertEqual(details.firstName, "Noura")
+        XCTAssertEqual(details.phone, "+96555001122")
+        XCTAssertEqual(details.nationality, "KW")
+        XCTAssertTrue(ReferenceData.shared.rules.profileRules.countries.contains(details.nationality ?? ""))
+        let saved = try await shopper.call(API.saveProfileDetails, .init(nationality: OrNull("KW")))
+        XCTAssertEqual(saved.gender, "female")
+        let named = try await shopper.call(API.updateNameParts, .init(firstName: "Noura", lastName: "Al-Sabah"))
+        XCTAssertEqual(named.name, "Noura Al-Sabah")
+        XCTAssertEqual(try TRPCClient.encodeInput(API.DetailsPatch()), #"{"json":{}}"#, "nothing set, nothing sent")
+    }
+
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {
         do {
             _ = try await client.call(API.changeEmail, .init(email: "a@b.co", currentPassword: "x"))

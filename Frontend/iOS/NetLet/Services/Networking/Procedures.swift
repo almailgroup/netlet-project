@@ -177,6 +177,25 @@ enum API {
     static let requestPasswordReset = Procedure<Email, Acknowledged>(mutation: "auth.requestPasswordReset")
     static let signOut = Procedure<NoInput, Acknowledged>(mutation: "auth.logout")
     static let updateName = Procedure<Name, User>(mutation: "auth.updateName")
+
+    struct NameParts: Encodable, Sendable {
+        let firstName: String
+        let lastName: String
+    }
+
+    /// Only the fields set are sent, and a null clears one — each card on
+    /// "Your profile" saves its own field.
+    struct DetailsPatch: Encodable, Sendable {
+        var phone: OrNull<String>?
+        var gender: OrNull<String>?
+        var birthday: OrNull<String>?
+        var nationality: OrNull<String>?
+    }
+
+    /// The name in its parts; the server writes the display name from them.
+    static let updateNameParts = Procedure<NameParts, User>(mutation: "auth.updateNameParts")
+    static let profileDetails = Procedure<NoInput, ProfileDetails>(query: "customer.details.get")
+    static let saveProfileDetails = Procedure<DetailsPatch, ProfileDetails>(mutation: "customer.details.save")
     static let changePassword = Procedure<ChangePassword, Acknowledged>(mutation: "auth.changePassword")
     static let changeEmail = Procedure<ChangeEmail, User>(mutation: "auth.changeEmail")
     static let profile = Procedure<NoInput, Profile>(query: "customer.profile.get")

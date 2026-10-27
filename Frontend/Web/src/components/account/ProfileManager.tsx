@@ -1,58 +1,32 @@
 /**
- * The shopper's own record: their name, and the two things they sign in with.
+ * "Your profile", drawn to the owner's reference (Noon's "Your profile"): the
+ * name as a first and a last name side by side, then the phone, the gender,
+ * the birthday and the nationality (`ProfileDetailCards`), then the two things
+ * somebody signs in with.
  *
- * Each is its own small form with its own Save, because they are three
- * different decisions and one Save across all of them would change a password
- * somebody only opened the panel to correct a spelling in.
- *
- * Each is also its own `SettingPanel`, a sibling of the next rather than a row
- * inside a card of its own — the page already names the section above them, so
- * a wrapper card would have repeated that heading and nested three cards in a
- * fourth for nothing.
+ * Each card is its own decision with its own Save — or, for a choice made in
+ * one press (a gender, a country), saved as it is pressed — because one Save
+ * across all of them would change a password somebody only opened the page to
+ * correct a spelling in.
  *
  * Email and password both ask for the current password again. A session left
  * open on a shared machine should not be enough to take an account over, and
  * moving the login address or the password is exactly what somebody doing that
  * would reach for. The server enforces it; this only asks.
  */
-import { SettingPanel } from "@/components/ui/SettingPanel";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword } from "@shared/auth/passwordStrength";
 import { PasswordChecklist } from "@/components/auth/AuthForm";
 import { isMessageKey } from "@shared/i18n/dictionary";
-import { AtSign, Check, Eye, EyeOff, KeyRound, LoaderCircle, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileDetails";
+import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
+import { FloatingField, ProfileCard, primary } from "@/components/account/profileParts";
+import { Check, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type PublicUser = { id: number; email: string; name: string | null; role: string };
-
-/*
- * A box with its label inside the rim, drawn to the owner's reference (Noon's
- * "Your profile"): the label small and muted at the top, what is typed under
- * it, a navy rim while it has focus. The label never moves — the sign-in
- * form's rule against one that lifts as you type — it only sits inside.
- */
-function FloatingField({ label, end, leftToRight = false, className = "", ...input }: {
-  label: string;
-  end?: ReactNode;
-  /** An email or a password types left to right on either page. */
-  leftToRight?: boolean;
-} & InputHTMLAttributes<HTMLInputElement>) {
-  const id = useId();
-  return (
-    <div className={`relative flex min-h-16 items-center gap-2 rounded-2xl border border-[#d5dfeb] bg-white px-4 py-2 transition focus-within:border-[#0a285a] focus-within:ring-2 focus-within:ring-[#0a285a]/15 ${className}`}>
-      <div className="min-w-0 flex-1">
-        <label htmlFor={id} className="block text-[12px] font-medium ink-muted">{label}</label>
-        <input id={id} {...input} dir={leftToRight ? "ltr" : input.dir} className="type-body mt-0.5 block w-full bg-transparent text-[16px] font-medium text-[#0a285a] outline-none placeholder:text-[#8a9ab3]" />
-      </div>
-      {end}
-    </div>
-  );
-}
-
-const primary =
-  "glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50";
 
 const secondary =
   "glass pressable inline-flex h-11 items-center rounded-xl border border-[#d5dfeb] px-4 text-xs font-extrabold text-[#0a285a]";
@@ -65,53 +39,80 @@ export function ProfileManager({ user }: { user: PublicUser }) {
   const refresh = () => void utils.auth.me.invalidate();
   const fail = (error: { message: string }) =>
     toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
+  const details = trpc.customer.details.get.useQuery();
 
   return (
     <div className="space-y-4">
-      <NameForm user={user} onSaved={refresh} onFail={fail} />
+      <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
+      <ProfileDetailCards details={details.data ?? null} onFail={fail} />
       <EmailForm user={user} onSaved={refresh} onFail={fail} />
       <PasswordForm onFail={fail} />
     </div>
   );
 }
 
-function NameForm({ user, onSaved, onFail }: {
+/**
+ * The first and last name, side by side. An account with no parts yet starts
+ * from its display name split at the first space — a guess shown for the
+ * shopper to correct ("Abdul Rahman" is one first name), never saved for them.
+ */
+function NameForm({ user, parts, onSaved, onFail }: {
   user: PublicUser;
+  parts: { first: string | null; last: string | null } | null;
   onSaved: () => void;
   onFail: (error: { message: string }) => void;
 }) {
   const { t } = useTranslation();
-  const [name, setName] = useState(user.name ?? "");
-  useEffect(() => { setName(user.name ?? ""); }, [user.name]);
+  const stored = parts?.first || parts?.last ? { first: parts.first ?? "", last: parts.last ?? "" } : splitName(user.name);
+  const [first, setFirst] = useState(stored.first);
+  const [last, setLast] = useState(stored.last);
+  const [saved, setSaved] = useState(stored);
+  const [tried, setTried] = useState(false);
+  /* Seeded once, when the stored parts arrive; after that the boxes are the
+     shopper's, so a refetch never puts a guessed split back over a name just
+     saved. */
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (seeded.current || parts === null) return;
+    seeded.current = true;
+    setFirst(stored.first);
+    setLast(stored.last);
+    setSaved(stored);
+  }, [parts, stored]);
 
-  const save = trpc.auth.updateName.useMutation({
-    onSuccess: () => { onSaved(); toast.success(t("account.nameSaved")); },
+  const save = trpc.auth.updateNameParts.useMutation({
+    onSuccess: () => { onSaved(); setTried(false); setSaved({ first: first.trim(), last: last.trim() }); toast.success(t("account.nameSaved")); },
     onError: onFail,
   });
 
-  const changed = name.trim() !== (user.name ?? "").trim();
+  const problem = nameProblem(first, last);
+  const changed = first.trim() !== saved.first.trim() || last.trim() !== saved.last.trim();
 
   return (
-    <SettingPanel
-      icon={<UserRound className="size-5" />}
-      title={t("account.displayName")}
-      note={t("account.displayNameNote")}
-    >
-      <div className="space-y-3">
-        <FloatingField
-          label={t("account.displayName")}
-          dir="auto"
-          autoComplete="name"
-          value={name}
-          placeholder={t("account.noName")}
-          onChange={event => setName(event.target.value)}
-        />
-        <button onClick={() => save.mutate({ name })} disabled={!changed || save.isPending} className={primary}>
+    <ProfileCard>
+      <form
+        noValidate
+        onSubmit={event => {
+          event.preventDefault();
+          setTried(true);
+          if (problem) return;
+          save.mutate({ firstName: first.trim(), lastName: last.trim() });
+        }}
+        className="space-y-3"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <FloatingField label={t("profile.firstName")} required dir="auto" autoComplete="given-name" maxLength={NAME_PART_MAX} value={first} onChange={event => setFirst(event.target.value)} aria-invalid={tried && !first.trim() ? true : undefined} />
+          <FloatingField label={t("profile.lastName")} required dir="auto" autoComplete="family-name" maxLength={NAME_PART_MAX} value={last} onChange={event => setLast(event.target.value)} aria-invalid={tried && !last.trim() ? true : undefined} />
+        </div>
+        {tried && problem ? <p role="alert" className="text-[13px] font-semibold text-[#8c2f22]">{t(problem as "profile.nameRequired")}</p> : (
+          <p className="text-[13px] leading-5 ink-muted">{t("profile.nameNote")}</p>
+        )}
+        <button type="submit" disabled={!changed || save.isPending} className={primary}>
           {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
           {t("account.saveChanges")}
         </button>
-      </div>
-    </SettingPanel>
+      </form>
+    </ProfileCard>
   );
 }
 
@@ -135,11 +136,7 @@ function EmailForm({ user, onSaved, onFail }: {
   });
 
   return (
-    <SettingPanel
-      icon={<AtSign className="size-5" />}
-      title={t("account.signInEmail")}
-      note={t("account.signInEmailNote")}
-    >
+    <ProfileCard title={t("account.signInEmail")} note={t("account.signInEmailNote")}>
       <div className="flex min-h-16 flex-col justify-center rounded-2xl border border-[#e6e9ef] bg-[#f8f9fb] px-4 py-2">
         <span className="block text-[12px] font-medium ink-muted">{t("auth.email")}</span>
         <span className="mt-0.5 block break-words text-[16px] font-medium text-[#0a285a]"><bdi dir="ltr">{user.email}</bdi></span>
@@ -182,7 +179,7 @@ function EmailForm({ user, onSaved, onFail }: {
           {t("account.changeEmail")}
         </button>
       )}
-    </SettingPanel>
+    </ProfileCard>
   );
 }
 
@@ -207,11 +204,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   const rulesId = useId();
 
   return (
-    <SettingPanel
-      icon={<KeyRound className="size-5" />}
-      title={t("account.password")}
-      note={t("account.passwordNote")}
-    >
+    <ProfileCard title={t("account.password")} note={t("account.passwordNote")}>
       {open ? (
         <div className="space-y-2.5">
           <FloatingField
@@ -263,6 +256,6 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           {t("account.changePassword")}
         </button>
       )}
-    </SettingPanel>
+    </ProfileCard>
   );
 }

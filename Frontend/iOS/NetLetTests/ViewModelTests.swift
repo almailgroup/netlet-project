@@ -258,3 +258,81 @@ final class DeliveryRuleTests: XCTestCase {
         XCTAssertNil(DeliveryModel.addressInUse(book, lastUsed: 8, zone: "jahra"))
     }
 }
+
+@MainActor
+final class ProfileViewModelTests: XCTestCase {
+    func testAnAccountWithNoPartsStartsFromItsDisplayNameSplit() async {
+        let model = ProfileViewModel(account: FakeAccountService(), user: FakeAccountService.user)
+        await model.load()
+        XCTAssertEqual(model.firstName, ProfileDetails.split(FakeAccountService.user.name).first)
+        XCTAssertFalse(model.nameChanged, "a guess shown is not a change")
+    }
+
+    func testStoredPartsAndDetailsFillTheCards() async {
+        let account = FakeAccountService()
+        account.details = ProfileDetails(firstName: "Abdul Rahman", lastName: "Al-Ali", phone: "+96555001122", gender: "male", birthday: "1990-05-17", nationality: "KW")
+        let model = ProfileViewModel(account: account, user: FakeAccountService.user)
+        await model.load()
+        XCTAssertEqual(model.firstName, "Abdul Rahman")
+        XCTAssertEqual(model.lastName, "Al-Ali")
+        XCTAssertEqual(model.phone, "5500 1122")
+        XCTAssertEqual(model.birthday, "1990-05-17")
+        XCTAssertFalse(model.phoneChanged)
+    }
+
+    func testTheNameNeedsBothPartsBeforeAnythingIsSent() async {
+        let account = FakeAccountService()
+        let model = ProfileViewModel(account: account, user: FakeAccountService.user)
+        model.firstName = "Noura"
+        model.lastName = "  "
+        let user = await model.saveName()
+        XCTAssertNil(user)
+        XCTAssertEqual(model.problems[.name], "profile.nameRequired")
+        XCTAssertTrue(account.nameParts.isEmpty)
+        model.lastName = " Al-Sabah "
+        _ = await model.saveName()
+        XCTAssertEqual(account.nameParts.last?.1, "Al-Sabah")
+        XCTAssertFalse(model.nameChanged)
+    }
+
+    func testEachCardSendsOnlyItsOwnField() async throws {
+        let account = FakeAccountService()
+        let model = ProfileViewModel(account: account, user: FakeAccountService.user)
+        await model.load()
+        await model.choose(gender: "female")
+        XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":"female"}}"#)
+        await model.choose(gender: "female")
+        XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":null}}"#, "the chosen one pressed again takes it away")
+        await model.toggle(nationality: "KW")
+        XCTAssertEqual(model.details.nationality, "KW")
+        await model.toggle(nationality: "KW")
+        XCTAssertNil(model.details.nationality)
+    }
+
+    func testAPhoneThatIsNotKuwaitiIsSaidRatherThanSent() async {
+        let account = FakeAccountService()
+        let model = ProfileViewModel(account: account, user: FakeAccountService.user)
+        model.phone = "123"
+        await model.savePhone()
+        XCTAssertEqual(model.problems[.phone], "wishlist.phoneInvalid")
+        XCTAssertTrue(account.detailPatches.isEmpty)
+        model.phone = "٥٥٠٠ ١١٢٢"
+        await model.savePhone()
+        XCTAssertEqual(model.details.phone, "+96555001122")
+        XCTAssertEqual(model.phone, "5500 1122")
+    }
+
+    func testCheckoutStartsWithTheAccountsPhoneWhereTheAddressHasNone() async {
+        let account = FakeAccountService()
+        account.details.phone = "+96555001122"
+        account.book = [SavedAddress(id: 1, label: "Office", contactName: nil, contactPhone: nil, governorate: "capital", addressLine: nil, addressNotes: nil, parts: nil)]
+        let model = CheckoutViewModel(orders: FakeOrderService(), account: account, defaults: isolatedDefaults())
+        await model.load(user: FakeAccountService.user)
+        XCTAssertEqual(model.contactPhone, "5500 1122")
+
+        account.book = [SavedAddress(id: 2, label: "Home", contactName: nil, contactPhone: "50000000", governorate: "hawalli", addressLine: nil, addressNotes: nil, parts: nil)]
+        let other = CheckoutViewModel(orders: FakeOrderService(), account: account, defaults: isolatedDefaults())
+        await other.load(user: FakeAccountService.user)
+        XCTAssertEqual(other.contactPhone, "50000000", "the address's own number wins")
+    }
+}
