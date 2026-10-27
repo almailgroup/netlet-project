@@ -86,7 +86,7 @@ struct CartView: View {
             }
             if let groups {
                 ForEach(groups) { group in
-                    StoreCard(group: group, path: $path)
+                    CartStoreCard(group: group, path: $path)
                 }
             } else {
                 VStack(spacing: 0) {
@@ -220,7 +220,7 @@ private struct CartTopBar: View {
 /// One store's part of the bag: its name, which opens its page, its parcels —
 /// what each costs, free in green, and how far to free delivery — then its
 /// lines (`bagGroups` on the web).
-private struct StoreCard: View {
+private struct CartStoreCard: View {
     let group: BagGroup
     @Binding var path: NavigationPath
     @Environment(AppModel.self) private var app
