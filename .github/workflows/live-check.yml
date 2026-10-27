@@ -1,0 +1,60 @@
+# What the live shop answers, read from outside: the catalogue the app and the
+# web both draw, its shelves, and whether each product's first photo loads.
+#
+# Run by hand (Actions → Live check → Run workflow) when the app or the site
+# shows something odd and the question is whether the server or the client is
+# at fault. It only reads public procedures and changes nothing.
+name: Live check
+
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: The shop's address
+        default: https://netlet-project.vercel.app
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: ${{ inputs.base }}
+    steps:
+      - name: Health
+        run: |
+          curl -sS -m 30 "$BASE/healthz"; echo
+          curl -sS -m 30 "$BASE/readyz"; echo
+
+      - name: The catalogue, as the app asks for it
+        run: |
+          for locale in en ar; do
+            input=$(printf '{"json":{"first":24,"locale":"%s"}}' "$locale" | jq -sRr @uri)
+            curl -sS -m 60 -o "catalogue-$locale.json" -w "commerce.products.list ($locale): HTTP %{http_code}, %{size_download} bytes, %{time_total}s\n" \
+              "$BASE/api/trpc/commerce.products.list?input=$input"
+          done
+          jq -r '.error // empty' catalogue-en.json
+          echo "Products: $(jq '.result.data.json | length' catalogue-en.json)"
+          jq -r '.result.data.json[] | [.id, .handle, (.productType // "-"), (.variants | length | tostring) + " variants",
+            (if any(.variants[]; .compareAtPrice != null) then "on offer" else "-" end), (.images | length | tostring) + " photos",
+            (.images[0].url // "no photo")] | @tsv' catalogue-en.json
+
+      - name: The other shelves
+        run: |
+          for procedure in commerce.bestsellers commerce.departmentCounts commerce.stores commerce.brands; do
+            input=$(printf '{"json":{"locale":"en"}}' | jq -sRr @uri)
+            body=$(curl -sS -m 60 "$BASE/api/trpc/$procedure?input=$input")
+            echo "$procedure: $(echo "$body" | jq -c '.error.json.message // (.result.data.json | if type == "array" then "\(length) rows" else . end)')"
+          done
+
+      - name: Does each product's first photo load
+        run: |
+          jq -r '.result.data.json[] | .images[0].url // empty' catalogue-en.json | while read -r photo; do
+            case "$photo" in
+              /*) address="$BASE$photo" ;;
+              *) address="$photo" ;;
+            esac
+            curl -sS -m 30 -o /dev/null -L -w "%{http_code}  %{content_type}  %{size_download} bytes  $address\n" "$address" || echo "failed  $address"
+          done
