@@ -115,6 +115,11 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(past.isEmpty)
         let similar = try await client.call(API.findSimilar, .init(productId: "10", locale: "en"))
         XCTAssertEqual(similar.route, .department(slug: "style"))
+        // The second round: fraud alerts per desk, and whether tracking asks Apple.
+        let alerts = try await client.call(API.fraudUnseen)
+        XCTAssertEqual(alerts.orders + alerts.watch, 3)
+        let maps = try await client.call(API.mapAvailability)
+        XCTAssertEqual(maps.drivingTimes, false)
     }
 
     /// The approved round (A–H): the commission desk and its proposals, a

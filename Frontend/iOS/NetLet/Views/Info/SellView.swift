@@ -73,9 +73,10 @@ final class ApplicationModel {
     var agreementVersion: String { rules?.agreementVersion ?? "" }
     var standardRate: String { rules.map { Self.trimmedRate($0.defaultCommission) } ?? "10" }
 
-    /// The application's state: none, draft, submitted, approved or rejected.
+    /// The application's state: none, draft, submitted, more_needed (NetLet
+    /// asked for more and handed it back), approved or rejected.
     var state: String { application.value??.status ?? "none" }
-    var editable: Bool { ["none", "draft", "rejected"].contains(state) }
+    var editable: Bool { ["none", "draft", "rejected", "more_needed"].contains(state) }
     /// The link boxes are only for an application that gave links before uploads existed.
     var linkedEarlier: (licence: Bool, identity: Bool) {
         (application.value??.licenceDocUrl?.isEmpty == false, application.value??.identityDocUrl?.isEmpty == false)
@@ -342,6 +343,17 @@ private struct ApplicationForm: View {
                 .font(.inter(14, .semibold))
                 .foregroundStyle(Brand.danger)
                 .card()
+        case "more_needed":
+            // NetLet's note, in the reviewer's words, and what to do about it.
+            VStack(alignment: .leading, spacing: 6) {
+                Label(l.t("sell.moreNeeded"), systemImage: "doc.badge.plus").font(.inter(14, .semibold)).foregroundStyle(Brand.accentInk)
+                if let note = model.application.value??.rejectionReason, !note.isEmpty {
+                    Text(note).font(.inter(14)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
+                }
+                Text(l.t("sell.moreNeededHint")).font(.inter(13)).foregroundStyle(Brand.body)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .card()
         default:
             EmptyView()
         }

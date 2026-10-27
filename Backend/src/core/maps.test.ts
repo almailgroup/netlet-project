@@ -23,13 +23,13 @@ describe("which maps are offered", () => {
     vi.stubEnv("GOOGLE_MAPS_API_KEY", "");
     vi.stubEnv("APPLE_MAPKIT_TOKEN", "");
     vi.stubEnv("APPLE_MAPKIT_TEAM_ID", "");
-    expect((await load()).mapProviders()).toEqual({ google: null, apple: false });
+    expect((await load()).mapProviders()).toEqual({ google: null, apple: false, drivingTimes: false });
   });
 
   it("hands the browser Google's key, and only says whether Apple's map is on", async () => {
     vi.stubEnv("GOOGLE_MAPS_API_KEY", "browser-key");
     vi.stubEnv("APPLE_MAPKIT_TOKEN", "ready-made");
-    expect((await load()).mapProviders()).toEqual({ google: "browser-key", apple: true });
+    expect((await load()).mapProviders()).toEqual({ google: "browser-key", apple: true, drivingTimes: false });
   });
 
   it("needs all three signing values before Apple's map counts as set up", async () => {

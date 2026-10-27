@@ -5,9 +5,10 @@
  * the estimate move; it stops when the order is closed or the tab is hidden,
  * because React Query does not refetch an unmounted or background query.
  *
- * Every answer is said in words as well as drawn: the band, when the position
- * was reported, and — when there is no position — that the driver is not
- * sharing, rather than an empty map that reads as broken.
+ * Every answer is said in words as well as drawn: the band and where it came
+ * from (Apple's driving time, or the distance), when the position was
+ * reported, and — when there is no position — that the driver is not sharing,
+ * rather than an empty map that reads as broken.
  */
 import { Truck } from "lucide-react";
 import { TrackMap } from "@/components/map/TrackMap";
@@ -47,7 +48,7 @@ export function TrackParcels({ reference }: { reference: string }) {
                 </p>
                 <p className="mt-0.5 ink-muted">
                   {minutesAgo !== null && minutesAgo < 1 ? t("tracking.updatedNow") : t("tracking.updated", { minutes: String(minutesAgo ?? 0) })}
-                  {parcel.eta?.kind === "band" ? <> · {t("tracking.estimate")}</> : null}
+                  {parcel.eta?.kind === "band" ? <> · {t(parcel.eta.source === "traffic" ? "tracking.estimateTraffic" : "tracking.estimate")}</> : null}
                 </p>
                 <div className="mt-3"><TrackMap driver={parcel.driver} door={parcel.door} /></div>
               </>

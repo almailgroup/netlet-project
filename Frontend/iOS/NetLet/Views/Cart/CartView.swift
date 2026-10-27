@@ -202,7 +202,10 @@ private struct SpeedChoice: View {
     var body: some View {
         HStack(spacing: 4) {
             option(fast: false, label: l.t("delivery.regular"))
-            option(fast: true, label: l.t("delivery.fastFor", ["fee": fast.fee.formatted(l.current)]))
+            // A member's fast trip is NetLet's to carry too (4.1), so it says free.
+            option(fast: true, label: app.cart.cart?.delivery.memberFree == true
+                ? l.t("delivery.fastFreeMember")
+                : l.t("delivery.fastFor", ["fee": fast.fee.formatted(l.current)]))
             if item.isFast, let speed = fast.speed, ListingRules.shared.deliverySpeeds.contains(speed) {
                 Text(l.t("speed.\(speed)")).font(.inter(11)).foregroundStyle(Brand.muted).padding(.horizontal, 4)
             }

@@ -71,6 +71,7 @@ import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
 import type { HeldClaim } from "../../../Shared/commerce/wishlist.js";
 import { tellLineCancelled, tellOrderMoved, tellOrderPlaced, withProductAlerts } from "./notifications.js";
+import { alertIfRiskyOrder, alertIfRiskyReferral } from "./fraud.js";
 import { isKept, type StillOwed } from "../../../Shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
 
@@ -873,6 +874,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     /* The receipt and each store's new-order bell, after the order exists and
        never in its way (`notifications.ts`). */
     await tellOrderPlaced(order, draft.lines.map(line => line.vendorId));
+    /* Fraud watch judges it now rather than when somebody opens the page, and a
+       high-risk order is a notice to the administrators (3.6.5). Never throws. */
+    await alertIfRiskyOrder(order.id);
 
     return {
       order,
@@ -1544,7 +1548,7 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
    * predicate above gives the payment gives the points too — and
    * `qualifyReferral` claims its row with a predicate of its own regardless.
    */
-  if (order.userId) await qualifyReferral(db, order.userId, orderId);
+  if (order.userId && await qualifyReferral(db, order.userId, orderId)) await alertIfRiskyReferral(order.userId);
   /* The product links' and the inviter's commissions (3.1.14), at the same
      moment, held until each line's return window has passed. */
   await affiliateQuietly(() => creditReferralCommissions(db, orderId), `credit the referral commissions for order ${orderId}`);

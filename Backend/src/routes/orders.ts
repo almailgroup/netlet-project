@@ -36,7 +36,7 @@ import { MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js"
 import { cancelReturn, requestReturn, returnsForShopperOrder, ReturnRefused } from "../services/returns.js";
 import { documentsForShopperOrder } from "../services/invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
-import { referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
+import { fraudUnseen, markFraudSeen, referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouchers.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
@@ -396,6 +396,14 @@ export const ordersRouter = router({
 
   /** The newest referrals, judged for one person inviting themselves (3.6.5). */
   referralWatch: protectedProcedure.query(async ({ ctx }) => guard(async () => referralWatch(await resolveActor(ctx.user)))),
+
+  /** Fraud alerts this administrator has not looked at (3.6.5) — the overview's tile. */
+  fraudUnseen: protectedProcedure.query(async ({ ctx }) => guard(async () => fraudUnseen(await resolveActor(ctx.user)))),
+
+  /** Opening a desk reads its alerts, so the tile counts work rather than history. */
+  fraudSeen: protectedProcedure
+    .input(z.object({ desk: z.enum(["orders", "watch"]) }))
+    .mutation(async ({ ctx, input }) => guard(async () => markFraudSeen(await resolveActor(ctx.user), input.desk))),
 
   /**
    * Move one line along (3.2.8).

@@ -52,7 +52,11 @@ import { chartProblem, cleanChart, type SizeChart } from "../../../Shared/commer
 /* The readable part of a handle, shared so the "Add a product" form's search
    preview shows the address the server will actually make. */
 import { handleBase } from "../../../Shared/inventory/productDraft.js";
-import { tellPastBuyers, withProductAlerts, withStoreAlerts, withVariantAlerts } from "./notifications.js";
+import { notifyStaff, tellPastBuyers, withProductAlerts, withStoreAlerts, withVariantAlerts } from "./notifications.js";
+import { modelReviewAvailable, modelScreen } from "./productReview.js";
+import { takeHourlyAllowance } from "./rateLimit.js";
+import { MAX_LISTING_SCREENS_PER_HOUR, reviewProduct as triageListing } from "../../../Shared/inventory/productReview.js";
+import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -1048,8 +1052,15 @@ export async function setProductStatus(
   productId: number,
   target: "draft" | "published" | "archived",
   reviewNote?: string,
+  options: { screen?: boolean } = {},
 ) {
-  const status = await withProductAlerts([productId], () => setProductStatusNow(actor, productId, target, reviewNote));
+  const status = await withProductAlerts([productId], async () => {
+    const asked = await setProductStatusNow(actor, productId, target, reviewNote);
+    /* A bulk publish is not screened: one model call after another for fifty
+       listings would outlast the request, and the listings wait for a person
+       instead — the safe side of the same rule. */
+    return asked === "pending_review" && options.screen !== false ? screenSubmission(actor, productId) : asked;
+  });
   if (status === "published") {
     const db = await getDb();
     const [row] = db ? await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1) : [];
@@ -1096,6 +1107,108 @@ async function setProductStatusNow(
     });
   }
   return status;
+}
+
+/**
+ * The review a submission gets before a person sees it (3.3.6: "the AI reviews
+ * it, and if it is approved it is published; if not, the admin is notified").
+ *
+ * The rule's checks run first (`reviewProduct` in
+ * `Shared/inventory/productReview.ts`), and a listing they flag waits without
+ * a model call being spent on it. A clean one is read by the model
+ * (`modelScreen`), which is asked only for a concern and never for a verdict.
+ * Neither finding anything puts the listing on the shelf, recorded on the trail
+ * as NetLet AI's approval for an administrator to take down; either finding
+ * something leaves it in the queue and tells the administrators.
+ *
+ * **Anything short of a clean answer waits for a person, as before**: no
+ * gateway, `ai` switched off, the account's hourly allowance spent, a model
+ * that did not answer, or the listing no longer in review by the time it did.
+ * Only the rule's flags and the model's concerns send a notice, because those
+ * are the listings a person has a reason to look at first; the queue counts
+ * the rest. The approval goes through the shelf's own doors again —
+ * `assertPriced`, `assertWarrantyStated` — and writes with `pending_review` in
+ * the predicate, so a seller withdrawing it or an administrator deciding it in
+ * the meantime wins.
+ */
+async function screenSubmission(actor: Actor, productId: number): Promise<"pending_review" | "published"> {
+  const db = await getDb();
+  if (!db || !(await modelReviewAvailable())) return "pending_review";
+
+  const [row] = await db
+    .select({
+      title: products.title,
+      description: products.description,
+      categoryId: products.categoryId,
+      category: categories.name,
+      vendorId: products.vendorId,
+      store: vendors.name,
+      storeAr: vendors.nameAr,
+    })
+    .from(products)
+    .innerJoin(vendors, eq(vendors.id, products.vendorId))
+    .leftJoin(categories, eq(categories.id, products.categoryId))
+    .where(and(eq(products.id, productId), eq(products.status, "pending_review")))
+    .limit(1);
+  if (!row) return "pending_review";
+
+  const [prices, images] = await Promise.all([
+    db.select({ price: productVariants.price }).from(productVariants).where(eq(productVariants.productId, productId)),
+    db.select({ id: productImages.id }).from(productImages).where(eq(productImages.productId, productId)),
+  ]);
+  const flags = triageListing({
+    title: row.title,
+    description: row.description,
+    categoryId: row.categoryId,
+    imageCount: images.length,
+    prices: prices.map(variant => variant.price),
+  });
+  /* Once a product a Kuwaiti day: a seller pressing Publish and Draft over a
+     flagged listing is one notice, not an inbox of them. */
+  const tellStaff = () => notifyStaff({
+    kind: "staff_listing_flagged",
+    params: { product: row.title, store: row.store, ...(row.storeAr ? { storeAr: row.storeAr } : {}) },
+    link: "/admin/review",
+    dedupe: `listing:${productId}:${kuwaitDay(new Date())}`,
+  });
+  if (flags.length) {
+    await tellStaff();
+    return "pending_review";
+  }
+  /* Only a reading the model is asked for counts against the hour. */
+  if (!(await takeHourlyAllowance(actor.userId, "listingScreen", MAX_LISTING_SCREENS_PER_HOUR))) return "pending_review";
+  const reading = await modelScreen({ title: row.title, description: row.description, category: row.category });
+  if (reading.flag) {
+    await tellStaff();
+    return "pending_review";
+  }
+  if (!reading.answered) return "pending_review";
+
+  try {
+    await assertPriced(db, productId);
+    await assertWarrantyStated(db, productId);
+  } catch {
+    return "pending_review";
+  }
+  const [published] = await db
+    .update(products)
+    .set({ status: "published", reviewNote: null })
+    .where(and(eq(products.id, productId), eq(products.status, "pending_review")))
+    .returning({ id: products.id });
+  if (!published) return "pending_review";
+
+  /* Nobody pressed this, so the row names no person: the act is the label,
+     and `automatic` says "by the system" where a person's address would be. */
+  await recordAudit({ id: null, email: null, role: null }, {
+    action: "product.autoApprove",
+    subjectType: "product",
+    subjectId: productId,
+    subjectLabel: row.title,
+    vendorId: row.vendorId,
+    before: { status: "pending_review" },
+    after: { status: "published", automatic: true },
+  });
+  return "published";
 }
 
 /** An admin's verdict on something waiting for review. */

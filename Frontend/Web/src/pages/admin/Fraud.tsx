@@ -6,7 +6,9 @@
  * shows the newest hundred of each with what was noticed and the counts behind
  * it. **Nothing here acts by itself**: a review is hidden by a person's press,
  * with a reason, and shown again the same way; a referral is something to look
- * at before its cash-out is paid.
+ * at before its cash-out is paid. A high-risk one is also a notice to every
+ * administrator as it happens (`alertIfRiskyReview`, `alertIfRiskyReferral`),
+ * and opening this page reads those.
  */
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +19,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useAlertsRead } from "@/hooks/useAlertsRead";
 import { trpc } from "@/lib/trpc";
 import type { ReferralSignal, ReviewSignal, RiskLevel } from "@shared/commerce/fraudSignals";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -44,6 +47,7 @@ export default function AdminFraud() {
 
 function FraudWatch() {
   const { t } = useTranslation();
+  useAlertsRead("watch");
   const [view, setView] = useState<"reviews" | "referrals">("reviews");
   const [onlyFlagged, setOnlyFlagged] = useState(true);
   return (

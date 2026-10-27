@@ -21,6 +21,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import { orderItems, orders, reviews } from "../../database/schema.js";
 import { getDb } from "./db.js";
+import { alertIfRiskyReview } from "./fraud.js";
 import { violatesUnique } from "../core/describeError.js";
 import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
 import {
@@ -133,6 +134,7 @@ export async function writeReview(
   });
   if (!verdict.allowed) throw new ReviewRefused(verdict.reason);
 
+  let reviewId: number;
   try {
     const [row] = await database
       .insert(reviews)
@@ -147,13 +149,17 @@ export async function writeReview(
         body: input.body?.trim() || null,
       })
       .returning({ id: reviews.id });
-    return row.id;
+    reviewId = row.id;
   } catch (error) {
     /* A double press, or two tabs: both read "not reviewed" and the index
        refuses the second, which is the same answer the read gives late. */
     if (violatesUnique(error, "reviews_order_item_unique")) throw new ReviewRefused("alreadyReviewed");
     throw error;
   }
+  /* Judged as it is written, and a high-risk one told to the administrators
+     (3.6.5) — after the review exists, never in its way. */
+  await alertIfRiskyReview(reviewId);
+  return reviewId;
 }
 
 /**

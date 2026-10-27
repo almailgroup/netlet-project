@@ -35,7 +35,7 @@ import {
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { GOVERNORATES, ibanReadAs, isValidIban } from "@shared/inventory/storeProfile";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowUpRight, CheckCircle2, Clock, LoaderCircle, Store, XCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle2, Clock, FilePlus2, LoaderCircle, Store, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
@@ -141,7 +141,7 @@ export default function Sell() {
 
   const state = mine.data?.status ?? "none";
   const linkedEarlier = { licence: Boolean(mine.data?.licenceDocUrl), identity: Boolean(mine.data?.identityDocUrl) };
-  const editable = state === "none" || state === "draft" || state === "rejected";
+  const editable = state === "none" || state === "draft" || state === "rejected" || state === "more_needed";
 
   const missing = missingFromApplication({
     ...form,
@@ -219,6 +219,19 @@ export default function Sell() {
                 <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <span dir="auto">{mine.data?.rejectionReason || t("sell.rejected")}</span>
               </p>
+            ) : null}
+
+            {/* NetLet asked for more rather than refusing (3.3.1): what it asked
+                for, and that the application is open again until it is sent. */}
+            {state === "more_needed" ? (
+              <div className="mb-6 rounded-xl border border-[#f2d29e] bg-[#fdf6e9] px-4 py-3 text-[13px] leading-6 text-[#6b4a12]">
+                <p className="flex items-start gap-2 font-semibold">
+                  <FilePlus2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  {t("sell.moreNeeded")}
+                </p>
+                {mine.data?.rejectionReason ? <p dir="auto" className="mt-1 ps-6">{mine.data.rejectionReason}</p> : null}
+                <p className="mt-1 ps-6">{t("sell.moreNeededHint")}</p>
+              </div>
             ) : null}
 
             <fieldset disabled={!editable} className="space-y-6">

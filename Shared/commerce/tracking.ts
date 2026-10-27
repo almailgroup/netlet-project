@@ -15,14 +15,16 @@
  * `STALE_AFTER_MS` is not "where the driver is", it is where they were, so it
  * is not drawn at all rather than drawn as though it were current.
  *
- * ## The estimate is a band from distance, and says so
+ * ## The estimate is a band, and says where it came from
  *
- * NetLet has no routing service and no traffic data, so anything precise would
- * be invented. The estimate is the straight-line distance stretched by a road
- * factor, at a city speed, plus the minutes it takes to park and reach a door,
- * and it is given as a five-minute band — "15 to 20 minutes" — never as a
- * clock time the shop would then be held to. It moves because the driver
- * moves: each fresh position gives a new band.
+ * With Apple's Maps Server API set up, the minutes are Apple's driving time
+ * for the road as it is now (`expectedTravelTimeSeconds`, traffic included),
+ * plus the minutes it takes to park and reach a door. Without it, or whenever
+ * Apple does not answer, they are the straight-line distance stretched by a
+ * road factor at a city speed. Either way the answer is a five-minute band —
+ * "15 to 20 minutes" — never a clock time the shop would then be held to, and
+ * it carries its `source` so the page says which it is. It moves because the
+ * driver moves: each fresh position gives a new band.
  *
  * With no pin on the address there is nothing to measure to, and the panel
  * shows the driver on the map without a time rather than guessing from the
@@ -56,18 +58,34 @@ export function distanceKm(a: Pin, b: Pin): number {
   return 2 * EARTH_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
+/** Where an estimate's minutes came from: Apple's driving time, or the distance. */
+export type EtaSource = "traffic" | "distance";
+
 export type Eta =
   | { kind: "arriving" }
   /** Between `low` and `high` minutes, both multiples of five. */
-  | { kind: "band"; low: number; high: number };
+  | { kind: "band"; low: number; high: number; source: EtaSource };
 
-/** How long from here to the door, as a band. */
+function band(minutes: number, source: EtaSource): Eta {
+  const low = Math.max(BAND_MINUTES, Math.floor(minutes / BAND_MINUTES) * BAND_MINUTES);
+  return { kind: "band", low, high: low + BAND_MINUTES, source };
+}
+
+/** How long from here to the door, as a band, from the distance alone. */
 export function etaFor(driver: Pin, door: Pin): Eta {
   const km = distanceKm(driver, door);
   if (km < ARRIVING_KM) return { kind: "arriving" };
-  const minutes = (km * ROAD_FACTOR / CITY_KMH) * 60 + DOORSTEP_MINUTES;
-  const low = Math.max(BAND_MINUTES, Math.floor(minutes / BAND_MINUTES) * BAND_MINUTES);
-  return { kind: "band", low, high: low + BAND_MINUTES };
+  return band((km * ROAD_FACTOR / CITY_KMH) * 60 + DOORSTEP_MINUTES, "distance");
+}
+
+/**
+ * The same band from a routing service's driving time (`seconds` on the road
+ * now). Close to the door is still "arriving", measured the same way, so the
+ * two sources cannot disagree about that.
+ */
+export function etaFromDrive(driver: Pin, door: Pin, seconds: number): Eta {
+  if (distanceKm(driver, door) < ARRIVING_KM) return { kind: "arriving" };
+  return band(Math.max(0, seconds) / 60 + DOORSTEP_MINUTES, "traffic");
 }
 
 /** Whether a position recorded at `recordedAt` may still be shown at `now`. */

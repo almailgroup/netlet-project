@@ -89,6 +89,12 @@ struct NoticeChannels: Decodable, Sendable {
     let email: Bool
 }
 
+/// What the maps behind the shop run (`maps.providers`): here, only whether
+/// tracking asks Apple for driving times, which the privacy policy says.
+struct MapAvailability: Decodable, Sendable {
+    let drivingTimes: Bool?
+}
+
 /// A value the server sends as either a string or a number, read as text.
 struct LooseText: Decodable, Hashable, Sendable {
     let text: String

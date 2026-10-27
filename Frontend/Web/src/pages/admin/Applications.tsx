@@ -30,7 +30,7 @@ import {
 } from "@shared/inventory/sellerApplication";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Check, ExternalLink, LoaderCircle, Paperclip, Upload, X } from "lucide-react";
+import { Check, ExternalLink, FilePlus2, LoaderCircle, Paperclip, Upload, X } from "lucide-react";
 import { KIND_LABEL, STATUS_LABEL as DOCUMENT_STATUS_LABEL, STATUS_TONE, documentHref, useFileSize } from "@/components/account/DocumentUploads";
 import { DOCUMENT_KINDS, DOCUMENT_NOTE_MAX, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES, currentByKind } from "@shared/inventory/applicationDocuments";
 import { useRef, useState } from "react";
@@ -51,6 +51,7 @@ const STATUS_LABEL: Record<string, MessageKey> = {
   submitted: "admin.applicationStatusSubmitted",
   approved: "admin.applicationStatusApproved",
   rejected: "admin.applicationStatusRejected",
+  more_needed: "admin.applicationStatusMoreNeeded",
 };
 
 export default function AdminApplications() {
@@ -91,12 +92,18 @@ function Applications() {
     onSuccess: () => { toast.success(t("admin.applicationRejected")); refresh(); },
     onError: error => toast.error(tError(error.message)),
   });
+  /* NetLet's other answer (3.3.1): the application goes back to the applicant
+     with the note, rather than being refused. */
+  const askMore = trpc.inventory.applications.requestMore.useMutation({
+    onSuccess: () => { toast.success(t("admin.applicationAskedMore")); refresh(); },
+    onError: error => toast.error(tError(error.message)),
+  });
 
   /* Only a web address becomes a link. The server refuses anything else now,
      but an application saved before that may still carry one, and the person
      opening it is an administrator. */
   const webAddress = (value: string | null) => (value && /^https?:\/\/\S+$/i.test(value) ? value : null);
-  const deciding = approve.isPending ? approve.variables?.id : reject.isPending ? reject.variables?.id : undefined;
+  const deciding = approve.isPending ? approve.variables?.id : reject.isPending ? reject.variables?.id : askMore.isPending ? askMore.variables?.id : undefined;
 
   return (
     <>
@@ -250,6 +257,15 @@ function Applications() {
                             className={`${fieldClass} mt-1.5`}
                           />
                           <div className="mt-3 flex flex-wrap justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => askMore.mutate({ id: row.id, note: reasons[row.id] ?? "" })}
+                              disabled={!(reasons[row.id] ?? "").trim() || deciding !== undefined}
+                              className={buttonClass.secondary}
+                            >
+                              {deciding === row.id && askMore.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FilePlus2 className="size-4" aria-hidden />}
+                              {t("admin.applicationAskMore")}
+                            </button>
                             <button
                               type="button"
                               onClick={() => reject.mutate({ id: row.id, reason: reasons[row.id] ?? "" })}

@@ -103,6 +103,8 @@ struct PortalHomeView: View {
         add("commission.waitingTile", waiting["proposals"], "/admin/commission")
         add("admin.bannersWaiting", waiting["banners"], "/admin/ads")
         add("support.waitingTile", waiting["support"], "/admin/support")
+        add("fraud.ordersTile", waiting["fraudOrders"], "/admin/orders")
+        add("fraud.watchTile", waiting["fraudWatch"], "/admin/fraud")
         add("fulfilment.toReceiveTile", waiting["toReceive"], "/admin/fulfilment", urgent: false)
         add("fulfilment.toPickTile", waiting["toPick"], "/admin/fulfilment")
         return tiles
@@ -142,15 +144,18 @@ struct PortalHomeView: View {
             async let banners = count("product.review") { try await api.call(API.bannersWaiting) }
             async let support = count("support.answer") { try await api.call(API.supportWaiting) }
             async let centres = asked(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
+            async let fraud = asked(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
             counts = await overview
             health = await score ?? nil
             sales = await summary
             let floor = await centres
+            let alerts = await fraud
             waiting = [
                 "parcels": await parcels, "claims": await claims, "offers": await offers, "sellerChanges": await changes,
                 "applications": await applications, "returns": await returns, "affiliates": await affiliates, "proposals": await proposals,
                 "banners": await banners, "support": await support,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
+                "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
             ].compactMapValues { $0 }
         } catch {
             let failure = APIError.from(error)

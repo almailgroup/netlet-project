@@ -42,7 +42,7 @@ import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Prod
 import type { Measure } from "../../../Shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
-import { addMoney, multiplyMoney } from "../../../Shared/money.js";
+import { addMoney, compareMoney, multiplyMoney } from "../../../Shared/money.js";
 import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
 import { effectiveChoice, groupForDelivery, offersFast, quoteDelivery, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
@@ -695,7 +695,11 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   );
   const quoted = deliveryFor(priced, doors);
   /* Waived the way checkout waives it (4.1), so the bag shows what the order will charge. */
-  const quote = member ? waiveDelivery(quoted, subtotal, await freeDeliveryOver(db)) : { ...quoted, waived: "0.000" };
+  const minimum = member ? await freeDeliveryOver(db) : null;
+  const quote = member ? waiveDelivery(quoted, subtotal, minimum) : { ...quoted, waived: "0.000" };
+  /* Whether every trip on this bag is NetLet's to carry, fast included (4.1):
+     the line's Fast choice then says "free" rather than a fee nobody pays. */
+  const memberFree = member && (minimum === null || compareMoney(subtotal, minimum) >= 0);
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -744,6 +748,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       })),
       total: money(quote.total),
       memberWaived: quote.waived !== "0.000" ? money(quote.waived) : null,
+      memberFree,
     },
     total: money(addMoney(subtotal, quote.total)),
   };

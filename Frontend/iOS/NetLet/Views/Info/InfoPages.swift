@@ -336,6 +336,7 @@ struct LegalView: View {
     let document: LegalDocument
     @State private var company: ShopContact.Company?
     @State private var emailRunning = false
+    @State private var drivingTimesRunning = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -381,6 +382,7 @@ struct LegalView: View {
         .task {
             company = (try? await app.services.catalog.contact())?.company
             emailRunning = (try? await app.services.api.call(API.noticeChannels))?.email ?? false
+            drivingTimesRunning = (try? await app.services.api.call(API.mapAvailability))?.drivingTimes ?? false
         }
     }
 
@@ -401,6 +403,8 @@ struct LegalView: View {
         case "email": return emailRunning
         // Off unless the shop has switched it on: it sends shoppers' photos to Google.
         case "tryOn": return app.features.values["tryOn"] == true
+        // Apple is asked for driving times only while a signing key is set up.
+        case "drivingTimes": return drivingTimesRunning
         default: return false
         }
     }

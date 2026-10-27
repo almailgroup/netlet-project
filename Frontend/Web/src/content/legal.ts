@@ -18,12 +18,12 @@
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** When either page last changed, as a Kuwaiti calendar day. */
-export const LEGAL_UPDATED = "2026-10-26";
+export const LEGAL_UPDATED = "2026-10-27";
 
 export type LegalParagraph = {
   key: MessageKey;
   /** Drawn only while the deployment does what it describes. */
-  only?: "analytics" | "email" | "tryOn";
+  only?: "analytics" | "email" | "tryOn" | "drivingTimes";
 };
 
 export type LegalSection = { id: string; title: MessageKey; body: LegalParagraph[] };
@@ -63,6 +63,7 @@ export const PRIVACY: LegalSection[] = [
       { key: "privacy.who.ai" },
       { key: "privacy.who.tryOn", only: "tryOn" },
       { key: "privacy.who.drivers" },
+      { key: "privacy.who.drivingTimes", only: "drivingTimes" },
       { key: "privacy.who.sell" },
     ],
   },

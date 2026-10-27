@@ -156,10 +156,11 @@ describe("fast or regular, per line (3.2.5)", () => {
     expect(frozen).toEqual([{ vendorId: 1, vendorName: "Acme", destinationLabel: null, choice: "fast", fee: "3.500" }]);
   });
 
-  it("leaves a member paying for fast, which their free delivery does not cover", async () => {
+  it("waives a member's fast trip too, as NetLet's cost beside the regular one", async () => {
     const { groupForDelivery, quoteDelivery } = await import("./delivery.js");
     const { waiveDelivery } = await import("./membership.js");
     const waived = waiveDelivery(quoteDelivery(groupForDelivery([line(1, "5.000"), line(1, "5.000", "fast")], rules)), "10.000", null);
-    expect(waived).toMatchObject({ total: "3.500", waived: "2.000" });
+    expect(waived).toMatchObject({ total: "0.000", waived: "5.500" });
+    expect(waived.perVendor.find(row => row.choice === "fast")).toMatchObject({ fee: "0.000", free: true, waived: "3.500" });
   });
 });

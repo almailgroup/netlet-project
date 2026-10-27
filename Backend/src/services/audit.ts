@@ -14,7 +14,7 @@
  * the failure is logged instead. The alternative is an audit system that takes
  * the site down, which is how audit logging gets switched off.
  */
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { auditLog, staffGrants, users } from "../../database/schema.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { describeError } from "../core/describeError.js";
@@ -35,6 +35,9 @@ export const AUDIT_ACTIONS = [
   "vendor.addMember",
   "vendor.removeMember",
   "product.review",
+  /* A submission NetLet AI and the rule's checks both found nothing in, put on
+     the shelf without a person (3.3.6) — on the trail so a person can take it down. */
+  "product.autoApprove",
   "product.setStatus",
   "product.priceChange",
   "product.create",
@@ -302,9 +305,14 @@ export async function sellerChanges(options: { since?: Date | null; vendorId?: n
   const db = await getDb();
   if (!db) return { rows: [], unseen: 0 };
 
+  /* A listing NetLet AI put on the shelf is a seller's change no person has
+     looked at, so it is counted with theirs: "an administrator can take it
+     down" needs an administrator to be told it went up. */
   const scope = and(
-    inArray(auditLog.actorRole, [...SELLER_ROLES]),
-    inArray(auditLog.action, SELLER_ACTIONS),
+    or(
+      and(inArray(auditLog.actorRole, [...SELLER_ROLES]), inArray(auditLog.action, SELLER_ACTIONS)),
+      eq(auditLog.action, "product.autoApprove"),
+    ),
     options.vendorId ? eq(auditLog.vendorId, options.vendorId) : undefined,
   );
 

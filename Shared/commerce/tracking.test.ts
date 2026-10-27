@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STALE_AFTER_MS, distanceKm, etaFor, isFresh } from "./tracking.js";
+import { STALE_AFTER_MS, distanceKm, etaFor, etaFromDrive, isFresh } from "./tracking.js";
 
 const salmiya = { lat: 29.3339, lng: 48.0763 };
 const kuwaitCity = { lat: 29.3759, lng: 47.9774 };
@@ -29,13 +29,31 @@ describe("the estimate", () => {
   });
 
   it("never promises under five minutes for somebody not yet there", () => {
-    expect(etaFor({ lat: 29.3370, lng: 48.0763 }, salmiya)).toEqual({ kind: "band", low: 5, high: 10 });
+    expect(etaFor({ lat: 29.3370, lng: 48.0763 }, salmiya)).toEqual({ kind: "band", low: 5, high: 10, source: "distance" });
   });
 
   it("moves as the driver moves", () => {
     const far = etaFor(kuwaitCity, salmiya);
     const nearer = etaFor({ lat: 29.35, lng: 48.03 }, salmiya);
     expect(far.kind === "band" && nearer.kind === "band" && nearer.low < far.low).toBe(true);
+  });
+});
+
+describe("the estimate from a driving time", () => {
+  it("is Apple's minutes on the road plus the doorstep, in the same band, and says so", () => {
+    /* 31 minutes in traffic + 3 at the door = 34, so 30 to 35. */
+    expect(etaFromDrive(kuwaitCity, salmiya, 31 * 60)).toEqual({ kind: "band", low: 30, high: 35, source: "traffic" });
+    /* Traffic the distance cannot see: the same trip at 52 minutes. */
+    expect(etaFromDrive(kuwaitCity, salmiya, 52 * 60)).toEqual({ kind: "band", low: 55, high: 60, source: "traffic" });
+  });
+
+  it("says arriving by the same measure the distance uses", () => {
+    expect(etaFromDrive({ lat: 29.3340, lng: 48.0764 }, salmiya, 240)).toEqual({ kind: "arriving" });
+  });
+
+  it("never promises under five minutes, whatever the road says", () => {
+    expect(etaFromDrive({ lat: 29.3370, lng: 48.0763 }, salmiya, 0)).toEqual({ kind: "band", low: 5, high: 10, source: "traffic" });
+    expect(etaFromDrive({ lat: 29.3370, lng: 48.0763 }, salmiya, -30)).toEqual({ kind: "band", low: 5, high: 10, source: "traffic" });
   });
 });
 

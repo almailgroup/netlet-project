@@ -17,9 +17,9 @@
  * order is a separate, narrower question, and inventing an answer to it by
  * leaking this one would be the wrong way round.
  */
-import { and, desc, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { orderItems, orders, referrals, reviews, users, vendorMembers } from "../../database/schema.js";
+import { notifications, orderItems, orders, referrals, reviews, users, vendorMembers } from "../../database/schema.js";
 import {
   fraudFlags,
   referralFlags,
@@ -31,7 +31,11 @@ import {
   type RiskLevel,
 } from "../../../Shared/commerce/fraudSignals.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
+import { describeError } from "../core/describeError.js";
 import { getDb } from "./db.js";
+import { notifyStaff } from "./notifications.js";
+
+type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
 export type OrderRisk = { orderId: number; risk: RiskLevel; flags: Flag[] };
 
@@ -46,6 +50,11 @@ export async function riskForOrders(actor: Actor, orderIds: number[]): Promise<O
   assertCan(actor, "platform.viewAll");
   const db = await getDb();
   if (!db || orderIds.length === 0) return [];
+  return judgeOrders(db, orderIds);
+}
+
+/** The judgement itself, unguarded: the page's door above and the alerts below. */
+async function judgeOrders(db: Db, orderIds: number[]): Promise<OrderRisk[]> {
 
   const rows = await db
     .select({
@@ -171,7 +180,10 @@ export async function reviewWatch(actor: Actor, limit = WATCH_LIMIT): Promise<Re
   assertCan(actor, "platform.viewAll");
   const db = await getDb();
   if (!db) return [];
+  return judgeReviews(db, { limit });
+}
 
+async function judgeReviews(db: Db, scope: { limit: number; reviewId?: number }): Promise<ReviewWatchRow[]> {
   const rows = await db
     .select({
       id: reviews.id,
@@ -193,8 +205,9 @@ export async function reviewWatch(actor: Actor, limit = WATCH_LIMIT): Promise<Re
     .innerJoin(users, eq(users.id, reviews.userId))
     .leftJoin(orderItems, eq(orderItems.id, reviews.orderItemId))
     .leftJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(scope.reviewId === undefined ? undefined : eq(reviews.id, scope.reviewId))
     .orderBy(desc(reviews.createdAt), desc(reviews.id))
-    .limit(limit);
+    .limit(scope.limit);
   if (!rows.length) return [];
 
   const reviewerIds = [...new Set(rows.map(row => row.userId))];
@@ -274,7 +287,10 @@ export async function referralWatch(actor: Actor, limit = WATCH_LIMIT): Promise<
   assertCan(actor, "platform.viewAll");
   const db = await getDb();
   if (!db) return [];
+  return judgeReferrals(db, { limit });
+}
 
+async function judgeReferrals(db: Db, scope: { limit: number; referredId?: number }): Promise<ReferralWatchRow[]> {
   const referrer = alias(users, "referrer");
   const referred = alias(users, "referred");
   const rows = await db
@@ -291,8 +307,9 @@ export async function referralWatch(actor: Actor, limit = WATCH_LIMIT): Promise<
     .from(referrals)
     .innerJoin(referrer, eq(referrer.id, referrals.referrerId))
     .innerJoin(referred, eq(referred.id, referrals.referredId))
+    .where(scope.referredId === undefined ? undefined : eq(referrals.referredId, scope.referredId))
     .orderBy(desc(referrals.createdAt), desc(referrals.id))
-    .limit(limit);
+    .limit(scope.limit);
   if (!rows.length) return [];
 
   const people = [...new Set(rows.flatMap(row => [row.referrerId, row.referredId]))];
@@ -338,4 +355,95 @@ export async function referralWatch(actor: Actor, limit = WATCH_LIMIT): Promise<
       flags,
     };
   });
+}
+
+/* -------------------------------------------------------------- alerts --- */
+
+/**
+ * Telling the administrators (3.6.5: the signals "alert" as well as show).
+ *
+ * The fraud page judged whatever was on it when somebody opened it, so a
+ * high-risk order could be packed and sent before anybody looked. Now each of
+ * the three things it watches is judged once, the moment it happens — an order
+ * placed, a review written, a referral paid out — by the same function the page
+ * uses, and a **high** one is a notice to every administrator (inbox and, where
+ * configured, email). Never "watch": a notice for every small oddity is one
+ * people learn to ignore, and the page still shows those.
+ *
+ * Each runs after the act and never in its way — a judgement that fails is
+ * logged, and the order, review or payout stands. It still flags and never
+ * acts: nothing here holds an order or hides a review.
+ */
+/* Orders are looked at on the orders page, reviews and referrals on the fraud
+   page, so each page reads its own alerts. */
+const ALERT_KINDS = {
+  orders: ["staff_fraud_order"],
+  watch: ["staff_fraud_review", "staff_fraud_referral"],
+} as const;
+export type AlertDesk = keyof typeof ALERT_KINDS;
+
+async function quietly(what: string, alert: (db: Db) => Promise<void>): Promise<void> {
+  try {
+    const db = await getDb();
+    if (db) await alert(db);
+  } catch (error) {
+    console.error(`[fraud] could not judge ${what}: ${describeError(error)}`);
+  }
+}
+
+/** After an order is placed. */
+export async function alertIfRiskyOrder(orderId: number): Promise<void> {
+  await quietly(`order ${orderId}`, async db => {
+    const [judged] = await judgeOrders(db, [orderId]);
+    if (judged?.risk !== "high") return;
+    const [order] = await db.select({ reference: orders.reference }).from(orders).where(eq(orders.id, orderId)).limit(1);
+    if (!order) return;
+    await notifyStaff({ kind: "staff_fraud_order", params: { reference: order.reference }, link: "/admin/orders", dedupe: `fraud:order:${orderId}` });
+  });
+}
+
+/** After a review is written. */
+export async function alertIfRiskyReview(reviewId: number): Promise<void> {
+  await quietly(`review ${reviewId}`, async db => {
+    const [judged] = await judgeReviews(db, { limit: 1, reviewId });
+    if (judged?.risk !== "high") return;
+    await notifyStaff({ kind: "staff_fraud_review", params: { product: judged.productTitle }, link: "/admin/fraud", dedupe: `fraud:review:${reviewId}` });
+  });
+}
+
+/** After a referral pays out, which is when there is an order to compare. */
+export async function alertIfRiskyReferral(referredUserId: number): Promise<void> {
+  await quietly(`the referral of account ${referredUserId}`, async db => {
+    const [judged] = await judgeReferrals(db, { limit: 1, referredId: referredUserId });
+    if (judged?.risk !== "high") return;
+    await notifyStaff({ kind: "staff_fraud_referral", link: "/admin/fraud", dedupe: `fraud:referral:${judged.id}` });
+  });
+}
+
+/**
+ * How many fraud alerts this administrator has not looked at, per desk — the
+ * overview's tiles. Opening the desk reads them (`markFraudSeen`), so the
+ * count is work, not a rolling window that never reaches zero.
+ */
+export async function fraudUnseen(actor: Actor): Promise<Record<AlertDesk, number>> {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return { orders: 0, watch: 0 };
+  const rows = await db
+    .select({ kind: notifications.kind, n: sql<number>`count(*)::int` })
+    .from(notifications)
+    .where(and(eq(notifications.userId, actor.userId), inArray(notifications.kind, [...ALERT_KINDS.orders, ...ALERT_KINDS.watch]), isNull(notifications.readAt)))
+    .groupBy(notifications.kind);
+  const count = (desk: AlertDesk) => rows.filter(row => (ALERT_KINDS[desk] as readonly string[]).includes(row.kind)).reduce((sum, row) => sum + row.n, 0);
+  return { orders: count("orders"), watch: count("watch") };
+}
+
+export async function markFraudSeen(actor: Actor, desk: AlertDesk): Promise<void> {
+  assertCan(actor, "platform.viewAll");
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(notifications)
+    .set({ readAt: new Date() })
+    .where(and(eq(notifications.userId, actor.userId), inArray(notifications.kind, [...ALERT_KINDS[desk]]), isNull(notifications.readAt)));
 }

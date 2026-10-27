@@ -13,7 +13,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { applicationDocuments, auditLog, users, vendorApplications, vendorMembers, vendors } from "../../database/schema.js";
+import { applicationDocuments, auditLog, notifications, users, vendorApplications, vendorMembers, vendors } from "../../database/schema.js";
 import { AGREEMENT_VERSION } from "../../../Shared/inventory/sellerApplication.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
@@ -351,5 +351,78 @@ describe("a fixed amount, and the contract step (3.3.1, 3.3.2)", () => {
     const { vendorId } = await apps.approveApplication(adminActor(), application.id, "10", "0.250");
     const [store] = await db.select().from(vendors).where(eq(vendors.id, vendorId));
     expect(store).toMatchObject({ commissionPercent: "10.00", commissionFixed: "0.250" });
+  });
+});
+
+/*
+ * NetLet's answers (3.3.1): "requesting additional documents or … sending the
+ * final contract". Asking for more is not a refusal — the application goes
+ * back to the applicant to add the paper and send it again — and every answer
+ * reaches the applicant as a notice, so nobody has to keep opening /sell.
+ */
+describe("NetLet's answers reach the applicant (3.3.1)", () => {
+  const pdf = (text = "licence") => new Uint8Array([...`%PDF-1.7\n${text}`].map(c => c.charCodeAt(0)));
+  const told = async () =>
+    (await db.select().from(notifications).where(eq(notifications.userId, ids.applicant)))
+      .map(row => ({ kind: row.kind, params: row.params, link: row.link }));
+
+  beforeEach(async () => {
+    await db.delete(notifications);
+  });
+
+  it("asks for more, reopens the application for the paper, and takes it back", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const submitted = await apps.submitApplication(ids.applicant);
+
+    await expect(apps.requestMoreDocuments(adminActor(), submitted.id, "  ")).rejects.toMatchObject({ reason: "application.noReason" });
+    await expect(apps.requestMoreDocuments(shopperActor(), submitted.id, "The IBAN letter, please.")).rejects.toThrow("FORBIDDEN");
+    await apps.requestMoreDocuments(adminActor(), submitted.id, "The IBAN letter, please.");
+
+    const [asked] = await db.select().from(vendorApplications).where(eq(vendorApplications.id, submitted.id));
+    expect(asked).toMatchObject({ status: "more_needed", rejectionReason: "The IBAN letter, please." });
+    /* Not waiting on NetLet any more: off the queue, and not decidable until sent again. */
+    expect(await apps.countWaitingApplications(adminActor())).toBe(0);
+    await expect(apps.requestMoreDocuments(adminActor(), submitted.id, "Again")).rejects.toMatchObject({ reason: "application.notWaiting" });
+
+    /* The paper can be added now, and the application sent back. */
+    const letter = await docs.uploadDocument(ids.applicant, { kind: "iban_letter", fileName: "iban.pdf", declaredType: "application/pdf", bytes: pdf("iban") });
+    expect(letter.status).toBe("pending");
+    expect((await apps.submitApplication(ids.applicant)).status).toBe("submitted");
+    expect(await apps.countWaitingApplications(adminActor())).toBe(1);
+
+    expect(await told()).toEqual([
+      { kind: "application_more_needed", params: { store: "Harbour Lighting", note: "The IBAN letter, please." }, link: "/sell" },
+    ]);
+  });
+
+  it("tells them about a paper turned down, naming it in both languages, and the contract that arrived", async () => {
+    await apps.saveApplication(ids.applicant, { ...complete, storeNameAr: "إنارة الميناء" });
+    const licence = await docs.uploadDocument(ids.applicant, { kind: "trade_licence", fileName: "t.pdf", declaredType: "application/pdf", bytes: pdf() });
+    const submitted = await apps.submitApplication(ids.applicant);
+    await docs.reviewDocument(adminActor(), { id: licence.id, decision: "reject", note: "The scan is cut off." });
+    await docs.attachContract(adminActor(), submitted.id, { fileName: "contract.pdf", declaredType: "application/pdf", bytes: pdf("contract") });
+
+    const notices = await told();
+    expect(notices).toContainEqual({
+      kind: "application_document_declined",
+      params: { store: "Harbour Lighting", storeAr: "إنارة الميناء", document: "Trade licence", documentAr: expect.any(String), reason: "The scan is cut off." },
+      link: "/sell",
+    });
+    expect((notices.find(notice => notice.kind === "application_document_declined")?.params as Record<string, string>).documentAr).not.toBe("Trade licence");
+    expect(notices).toContainEqual({ kind: "application_contract_sent", params: { store: "Harbour Lighting", storeAr: "إنارة الميناء" }, link: "/sell" });
+  });
+
+  it("tells them it was approved, or why it was not", async () => {
+    await apps.saveApplication(ids.applicant, complete);
+    const first = await apps.submitApplication(ids.applicant);
+    await apps.rejectApplication(adminActor(), first.id, "The licence number does not match the name.");
+    expect(await told()).toEqual([
+      { kind: "application_rejected", params: { store: "Harbour Lighting", reason: "The licence number does not match the name." }, link: "/sell" },
+    ]);
+
+    await apps.saveApplication(ids.applicant, complete);
+    const second = await apps.submitApplication(ids.applicant);
+    await apps.approveApplication(adminActor(), second.id);
+    expect(await told()).toContainEqual({ kind: "application_approved", params: { store: "Harbour Lighting" }, link: "/admin" });
   });
 });

@@ -36,13 +36,14 @@ import { legalMeta } from "@shared/seo";
 /* Built with an analytics tool configured, the policy says it counts visits. */
 const ANALYTICS = Boolean(import.meta.env.VITE_ANALYTICS_ENDPOINT?.trim() && import.meta.env.VITE_ANALYTICS_WEBSITE_ID?.trim());
 
-type Running = { email: boolean; tryOn: boolean };
+type Running = { email: boolean; tryOn: boolean; drivingTimes: boolean };
 
 const shown = (running: Running) => (paragraph: LegalParagraph) =>
   paragraph.only === undefined
   || (paragraph.only === "analytics" && ANALYTICS)
   || (paragraph.only === "email" && running.email)
-  || (paragraph.only === "tryOn" && running.tryOn);
+  || (paragraph.only === "tryOn" && running.tryOn)
+  || (paragraph.only === "drivingTimes" && running.drivingTimes);
 
 /* The figures the documents state, from the constants the code runs on. */
 const FIGURES = {
@@ -71,8 +72,9 @@ export default function Legal() {
   usePageChrome({ activeDepartment: null });
   const channels = trpc.support.channels.useQuery(undefined, { staleTime: 300_000 });
   const mail = trpc.notifications.channels.useQuery(undefined, { staleTime: 300_000 });
+  const maps = trpc.maps.providers.useQuery(undefined, { staleTime: Infinity, retry: false });
   const tryOnOn = useFeature("tryOn");
-  const running: Running = { email: mail.data?.email === true, tryOn: tryOnOn };
+  const running: Running = { email: mail.data?.email === true, tryOn: tryOnOn, drivingTimes: maps.data?.drivingTimes === true };
   const company = channels.data?.company ?? null;
   const operator = company ? nameInSentence(isArabic && company.nameAr ? company.nameAr : company.name) : null;
 

@@ -234,7 +234,11 @@ struct PortalFraudView: View {
                 } else { pending }
             }
         }
-        .task { await load() }
+        .task {
+            // Opening the desk reads the alerts that sent somebody here (3.6.5).
+            _ = try? await app.services.api.call(API.fraudSeen, .init(desk: "watch"))
+            await load()
+        }
         .onChange(of: showReferrals) { Task { await load() } }
     }
 

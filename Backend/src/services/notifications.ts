@@ -32,6 +32,7 @@ import {
   returnRequests,
   supportConversations,
   users,
+  vendorApplications,
   vendorMembers,
   vendors,
 } from "../../database/schema.js";
@@ -205,7 +206,7 @@ function renderEmail(
   const origin = siteOrigin();
   const values = noticeValues(notice.params, locale === "ar", amount => emailMoney(locale, amount));
   const sentence = translate(locale, notice.messageKey as Parameters<typeof translate>[1], values);
-  const seller = NOTICE_RULES[notice.kind as NoticeKind]?.audience === "seller";
+  const audience = NOTICE_RULES[notice.kind as NoticeKind]?.audience;
   return noticeEmail({
     to,
     arabic: locale === "ar",
@@ -213,7 +214,7 @@ function renderEmail(
     sentence,
     action: translate(locale, "notice.emailOpen"),
     link: origin && notice.link ? `${origin}${notice.link}` : null,
-    footer: translate(locale, seller ? "notice.emailFooterSeller" : "notice.emailFooter"),
+    footer: translate(locale, audience === "seller" ? "notice.emailFooterSeller" : audience === "staff" ? "notice.emailFooterStaff" : "notice.emailFooter"),
     preferencesLink: origin ? `${origin}/account/preferences` : null,
   });
 }
@@ -588,6 +589,55 @@ export async function tellOrderPlaced(order: { id: number; reference: string; us
   }
   for (const vendorId of new Set(vendorIds.filter((id): id is number => typeof id === "number"))) {
     await notifyStore(vendorId, { kind: "seller_new_order", params: { reference: order.reference }, link: "/admin/orders", dedupe: dedupe.order(order.reference, `new:${vendorId}`) });
+  }
+}
+
+/* -------------------------------------------------------- applications --- */
+
+type ApplicantNotice = "application_more_needed" | "application_document_declined" | "application_contract_sent" | "application_approved" | "application_rejected";
+
+/**
+ * Tells somebody who applied to sell what NetLet answered (3.3.1). Each answer
+ * is its own event, so the dedupe key carries the moment it was given — asking
+ * for more twice is two requests the applicant should hear about.
+ */
+export async function tellApplicant(applicationId: number, kind: ApplicantNotice, params: Record<string, string>, dedupeKey: string): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const [row] = await db
+      .select({ userId: vendorApplications.userId, store: vendorApplications.storeName, storeAr: vendorApplications.storeNameAr })
+      .from(vendorApplications)
+      .where(eq(vendorApplications.id, applicationId))
+      .limit(1);
+    if (!row) return;
+    await notifyQuietly({
+      userId: row.userId,
+      kind,
+      params: { store: row.store, ...(row.storeAr ? { storeAr: row.storeAr } : {}), ...params },
+      link: kind === "application_approved" ? "/admin" : "/sell",
+      dedupe: `application:${applicationId}:${dedupeKey}`,
+    });
+  } catch (error) {
+    console.error(`[notices] could not tell applicant ${applicationId}: ${describeError(error)}`);
+  }
+}
+
+/* --------------------------------------------------------------- staff --- */
+
+/**
+ * Tells every administrator the same thing — the document's "alerting the
+ * admin". In the inbox each reads at `/account/notifications`, and by email
+ * where email is configured.
+ */
+export async function notifyStaff(notice: Omit<Notice, "userId">): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+    await notifyQuietly(admins.map(admin => ({ ...notice, userId: admin.id })));
+  } catch (error) {
+    console.error(`[notices] could not tell the administrators: ${describeError(error)}`);
   }
 }
 

@@ -124,11 +124,13 @@ struct OrderDocument: Decodable, Identifiable, Hashable, Sendable {
 /// A parcel on the road (`orders.tracking`): which company, and where its
 /// driver is while they choose to share it — never who.
 struct TrackedParcel: Decodable, Hashable, Sendable {
-    /// A five-minute band from distance, or "arriving" when close.
+    /// A five-minute band, or "arriving" when close. `source` says where the
+    /// minutes came from: Apple's driving time with traffic, or the distance.
     struct Eta: Decodable, Hashable, Sendable {
         let kind: String
         let low: Int?
         let high: Int?
+        let source: String?
     }
 
     let courierName: String

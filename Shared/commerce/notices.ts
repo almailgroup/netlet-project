@@ -50,6 +50,15 @@ export const NOTICE_KINDS = [
   "seller_return",
   "seller_warning",
   "seller_suspended",
+  "application_more_needed",
+  "application_document_declined",
+  "application_contract_sent",
+  "application_approved",
+  "application_rejected",
+  "staff_listing_flagged",
+  "staff_fraud_order",
+  "staff_fraud_review",
+  "staff_fraud_referral",
 ] as const;
 export type NoticeKind = (typeof NOTICE_KINDS)[number];
 
@@ -64,8 +73,8 @@ export function isNoticeKind(kind: string): kind is NoticeKind {
 }
 
 type NoticeRule = {
-  /** Who reads it: a shopper on their account, or a store's people in the portal. */
-  audience: "shopper" | "seller";
+  /** Who reads it: a shopper on their account, a store's people, or NetLet's administrators. */
+  audience: "shopper" | "seller" | "staff";
   /** The account preference that silences it, or null when nothing should. */
   preference: NotificationKind | null;
   /** Whether it goes out by email too, while email is configured. */
@@ -105,6 +114,20 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
      never silenced, because a store must know where it stands. */
   seller_warning: { audience: "seller", preference: null, email: true, key: "notice.sellerWarning" },
   seller_suspended: { audience: "seller", preference: null, email: true, key: "notice.sellerSuspended" },
+  /* Every answer NetLet gives a seller application (3.3.1): somebody who
+     applied should not have to keep opening /sell to find out. Never silenced,
+     like the order's own confirmation — they are waiting on it. */
+  application_more_needed: { audience: "shopper", preference: null, email: true, key: "notice.applicationMoreNeeded" },
+  application_document_declined: { audience: "shopper", preference: null, email: true, key: "notice.applicationDocumentDeclined" },
+  application_contract_sent: { audience: "shopper", preference: null, email: true, key: "notice.applicationContractSent" },
+  application_approved: { audience: "shopper", preference: null, email: true, key: "notice.applicationApproved" },
+  application_rejected: { audience: "shopper", preference: null, email: true, key: "notice.applicationRejected" },
+  /* What the document calls alerting the admin: a listing the AI review would
+     not pass (3.3.6) and an order fraud watch rates high (3.6.5). */
+  staff_listing_flagged: { audience: "staff", preference: null, email: true, key: "notice.staffListingFlagged" },
+  staff_fraud_order: { audience: "staff", preference: null, email: true, key: "notice.staffFraudOrder" },
+  staff_fraud_review: { audience: "staff", preference: null, email: true, key: "notice.staffFraudReview" },
+  staff_fraud_referral: { audience: "staff", preference: null, email: true, key: "notice.staffFraudReferral" },
 };
 
 /** One thing to tell one person. */

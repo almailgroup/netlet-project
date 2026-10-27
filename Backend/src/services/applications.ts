@@ -32,6 +32,7 @@ import { auditActor } from "./inventory.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { contractUnsigned, documentsPending } from "../../../Shared/inventory/applicationDocuments.js";
 import { documentFactsFor, pendingCounts } from "./applicationDocuments.js";
+import { tellApplicant } from "./notifications.js";
 
 /** Every refusal is a key the router turns into a message, never a sentence. */
 export class ApplicationError extends Error {
@@ -150,7 +151,7 @@ export async function submitApplication(userId: number): Promise<Row> {
   const [updated] = await db
     .update(vendorApplications)
     .set({ status: "submitted", rejectionReason: null })
-    .where(and(eq(vendorApplications.id, existing.id), inArray(vendorApplications.status, ["draft", "rejected"])))
+    .where(and(eq(vendorApplications.id, existing.id), inArray(vendorApplications.status, ["draft", "rejected", "more_needed"])))
     .returning();
   return updated ?? existing;
 }
@@ -320,7 +321,33 @@ export async function approveApplication(
     });
   }
 
+  await tellApplicant(applicationId, "application_approved", {}, "approved");
   return { vendorId: vendor.id };
+}
+
+/**
+ * Ask for more before deciding (3.3.1): the document's "requesting additional
+ * documents". Not a refusal — the application goes back to the applicant,
+ * open for editing and uploading, with the note saying what is missing, and
+ * comes back to this queue when they send it again. Like a rejection, the
+ * note is what makes it useful, so it is required.
+ */
+export async function requestMoreDocuments(actor: Actor, applicationId: number, note: string, now = new Date()): Promise<void> {
+  assertCan(actor, "platform.manageUsers");
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const trimmed = note.trim();
+  if (!trimmed) throw new ApplicationError("application.noReason");
+
+  const updated = await db
+    .update(vendorApplications)
+    .set({ status: "more_needed", rejectionReason: trimmed, reviewedBy: actor.userId, reviewedAt: now })
+    .where(and(eq(vendorApplications.id, applicationId), eq(vendorApplications.status, "submitted")))
+    .returning({ id: vendorApplications.id });
+  if (updated.length === 0) throw new ApplicationError("application.notWaiting");
+
+  await tellApplicant(applicationId, "application_more_needed", { note: trimmed }, `more:${now.getTime()}`);
 }
 
 /**
@@ -331,7 +358,7 @@ export async function approveApplication(
  * correct and resubmit — which is the only thing that makes rejecting better
  * than ignoring.
  */
-export async function rejectApplication(actor: Actor, applicationId: number, reason: string): Promise<void> {
+export async function rejectApplication(actor: Actor, applicationId: number, reason: string, now = new Date()): Promise<void> {
   assertCan(actor, "platform.manageUsers");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -341,11 +368,12 @@ export async function rejectApplication(actor: Actor, applicationId: number, rea
 
   const updated = await db
     .update(vendorApplications)
-    .set({ status: "rejected", rejectionReason: trimmed, reviewedBy: actor.userId, reviewedAt: new Date() })
+    .set({ status: "rejected", rejectionReason: trimmed, reviewedBy: actor.userId, reviewedAt: now })
     .where(and(eq(vendorApplications.id, applicationId), eq(vendorApplications.status, "submitted")))
     .returning({ id: vendorApplications.id });
 
   if (updated.length === 0) throw new ApplicationError("application.notWaiting");
+  await tellApplicant(applicationId, "application_rejected", { reason: trimmed }, `rejected:${now.getTime()}`);
 }
 
 /** How many are waiting, for the overview's "waiting on you" tile. */

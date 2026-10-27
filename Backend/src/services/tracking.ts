@@ -16,7 +16,8 @@
 import { and, eq, lt, ne, or } from "drizzle-orm";
 import { courierMembers, couriers, driverPositions, orderItems, orders } from "../../database/schema.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
-import { MIN_SHARE_INTERVAL_MS, etaFor, isFresh, type Eta } from "../../../Shared/commerce/tracking.js";
+import { MIN_SHARE_INTERVAL_MS, etaFor, etaFromDrive, isFresh, type Eta } from "../../../Shared/commerce/tracking.js";
+import { drivingTime } from "./drivingTime.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
@@ -159,8 +160,14 @@ export async function trackOrder(userId: number, reference: string, now = new Da
       driver,
       recordedAt,
       door,
-      eta: driver && door ? etaFor(driver, door) : null,
+      eta: driver && door ? await estimate(driver, door, now) : null,
     });
   }
   return result;
+}
+
+/** Apple's driving time when it answers, the distance band when it does not. */
+async function estimate(driver: Pin, door: Pin, now: Date): Promise<Eta> {
+  const drive = await drivingTime(driver, door, now.getTime());
+  return drive ? etaFromDrive(driver, door, drive.seconds) : etaFor(driver, door);
 }

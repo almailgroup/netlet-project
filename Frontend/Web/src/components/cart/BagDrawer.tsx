@@ -138,10 +138,12 @@ export function BagLines() {
  * summary below then shows as its own row.
  */
 function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
-  const { setDeliveryChoice } = useCart();
+  const { cart, setDeliveryChoice } = useCart();
   const { t } = useTranslation();
   const money = useMoney();
   const fast = item.deliveryChoice === "fast";
+  /* A member's fast trip is NetLet's to carry too (4.1), so it says free. */
+  const fastLabel = cart?.delivery.memberFree ? t("delivery.fastFreeMember") : t("delivery.fastFor", { fee: money(item.fastDelivery!.fee) });
   const speed = item.fastDelivery?.speed;
   const option = (choice: "regular" | "fast", label: string) => (
     <button
@@ -156,7 +158,7 @@ function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
   return (
     <div role="group" aria-label={t("delivery.choiceFor", { name: title })} className="mt-2 inline-flex flex-wrap items-center gap-1 rounded-full border border-[#d5dfeb] bg-white p-0.5">
       {option("regular", t("delivery.regular"))}
-      {option("fast", t("delivery.fastFor", { fee: money(item.fastDelivery!.fee) }))}
+      {option("fast", fastLabel)}
       {fast && speed && isDeliverySpeed(speed) ? <span className="px-2 text-[11px] ink-muted">{t(`speed.${speed}` as MessageKey)}</span> : null}
     </div>
   );

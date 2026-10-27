@@ -64,6 +64,20 @@ NetLet's server then signs a token for each map that opens, good for half an
 hour and only for NetLet's own address. The private key never leaves the
 server. If `APPLE_MAPKIT_TOKEN` is also set, it is used instead.
 
+**This way also turns on driving times for tracking.** With the three values
+set, the order page's estimate for a parcel on the road is Apple's driving time
+for the road as it is now, traffic included, rather than a guess from the
+distance — the server asks Apple's Maps Server API with a token it signs the
+same way (`scope: server_api`). Apple says a ready-made token works for every
+Apple Maps framework except that API, so `APPLE_MAPKIT_TOKEN` alone draws the
+map and leaves the estimate to the distance. If Apple refuses the key, the server
+log says "Apple's driving times are paused for 15 minutes: the token endpoint
+answered 401" — check the key against Apple's "Creating a Maps identifier and a
+private key", which is the setup the server API expects. The page says which estimate it is showing, and
+falls back to the distance whenever Apple does not answer; the privacy policy
+says what is sent while this is on: the driver's position and the door's pin,
+nothing else.
+
 ---
 
 ## What the shopper sees

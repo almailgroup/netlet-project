@@ -81,6 +81,7 @@ import {
   listApplications,
   myApplication,
   rejectApplication,
+  requestMoreDocuments,
   saveApplication,
   submitApplication,
 } from "../services/applications.js";
@@ -424,6 +425,14 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => applicationGuard(() => rejectApplication(actor, input.id, input.reason)));
+      }),
+
+    /* NetLet's other answer (3.3.1): send it back for more papers, not a no. */
+    requestMore: protectedProcedure
+      .input(z.object({ id: rowId, note: z.string().trim().min(1).max(400) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => applicationGuard(() => requestMoreDocuments(actor, input.id, input.note)));
       }),
   }),
 
@@ -810,7 +819,7 @@ export const inventoryRouter = router({
           try {
             await guard(async () => {
               switch (input.action) {
-                case "publish": return setProductStatus(actor, id, "published");
+                case "publish": return setProductStatus(actor, id, "published", undefined, { screen: false });
                 case "archive": return setProductStatus(actor, id, "archived");
                 case "draft": return setProductStatus(actor, id, "draft");
                 case "reprice": return repriceProduct(actor, id, input.percent!);

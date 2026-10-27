@@ -90,6 +90,8 @@ describe("a member's basket", () => {
     expect(rug).toMatchObject({ unitPrice: { amount: "30.000" }, priceReason: null });
     expect(cart.delivery.total.amount).toBe("0.000");
     expect(cart.delivery.memberWaived?.amount).toBe("3.500");
+    /* Fast included (4.1), so the bag's Fast choice says free. */
+    expect(cart.delivery.memberFree).toBe(true);
     expect(cart.total.amount).toBe("47.000");
   });
 
@@ -110,6 +112,7 @@ describe("a member's basket", () => {
 
   it("pays delivery like anybody under NetLet's minimum", async () => {
     await membership.setTerms(admin(), { freeDeliveryOver: "100.000" });
+    expect((await catalog.getCart(await basket(ids.noura)))!.delivery.memberFree).toBe(false);
     const placed = await place(await basket(ids.noura), ids.noura);
     const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
     expect(order).toMatchObject({ member: true, deliveryWaived: "0.000", deliveryTotal: "3.500" });
@@ -121,7 +124,7 @@ describe("everybody else", () => {
   it("pays the shelf and the delivery, and sees no member price", async () => {
     const cart = (await catalog.getCart(await basket(ids.fahad)))!;
     expect(cart.items.find(item => item.productTitle === "Lamp")).toMatchObject({ unitPrice: { amount: "20.000" }, priceReason: null, agreedFrom: null });
-    expect(cart.delivery).toMatchObject({ total: { amount: "3.500" }, memberWaived: null });
+    expect(cart.delivery).toMatchObject({ total: { amount: "3.500" }, memberWaived: null, memberFree: false });
     const placed = await place(await basket(ids.fahad), ids.fahad);
     const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
     expect(order).toMatchObject({ member: false, deliveryWaived: "0.000" });

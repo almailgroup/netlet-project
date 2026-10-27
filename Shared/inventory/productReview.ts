@@ -98,6 +98,14 @@ const CONTACT_SHAPES: { shape: RegExp; name: string }[] = [
 export const THIN_DESCRIPTION = 40;
 
 /**
+ * How many submissions one account's listings are read by the model in an
+ * hour before the rest simply wait for a person (3.3.6). Each reading is a
+ * call NetLet pays for, and a seller pressing Publish and Draft in a loop
+ * should cost a queue entry rather than a bill.
+ */
+export const MAX_LISTING_SCREENS_PER_HOUR = 30;
+
+/**
  * Everything wrong with one listing.
  *
  * Ordered serious first, because an administrator reads the top of a list and

@@ -62,6 +62,9 @@ describe("dictionary completeness", () => {
       // The two maps a shopper chooses between, named as their makers name them
       // on an Arabic phone — "خرائط Google", with the company in Latin.
       "pin.google", "pin.apple", "pin.tryGoogle", "pin.tryApple",
+      // The estimate says it is Apple's driving time, and the policy that Apple
+      // is asked — the same maps, named the same way.
+      "tracking.estimateTraffic", "privacy.who.drivingTimes",
       // The privacy policy names the services a shopper's information reaches
       // — Vercel, Supabase, Resend, Google's reCAPTCHA and the three maps — as
       // their makers write them, so a reader can look each one up: the maps' reason.

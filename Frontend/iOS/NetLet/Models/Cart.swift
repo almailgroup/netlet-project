@@ -87,6 +87,8 @@ struct CartDelivery: Decodable, Hashable, Sendable {
     let total: Money
     /// Delivery NetLet carries for a member, said rather than hidden.
     var memberWaived: Money? = nil
+    /// Whether a member's free delivery covers every trip, fast included (4.1).
+    var memberFree: Bool? = nil
 }
 
 /// A saved address as the bag names it: enough to choose one by.

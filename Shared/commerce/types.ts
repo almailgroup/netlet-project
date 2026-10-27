@@ -340,6 +340,8 @@ export type Cart = {
     total: Money;
     /** What a member's free delivery took off this basket (4.1). Null for everybody else. */
     memberWaived?: Money | null;
+    /** Whether a member's free delivery covers every trip on this bag, fast included (4.1). */
+    memberFree?: boolean;
   };
   /**
    * The addresses this shopper could send a line to (3.2.6).

@@ -89,6 +89,8 @@ function Overview({ actor }: { actor: Actor }) {
   /* Shoppers waiting on NetLet itself (3.5.1). */
   const waitingSupport = trpc.support.waiting.useQuery(undefined, { enabled: can(actor, "support.answer") });
   const atCentres = trpc.fulfilment.waiting.useQuery(undefined, { enabled: can(actor, "fulfilment.operate") });
+  /* Fraud watch's alerts this administrator has not looked at (3.6.5). */
+  const fraudAlerts = trpc.orders.fraudUnseen.useQuery(undefined, { enabled: can(actor, "platform.viewAll") });
 
   if (isCourier) {
     return (
@@ -153,6 +155,8 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.affiliatesWaiting" as const, value: waitingAffiliates.data ?? 0, href: "/admin/affiliates", tone: "urgent" as const },
     { label: "admin.bannersWaiting" as const, value: waitingBanners.data ?? 0, href: "/admin/ads", tone: "urgent" as const },
     { label: "support.waitingTile" as const, value: waitingSupport.data ?? 0, href: "/admin/support", tone: "urgent" as const },
+    { label: "fraud.ordersTile" as const, value: fraudAlerts.data?.orders ?? 0, href: "/admin/orders", tone: "urgent" as const },
+    { label: "fraud.watchTile" as const, value: fraudAlerts.data?.watch ?? 0, href: "/admin/fraud", tone: "urgent" as const },
     { label: "fulfilment.toReceiveTile" as const, value: atCentres.data?.toReceive ?? 0, href: "/admin/fulfilment" },
     { label: "fulfilment.toPickTile" as const, value: atCentres.data?.toPick ?? 0, href: "/admin/fulfilment", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);

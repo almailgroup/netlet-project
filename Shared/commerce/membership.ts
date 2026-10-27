@@ -97,21 +97,18 @@ export function memberPriceFor(input: { member: boolean; listPrice: string; memb
  * A member's delivery, waived: every seller's fee becomes nothing to the
  * shopper, and what each would have charged is kept as `waived`. Over a
  * minimum when NetLet has set one; a basket under it pays as anybody would.
+ *
+ * Fast parcels too, on the owner's word: the document's membership is "free
+ * fast delivery" (4.1), so the fast trip a member picks (3.2.5) is NetLet's
+ * cost like the regular one, and recorded the same way.
  */
 export function waiveDelivery(quote: DeliveryQuote, goodsTotal: string, freeOver: string | null): DeliveryQuote & { waived: string } {
   if (freeOver !== null && compareMoney(goodsTotal, freeOver) < 0) return { ...quote, waived: "0.000" };
   let waived = 0n;
-  let total = 0n;
   const perVendor = quote.perVendor.map(row => {
     const fee = toFils(row.fee);
-    /* A member's free delivery is the regular trip. Fast is a different trip
-       the shopper chose to pay for (3.2.5), and stays charged. */
-    if (row.choice === "fast") {
-      total += fee;
-      return row;
-    }
     waived += fee;
     return fee > 0n ? { ...row, fee: "0.000", free: true, toFree: null, waived: row.fee } : { ...row, toFree: null };
   });
-  return { perVendor, total: fromFils(total), waived: fromFils(waived) };
+  return { perVendor, total: "0.000", waived: fromFils(waived) };
 }

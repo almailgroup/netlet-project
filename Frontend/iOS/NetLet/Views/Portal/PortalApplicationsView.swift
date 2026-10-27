@@ -95,6 +95,14 @@ private struct ApplicationCard: View {
             }
             Divider()
             LabeledField(label: l.t("admin.applicationReason"), text: Binding(get: { reason }, set: { reason = String($0.prefix(400)) }))
+            // Hands it back for more papers, with the same note: an
+            // application short of one document is not a refusal (3.3.1). A
+            // row of its own, because three buttons do not fit a phone's.
+            Button {
+                Task { await askForMore() }
+            } label: { Label(l.t("admin.applicationAskMore"), systemImage: "doc.badge.plus") }
+                .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
+                .disabled(deciding || reason.trimmingCharacters(in: .whitespaces).isEmpty)
             HStack(spacing: 8) {
                 Button {
                     Task { await reject() }
@@ -121,6 +129,7 @@ private struct ApplicationCard: View {
         case "draft": return "admin.applicationStatusDraft"
         case "approved": return "admin.applicationStatusApproved"
         case "rejected": return "admin.applicationStatusRejected"
+        case "more_needed": return "admin.applicationStatusMoreNeeded"
         default: return "admin.applicationStatusSubmitted"
         }
     }
@@ -208,6 +217,17 @@ private struct ApplicationCard: View {
         let amount = PhoneNumber.foldDigits(fixed).trimmingCharacters(in: .whitespaces)
         if await app.attempt(done: "admin.applicationApproved", fallback: "admin.saveFailed", {
             _ = try await app.services.api.call(API.approveApplication, .init(id: row.id, commissionPercent: chosen.isEmpty ? nil : chosen, commissionFixed: amount.isEmpty ? nil : amount))
+        }) {
+            await changed()
+        }
+    }
+
+    private func askForMore() async {
+        deciding = true
+        defer { deciding = false }
+        let note = reason.trimmingCharacters(in: .whitespaces)
+        if await app.attempt(done: "admin.applicationAskedMore", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.requestMoreDocuments, .init(id: row.id, note: note))
         }) {
             await changed()
         }

@@ -1,0 +1,11 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "google": null,
+        "apple": false,
+        "drivingTimes": false
+      }
+    }
+  }
+}

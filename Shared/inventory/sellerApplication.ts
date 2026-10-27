@@ -62,8 +62,17 @@ import { isValidIban, isValidKuwaitPhone, isGovernorate } from "./storeProfile.j
  */
 export const AGREEMENT_VERSION = "2026-10-26";
 
-/** Where an application is. Four states, all stored: none is derived. */
-export const APPLICATION_STATES = ["draft", "submitted", "approved", "rejected"] as const;
+/**
+ * Where an application is. Five states, all stored: none is derived.
+ *
+ * `more_needed` is NetLet's other answer to a submitted application (3.3.1:
+ * "requesting additional documents or … sending the final contract"). It was
+ * once only "reject, saying why", which an applicant reads as a no; asking for
+ * a paper is not a no, and the application goes back to them to add it and
+ * send it again. The note rides in `rejection_reason`, which is NetLet's last
+ * word to the applicant whichever answer it was.
+ */
+export const APPLICATION_STATES = ["draft", "submitted", "more_needed", "approved", "rejected"] as const;
 export type ApplicationState = (typeof APPLICATION_STATES)[number];
 
 export type SellerApplication = {
@@ -225,5 +234,5 @@ export function readyToApprove(
  * why it was rejected.
  */
 export function editableByApplicant(state: ApplicationState): boolean {
-  return state === "draft" || state === "rejected";
+  return state === "draft" || state === "rejected" || state === "more_needed";
 }

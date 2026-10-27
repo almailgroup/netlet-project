@@ -112,7 +112,22 @@ const SYSTEM_PROMPT = [
 export async function modelConcernFor(
   product: { title: string; description: string | null; category?: string | null },
 ): Promise<Flag | null> {
-  if (!(await modelReviewAvailable())) return null;
+  return (await modelScreen(product)).flag;
+}
+
+/**
+ * The same reading, saying whether the model answered at all.
+ *
+ * The queue does not need the difference — nothing and a failure both leave
+ * the deterministic flags as they were. Approving a submission does (3.3.6):
+ * "the model found nothing" may put a listing on the shelf, and "the model
+ * never answered" must not, so a timeout, a refusal or a reply that is not
+ * `{"concern": …}` is `answered: false` and the listing waits for a person.
+ */
+export async function modelScreen(
+  product: { title: string; description: string | null; category?: string | null },
+): Promise<{ answered: boolean; flag: Flag | null }> {
+  if (!(await modelReviewAvailable())) return { answered: false, flag: null };
 
   /* Fenced and labelled, and the whitespace is flattened so a description
      cannot forge its own closing marker — the same handling the shopper
@@ -137,10 +152,12 @@ export async function modelConcernFor(
     deadlineMs: 6000,
   }));
   /* A timeout, a network error, a refusal, malformed JSON — one answer, and
-     the deterministic flags are untouched. */
-  const concern = typeof parsed?.concern === "string" ? parsed.concern.trim() : "";
-  if (!concern) return null;
-  return { finding: "modelConcern", severity: "serious", detail: concern.slice(0, 240) };
+     the deterministic flags are untouched. Only an explicit `null` is an
+     answer of "nothing to raise". */
+  if (!parsed || !("concern" in parsed)) return { answered: false, flag: null };
+  const concern = typeof parsed.concern === "string" ? parsed.concern.trim() : "";
+  if (!concern) return { answered: parsed.concern === null || typeof parsed.concern === "string", flag: null };
+  return { answered: true, flag: { finding: "modelConcern", severity: "serious", detail: concern.slice(0, 240) } };
 }
 
 /** One line, so a description cannot forge its own fence. */

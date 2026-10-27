@@ -369,6 +369,15 @@ extension API {
 
     static let rejectApplication = Procedure<Rejection, Acknowledged>(mutation: "inventory.applications.reject")
 
+    struct MoreNeeded: Encodable, Sendable {
+        let id: Int
+        /// What is missing, in the reviewer's words; the applicant reads it.
+        let note: String
+    }
+
+    /// Hands a submitted application back for more papers (3.3.1), rather than rejecting it.
+    static let requestMoreDocuments = Procedure<MoreNeeded, Acknowledged>(mutation: "inventory.applications.requestMore")
+
     struct ReviewIds: Encodable, Sendable {
         let ids: [Int]
     }
@@ -417,8 +426,23 @@ struct ReferralWatchRow: Decodable, Identifiable, Hashable, Sendable {
     let flags: [OrderRisk.Flag]
 }
 
+/// Fraud watch's alerts this administrator has not looked at (`orders.fraudUnseen`),
+/// per desk: high-risk orders, and reviews and referrals (3.6.5).
+struct FraudUnseen: Decodable, Sendable {
+    let orders: Int
+    let watch: Int
+}
+
 extension API {
     static let reviewWatch = Procedure<NoInput, [ReviewWatchRow]>(query: "orders.reviewWatch")
+    static let fraudUnseen = Procedure<NoInput, FraudUnseen>(query: "orders.fraudUnseen")
+
+    struct FraudDesk: Encodable, Sendable {
+        /// `orders` or `watch` — the desk being opened, whose alerts it reads.
+        let desk: String
+    }
+
+    static let fraudSeen = Procedure<FraudDesk, Acknowledged>(mutation: "orders.fraudSeen")
     static let referralWatch = Procedure<NoInput, [ReferralWatchRow]>(query: "orders.referralWatch")
 
     struct HideReview: Encodable, Sendable {

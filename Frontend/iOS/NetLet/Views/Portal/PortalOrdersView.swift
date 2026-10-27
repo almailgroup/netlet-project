@@ -51,9 +51,14 @@ struct PortalOrdersView: View {
             orders = found
             failed = nil
             // The signals name other accounts' behaviour, so only an administrator asks.
-            if app.session.seller?.can("platform.viewAll") == true, !found.rows.isEmpty {
-                let answer = (try? await api.call(API.orderRisk, .init(ids: found.rows.map(\.id)))) ?? []
-                risk = Dictionary(answer.map { ($0.orderId, $0) }, uniquingKeysWith: { first, _ in first })
+            if app.session.seller?.can("platform.viewAll") == true {
+                // A high-risk order is a notice to the administrators as it is
+                // placed, and this desk is where it is looked at (3.6.5).
+                _ = try? await api.call(API.fraudSeen, .init(desk: "orders"))
+                if !found.rows.isEmpty {
+                    let answer = (try? await api.call(API.orderRisk, .init(ids: found.rows.map(\.id)))) ?? []
+                    risk = Dictionary(answer.map { ($0.orderId, $0) }, uniquingKeysWith: { first, _ in first })
+                }
             }
         } catch {
             let failure = APIError.from(error)

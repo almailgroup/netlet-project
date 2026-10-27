@@ -1716,6 +1716,21 @@ A vendor publishing means asking: the product goes to `pending_review` unless
 their vendor carries `autoPublish`. Suspending a vendor empties their shelf
 without editing a single product, which is what makes suspension a real lever.
 
+**A submission is read before a person sees it, and a clean one goes live**
+(3.3.6, on the owner's word; `screenSubmission` in `inventory.ts`). The rule's
+checks run first and a listing they flag never spends a model call; a clean
+one is read by NetLet AI, asked only for a concern (`modelScreen`). Neither
+finding anything publishes it, on the trail as `product.autoApprove` with no
+person's name and counted with the sellers' changes an administrator has not
+read; either finding something leaves it in the queue and tells every
+administrator (`staff_listing_flagged`). **Anything short of a clean answer
+waits for a person**: no gateway, `ai` off, the account's hourly readings spent
+(`MAX_LISTING_SCREENS_PER_HOUR`), a model that did not answer — `answered`
+tells that apart from "nothing to raise", because only the second may approve
+— or a listing no longer in review. A bulk publish is not screened. The
+approval asks `assertPriced` and the warranty rule again and writes with
+`pending_review` in the predicate.
+
 **Three standing warnings suspend a store** (3.3.18, migration 0066). A warning
 is its own act — an administrator issues it from the store's page, with a
 reason and optionally the product it concerns (`vendor_warnings`) — and it was
@@ -2685,9 +2700,10 @@ to choose, and `effectiveChoice` reads any stored "fast" there as regular. A
 fast line rides a parcel of its own — its key gains `|fast` — at the fast fee
 whatever it holds; the free-over threshold is the regular trip's. The choice is
 frozen on the order line, the breakdown names the fast parcel, and the board
-marks it. **A member's free delivery waives the regular trip only**: fast is a
-trip the shopper chose to pay for. The document's "free fast delivery" (4.1)
-may mean otherwise, and the 4.1 row says it is NetLet's to confirm.
+marks it. **A member's fast trip is free too, on the owner's word** (4.1's
+"free fast delivery"): `waiveDelivery` waives every row, and the bag's Fast
+choice says "free for members" while `delivery.memberFree` holds rather than a
+fee nobody pays.
 
 **A store delivers itself or through NetLet** (3.3.13). `delivery_mode` is
 `netlet` by default — what every store did before — or `own`: with a company
@@ -2917,7 +2933,12 @@ Preferences already had and nothing read: each kind names the preference that
 gates it (`NOTICE_RULES`) — an order's steps follow Delivery updates — and only
 the order's own confirmation is never silenced.
 **Sellers hear their store's new orders and returns**, every member
-of the store (`notifyStore`).
+of the store (`notifyStore`). **An applicant hears every answer to their
+application** — more papers asked for, a document turned down (named in both
+languages), the contract attached, approved, rejected — through
+`tellApplicant`, never silenced. **Administrators are a third audience**
+(`notifyStaff`, every `role = admin`): a listing the review flagged and
+fraud watch's high-risk order, review or referral, each once per event.
 
 **Price drops name the new price, never the old.** "Was 40, now 32" is an
 advertised saving, which needs the store's discount permit, and a notice is
@@ -3264,9 +3285,17 @@ only while the parcel is collected and not delivered, only the driver in
 while that driver still belongs to the company carrying it. Where, and which
 company — never who.
 
-**The estimate is a five-minute band from distance**, labelled as such:
-NetLet has no routing or traffic data, and a clock time would be a promise.
-No pin, no door to measure to, so no time. The server keeps one point in ten
+**The estimate is Apple's driving time with traffic, in a five-minute band**
+(`drivingTime.ts`): with the MapKit signing values set, the server signs a
+`server_api` token, trades it at `/v1/token` and asks `/v1/etas` from the
+driver to the door, adding the doorstep. A ready-made `APPLE_MAPKIT_TOKEN`
+cannot reach that API (Apple's rule). Every way Apple does not answer is the
+**straight-line band**, and the band carries its `source`, so the page says
+which it shows; an answer is kept a minute per point and door, and a refusal
+or a spent quota pauses the asking for fifteen minutes and is logged once.
+Only the two points go to Apple, and the privacy policy says so while
+`maps.providers` reports `drivingTimes`. A clock time would be a promise
+either way. No pin, no door to measure to, so no time. The server keeps one point in ten
 seconds by a predicate in the upsert, however often the phone reports.
 
 ## Subscribe & Save
@@ -3532,6 +3561,15 @@ back, a burst of invitations. **It flags and never acts** — a review is hidden
 by a person's press with a reason (`reviews.setHidden`), and a referral is
 something to look at before its cash-out is paid. Admin-only, because the
 signals describe other accounts.
+
+**And it alerts as it happens** (3.6.5): an order placed, a review written and
+a referral paid out are each judged then, by the function the pages use
+(`alertIfRiskyOrder`, `…Review`, `…Referral`), and a **high** one is a notice
+to every administrator — never "watch", which only the pages draw. Each runs
+after the act and never throws into it. The overview counts the unread ones
+per desk (`orders.fraudUnseen`) — high-risk orders on `/admin/orders`, reviews
+and referrals on `/admin/fraud` — and opening a desk reads its own
+(`useAlertsRead`), so the tiles count work rather than history.
 
 ## Referrals
 
@@ -3809,6 +3847,14 @@ must match the declared type; the name is reduced to letters, digits and
 as a PDF downloads as a `.pdf`. At most 4 MB, because a Vercel function refuses
 a body much over 4.5, and an oversized body is answered with a key rather than
 the parser's bare 413.
+
+**Asking for more is its own answer** (3.3.1: "requesting additional
+documents"). `requestMoreDocuments` hands a submitted application back as
+`more_needed` with a note the applicant reads — theirs to edit again, papers
+unlocked — and submitting it again is allowed from there, as from a draft or a
+rejection. It was a rejection before, which the applicant read as "we could
+not approve this application". The note is the row's `rejection_reason`, the
+one place a reviewer's words to an applicant already lived.
 
 **Approval waits on every document.** `approveApplication` refuses while any
 kind's newest upload is undecided (`documentsPending`) — a store approved on a

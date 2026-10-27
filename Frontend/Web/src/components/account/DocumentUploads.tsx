@@ -19,20 +19,14 @@ import {
   DOCUMENT_TYPES,
   MAX_DOCUMENT_BYTES,
   currentByKind,
+  DOCUMENT_KIND_LABEL,
   type DocumentKind,
   type DocumentStatus,
 } from "@shared/inventory/applicationDocuments";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
-export const KIND_LABEL: Record<DocumentKind, MessageKey> = {
-  trade_licence: "documents.kindTradeLicence",
-  signatory_id: "documents.kindSignatoryId",
-  iban_letter: "documents.kindIbanLetter",
-  authorisation: "documents.kindAuthorisation",
-  other: "documents.kindOther",
-  contract: "documents.kindContract",
-  signed_contract: "documents.kindSignedContract",
-};
+/* The kinds' names are shared, so a notice about a paper names it the way this page does. */
+export const KIND_LABEL: Record<DocumentKind, MessageKey> = DOCUMENT_KIND_LABEL;
 
 const KIND_HINT: Record<DocumentKind, MessageKey> = {
   trade_licence: "documents.hintTradeLicence",

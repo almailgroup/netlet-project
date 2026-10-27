@@ -29,6 +29,7 @@
  * and only then are the older ones of that kind deleted, because a civil ID
  * nobody needs any more is one more copy to lose.
  */
+import type { MessageKey } from "../i18n/dictionary.js";
 
 export const DOCUMENT_KINDS = ["trade_licence", "signatory_id", "iban_letter", "authorisation", "other", "contract", "signed_contract"] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
@@ -41,6 +42,17 @@ export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
  * contract is the applicant's to upload.
  */
 export const APPLICANT_KINDS: readonly DocumentKind[] = DOCUMENT_KINDS.filter(kind => kind !== "contract");
+
+/** Each kind's name, for the pages and for a notice naming the paper turned down. */
+export const DOCUMENT_KIND_LABEL: Record<DocumentKind, MessageKey> = {
+  trade_licence: "documents.kindTradeLicence",
+  signatory_id: "documents.kindSignatoryId",
+  iban_letter: "documents.kindIbanLetter",
+  authorisation: "documents.kindAuthorisation",
+  other: "documents.kindOther",
+  contract: "documents.kindContract",
+  signed_contract: "documents.kindSignedContract",
+};
 
 /**
  * Whether an application waits on its signed contract: NetLet attached one,

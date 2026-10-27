@@ -25,7 +25,12 @@ import { ENV } from "./env.js";
 /** How long a signed MapKit token is good for: longer than a checkout, shorter than a day. */
 const APPLE_TOKEN_TTL_SECONDS = 30 * 60;
 
-export type MapProviders = { google: string | null; apple: boolean };
+export type MapProviders = {
+  google: string | null;
+  apple: boolean;
+  /** Whether tracking asks Apple for a driving time (3.4.3), which the privacy policy says. */
+  drivingTimes: boolean;
+};
 
 function appleSigningConfigured(): boolean {
   return Boolean(ENV.appleMapkitTeamId && ENV.appleMapkitKeyId && ENV.appleMapkitPrivateKey);
@@ -36,7 +41,29 @@ export function mapProviders(): MapProviders {
   return {
     google: ENV.googleMapsKey || null,
     apple: Boolean(ENV.appleMapkitToken) || appleSigningConfigured(),
+    drivingTimes: appleSigningConfigured(),
   };
+}
+
+/**
+ * A Maps Server API auth token (3.4.3), or null when no key is set up.
+ *
+ * The same team, key id and private key as MapKit JS's, with
+ * `scope: "server_api"` and no origin — what Apple asks for a server's own
+ * calls. Only a signed token reaches that API: Apple says a ready-made one
+ * works for every framework but this, so `APPLE_MAPKIT_TOKEN` alone draws the
+ * map and leaves the estimate to the distance.
+ */
+export async function appleServerAuthToken(): Promise<string | null> {
+  if (!appleSigningConfigured()) return null;
+  const key = await importPKCS8(ENV.appleMapkitPrivateKey, "ES256");
+  const now = Math.floor(Date.now() / 1000);
+  return new SignJWT({ scope: "server_api" })
+    .setProtectedHeader({ alg: "ES256", kid: ENV.appleMapkitKeyId, typ: "JWT" })
+    .setIssuer(ENV.appleMapkitTeamId)
+    .setIssuedAt(now)
+    .setExpirationTime(now + APPLE_TOKEN_TTL_SECONDS)
+    .sign(key);
 }
 
 /**

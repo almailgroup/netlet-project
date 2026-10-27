@@ -17,6 +17,7 @@ import { and, asc, desc, eq, gt, inArray, lt, ne, sql } from "drizzle-orm";
 import { applicationDocuments, vendorApplications } from "../../database/schema.js";
 import {
   APPLICANT_KINDS,
+  DOCUMENT_KIND_LABEL,
   DOCUMENT_NOTE_MAX,
   MAX_DOCUMENTS_PER_APPLICATION,
   MAX_DOCUMENT_UPLOADS_PER_HOUR,
@@ -31,6 +32,8 @@ import {
 import { editableByApplicant, type ApplicationState } from "../../../Shared/inventory/sellerApplication.js";
 import { assertCan, can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
+import { tellApplicant } from "./notifications.js";
+import { translate } from "../../../Shared/i18n/dictionary.js";
 
 export type DocumentRefusal =
   | DocumentProblem
@@ -162,6 +165,19 @@ export async function attachContract(
   request: { fileName: string | null; declaredType: string; bytes: Uint8Array },
   now = new Date(),
 ): Promise<DocumentView> {
+  const attached = await writeContract(actor, applicationId, request, now);
+  /* The applicant is waiting on it, and had no way to know it arrived but to
+     keep opening /sell (3.3.1). */
+  await tellApplicant(applicationId, "application_contract_sent", {}, `contract:${attached.id}`);
+  return attached;
+}
+
+async function writeContract(
+  actor: Actor,
+  applicationId: number,
+  request: { fileName: string | null; declaredType: string; bytes: Uint8Array },
+  now: Date,
+): Promise<DocumentView> {
   assertCan(actor, "platform.manageUsers");
   const problem = documentProblem(request.bytes, request.declaredType);
   if (problem) throw new DocumentRefused(problem);
@@ -270,7 +286,7 @@ export async function reviewDocument(
   const db = await handle();
   const status: DocumentStatus = request.decision === "accept" ? "accepted" : "rejected";
 
-  await db.transaction(async tx => {
+  const decided = await db.transaction(async tx => {
     const [decided] = await tx
       .update(applicationDocuments)
       .set({ status, reviewNote: note, reviewedBy: actor.userId, reviewedAt: now })
@@ -290,7 +306,18 @@ export async function reviewDocument(
           lt(applicationDocuments.createdAt, decided.createdAt),
         ));
     }
+    return decided;
   });
+  /* A paper turned down is a request for another, and the applicant hears it
+     with the reason, naming the paper in both languages (3.3.1). */
+  if (status === "rejected" && note) {
+    const label = DOCUMENT_KIND_LABEL[decided.kind as DocumentKind];
+    await tellApplicant(decided.applicationId, "application_document_declined", {
+      document: label ? translate("en", label) : decided.kind,
+      documentAr: label ? translate("ar", label) : decided.kind,
+      reason: note,
+    }, `document:${request.id}:rejected`);
+  }
   return status;
 }
 

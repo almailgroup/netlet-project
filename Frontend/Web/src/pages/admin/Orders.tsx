@@ -42,6 +42,7 @@ import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/
 import { useState } from "react";
 import { toast } from "sonner";
 import { PinLink } from "@/components/map/PinLink";
+import { useAlertsRead } from "@/hooks/useAlertsRead";
 
 const FULFILMENT_LABEL: Record<FulfilmentState, MessageKey> = {
   pending: "admin.fulfilPending",
@@ -98,6 +99,9 @@ function Orders({ actor }: { actor: Actor }) {
    */
   const ids = (list.data?.rows ?? []).map(row => row.id);
   const risk = trpc.orders.risk.useQuery({ ids }, { enabled: ids.length > 0 && can(actor, "platform.viewAll") });
+  /* A high-risk order is a notice to the administrators as it is placed, and
+     this page is where it is looked at, so opening it reads those. */
+  useAlertsRead("orders", can(actor, "platform.viewAll"));
   const riskFor = (id: number) => risk.data?.find(entry => entry.orderId === id);
 
   return (

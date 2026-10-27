@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { cartItems, carts, orderItems, orders, productVariants, products, referrals, reviews, users, vendorMembers, vendors, type User } from "../../database/schema.js";
+import { cartItems, carts, notifications, orderItems, orders, productVariants, products, referrals, reviews, users, vendorMembers, vendors, type User } from "../../database/schema.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -100,5 +100,66 @@ describe("the referral watch", () => {
     expect(sisterRow.flags.map(flag => flag.signal)).toEqual(["sharedAddress", "sharedPhone", "qualifyingRefunded"]);
     expect(sisterRow.risk).toBe("high");
     expect(watched.find(row => row.referredEmail === "fahad@example.com")!.flags).toEqual([]);
+  });
+});
+
+describe("the alerts (3.6.5)", () => {
+  /* Raised as each thing happens, to every administrator, only when it is high. */
+  const noticesOf = async (kind: string) => db.select().from(notifications).where(eq(notifications.kind, kind));
+
+  it("tells the administrators of a high-risk order as it is placed, and of nothing below that", async () => {
+    const [boss] = await db.insert(users).values({ email: "boss@netlet.test", role: "admin" }).returning();
+    people.boss = boss;
+    const [newcomer] = await db.insert(users).values({ email: "newcomer@example.com", name: "newcomer" }).returning();
+    people.newcomer = newcomer;
+
+    /* A brand-new account, KWD 80 in cash: the combination that costs most. */
+    const [cart] = await db.insert(carts).values({ id: "cart-newcomer", userId: newcomer.id }).returning();
+    await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.variant, quantity: 4 });
+    const placed = await ordersModule.placeOrder(cart.id, {
+      email: newcomer.email, userId: newcomer.id, contactName: "newcomer",
+      contactPhone: "+96550000099", deliveryZoneId: "hawalli", addressLine: "Block 7, Street 7, House 7", paymentMethod: "cod",
+    });
+    const [notice] = await noticesOf("staff_fraud_order");
+    expect(notice).toMatchObject({ userId: boss.id, link: "/admin/orders", params: { reference: placed.order.reference } });
+
+    /* A KWD 20 lamp from the same kind of account is "watch" at most: no notice. */
+    await deliveredTo("fahad", "Block 9, Street 9, House 9", "+96550000004");
+    expect(await noticesOf("staff_fraud_order")).toHaveLength(1);
+  });
+
+  it("tells them of a review the store's own people wrote, as it is written", async () => {
+    const reviewsModule = await import("./reviews.js");
+    const line = await deliveredTo("owner", "Block 1, Street 2, House 3", "+96550000001");
+    await db.update(orders).set({ status: "paid" }).where(eq(orders.id, line.orderId));
+    await reviewsModule.writeReview(people.owner.id, { orderItemId: line.lineId, rating: 5 });
+    const [notice] = await noticesOf("staff_fraud_review");
+    expect(notice).toMatchObject({ userId: people.boss.id, link: "/admin/fraud", params: { product: "Lamp" } });
+  });
+
+  it("tells them of a referral whose two accounts look like one person", async () => {
+    await fraud.alertIfRiskyReferral(people.sister.id);
+    expect(await noticesOf("staff_fraud_referral")).toHaveLength(1);
+    /* Once per referral, however many times it is judged. */
+    await fraud.alertIfRiskyReferral(people.sister.id);
+    expect(await noticesOf("staff_fraud_referral")).toHaveLength(1);
+    /* A stranger's referral says nothing. */
+    await fraud.alertIfRiskyReferral(people.fahad.id);
+    expect(await noticesOf("staff_fraud_referral")).toHaveLength(1);
+  });
+
+  it("counts what each desk has not looked at, and opening a desk reads its own alone", async () => {
+    const boss: Actor = { kind: "admin", userId: people.boss.id };
+    expect(await fraud.fraudUnseen(boss)).toEqual({ orders: 1, watch: 2 });
+    await fraud.markFraudSeen(boss, "orders");
+    expect(await fraud.fraudUnseen(boss)).toEqual({ orders: 0, watch: 2 });
+    await fraud.markFraudSeen(boss, "watch");
+    expect(await fraud.fraudUnseen(boss)).toEqual({ orders: 0, watch: 0 });
+    await expect(fraud.fraudUnseen({ kind: "vendor", userId: people.owner.id, vendorId: ids.vendor, role: "owner" })).rejects.toThrow(/FORBIDDEN/);
+  });
+
+  it("answers nothing, and throws nothing, for something it cannot find", async () => {
+    await expect(fraud.alertIfRiskyOrder(-1)).resolves.toBeUndefined();
+    await expect(fraud.alertIfRiskyReview(-1)).resolves.toBeUndefined();
   });
 });

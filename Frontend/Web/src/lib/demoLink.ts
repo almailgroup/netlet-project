@@ -177,7 +177,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { captchaSiteKey: null };
     /* No keys in the demo, so the pin picker draws OpenStreetMap. */
     case "maps.providers":
-      return { google: null, apple: false };
+      return { google: null, apple: false, drivingTimes: false };
 
     case "commerce.products.list": {
       const first =
@@ -530,6 +530,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.applications.submit":
     case "inventory.applications.approve":
     case "inventory.applications.reject":
+    case "inventory.applications.requestMore":
     case "inventory.applications.removeDocument":
     case "inventory.applications.reviewDocument":
       throw new Error("admin.saveFailed");
@@ -551,6 +552,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "orders.referralWatch":
     case "orders.risk":
       return [];
+    case "orders.fraudUnseen":
+      return { orders: 0, watch: 0 };
+    case "orders.fraudSeen":
+      return undefined;
 
     /* The demo signs in as a vendor `manager` and its fixtures hold no orders,
        so the seller's desk is reachable and honestly empty — which is also the

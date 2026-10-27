@@ -661,7 +661,8 @@ struct TrackingPanel: View {
     private func updated(_ parcel: TrackedParcel) -> String {
         let minutes = parcel.recordedAt.map { max(0, Int((Date().timeIntervalSince($0) / 60).rounded())) }
         let line = (minutes ?? 0) < 1 && minutes != nil ? l.t("tracking.updatedNow") : l.t("tracking.updated", ["minutes": "\(minutes ?? 0)"])
-        return parcel.eta?.kind == "band" ? line + " · " + l.t("tracking.estimate") : line
+        guard let eta = parcel.eta, eta.kind == "band" else { return line }
+        return line + " · " + l.t(eta.source == "traffic" ? "tracking.estimateTraffic" : "tracking.estimate")
     }
 }
 
