@@ -20,6 +20,15 @@
  * bag Checkout started below the screen, under the tab bar. While it is still
  * below, the total and Checkout float over the tab bar (`PhoneActionBar`), and
  * they leave as the page's own button comes up to meet them.
+ *
+ * **Every width draws the phone's page, in the middle of the screen, on the
+ * owner's word** — the account's rule (`COLUMN`). A wide screen spread the
+ * bag from the logo's line to the edge with its title alone over it, and no
+ * bar saying where it was going: the old page beside the phone's new one. It
+ * is the same bar, title and store cards now, centred; from `lg` the summary
+ * stands beside the lines rather than under them, so Checkout stays on the
+ * screen down a long bag, and the two together are as wide as the account's
+ * column plus the summary.
  */
 import { BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
@@ -30,7 +39,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic } from "@/lib/haptics";
@@ -42,6 +50,10 @@ import { Link } from "wouter";
 
 const DeliveryZoneDialog = lazyPage(async () => ({ default: (await import("@/components/layout/DeliveryZoneDialog")).DeliveryZoneDialog }));
 
+/* The phone's column, centred: the account's width until there is room for the
+   summary beside the lines. */
+const COLUMN = "mx-auto w-full max-w-2xl lg:max-w-5xl";
+
 export default function Cart() {
   const { t } = useTranslation();
   const money = useMoney();
@@ -49,24 +61,25 @@ export default function Cart() {
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
-  const wide = useMediaQuery("(min-width: 1024px)");
 
   return (
     <PageBody>
-      {wide ? null : <CartTopBar />}
-      <PageHeading title={t("cart.title")} note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined} />
-      {!items && settling ? (
-        <div className="max-w-2xl"><BagSettling /></div>
-      ) : !items ? (
-        <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("cart.emptyNote")}>
-          <Link href="/" className={BUTTON_PRIMARY}>{t("cart.keepBrowsing")}</Link>
-        </EmptyState>
-      ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
-          <div className="min-w-0"><BagLines layout="page" /></div>
-          <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading /></aside>
-        </div>
-      )}
+      <div data-cart-column className={COLUMN}>
+        <CartTopBar />
+        <PageHeading title={t("cart.title")} note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined} />
+        {!items && settling ? (
+          <BagSettling />
+        ) : !items ? (
+          <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("cart.emptyNote")}>
+            <Link href="/" className={BUTTON_PRIMARY}>{t("cart.keepBrowsing")}</Link>
+          </EmptyState>
+        ) : (
+          <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
+            <div className="min-w-0"><BagLines layout="page" /></div>
+            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading /></aside>
+          </div>
+        )}
+      </div>
       {items && cart ? (
         <PhoneActionBar shown={checkoutBelow} label={t("cart.bar")}>
           <div className="flex items-center gap-2">

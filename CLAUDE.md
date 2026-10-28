@@ -1212,6 +1212,9 @@ white button — a white surface, a light navy rim, navy words — told apart by
 bag icon on Add and the bolt on Buy. A navy-and-orange pair was tried first and
 the owner asked for the white back. The bundle's "add the set" wears it too, and
 the keys stay separate so the two can be coloured apart again in that one file.
+**The preview is the one exception, on the owner's word**: `PREVIEW_TONE`
+beside it, a navy Add to cart and Buy now in white with a navy rim (see Quick
+View, below).
 
 **The photo and the title both open the product, and only the title is a link
 anybody hears.** The photo's link is `tabIndex={-1}` and `aria-hidden`: two
@@ -1257,6 +1260,22 @@ shopper's next tap. The app's hold opens its own preview sheet
 Home it is fetched on first use rather than with the page. On a phone its Add
 and Buy stack, and a stacked button is never `flex-1`: a zero basis in a column
 of no fixed height shrank both to the height of their words.
+
+**It is large and in the brand's navy, on the owner's word.** It was a 768px
+card whose photo was a third of a laptop's height, its title and price held to
+a card's 18px and 16px by `.type-product` and `.type-price` (which win with
+`!important`, so the `text-2xl` beside them did nothing), with an orange label
+and link and the card's white pair. From `lg` it is 1024px wide with the photo
+square up to 60% of the window's height (`max-w-[min(100%,60vh)]`, so a
+laptop's short window keeps the price beside it), the title 28px and the price
+32px; a navy band across its top carries "Quick view" and Close; Add to cart is
+navy, Buy now white with a navy rim (`PREVIEW_TONE`), and the link to the full
+page is navy. The dialog is named by the band and the product together
+("Quick view, Smart watch"), and **focus goes to its Close as it opens** — an
+effect after `useOverlay`, which only hands focus back: left on the card's eye,
+the keyboard was behind a modal it could not reach. On a phone it is the same
+sheet from the foot of the screen, under the same band. axe clean at 1440,
+1024 and 390 in both languages.
 
 **No hook below a `return`.** `QuickView` renders with no product first and
 called `useBuyNow()` after `if (!product) return null`, so opening the preview
@@ -1562,6 +1581,17 @@ the hearts counted. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
 first link on the page, which axe reported as content outside a landmark.
 
+**Every width draws the phone's page, in the middle of the screen, on the
+owner's word** — the account's rule. A wide screen spread the bag from the
+logo's line to the screen's edge under a title alone, with no bar saying where
+it was going: the old page beside the phone's new one. Now `CartTopBar`, the
+title and the store cards are the same at every width, in one column
+(`COLUMN`: the account's `max-w-2xl`, and `max-w-5xl` from `lg`), centred;
+from `lg` the summary stands beside the lines, sticky, so Checkout stays on the
+screen down a long bag, and the lines' column is about the account's width. The
+bar repeats the wide header's delivery button and Saved — kept, because on
+this page where the order goes is part of what it costs.
+
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three. Opened over
@@ -1640,8 +1670,9 @@ at 17, 24, 26, 30 and 36 pixels, the first line anywhere from 89 to 235 pixels
 under the header, columns centred on some pages and at the edge on others —
 so a page's title jumped sideways from the logo's line between pages — four
 different "nothing here" boxes and an orange eyebrow over one heading. **A
-column starts at the logo's line on every page** but the account's, which is
-one column in the middle on the owner's word (see "The account"); a reading page
+column starts at the logo's line on every page** but the account's and the
+cart's, each one column in the middle on the owner's word (see "The account"
+and "The bag has a page"); a reading page
 (`width="reading"`) is narrower, never moved to the middle. The product page's
 title is the product's name in the buy box and is the one exception, by its
 nature. `.scratch/audit-pages.mjs` measures the title's size, its gap under the

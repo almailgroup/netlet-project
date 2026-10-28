@@ -16,3 +16,13 @@ export const PURCHASE_TONE = {
   add: WHITE,
   buy: WHITE,
 } as const;
+
+/**
+ * The product preview's pair, in the brand's navy on the owner's word: a navy
+ * Add to cart, and Buy now in white with a navy rim, so the preview reads as
+ * the shop's own panel over the page while the card under it keeps its white.
+ */
+export const PREVIEW_TONE = {
+  add: "bg-[#0a285a] text-white transition-colors enabled:hover:bg-[#0d3372]",
+  buy: "border-2 border-[#0a285a] bg-white text-[#0a285a] transition-colors enabled:hover:bg-[#f0f2f5]",
+} as const;
