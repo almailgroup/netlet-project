@@ -60,7 +60,8 @@ enum BagOps {
             variantTitle: variant.title,
             image: product.images.first,
             unitPrice: variant.price,
-            quantity: quantity,
+            // One at its price, then stepped to the quantity pressed.
+            quantity: 1,
             measure: variant.measure,
             lineTotal: variant.price,
             bundleName: nil,

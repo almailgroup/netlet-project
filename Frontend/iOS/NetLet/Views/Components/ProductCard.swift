@@ -118,6 +118,14 @@ struct ProductCard: View {
     /// Moves on with each hold, so the card under the finger is a new one.
     @State private var held = 0
 
+    /// The card's identity: its product, and how many holds it has had.
+    /// **It names the product, and that is what drew only one card.** It was
+    /// the hold count alone — 0 on every card — and an explicit id on what a
+    /// lazy grid or row draws stands in for the `ForEach`'s own, so every card
+    /// on a shelf had the same identity and the grid drew one of them: a
+    /// department of 27 products showed one card under "27 products".
+    private var identity: String { "\(product.id)#\(held)" }
+
     var body: some View {
         let variant = product.leadVariant
         VStack(alignment: .leading, spacing: 0) {
@@ -173,7 +181,7 @@ struct ProductCard: View {
             .padding(.top, 8)
             .padding(.bottom, 10)
         }
-        .id(held)
+        .id(identity)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))

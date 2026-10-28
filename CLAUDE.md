@@ -5974,7 +5974,13 @@ the system's context menu, whose preview could only be looked at. The hold is a
 `LongPressGesture` beside the card's own buttons, and **the card is drawn
 afresh the moment it is felt** (`.id` moves on), so the finger lifting off it
 presses nothing — under it is the photo's link, and the web learnt that the
-lift opens the product behind the preview. VoiceOver has it as an action on the
+lift opens the product behind the preview. **That id names the product as well
+as the hold, and leaving the product out is what drew one card per shelf**:
+an explicit `.id` on what a lazy grid or row draws stands in for the
+`ForEach`'s identity, and the hold count alone is 0 on every card, so a
+department of 27 products drew one card under "27 products" — the owner's
+"only one product is shown", found by opening the app against the live shop
+(`app-live.yml`) and not by any test, since none renders a grid. VoiceOver has it as an action on the
 card's name. `-NetLetOpen preview:<handle>` opens it for the screenshots.
 
 **Signing in is the web's phone design too**: NetLet's street as a band across
@@ -6073,19 +6079,21 @@ faint while `syncing`, and Place order waits for it. Buy now opens checkout at
 once on the bag drawn ahead. A refusal drops that press, is felt as two taps
 and reads the bag again, and the caller still says it failed.
 
-**Every remote picture goes through `ImagePipeline`, and that fixed "only one
-product is shown".** The owner reported the app showing one product and none
-of the rest. The live catalogue was fine — 24 products — but 23 of their first
-photos were a seller's own, on a slow Apache server sending originals of
-100 KB to 1.4 MB with no cache headers, and one was on Shopify's CDN, 38 KB and
-fast. `AsyncImage` cancels its load whenever its card is laid out afresh, and
-since the tab bar began stepping aside on a scroll every scroll lays the page
-out afresh; a cancelled load is a failure it never retries. So the fast photo
-arrived before the first scroll and the slow ones never did. Found with
-`.github/workflows/live-check.yml`, a manual run that reads the live
-catalogue from outside (this sandbox cannot reach the live site; GitHub's
-runners can) and tests each photo host the way an iPhone app connects — TLS,
-the chain, an app's user agent — which ruled out App Transport Security.
+**Every remote picture goes through `ImagePipeline`.** It was written for the
+owner's "only one product is shown", on a reading of the data that turned out
+to be half the story: the live catalogue was fine — 24 products — and 23 of
+their first photos were a seller's own, on a slow Apache server sending
+originals of 100 KB to 1.4 MB with no cache headers, while the one that showed
+was on Shopify's CDN. `AsyncImage` does cancel its load when its view is made
+afresh and never tries again, so the pipeline earns its place; **but the one
+card was the cards' shared id** (see "Holding a product card"), which only a
+picture of the app against the live shop showed — `app-live.yml` builds it for
+a simulator, opens the department, a search, a product and the home page, and
+posts the screens as check runs this sandbox can read. Look at the screen
+before deciding what a report means. `.github/workflows/live-check.yml` reads
+the live catalogue from outside (this sandbox cannot reach the live site;
+GitHub's runners can) and tests each photo host the way an iPhone app connects
+— TLS, the chain, an app's user agent — which ruled out App Transport Security.
 `ImagePipeline` (`Services/ImagePipeline.swift`): one load per address and
 size, shared by every view asking, owned by the pipeline so a view going away
 stops waiting and nothing else; a dropped or slow answer tried twice more;
@@ -6129,8 +6137,11 @@ outside the main actor**, so a main-actor object is made in an initialiser
 exactly that. Two more of the same family failed the portal's builds: a pure
 helper on a main-actor type that something nonisolated calls is marked
 `nonisolated` (`trimmedRate`), and a view helper that hands its content to
-`PortalCard` takes it `@escaping`, because the card keeps it. Neither shows
-anywhere but on macOS, so a push is not done until its iOS run is green. After the tests the same job installs the app and photographs
+`PortalCard` takes it `@escaping`, because the card keeps it. And **no
+`await` inside an XCTest assertion**: `XCTUnwrap` and `XCTAssert…` take
+autoclosures, which cannot be async, so the value is awaited first. None of
+these shows anywhere but on macOS, so a push is not done until its iOS run is
+green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
 posts small copies as neutral check runs on the commit, because a session
