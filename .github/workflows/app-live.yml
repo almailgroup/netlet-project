@@ -1,0 +1,143 @@
+# The app built for a simulator and opened against the live shop, its screens
+# posted as check runs on the commit — what a shopper's phone shows, for a
+# reader who can use the checks API but cannot download an artifact or hold an
+# iPhone. The iOS workflow's pictures answer from the demo recordings; these
+# answer from the real catalogue and the sellers' own photo servers, which is
+# where "only one product shows" lived.
+#
+# Run by hand (Actions → App against the live shop → Run workflow). It changes
+# nothing, runs no tests and uploads nothing to TestFlight.
+name: App against the live shop
+
+on:
+  workflow_dispatch:
+    inputs:
+      wait:
+        description: Seconds each screen is given to load before its picture
+        default: "25"
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  shots:
+    runs-on: macos-15
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: Frontend/iOS
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode
+        run: bash scripts/select-xcode.sh 26
+
+      - name: Pick a simulator
+        id: simulator
+        run: |
+          id=$(xcrun simctl list devices available --json | python3 -c '
+          import json, re, sys
+          runtimes = json.load(sys.stdin)["devices"]
+          def version(key):
+              match = re.search(r"iOS-(\d+)-(\d+)", key)
+              return (int(match.group(1)), int(match.group(2))) if match else (0, 0)
+          for key in sorted(runtimes, key=version, reverse=True):
+              phones = [d for d in runtimes[key] if d.get("isAvailable") and d["name"].startswith("iPhone")]
+              if version(key) >= (17, 0) and phones:
+                  print(phones[0]["udid"])
+                  break
+          ')
+          test -n "$id" || { echo "No iOS 17+ iPhone simulator available"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: |
+          set +e
+          xcodebuild build \
+            -project NetLet.xcodeproj \
+            -scheme NetLet \
+            -destination "id=${{ steps.simulator.outputs.id }}" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | grep --line-buffered -E "error:|\*\* BUILD"
+          exit "${PIPESTATUS[0]}"
+
+      # Each screen opened fresh and given time to load from the live shop;
+      # the department a second time, as a shopper coming back sees it, with
+      # the photos kept on the phone. The app's own network failures follow.
+      - name: Screens against the live shop
+        env:
+          SIM: ${{ steps.simulator.outputs.id }}
+          WAIT: ${{ inputs.wait }}
+        run: |
+          set -e
+          app=build/DerivedData/Build/Products/Debug-iphonesimulator/NetLet.app
+          mkdir -p build/live build/small
+          xcrun simctl boot "$SIM" 2>/dev/null || true
+          xcrun simctl bootstatus "$SIM" -b >/dev/null
+          xcrun simctl status_bar "$SIM" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 || true
+          xcrun simctl install "$SIM" "$app"
+          shot() {  # name, language, screen
+            xcrun simctl terminate "$SIM" com.netlet.marketplace 2>/dev/null || true
+            xcrun simctl launch "$SIM" com.netlet.marketplace -netlet.language "$2" -NetLetOpen "$3" >/dev/null
+            sleep "$WAIT"
+            xcrun simctl io "$SIM" screenshot --type=png "build/live/$1.png" >/dev/null 2>&1
+          }
+          shot 1-department-beauty en department:beauty
+          shot 2-search-cream en search:cream
+          shot 3-product en product:hyaluronic-acid-face-mask
+          shot 4-home en home
+          shot 5-department-beauty-ar ar department:beauty
+          shot 6-department-beauty-again en department:beauty
+          ls -1 build/live
+          echo "== the app's network failures"
+          xcrun simctl spawn "$SIM" log show --style compact --last 10m \
+            --predicate 'process == "NetLet" AND (eventMessage CONTAINS[c] "error" OR eventMessage CONTAINS[c] "failed" OR eventMessage CONTAINS[c] "timed out")' \
+            2>/dev/null | tail -60 || true
+
+      - name: Post the screens as check runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          for f in build/live/*.png; do
+            name=$(basename "$f" .png)
+            for quality in 55 45 35 25; do
+              sips -s format jpeg -s formatOptions "$quality" --resampleWidth 390 "$f" --out "build/small/$name.jpg" >/dev/null
+              [ "$(base64 -i "build/small/$name.jpg" | wc -c)" -lt 60000 ] && break
+            done
+          done
+          python3 - <<'PY'
+          import base64, glob, json, os, subprocess
+          files = sorted(glob.glob("build/small/*.jpg"))
+          pairs = [files[i:i + 2] for i in range(0, len(files), 2)]
+          for number, pair in enumerate(pairs, 1):
+              fields = []
+              for path in pair:
+                  name = os.path.basename(path)[:-4]
+                  fields.append(name + "\n" + base64.b64encode(open(path, "rb").read()).decode())
+              body = {
+                  "name": f"Live app {number} of {len(pairs)}",
+                  "head_sha": os.environ["SHA"],
+                  "status": "completed",
+                  "conclusion": "neutral",
+                  "output": {
+                      "title": " and ".join(os.path.basename(p)[:-4] for p in pair),
+                      "summary": fields[0],
+                      **({"text": fields[1]} if len(fields) > 1 else {}),
+                  },
+              }
+              subprocess.run(["gh", "api", f"repos/{os.environ['REPO']}/check-runs", "--input", "-"],
+                             input=json.dumps(body).encode(), check=True, stdout=subprocess.DEVNULL)
+          print(f"posted {len(pairs)} check runs")
+          PY
+
+      - name: Keep the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-app
+          path: Frontend/iOS/build/live
+          retention-days: 7
