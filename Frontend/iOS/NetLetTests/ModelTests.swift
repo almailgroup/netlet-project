@@ -554,3 +554,57 @@ final class TabBarScrollTests: XCTestCase {
         XCTAssertEqual(away.next(y: 700, viewport: viewport, height: height), away)
     }
 }
+
+/// What the bag looks like the moment a button is pressed — the web's
+/// `bagOps.test.ts`, on the recorded bag: one line of rice, 2 × 4.750, with
+/// 0.750 delivery.
+final class BagOpsTests: XCTestCase {
+    func testAPlusOnACardDrawsTheLineFromTheCardsOwnProduct() async throws {
+        let dates = try XCTUnwrap(try await Fixtures.products().first { $0.handle == "medjool-dates" })
+        let ghost = BagOps.ghostLine(dates, variantId: "144", quantity: 2)
+        let bag = try XCTUnwrap(BagOps.apply(try await Fixtures.cart(), .add(variantId: "144", quantity: 2, ghost: ghost)))
+        XCTAssertEqual(bag.items.count, 2)
+        XCTAssertEqual(bag.items.last?.lineId, "pending:144")
+        XCTAssertEqual(bag.items.last?.lineTotal.fils, 12_500)
+        XCTAssertEqual(bag.items.last?.vendor?.slug, "gulf-grocers", "drawn under its store before the server says")
+        XCTAssertEqual(bag.itemCount, 4)
+        XCTAssertEqual(bag.subtotal.fils, 22_000)
+        XCTAssertEqual(bag.total.fils, 22_750, "the delivery stays the server's last until it answers")
+    }
+
+    func testAnAddOntoALineAddsToItUpToTheCeiling() async throws {
+        let rice = try await Fixtures.cart()
+        let more = try XCTUnwrap(BagOps.apply(rice, .add(variantId: "145", quantity: 1, ghost: nil)))
+        XCTAssertEqual(more.items.count, 1)
+        XCTAssertEqual(more.items[0].quantity, 3)
+        XCTAssertEqual(more.items[0].lineTotal.fils, 14_250)
+        XCTAssertEqual(more.subtotal.fils, 14_250)
+        let ceiling = ReferenceData.shared.rules.maxLineQuantity
+        let full = BagOps.apply(rice, .add(variantId: "145", quantity: ceiling + 5, ghost: nil))
+        XCTAssertEqual(full?.items[0].quantity, ceiling)
+    }
+
+    func testAnAddWithNothingToDrawMovesOnlyTheCount() async throws {
+        let rice = try await Fixtures.cart()
+        let bag = try XCTUnwrap(BagOps.apply(rice, .add(variantId: "999", quantity: 2, ghost: nil)))
+        XCTAssertEqual(bag.items.count, 1)
+        XCTAssertEqual(bag.itemCount, 4)
+        // The count the lines do not explain is carried over while the line waits.
+        let stepped = try XCTUnwrap(BagOps.apply(bag, .set(lineId: "115", quantity: 1)))
+        XCTAssertEqual(stepped.itemCount, 3)
+        XCTAssertNil(BagOps.apply(nil, .set(lineId: "115", quantity: 1)), "no bag, nothing to step")
+    }
+
+    func testAPressOnADrawnAheadLineFollowsItToTheRealOne() async throws {
+        let rice = try await Fixtures.cart()
+        XCTAssertEqual(BagOps.realLineId(rice, "pending:145"), "115")
+        XCTAssertNil(BagOps.realLineId(rice, "pending:144"), "not made yet")
+        XCTAssertEqual(BagOps.realLineId(rice, "115"), "115")
+        let stepped = try XCTUnwrap(BagOps.apply(rice, .set(lineId: "pending:145", quantity: 5)))
+        XCTAssertEqual(stepped.items[0].quantity, 5)
+        let gone = try XCTUnwrap(BagOps.apply(rice, .remove(lineId: "115")))
+        XCTAssertTrue(gone.items.isEmpty)
+        XCTAssertEqual(gone.itemCount, 0)
+        XCTAssertEqual(gone.subtotal.fils, 0)
+    }
+}

@@ -5952,7 +5952,12 @@ search is the shop's rule, not a second one**: `SearchRank` is
 `Shared/commerce/search.ts` in Swift — the folding, the Arabic article and
 plural, the English plural, the field weights, the synonyms — with the folding
 table and `SYNONYM_GROUPS` exported to `search.json`, and its tests are the
-TypeScript's own cases. **Saved reads its products by id**
+TypeScript's own cases. **The header's search answers the first letter from
+what the app holds**, the web's `shelvedProducts`: the home page's shelves and
+every answer the server gave this search, ranked by `SearchRank`
+(`SearchViewModel.interim`), while the server is asked over the whole
+catalogue; its answer replaces them, words already answered are drawn at once,
+and a misspelling waits for the server's correction. **Saved reads its products by id**
 (`commerce.products.byIds`): it looked them up in the newest page, so anything
 older read as no longer available — the bug the web fixed under Wishlists.
 
@@ -6037,7 +6042,10 @@ read from ISO strings. A refusal arrives as the server's message key, which is
 said in the shopper's language, and anything that is not a key is described by
 its code — never the database's sentence. Money is whole fils, never a float.
 The session is NetLet's own httpOnly cookie in the system's cookie store; the
-app never holds a token.
+app never holds a token. **A read that failed is asked once more after 1.5s**,
+the web client's rule (`APIError.worthAnotherTry`): never a 4xx, which says the
+same thing twice, nor an answer that did not decode; a mutation never, since
+the first may have landed.
 
 **MVVM, one way.** Each screen's state is an `@Observable @MainActor` view
 model behind protocol services, made on first appearance by `ModelHost`
@@ -6047,6 +6055,23 @@ holds who is signed in (`SessionModel`) and the bag (`CartModel`). A load is
 is never drawn as an empty list, the web's `QueryGate` rule. The bag keeps only
 its id on the device, forgets it at sign-out and adopts the account's bag on
 sign-in, as `CartContext` does.
+
+**A press on the bag is drawn at once, and the server's answer settles it** —
+the web's `bagOps` and `CartContext` queue, rule for rule (`BagOps.swift` the
+guess, pure and tested on the recorded bag; `CartModel` the queue). The
+photo's plus, the stepper, the bin, Add to cart and Buy now each waited for
+the round trip — a spinner on the plus, the count still the old number — so
+on a phone every press took a third of a second or more to be believed. Each
+change now joins one queue, sent one at a time in the order pressed; stepper
+presses on one line not yet sent fold into one; the bag drawn is the server's
+last answer with every waiting press applied over it. A card hands its product
+so the line is drawn before it exists (`pending:` and the variant, followed to
+the real line by a later press); a line with extras moves the count and comes
+with the answer. Only the quantity, the line total and the subtotal are
+guessed — the delivery and the total stay the server's last and are drawn
+faint while `syncing`, and Place order waits for it. Buy now opens checkout at
+once on the bag drawn ahead. A refusal drops that press, is felt as two taps
+and reads the bag again, and the caller still says it failed.
 
 **Every remote picture goes through `ImagePipeline`, and that fixed "only one
 product is shown".** The owner reported the app showing one product and none
@@ -6082,7 +6107,14 @@ departments' counts, the stores, the brands, the shop's contact details
 read as an answer, and `HomeShelf` and a department page draw them at once
 and ask again behind them. **For the Kuwaiti day they were read on and no
 longer**, because a store's discount permit ends with the day; nothing about
-the shopper is kept. Off in the demo and in tests.
+the shopper is kept. Off in the demo and in tests. When the shelves on
+screen are the remembered ones and asking again fails, the home page says so
+in a line with Try again (`HomeShelf.showingEarlier`, `ios.home.earlierShelf`)
+— a shopper should know the prices are not fresh from the server. A product
+page opened from a card draws the card's copy of the photo at once, while its
+own sharper copy is decoded (`ImagePipeline.anySize`), and a photo still on
+its way breathes gently rather than sitting flat, so loading reads differently
+from no photo (still under Reduce Motion).
 
 **It runs against recordings as well as a server.** `-NetLetDemo YES` answers
 every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a

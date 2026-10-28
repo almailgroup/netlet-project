@@ -42,11 +42,15 @@ final class TRPCClient: Sendable {
     let transport: HTTPTransport
     /// Where today's public shelves are kept (`ShelfMemory`); none in tests and the demo.
     let memory: ShelfMemory?
+    /// How long a read that failed waits before its one more try — the web
+    /// client's `retryDelay`.
+    let retryPause: Duration
 
-    init(configuration: APIConfiguration, transport: HTTPTransport, memory: ShelfMemory? = nil) {
+    init(configuration: APIConfiguration, transport: HTTPTransport, memory: ShelfMemory? = nil, retryPause: Duration = .milliseconds(1500)) {
         self.configuration = configuration
         self.transport = transport
         self.memory = memory
+        self.retryPause = retryPause
     }
 
     /// What the server answered today for this call, if it is one whose
@@ -123,7 +127,20 @@ final class TRPCClient: Sendable {
 
     // MARK: Answers
 
+    /// A read is asked once more when it failed in a way another try could
+    /// change (`APIError.worthAnotherTry`) — a cold start answering 500, a
+    /// connection dropped on a lift — as the web client does; a mutation never
+    /// is, because the first may have landed and a second would do it twice.
     private func perform<Output: Decodable>(_ request: URLRequest, as type: Output.Type) async throws -> Output {
+        do {
+            return try await attempt(request, as: type)
+        } catch let failure as APIError where request.httpMethod == "GET" && failure.worthAnotherTry {
+            do { try await Task.sleep(for: retryPause) } catch { throw APIError.cancelled }
+            return try await attempt(request, as: type)
+        }
+    }
+
+    private func attempt<Output: Decodable>(_ request: URLRequest, as type: Output.Type) async throws -> Output {
         let answer: (Data, HTTPURLResponse)
         do {
             answer = try await transport.send(request)

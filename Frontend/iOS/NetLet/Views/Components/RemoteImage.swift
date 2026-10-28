@@ -50,11 +50,25 @@ private struct PipelinedImage: View {
     /// size keeps its picture until the copy for the new size is ready.
     @State private var shownURL: URL?
 
+    /// The copy this box showed last, while its address has not changed.
+    private var ownCopy: UIImage? {
+        guard let url, shownURL == url else { return nil }
+        return image
+    }
+
+    /// Any copy decoded for another box, until this size's is ready.
+    private var interim: UIImage? {
+        guard sized, let url else { return nil }
+        return ImagePipeline.shared.anySize(url)
+    }
+
     var body: some View {
-        let key = sized ? url.map { ImagePipeline.key($0, pixels: pixels) } : nil
+        let key: String? = sized ? url.map { ImagePipeline.key($0, pixels: pixels) } : nil
         // Seen before at this size: drawn on this frame rather than after a round trip.
-        let cached = sized ? url.flatMap { ImagePipeline.shared.cached($0, pixels: pixels) } : nil
-        let ready = cached ?? (url != nil && shownURL == url ? image : nil)
+        let cached: UIImage? = sized ? url.flatMap { ImagePipeline.shared.cached($0, pixels: pixels) } : nil
+        // Else the copy this box already showed, or any copy decoded for another
+        // box — the card that opened this page — until this size's is ready.
+        let ready = cached ?? ownCopy ?? interim
         ZStack {
             if let ready {
                 Image(uiImage: ready)
@@ -64,7 +78,7 @@ private struct PipelinedImage: View {
             } else if url == nil || failed {
                 fallback
             } else {
-                Brand.tint
+                LoadingTint(still: still)
             }
         }
         .task(id: key) {
@@ -90,5 +104,22 @@ private struct PipelinedImage: View {
                 .font(.title2)
                 .foregroundStyle(Brand.muted.opacity(0.6))
         }
+    }
+}
+
+/// A picture on its way: the photo's ground, breathing gently, so a box still
+/// loading reads differently from one with no picture — and held still for
+/// somebody who asked for less motion.
+private struct LoadingTint: View {
+    let still: Bool
+    @State private var lit = false
+
+    var body: some View {
+        Brand.tint
+            .overlay(Color.white.opacity(lit ? 0.45 : 0))
+            .onAppear {
+                guard !still else { return }
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { lit = true }
+            }
     }
 }

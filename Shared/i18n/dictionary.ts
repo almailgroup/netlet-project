@@ -3739,6 +3739,7 @@ export const en = {
 
   // --- the iOS app (Frontend/iOS), where it has no web sentence to share
   "ios.error.signIn": "Sign in to do that.",
+  "ios.home.earlierShelf": "NetLet can't be reached just now, so this is what it showed earlier today.",
   "ios.error.forbidden": "Your account cannot do that.",
   "ios.error.notFound": "That could not be found. It may have been removed.",
   "ios.error.tooMany": "That is a lot of requests. Wait a minute and try again.",
@@ -7462,6 +7463,7 @@ export const ar: Record<MessageKey, string> = {
 
   // --- the iOS app (Frontend/iOS), where it has no web sentence to share
   "ios.error.signIn": "سجّل الدخول للقيام بذلك.",
+  "ios.home.earlierShelf": "تعذّر الوصول إلى نت‑لت الآن، فهذا ما عرضه في وقت سابق اليوم.",
   "ios.error.forbidden": "لا يمكن لحسابك القيام بذلك.",
   "ios.error.notFound": "لم نجد ذلك. ربما أُزيل.",
   "ios.error.tooMany": "طلبات كثيرة. انتظر دقيقة ثم حاول مرة أخرى.",

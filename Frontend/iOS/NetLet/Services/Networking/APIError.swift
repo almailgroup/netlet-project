@@ -26,6 +26,21 @@ enum APIError: Error, Equatable, Sendable {
         return nil
     }
 
+    /// Whether a read that failed this way is worth asking once more — the
+    /// web client's rule: never a refusal (a 4xx says the same thing twice)
+    /// nor an answer that did not read, which would not read the second time
+    /// either; anything else, the server's own trouble or the connection's, once.
+    var worthAnotherTry: Bool {
+        switch self {
+        case .server(_, _, let status), .unexpected(let status):
+            return status >= 500
+        case .offline, .timedOut, .transport:
+            return true
+        case .cancelled, .decoding:
+            return false
+        }
+    }
+
     /// Any error, as one of these. A cancelled request is its own case, so a
     /// screen that moved on does not draw an error for a request it abandoned.
     static func from(_ error: Error) -> APIError {

@@ -18,7 +18,13 @@ struct SearchOverlay: View {
         if let model {
             SearchSheet(model: model)
         } else {
-            Color.clear.onAppear { model = SearchViewModel(catalog: app.services.catalog) }
+            Color.clear.onAppear {
+                let made = SearchViewModel(catalog: app.services.catalog)
+                // The shelves the home page holds answer the first letters at once.
+                let shelf = app.shelf
+                made.held = { (shelf.catalogue.value ?? []) + shelf.bestsellers }
+                model = made
+            }
         }
     }
 }
@@ -330,31 +336,45 @@ private struct SearchSheet: View {
                     open(.brand(name: brand.name))
                 }
             }
-            switch model.result {
-            case .loaded(let found):
-                if let corrected = found.correctedTo, !corrected.isEmpty {
-                    Text(l.t("search.showingFor", ["term": corrected]))
-                        .font(.inter(13))
-                        .foregroundStyle(Brand.body)
-                        .padding(.vertical, 6)
-                }
-                ForEach(found.products.prefix(5)) { product in
+            if model.answered != words, let held = model.interim {
+                // Products already in hand answer the words while the server is asked.
+                ForEach(held.prefix(5)) { product in
                     productRow(product)
                 }
-                if found.products.isEmpty {
-                    Text(l.t("header.noMatchYet"))
-                        .font(.inter(14))
-                        .foregroundStyle(Brand.body)
-                        .padding(.vertical, 12)
-                }
-                seeAll(words, count: found.total)
-            case .failed:
                 seeAll(words, count: nil)
-            case .idle, .loading:
-                ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 80)
+            } else {
+                answer(words)
             }
         }
         .padding(.top, 4)
+    }
+
+    /// The server's answer, or the last one while it is asked again.
+    @ViewBuilder
+    private func answer(_ words: String) -> some View {
+        switch model.result {
+        case .loaded(let found):
+            if let corrected = found.correctedTo, !corrected.isEmpty {
+                Text(l.t("search.showingFor", ["term": corrected]))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.body)
+                    .padding(.vertical, 6)
+            }
+            ForEach(found.products.prefix(5)) { product in
+                productRow(product)
+            }
+            if found.products.isEmpty {
+                Text(l.t("header.noMatchYet"))
+                    .font(.inter(14))
+                    .foregroundStyle(Brand.body)
+                    .padding(.vertical, 12)
+            }
+            seeAll(words, count: found.total)
+        case .failed:
+            seeAll(words, count: nil)
+        case .idle, .loading:
+            ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 80)
+        }
     }
 
     private func namedDepartments(_ words: String) -> [Department] {

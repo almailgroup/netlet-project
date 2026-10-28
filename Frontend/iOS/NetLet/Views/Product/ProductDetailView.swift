@@ -664,12 +664,20 @@ private struct ProductPage: View {
             app.openCheckout()
             return
         }
-        if await model.add(to: app.cart) {
-            announce(l.t("cart.added", ["name": product.title]))
-            if openCheckout { app.openCheckout() }
-        } else {
+        // Buy now opens checkout at once on the bag drawn ahead, which waits
+        // for the bag to settle before an order can be placed — the web's rule.
+        if openCheckout {
+            app.openCheckout()
+            if !(await model.add(to: app.cart, product: product)) {
+                Haptics.refused()
+                app.toast(l.t("cart.buyFailed"))
+            }
+            return
+        }
+        announce(l.t("cart.added", ["name": product.title]))
+        if !(await model.add(to: app.cart, product: product)) {
             Haptics.refused()
-            failure = openCheckout ? "cart.buyFailed" : "cart.addFailed"
+            failure = "cart.addFailed"
         }
     }
 }

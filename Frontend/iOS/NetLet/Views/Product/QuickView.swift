@@ -374,16 +374,20 @@ private struct QuickViewContent: View {
             app.openCheckout()
             return
         }
-        if await model.add(to: app.cart) {
-            Haptics.succeeded()
-            announce(l.t("cart.added", ["name": product.title]))
-            if openCheckout {
-                app.previewing = nil
-                app.openCheckout()
+        if openCheckout {
+            app.previewing = nil
+            app.openCheckout()
+            if !(await model.add(to: app.cart, product: product)) {
+                Haptics.refused()
+                app.toast(l.t("cart.buyFailed"))
             }
-        } else {
+            return
+        }
+        Haptics.succeeded()
+        announce(l.t("cart.added", ["name": product.title]))
+        if !(await model.add(to: app.cart, product: product)) {
             Haptics.refused()
-            failure = openCheckout ? "cart.buyFailed" : "cart.addFailed"
+            failure = "cart.addFailed"
         }
     }
 }

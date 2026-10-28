@@ -276,6 +276,16 @@ final class SearchViewModel {
     /// drawn under newer words.
     private(set) var answered = ""
     private(set) var recent: [String]
+    /// The products this app already holds that answer the words in the box,
+    /// best first, while the server is asked for them — the web's
+    /// `shelvedProducts`. Nil once the server has answered those words, or
+    /// when nothing held matches: a misspelling is the server's to correct.
+    private(set) var interim: [Product]?
+    /// Where those come from: the home page's shelves, set by the screen.
+    @ObservationIgnored var held: @MainActor () -> [Product] = { [] }
+    /// Every answer the server gave this search, by its words, so going back
+    /// to words already asked draws their answer at once.
+    @ObservationIgnored private var earlier: [String: SearchResult] = [:]
 
     private let catalog: CatalogServicing
     private let defaults: UserDefaults
@@ -321,7 +331,15 @@ final class SearchViewModel {
         guard !words.isEmpty else {
             result = .idle
             answered = ""
+            interim = nil
             return
+        }
+        if let known = earlier[words] {
+            result = .loaded(known)
+            answered = words
+            interim = nil
+        } else {
+            interim = heldAnswer(words)
         }
         let pause = debounce
         pending = Task { [weak self] in
@@ -331,14 +349,27 @@ final class SearchViewModel {
         }
     }
 
+    /// The held products and earlier answers ranked for the words by the
+    /// shop's own rule (`SearchRank`, the web's `rankBySearch`), or nil when
+    /// none of them answers.
+    private func heldAnswer(_ words: String) -> [Product]? {
+        var seen = Set<String>()
+        let pool = (held() + earlier.values.flatMap(\.products)).filter { seen.insert($0.id).inserted }
+        let ranked = SearchRank.rank(pool, words)
+        return ranked.isEmpty ? nil : Array(ranked.prefix(8))
+    }
+
     func run(_ words: String) async {
         guard !words.isEmpty else { return }
         if result.value == nil { result = .loading }
         do {
             let found = try await catalog.search(words, department: nil, limit: Self.resultLimit, language: language)
+            if earlier.count >= 40 { earlier.removeAll() }
+            earlier[words] = found
             guard words == trimmed else { return }
             result = .loaded(found)
             answered = words
+            interim = nil
         } catch {
             let failure = APIError.from(error)
             guard failure != .cancelled, words == trimmed else { return }
@@ -449,15 +480,17 @@ final class ProductDetailViewModel {
         }
     }
 
-    func add(to cart: CartModel) async -> Bool {
+    /// Into the bag, drawn there at once from the product; true once the
+    /// server has it. Only a line with extras waits with a spinner, since the
+    /// server prices its extras and it appears with the answer.
+    func add(to cart: CartModel, product: Product? = nil) async -> Bool {
         guard let variant, variant.availableForSale else { return false }
-        adding = true
-        defer { adding = false }
-        // A line with extras is its own line, priced by the server; a plain one joins the plain line.
         if !addons.isEmpty {
+            adding = true
+            defer { adding = false }
             return await cart.add(lines: [API.CartLine(variantId: variant.id, quantity: quantity, addonIds: addons.sorted())])
         }
-        return await cart.add(variantId: variant.id, quantity: quantity)
+        return await cart.add(variantId: variant.id, quantity: quantity, product: product)
     }
 
     /// The size guide's answer, chosen: the variant whose size it names.

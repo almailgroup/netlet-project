@@ -85,10 +85,22 @@ actor ImagePipeline {
 
     static func key(_ url: URL, pixels: Int) -> String { "\(pixels)|\(url.absoluteString)" }
 
+    /// The size a product card's photo is decoded at, for fetching ahead of one.
+    static func cardPixels(scale: CGFloat) -> Int {
+        pixels(for: CGSize(width: 180, height: 225), scale: max(scale, 2))
+    }
+
     /// The picture at that size, if one has been decoded already — what a view
     /// draws on its first frame, so a photo seen before never flashes empty.
     nonisolated func cached(_ url: URL, pixels: Int) -> UIImage? {
         memory.image(for: Self.key(url, pixels: pixels))
+    }
+
+    /// The picture at whatever size it was last decoded — what a product page
+    /// draws on its first frame from the card that opened it, while its own
+    /// sharper copy is made.
+    nonisolated func anySize(_ url: URL) -> UIImage? {
+        memory.latest(for: url.absoluteString)
     }
 
     /// The picture, fetched and decoded if it has to be; nil when it cannot be had.
@@ -106,7 +118,7 @@ actor ImagePipeline {
         let image = await task.value
         running[key] = nil
         if let image {
-            memory.keep(image, for: key)
+            memory.keep(image, for: key, url: url.absoluteString)
             refused[key] = nil
         } else {
             refused[key] = .now
@@ -194,10 +206,20 @@ final class ImageMemory: @unchecked Sendable {
         return cache
     }()
 
+    /// The last copy decoded of each address, whatever its size.
+    private let latest: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 400
+        return cache
+    }()
+
     func image(for key: String) -> UIImage? { cache.object(forKey: key as NSString) }
 
-    func keep(_ image: UIImage, for key: String) {
+    func latest(for url: String) -> UIImage? { latest.object(forKey: url as NSString) }
+
+    func keep(_ image: UIImage, for key: String, url: String) {
         let cost = Int(image.size.width * image.scale * image.size.height * image.scale * 4)
         cache.setObject(image, forKey: key as NSString, cost: cost)
+        latest.setObject(image, forKey: url as NSString)
     }
 }

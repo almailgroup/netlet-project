@@ -164,6 +164,18 @@ jobs:
             shot 52-admin-commission "$lang" portal:/admin/commission admin
             shot 53-product-preview "$lang" preview:wireless-earbuds ""
           done
+          # The live shop, not the recordings: its sellers' own photo servers
+          # are what a recording cannot show — slow, large, uncached, which is
+          # what left every photo but one empty under AsyncImage.
+          live() {  # name, screen
+            xcrun simctl terminate "$SIM" com.netlet.marketplace 2>/dev/null || true
+            xcrun simctl launch "$SIM" com.netlet.marketplace -netlet.language en -NetLetOpen "$2" >/dev/null
+            sleep 20
+            xcrun simctl io "$SIM" screenshot --type=png "build/previews/en-$1.png" >/dev/null 2>&1
+          }
+          live 60-live-home home
+          live 61-live-department department:beauty
+          live 62-live-search search:cream
           ls -1 build/previews
 
       # Run by hand with `share`, small copies are posted as neutral check runs

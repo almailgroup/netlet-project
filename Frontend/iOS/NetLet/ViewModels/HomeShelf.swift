@@ -24,6 +24,10 @@ final class HomeShelf {
     /// How to reach a person at NetLet, for the footer: the shop's defaults
     /// until the server's settings arrive.
     private(set) var contact: ShopContact = .fallback
+    /// The shelves on screen are this morning's, and asking again just failed
+    /// — said on the page, because a shopper should know the prices are not
+    /// fresh from the server.
+    private(set) var showingEarlier = false
     private var loadedFor: Language?
 
     private let catalog: CatalogServicing
@@ -48,7 +52,7 @@ final class HomeShelf {
     /// time, and kept (`ImagePipeline`), so the shelves draw with them there.
     static func warmPhotos(resolve: @escaping (String?) -> URL?) -> @MainActor ([Product]) -> Void {
         { products in
-            let pixels = ImagePipeline.pixels(for: CGSize(width: 180, height: 225), scale: max(UITraitCollection.current.displayScale, 2))
+            let pixels = ImagePipeline.cardPixels(scale: UITraitCollection.current.displayScale)
             var seen = Set<URL>()
             let urls = products.compactMap { resolve($0.images.first?.url) }.filter { seen.insert($0).inserted }
             Task(priority: .utility) { await ImagePipeline.shared.prefetch(urls, pixels: pixels) }
@@ -70,7 +74,9 @@ final class HomeShelf {
     func load(language: Language, force: Bool = false) async {
         if !force, loadedFor == language, catalogue.value != nil { return }
         // What the server answered earlier today, drawn at once; asked again below.
+        var drewEarlier = false
         if loadedFor != language || catalogue.value == nil, let kept = catalog.rememberedProducts(first: Self.size, department: nil, language: language) {
+            drewEarlier = true
             catalogue = .loaded(kept)
             bestsellers = catalog.rememberedBestsellers(language: language) ?? []
             stores = catalog.rememberedStores(language: language) ?? []
@@ -89,9 +95,11 @@ final class HomeShelf {
             warm(products)
             catalogue = .loaded(products)
             loadedFor = language
+            showingEarlier = false
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, catalogue.value == nil { catalogue = .failed(failure) }
+            if failure != .cancelled, drewEarlier || showingEarlier { showingEarlier = true }
         }
         bestsellers = await sold ?? bestsellers
         warm(bestsellers)

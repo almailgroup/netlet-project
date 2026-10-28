@@ -7,12 +7,14 @@ import Foundation
 /// adds up a total itself.
 struct Cart: Decodable, Identifiable, Hashable, Sendable {
     let id: String
-    let items: [CartItem]
-    let itemCount: Int
-    let subtotal: Money
+    /// The lines, the count and the money are `var` for one reason: a press
+    /// draws the bag it will be before the server answers (`BagOps`).
+    var items: [CartItem]
+    var itemCount: Int
+    var subtotal: Money
     let delivery: CartDelivery
     let cod: CashOnDelivery
-    let total: Money
+    var total: Money
     /// The signed-in shopper's address book, for sending a line elsewhere.
     var addresses: [CartAddress]? = nil
     /// A bag left alone long enough to be reminded of (`recovery`).
@@ -36,10 +38,10 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     let variantTitle: String
     let image: ProductImage?
     let unitPrice: Money
-    let quantity: Int
+    var quantity: Int
     /// How the line is sold: in ones, or by a step of grams or millilitres.
     var measure: Measure? = nil
-    let lineTotal: Money
+    var lineTotal: Money
     let bundleName: String?
     let addons: [CartAddon]?
     /// The saved address this line goes to, when not where the order goes.

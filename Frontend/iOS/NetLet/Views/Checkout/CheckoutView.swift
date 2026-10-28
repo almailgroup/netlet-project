@@ -71,10 +71,13 @@ private struct CheckoutForm: View {
                         HStack(spacing: 8) { ProgressView().tint(Brand.navy); Text(l.t("checkout.placing")) }
                     } else {
                         Text(l.t("checkout.placeOrder") + (cart.map { " · " + model.bill(for: $0).payable.formatted(l.current) } ?? ""))
+                            .opacity(app.cart.syncing ? 0.5 : 1)
                     }
                 }
                 .buttonStyle(OrderButtonStyle())
-                .disabled(model.placing || cart == nil)
+                // A press on the bag still on its way — Buy now opens here on
+                // the bag drawn ahead — is the server's to price first.
+                .disabled(model.placing || cart == nil || app.cart.syncing)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -160,6 +163,7 @@ private struct CheckoutForm: View {
     }
 
     private func place() async {
+        guard !app.cart.syncing else { return }
         let area = model.governorate.flatMap { ReferenceData.shared.governorate(id: $0)?.name(l.current) }
         guard let placed = await model.place(cart: app.cart.cart, savedLabel: area ?? l.t("checkout.savedAddressLabel")) else {
             Haptics.refused()

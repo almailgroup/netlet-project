@@ -68,6 +68,48 @@ final class FakeCartService: CartServicing, @unchecked Sendable {
     }
 }
 
+/// A bag on a pretend server that takes its time to answer, so a test can see
+/// what a press draws before it does, and can be made to refuse.
+final class SlowCartService: CartServicing, @unchecked Sendable {
+    let template: Cart
+    let pause: Duration
+    var stored: Cart?
+    var refuse = false
+    var reads = 0
+    var quantities: [Int] = []
+
+    init(template: Cart, pause: Duration = .milliseconds(80)) {
+        self.template = template
+        self.pause = pause
+    }
+
+    func create(variantId: String, quantity: Int) async throws -> Cart {
+        try await Task.sleep(for: pause)
+        if refuse { throw URLError(.badServerResponse) }
+        let cart = template.with(id: "cart-1")
+        stored = cart
+        return cart
+    }
+
+    func get(_ cartId: String) async throws -> Cart? {
+        reads += 1
+        return stored?.id == cartId ? stored : nil
+    }
+
+    func add(_ cartId: String, variantId: String, quantity: Int) async throws -> Cart? {
+        try await Task.sleep(for: pause)
+        if refuse { throw URLError(.badServerResponse) }
+        return stored
+    }
+
+    func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart? {
+        quantities.append(quantity)
+        try await Task.sleep(for: pause)
+        if refuse { throw URLError(.badServerResponse) }
+        return stored
+    }
+}
+
 extension Cart {
     /// The same bag under another id or with other lines, for the fakes.
     func with(id: String? = nil, items: [CartItem]? = nil) -> Cart {

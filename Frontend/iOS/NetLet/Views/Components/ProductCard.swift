@@ -235,6 +235,7 @@ struct CardGallery: View {
     var feature = false
     @State private var current: Int?
     @Environment(AppModel.self) private var app
+    @Environment(\.displayScale) private var scale
 
     static let most = 5
 
@@ -268,6 +269,12 @@ struct CardGallery: View {
                 }
             }
             .clipShape(UnevenRoundedRectangle(topLeadingRadius: 15, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 15, style: .continuous))
+            // The second photo, fetched once the card is on screen, so the first
+            // swipe finds it there — the web's card draws its next photo the same way.
+            .task(id: product.id) {
+                guard photos.count > 1, let next = app.services.configuration.resolve(photos[1].url) else { return }
+                await ImagePipeline.shared.prefetch([next], pixels: ImagePipeline.cardPixels(scale: scale))
+            }
     }
 
     private func frame(_ photo: ProductImage?) -> some View {
@@ -366,7 +373,6 @@ struct RatingLine: View {
 /// `CardAction` on a touch screen.
 struct CardActions: View {
     let product: Product
-    @State private var busy = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -392,17 +398,12 @@ struct CardActions: View {
                     .accessibilityLabel(l.t("product.unavailableName", ["name": product.title]))
             }
         }
-        .disabled(busy)
     }
 
     private func buyPill(_ press: @escaping () -> Void) -> some View {
         Button(action: press) {
             HStack(spacing: 6) {
-                if busy {
-                    ProgressView().tint(Brand.navy).controlSize(.small)
-                } else {
-                    Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
-                }
+                Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
                 Text(l.t("product.buyNow")).lineLimit(1)
             }
             .font(.inter(14, .medium))
@@ -416,16 +417,14 @@ struct CardActions: View {
         .accessibilityLabel(l.t("card.buyName", ["name": product.title]))
     }
 
+    /// Checkout opens at once on the bag drawn ahead, the web's rule; it
+    /// waits for the bag to settle before an order can be placed.
     private func buy(_ variant: ProductVariant) {
+        app.openCheckout()
         Task {
-            busy = true
-            let added = await app.cart.add(variantId: variant.id)
-            busy = false
-            if added {
-                app.openCheckout()
-            } else {
+            if !(await app.cart.add(variantId: variant.id, product: product)) {
                 Haptics.refused()
-                app.toast(l.t("cart.addFailed"))
+                app.toast(l.t("cart.buyFailed"))
             }
         }
     }
@@ -455,7 +454,6 @@ struct CardActions: View {
 struct PhotoCartControl: View {
     let product: Product
     @State private var open = false
-    @State private var adding = false
     @State private var settle: Task<Void, Never>?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -504,19 +502,12 @@ struct PhotoCartControl: View {
 
     private func plus(label: String, press: @escaping () -> Void) -> some View {
         Button(action: press) {
-            Group {
-                if adding {
-                    ProgressView().tint(Brand.navy).controlSize(.small)
-                } else {
-                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                }
-            }
-            .foregroundStyle(Brand.navy)
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
+            Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Brand.navy)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.action)
-        .disabled(adding)
         .accessibilityLabel(label)
     }
 
@@ -544,7 +535,6 @@ struct PhotoCartControl: View {
 
     private func stepper(line: CartItem, variant: ProductVariant) -> some View {
         let count = line.quantity
-        let busy = app.cart.busyLine == line.lineId
         return HStack(spacing: 0) {
             Button {
                 change(line, to: count - 1)
@@ -557,15 +547,10 @@ struct PhotoCartControl: View {
             }
             .buttonStyle(.action)
             .accessibilityLabel(l.t(count <= 1 ? "cart.remove" : "cart.decrease", ["name": product.title]))
-            Group {
-                if busy {
-                    ProgressView().tint(.white).controlSize(.small)
-                } else {
-                    Text("\(count)").font(.inter(16, .bold)).monospacedDigit().foregroundStyle(Color.white)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
+            Text("\(count)").font(.inter(16, .bold)).monospacedDigit().foregroundStyle(Color.white)
+                .contentTransition(.numericText(value: Double(count)))
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
             Button {
                 change(line, to: count + 1)
             } label: {
@@ -579,22 +564,20 @@ struct PhotoCartControl: View {
             .disabled(count >= variant.maxQuantity)
             .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
         }
-        .disabled(busy)
         .transition(.opacity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("card.inCart", ["count": "\(count)"]))
     }
 
+    /// The line is drawn in the bag the moment the plus is pressed and the
+    /// stepper opens on it; a refusal folds it away again and says so.
     private func add(_ variant: ProductVariant) {
-        adding = true
+        open = true
+        settleLater()
+        announce(l.t("cart.added", ["name": product.title]))
         Task {
-            let added = await app.cart.add(variantId: variant.id)
-            adding = false
-            if added {
-                open = true
-                settleLater()
-                announce(l.t("cart.added", ["name": product.title]))
-            } else {
+            if !(await app.cart.add(variantId: variant.id, product: product)) {
+                open = false
                 Haptics.refused()
                 app.toast(l.t("cart.addFailed"))
             }
@@ -604,12 +587,10 @@ struct PhotoCartControl: View {
     private func change(_ line: CartItem, to quantity: Int) {
         if quantity < 1 { open = false }
         settleLater()
-        Task {
-            await app.cart.setQuantity(lineId: line.lineId, to: quantity)
-            announce(quantity < 1
-                ? l.t("cart.removedName", ["name": product.title])
-                : l.t("cart.quantityShort", ["count": "\(quantity)"]))
-        }
+        announce(quantity < 1
+            ? l.t("cart.removedName", ["name": product.title])
+            : l.t("cart.quantityShort", ["count": "\(quantity)"]))
+        Task { await app.cart.setQuantity(lineId: line.lineId, to: quantity) }
     }
 
     /// Folds the stepper into the count once the presses stop; each press

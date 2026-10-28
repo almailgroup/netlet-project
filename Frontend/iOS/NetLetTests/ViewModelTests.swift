@@ -68,6 +68,80 @@ final class CartModelTests: XCTestCase {
     }
 }
 
+/// The bag a press draws before the server has answered — the web's
+/// `CartContext` queue, against a server that takes its time.
+@MainActor
+final class CartQueueTests: XCTestCase {
+    /// Yields to the queue until the condition holds, or gives up after a while.
+    private func settle(_ condition: () -> Bool) async {
+        for _ in 0..<200 where !condition() {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    func testAPlusDrawsTheLineBeforeTheServerAnswers() async throws {
+        let template = try await Fixtures.cart()
+        let rice = try XCTUnwrap(try await Fixtures.products().first { $0.handle == "basmati-rice-5kg" })
+        let service = SlowCartService(template: template)
+        let cart = CartModel(service: service, defaults: isolatedDefaults())
+        let pending = Task { await cart.add(variantId: "145", product: rice) }
+        await settle { cart.syncing }
+        XCTAssertEqual(cart.quantity(of: "145"), 1, "the press is drawn at once")
+        XCTAssertEqual(cart.itemCount, 1)
+        XCTAssertFalse(cart.settling, "a line to draw is not a bag to wait for")
+        let took = await pending.value
+        XCTAssertTrue(took)
+        XCTAssertFalse(cart.syncing)
+        XCTAssertEqual(cart.cart?.id, "cart-1", "the server's answer replaces the guess")
+    }
+
+    func testPressesNotYetSentOnOneLineAreOneChangeAndGoInOrder() async throws {
+        let template = try await Fixtures.cart()
+        let service = SlowCartService(template: template)
+        let cart = CartModel(service: service, defaults: isolatedDefaults())
+        _ = await cart.add(variantId: "145")
+        let line = try XCTUnwrap(cart.cart?.items.first)
+        func drawn() -> Int? { cart.cart?.items.first { $0.lineId == line.lineId }?.quantity }
+
+        let first = Task { await cart.setQuantity(lineId: line.lineId, to: 3) }
+        await settle { service.quantities.count == 1 }
+        let second = Task { await cart.setQuantity(lineId: line.lineId, to: 4) }
+        await settle { drawn() == 4 }
+        let third = Task { await cart.setQuantity(lineId: line.lineId, to: 5) }
+        await settle { drawn() == 5 }
+        XCTAssertEqual(drawn(), 5, "every press is drawn while the first is on its way")
+        await first.value
+        await second.value
+        await third.value
+        XCTAssertEqual(service.quantities, [3, 5], "the two waiting presses went as one, after the first")
+    }
+
+    func testARefusalPutsTheBagBackAndReadsItAgain() async throws {
+        let template = try await Fixtures.cart()
+        let service = SlowCartService(template: template)
+        let cart = CartModel(service: service, defaults: isolatedDefaults())
+        _ = await cart.add(variantId: "145")
+        let line = try XCTUnwrap(cart.cart?.items.first)
+        service.refuse = true
+        let readsBefore = service.reads
+        await cart.setQuantity(lineId: line.lineId, to: 7)
+        XCTAssertEqual(cart.cart?.items.first?.quantity, line.quantity, "the refused press is dropped")
+        XCTAssertNotNil(cart.lastError)
+        XCTAssertGreaterThan(service.reads, readsBefore, "a refusal may have half-happened, so the bag is read again")
+    }
+
+    func testABuyThatFailsIsSaid() async throws {
+        let template = try await Fixtures.cart()
+        let service = SlowCartService(template: template)
+        service.refuse = true
+        let cart = CartModel(service: service, defaults: isolatedDefaults())
+        let took = await cart.add(variantId: "145")
+        XCTAssertFalse(took)
+        XCTAssertNil(cart.cart, "nothing drawn ahead stays once the server refused it")
+        XCTAssertEqual(cart.itemCount, 0)
+    }
+}
+
 @MainActor
 final class SearchViewModelTests: XCTestCase {
     func testWaitsForTypingToPauseAndAsksOnce() async throws {
@@ -96,6 +170,41 @@ final class SearchViewModelTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(500))
         XCTAssertEqual(model.answered, "fast")
         XCTAssertEqual(model.result.value?.total, 4)
+    }
+
+    /// The web's `shelvedProducts`: what the app already holds answers the
+    /// words at once, by the shop's own ranking, while the server is asked.
+    func testProductsAlreadyHeldAnswerAtOnceWhileTheServerIsAsked() async throws {
+        let catalog = FakeCatalogService()
+        let model = SearchViewModel(catalog: catalog, defaults: isolatedDefaults())
+        let products = try await Fixtures.products()
+        model.held = { products }
+        model.debounce = .milliseconds(50)
+        model.query = "rice"
+        model.queryChanged()
+        XCTAssertEqual(model.interim?.first?.handle, "basmati-rice-5kg", "drawn before the server is asked")
+        XCTAssertTrue(catalog.asked.isEmpty)
+        model.query = "zzqxv"
+        model.queryChanged()
+        XCTAssertNil(model.interim, "nothing held answers a misspelling; the server's correction does")
+        model.query = ""
+        model.queryChanged()
+        XCTAssertNil(model.interim)
+    }
+
+    func testWordsAlreadyAnsweredAreDrawnAtOnce() async throws {
+        let catalog = FakeCatalogService()
+        let model = SearchViewModel(catalog: catalog, defaults: isolatedDefaults())
+        model.debounce = .milliseconds(10)
+        model.query = "rice"
+        model.queryChanged()
+        try await Task.sleep(for: .milliseconds(200))
+        model.query = "ric"
+        model.queryChanged()
+        model.query = "rice"
+        model.queryChanged()
+        XCTAssertEqual(model.answered, "rice", "the answer it already gave is drawn without waiting")
+        XCTAssertNotNil(model.result.value)
     }
 
     func testRemembersRecentSearchesOnThisDeviceOnly() async {

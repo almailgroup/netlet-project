@@ -28,7 +28,7 @@ struct CartView: View {
                         .padding(.top, 6)
                 }
                 Color.clear.frame(height: 20)
-                if app.cart.settling && cart == nil {
+                if app.cart.settling && (cart?.isEmpty ?? true) {
                     // Never "empty" before it knows — somebody who just pressed Add would read it as a failure.
                     LoadingView().accessibilityLabel(l.t("cart.loading"))
                 } else if let cart, !cart.isEmpty {
@@ -98,7 +98,7 @@ struct CartView: View {
                 .card()
             }
             VStack(alignment: .leading, spacing: 14) {
-                SummaryCard(cart: cart, grouped: groups != nil)
+                SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
                     .font(.inter(12))
                     .foregroundStyle(Brand.muted)
@@ -135,6 +135,7 @@ struct CartView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
                 Text(cart.total.formatted(l.current)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
+                    .opacity(app.cart.syncing ? 0.5 : 1)
             }
             Button(l.t("cart.checkoutShort")) { path.append(Route.checkout) }
                 .buttonStyle(AccentButtonStyle())
@@ -380,10 +381,8 @@ struct CartLineRow: View {
                     busy: app.cart.busyLine == item.lineId,
                     compact: true
                 ) { next in
-                    Task {
-                        await app.cart.setQuantity(lineId: item.lineId, to: next)
-                        if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
-                    }
+                    if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
+                    Task { await app.cart.setQuantity(lineId: item.lineId, to: next) }
                 }
                 .padding(.top, 6)
             }
@@ -443,6 +442,10 @@ private struct SpeedChoice: View {
 struct SummaryCard: View {
     let cart: Cart
     var grouped = false
+    /// A press is on its way: the subtotal is already the new one, while the
+    /// delivery and the total are the server's last and drawn faint until it
+    /// answers — the web's `syncing`.
+    var updating = false
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -455,7 +458,7 @@ struct SummaryCard: View {
                 .accessibilityAddTraits(.isHeader)
             row(l.t("cart.subtotal") + " (" + count + ")", cart.subtotal.formatted(l.current))
             if grouped {
-                row(l.t("cart.delivery"), cart.delivery.total.formatted(l.current))
+                row(l.t("cart.delivery"), cart.delivery.total.formatted(l.current), faint: updating)
             }
             if let waived = cart.delivery.memberWaived, !waived.isZero {
                 Text(l.t("membership.deliveryWaived", ["amount": waived.formatted(l.current)]))
@@ -468,7 +471,8 @@ struct SummaryCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     row(
                         line.label(l),
-                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current)
+                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current),
+                        faint: updating
                     )
                     if let toFree = line.toFree, !toFree.isZero {
                         Text(line.destinationLabel.map { l.t("address.toFreeAt", ["amount": toFree.formatted(l.current), "name": name, "label": $0]) }
@@ -479,15 +483,17 @@ struct SummaryCard: View {
                 }
             }
             Divider()
-            row(l.t("cart.total"), cart.total.formatted(l.current), bold: true)
+            row(l.t("cart.total"), cart.total.formatted(l.current), bold: true, faint: updating)
         }
     }
 
-    private func row(_ label: String, _ value: String, bold: Bool = false) -> some View {
+    private func row(_ label: String, _ value: String, bold: Bool = false, faint: Bool = false) -> some View {
         HStack {
             Text(label).foregroundStyle(bold ? Brand.ink : Brand.muted)
             Spacer()
             Text(value).foregroundStyle(Brand.navy)
+                .opacity(faint ? 0.5 : 1)
+                .animation(.easeOut(duration: 0.15), value: faint)
         }
         .font(bold ? .headline.weight(.bold) : .subheadline)
     }

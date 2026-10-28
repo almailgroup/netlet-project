@@ -75,6 +75,38 @@ final class TRPCClientTests: XCTestCase {
         XCTAssertNil(user)
     }
 
+    /// The web client's rule: a read that met the server's own trouble is
+    /// asked once more, and a refusal or a mutation never is.
+    func testAReadThatMetTheServersTroubleIsAskedOnceMore() async throws {
+        var calls = 0
+        let transport = StubTransport { _ in
+            calls += 1
+            return calls == 1
+                ? (500, #"{"error":{"json":{"message":"error.serverProblem","code":-32603,"data":{"code":"INTERNAL_SERVER_ERROR","httpStatus":500}}}}"#)
+                : (200, #"{"result":{"data":{"json":{"beauty":27}}}}"#)
+        }
+        let client = TRPCClient(configuration: configuration, transport: transport, retryPause: .zero)
+        let counts = try await client.call(API.departmentCounts)
+        XCTAssertEqual(counts, ["beauty": 27])
+        XCTAssertEqual(transport.sent.count, 2)
+    }
+
+    func testARefusalAndAMutationAreAskedOnce() async {
+        let refused = StubTransport { _ in
+            (404, #"{"error":{"json":{"message":"ios.error.notFound","code":-32004,"data":{"code":"NOT_FOUND","httpStatus":404}}}}"#)
+        }
+        _ = try? await TRPCClient(configuration: configuration, transport: refused, retryPause: .zero).call(API.departmentCounts)
+        XCTAssertEqual(refused.sent.count, 1)
+
+        let broken = StubTransport { _ in
+            (500, #"{"error":{"json":{"message":"error.serverProblem","code":-32603,"data":{"code":"INTERNAL_SERVER_ERROR","httpStatus":500}}}}"#)
+        }
+        _ = try? await AccountService(client: TRPCClient(configuration: configuration, transport: broken, retryPause: .zero)).signOut()
+        XCTAssertEqual(broken.sent.count, 1, "a mutation may have landed; a second would do it twice")
+        _ = try? await TRPCClient(configuration: configuration, transport: broken, retryPause: .zero).call(API.departmentCounts)
+        XCTAssertEqual(broken.sent.count, 3, "a read is asked twice and no more")
+    }
+
     func testResolvesPicturesOnTheSiteAndLeavesFullAddressesAlone() {
         XCTAssertEqual(configuration.resolve("/departments/grocery.webp")?.absoluteString, "https://shop.example/departments/grocery.webp")
         XCTAssertEqual(configuration.resolve("https://cdn.example/a.jpg")?.absoluteString, "https://cdn.example/a.jpg")
@@ -984,7 +1016,7 @@ final class ShelfMemoryTests: XCTestCase {
     /// A refusal is never drawn tomorrow morning as if it were the shelf.
     func testARefusalIsNotKept() async {
         let transport = StubTransport { _ in (500, #"{"error":{"json":{"message":"error.serverProblem","code":-32603,"data":{"code":"INTERNAL_SERVER_ERROR","httpStatus":500}}}}"#) }
-        let client = TRPCClient(configuration: configuration, transport: transport, memory: memory(at: Date()))
+        let client = TRPCClient(configuration: configuration, transport: transport, memory: memory(at: Date()), retryPause: .zero)
         _ = try? await client.call(API.departmentCounts)
         XCTAssertNil(client.remembered(API.departmentCounts))
     }
@@ -1019,5 +1051,6 @@ final class HomeShelfMemoryTests: XCTestCase {
         await shelf.load(language: .en)
         XCTAssertEqual(shelf.catalogue.value?.count, products.count)
         XCTAssertFalse(warmed.isEmpty, "the remembered shelf's photos are fetched ahead too")
+        XCTAssertTrue(shelf.showingEarlier, "the page says the shelf is this morning's")
     }
 }

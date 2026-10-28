@@ -39,6 +39,11 @@ struct HomeView: View {
                     .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 182 / 255, blue: 158 / 255), lineWidth: 1))
                     .padding(16)
             case .loaded:
+                if shelf.showingEarlier {
+                    EarlierShelfNote { await shelf.load(language: l.current, force: true) }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                }
                 // Paid banners and placements, approved and labelled; absent when none runs today.
                 HomeBanners()
                 SponsoredShelf(slot: "home")
@@ -252,5 +257,42 @@ struct DealsBand: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Brand.navy)
         .padding(.top, 24)
+    }
+}
+
+/// This morning's shelves are on screen and the server could not be asked
+/// again: said in a line, with a way to try again.
+private struct EarlierShelfNote: View {
+    let retry: () async -> Void
+    @Environment(LanguageSettings.self) private var l
+    @State private var retrying = false
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Brand.navy)
+                .accessibilityHidden(true)
+            Text(l.t("ios.home.earlierShelf"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                Task {
+                    retrying = true
+                    await retry()
+                    retrying = false
+                }
+            } label: {
+                if retrying { ProgressView().tint(Brand.navy) } else { Text(l.t("home.refreshCatalog")).font(.inter(13, .semibold)) }
+            }
+            .buttonStyle(.tap)
+            .foregroundStyle(Brand.navy)
+            .disabled(retrying)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 }

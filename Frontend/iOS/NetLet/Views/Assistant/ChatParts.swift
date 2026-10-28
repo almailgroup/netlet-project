@@ -214,10 +214,10 @@ private struct ShelfCard: View {
         if product.variants.count == 1, let variant = product.variants.first, variant.availableForSale {
             let count = app.cart.quantity(of: variant.id)
             Button {
+                announce(l.t("cart.added", ["name": product.title]))
                 Task {
-                    if await app.cart.add(variantId: variant.id) {
-                        announce(l.t("cart.added", ["name": product.title]))
-                    } else {
+                    if !(await app.cart.add(variantId: variant.id, product: product)) {
+                        Haptics.refused()
                         app.toast(l.t("cart.addFailed"))
                     }
                 }
