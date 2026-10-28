@@ -105,6 +105,13 @@ struct QuantityStepper: View {
 /// the moment the hold is felt, so the finger lifting off it presses nothing —
 /// the photo under it is a link, and the lift opened the product behind the
 /// preview, the web's own long-press lesson.
+///
+/// **The hold is the photo's and the words', never the card's own buttons.**
+/// It was the whole card's, so a press on the photo's plus that lasted 0.4s
+/// added the product, opened the preview over it and drew the card afresh,
+/// stepper and all: the product went into a sheet the moment it went into the
+/// bag. The plus, the stepper, the heart and Buy now do only what they say;
+/// the web's own hold is on the photo alone.
 struct ProductCard: View {
     let product: Product
     /// The Deals band's lead: two columns wide, a wider photo, a larger price.
@@ -131,6 +138,7 @@ struct ProductCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .top) {
                 CardGallery(product: product, feature: feature)
+                    .simultaneousGesture(hold)
                 HStack(alignment: .top) {
                     badges(variant)
                     Spacer(minLength: 0)
@@ -146,38 +154,42 @@ struct ProductCard: View {
             // to a narrower 4:5 in the middle and a gap opened under the price.
             .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 0) {
-                if let line = note ?? product.vendor, !line.isEmpty {
-                    Text(line)
-                        .font(.inter(12))
-                        .foregroundStyle(Brand.muted)
-                        .lineLimit(1)
-                }
-                NavigationLink(value: Route.product(handle: product.handle)) {
-                    Text(product.title)
-                        .font(.inter(feature ? 17 : 14, .semibold))
-                        .foregroundStyle(Brand.navy)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2, reservesSpace: !feature)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.tap)
-                .accessibilityAction(named: Text(l.t("quick.open", ["name": product.title]))) { preview() }
-                .padding(.top, 2)
-                if let rating = product.rating {
-                    RatingLine(rating: rating).padding(.top, 4)
-                }
-                if let variant {
-                    PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, size: feature ? 20 : 16)
-                        .padding(.top, 6)
-                    // The price per kilo or litre of something sold by weight (`UnitPrice`).
-                    if let measure = variant.measure,
-                       let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
-                        Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                VStack(alignment: .leading, spacing: 0) {
+                    if let line = note ?? product.vendor, !line.isEmpty {
+                        Text(line)
                             .font(.inter(12))
                             .foregroundStyle(Brand.muted)
-                            .padding(.top, 2)
+                            .lineLimit(1)
+                    }
+                    NavigationLink(value: Route.product(handle: product.handle)) {
+                        Text(product.title)
+                            .font(.inter(feature ? 17 : 14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2, reservesSpace: !feature)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityAction(named: Text(l.t("quick.open", ["name": product.title]))) { preview() }
+                    .padding(.top, 2)
+                    if let rating = product.rating {
+                        RatingLine(rating: rating).padding(.top, 4)
+                    }
+                    if let variant {
+                        PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, size: feature ? 20 : 16)
+                            .padding(.top, 6)
+                        // The price per kilo or litre of something sold by weight (`UnitPrice`).
+                        if let measure = variant.measure,
+                           let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
+                            Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                                .font(.inter(12))
+                                .foregroundStyle(Brand.muted)
+                                .padding(.top, 2)
+                        }
                     }
                 }
+                .contentShape(Rectangle())
+                .simultaneousGesture(hold)
                 Spacer(minLength: 0)
                 CardActions(product: product)
                     .padding(.top, 10)
@@ -191,9 +203,13 @@ struct ProductCard: View {
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        // A hold previews the product without leaving the shelf (3.1.11). A
-        // finger that moves is scrolling, and the hold gives way to it.
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in preview() })
+    }
+
+    /// A hold previews the product without leaving the shelf (3.1.11), on the
+    /// photo and the words. A finger that moves is scrolling, and the hold
+    /// gives way to it.
+    private var hold: some Gesture {
+        LongPressGesture(minimumDuration: 0.4).onEnded { _ in preview() }
     }
 
     private func preview() {

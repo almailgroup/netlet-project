@@ -238,6 +238,16 @@ struct Recommendations: Decodable, Sendable {
 /// over a list that is nobody's is a claim checked once and never trusted
 /// again — with each card's reason and the terms it learnt from. `quiet`, on
 /// the home page, draws nothing while it loads and nothing under a full row.
+///
+/// **It is asked again when the page appears, never while somebody is on it**,
+/// on the owner's word ("make sure the products stay in their place when
+/// adding them to the cart"). It was asked again whenever the bag's id or the
+/// hearts changed, and a shopper's first add gives the bag its id: the rail
+/// turned personal and appeared above the brands, the stores and New arrivals,
+/// pushing the card just pressed down the screen — and the server leaves out
+/// what is in the bag, so a product added from the rail itself vanished from
+/// it. The bag and the hearts are read when it is asked, which is each time
+/// the page comes back into view.
 struct RecommendedRail: View {
     var quiet = false
     @State private var answer: Recommendations?
@@ -275,7 +285,7 @@ struct RecommendedRail: View {
                 .padding(.vertical, 24)
             }
         }
-        .task(id: "\(l.current.rawValue)|\(app.cart.cartId ?? "")|\(app.saved.ids.count)") {
+        .task(id: l.current) {
             guard app.features.isOn("recommendations") else {
                 answer = nil
                 return

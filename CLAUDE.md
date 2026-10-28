@@ -6046,6 +6046,21 @@ photo breathing as one on its way does) rather than a spinner in an empty
 page, so nothing moves when the products land. VoiceOver has it as an action on the
 card's name. `-NetLetOpen preview:<handle>` opens it for the screenshots.
 
+**A product stays where it is when it goes in the bag, on the owner's word**
+("the product suddenly disappears and goes somewhere else"). Two things moved
+it. **"Picked for you" was asked again whenever the bag's id changed** — and a
+first add is what gives a bag its id — so the rail turned personal and appeared
+above the brands, the stores and New arrivals, pushing the card just pressed
+down the screen; and the server leaves out what is in the bag, so a product
+added from the rail vanished from it. It is asked again when the page appears
+now, never while the shopper is on it (`RecommendedRail`, `.task(id:)` on the
+language alone; measured on the local server: no bag, not personal; one line
+in it, personal and without that line). **And the hold that opens the preview
+was the whole card's**, so a press on the photo's plus that lasted 0.4s added
+the product and opened the preview over it, drawing the card afresh; the hold
+is the photo's and the words' now, never the plus, the stepper, the heart or
+Buy now — the web's own hold is on the photo alone.
+
 **Signing in is the web's phone design too**: NetLet's street as a band across
 the top of the Profile tab, the form a white panel rising over its foot with
 rounded corners, the same Sign in / Create account switch (the chosen half
