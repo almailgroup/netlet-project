@@ -81,7 +81,8 @@ final class CartQueueTests: XCTestCase {
 
     func testAPlusDrawsTheLineBeforeTheServerAnswers() async throws {
         let template = try await Fixtures.cart()
-        let rice = try XCTUnwrap(try await Fixtures.products().first { $0.handle == "basmati-rice-5kg" })
+        let products = try await Fixtures.products()
+        let rice = try XCTUnwrap(products.first { $0.handle == "basmati-rice-5kg" })
         let service = SlowCartService(template: template)
         let cart = CartModel(service: service, defaults: isolatedDefaults())
         let pending = Task { await cart.add(variantId: "145", product: rice) }
@@ -127,6 +128,8 @@ final class CartQueueTests: XCTestCase {
         await cart.setQuantity(lineId: line.lineId, to: 7)
         XCTAssertEqual(cart.cart?.items.first?.quantity, line.quantity, "the refused press is dropped")
         XCTAssertNotNil(cart.lastError)
+        // The bag is read again just after the caller is told.
+        await settle { service.reads > readsBefore }
         XCTAssertGreaterThan(service.reads, readsBefore, "a refusal may have half-happened, so the bag is read again")
     }
 

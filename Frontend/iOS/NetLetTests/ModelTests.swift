@@ -560,9 +560,11 @@ final class TabBarScrollTests: XCTestCase {
 /// 0.750 delivery.
 final class BagOpsTests: XCTestCase {
     func testAPlusOnACardDrawsTheLineFromTheCardsOwnProduct() async throws {
-        let dates = try XCTUnwrap(try await Fixtures.products().first { $0.handle == "medjool-dates" })
+        let products = try await Fixtures.products()
+        let rice = try await Fixtures.cart()
+        let dates = try XCTUnwrap(products.first { $0.handle == "medjool-dates" })
         let ghost = BagOps.ghostLine(dates, variantId: "144", quantity: 2)
-        let bag = try XCTUnwrap(BagOps.apply(try await Fixtures.cart(), .add(variantId: "144", quantity: 2, ghost: ghost)))
+        let bag = try XCTUnwrap(BagOps.apply(rice, .add(variantId: "144", quantity: 2, ghost: ghost)))
         XCTAssertEqual(bag.items.count, 2)
         XCTAssertEqual(bag.items.last?.lineId, "pending:144")
         XCTAssertEqual(bag.items.last?.lineTotal.fils, 12_500)
