@@ -4183,6 +4183,22 @@ again only when it is personal (`quiet`, drawing nothing while it loads). One sa
 a data point, not a taste, and a rail claiming otherwise is checked once and
 never trusted again.
 
+**It is asked when the page appears, never while somebody is on it**, on the
+owner's word ("fix the same jump on the website too"). Its query was keyed on
+the bag's id, and a guest's first add is what gives a bag one: the rail
+refetched, turned personal and was drawn above the brands, the stores and New
+arrivals, so the page grew by the rail's height (537px at 390) over the card
+just pressed — and the server leaves out what is in the bag, so a product added
+from the rail itself left it. `RecommendedRail` now asks with the bag as it was
+when the page appeared (`useState` of `CartContext`'s `cartId`, which is known
+on the first render, before the bag is read) and is not asked again on window
+focus or reconnect; a page appearing mounts it afresh, and the query client's
+`staleTime` of zero asks again then. Measured at 390 on a phone: Add on a New
+arrivals card left it where it was and drew no rail, where the old code drew
+one at once; leaving for Categories and coming back drew the personal rail.
+Chromium's scroll anchoring had hidden the old jump in that probe by scrolling
+the page 537px with it — Safari anchors nothing, so on an iPhone the card moved.
+
 **Only interest terms leave NetLet.** `tasteTerms` is the entire payload sent to
 the model — "lighting, home, warm", true of thousands of people and identifying
 none of them. No name, no email, no account id, no order reference. A
@@ -6059,7 +6075,8 @@ in it, personal and without that line). **And the hold that opens the preview
 was the whole card's**, so a press on the photo's plus that lasted 0.4s added
 the product and opened the preview over it, drawing the card afresh; the hold
 is the photo's and the words' now, never the plus, the stepper, the heart or
-Buy now — the web's own hold is on the photo alone.
+Buy now — the web's own hold is on the photo alone. The web's rail follows
+the same rule (see Recommendations).
 
 **Signing in is the web's phone design too**: NetLet's street as a band across
 the top of the Profile tab, the form a white panel rising over its foot with

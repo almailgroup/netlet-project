@@ -91,6 +91,11 @@ function entryFor(change: Change): Entry {
 
 type CartContextValue = {
   cart: Cart | null;
+  /**
+   * The bag's id as this device holds it, known on the first render — before
+   * the bag itself has been read. Null until a first add makes one.
+   */
+  cartId: string | null;
   isOpen: boolean;
   /** A read or a change is with the server. */
   loading: boolean;
@@ -416,6 +421,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const value = useMemo<CartContextValue>(
     () => ({
       cart,
+      cartId,
       isOpen,
       loading,
       syncing,
@@ -434,6 +440,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }),
     [
       cart,
+      cartId,
       isOpen,
       loading,
       syncing,

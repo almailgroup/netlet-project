@@ -31,12 +31,24 @@
  *
  * Three states, never two: `QueryGate` is the same gate the portal uses, so a
  * failed query says so instead of rendering as an empty shelf.
+ *
+ * **It is asked when the page appears, never while somebody is on it**, on
+ * the owner's word ("make sure the products stay in their place when adding
+ * them to the cart"). It was asked with the bag drawn, and a shopper's first
+ * add is what gives a bag its id, so the rail turned personal and appeared
+ * above the brands, the stores and New arrivals, pushing the card just
+ * pressed down the page; and the server leaves out what is in the bag, so a
+ * product added from the rail vanished from it. It asks with the bag this
+ * device held when the page appeared (`cartId`, known before the bag is
+ * read), and not again on the window coming back into focus; the next page
+ * that draws it asks afresh. The app's rail does the same.
  */
 import { ProductCard } from "@/components/product/ProductCard";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useState } from "react";
 import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
@@ -51,7 +63,9 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
   quiet?: boolean;
 }) {
   const { t, locale, isArabic } = useTranslation();
-  const { cart } = useCart();
+  const { cartId } = useCart();
+  /* The bag as it was when the page appeared, kept for as long as it is open. */
+  const [askedWith] = useState(cartId);
 
   /*
    * The bag goes in the request because a signed-out shopper's cart is the
@@ -59,7 +73,10 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
    * know which one is theirs. The account, when there is one, is read from the
    * session — it is deliberately not something a caller can name.
    */
-  const query = trpc.recommendations.forMe.useQuery({ cartId: cart?.id ?? null, limit: 8, locale });
+  const query = trpc.recommendations.forMe.useQuery(
+    { cartId: askedWith, limit: 8, locale },
+    { refetchOnWindowFocus: false, refetchOnReconnect: false },
+  );
 
   if (quiet && !query.data) return null;
   return (
