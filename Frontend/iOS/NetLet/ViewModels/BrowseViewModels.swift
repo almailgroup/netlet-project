@@ -189,6 +189,11 @@ final class BrowseModel {
     }
 
     let source: Source
+    /// The words a search page is for, which its header's field shows.
+    var searchTerm: String? {
+        if case .search(let words, _) = source { return words }
+        return nil
+    }
     private(set) var products: LoadState<[Product]> = .idle
     /// The catalogue's own spelling, when a search found nothing as typed.
     private(set) var correctedTo: String?

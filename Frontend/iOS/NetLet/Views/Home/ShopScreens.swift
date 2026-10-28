@@ -81,7 +81,7 @@ struct SavedView: View {
                     .card(padding: 0)
                 } else {
                     switch catalogue {
-                    case .idle, .loading: LoadingView()
+                    case .idle, .loading: GridSkeleton(cards: min(ids.count, 4))
                     case .failed(let error): ErrorStateView(error: error) { await load() }
                     case .loaded: ProductGrid(products: found)
                     }

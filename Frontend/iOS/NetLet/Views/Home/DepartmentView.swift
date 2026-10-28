@@ -42,7 +42,7 @@ private struct BrowsePage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(logo: false, refresh: { await model.load(language: l.current) }) {
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: [crumb])
                 Text(title)
@@ -276,7 +276,7 @@ private struct BrowsePage: View {
     private var results: some View {
         switch model.products {
         case .idle, .loading:
-            LoadingView()
+            GridSkeleton()
         case .failed(let error):
             ErrorStateView(error: error) { await model.load(language: l.current) }
         case .loaded:

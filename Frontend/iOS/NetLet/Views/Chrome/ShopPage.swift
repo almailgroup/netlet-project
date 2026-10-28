@@ -56,6 +56,12 @@ struct ShopPage<Content: View>: View {
     var assistant = true
     /// The product on screen, so the conversation starts about it.
     var assistantProduct: Product?
+    /// The words a results page is for. The field shows them there and
+    /// nothing on any other page — the web's header starting each page from
+    /// the address's `q` — so a product opened from a search does not go on
+    /// showing it, and a search reached from a chat or "Find similar" says
+    /// what it searched.
+    var searchTerm: String?
     @ViewBuilder var content: () -> Content
 
     @Environment(AppModel.self) private var app
@@ -153,6 +159,7 @@ struct ShopPage<Content: View>: View {
             // bar is there, and the scroll counts afresh from where it is.
             scroll.state = TabBarScroll(y: scroll.state.y)
             barAway = false
+            if header { app.searchText = searchTerm ?? "" }
         }
     }
 

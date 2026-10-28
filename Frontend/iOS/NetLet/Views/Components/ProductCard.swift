@@ -140,6 +140,11 @@ struct ProductCard: View {
             .overlay(alignment: .bottomTrailing) {
                 PhotoCartControl(product: product).padding(8)
             }
+            // The photo is its 4:5 at the card's width, whatever the row is.
+            // Left flexible, a row taller than the card shared its height
+            // between the photo and the spacer above Buy now: the photo shrank
+            // to a narrower 4:5 in the middle and a gap opened under the price.
+            .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 0) {
                 if let line = note ?? product.vendor, !line.isEmpty {
                     Text(line)

@@ -63,9 +63,10 @@ jobs:
             2>&1 | grep --line-buffered -E "error:|\*\* BUILD"
           exit "${PIPESTATUS[0]}"
 
-      # Each screen opened fresh and given time to load from the live shop;
-      # the department a second time, as a shopper coming back sees it, with
-      # the photos kept on the phone. The app's own network failures follow.
+      # A first visit three seconds in, from a fresh install; then each screen
+      # opened and given time to load from the live shop; the department a
+      # second time, as a shopper coming back sees it, with the photos kept on
+      # the phone. The app's own network failures follow.
       - name: Screens against the live shop
         env:
           SIM: ${{ steps.simulator.outputs.id }}
@@ -77,13 +78,20 @@ jobs:
           xcrun simctl boot "$SIM" 2>/dev/null || true
           xcrun simctl bootstatus "$SIM" -b >/dev/null
           xcrun simctl status_bar "$SIM" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 || true
-          xcrun simctl install "$SIM" "$app"
-          shot() {  # name, language, screen
+          fresh() {  # a first visit: nothing kept on the phone from before
+            xcrun simctl uninstall "$SIM" com.netlet.marketplace 2>/dev/null || true
+            xcrun simctl install "$SIM" "$app"
+          }
+          shot() {  # name, language, screen, seconds (WAIT unless given)
             xcrun simctl terminate "$SIM" com.netlet.marketplace 2>/dev/null || true
             xcrun simctl launch "$SIM" com.netlet.marketplace -netlet.language "$2" -NetLetOpen "$3" >/dev/null
-            sleep "$WAIT"
+            sleep "${4:-$WAIT}"
             xcrun simctl io "$SIM" screenshot --type=png "build/live/$1.png" >/dev/null 2>&1
           }
+          # What a first visit shows three seconds in, before anything is kept.
+          fresh; shot 0-first-home-3s en home 3
+          fresh; shot 0-first-department-3s en department:beauty 3
+          fresh
           shot 1-department-beauty en department:beauty
           shot 2-search-cream en search:cream
           shot 3-product en product:hyaluronic-acid-face-mask

@@ -5957,7 +5957,13 @@ what the app holds**, the web's `shelvedProducts`: the home page's shelves and
 every answer the server gave this search, ranked by `SearchRank`
 (`SearchViewModel.interim`), while the server is asked over the whole
 catalogue; its answer replaces them, words already answered are drawn at once,
-and a misspelling waits for the server's correction. **Saved reads its products by id**
+and a misspelling waits for the server's correction. **The field shows the
+words a results page is for and nothing on any other page** (`ShopPage`'s
+`searchTerm`, set as the page appears), the web's header starting each page
+from the address's `q`: it held the last words typed for the whole session, so
+a product opened from a search went on saying "cream", and a search reached
+from the assistant or "Find similar" showed the example instead of what it
+searched. **Saved reads its products by id**
 (`commerce.products.byIds`): it looked them up in the newest page, so anything
 older read as no longer available — the bug the web fixed under Wishlists.
 
@@ -5980,7 +5986,16 @@ an explicit `.id` on what a lazy grid or row draws stands in for the
 `ForEach`'s identity, and the hold count alone is 0 on every card, so a
 department of 27 products drew one card under "27 products" — the owner's
 "only one product is shown", found by opening the app against the live shop
-(`app-live.yml`) and not by any test, since none renders a grid. VoiceOver has it as an action on the
+(`app-live.yml`) and not by any test, since none renders a grid. **The
+card's photo is fixed at its 4:5 for the card's width**
+(`.fixedSize(horizontal: false, vertical: true)` on the photo): left
+flexible, a grid row taller than the card shared its height between the photo
+and the spacer that keeps Buy now at the foot, so the photo shrank to a
+narrower 4:5 in the middle of the card and a gap opened under the price — the
+same screenshots, once the cards were all there. A department, a search and
+Saved wait on an outline of that grid (`GridSkeleton`: the card's shape, the
+photo breathing as one on its way does) rather than a spinner in an empty
+page, so nothing moves when the products land. VoiceOver has it as an action on the
 card's name. `-NetLetOpen preview:<handle>` opens it for the screenshots.
 
 **Signing in is the web's phone design too**: NetLet's street as a band across

@@ -428,6 +428,51 @@ struct FlowLayout: Layout {
     }
 }
 
+/// The grid's outline while a department, a search or Saved loads: two
+/// columns of cards shaped like `ProductCard` — the photo breathing as a photo
+/// on its way does, the store, the name, the price and Buy now — so the page
+/// keeps its shape and nothing moves when the products land. It was a spinner
+/// in an empty page, which the web's `PageFallback` stopped being long ago.
+struct GridSkeleton: View {
+    var cards = 4
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            ForEach(0..<cards, id: \.self) { _ in card }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(l.t("nav.loadingPage"))
+    }
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            LoadingTint(still: still)
+                .aspectRatio(4.0 / 5.0, contentMode: .fit)
+                .fixedSize(horizontal: false, vertical: true)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 15, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 15, style: .continuous))
+            VStack(alignment: .leading, spacing: 8) {
+                bar(width: 72, height: 10)
+                bar(height: 13)
+                bar(width: 96, height: 13)
+                bar(width: 64, height: 16).padding(.top, 4)
+                Capsule().fill(Brand.tint).frame(height: 44).padding(.top, 8)
+            }
+            .padding(10)
+        }
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+    }
+
+    private func bar(width: CGFloat? = nil, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 4)
+            .fill(Brand.tint)
+            .frame(width: width, height: height)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// A card-shaped outline while a shelf's products load, so the page does not jump.
 struct ShelfSkeleton: View {
     var body: some View {

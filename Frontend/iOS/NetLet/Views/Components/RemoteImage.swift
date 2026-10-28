@@ -110,7 +110,7 @@ private struct PipelinedImage: View {
 /// A picture on its way: the photo's ground, breathing gently, so a box still
 /// loading reads differently from one with no picture — and held still for
 /// somebody who asked for less motion.
-private struct LoadingTint: View {
+struct LoadingTint: View {
     let still: Bool
     @State private var lit = false
 
