@@ -37,18 +37,33 @@ export function FloatingField({ label, required = false, start, end, leftToRight
   );
 }
 
+/**
+ * The account's one card: white, round-cornered, no rim, a shadow you have to
+ * look for — the home's rows and tiles and every "Your profile" card are this,
+ * so the two pages read as one design.
+ */
+export const PANEL = "rounded-3xl bg-white shadow-[0_1px_2px_rgba(10,40,90,.05)]";
+
 /** One of the page's white cards: a title, a line on what it is for, the fields. */
 export function ProfileCard({ title, note, children }: { title?: string; note?: string; children: ReactNode }) {
   const titleId = useId();
   return (
-    <section aria-labelledby={title ? titleId : undefined} className="rounded-3xl border border-[#e6e9ef] bg-white p-5 shadow-[0_1px_2px_rgba(10,40,90,.05)] sm:p-6">
-      {title ? <h3 id={titleId} className="text-base font-extrabold text-[#0a285a]">{title}</h3> : null}
-      {note ? <p className={`text-sm leading-5 ink-muted ${title ? "mt-1" : ""}`}>{note}</p> : null}
+    <section aria-labelledby={title ? titleId : undefined} className={`${PANEL} p-5 sm:p-6`}>
+      {title ? <h3 id={titleId} className="text-[17px] font-bold text-[#0a285a]">{title}</h3> : null}
+      {note ? <p className={`text-[14px] leading-5 ink-muted ${title ? "mt-1" : ""}`}>{note}</p> : null}
       <div className={title || note ? "mt-4" : ""}>{children}</div>
     </section>
   );
 }
 
+/*
+ * The account's two buttons, as pills like the home's language switch and
+ * points: navy for the one that saves, white with a light rim for the rest
+ * (Cancel, "Change email"). Not `.pressable`, which would force its own type.
+ */
 export const primary =
-  "glass glass-navy pressable inline-flex h-11 items-center gap-2 rounded-xl px-4 text-xs font-extrabold disabled:opacity-50";
+  "inline-flex h-12 items-center gap-2 rounded-full bg-[#0a285a] px-6 text-[15px] font-semibold text-white enabled:hover:bg-[#0d3372] disabled:opacity-50";
+
+export const secondary =
+  "inline-flex h-12 items-center gap-2 rounded-full border border-[#d5dfeb] bg-white px-6 text-[15px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5]";
 

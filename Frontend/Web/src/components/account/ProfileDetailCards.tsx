@@ -29,7 +29,7 @@ import {
 import { formatPhone } from "@shared/commerce/wishlist";
 import { kuwaitDay } from "@shared/kuwaitDay";
 import { foldText } from "@shared/commerce/search";
-import { Check, LoaderCircle, Search, X } from "lucide-react";
+import { Check, ChevronRight, LoaderCircle, Search, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -170,7 +170,7 @@ function BirthdayCard({ stored, saving, onSave }: { stored: string | null; savin
             {t("account.saveChanges")}
           </button>
           {stored ? (
-            <button type="button" onClick={() => void onSave(null)} className="pressable inline-flex h-11 items-center rounded-xl px-3 text-[13px] font-bold text-[#8c2f22] hover:bg-[#fdeceb]">
+            <button type="button" onClick={() => void onSave(null)} className="inline-flex h-12 items-center rounded-full px-4 text-[15px] font-semibold text-[#8c2f22] hover:bg-[#fdeceb]">
               {t("profile.birthdayRemove")}
             </button>
           ) : null}
@@ -225,9 +225,10 @@ function NationalityCard({ value, onChoose }: { value: string | null; onChoose: 
         <button
           type="button"
           onClick={() => setListOpen(true)}
-          className="pressable inline-flex min-h-11 items-center rounded-full px-3 text-[14px] font-bold ink-accent underline underline-offset-4"
+          className="pressable tint-on-hover inline-flex min-h-11 items-center gap-1 rounded-full bg-[#f1f2f6] pe-3 ps-4 text-[14px] font-semibold text-[#1f2a44]"
         >
           {t("profile.viewAll")}
+          <ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
         </button>
       </div>
       {listOpen ? <CountryList countries={countries} value={value} onChoose={code => { setListOpen(false); if (code !== value) onChoose(code); }} onClose={() => setListOpen(false)} /> : null}

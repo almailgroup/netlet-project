@@ -1,19 +1,24 @@
 /**
- * Who you are, at the foot of "Your profile" — the account's home has the
- * name and the address on a card of its own (`AccountHome`), and the dates and
- * the role are here, under the forms that change them. The forms lead, as the
- * owner's reference draws the page: somebody opening it came to change
- * something, and "is this my account?" is answered on the home already.
+ * The account's dates at the foot of "Your profile" — when it was opened and
+ * when it last signed in — and, for an administrator, the way to the portal.
+ * The home has the name and the address on a card of its own (`AccountHome`),
+ * and the email has its own card above, so none of them is said again here.
+ *
+ * It is drawn as the home's rows are — an outline icon, the words, the value
+ * at the end, dashed lines between — on the account's one card (`PANEL`). It
+ * was a card of its own design, a navy square of initials over a bold "Signed
+ * in as", the one thing on the page still in the account's old look.
  *
  * The avatar is initials rather than an uploaded picture: NetLet has nowhere
  * to put an image yet, and a grey silhouette that never changes is furniture.
  * Initials at least identify the account at a glance, which is what an avatar
  * on a settings page is actually for.
  */
+import { PANEL } from "@/components/account/profileParts";
 import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
-import { ArrowRight, CalendarDays, Clock, ShieldCheck } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, ShieldCheck } from "lucide-react";
 
 type PublicUser = {
   email: string;
@@ -54,66 +59,31 @@ export function AccountIdentity({ user }: { user: PublicUser }) {
   ];
 
   return (
-    <section className="rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 sm:p-7">
-      <div className="flex flex-wrap items-center gap-4">
-        <span
-          aria-hidden
-          className="grid size-16 shrink-0 place-items-center rounded-2xl bg-[#0a285a] text-xl font-extrabold text-white"
-        >
-          {initialsFor(user)}
-        </span>
-        <div className="min-w-0 flex-1">
-          {/* `bdi`, not `dir="auto"` on the heading itself: a Latin name in an
-              Arabic page needs its own internal order, but the heading is a
-              field of this card and belongs on the card's side. `dir` on the
-              block does both, which threw the name to the far edge and left
-              the label under it hugging the other one. It wraps rather than
-              truncating: cut on an Arabic page, a Latin name lost its first
-              letters ("…ra Al-Sabah"), and a name is the one thing on the
-              card a shopper reads to be sure it is theirs. */}
-          <h3 className="text-xl font-extrabold text-[#0a285a] [overflow-wrap:anywhere]">
-            <bdi>{user.name?.trim() || t("account.noName")}</bdi>
-          </h3>
-          <p className="mt-0.5 text-[12px] font-semibold ink-muted">
-            {t("account.identityEmail")}
-          </p>
-          <p className="truncate text-[13px] font-bold text-[#536b8c]">
-            <bdi dir="ltr">{user.email}</bdi>
-          </p>
-        </div>
-        {/* On a phone the role goes on its own line under the email, lined up
-            with the words, so the name has the card's width; beside it, the
-            name broke at its hyphen ("Noura Al-" over "Sabah"). */}
-        <span className="max-sm:-mt-2 max-sm:basis-full max-sm:ps-20">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold ${
-              isAdmin ? "bg-[#0a285a] text-white" : "bg-[#e7edf5] text-[#0a285a]"
-            }`}
-          >
-            <ShieldCheck className="size-3.5" aria-hidden />
-            {t(isAdmin ? "account.roleAdmin" : "account.roleShopper")}
-          </span>
-        </span>
-      </div>
-
-      <div className="mt-5 grid gap-3 border-t border-[#e6e9ef] pt-5 sm:grid-cols-2">
+    <section aria-label={t("account.security")} className={`${PANEL} overflow-hidden px-5`}>
+      <dl className="divide-y divide-dashed divide-[#e3e6ec]">
         {facts.map(fact => (
-          <div key={fact.label} className="flex items-center gap-2.5">
-            <fact.icon className="size-4 shrink-0 ink-muted" aria-hidden />
-            <span className="text-[12px] ink-muted">{fact.label}</span>
-            {/* Isolated so a date reads the same in both scripts. */}
-            <span dir="ltr" className="text-[13px] font-extrabold text-[#0a285a]">{fact.value}</span>
+          <div key={fact.label} className="flex min-h-[60px] items-center gap-3.5">
+            <fact.icon className="size-[22px] shrink-0 text-[#5d6b82]" strokeWidth={1.75} aria-hidden />
+            <dt className="min-w-0 flex-1 text-[15px] text-[#1f2a44]">{fact.label}</dt>
+            {/* Isolated, and in its own direction: an Arabic month name runs
+                right to left with its digits, where a forced left-to-right put
+                the year first for an Arabic reader. */}
+            <dd className="shrink-0 text-[15px] font-semibold text-[#0a285a]"><bdi>{fact.value}</bdi></dd>
           </div>
         ))}
-      </div>
-
+      </dl>
       {isAdmin ? (
-        <a
-          href={appPath("/admin")}
-          className="glass glass-navy pressable mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-extrabold"
-        >
-          {t("account.openAdmin")}<ArrowRight className="size-4 rtl:-scale-x-100" />
-        </a>
+        <div className="border-t border-dashed border-[#e3e6ec]">
+          <a
+            href={appPath("/admin")}
+            className="-mx-5 flex min-h-[60px] items-center gap-3.5 px-5 hover:bg-[#f0f2f5]"
+          >
+            <ShieldCheck className="size-[22px] shrink-0 text-[#5d6b82]" strokeWidth={1.75} aria-hidden />
+            <span className="min-w-0 flex-1 text-[15px] font-medium text-[#1f2a44]">{t("account.openAdmin")}</span>
+            <span className="shrink-0 rounded-full bg-[#f1f2f6] px-2.5 py-1 text-[12px] font-bold text-[#0a285a]">{t("account.roleAdmin")}</span>
+            <ChevronRight className="size-5 shrink-0 text-[#1f2a44] rtl:-scale-x-100" aria-hidden />
+          </a>
+        </div>
       ) : null}
     </section>
   );

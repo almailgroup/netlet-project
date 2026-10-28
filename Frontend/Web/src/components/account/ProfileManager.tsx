@@ -21,17 +21,12 @@ import { PasswordChecklist } from "@/components/auth/AuthForm";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileDetails";
 import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
-import { FloatingField, ProfileCard, primary } from "@/components/account/profileParts";
+import { FloatingField, ProfileCard, primary, secondary } from "@/components/account/profileParts";
 import { Check, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type PublicUser = { id: number; email: string; name: string | null; role: string };
-
-const secondary =
-  "glass pressable inline-flex h-11 items-center rounded-xl border border-[#d5dfeb] px-4 text-xs font-extrabold text-[#0a285a]";
-
-const link = "text-[12px] font-extrabold ink-accent underline underline-offset-4";
 
 export function ProfileManager({ user }: { user: PublicUser }) {
   const { t } = useTranslation();
@@ -42,7 +37,7 @@ export function ProfileManager({ user }: { user: PublicUser }) {
   const details = trpc.customer.details.get.useQuery();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
       <ProfileDetailCards details={details.data ?? null} onFail={fail} />
       <EmailForm user={user} onSaved={refresh} onFail={fail} />
@@ -175,7 +170,7 @@ function EmailForm({ user, onSaved, onFail }: {
           </div>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className={`mt-2 ${link}`}>
+        <button onClick={() => setOpen(true)} className={`mt-3 ${secondary}`}>
           {t("account.changeEmail")}
         </button>
       )}
@@ -252,7 +247,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           </div>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className={link}>
+        <button onClick={() => setOpen(true)} className={secondary}>
           {t("account.changePassword")}
         </button>
       )}

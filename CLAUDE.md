@@ -1640,7 +1640,8 @@ at 17, 24, 26, 30 and 36 pixels, the first line anywhere from 89 to 235 pixels
 under the header, columns centred on some pages and at the edge on others —
 so a page's title jumped sideways from the logo's line between pages — four
 different "nothing here" boxes and an orange eyebrow over one heading. **A
-column starts at the logo's line on every page**; a reading page
+column starts at the logo's line on every page** but the account's, which is
+one column in the middle on the owner's word (see "The account"); a reading page
 (`width="reading"`) is narrower, never moved to the middle. The product page's
 title is the product's name in the buy box and is the one exception, by its
 nature. `.scratch/audit-pages.mjs` measures the title's size, its gap under the
@@ -1699,11 +1700,25 @@ password meant scrolling past every parcel ever ordered. The home is now a
 short page of tiles in four groups (shopping, notifications and help, rewards,
 account settings), each tile saying in one line what it holds and, where there
 is something, what is waiting — "1 on the way", "2 unread", from
-`useAccountSignals`, the header's own reader. A tile opens
-`/account/<section>`: that section alone, beside a grouped menu on a wide
-screen and under a "← Your account" link on a phone. The section components
-are the ones they always were; only the page around them changed. `ENTRIES` in
-`Account.tsx` is the one list the home and the menu both read.
+`useAccountSignals`, the header's own reader. A row opens
+`/account/<section>`: that section alone, under a round way back to the home
+and its name. The section components are the ones they always were; only the
+page around them changed. `ENTRIES` in `Account.tsx` is the one list of what
+exists, which the home and a section's address both read.
+
+**Every width draws one column, the home's, in the middle of the page — on the
+owner's word**, who found the wide screen "uses the new and old design": the
+home sat at the page's start, and a section sat beside a grouped menu of every
+section (navy pills under headings, the account's old look) with the old
+page heading over it and, on "Your profile", the old identity card under the
+new cards. The menu went, so a wide screen is the phone's page centred
+(`COLUMN`, `max-w-2xl`) — the account is read as one card, not browsed as a
+shelf — and the way between sections is the home's rows, the round back
+button and the header's account menu. **The account's one card is `PANEL`**
+(`profileParts.tsx`): the home's rows and tiles and every "Your profile" card
+wear it, and the profile's buttons are the home's pills — navy to save, white
+with a light rim for Cancel, "Change email" and "Change password", which were
+orange underlined words.
 
 **The home is drawn like the delivery apps', on the owner's word** (a picture
 of Noon's profile; `AccountHome`): a card with the initials in a pale circle,
@@ -1716,8 +1731,11 @@ language as a two-way switch in its own row (each choice in its own language),
 "Account security" (the details) and signing out in red at the foot, still
 asking first. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
-and the welcome heading went; the dates and the role moved to the foot of "Your
-profile" (`AccountIdentity`). **On a phone `/account` and `/cart` have no
+and the welcome heading went; the dates moved to the foot of "Your profile"
+(`AccountIdentity`), drawn as the home's rows — an icon, the words, the date at
+the end — with the portal as one more row for an administrator, the role in a
+pill beside it. The date takes its own direction (`<bdi>`): forced left to
+right, an Arabic month name put the year first for an Arabic reader. **On a phone `/account` and `/cart` have no
 header and no footer, on the owner's word** (`BARE_ON_PHONE` in
 `StorefrontShell`): the page starts under the status bar, ends with its own
 content — `<main>` keeps the room the footer left for the floating tab bar —
@@ -1786,8 +1804,7 @@ today's (`firstPhotos`), read live rather than frozen: a picture is how a thing
 is recognised, not a fact anybody is held to, and the opened order's lines
 carry one too.
 
-Signing out is a plain button at the foot of the home and of the menu, still
-asking first. It sat in a red "danger zone" box, which dressed the most
+Signing out is a plain row at the foot of the home, still asking first. It sat in a red "danger zone" box, which dressed the most
 ordinary thing anybody does on an account page as a hazard. "Your activity"
 went too: its two cards repeated what the Saved and Orders tiles say.
 

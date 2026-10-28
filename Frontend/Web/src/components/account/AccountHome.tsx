@@ -31,6 +31,7 @@
  * than drawn as empty boxes.
  */
 import { initialsFor } from "@/components/account/AccountIdentity";
+import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -96,7 +97,6 @@ const CARDS: Row[][] = [
   ],
 ];
 
-const PANEL = "rounded-3xl bg-white shadow-[0_1px_2px_rgba(10,40,90,.05)]";
 const ICON = "size-[22px] shrink-0 text-[#5d6b82]";
 const CHEVRON = "size-5 shrink-0 text-[#1f2a44] rtl:-scale-x-100";
 
@@ -118,7 +118,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   const savedPhotos = saved.products.map(product => product.images[0]?.url ?? null).slice(0, 4);
 
   return (
-    <div className="max-w-2xl space-y-3">
+    <div className="mx-auto max-w-2xl space-y-3">
       <h1 className="sr-only">{t("account.yourWay")}</h1>
 
       <section aria-label={t("account.yourWay")} className={`${PANEL} flex items-center gap-4 p-4 sm:p-5`}>

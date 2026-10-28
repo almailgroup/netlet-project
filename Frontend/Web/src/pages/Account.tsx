@@ -11,9 +11,16 @@
  * Now `/account` is a short page (`AccountHome`): who is signed in, the last
  * things ordered and saved, the points, and every section as a row, with what
  * is waiting said on it ("1 on the way", "2 unread"). A row opens
- * `/account/<section>`, which is that section alone: beside a menu of all of
- * them on a wide screen, under a way back on a phone. The sections themselves
- * are the components they always were; only the page around them changed.
+ * `/account/<section>`, which is that section alone under a round way back and
+ * its name. The sections themselves are the components they always were; only
+ * the page around them changed.
+ *
+ * **Every width draws the same column, centred, on the owner's word.** A wide
+ * screen had the home at the page's start and each section beside a menu of
+ * all of them — navy pills under group headings, the account's old look —
+ * around cards in its new one. The column is the home's width (`COLUMN`) and
+ * sits in the middle of the page, where every other page starts at the logo's
+ * line: an account is read as one card, not browsed as a shelf.
  *
  * It wears the shop's own tab bar and footer, and its header on a wide screen;
  * a phone draws it with no header, on the owner's word (`StorefrontShell`).
@@ -24,10 +31,9 @@
 import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { PixelDot } from "@/components/ui/PixelBadge";
 import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountHome } from "@/components/account/AccountHome";
-import { AccountIdentity, initialsFor } from "@/components/account/AccountIdentity";
+import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
@@ -45,72 +51,47 @@ import { AuthScreen } from "@/components/auth/AuthScreen";
 import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { PageBody, TITLE } from "@/components/layout/Page";
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import {
-  ArrowLeft,
-  Bell,
-  Gift,
-  Heart,
-  LifeBuoy,
-  LogOut,
-  MapPin,
-  Megaphone,
-  Package,
-  Repeat,
-  SlidersHorizontal,
-  Star,
-  Store,
-  Tag,
-  UserRound,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation, useRoute } from "wouter";
-
-type Group = "shopping" | "conversations" | "rewards" | "settings";
 
 type Entry = {
   id: string;
   label: MessageKey;
   hint: MessageKey;
-  icon: ComponentType<{ className?: string }>;
-  group: Group;
   /** Somewhere else on the site rather than a section here. */
   href?: string;
 };
 
 /**
- * Every section, in the order the home and the menu show them. One list, so
- * the two cannot disagree about what exists or where it sits.
+ * Every section. One list, so the home and a section's address cannot
+ * disagree about what exists.
  */
 const ENTRIES: Entry[] = [
-  { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders", icon: Package, group: "shopping" },
-  { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions", icon: Repeat, group: "shopping" },
-  { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", icon: Heart, group: "shopping", href: "/saved" },
-  { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists", icon: Gift, group: "shopping" },
-  { id: "offers", label: "offers.mine", hint: "account.hint.offers", icon: Tag, group: "shopping" },
-  { id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", icon: Star, group: "shopping" },
-  { id: "notifications", label: "notices.title", hint: "notices.tile", icon: Bell, group: "conversations" },
-  { id: "help", label: "support.section", hint: "account.hint.help", icon: LifeBuoy, group: "conversations" },
-  { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", icon: Users, group: "rewards" },
-  { id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", icon: Megaphone, group: "rewards" },
-  { id: "details", label: "account.sectionProfile", hint: "account.hint.details", icon: UserRound, group: "settings" },
-  { id: "addresses", label: "address.book", hint: "account.hint.addresses", icon: MapPin, group: "settings" },
-  { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", icon: SlidersHorizontal, group: "settings" },
-  { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", icon: Store, group: "settings" },
+  { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders" },
+  { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions" },
+  { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", href: "/saved" },
+  { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists" },
+  { id: "offers", label: "offers.mine", hint: "account.hint.offers" },
+  { id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews" },
+  { id: "notifications", label: "notices.title", hint: "notices.tile" },
+  { id: "help", label: "support.section", hint: "account.hint.help" },
+  { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards" },
+  { id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate" },
+  { id: "details", label: "account.sectionProfile", hint: "account.hint.details" },
+  { id: "addresses", label: "address.book", hint: "account.hint.addresses" },
+  { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences" },
+  { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling" },
 ];
 
-const GROUPS: { id: Group; label: MessageKey }[] = [
-  { id: "shopping", label: "account.groupShopping" },
-  { id: "conversations", label: "account.groupConversations" },
-  { id: "rewards", label: "account.groupRewards" },
-  { id: "settings", label: "account.groupSettings" },
-];
+/** The account's one column: the home's width, in the middle of the page. */
+const COLUMN = "mx-auto max-w-2xl";
 
 /** What each section draws. The profile needs the user, so it takes it. */
 function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
@@ -124,7 +105,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
     case "affiliate": return <AccountAffiliate />;
-    case "details": return <div className="space-y-6"><ProfileManager user={user} /><AccountIdentity user={user} /></div>;
+    case "details": return <div className="space-y-3"><ProfileManager user={user} /><AccountIdentity user={user} /></div>;
     case "addresses": return <AddressBook />;
     case "preferences": return <AccountPreferences />;
     case "selling": return <SellerMode />;
@@ -170,7 +151,7 @@ export default function Account() {
   if (!affiliatesOn && !myAffiliate.data) hidden.add("affiliate");
   const entries = ENTRIES.filter(entry => !hidden.has(entry.id));
 
-  /* What is waiting, said on the tile and in the menu. */
+  /* What is waiting, said on the home's rows. */
   const badge = (id: string): string | null => {
     if (id === "orders" && signals.onTheWay) return t("header.onTheWay", { count: signals.onTheWay });
     if (id === "notifications" && signals.unreadNotices) return t("header.unreadCount", { count: signals.unreadNotices });
@@ -220,7 +201,7 @@ export default function Account() {
       />
 
         {loading ? (
-          <div className="space-y-3" aria-hidden>
+          <div className={`${COLUMN} space-y-3`} aria-hidden>
             <div className="h-9 w-56 animate-pulse rounded-xl bg-[#e7edf5]" />
             <div className="h-28 animate-pulse rounded-2xl bg-[#e7edf5]" />
           </div>
@@ -238,22 +219,24 @@ export default function Account() {
             <AuthScreen mode={guestMode} onModeChange={setGuestMode} heading="h2" />
           </>
         ) : section ? (
-          <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start lg:gap-10">
-            <SideMenu user={user} entries={entries} current={section.id} badge={badge} onSignOut={() => setSignOutOpen(true)} />
-            <div className="min-w-0">
-              {/* A phone has no side menu, so the way back is the first thing on the page. */}
-              <Link href="/account" className="-ms-2 mb-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-[14px] font-semibold text-[#536b8c] hover:text-[#0a285a] lg:hidden">
-                <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-                {t("account.backToAccount")}
+          <div className={COLUMN}>
+            {/* The page is the account and this is one part of it, which is
+                also what keeps the cards' own h3s one level below a heading. */}
+            <h1 className="sr-only">{t("account.backToAccount")}</h1>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/account"
+                aria-label={t("account.backToAccount")}
+                title={t("account.backToAccount")}
+                className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_3px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
+              >
+                <ArrowLeft className="size-5 rtl:-scale-x-100" aria-hidden />
               </Link>
-              {/* The page is the account and this is one part of it, which is
-                  also what keeps the cards' own h3s one level below a heading. */}
-              <h1 className="sr-only">{t("account.backToAccount")}</h1>
-              <h2 className={TITLE}>{t(section.label)}</h2>
-              <p className="mt-2 max-w-prose text-[15px] leading-7 text-[#404553]">{t(section.hint)}</p>
-              <div className="mt-6 sm:mt-8">
-                <SectionBody id={section.id} user={user} />
-              </div>
+              <h2 className={`${TITLE} min-w-0`}>{t(section.label)}</h2>
+            </div>
+            <p className="mt-2 text-[15px] leading-6 ink-muted">{t(section.hint)}</p>
+            <div className="mt-6">
+              <SectionBody id={section.id} user={user} />
             </div>
           </div>
         ) : (
@@ -262,64 +245,3 @@ export default function Account() {
     </PageBody>
   );
 }
-
-/**
- * The account's menu beside a section, on a wide screen: who is signed in,
- * every section by group, and signing out at the foot.
- */
-function SideMenu({ user, entries, current, badge, onSignOut }: {
-  user: NonNullable<ReturnType<typeof useAuth>["user"]>;
-  entries: Entry[];
-  current: string;
-  badge: (id: string) => string | null;
-  onSignOut: () => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <aside className="sticky top-[100px] hidden lg:block">
-      <Link href="/account" className="flex items-center gap-3 rounded-2xl border border-[#e6e9ef] bg-white p-3 hover:border-[#c9d6e6] hover:bg-[#f0f2f5]">
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a285a] text-[14px] font-bold text-white">{initialsFor(user)}</span>
-        <span className="min-w-0">
-          <span className="block truncate text-[14px] font-bold"><bdi>{user.name?.trim() || t("account.noName")}</bdi></span>
-          <span className="block truncate text-[12px] ink-muted"><bdi dir="ltr">{user.email}</bdi></span>
-        </span>
-      </Link>
-      <nav aria-label={t("account.menu")} className="mt-5 space-y-5">
-        {GROUPS.map(group => {
-          const items = entries.filter(entry => entry.group === group.id);
-          if (!items.length) return null;
-          return (
-            <div key={group.id}>
-              <p className="px-3 text-[12px] font-semibold ink-muted">{t(group.label)}</p>
-              <ul className="mt-1.5 space-y-0.5">
-                {items.map(entry => {
-                  const Icon = entry.icon;
-                  const active = entry.id === current;
-                  const waiting = badge(entry.id);
-                  return (
-                    <li key={entry.id}>
-                      <Link
-                        href={entry.href ?? `/account/${entry.id}`}
-                        aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] transition-colors ${active ? "bg-[#0a285a] font-semibold text-white" : "font-medium text-[#3d5170] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"}`}
-                      >
-                        <Icon className="size-4 shrink-0" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate">{t(entry.label)}</span>
-                        {waiting ? <PixelDot className="shrink-0" label={waiting} /> : null}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
-      </nav>
-      <button type="button" onClick={onSignOut} className="mt-5 flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium text-[#8c2f22] hover:bg-[#fdf5f3]">
-        <LogOut className="size-4" aria-hidden />
-        {t("header.signOut")}
-      </button>
-    </aside>
-  );
-}
-
