@@ -736,11 +736,10 @@ running to `#f2683a` at the foot, a gloss on the upper half, a fine light edge
 above and a darker one below — inside a 1.5px white rim, lifted by a small navy
 shadow (`.count-badge`, `.notice-dot` in `index.css`); the number is navy,
 4.65:1 at the darkest orange and more where it is lighter, read left to right
-on either page. **It hops once and again every ten seconds**, the rhythm the
-owner chose for the pixel badge: a smooth rise and a small settle in the first
-0.7s of a 10s loop (`.badge-hop`), where the sprite's poses were held. The span
-is keyed by the number, so a new number hops at once and starts the ten
-seconds again. Repeating is a trade against WCAG 2.2.2, made on the owner's
+on either page. **It hops once and again every five seconds, on the owner's
+word** (it was ten): a smooth rise and a small settle in the first 0.7s of a 5s
+loop (`.badge-hop`), where the sprite's poses were held. The span is keyed by
+the number, so a new number hops at once and starts the five seconds again. Repeating is a trade against WCAG 2.2.2, made on the owner's
 word as the slideshow's was; under reduced motion it never moves. The app's is
 `CountBadge.swift`, the same surface, its hop a `phaseAnimator`.
 
@@ -1657,6 +1656,30 @@ this page where the order goes is part of what it costs.
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three. Opened over
 one another, Escape closes only the top one (a stack in the hook).
+
+**A page's own way back goes back, on the owner's word** (`lib/inAppBack.ts`).
+The account sections' round arrow was a link to `/account`, so it pushed the
+account home on top of the section and the phone's Back then returned to the
+section — a loop — and a section opened from the header's bell or heart never
+led back to the page it was opened from. Every history entry now carries how
+deep into the visit it is and the address it was opened from (`netletDepth`,
+`netletFrom`, in the entry's own `history.state`, wrapped round wouter's
+`pushState` and `replaceState` once at start-up, so a reload, Back and Forward
+each find their own); `goBack` on the arrow's `onClick` steps back through the
+browser's history while there is an entry of this visit behind, and otherwise
+lets the link open the account home, so a section reached from another site or
+a fresh tab never sends anybody off NetLet. The arrow says where it goes: "Your
+account" when that is what is behind, "Back" otherwise. A press with Ctrl, ⌘ or
+Shift still opens the account home in a tab. Measured at 390 in both languages
+and 1440: home → bell → arrow back to home, a product → bell → arrow back to
+the product, account → Orders → arrow → account with Forward returning to
+Orders, and a section opened fresh going to the account home. **In the app the
+same**: `AccountSection`'s way back and Your profile's round one `dismiss()` the
+screen instead of opening the Profile tab's home, and an account screen a link
+opens for somebody signed in (`AppModel.open`) is pushed on the tab that is
+showing — it used to switch to the Profile tab, where Back led to the
+account's home. The seller's tools still open on the Profile tab, and a guest
+is shown the sign-in there.
 
 **A new page starts at its top, and Back returns to where the shopper was.**
 `ScrollMemory` in `App.tsx`. Moving between pages without a reload means the
@@ -3555,8 +3578,11 @@ minutes), `MAX_PLACE_LOOKUPS_PER_ADDRESS` an hour per address in Postgres, and
 Nominatim of the shop's own. Only the point and the language leave; the privacy
 policy says so (`privacy.who.placeLookup`).
 
-**The pin lifts while the map moves and drops when it rests** — a squash, a
-bounce and an orange ring where it landed — **with a buzz at three quarters
+**The pin is the one it always was, on the owner's word** — lucide's
+`MapPin` in the brand orange with the navy line on the web, SF Symbols'
+`mappin` in the orange in the app; a teardrop drawn for the address round was
+taken back. **It lifts while the map moves and drops when it rests** — a
+squash, a bounce and an orange ring where it landed — **with a buzz at three quarters
 strength**, both on the owner's word (`PinMark`; `pinDropHaptic`, 15ms where a
 press is 10, since a page's buzz has a length and no strength;
 `Haptics.pinDrop`, 0.75). Each map says when it starts and stops moving

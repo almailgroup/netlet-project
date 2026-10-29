@@ -441,13 +441,18 @@ final class AppModel {
     /// Puts the toast away — once its Undo has been pressed.
     func dismissToast() { toastMessage = nil }
 
-    /// A link on the site, opened in the app: an account screen on the Profile
-    /// tab, a shopping screen on the tab that is showing.
+    /// A link on the site, opened in the app: a shopping screen, or an
+    /// account screen for somebody signed in, on the tab that is showing, so
+    /// Back returns to the page it was opened from — on the owner's word; it
+    /// used to switch to the Profile tab, where Back led to the account's home.
+    /// The seller's tools still open on the Profile tab, and a guest is shown
+    /// the sign-in there.
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .listings, .newListing,
-             .invoice, .portal:
+             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .invoice:
+            if session.isSignedIn { push(route) } else { openAccount(route) }
+        case .listings, .newListing, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
         case .checkout:
             openCheckout()

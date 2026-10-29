@@ -11,10 +11,10 @@
  * would be 3.08:1. It is hidden from a screen reader, because the control it
  * sits on already says the count.
  *
- * **It hops when it has news, and again every ten seconds**, as the pixel
- * badge did on the owner's word — a smooth rise and a small settle now rather
- * than held sprite poses. Keyed by the number, so a new number hops at once
- * and starts the ten seconds again. Nobody who asked for less motion sees it
+ * **It hops when it has news, and again every five seconds**, on the owner's
+ * word — a smooth rise and a small settle rather than held sprite poses.
+ * Keyed by the number, so a new number hops at once and starts the five
+ * seconds again. Nobody who asked for less motion sees it
  * move.
  */
 

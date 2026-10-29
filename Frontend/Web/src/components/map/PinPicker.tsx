@@ -98,8 +98,8 @@ export function placeLine(place: PlaceAnswer | null | undefined, arabic: boolean
 }
 
 /**
- * The pin itself: a teardrop whose point marks the spot, its shadow, and a
- * ring where it lands. Positioned by its point at the middle of whatever box
+ * The pin itself: the orange map pin whose point marks the spot, its shadow,
+ * and a ring where it lands. Positioned by its point at the middle of whatever box
  * holds it.
  */
 export function PinMark({ lifted = false, drop = 0 }: { lifted?: boolean; drop?: number }) {
@@ -107,11 +107,10 @@ export function PinMark({ lifted = false, drop = 0 }: { lifted?: boolean; drop?:
     <span aria-hidden className="map-pin" data-lifted={lifted || undefined} data-dropped={drop > 0 || undefined}>
       <span className="map-pin-shadow" />
       {drop > 0 ? <span key={`ring-${drop}`} className="map-pin-ring" /> : null}
+      {/* The pin as it was before it learnt to lift and drop, on the owner's
+          word: the orange map pin with the navy line. */}
       <span key={`body-${drop}`} className="map-pin-body">
-        <svg width="34" height="46" viewBox="0 0 34 46">
-          <path d="M17 44.5c-.9 0-1.6-.6-2.1-1.6C10.6 34.6 2 27.6 2 17a15 15 0 0 1 30 0c0 10.6-8.6 17.6-12.9 25.9-.5 1-1.2 1.6-2.1 1.6z" fill="#f2683a" stroke="#0a285a" strokeWidth="2" />
-          <circle cx="17" cy="17" r="6" fill="#fff" stroke="#0a285a" strokeWidth="2" />
-        </svg>
+        <MapPin className="size-9 fill-[#f2683a] text-[#0a285a]" />
       </span>
     </span>
   );

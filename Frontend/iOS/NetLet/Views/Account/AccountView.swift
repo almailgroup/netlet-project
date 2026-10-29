@@ -557,14 +557,16 @@ struct AccountEntry: Identifiable, Hashable {
 struct ProfileView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
             ShopPage(header: false, footer: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 14) {
+                        // Back one screen, to wherever it was opened from.
                         Button {
-                            app.openAccount(nil)
+                            dismiss()
                         } label: {
                             Image(systemName: "chevron.backward")
                                 .font(.system(size: 17, weight: .semibold))

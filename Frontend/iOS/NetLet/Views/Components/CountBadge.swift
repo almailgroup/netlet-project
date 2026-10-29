@@ -10,7 +10,7 @@ import SwiftUI
 /// inside a white rim and lifted by a small navy shadow. The number is navy —
 /// 4.65:1 at the darkest orange, more where it is lighter — and reads left to
 /// right in either language. A new number hops at once, a smooth rise and a
-/// small settle, and again every ten seconds, the rhythm the owner asked for;
+/// small settle, and again every five seconds, the rhythm the owner asked for;
 /// nobody who asked for less motion sees it move. A zero draws nothing.
 struct CountBadge: View {
     let value: Int
@@ -69,7 +69,7 @@ private struct BadgeSurface: View {
     }
 }
 
-/// The hop: up, a small squash, a spring back, and still for the rest of ten
+/// The hop: up, a small squash, a spring back, and still for the rest of five
 /// seconds — smooth where the pixel badge's poses were held.
 private struct BadgeHop: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var still
@@ -102,8 +102,8 @@ private struct BadgeHop: ViewModifier {
                 case .up: return .easeOut(duration: 0.18)
                 case .squash: return .easeIn(duration: 0.14)
                 case .settle: return .spring(response: 0.32, dampingFraction: 0.55)
-                // Held at rest for the rest of ten seconds, then up again.
-                case .rest: return .linear(duration: 0.01).delay(9.3)
+                // Held at rest for the rest of five seconds, then up again.
+                case .rest: return .linear(duration: 0.01).delay(4.3)
                 }
             }
         }

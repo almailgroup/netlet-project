@@ -50,23 +50,32 @@ struct OrdersView: View {
     }
 }
 
-/// A section of the account as the web's phone draws one: "← Your account",
-/// the section's name and one line on what it holds, then the section.
+/// A section of the account as the web's phone draws one: a way back, the
+/// section's name and one line on what it holds, then the section.
+///
+/// **The way back goes back, on the owner's word** — one screen, to wherever
+/// the section was opened from: the account's home ("← Your account"), or
+/// the page whose bell or heart opened it ("← Back"). It used to open the
+/// Profile tab's home from anywhere, so a section opened from Home's bell
+/// went back to Profile.
 struct AccountSection<Content: View>: View {
     let title: String
     let hint: String
     @ViewBuilder var content: () -> Content
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        // The account's home is behind this one when it is the Profile tab's first push.
+        let toAccount = app.selectedTab == .account && app.accountPath.count <= 1
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                app.openAccount(nil)
+                dismiss()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.backward").font(.system(size: 14, weight: .semibold))
-                    Text(l.t("account.backToAccount"))
+                    Text(l.t(toAccount ? "account.backToAccount" : "nav.back"))
                 }
                 .font(.inter(14, .semibold))
                 .foregroundStyle(Brand.muted)

@@ -60,6 +60,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation, useRoute } from "wouter";
+import { cameFrom, goBack } from "@/lib/inAppBack";
 
 type Entry = {
   id: string;
@@ -123,6 +124,10 @@ export default function Account() {
   const [, navigate] = useLocation();
   const [onSection, params] = useRoute("/account/:section");
   const signals = useAccountSignals();
+  /* The round arrow says where it goes: the account home when that is the
+     page behind (or there is none in this visit), "Back" otherwise. */
+  const from = cameFrom();
+  const backLabel = !from || from.split("?")[0] === "/account" ? t("account.backToAccount") : t("nav.back");
 
   /*
    * Whether this account also sells (3.4.17). Asked of the server rather than
@@ -224,10 +229,16 @@ export default function Account() {
                 also what keeps the cards' own h3s one level below a heading. */}
             <h1 className="sr-only">{t("account.backToAccount")}</h1>
             <div className="flex items-center gap-3">
+              {/* Back to the page the section was opened from — the bell,
+                  the heart, the account home — on the owner's word, rather
+                  than forward to the account home, which put the section
+                  behind it and made the phone's Back return to it. Opened
+                  from nowhere in this visit, it opens the account home. */}
               <Link
                 href="/account"
-                aria-label={t("account.backToAccount")}
-                title={t("account.backToAccount")}
+                onClick={goBack}
+                aria-label={backLabel}
+                title={backLabel}
                 className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_3px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
               >
                 <ArrowLeft className="size-5 rtl:-scale-x-100" aria-hidden />

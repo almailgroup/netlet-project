@@ -97,8 +97,8 @@ struct PinField: View {
     }
 }
 
-/// The pin itself, its point on the middle of whatever holds it: an orange
-/// drop with a navy rim, a shadow at the point, and a ring where it lands.
+/// The pin itself, its point on the middle of whatever holds it: the orange
+/// map pin it always was, a shadow at the point, and a ring where it lands.
 ///
 /// **It lifts while the map moves and drops back with a squash and a bounce
 /// when the map rests** — the web's `PinMark`, on the owner's word. Under
@@ -144,7 +144,7 @@ struct PinMark: View {
                         CubicKeyframe(0, duration: 0.7)
                     }
                 }
-            teardrop
+            pinGlyph
                 .keyframeAnimator(initialValue: Squash(), trigger: trigger) { content, value in
                     content.scaleEffect(x: value.x, y: value.y, anchor: .bottom)
                 } keyframes: { _ in
@@ -159,9 +159,9 @@ struct PinMark: View {
                         CubicKeyframe(1, duration: 0.16)
                     }
                 }
-                // The drop's point is the spot: its body stands on the middle.
-                .offset(y: -23 + (up ? -14 : 0))
-                .shadow(color: Brand.navy.opacity(0.25), radius: 2, y: 2)
+                // The pin's point is the spot: its body stands on the middle.
+                .offset(y: -20 + (up ? -14 : 0))
+                .shadow(color: .black.opacity(0.25), radius: 2, y: 2)
         }
         .frame(width: 60, height: 60)
         .animation(still ? nil : .spring(response: 0.25, dampingFraction: 0.7), value: up)
@@ -169,26 +169,12 @@ struct PinMark: View {
         .accessibilityHidden(true)
     }
 
-    /// A drop pointing down: SF Symbols' own drop, turned over, with a white eye.
-    private var teardrop: some View {
-        ZStack {
-            Image(systemName: "drop.fill")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundStyle(Brand.orange)
-            Image(systemName: "drop")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .fontWeight(.semibold)
-                .foregroundStyle(Brand.navy)
-            Circle()
-                .fill(Color.white)
-                .overlay(Circle().strokeBorder(Brand.navy, lineWidth: 2))
-                .frame(width: 13, height: 13)
-                .offset(y: 7)
-        }
-        .frame(width: 32, height: 46)
-        .rotationEffect(.degrees(180))
+    /// The pin as it was before it learnt to lift and drop, on the owner's
+    /// word: SF Symbols' own map pin in the brand orange.
+    private var pinGlyph: some View {
+        Image(systemName: "mappin")
+            .font(.system(size: 40, weight: .semibold))
+            .foregroundStyle(Brand.orange)
     }
 }
 
