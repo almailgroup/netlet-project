@@ -234,13 +234,21 @@ export function referralCodeFor(userId: number): string {
   return `NL${code.padStart(4, ALPHABET[0])}`;
 }
 
+/**
+ * The largest account id a code can name: an account's id is a Postgres
+ * `integer`. A longer code decoded past it and the lookup that followed failed
+ * with "out of range for type integer" — a checkout carrying a product link
+ * someone had typed as `?ref=NLZZZZZZZZ` could not be placed at all.
+ */
+export const MAX_ACCOUNT_ID = 2_147_483_647;
+
 /** The account a code names, or null when it names nothing. */
 export function userIdFromCode(code: string): number | null {
   const body = code.trim().toUpperCase().replace(/^NL/, "");
-  if (!body || [...body].some(character => !ALPHABET.includes(character))) return null;
+  if (!body || body.length > 8 || [...body].some(character => !ALPHABET.includes(character))) return null;
   let value = 0;
   for (const character of body) value = value * ALPHABET.length + ALPHABET.indexOf(character);
-  return value > 0 ? value : null;
+  return value > 0 && value <= MAX_ACCOUNT_ID ? value : null;
 }
 
 /**

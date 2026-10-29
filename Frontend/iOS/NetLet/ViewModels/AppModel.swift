@@ -174,6 +174,14 @@ final class AppModel {
     /// Whether a model can read a photo for search (`search.photoAvailable`),
     /// so the camera is drawn only where it does something.
     private(set) var photoSearchReady = false
+    /// The code a member of the affiliate programme shares on a product's
+    /// address (3.7), or nil for anybody whose links would earn nothing — the
+    /// web's `useMemberCode`. Asked on sign-in and after joining.
+    private(set) var memberCode: String?
+    /// Whether this account has joined the affiliate programme, a suspended
+    /// member included — what decides whether "Join" is offered. Nil until
+    /// asked, or when asking failed, so nothing is offered on a guess.
+    private(set) var affiliateJoined: Bool?
     /// The gateway, holding one token for every conversation.
     let gateway: AIGateway
     /// The shop's conversation, kept while the app runs — the web keeps it
@@ -541,7 +549,23 @@ final class AppModel {
         photoSearchReady = await photo?.available ?? false
     }
 
+    /// Asks again whether this account's links earn: on sign-in, and after
+    /// joining or being suspended.
+    func refreshMemberCode() async {
+        guard session.isSignedIn else { memberCode = nil; affiliateJoined = nil; return }
+        do {
+            let answer = try await services.api.call(API.memberCode)
+            memberCode = answer?.code
+            affiliateJoined = answer?.joined ?? false
+        } catch {
+            memberCode = nil
+            affiliateJoined = nil
+        }
+    }
+
     func signOut() async {
+        memberCode = nil
+        affiliateJoined = nil
         signals.clear()
         delivery.signedOut()
         await session.signOut()
@@ -568,6 +592,7 @@ final class AppModel {
         await saved.adoptAccount()
         await signals.refresh()
         await delivery.refresh(signedIn: true)
+        await refreshMemberCode()
     }
 }
 

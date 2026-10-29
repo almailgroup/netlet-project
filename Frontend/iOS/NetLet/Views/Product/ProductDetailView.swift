@@ -242,6 +242,11 @@ private struct ProductPage: View {
                 if let variant = model.variant ?? product.leadVariant {
                     PriceRequestPanel(variant: variant)
                 }
+                // A member of the affiliate programme shares from here and
+                // earns on the sale (3.7); nobody else is shown it.
+                if let code = app.memberCode {
+                    ShareAndEarn(url: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, code: code)))
+                }
                 if product.isExpress {
                     Label(l.t("product.expressNote"), systemImage: "checkmark.seal")
                         .font(.inter(12, .semibold))
@@ -862,5 +867,36 @@ enum DescriptionBlock: Equatable {
         flushParagraph()
         flushList()
         return blocks
+    }
+}
+
+/// "Share and earn points", under the product's buy buttons — the web's
+/// `ShareAndEarn`, for a member of the affiliate programme only: the share
+/// carries their code, so a sale through it earns them NetLet points.
+private struct ShareAndEarn: View {
+    let url: URL
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        HStack(spacing: 12) {
+            PointsCoin(size: 34)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(l.t("affiliate.shareAndEarn")).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                Text(l.t("affiliate.shareAndEarnHint")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            ShareLink(item: url) {
+                Label(l.t("affiliate.share"), systemImage: "square.and.arrow.up")
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 44)
+                    .background(Capsule().fill(Brand.navy))
+            }
+            .simultaneousGesture(TapGesture().onEnded { Haptics.tap() })
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 1, green: 0.969, blue: 0.945)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 0.957, green: 0.843, blue: 0.769), lineWidth: 1))
     }
 }

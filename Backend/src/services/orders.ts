@@ -65,7 +65,7 @@ import { balanceFor, creditReferralCommissions, extendReferralHold, productRefer
 import { getDb } from "./db.js";
 import { stillOwedFor } from "./owed.js";
 import { issueInvoice, issueQuietly } from "./invoices.js";
-import { affiliateQuietly, creditAffiliate, earningAffiliate } from "./affiliates.js";
+import { affiliateQuietly, creditAffiliate } from "./affiliates.js";
 import { withAffiliateShares } from "../../../Shared/commerce/affiliate.js";
 import { featureOn } from "./features.js";
 import { markClaimsBought } from "./wishlists.js";
@@ -117,19 +117,12 @@ export type PlaceOrderDetails = {
    */
   paymentMethod?: string | null;
   /**
-   * The affiliate link the shopper arrived through, if they did (3.7).
-   *
-   * Only a claim: the server attributes the order only to an approved
-   * affiliate who is not the buyer, while the switch is on, and freezes their
-   * rate beside it. The thirty-day window is the browser's to enforce, because
-   * only the browser saw the click.
-   */
-  affiliateCode?: string | null;
-  /**
-   * Product links the shopper arrived through (3.1.14): a product's id and the
-   * code on its address. Only a claim, like the affiliate's: a line earns its
-   * sharer a commission only when the code names an account that is not the
-   * buyer, and the rate is frozen beside who shared it.
+   * Product links the shopper arrived through (3.1.14, 3.7): a product's id
+   * and the code on its address. Only a claim: a line earns its sharer NetLet
+   * points only when the code names a member of the affiliate programme who is
+   * not the buyer, and the rate is frozen beside who shared it. (An order-level
+   * affiliate code, the old programme's `?aff=` on any page, is no longer
+   * read; one opened on a product page arrives here as that product's link.)
    */
   productReferrals?: { productId: string; code: string }[];
   /**
@@ -579,27 +572,26 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
 
   const priced = draftOrder(lines, delivery.total);
 
-  /* Who brought this order, if anybody (3.7): resolved before anything is
-     taken, so a lookup that fails cannot strand stock. */
-  const affiliate = details.affiliateCode && (await featureOn("affiliates"))
-    ? await earningAffiliate(db, details.affiliateCode, details.userId)
-    : null;
-  /* The stores' own affiliate rates (3.7.1), on the products they opted in.
-     The share comes off the seller's net and passes through NetLet's
-     commission, so `commission + net` is still the line's total; a line whose
-     seller would net less than the share does not take part. */
-  const optedIn = affiliate
-    ? new Map((await db
-        .select({ id: products.id, percent: products.affiliatePercent })
-        .from(products)
-        .where(inArray(products.id, [...new Set(priced.lines.map(line => line.productId))])))
-        .filter(row => row.percent !== null)
-        .map(row => [row.id, row.percent as string]))
-    : new Map<number, string>();
-  /* Who shared each product, if it came through a product link (3.1.14). */
+  /* Who shared each product, if it came through a member's link (3.1.14,
+     3.7): resolved before anything is taken, so a lookup that fails cannot
+     strand stock. */
   const referred = details.productReferrals?.length
     ? await productReferrers(db, details.productReferrals, details.userId)
     : { byProduct: new Map<string, number>(), rate: "0.00" };
+  /* The stores' own affiliate rates (3.7.1), on the products they opted in
+     and only on a line a member's link brought. The share comes off the
+     seller's net and passes through NetLet's commission, so `commission +
+     net` is still the line's total; a line whose seller would net less than
+     the share does not take part. The sharer is paid it in points. */
+  const linked = [...new Set(priced.lines.map(line => line.productId))].filter(id => referred.byProduct.has(String(id)));
+  const optedIn = linked.length
+    ? new Map((await db
+        .select({ id: products.id, percent: products.affiliatePercent })
+        .from(products)
+        .where(inArray(products.id, linked)))
+        .filter(row => row.percent !== null)
+        .map(row => [row.id, row.percent as string]))
+    : new Map<number, string>();
   const draft = withAffiliateShares(priced, optedIn);
   /* Who carries each store's parcels (3.3.13): a store using its own company,
      when that company is on NetLet and active, has its parcels go straight to
@@ -764,12 +756,11 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           member,
           deliveryWaived,
           paymentMethod: details.paymentMethod ?? null,
-          /* Who brought it, for the affiliate's counts. NetLet's own share
-             stopped with 3.7.1: what an affiliate earns now is each store's
-             rate on the products it opted in, frozen on the lines below, so
-             no order-level rate is frozen any more. Orders placed before keep
-             theirs and are paid out of NetLet's cut as they were. */
-          affiliateId: affiliate?.id ?? null,
+          /* The old programme's order-level affiliate. Nothing new is
+             attributed that way — a member's link is frozen on each line it
+             brought (`referrerId` below) — and orders placed before keep
+             theirs and are paid as they were (`creditAffiliate`). */
+          affiliateId: null,
           affiliateRate: null,
           contactName: details.contactName ?? null,
           contactPhone: details.contactPhone ?? null,

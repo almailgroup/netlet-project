@@ -1,13 +1,13 @@
 /**
- * Affiliates (3.7), for an administrator: who has applied, who earns, and
- * what they have made. What they earn is no longer NetLet's to set: each store
- * offers its own products at its own rate (3.7.1), funded from its own net.
+ * Affiliate marketing (3.7), for an administrator: who has joined, what their
+ * links have brought, and suspending one.
  *
- * Pending first, because the reason to open this page is usually an
- * application waiting. The channel is shown as written so whoever approves can
- * go and look at where the links will be published. Every change — approval,
- * or suspension — is on the audit trail with the chain, because it is who
- * NetLet pays.
+ * Joining is instant, so there is nothing to approve but an application left
+ * from when there was a review (shown first, with a button to let it in). A
+ * member earns NetLet points — the programme's share of NetLet's commission,
+ * set on Features, and each store's own rate on what it offers — so there is
+ * no per-member rate here. Every change is on the audit trail with the chain,
+ * because it is who NetLet pays.
  */
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { EmptyState, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { MAX_AFFILIATE_PERCENT } from "@shared/commerce/affiliate";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -69,7 +70,7 @@ function Affiliates() {
 }
 
 function AffiliateCard({ row }: { row: Row }) {
-  const { t, tError } = useTranslation();
+  const { t, tError, locale } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
@@ -98,7 +99,8 @@ function AffiliateCard({ row }: { row: Row }) {
           <span className="font-semibold">{t("affiliate.channel")}:</span> <bdi dir="ltr" className="break-all">{row.channel}</bdi>
         </p>
       ) : null}
-      <p className="mt-1 text-[13px] leading-5 text-[#3d5376]">{t("admin.affiliateStats", { orders: String(row.paidOrders), earned: money({ amount: row.earned, currencyCode: "KWD" }) })}</p>
+      <p className="mt-1 text-[13px] leading-5 text-[#3d5376]">{t("admin.affiliateStats", { orders: formatCount(row.paidOrders, locale), points: formatCount(row.points, locale) })}</p>
+      {Number(row.earned) !== 0 ? <p className="mt-0.5 text-[13px] leading-5 text-[#3d5376]">{t("admin.affiliateEarlier", { earned: money({ amount: row.earned, currencyCode: "KWD" }) })}</p> : null}
 
       <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-[#eef1f5] pt-4">
         <span className="flex-1" />

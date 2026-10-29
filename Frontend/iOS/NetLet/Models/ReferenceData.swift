@@ -94,7 +94,8 @@ struct Rules: Decodable, Sendable {
         let ratingMax: Int
         let maxReviewTitle: Int
         let maxReviewBody: Int
-        let attributionDays: Int
+        /// How long a product link keeps counting after it is opened (3.7).
+        let productLinkDays: Int
         let minAffiliatePayoutFils: Int
         let minCashOutPoints: Int
         let maxLists: Int
@@ -116,7 +117,7 @@ struct Rules: Decodable, Sendable {
             moneyParams: ["price", "amount", "total"],
             supportTopics: ["order", "delivery", "return", "payment", "account", "other"],
             maxSupportMessage: 2000, maxOpenConversations: 5, ratingMax: 5, maxReviewTitle: 120, maxReviewBody: 2000,
-            attributionDays: 30, minAffiliatePayoutFils: 5000, minCashOutPoints: 1000, maxLists: 12, maxListItems: 200,
+            productLinkDays: 30, minAffiliatePayoutFils: 5000, minCashOutPoints: 1000, maxLists: 12, maxListItems: 200,
             claimHoldDays: 14, askWindowDays: 7, offerWindowDays: 3, maxOfferNote: 400,
             subscriptionIntervals: [1, 2, 4, 8]
         )

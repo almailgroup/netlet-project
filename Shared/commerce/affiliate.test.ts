@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { acceptableRate, affiliateCodeFor, canPayOut, lineShareFils, orderShareFils, userIdFromAffiliateCode, withinAttribution } from "./affiliate.js";
-import { referralCodeFor, userIdFromCode } from "./referral.js";
+import { acceptableRate, affiliateCodeFor, canPayOut, lineShareFils, orderShareFils, sharerIdFromCode, suggestedDisplayName, userIdFromAffiliateCode, withinAttribution } from "./affiliate.js";
+import { MAX_ACCOUNT_ID, referralCodeFor, userIdFromCode } from "./referral.js";
 
 describe("codes", () => {
   it("round-trip, and cannot be mistaken for a referral code", () => {
@@ -10,6 +10,27 @@ describe("codes", () => {
     expect(userIdFromCode(affiliateCodeFor(7))).not.toBe(7);
     expect(userIdFromAffiliateCode("AF0O1I")).toBeNull();
     expect(userIdFromAffiliateCode("AFAAAAAAAAAAAA")).toBeNull();
+  });
+
+  it("name an account either way, and never one past the largest id an account can have", () => {
+    expect(sharerIdFromCode(referralCodeFor(4242))).toBe(4242);
+    expect(sharerIdFromCode(affiliateCodeFor(4242))).toBe(4242);
+    expect(sharerIdFromCode(` ${referralCodeFor(88).toLowerCase()} `)).toBe(88);
+    expect(sharerIdFromCode(referralCodeFor(MAX_ACCOUNT_ID))).toBe(MAX_ACCOUNT_ID);
+    /* "ZZZZZZZZ" is about 650 billion: a lookup on it failed the whole checkout. */
+    expect(sharerIdFromCode("NLZZZZZZZZ")).toBeNull();
+    expect(sharerIdFromCode("AFZZZZZZZZ")).toBeNull();
+    expect(userIdFromCode("NLZZZZZZZZZZZZ")).toBeNull();
+    expect(sharerIdFromCode(null)).toBeNull();
+  });
+});
+
+describe("the name shoppers see", () => {
+  it("is the first word of the account's name, or nothing to offer", () => {
+    expect(suggestedDisplayName("Noura Al-Sabah")).toBe("Noura");
+    expect(suggestedDisplayName("  نورة   الصباح ")).toBe("نورة");
+    expect(suggestedDisplayName("")).toBeNull();
+    expect(suggestedDisplayName(null)).toBeNull();
   });
 });
 

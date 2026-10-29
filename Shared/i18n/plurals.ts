@@ -50,6 +50,24 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       other: "{count} منتج",
     },
   },
+  "rewards.balance": {
+    param: "points",
+    en: { one: "1 point" },
+    ar: {
+      one: "نقطة واحدة",
+      two: "نقطتان",
+      few: "{points} نقاط",
+    },
+  },
+  "checkout.usePoints": {
+    param: "points",
+    en: { one: "Use 1 point ({value} off)" },
+    ar: {
+      one: "استخدم نقطة واحدة (خصم {value})",
+      two: "استخدم نقطتين (خصم {value})",
+      few: "استخدم {points} نقاط (خصم {value})",
+    },
+  },
   "rewards.held": {
     param: "points",
     en: { one: "1 point is held until its sale's return window passes." },
@@ -363,7 +381,10 @@ export function pluralForm(
   const entry = PLURAL_FORMS[key];
   const forms = entry?.[locale];
   if (!entry || !forms || !values || !(entry.param in values)) return null;
-  const n = Number(values[entry.param]);
+  /* A count drawn with its thousands grouped ("1,250 points") is still that
+     count: the grouping marks come out before it is read. */
+  const raw = values[entry.param];
+  const n = Number(typeof raw === "string" ? raw.replace(/[,\u066C\u00A0\u202F]/g, "") : raw);
   if (!Number.isInteger(n)) return null;
   return forms[pluralCategory(locale, n)] ?? null;
 }

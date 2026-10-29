@@ -30,6 +30,7 @@
  * `useMediaQuery` because it changes what is drawn rather than how.
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
+import { appPath } from "@/lib/basePath";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { CardGallery } from "@/components/product/CardGallery";
 import { PhotoCartControl } from "@/components/product/PhotoCartControl";
@@ -47,19 +48,15 @@ import { DiscButton } from "@/components/ui/DiscButton";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 /**
- * Share a product. Signed in, the address carries the sharer's own code, which
- * makes it a product link (3.1.14): a friend who buys it through the link earns
- * the sharer points on that line once its return window has passed.
+ * Share a product. For a member of the affiliate programme the address
+ * carries their code (`useMemberCode`), which makes it their link (3.1.14,
+ * 3.7): a friend who buys it through the link earns the sharer points on that
+ * line once its return window has passed.
  */
 export async function shareProduct(product: Pick<Product, "handle" | "title">, t: Translate, referralCode?: string | null) {
-  const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`;
+  const shareUrl = `${window.location.origin}${appPath(`/products/${encodeURIComponent(product.handle)}`)}${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`;
   const shareData = { title: product.title, text: t("product.shareText", { name: product.title }), url: shareUrl };
   try {
-    const nativeBridge = (window as Window & { ReactNativeWebView?: { postMessage: (message: string) => void } }).ReactNativeWebView;
-    if (nativeBridge) {
-      nativeBridge.postMessage(JSON.stringify({ type: "share", ...shareData }));
-      return;
-    }
     if (navigator.share) {
       await navigator.share(shareData);
       return;

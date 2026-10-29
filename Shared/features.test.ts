@@ -5,7 +5,7 @@ describe("feature switches", () => {
   it("treats a missing row as the feature's default — on, except the few with nothing behind them yet", () => {
     expect(resolveStates([])).toEqual(defaultStates());
     expect(resolveStates([{ key: "wishlists", enabled: false }])).toMatchObject({ wishlists: false, returns: true });
-    expect(FEATURE_KEYS.filter(key => !FEATURES[key].defaultOn).sort()).toEqual(["affiliates", "appBanner", "subscriptions", "tryOn"]);
+    expect(FEATURE_KEYS.filter(key => !FEATURES[key].defaultOn).sort()).toEqual(["appBanner", "subscriptions", "tryOn"]);
     /* Voice and photo are on by default; each is drawn only where it works. */
     expect(resolveStates([{ key: "photoSearch", enabled: false }])).toMatchObject({ voiceSearch: true, photoSearch: false });
   });

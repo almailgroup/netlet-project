@@ -3,20 +3,51 @@
     "data": {
       "json": {
         "status": "active",
-        "code": "AFAAAC",
+        "code": "NLAAAC",
         "displayName": "Noura's picks",
-        "channel": "instagram.com/nourapicks",
-        "ratePercent": "3.00",
-        "paidOrders": 0,
+        "joinedAt": "2026-10-02T12:30:35.832Z",
+        "paidOrders": 1,
         "waitingOrders": 0,
-        "earned": "0.000",
-        "reversed": "0.000",
-        "balance": "0.000",
-        "payout": {
-          "ok": false,
-          "shortBy": "5.000"
-        },
-        "entries": []
+        "earnedPoints": 8099,
+        "heldPoints": 899,
+        "reversedPoints": 0,
+        "sales": [
+          {
+            "id": 3,
+            "points": 899,
+            "reversed": false,
+            "productTitle": "Linen cushion pair",
+            "orderReference": "NL-20261029-XZKJX",
+            "availableAt": "2026-11-12T20:57:59.599Z",
+            "createdAt": "2026-10-29T20:57:59.604Z"
+          },
+          {
+            "id": 2,
+            "points": 7200,
+            "reversed": false,
+            "productTitle": "Three-seat sofa",
+            "orderReference": "NL-20261029-XZKJX",
+            "availableAt": null,
+            "createdAt": "2026-10-29T20:57:59.604Z"
+          }
+        ],
+        "earlier": null
+      },
+      "meta": {
+        "values": {
+          "joinedAt": [
+            "Date"
+          ],
+          "sales.0.availableAt": [
+            "Date"
+          ],
+          "sales.0.createdAt": [
+            "Date"
+          ],
+          "sales.1.createdAt": [
+            "Date"
+          ]
+        }
       }
     }
   }

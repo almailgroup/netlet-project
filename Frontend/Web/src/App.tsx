@@ -9,7 +9,6 @@ import { whenIdle } from "@/lib/idle";
 import { CustomerProvider } from "@/contexts/CustomerContext";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
-import { captureAffiliate } from "@/lib/affiliate";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
 import { matchRoute, Route, Router as WouterRouter, Switch, useLocation, useRouter, useSearch, type RouteComponentProps } from "wouter";
 import { PageFallback, StorefrontShell } from "@/components/layout/StorefrontShell";
@@ -148,8 +147,6 @@ function ReferralCapture() {
   const [location] = useLocation();
   useEffect(() => {
     captureReferral(window.location.search);
-    /* And an affiliate's link (3.7), which may point at any page too. */
-    captureAffiliate(window.location.search);
   }, [location]);
   return null;
 }

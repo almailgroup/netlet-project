@@ -11,6 +11,28 @@
       "other": "{count} منتج"
     }
   },
+  "rewards.balance": {
+    "param": "points",
+    "en": {
+      "one": "1 point"
+    },
+    "ar": {
+      "one": "نقطة واحدة",
+      "two": "نقطتان",
+      "few": "{points} نقاط"
+    }
+  },
+  "checkout.usePoints": {
+    "param": "points",
+    "en": {
+      "one": "Use 1 point ({value} off)"
+    },
+    "ar": {
+      "one": "استخدم نقطة واحدة (خصم {value})",
+      "two": "استخدم نقطتين (خصم {value})",
+      "few": "استخدم {points} نقاط (خصم {value})"
+    }
+  },
   "rewards.held": {
     "param": "points",
     "en": {

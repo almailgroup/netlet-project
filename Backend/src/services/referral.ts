@@ -21,7 +21,7 @@
  * check in the `where`, so exactly one of them lands.
  */
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
-import { orderItems, orders, pointEntries, referrals, users } from "../../database/schema.js";
+import { affiliates, orderItems, orders, pointEntries, referrals, users } from "../../database/schema.js";
 import {
   acceptableReferral,
   canCashOut,
@@ -41,8 +41,9 @@ import {
 } from "../../../Shared/commerce/referral.js";
 import { isKept } from "../../../Shared/commerce/collection.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
-import { netletCommissionFils, type Pot } from "../../../Shared/commerce/affiliate.js";
+import { netletCommissionFils, sharerIdFromCode, vendorAffiliateFils, type Pot } from "../../../Shared/commerce/affiliate.js";
 import { fromFils } from "../../../Shared/money.js";
+import { featureOn } from "./features.js";
 import { settingValue } from "./settings.js";
 import { getDb } from "./db.js";
 
@@ -275,7 +276,7 @@ export async function qualifyReferral(db: Db, userId: number, orderId: number): 
  * the programme's at collection, since nothing about the order chose it.
  */
 export async function creditReferralCommissions(db: Db, orderId: number, now = new Date()): Promise<void> {
-  const [order] = await db.select({ userId: orders.userId }).from(orders).where(eq(orders.id, orderId)).limit(1);
+  const [order] = await db.select({ userId: orders.userId, affiliateId: orders.affiliateId }).from(orders).where(eq(orders.id, orderId)).limit(1);
   if (!order) return;
   const lines = await db
     .select({
@@ -295,7 +296,12 @@ export async function creditReferralCommissions(db: Db, orderId: number, now = n
 
   for (const line of kept) {
     if (line.referrerId === null || line.referralRate === null || line.referrerId === order.userId) continue;
-    const points = referralSharePoints(fromFils(netletCommissionFils(line)), line.referralRate);
+    /* NetLet's own share, and the store's on a product it offered to
+       affiliates (3.7.1) — the store's goes to the link's sharer, except on
+       an order the old programme attributed, whose affiliate is paid it in
+       money (`creditAffiliate`) and must not be paid it twice. */
+    const storeShare = order.affiliateId === null ? Number(vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent)) : 0;
+    const points = referralSharePoints(fromFils(netletCommissionFils(line)), line.referralRate) + storeShare;
     if (points <= 0) continue;
     rows.push({ userId: line.referrerId, points, reason: "product_referral", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now) });
   }
@@ -361,9 +367,28 @@ export async function extendReferralHold(db: Db, orderItemIds: number[], deliver
 }
 
 /**
- * The product link a line is bought through, if it may earn (3.1.14): an
- * account that exists and is not the buyer. The rate is the programme's at the
- * sale, frozen on the line beside who shared it.
+ * Which of these accounts may earn on a link now: members of the affiliate
+ * programme (3.7), not suspended, while the programme is on. The rule that
+ * makes joining mean something — on the owner's word, a product link earns its
+ * sharer points once they have joined, and one from somebody who never did is
+ * just a link.
+ */
+export async function activeSharers(db: Db, userIds: readonly number[]): Promise<Set<number>> {
+  const wanted = [...new Set(userIds)].filter(id => id > 0);
+  if (!wanted.length || !(await featureOn("affiliates"))) return new Set();
+  const rows = await db
+    .select({ userId: affiliates.userId })
+    .from(affiliates)
+    .where(and(inArray(affiliates.userId, wanted), eq(affiliates.status, "active")));
+  return new Set(rows.map(row => row.userId));
+}
+
+/**
+ * The product link a line is bought through, if it may earn (3.1.14, 3.7): a
+ * member of the affiliate programme who is not the buyer. A product link's
+ * `NL` code, or an old affiliate link's `AF` one, which names the same
+ * account. The rate is the programme's at the sale, frozen on the line beside
+ * who shared it.
  */
 export async function productReferrers(
   db: Db,
@@ -372,15 +397,13 @@ export async function productReferrers(
 ): Promise<{ byProduct: Map<string, number>; rate: string }> {
   const wanted = new Map<string, number>();
   for (const link of links.slice(0, 50)) {
-    const referrerId = userIdFromCode(link.code);
+    const referrerId = sharerIdFromCode(link.code);
     if (referrerId === null || referrerId === buyerId || wanted.has(link.productId)) continue;
     wanted.set(link.productId, referrerId);
   }
   if (!wanted.size) return { byProduct: new Map(), rate: "0.00" };
-  const ids = [...new Set(wanted.values())];
-  const found = await db.select({ id: users.id }).from(users).where(inArray(users.id, ids));
-  const exists = new Set(found.map(row => row.id));
-  const byProduct = new Map([...wanted].filter(([, id]) => exists.has(id)));
+  const members = await activeSharers(db, [...wanted.values()]);
+  const byProduct = new Map([...wanted].filter(([, id]) => members.has(id)));
   return { byProduct, rate: byProduct.size ? await settingValue("referral.productPercent", db) : "0.00" };
 }
 

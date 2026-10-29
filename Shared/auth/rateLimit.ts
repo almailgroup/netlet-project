@@ -96,6 +96,16 @@ export const MAX_VOUCHER_MISSES_PER_ADDRESS = 20;
 export const VOUCHER_MISS_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * Asking which affiliate members a checkout's links came through. A code is
+ * an account's id written in letters, so the answer — a member, and the name
+ * they chose, which starts as their first name — is a list a script could
+ * walk. A checkout asks once per visit; every request counts, found or not,
+ * the gift lookup's rule, because there is no miss to count.
+ */
+export const MAX_SHARER_LOOKUPS_PER_ADDRESS = 60;
+export const SHARER_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * Looking an order up on the help page by its number and email, signed out.
  * Only misses count, the sign-in rule: a shopper typing their own pair never
  * comes near it, and the ceiling is what stops somebody walking reference

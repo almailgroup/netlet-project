@@ -84,8 +84,11 @@ final class Phrasebook: @unchecked Sendable {
     }
 
     private func pluralForm(_ key: String, language: Language, params: [String: String]) -> String? {
+        /* A count drawn with its thousands grouped ("1,250 points") is still
+           that count — `plurals.ts`'s rule: the grouping marks come out first. */
         guard let entry = plurals[key], let forms = entry.forms(for: language),
-              let raw = params[entry.param], let n = Int(raw) else { return nil }
+              let raw = params[entry.param],
+              let n = Int(raw.filter { !",\u{066C}\u{00A0}\u{202F}".contains($0) }) else { return nil }
         return forms[Phrasebook.pluralCategory(n, language: language)]
     }
 

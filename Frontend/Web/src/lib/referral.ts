@@ -13,7 +13,8 @@
  * by three other callers, which is the argument for it being one function.
  */
 import { readStored, removeStored, writeStored } from "@/lib/browserStore";
-import { MAX_PRODUCT_REFERRALS, PRODUCT_LINK_DAYS, userIdFromCode } from "@shared/commerce/referral";
+import { sharerIdFromCode } from "@shared/commerce/affiliate";
+import { MAX_PRODUCT_REFERRALS, PRODUCT_LINK_DAYS } from "@shared/commerce/referral";
 
 const KEY = "netlet.referral";
 
@@ -41,11 +42,14 @@ export function clearReferral(): void {
 /* ---------------------------------------------------------- product links --- */
 
 /*
- * A product link (3.1.14) is the same code on a product's own address,
- * `/products/x?ref=NL…`. The sharer earns on a line for *that* product, so the
- * browser keeps which product each code arrived on, for `PRODUCT_LINK_DAYS`,
- * and checkout sends them. The server checks everything else — that the code
- * names an account and that it is not the buyer — and freezes it on the line.
+ * A product link (3.1.14, 3.7) is the same code on a product's own address,
+ * `/products/x?ref=NL…` — the affiliate programme's link. The sharer earns on
+ * a line for *that* product, so the browser keeps which product each code
+ * arrived on, for `PRODUCT_LINK_DAYS`, and checkout sends them. The server
+ * checks everything else — that the code names a member of the programme and
+ * that it is not the buyer — and freezes it on the line. An old affiliate
+ * link's `?aff=AF…` opened on a product page is kept the same way: both codes
+ * name the account.
  */
 const LINKS_KEY = "netlet.productLinks";
 
@@ -63,10 +67,11 @@ function readLinks(now: Date): ProductLink[] {
   }
 }
 
-/** Remember the `?ref=` on a product's page against that product; the latest link for a product wins. */
+/** Remember the `?ref=` (or an old `?aff=`) on a product's page against that product; the latest link for a product wins. */
 export function rememberProductLink(productId: string, search: string, now = new Date()): void {
-  const code = new URLSearchParams(search).get("ref")?.trim().toUpperCase();
-  if (!code || userIdFromCode(code) === null || !productId) return;
+  const params = new URLSearchParams(search);
+  const code = (params.get("ref") ?? params.get("aff"))?.trim().toUpperCase();
+  if (!code || sharerIdFromCode(code) === null || !productId) return;
   const kept = readLinks(now).filter(link => link.productId !== productId);
   const next = [{ productId, code, at: now.toISOString() }, ...kept].slice(0, MAX_PRODUCT_REFERRALS);
   writeStored(LINKS_KEY, JSON.stringify(next));

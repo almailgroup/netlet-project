@@ -12,8 +12,8 @@
  * **It asks where the order is going, on the owner's word** — checkout only
  * confirms it. The first card is the address (`DeliveryAddressCard`): the one
  * in use with Change, or the question, and Checkout pressed without one opens
- * the address book first and goes on once one is chosen. The heart to the
- * wishlists is at the end of the title's line. Under the bag, what was saved
+ * the address book first and goes on once one is chosen. The heart to Saved
+ * items is at the end of the title's line. Under the bag, what was saved
  * for later (`SavedForLater`), each with a way back in; every line has a menu
  * (`LineMenu`) that puts it there.
  *
@@ -101,7 +101,7 @@ export default function Cart() {
         <PageHeading
           title={t("cart.title")}
           note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined}
-          actions={<WishlistLink />}
+          actions={<SavedLink />}
         />
         {!items && settling ? (
           <BagSettling />
@@ -149,25 +149,23 @@ export default function Cart() {
 }
 
 /**
- * The wishlists, at the end of the title's line: the place somebody sends
- * what they decided not to buy yet. A guest — who has no lists, only hearts
- * kept on the device — goes to Saved. It counts what is on the lists, or a
- * guest's Saved.
+ * Saved items, at the end of the title's line, counted: the hearts, where
+ * somebody keeps what they decided not to buy yet — the header's heart, on the
+ * owner's word. The wishlists are a row of the account page.
  */
-function WishlistLink() {
+function SavedLink() {
   const { t } = useTranslation();
-  const { isAuthenticated } = useAuth();
-  const { savedIds, wishedIds } = useCustomer();
-  const count = isAuthenticated ? wishedIds.length : savedIds.length;
+  const { savedIds } = useCustomer();
+  const name = t("header.savedItems", { count: savedIds.length });
   return (
     <Link
-      href={isAuthenticated ? "/account/wishlists" : "/saved"}
-      aria-label={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
-      title={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
+      href="/saved"
+      aria-label={name}
+      title={name}
       className="pressable relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
     >
       <Heart className="size-5" aria-hidden />
-      <CountBadge value={count} className="absolute -end-1.5 -top-1.5" />
+      <CountBadge value={savedIds.length} className="absolute -end-1.5 -top-1.5" />
     </Link>
   );
 }

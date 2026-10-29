@@ -25,8 +25,8 @@
  * **Absent is the feature's default**, and for almost every feature that is on:
  * a fresh database behaves exactly as it did before the switchboard existed, a
  * row is written only when an administrator changes something, and it records
- * who. A few start **off** — the app banner, affiliates, Subscribe & Save and
- * the try-on — because nothing a shopper can use is behind them yet on a shop
+ * who. A few start **off** — the app banner, Subscribe & Save and the try-on —
+ * because nothing a shopper can use is behind them yet on a shop
  * that has not set them up (an app that is not published, a scheduler nobody
  * has configured), or because switching one on is a decision (the try-on sends
  * a shopper's photo to Google).
@@ -109,10 +109,12 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* Issuing new cards. A card already sold is money somebody holds, and it
      goes on being spendable. */
   giftCards: { entries: ["orders.createGiftCard"], audience: "seller", defaultOn: true },
-  /* New applications close, and checkout stops attributing new orders. An
-     order already attributed is still credited when it is paid, and a balance
-     already earned can still be paid out. */
-  affiliates: { entries: ["affiliates.join"], audience: "everyone", defaultOn: false },
+  /* Affiliate marketing (3.7): joining closes and a member's product links stop
+     earning on new orders. A line already frozen with its sharer is still
+     credited when it is paid, and points already earned stay spendable. On
+     by default, on the owner's word: anybody can join from their account and
+     every product earns, so there is something behind it on any shop. */
+  affiliates: { entries: ["affiliates.join"], audience: "everyone", defaultOn: true },
   /* Paid placements (3.3.15): off stops new bookings. One already sold runs
      out its days and is charged for them, so it keeps its place on the shelf. */
   ads: { entries: ["ads.book"], audience: "seller", defaultOn: true },

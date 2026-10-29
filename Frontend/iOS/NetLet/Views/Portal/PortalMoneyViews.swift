@@ -574,9 +574,10 @@ private struct AffiliateCard: View {
         self.changed = changed
     }
 
-    /// What an affiliate earns is no longer NetLet's to set: each store offers
-    /// its own products at its own rate (3.7.1), so the card is who they are,
-    /// what they made, and the door — approve, suspend, reinstate.
+    /// A member earns NetLet points — the programme's share and each store's
+    /// own rate (3.7.1) — so there is no rate here: the card is who they are,
+    /// what their links earned, and the door — suspend, reinstate, or let in
+    /// an application left from before joining was instant.
     var body: some View {
         PortalCard {
             HStack(alignment: .top) {
@@ -591,7 +592,10 @@ private struct AffiliateCard: View {
             if let channel = row.channel, !channel.isEmpty {
                 Text("\(l.t("affiliate.channel")): \(latin(channel))").font(.inter(12)).foregroundStyle(Brand.body)
             }
-            Text(l.t("admin.affiliateStats", ["orders": "\(row.paidOrders)", "earned": row.earned.formatted(l.current)])).font(.inter(13)).foregroundStyle(Brand.ink)
+            Text(l.t("admin.affiliateStats", ["orders": PointsFormat.count(row.paidOrders, l.current), "points": PointsFormat.count(row.points, l.current)])).font(.inter(13)).foregroundStyle(Brand.ink)
+            if row.earned.fils != 0 {
+                Text(l.t("admin.affiliateEarlier", ["earned": row.earned.formatted(l.current)])).font(.inter(12)).foregroundStyle(Brand.body)
+            }
             HStack {
                 Spacer()
                 if row.status != "active" {

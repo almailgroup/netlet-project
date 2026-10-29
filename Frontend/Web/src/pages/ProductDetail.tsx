@@ -65,9 +65,9 @@ import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { ProductCard, shareProduct } from "@/components/product/ProductCard";
-import { useAuth } from "@/hooks/useAuth";
 import { rememberProductLink } from "@/lib/referral";
-import { referralCodeFor } from "@shared/commerce/referral";
+import { useMemberCode } from "@/hooks/useMemberCode";
+import { ShareAndEarn } from "@/components/product/ShareAndEarn";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -1067,8 +1067,8 @@ export default function ProductDetail() {
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart } = useCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
-  /* Signed in, sharing this page shares a product link with the sharer's code (3.1.14). */
-  const { user: me } = useAuth();
+  /* A member of the affiliate programme shares this page with their code on it (3.1.14, 3.7). */
+  const memberCode = useMemberCode();
   const { direction, t, tError, locale, isArabic: isArabicPage } = useTranslation();
   /* "Find similar": the server reads this product's photo and title and
      names the kind of thing, and the page searches its department for it —
@@ -1248,7 +1248,7 @@ export default function ProductDetail() {
 
         <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <GalleryColumn>
-            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t, me ? referralCodeFor(me.id) : null)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
+            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t, memberCode)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
             {/* Under the photo, where somebody looking at the thing wonders
                 about it — on a wide screen. A phone draws it after the buy
                 buttons instead (below), so it never pushes the price and Add
@@ -1400,6 +1400,9 @@ export default function ProductDetail() {
               ? <PriceOfferPanel variantId={selectedVariant.id} listPrice={selectedVariant.price.amount} />
               : null}
 
+            {/* A member of the affiliate programme shares from here and earns
+                on the sale (3.7); nobody else is shown it. */}
+            {memberCode ? <ShareAndEarn onShare={() => void shareProduct(product, t, memberCode)} /> : null}
 
             {express ? <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] font-semibold ink-muted"><BadgeCheck className="size-3.5" />{t("product.expressNote")}</p> : null}
 

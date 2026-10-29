@@ -842,9 +842,11 @@ buzzing on the press where a page may (`pressHaptic`). It was the language,
 which is a row on the account page now (and stays in the footer, for somebody
 signed out); before that the area left the phone's bar when the logo was
 centred, and the owner asked for it back in the language's place. **A heart
-follows the location, on the owner's word** — the wishlists, or Saved for a
-guest, with the hearts counted: the cart page's own pair, now on every page
-with the row. **The bell follows the heart, also on the owner's word**: the
+follows the location, on the owner's word** — Saved items, with the hearts
+counted, for everybody: the cart page's own pair, now on every page with the
+row. It opened the wishlists for somebody signed in for a while, and the owner
+asked for the heart to be Saved's; the wishlists are a row of the account
+page. **The bell follows the heart, also on the owner's word**: the
 notifications (`/account/notifications`, the sign-in form for a guest), with
 the unread counted (`useAccountSignals`); on a wide screen it sits after Saved.
 Under 360px the logo narrows to 100px and the area's chevron goes, so the area
@@ -1602,7 +1604,7 @@ use by `addressInUse`, the header's rule, with its name, number and line and a
 Change that opens the address book, or the question when there is none — and
 Checkout pressed without one opens the book and goes on once one is chosen.
 It replaced the bar (`CartTopBar`) that named the address in a word; the heart
-to the wishlists, or Saved for a guest, is at the end of the title's line.
+to Saved items, counted, is at the end of the title's line.
 
 **The number between a line's minus and plus is a box, on the owner's word**
 (`LineQuantity` in `BagDrawer.tsx`): a press selects the number and opens the
@@ -4014,19 +4016,26 @@ and referrals on `/admin/fraud` — and opening a desk reads its own
 
 `Shared/commerce/referral.ts` is the arithmetic, pure; `Backend/src/services/referral.ts`
 the ledger. **Two tracks** (3.1.14, migration 0062). A *product link* is a
-shopper's own code on a product's address (`/products/x?ref=NL…`): the browser
-keeps which product each code arrived on for `PRODUCT_LINK_DAYS`
-(`lib/referral.ts`, the latest link per product) and checkout sends them, and a
-line for that product freezes the sharer and the rate (`order_items.referrer_id`,
-`referral_rate`) — never the buyer's own code, which the server refuses. The
-*invite* pays the inviter a share of every order the invitee places from the
-first paid one, the rate read at collection. **Both are a percentage of NetLet's
-own commission** on the line (`netletCommissionFils`: what it took, less a
-store-funded affiliate share that only passes through it), so a referral is never
-paid from money NetLet did not keep. The rates are an administrator's
-(`referral.productPercent`, `referral.invitePercent` in `Shared/settings.ts`,
-20% and 10% unless changed, on `/admin/features`). The 500 and 250 welcome stay
-as they were.
+member's code on a product's address (`/products/x?ref=NL…`) — the affiliate
+programme's link (see Affiliates): the browser keeps which product each code
+arrived on for `PRODUCT_LINK_DAYS` (`lib/referral.ts`, the latest link per
+product) and checkout sends them, and a line for that product freezes the
+sharer and the rate (`order_items.referrer_id`, `referral_rate`) — only for a
+member of the programme (`activeSharers`), never the buyer's own code, which
+the server refuses. The *invite* pays the inviter a share of every order the
+invitee places from the first paid one, the rate read at collection, whoever
+they are. **Both are a percentage of NetLet's own commission** on the line
+(`netletCommissionFils`: what it took, less a store-funded affiliate share
+that only passes through it), so a referral is never paid from money NetLet
+did not keep. The rates are an administrator's (`referral.productPercent`,
+`referral.invitePercent` in `Shared/settings.ts`, 20% and 10% unless changed,
+on `/admin/features`). The 500 and 250 welcome stay as they were.
+
+**A code names an account, and only one that can exist.** `userIdFromCode`
+refuses a code longer than eight letters or decoding past `MAX_ACCOUNT_ID`,
+an account id being a Postgres `integer`: `?ref=NLZZZZZZZZ` decoded past it,
+and the lookup that followed failed with "out of range for type integer", so
+a checkout carrying it could not be placed at all. Found by typing it.
 
 **Held until the return window passes** (3.1.15). A commission is written when
 the cash is collected with the day it matures (`point_entries.available_at`,
@@ -4040,47 +4049,92 @@ the kind.
 ## Affiliates
 
 `Shared/commerce/affiliate.ts` is the rules and is pure; `Backend/src/services/affiliates.ts`
-writes them. `docs/REQUIREMENTS.md` said from the start that 3.7 shares a ledger
-with the referral points, and it does — `point_entries`, in its own **pot**.
+writes them. **It is one programme paid in NetLet points, on the owner's
+word**: "users earn money by sharing a link, and if others buy the product
+with that link they earn points; enrol from the profile page; each point is
+one Kuwaiti fils, and points convert to money".
 
-**One ledger, two pots.** Referral points spend at face value and cash out
-less a 10% fee (`CASH_OUT_FEE_PERCENT`), the owner's document's rule (3.1.15):
-1,000 points pay KWD 0.900, rounded down to the fil. It paid a tenth until the
-document was read against it; a cash-out is valued on the read, so one asked
-for before the change is paid at the corrected figure. An affiliate's commission
-is money, counted in fils and paid at face value. `balanceFor` takes the pot and every points query names it, or a
+**Joining is one press and takes effect at once.** `/account/affiliate` (a row
+and a card on the account home, a card on the points page) says what the
+programme is in three steps, asks the name shoppers are told (the account's
+first name, ready to change — `suggestedDisplayName`) and one condition, that
+the member says their links are paid; `affiliates.join` makes them `active`
+there and then, with no application to wait on. A row the old programme left
+`pending` is made active the same way; a suspended one stays suspended. The
+`affiliates` switch now defaults on, since there is something behind it.
+
+**A member's link is the product link.** Signed in and joined, every Share of
+a product — the photo's, the preview's, the bag line's, and "Share and earn
+points" under the product page's buttons, drawn for a member alone — carries
+their code (`affiliates.code`, a light read, `useMemberCode` on the web and
+`AppModel.memberCode` in the app); anybody else's Share is a plain link,
+because a non-member's code would earn nothing. That read also answers
+`joined`, because a suspended member has no code either and was offered
+"Join" on the account home and the points page until it did; the join card
+waits for the answer, so it never flashes for a member. The rest is the Referrals
+track: the line freezes the sharer, the cash collected credits a
+`product_referral` entry in the **points pot**, held until the return window
+passes and reversed on a refund. An old `?aff=AF…` opened on a product page is
+kept as that product's link (`sharerIdFromCode` reads both codes), and an
+order-level `?aff=` on any other page is no longer read: new orders carry no
+`affiliate_id`.
+
+**What a sale earns is out of NetLet's commission, always.** The programme's
+share of NetLet's own commission on the line (`referral.productPercent`), plus
+the store's share on a product the store offered to affiliates (3.7.1) — both
+in points, one point a fil, rounded down. **A store chooses which products, and
+pays for them** (migration 0063): it opts a product in from its editor at a
+rate it sets (`products.affiliate_percent`, above nothing, at most
+`MAX_AFFILIATE_PERCENT`), and members see those products and rates on their
+page (`affiliates.products`, each with a link to share). The share comes out of
+the seller's net and is **carried inside the line's `commission_amount`**
+(`withAffiliateShares`, frozen as `affiliate_vendor_percent`, only on a line a
+member's link brought), so commission plus net still equals the line and every
+report still adds up; a share that would not fit inside what the seller nets
+is not taken. Delivery earns nothing.
+
+**Points, the coin, and turning them into money.** `FILS_PER_POINT` is one, so
+a point spends at checkout as a fil and the page says so ("1 point = 1 fils").
+Converting keeps the owner's document's 10% fee (`CASH_OUT_FEE_PERCENT`,
+3.1.15) and its 1,000-point floor: 1,000 points pay KWD 0.900, rounded down to
+the fil, and the press asks first. `PointsCoin` (`components/ui/PointsCoin.tsx`,
+`PointsCoin.swift`) is the coin wherever points are — an amber face lit from
+above into the orange, a darker edge for thickness, a pressed ring and
+NetLet's N in navy — drawn rather than a picture so it is sharp from a line of
+text to the 52px on the join card, and hidden from a screen reader beside a
+figure that already says "points". `PointsWallet` is the balance on navy with
+the coin, what it is worth spent and converted, what is held and when it frees,
+and Convert — one card on the points page and the affiliate page. Counts are
+grouped in Latin digits on both pages (`formatCount`, `PointsFormat.count`),
+and the plural rule reads "1,003" as the number it is.
+
+**Money from before points stays money.** Orders the old programme attributed
+(`orders.affiliate_id`) are still credited to the **affiliate pot** at their
+frozen rates (`creditAffiliate`) and reversed on refund, and the store's share
+on those lines goes there rather than to a link's sharer, so it is never paid
+twice; the member's page shows it as "Earnings from before points" with its
+own payout. `balanceFor` takes the pot and every points query names it, or a
 commission would be spendable at checkout and points cashable at an
 affiliate's rate. The pot is a column rather than a reason prefix because a
 balance is a `sum` over a `where`, and the `where` is the whole rule.
 
-**A store chooses which products, and pays for them** (3.7.1, migration 0063).
-A store opts a product in from its editor at a rate it sets
-(`products.affiliate_percent`, above nothing, at most `MAX_AFFILIATE_PERCENT`);
-only opted-in products earn an affiliate anything, and affiliates see them and
-their rates on their dashboard (`affiliates.products`). The share comes out of
-the seller's net on the line and is **carried inside its `commission_amount`**
-(`withAffiliateShares`, frozen as `affiliate_vendor_percent`), so commission
-plus net still equals the line and every report still adds up; a share that
-would not fit inside what the seller nets is not taken. NetLet's own share
-stops: an order placed before this keeps the rate it froze (`orders.affiliate_rate`),
-and one placed after has none. Delivery earns nothing.
+**Earned at collection, reversed on refund, each exactly once.** Credited when
+the cash is recorded; a refunded line takes back its points from the same
+frozen entry, so the reversal is exact to the fil. Partial unique indexes make
+pressing either twice harmless. Both run after the act they follow and log
+rather than undo it.
 
-**Attribution is a claim the server checks.** The browser keeps the last
-`?aff=` and when it was seen, and sends it inside thirty days — only the browser
-saw the click. The server attributes only to an approved affiliate who is not
-the buyer, while the switch is on, and freezes who on the order; each line
-freezes its own store's rate.
-
-**Earned at collection, reversed on refund, each exactly once.** Credited beside
-the referral, when the cash is recorded; a refunded line takes back its share
-from the same frozen figures, so the reversal is exact to the fil. Partial
-unique indexes make pressing either twice harmless. Both run after the act they
-follow and log rather than undo it.
-
-**Disclosed at both ends.** Applying requires agreeing to say the links are
-paid, and the shopper is told at checkout whose link it was. A suspended
-affiliate stops earning and can still be paid what they earned — suspension
-closes the door; it does not keep their money.
+**Disclosed at both ends.** Joining requires agreeing to say the links are
+paid, and checkout names the member whose link a line came through
+(`affiliates.sharers`: the name they chose, only for a member who may earn on
+it). **That read is public and has a ceiling** (`MAX_SHARER_LOOKUPS_PER_ADDRESS`,
+every request counted, the gift lookup's rule): a code is an account's id in
+letters and the name starts as the member's first name, so without one it was
+a list of members a loop could walk. The one-code `affiliates.lookup` beside
+it had no caller left and went. A suspended member stops earning and can still convert or be paid what
+they earned — suspension closes the door; it does not keep their money.
+`/admin/affiliates` lists members with their points and suspends or restores
+them; there is no rate to set per member any more.
 
 `apply` is a reserved word in a tRPC router (it is `Function.prototype.apply`),
 which is why the procedure is `affiliates.join`.
@@ -4237,8 +4291,9 @@ chat and keep sellers' drafting.
 than cached.** Most features default on, so a fresh database behaves as it
 always did. Voice and photo search are on and draw themselves only where they
 work (a browser that can listen; a configured model). The ones with nothing
-behind them yet — the app banner, affiliates, Subscribe & Save — default off,
-and so does the try-on, because switching it on sends shoppers' photos to
+behind them yet — the app banner and Subscribe & Save — default off
+(affiliates did too, until the programme paid in points and joining took one
+press), and so does the try-on, because switching it on sends shoppers' photos to
 Google and is a decision: a control
 answering "soon" is worse than no control, and hiding them behind the switch
 keeps the code rather than deleting it. Off, a shopper who already holds one
@@ -4552,8 +4607,8 @@ shopper's lists once each. A filled heart on something on a list is
 `wishlists.unwish` — off every list and out of Saved, and the toast says both
 — and on something only saved takes it out of Saved. With the `wishlists`
 switch off the heart saves to Saved and asks nothing. The header's and the
-cart's heart open the wishlists and count what is on them (a guest's, Saved
-and its count). `toggleSaved` answers what it did (`SaveOutcome`), so a page
+cart's heart open Saved and count the hearts, for everybody, on the owner's
+word ("the heart icon should be for saved items, not wishlist"). `toggleSaved` answers what it did (`SaveOutcome`), so a page
 toasts only when the heart did not ask (`toastHeart`); the bag's "Move to
 wishlist" starts at the second question. The account's Wishlists section says the same thing in the
 same words: public lists, then private, each under a heading saying who can
@@ -5716,7 +5771,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, and is 773 KB (224 KB) now, the bag by store and its bar — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, and is 786 KB (228 KB) now, the points coin and the affiliate programme's words in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -5979,6 +6034,11 @@ Two traps:
 
 - The base path is derived from the repository name at build time. A rename
   moves the Pages URL, and a build carrying the old name loads to a blank page.
+- An address built for somebody else to open — a share, a copied link, an
+  invite — is `window.location.origin` plus `appPath(...)`, never the origin
+  plus a bare path: the product share, the affiliate's copied link and the
+  invite link all left the base out, so each opened a 404 on Pages. The gift
+  list and the invoice's check link had it right.
 - The deploy commit carries a skip-ci marker. Do not write that marker verbatim
   in an ordinary commit message — GitHub matches it anywhere in the message and
   will skip the build.
@@ -6061,8 +6121,7 @@ keyboard, and Android's back gesture puts it away.
 **Only the home page has the footer, and the Cart tab is the web's new bag —
 on the owner's word.** `ShopPage`'s `footer` is off unless asked for, and only
 `HomeView` asks. `CartView` opens on the title and the count with a heart to
-the wishlists or Saved at the line's end (`CartWishlistButton`, the hearts
-counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
+Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
 the web's own card: the address in use by `DeliveryModel.inUse` with its name,
 number and line and a Change opening `DeliverySheet`, or the question), each
 store a card (`BagGroup.groups`, the web's `bagGroups`, tested on its cases)
@@ -6294,6 +6353,17 @@ the heart in `LogoRow`, with `signals.unreadNotices`, the inbox for somebody
 signed in and the sign-in for a guest; and every badge is `CountBadge` or
 `NoticeDot` (`CountBadge.swift`). The system tab bar's own badge is the
 system's, as before.
+
+**The affiliate programme is the app's too** (see Affiliates): the Profile
+tab's points row carries the coin and the balance, a join card sits above the
+rows for somebody not yet in, `AffiliateView` is join in one press or the
+member's page (their code, how their links are doing, `PointsWallet`, the
+products whose stores pay extra each with its own Share, and the sales one by
+one), `RewardsView` leads with the wallet and the two ways to earn, and every
+Share of a product carries `AppModel.memberCode` (asked at sign-in and after
+joining) and nothing for anybody else. `ShareAndEarn` follows the buy buttons
+for a member, checkout names whose link a line came through, and the heart in
+the logo row and the cart's title opens Saved items with the hearts counted.
 
 **The rest of the shop was checked against the web the same way**, by listing
 every dictionary key a web page or component asks for that no Swift file

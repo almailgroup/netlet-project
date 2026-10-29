@@ -69,7 +69,7 @@
     "ratingMax": 5,
     "maxReviewTitle": 120,
     "maxReviewBody": 2000,
-    "attributionDays": 30,
+    "productLinkDays": 30,
     "minAffiliatePayoutFils": 5000,
     "minCashOutPoints": 1000,
     "maxLists": 12,

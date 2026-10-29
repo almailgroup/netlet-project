@@ -1,50 +1,53 @@
 /**
- * Affiliate marketing (3.7): somebody with an audience shares a link, and a
- * sale that comes through it earns them a share.
+ * Affiliate marketing (3.7): somebody shares a product's link, and a sale that
+ * comes through it earns them **NetLet points** — one point a fil (`FILS_PER_POINT`),
+ * spent at face value or converted to money (`cashOutValue`).
  *
  * Pure, because every number here is money somebody is owed — the reason the
  * referral ledger is pure, and this shares that ledger rather than building a
  * second one.
  *
- * ## Paid out of NetLet's cut, never the seller's
+ * ## One programme, joined in one press, paid in points
  *
- * An affiliate is NetLet's marketing, so NetLet pays for it: each line earns
- * the affiliate's rate on its frozen total, **capped at the commission NetLet
- * took on that line**. The seller's net is untouched, and NetLet can never pay
- * an affiliate more for a sale than it earned from it — a rate set high by
- * mistake costs margin, not money NetLet does not have.
+ * On the owner's word ("users can enroll for affiliate marketing easily and
+ * earn NetLet points"). It was two things for a while: a product link any
+ * account could share for points (3.1.14), and an affiliate programme you
+ * applied to, waited on a review for, shared as `?aff=` on any page, and were
+ * paid in money in a pot of its own. Now the affiliate link *is* the product
+ * link (`/products/x?ref=NL…`), joining is instant (agreeing to say the links
+ * are paid is the one condition), and only a member's link earns — the rule
+ * that makes joining mean something. An old `?aff=AF…` on a product page is
+ * read as that product's link for the same account (`sharerIdFromCode`).
  *
- * ## Earned when the sale completes, reversed when it does not
+ * ## What a sale earns
  *
- * Credited when the cash is collected, the moment a referral pays and for the
- * same reason: an order nobody paid for has earned nobody anything. A line
- * refunded afterwards takes its share back, as a negative entry worked out from
- * the same frozen figures, so the reversal is exact to the fil and needs no
- * record of what was paid beyond the order itself.
+ * Two parts, both of NetLet's commission on the line and so never more than
+ * NetLet took: the programme's share of NetLet's own commission
+ * (`referral.productPercent`, `referralSharePoints`), and on a product its
+ * store has offered to affiliates (3.7.1) the store's own rate on the line
+ * (`vendorAffiliateFils`), which comes off the seller's net and passes through
+ * NetLet's commission (`withAffiliateShares`). Credited as points when the
+ * cash is collected, held until the line's return window passes, and taken
+ * back by a reversal if the line comes back first.
  *
- * ## Attribution is the last link, for thirty days, and never your own
+ * ## Never your own, and the shopper is told
  *
- * The browser keeps the last affiliate code it arrived with and the moment it
- * arrived. An order inside `ATTRIBUTION_DAYS` carries it, the server checks the
- * affiliate is approved and is not the buyer, and the order freezes who and at
- * what rate. Buying through your own link is refused for the reason
- * self-referral is: it is a discount the affiliate gives themselves.
+ * A link is never credited to the buyer — self-referral is a discount the
+ * sharer gives themselves. A shopper whose bag holds something they arrived at
+ * through a member's link sees whose, and that it earns them points at no
+ * cost to the shopper: paid promotion that hides itself is what advertising
+ * rules exist to stop.
  *
- * ## The shopper is told
+ * ## What was money stays money
  *
- * A shopper who arrived through a link sees whose, and that it earns them a
- * commission at no cost to the shopper. Paid promotion that hides itself is
- * what advertising rules exist to stop, and saying it costs nothing.
- *
- * ## Money, not points
- *
- * An affiliate's earnings sit in the same ledger as referral points but in
- * their own pot, counted in fils and cashed out at face value. Referral points
- * cash out less a 10% cash-collection fee, the document's rule for points; an
- * affiliate's commission is payment for work and is paid whole.
+ * Orders placed under the old programme carry the affiliate on the order
+ * (`orders.affiliate_id`) and pay into the `affiliate` pot, counted in fils and
+ * paid out whole, exactly as they were promised; nothing new is attributed that
+ * way. A balance there keeps its payout button until it is paid.
  */
 import { fromFils, toFils } from "../money.js";
 import { isKept } from "./collection.js";
+import { MAX_ACCOUNT_ID, userIdFromCode } from "./referral.js";
 
 /** The rate a new affiliate earns, in percent of the goods. Admin-set per affiliate after that. */
 export const DEFAULT_AFFILIATE_PERCENT = "3.00";
@@ -92,7 +95,29 @@ export function userIdFromAffiliateCode(code: string): number | null {
   if (!body || body.length > 8 || [...body].some(character => !ALPHABET.includes(character))) return null;
   let value = 0;
   for (const character of body) value = value * ALPHABET.length + ALPHABET.indexOf(character);
-  return value > 0 ? value : null;
+  return value > 0 && value <= MAX_ACCOUNT_ID ? value : null;
+}
+
+/**
+ * The account a shared link names: a product link's `NL` code, or an old
+ * affiliate link's `AF` one — both are the account's id in the same alphabet,
+ * so an `?aff=` link already out there keeps earning its sharer, now as the
+ * product link it was opened on.
+ */
+export function sharerIdFromCode(code: string | null | undefined): number | null {
+  if (!code) return null;
+  const trimmed = code.trim().toUpperCase();
+  return trimmed.startsWith("AF") ? userIdFromAffiliateCode(trimmed) : userIdFromCode(trimmed);
+}
+
+/**
+ * The name a new member is shown to shoppers by, offered from their account:
+ * the first word of the name as typed, as the header greets them. Null when
+ * the account has none, and the form asks.
+ */
+export function suggestedDisplayName(accountName: string | null | undefined): string | null {
+  const first = accountName?.trim().split(/\s+/)[0] ?? "";
+  return first ? first.slice(0, 80) : null;
 }
 
 /** Whether a click from `clickedAt` still counts at `now`. */

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The bag — the web's `/cart` on a phone: the title with a heart to the
-/// wishlists at its end, where the order is going, each store's lines
+/// The bag — the web's `/cart` on a phone: the title with a heart to Saved
+/// items at its end, where the order is going, each store's lines
 /// together under its name with that store's delivery beside them, what was
 /// saved for later directly under them (on the owner's word, so it is a press
 /// from going back in), the summary the server worked out, and Checkout under
@@ -44,7 +44,7 @@ struct CartView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    CartWishlistButton(path: $path)
+                    CartSavedButton(path: $path)
                 }
                 Color.clear.frame(height: 20)
                 if app.cart.settling && (cart?.isEmpty ?? true) {
@@ -216,18 +216,18 @@ struct CartView: View {
     }
 }
 
-/// The wishlists, at the end of the title's line: the place somebody sends
-/// what they decided not to buy yet. A guest — who has hearts on the phone and
-/// no lists — goes to Saved. It counts the hearts.
-private struct CartWishlistButton: View {
+/// Saved items, at the end of the title's line, counted — the hearts, where
+/// somebody keeps what they decided not to buy yet; the header's heart, on the
+/// owner's word. The wishlists are a row of the account page.
+private struct CartSavedButton: View {
     @Binding var path: NavigationPath
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let signedIn = app.session.isSignedIn
+        let saved = app.saved.ids.count
         Button {
-            path.append(signedIn ? Route.wishlists : Route.saved)
+            path.append(Route.saved)
         } label: {
             Image(systemName: "heart")
                 .font(.system(size: 18, weight: .semibold))
@@ -235,12 +235,12 @@ private struct CartWishlistButton: View {
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
                 .overlay(alignment: .topTrailing) {
-                    CountBadge(value: app.saved.listedCount).fixedSize().offset(x: 6, y: -6)
+                    CountBadge(value: saved).fixedSize().offset(x: 6, y: -6)
                 }
                 .contentShape(Circle())
         }
         .buttonStyle(.tap)
-        .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
+        .accessibilityLabel(l.t("header.savedItems", ["count": "\(saved)"]))
     }
 }
 

@@ -43,6 +43,7 @@ import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
+import { sharerIdFromCode } from "@shared/commerce/affiliate";
 import { giftCardPayment, settle } from "@shared/commerce/vouchers";
 import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
@@ -50,9 +51,10 @@ import { ItemDestinations } from "@/components/cart/ItemDestinations";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
-import { currentAffiliate } from "@/lib/affiliate";
 import { heldClaims } from "@/lib/giftClaims";
 import { productLinks } from "@/lib/referral";
+import { formatCount } from "@/lib/format";
+import { PointsCoin } from "@/components/ui/PointsCoin";
 import { pressHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { Link, useLocation } from "wouter";
@@ -70,7 +72,7 @@ const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
   const { cart, refreshCart, settling, syncing } = useCart();
-  const { t, tError } = useTranslation();
+  const { t, tError, locale } = useTranslation();
   const money = useMoney();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
@@ -186,9 +188,16 @@ export default function Checkout() {
   /* Points (3.1.15), offered only to a balance that has some. The figure is a
      display; the server reads the balance again and caps it at placement. */
   const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated });
-  /* The affiliate link this browser came through (3.7), said before paying. */
-  const [affiliateCode] = useState(() => currentAffiliate());
-  const via = trpc.affiliates.lookup.useQuery({ code: affiliateCode ?? "" }, { enabled: Boolean(affiliateCode), retry: false });
+  /* Whose links the bag's products came through (3.7), said before paying:
+     paid promotion is disclosed to the shopper it reaches. Only a member
+     whose link earns on it is named, and never this shopper's own. */
+  const [links] = useState(() => productLinks());
+  const linkCodes = [...new Set(links
+    .filter(link => cart?.items.some(line => line.productId === link.productId))
+    .map(link => link.code))]
+    .filter(code => !user || sharerIdFromCode(code) !== user.id);
+  const via = trpc.affiliates.sharers.useQuery({ codes: linkCodes }, { enabled: linkCodes.length > 0, retry: false, staleTime: 5 * 60_000 });
+  const sharerNames = (via.data ?? []).map(sharer => sharer.displayName);
   const [usePoints, setUsePoints] = useState(false);
   const balance = rewards.data?.balance ?? 0;
   const orderTotal = cart?.total.amount ?? subtotal.amount;
@@ -224,11 +233,11 @@ export default function Checkout() {
       addressParts: cleanParts(parts),
       usePoints,
       voucherCode: applied || undefined,
-      affiliateCode: via.data ? affiliateCode : null,
       giftClaims: heldClaims(),
-      /* Product links this browser arrived through (3.1.14); the server keeps
-         only those for products in this order, and never the buyer's own. */
-      productReferrals: productLinks(),
+      /* Product links this browser arrived through (3.1.14, 3.7); the server
+         keeps only those for products in this order, from members, and never
+         the buyer's own. */
+      productReferrals: links,
     });
   };
 
@@ -330,7 +339,8 @@ export default function Checkout() {
                 {balance > 0 ? (
                   <label className="flex min-h-12 cursor-pointer items-center gap-3 border-t border-[#eef1f5]">
                     <input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="size-4 shrink-0 accent-[#0a285a]" />
-                    <span className="text-[14px] font-semibold">{t("checkout.usePoints", { points: pointsSpendableOn(balance, orderTotal), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span>
+                    <PointsCoin size={20} />
+                    <span className="text-[14px] font-semibold">{t("checkout.usePoints", { points: formatCount(pointsSpendableOn(balance, orderTotal), locale), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span>
                   </label>
                 ) : null}
               </section>
@@ -351,7 +361,7 @@ export default function Checkout() {
                 <span className="text-[15px] font-bold">{t("cart.total")}</span>
                 <span className={`text-[20px] font-extrabold transition-opacity ${syncing ? "opacity-50" : ""}`}>{totalText ?? <span aria-hidden className="inline-block h-5 w-24 animate-pulse rounded bg-[#e7edf5] align-middle" />}</span>
               </div>
-              {via.data ? <p className="mt-3 text-[12px] leading-5 ink-muted">{t("affiliate.viaDisclosure", { name: via.data.displayName })}</p> : null}
+              {sharerNames.length ? <p className="mt-3 text-[12px] leading-5 ink-muted">{t("affiliate.viaDisclosure", { name: new Intl.ListFormat(locale, { type: "conjunction" }).format(sharerNames) })}</p> : null}
               {isAuthenticated || sessionLoading ? (
                 <button
                   ref={placeRef}

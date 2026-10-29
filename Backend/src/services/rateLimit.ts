@@ -33,6 +33,8 @@ import {
   PHOTO_SEARCH_WINDOW_MS,
   MAX_OFFER_REQUESTS_PER_ACCOUNT,
   OFFER_REQUEST_WINDOW_MS,
+  MAX_SHARER_LOOKUPS_PER_ADDRESS,
+  SHARER_LOOKUP_WINDOW_MS,
   MAX_LOOKUPS_PER_ADDRESS,
   MAX_IMPORTS_PER_ACCOUNT,
   IMPORT_WINDOW_MS,
@@ -311,6 +313,15 @@ export async function checkOrderLookupAllowed(address: string | null | undefined
 
 export async function recordOrderLookupMiss(address: string | null | undefined): Promise<void> {
   await recordInWindow(address, "orderLookupMiss", ORDER_LOOKUP_WINDOW_MS);
+}
+
+/** Whether this address may ask whose affiliate links a checkout came through. Every request counts. */
+export async function checkSharerLookupAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  return windowVerdict(address, "sharerLookup", MAX_SHARER_LOOKUPS_PER_ADDRESS, SHARER_LOOKUP_WINDOW_MS);
+}
+
+export async function recordSharerLookup(address: string | null | undefined): Promise<void> {
+  await recordInWindow(address, "sharerLookup", SHARER_LOOKUP_WINDOW_MS);
 }
 
 /* The two halves every per-address ceiling above writes out by hand, for the newer ones. */

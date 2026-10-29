@@ -332,24 +332,25 @@ struct LogoRow: View {
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
             .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
             .accessibilityHint(l.t("delivery.buttonTitle"))
-            // The wishlists, or Saved for a guest — the cart page's own pair,
-            // on the owner's word — with what is on the lists counted.
+            // Saved items — the hearts — counted, for everybody, on the
+            // owner's word: it opened the wishlists for somebody signed in for
+            // a while, and the wishlists are a row of the account page now.
             let signedIn = app.session.isSignedIn
+            let saved = app.saved.ids.count
             Button {
-                app.push(signedIn ? .wishlists : .saved)
+                app.push(.saved)
             } label: {
                 Image(systemName: "heart")
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(Brand.navy)
                     .frame(width: 40, height: 44)
                     .overlay(alignment: .topTrailing) {
-                        CountBadge(value: app.saved.listedCount).fixedSize().offset(x: 2, y: 2)
+                        CountBadge(value: saved).fixedSize().offset(x: 2, y: 2)
                     }
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
-            .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
-            .accessibilityValue(app.saved.listedCount == 0 ? "" : "\(app.saved.listedCount)")
+            .accessibilityLabel(l.t("header.savedItems", ["count": "\(saved)"]))
             // The notifications follow the heart, on the owner's word, with
             // what is unread counted; signed out it is the sign-in, the web's
             // inbox address being its sign-in form.

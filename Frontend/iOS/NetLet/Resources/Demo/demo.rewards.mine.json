@@ -3,19 +3,55 @@
     "data": {
       "json": {
         "code": "NLAAAC",
-        "balance": 0,
-        "held": 0,
-        "nextRelease": null,
-        "spendValue": "0.000",
-        "cashOutValue": "0.000",
+        "balance": 7200,
+        "held": 899,
+        "nextRelease": "2026-11-12T20:57:59.599Z",
+        "spendValue": "7.200",
+        "cashOutValue": "6.480",
         "cashOut": {
-          "ok": false,
-          "shortBy": 1000
+          "ok": true
         },
         "minimumCashOut": 1000,
         "invited": 0,
         "qualified": 0,
-        "entries": []
+        "entries": [
+          {
+            "id": 3,
+            "points": 899,
+            "reason": "product_referral",
+            "note": null,
+            "orderReference": "NL-20261029-XZKJX",
+            "settledAt": null,
+            "availableAt": "2026-11-12T20:57:59.599Z",
+            "createdAt": "2026-10-29T20:57:59.604Z"
+          },
+          {
+            "id": 2,
+            "points": 7200,
+            "reason": "product_referral",
+            "note": null,
+            "orderReference": "NL-20261029-XZKJX",
+            "settledAt": null,
+            "availableAt": null,
+            "createdAt": "2026-10-29T20:57:59.604Z"
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "nextRelease": [
+            "Date"
+          ],
+          "entries.0.availableAt": [
+            "Date"
+          ],
+          "entries.0.createdAt": [
+            "Date"
+          ],
+          "entries.1.createdAt": [
+            "Date"
+          ]
+        }
       }
     }
   }

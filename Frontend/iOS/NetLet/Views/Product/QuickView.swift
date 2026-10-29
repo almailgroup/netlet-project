@@ -79,7 +79,7 @@ private struct QuickViewContent: View {
             }
             .buttonStyle(.action)
             .accessibilityLabel(l.t(app.saved.isHearted(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
-            ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, userId: app.session.user?.id))) {
+            ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, code: app.memberCode))) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Brand.navy)

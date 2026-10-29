@@ -761,10 +761,13 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("ads.notYours");
     /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
        join with and no link anybody arrived through. */
-    case "affiliates.lookup":
     case "affiliates.mine":
     case "affiliates.products":
       return null;
+    case "affiliates.code":
+      return { code: null, joined: false };
+    case "affiliates.sharers":
+      return [];
     case "affiliates.waiting":
       return 0;
     case "affiliates.list":

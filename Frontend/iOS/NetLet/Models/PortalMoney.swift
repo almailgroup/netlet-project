@@ -156,12 +156,13 @@ struct AffiliateRow: Decodable, Identifiable, Hashable, Sendable {
     let code: String
     let displayName: String
     var channel: String? = nil
-    /// pending, active or suspended.
+    /// active or suspended — or pending, an application left from before joining was instant.
     let status: String
-    /// NetLet's own rate, no longer paid or edited (3.7.1).
-    var ratePercent: String? = nil
     let createdAt: Date
     var paidOrders: Int = 0
+    /// Points a member's links earned, net of returns.
+    var points: Int = 0
+    /// The old programme's money, net of refunds.
     let earned: Money
 }
 
@@ -268,7 +269,6 @@ extension API {
     struct AffiliateUpdate: Encodable, Sendable {
         let affiliateId: Int
         var status: String?
-        var ratePercent: String?
     }
 
     static let updateAffiliate = Procedure<AffiliateUpdate, Acknowledged>(mutation: "affiliates.update")

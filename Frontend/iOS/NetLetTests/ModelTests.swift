@@ -76,6 +76,18 @@ final class PhrasebookTests: XCTestCase {
         XCTAssertEqual(book.text("browse.countMany", language: .ar, params: ["count": "11"]), "11 منتجاً")
         XCTAssertEqual(book.text("browse.countMany", language: .en, params: ["count": "3"]), "3 products")
     }
+
+    /// A count drawn with its thousands grouped is still that count, the web's
+    /// `pluralForm` rule — and points read in the form their number needs.
+    func testGroupedCountsKeepTheirForm() {
+        XCTAssertEqual(PointsFormat.count(12500, .en), "12,500")
+        XCTAssertEqual(PointsFormat.count(12500, .ar), "12,500")
+        XCTAssertEqual(book.text("rewards.balance", language: .ar, params: ["points": "3"]), "3 نقاط")
+        XCTAssertEqual(book.text("rewards.balance", language: .ar, params: ["points": "2"]), "نقطتان")
+        XCTAssertEqual(book.text("rewards.balance", language: .ar, params: ["points": PointsFormat.count(1003, .ar)]), "1,003 نقاط")
+        XCTAssertEqual(book.text("rewards.balance", language: .en, params: ["points": PointsFormat.count(7200, .en)]), "7,200 points")
+        XCTAssertEqual(book.text("rewards.balance", language: .en, params: ["points": "1"]), "1 point")
+    }
 }
 
 /// The rules exported from `Shared/`.
@@ -491,6 +503,23 @@ final class BagGroupTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(BagGroup.freeProgress(line)), 0.65, accuracy: 0.0001)
         let none = try JSONDecoder().decode(CartDeliveryLine.self, from: Data(json.replacingOccurrences(of: #""toFree":{"amount":"3.500","currencyCode":"KWD"}"#, with: #""toFree":null"#).utf8))
         XCTAssertNil(BagGroup.freeProgress(none))
+    }
+}
+
+/// `affiliates.code`: a code for a member whose links earn, none for a
+/// suspended one — who has still joined, and must not be offered "Join".
+final class MemberCodeTests: XCTestCase {
+    func testJoinedIsSaidApartFromTheCode() throws {
+        let member = try JSONDecoder().decode(MemberCode.self, from: Data(#"{"code":"NLAAAC","joined":true}"#.utf8))
+        XCTAssertEqual(member.code, "NLAAAC")
+        XCTAssertTrue(member.joined)
+        let suspended = try JSONDecoder().decode(MemberCode.self, from: Data(#"{"code":null,"joined":true}"#.utf8))
+        XCTAssertNil(suspended.code)
+        XCTAssertTrue(suspended.joined)
+        let outside = try JSONDecoder().decode(MemberCode.self, from: Data(#"{"code":null,"joined":false}"#.utf8))
+        XCTAssertFalse(outside.joined)
+        // A server from before `joined` sent the code alone, and only to a member.
+        XCTAssertTrue(try JSONDecoder().decode(MemberCode.self, from: Data(#"{"code":"NLAAAC"}"#.utf8)).joined)
     }
 }
 

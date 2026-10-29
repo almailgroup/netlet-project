@@ -15,7 +15,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  cartItems, carts, orderItems, orders as ordersTable, pointEntries, products, productVariants,
+  affiliates, cartItems, carts, orderItems, orders as ordersTable, pointEntries, products, productVariants,
   referrals as referralsTable, users, vendors,
   invoices, platformSettings,
 } from "../../database/schema.js";
@@ -70,6 +70,7 @@ beforeAll(async () => {
 }, 60_000);
 
 beforeEach(async () => {
+  await db.delete(affiliates);
   await db.delete(platformSettings);
   await db.delete(pointEntries);
   await db.delete(referralsTable);
@@ -326,6 +327,12 @@ describe("what the account page is told", () => {
  * has passed. Migration 0062.
  */
 describe("referral commissions", () => {
+  /* A product link earns its sharer only once they have joined the affiliate
+     programme (3.7), so the stranger who shares here is a member. */
+  beforeEach(async () => {
+    await db.insert(affiliates).values({ userId: ids.stranger, displayName: "Stranger", status: "active", disclosureAcceptedAt: new Date() });
+  });
+
   it("pays the inviter on every order the friend places, held until the return window passes", async () => {
     await referral.recordReferral(ids.friend, referralCodeFor(ids.inviter));
     const first = await buy(ids.friend);
@@ -366,10 +373,16 @@ describe("referral commissions", () => {
   });
 
   it("never pays a shopper for their own link, nor a link for a product not in the order", async () => {
+    await db.insert(affiliates).values({ userId: ids.friend, displayName: "Friend", status: "active", disclosureAcceptedAt: new Date() });
     const own = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.friend) }]);
     expect((await lineOf(own.order.id)).referrerId).toBeNull();
     const elsewhere = await buy(ids.friend, 1, false, [{ productId: "999999", code: referralCodeFor(ids.stranger) }]);
     expect((await lineOf(elsewhere.order.id)).referrerId).toBeNull();
+  });
+
+  it("pays nobody for the link of somebody who has not joined the affiliate programme", async () => {
+    const placed = await buy(ids.friend, 1, false, [{ productId: String(ids.product), code: referralCodeFor(ids.inviter) }]);
+    expect(await lineOf(placed.order.id)).toMatchObject({ referrerId: null, referralRate: null });
   });
 
   it("uses the rate an administrator set, at the sale", async () => {

@@ -1,11 +1,12 @@
 /**
- * Invitations and points, on the account page.
+ * NetLet points, on the account page (3.1.14, 3.1.15): the balance with the
+ * coin and converting it to money (`PointsWallet`), the two ways to earn, and
+ * the history behind the number.
  *
- * Requirements 3.1.14 and 3.1.15. Three things are shown and each earns its
- * place: the code, because it is the only thing here somebody can act on; the
- * balance in *both* of its values, because "spend it or cash it out" is a
- * choice and a page showing one figure has made it for them; and the ledger,
- * because a number that went up is not something a shopper can check.
+ * **The ways to earn are two cards, and affiliate marketing leads**, on the
+ * owner's word — sharing a product and earning on the sale is the one a
+ * shopper does again and again. Inviting a friend follows, with the code: the
+ * only thing on this page somebody can hand to somebody else.
  *
  * **It says how many arrived and never who.** A code is meant to be pasted
  * into a group chat, so anybody may be holding it — and a list of names would
@@ -13,12 +14,19 @@
  * does not send them either; this is not the only place that rule lives.
  */
 import { useState } from "react";
-import { Copy, Gift } from "lucide-react";
+import { appPath } from "@/lib/basePath";
+import { ChevronRight, Copy, Megaphone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import { spendValue } from "@shared/commerce/referral";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { PointsWallet } from "@/components/account/PointsWallet";
+import { PANEL } from "@/components/account/profileParts";
+import { PointsCoin } from "@/components/ui/PointsCoin";
 import { useDateFormat } from "@/hooks/useDateFormat";
+import { useFeature } from "@/hooks/useFeature";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { isolate } from "@/lib/isolate";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -37,21 +45,12 @@ const REASON_LABEL: Record<string, MessageKey> = {
 };
 
 export function AccountRewards() {
-  const { t, tError } = useTranslation();
+  const { t, locale } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
   const rewards = trpc.rewards.mine.useQuery();
-  const utils = trpc.useUtils();
-  const [copied, setCopied] = useState(false);
-
-  const cashOut = trpc.rewards.cashOut.useMutation({
-    onSuccess: () => {
-      toast.success(t("rewards.cashOutRequested"));
-      void utils.rewards.mine.invalidate();
-    },
-    onError: error => toast.error(tError(error.message)),
-  });
-
+  const affiliatesOn = useFeature("affiliates");
+  const affiliate = trpc.affiliates.mine.useQuery(undefined, { staleTime: 60_000 });
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
 
   return (
@@ -59,117 +58,127 @@ export function AccountRewards() {
       {() => {
         const view = rewards.data;
         if (!view) return null;
-        /* The link a friend actually opens. Built from where the page is being
-           read rather than from a configured origin, so it is right on a
-           preview deployment and on a laptop — the rule `SITE_URL` follows. */
-        const link = `${window.location.origin}/?ref=${view.code}`;
+        /* Joined is a row; earning is an active one. A suspended member is
+           told so here, never offered "Join" again. */
+        const joined = Boolean(affiliate.data);
+        const member = affiliate.data?.status === "active";
 
         return (
-          <div className="space-y-5">
-            <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-[#f3f2ed] p-5 sm:p-6">
-              <p className="flex items-center gap-2 font-extrabold text-[#0a285a]">
-                <Gift className="size-5 shrink-0 ink-accent" aria-hidden /> {t("rewards.title")}
-              </p>
-              <p className="mt-2 max-w-prose text-sm leading-6 text-[#536b8c]">{t("rewards.codeHelp")}</p>
+          <div className="space-y-3">
+            <PointsWallet view={view} />
 
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <p className="type-label ink-muted">{t("rewards.codeLabel")}</p>
-                {/* Latin characters inside an Arabic line: `bdi` keeps the code
-                    reading left to right without throwing the line to the far
-                    edge, which is what `dir` on the block around it would do. */}
-                <bdi dir="ltr" className="rounded-xl bg-white px-4 py-2 font-mono text-lg font-bold tracking-[.2em] text-[#0a285a]">
-                  {view.code}
-                </bdi>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(link);
-                    setCopied(true);
-                    toast.success(t("rewards.copied"));
-                  }}
-                  className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2"
-                >
-                  <Copy className="size-4" aria-hidden /> {copied ? t("rewards.copied") : t("rewards.copy")}
-                </button>
-              </div>
+            <section aria-labelledby="ways-to-earn" className="space-y-3">
+              <h3 id="ways-to-earn" className="px-1 pt-2 text-[15px] font-bold text-[#0a285a]">{t("rewards.waysToEarn")}</h3>
 
-              <p className="mt-4 text-sm text-[#536b8c]">
-                {t("rewards.invited", { count: view.invited })} · {t("rewards.qualified", { count: view.qualified })}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-[#536b8c]">{t("rewards.privacy")}</p>
-              {/* The two commissions beside the welcome (3.1.14): a product
-                  shared from its page, and every order a friend places. */}
-              <p className="mt-3 max-w-prose text-sm leading-6 text-[#536b8c]">{t("rewards.commissionHelp")}</p>
-            </div>
-
-            <div className="rounded-[1.35rem] border border-[#e6e9ef] bg-white p-5 sm:p-6">
-              <p className="text-2xl font-extrabold text-[#0a285a]">{t("rewards.balance", { points: view.balance })}</p>
-              {/* Both values, never one. "Spend it or cash it out" is a choice,
-                  and a page showing a single figure has made it for them. */}
-              <p className="mt-1 text-sm text-[#536b8c]">
-                {t("rewards.worthInShop", { value: amount(view.spendValue) })} ·{" "}
-                {t("rewards.worthInCash", { value: amount(view.cashOutValue) })}
-              </p>
-              {/* Earned and not yet spendable: a sale that may still come back. */}
-              {view.held > 0 ? (
-                <p className="mt-2 text-sm font-semibold text-[#0a285a]">
-                  {t("rewards.held", { points: view.held })}
-                  {view.nextRelease ? <> {t("rewards.nextRelease", { date: formatDate(view.nextRelease) })}</> : null}
-                </p>
+              {affiliatesOn || affiliate.data ? (
+                <Link href="/account/affiliate" className={`${PANEL} flex items-center gap-3.5 p-4 hover:bg-[#f0f2f5] sm:p-5`}>
+                  <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[#fff1e8] text-[#a44a2b]">
+                    <Megaphone className="size-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-[#0a285a]">{t("affiliate.section")}</span>
+                    <span className="mt-0.5 block text-[13px] leading-5 ink-muted">{t(joined ? "rewards.earnAffiliateMember" : "rewards.earnAffiliate")}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-[#f1f2f6] px-3 py-1.5 text-[13px] font-bold text-[#0a285a]">
+                    {member ? t("affiliate.statusActive") : joined ? t("affiliate.statusSuspended") : t("affiliate.promoJoin")}
+                  </span>
+                  <ChevronRight className="size-5 shrink-0 text-[#1f2a44] rtl:-scale-x-100" aria-hidden />
+                </Link>
               ) : null}
-              <p className="mt-2 max-w-prose text-xs leading-5 text-[#536b8c]">{t("rewards.rateNote")}</p>
 
-              {view.cashOut.ok ? (
-                <button
-                  type="button"
-                  disabled={cashOut.isPending}
-                  onClick={() => cashOut.mutate()}
-                  className="glass-navy type-control pressable mt-4 inline-flex items-center gap-2 rounded-full px-5 py-3 disabled:opacity-60"
-                >
-                  {t("rewards.cashOut", { points: view.balance, value: amount(view.cashOutValue) })}
-                </button>
-              ) : (
-                /* The refusal names the figure and the shortfall, the way the
-                   password meter names the unmet rule rather than going red. */
-                <p className="mt-4 text-sm text-[#536b8c]">
-                  {t("rewards.cashOutFloor", { minimum: view.minimumCashOut, short: view.cashOut.shortBy })}
-                </p>
-              )}
-            </div>
+              <InviteCard code={view.code} invited={view.invited} qualified={view.qualified} />
+            </section>
 
-            <div>
-              <h3 className="type-label ink-muted">{t("rewards.ledger")}</h3>
+            <section aria-labelledby="points-history" className={`${PANEL} p-4 sm:p-5`}>
+              <h3 id="points-history" className="text-[15px] font-bold text-[#0a285a]">{t("rewards.ledger")}</h3>
               {view.entries.length === 0 ? (
-                <p className="mt-2 text-sm leading-6 text-[#536b8c]">{t("rewards.empty")}</p>
+                <p className="mt-2 text-sm leading-6 ink-muted">{t("rewards.empty")}</p>
               ) : (
-                <ul className="mt-2 space-y-2">
+                <ul className="mt-2 divide-y divide-dashed divide-[#e3e6ec]">
                   {view.entries.map(entry => (
-                    <li key={entry.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-2xl border border-[#e6e9ef] bg-white px-4 py-3">
-                      <span className="text-sm font-bold text-[#0a285a]">
-                        {t(REASON_LABEL[entry.reason] ?? "rewards.reasonAdminAdjustment")}
+                    <li key={entry.id} className="flex items-start gap-3 py-3">
+                      <PointsCoin size={22} className="mt-0.5" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-semibold text-[#1f2a44]">
+                          {t(REASON_LABEL[entry.reason] ?? "rewards.reasonAdminAdjustment")}
+                        </span>
+                        <span className="block text-[12px] leading-5 ink-muted">
+                          {formatDate(entry.createdAt)}
+                          {entry.orderReference ? <> · {t("rewards.onOrder", { reference: isolate(entry.orderReference) })}</> : null}
+                          {entry.reason === "cashed_out" ? (
+                            <> · {entry.settledAt ? t("rewards.paidOn", { date: formatDate(entry.settledAt) }) : t("rewards.awaitingPayment")}</>
+                          ) : null}
+                          {entry.reason === "spent_on_order" && !entry.orderReference
+                            ? <> · {amount(spendValue(-entry.points))}</>
+                            : null}
+                          {entry.availableAt ? <> · {t("rewards.availableFrom", { date: formatDate(entry.availableAt) })}</> : null}
+                        </span>
                       </span>
-                      <span className={`text-sm font-extrabold ${entry.points < 0 ? "text-[#536b8c]" : "text-[#2f5d33]"}`}>
-                        {entry.points > 0 ? "+" : ""}{entry.points}
-                      </span>
-                      <span className="w-full text-xs text-[#536b8c]">
-                        {formatDate(entry.createdAt)}
-                        {entry.orderReference ? <> · {t("rewards.onOrder", { reference: isolate(entry.orderReference) })}</> : null}
-                        {entry.reason === "cashed_out" ? (
-                          <> · {entry.settledAt ? t("rewards.paidOn", { date: formatDate(entry.settledAt) }) : t("rewards.awaitingPayment")}</>
-                        ) : null}
-                        {entry.reason === "spent_on_order" && !entry.orderReference
-                          ? <> · {amount(spendValue(-entry.points))}</>
-                          : null}
-                        {entry.availableAt ? <> · {t("rewards.availableFrom", { date: formatDate(entry.availableAt) })}</> : null}
+                      <span className={`shrink-0 text-[15px] font-extrabold ${entry.points < 0 ? "text-[#536b8c]" : "text-[#2f5d33]"}`}>
+                        <bdi dir="ltr">{entry.points > 0 ? "+" : "−"}{formatCount(Math.abs(entry.points), locale)}</bdi>
                       </span>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
+            </section>
           </div>
         );
       }}
     </QueryGate>
+  );
+}
+
+/** Inviting a friend: the code, the link, and how many arrived through it. */
+function InviteCard({ code, invited, qualified }: { code: string; invited: number; qualified: number }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  /* The link a friend actually opens. Built from where the page is being read
+     rather than from a configured origin, so it is right on a preview
+     deployment and on a laptop — the rule `SITE_URL` follows. */
+  const link = `${window.location.origin}${appPath("/")}?ref=${code}`;
+
+  return (
+    <div className={`${PANEL} p-4 sm:p-5`}>
+      <div className="flex items-center gap-3.5">
+        <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">
+          <UserPlus className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold text-[#0a285a]">{t("rewards.title")}</span>
+          <span className="mt-0.5 block text-[13px] leading-5 ink-muted">{t("rewards.codeHelp")}</span>
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <p className="text-[12px] font-semibold ink-muted">{t("rewards.codeLabel")}</p>
+        {/* Latin characters inside an Arabic line: `bdi` keeps the code
+            reading left to right without throwing the line to the far edge,
+            which is what `dir` on the block around it would do. */}
+        <bdi dir="ltr" className="rounded-xl bg-[#f3f2ed] px-4 py-2 font-mono text-lg font-bold tracking-[.2em] text-[#0a285a]">
+          {code}
+        </bdi>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(link);
+              setCopied(true);
+              toast.success(t("rewards.copied"));
+            } catch {
+              toast.error(t("affiliate.copyFailed"));
+            }
+          }}
+          className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2"
+        >
+          <Copy className="size-4" aria-hidden /> {copied ? t("rewards.copied") : t("rewards.copy")}
+        </button>
+      </div>
+
+      <p className="mt-3 text-[13px] text-[#536b8c]">
+        {t("rewards.invited", { count: invited })} · {t("rewards.qualified", { count: qualified })}
+      </p>
+      <p className="mt-1 text-[12px] leading-5 text-[#536b8c]">{t("rewards.privacy")}</p>
+    </div>
   );
 }

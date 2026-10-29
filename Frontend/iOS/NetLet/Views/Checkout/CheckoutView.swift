@@ -496,8 +496,11 @@ private struct CodeCard: View {
                 Divider().overlay(Brand.cardLine)
                 let spendable = Till.pointsSpendable(model.balance, on: cart.total)
                 Toggle(isOn: $model.usePoints) {
-                    Text(l.t("checkout.usePoints", ["points": "\(spendable)", "value": Till.spendValue(spendable).formatted(l.current)]))
-                        .font(.inter(14, .semibold))
+                    HStack(spacing: 8) {
+                        PointsCoin(size: 20)
+                        Text(l.t("checkout.usePoints", ["points": PointsFormat.count(spendable, l.current), "value": Till.spendValue(spendable).formatted(l.current)]))
+                            .font(.inter(14, .semibold))
+                    }
                 }
                 .tint(Brand.navy)
                 .frame(minHeight: 48)

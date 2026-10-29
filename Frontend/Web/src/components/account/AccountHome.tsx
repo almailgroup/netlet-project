@@ -34,6 +34,9 @@ import { initialsFor } from "@/components/account/AccountIdentity";
 import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
+import { PointsCoin } from "@/components/ui/PointsCoin";
+import { useFeature } from "@/hooks/useFeature";
+import { formatCount } from "@/lib/format";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useProductsByIds } from "@/hooks/useCatalog";
@@ -44,7 +47,6 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
   ChevronRight,
-  Coins,
   Gift,
   Languages,
   LifeBuoy,
@@ -107,12 +109,14 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   badge: (id: string) => string | null;
   onSignOut: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const signals = useAccountSignals();
   const { savedIds } = useCustomer();
   const orders = trpc.orders.list.useQuery({ pageSize: 4 }, { staleTime: 60_000 });
   const saved = useProductsByIds(savedIds.slice(0, 4));
   const rewards = trpc.rewards.mine.useQuery(undefined, { staleTime: 60_000 });
+  const affiliatesOn = useFeature("affiliates");
+  const member = trpc.affiliates.code.useQuery(undefined, { enabled: affiliatesOn, staleTime: 5 * 60_000 });
 
   const orderPhotos = [...new Set((orders.data?.rows ?? []).flatMap(row => row.summary?.photos ?? []))].slice(0, 4);
   const savedPhotos = saved.products.map(product => product.images[0]?.url ?? null).slice(0, 4);
@@ -167,13 +171,29 @@ export function AccountHome({ user, has, badge, onSignOut }: {
       </div>
 
       <Link href="/account/rewards" className={`${PANEL} flex min-h-[68px] items-center gap-3.5 px-5 py-3 hover:bg-[#f0f2f5]`}>
-        <Coins className={ICON} strokeWidth={1.75} aria-hidden />
+        <PointsCoin size={26} />
         <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t("account.points")}</span>
         <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f1f2f6] py-2 pe-2.5 ps-3.5 text-[15px] font-bold text-[#1f2a44]">
-          {rewards.data ? t("rewards.balance", { points: rewards.data.balance }) : "—"}
+          {rewards.data ? t("rewards.balance", { points: formatCount(rewards.data.balance, locale) }) : "—"}
           <ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
         </span>
       </Link>
+
+      {/* Affiliate marketing, offered here to somebody who has not joined, on
+          the owner's word: the profile is where they asked for it to be
+          found, and a row three cards down is where nobody would. */}
+      {affiliatesOn && member.isSuccess && !member.data?.joined ? (
+        <Link href="/account/affiliate" className="flex items-center gap-4 overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
+          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
+            <Megaphone className="size-6 text-[#ffab85]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
+            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t("affiliate.promoBody")}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t("affiliate.promoJoin")}</span>
+        </Link>
+      ) : null}
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {

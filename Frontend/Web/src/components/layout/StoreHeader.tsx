@@ -18,8 +18,10 @@
  * was the language for a while; the language is on the account page now, as a
  * setting, and a phone's bar says where things are going. A press is felt
  * (`pressHaptic`) and opens the address book. **A heart follows it**, on the
- * owner's word: the wishlists, or Saved for a guest, with the hearts counted —
- * the cart page's own bar has the same pair. Search keeps a whole row, because it is how most people move through
+ * owner's word: Saved items, with the hearts counted, for everybody — it opened
+ * the wishlists for somebody signed in for a while, and the owner asked for the
+ * heart to mean Saved; the wishlists are a row of the account page. The cart
+ * page's own bar has the same pair. Search keeps a whole row, because it is how most people move through
  * a catalogue on a small screen, and it is the row that stays: the top row
  * scrolls away with the page like anything else. **On a product or a category
  * page there is no top row at all** (`logoRow`), on the owner's word — the
@@ -61,7 +63,6 @@ import { CountBadge } from "@/components/ui/CountBadge";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
@@ -105,8 +106,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
   const [location, navigate] = useLocation();
   const query = useSearch();
   const { itemCount, openCart } = useCart();
-  const { savedIds, wishedIds, toggleLocale } = useCustomer();
-  const { isAuthenticated } = useAuth();
+  const { savedIds, toggleLocale } = useCustomer();
   /* The logo is the way home, and on the home page the way back to its top: a
      link to the page already open would push a second copy of it into the
      history and move nothing. The page's own `scroll-behavior` decides how —
@@ -204,8 +204,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
      this row (`-top-[58px]`). The logo sits on the line the search field and
      the page's title start from, as it does on a wide screen. The name takes
      what the logo and the heart leave and is cut short before it reaches them. */
-  const wishlists = isAuthenticated ? t("cart.wishlists") : t("nav.saved");
-  const listed = isAuthenticated ? wishedIds.length : savedIds.length;
+  const savedName = t("header.savedItems", { count: savedIds.length });
   /* The notifications follow the heart, on the owner's word, with what is
      unread counted; signed out, the inbox's address is the sign-in form. */
   const { unreadNotices } = useAccountSignals();
@@ -227,17 +226,17 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
           <span dir="auto" className="min-w-0 max-w-[160px] truncate">{areaName}</span>
           <ChevronDown className="hidden size-4 shrink-0 min-[360px]:block" aria-hidden />
         </button>
-        {/* The wishlists, or Saved for a guest, who has no lists, only hearts
-            kept on the device; the count is what is on the lists, or Saved. */}
+        {/* Saved items, the hearts, counted — the wide bar's Saved. */}
         <Link
-          href={isAuthenticated ? "/account/wishlists" : "/saved"}
+          href="/saved"
           onClick={() => pressHaptic()}
-          aria-label={listed ? `${wishlists} (${listed})` : wishlists}
-          title={wishlists}
+          aria-current={location === "/saved" ? "page" : undefined}
+          aria-label={savedName}
+          title={savedName}
           className="pressable relative grid size-11 shrink-0 place-items-center rounded-xl text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
         >
           <Heart className="size-[20px]" aria-hidden />
-          <CountBadge value={listed} className="absolute end-0.5 top-0.5" />
+          <CountBadge value={savedIds.length} className="absolute end-0.5 top-0.5" />
         </Link>
         <Link
           href="/account/notifications"

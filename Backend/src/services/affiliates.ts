@@ -2,40 +2,44 @@
  * Affiliate marketing (3.7), the database half. The rules are in
  * `Shared/commerce/affiliate.ts`.
  *
- * Earnings live in the referral ledger, `point_entries`, in the `affiliate`
- * pot — one ledger, as `docs/REQUIREMENTS.md` asked from the start, so a
- * balance is still a sum and never a stored number, cashing out is still the
- * one flow an administrator marks off on the finance page, and both pots get
- * the same lock against two tabs spending one balance.
+ * **Joining is one press and a member's product links earn NetLet points**,
+ * on the owner's word. What a sale earns is credited by the referral ledger's
+ * own `creditReferralCommissions` as a `product_referral` entry — the
+ * programme's share of NetLet's commission on the line and, on a product its
+ * store offered to affiliates, the store's rate — held until the line's return
+ * window passes, in the points pot: one balance with a coin on it, spent at
+ * face value or converted to money. This file is who may earn (`activeSharers`),
+ * joining, the member's page and the administrator's desk.
  *
- * Crediting and reversing are each exactly-once by a partial unique index —
- * one commission per order, one reversal per line — so pressing "cash
- * collected" twice, or receiving a return twice, cannot pay twice.
+ * **The old programme's money stays money.** An order placed under it carries
+ * the affiliate on the order and pays into the `affiliate` pot when its cash is
+ * collected (`creditAffiliate`), reversed on a refund, each exactly once by a
+ * partial unique index; a balance there is paid out whole. Nothing new is
+ * attributed that way.
  */
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import { affiliates, orderItems, orders, pointEntries, productImages, products, productVariants, users, vendors } from "../../database/schema.js";
 import {
-  acceptableRate,
-  affiliateCodeFor,
   canPayOut,
   DEFAULT_AFFILIATE_PERCENT,
   lineShareFils,
   orderShareFils,
+  sharerIdFromCode,
   storeAffiliateRate,
-  userIdFromAffiliateCode,
+  suggestedDisplayName,
   vendorAffiliateFils,
   vendorShareFils,
   type AffiliateStatus,
 } from "../../../Shared/commerce/affiliate.js";
+import { referralCodeFor } from "../../../Shared/commerce/referral.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { fromFils } from "../../../Shared/money.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { describeError, violatesUnique } from "../core/describeError.js";
 import { recordAudit } from "./audit.js";
-import { featureOn } from "./features.js";
 import { auditActor } from "./inventory.js";
-import { balanceFor, takePoints } from "./referral.js";
+import { activeSharers, balanceFor, takePoints } from "./referral.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -54,101 +58,185 @@ async function handle(): Promise<Db> {
   return db;
 }
 
-/* ------------------------------------------------------------ applying --- */
+/* ------------------------------------------------------------- joining --- */
 
 /**
- * Ask to become an affiliate. Pending until an administrator approves it.
+ * Join the programme: a member at once, on the owner's word ("enroll …
+ * easily") — there is no review to wait on. Agreeing to say the links are
+ * paid is the one condition: promotion that hides that it is paid is what
+ * advertising rules exist to stop, and a shop paying for it is a party to it.
  *
- * Agreeing to disclose is a condition, not a box to tick later: promotion that
- * hides that it is paid is what advertising rules exist to stop, and a shop
- * paying for it is a party to it. A second application returns the first
- * rather than resetting its status, so a suspended affiliate cannot reapply
- * their way back to pending.
+ * The name shoppers see is the one given, else the first word of the
+ * account's name. Joining again returns the membership as it stands, so a
+ * suspended member cannot join their way back; an application left waiting
+ * under the old review becomes a membership.
  */
-export async function applyAsAffiliate(userId: number, input: { displayName: string; channel?: string | null; acceptDisclosure: boolean }) {
+export async function applyAsAffiliate(userId: number, input: { displayName?: string | null; channel?: string | null; acceptDisclosure: boolean }) {
   if (!input.acceptDisclosure) throw new AffiliateRefused("affiliate.disclosureRequired");
-  const displayName = input.displayName.trim();
-  if (!displayName) throw new AffiliateRefused("affiliate.badName");
   const db = await handle();
+  let displayName = input.displayName?.trim() ?? "";
+  if (!displayName) {
+    const [account] = await db.select({ name: users.name }).from(users).where(eq(users.id, userId)).limit(1);
+    displayName = suggestedDisplayName(account?.name) ?? "";
+  }
+  if (!displayName) throw new AffiliateRefused("affiliate.badName");
+  const now = new Date();
   try {
     await db.insert(affiliates).values({
       userId,
-      displayName,
+      displayName: displayName.slice(0, 80),
       channel: input.channel?.trim() || null,
       ratePercent: DEFAULT_AFFILIATE_PERCENT,
-      disclosureAcceptedAt: new Date(),
+      status: "active",
+      decidedAt: now,
+      disclosureAcceptedAt: now,
     });
   } catch (error) {
     if (!violatesUnique(error, "affiliates_user_unique")) throw error;
+    await db
+      .update(affiliates)
+      .set({ status: "active", displayName: displayName.slice(0, 80), decidedAt: now, disclosureAcceptedAt: now })
+      .where(and(eq(affiliates.userId, userId), eq(affiliates.status, "pending")));
   }
   return affiliateDashboard(userId);
 }
 
 /* ------------------------------------------------------------- reading --- */
 
-/** The affiliate a code names, if they may earn on it, and they are not the buyer. */
-export async function earningAffiliate(db: Db, code: string | null | undefined, buyerUserId: number | null | undefined) {
-  if (!code) return null;
-  const userId = userIdFromAffiliateCode(code);
-  if (userId === null || userId === buyerUserId) return null;
-  const [row] = await db
-    .select({ id: affiliates.id, displayName: affiliates.displayName, ratePercent: affiliates.ratePercent })
+/**
+ * The names shoppers are shown for the links they arrived through, or none.
+ * Only what each member chose to be known by — never their account — and only
+ * for a member who may earn on it, so the line never names somebody whose
+ * link is earning nothing.
+ */
+export async function publicSharers(codes: readonly string[]): Promise<{ code: string; displayName: string }[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const byId = new Map<number, string>();
+  for (const code of codes.slice(0, 20)) {
+    const id = sharerIdFromCode(code);
+    if (id !== null && !byId.has(id)) byId.set(id, code.trim().toUpperCase());
+  }
+  const active = await activeSharers(db, [...byId.keys()]);
+  if (!active.size) return [];
+  const rows = await db
+    .select({ userId: affiliates.userId, displayName: affiliates.displayName })
     .from(affiliates)
-    .where(and(eq(affiliates.userId, userId), eq(affiliates.status, "active")))
-    .limit(1);
-  return row ?? null;
+    .where(inArray(affiliates.userId, [...active]));
+  return rows.map(row => ({ code: byId.get(row.userId) ?? "", displayName: row.displayName }));
 }
 
 /**
- * The name a shopper is shown when they arrive through a link, or null.
- * Only what the affiliate chose to be known by — never their account.
+ * The code a member's links carry, or null for somebody whose links earn
+ * nothing (not joined, suspended, or the programme off), and whether the
+ * account has joined at all — what the account home asks before offering to
+ * join, since a suspended member's code is null too and "Join" would be the
+ * wrong thing to offer them. What the product page's Share asks before
+ * putting a code on the address — a light read, because it is asked on every
+ * product page a signed-in shopper opens.
  */
-export async function publicAffiliate(code: string): Promise<{ displayName: string } | null> {
+export async function memberCode(userId: number): Promise<{ code: string | null; joined: boolean }> {
   const db = await getDb();
-  if (!db || !(await featureOn("affiliates"))) return null;
-  const found = await earningAffiliate(db, code, null);
-  return found ? { displayName: found.displayName } : null;
+  if (!db) return { code: null, joined: false };
+  const [row] = await db
+    .select({ status: affiliates.status })
+    .from(affiliates)
+    .where(eq(affiliates.userId, userId))
+    .limit(1);
+  /* A row the old review left waiting is not a membership; joining makes it one. */
+  const joined = row !== undefined && row.status !== "pending";
+  const members = joined ? await activeSharers(db, [userId]) : new Set<number>();
+  return { code: members.has(userId) ? referralCodeFor(userId) : null, joined };
 }
 
-export type AffiliateDashboard = {
-  status: AffiliateStatus;
-  code: string;
-  displayName: string;
-  channel: string | null;
-  ratePercent: string;
-  /** Orders this link brought that have been paid for, and those still waiting on payment. */
-  paidOrders: number;
-  waitingOrders: number;
-  earned: string;
-  reversed: string;
-  balance: string;
-  payout: ReturnType<typeof canPayOut>;
-  entries: { id: number; amount: string; reason: string; orderReference: string | null; settledAt: Date | null; createdAt: Date }[];
+export type AffiliateSale = {
+  id: number;
+  points: number;
+  /** A product bought through a link, or one of them taken back. */
+  reversed: boolean;
+  productTitle: string | null;
+  orderReference: string | null;
+  /** When a held share becomes spendable; null once it is. */
+  availableAt: Date | null;
+  createdAt: Date;
 };
 
-/** The affiliate's own page, or null for somebody who has not applied. */
-export async function affiliateDashboard(userId: number): Promise<AffiliateDashboard | null> {
+export type AffiliateDashboard = {
+  status: "active" | "suspended";
+  /** The code a member's links carry — the account's referral code. */
+  code: string;
+  displayName: string;
+  joinedAt: Date;
+  /** Orders a member's links brought that have been paid for, and those waiting on payment. */
+  paidOrders: number;
+  waitingOrders: number;
+  /** Points earned through links, held until their return windows pass, and taken back by returns. */
+  earnedPoints: number;
+  heldPoints: number;
+  reversedPoints: number;
+  sales: AffiliateSale[];
+  /**
+   * Money from the programme before it paid in points, while any is recorded:
+   * what is left, whether it can be paid, and its entries. Null for everybody
+   * who joined since.
+   */
+  earlier: null | {
+    balance: string;
+    payout: ReturnType<typeof canPayOut>;
+    entries: { id: number; amount: string; reason: string; orderReference: string | null; settledAt: Date | null; createdAt: Date }[];
+  };
+};
+
+const LINK_REASONS = ["product_referral", "product_referral_reversal"] as const;
+
+/**
+ * A member's own page, or null for somebody who has not joined (an
+ * application still waiting under the old review counts as not joined, and
+ * joining makes it a membership).
+ */
+export async function affiliateDashboard(userId: number, now = new Date()): Promise<AffiliateDashboard | null> {
   const db = await getDb();
   if (!db) return null;
   const [row] = await db.select().from(affiliates).where(eq(affiliates.userId, userId)).limit(1);
-  if (!row) return null;
+  if (!row || row.status === "pending") return null;
 
   const [counts] = await db
     .select({
-      paid: sql<string>`count(*) filter (where ${orders.status} in ('paid', 'refunded'))`,
-      waiting: sql<string>`count(*) filter (where ${orders.status} = 'pending_payment')`,
+      paid: sql<string>`count(distinct ${orders.id}) filter (where ${orders.status} in ('paid', 'refunded'))`,
+      waiting: sql<string>`count(distinct ${orders.id}) filter (where ${orders.status} = 'pending_payment')`,
     })
-    .from(orders)
-    .where(eq(orders.affiliateId, row.id));
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(eq(orderItems.referrerId, userId));
   const [sums] = await db
     .select({
-      earned: sql<string>`coalesce(sum(${pointEntries.points}) filter (where ${pointEntries.reason} = 'affiliate_commission'), 0)`,
-      reversed: sql<string>`coalesce(-sum(${pointEntries.points}) filter (where ${pointEntries.reason} = 'affiliate_reversal'), 0)`,
+      earned: sql<string>`coalesce(sum(${pointEntries.points}) filter (where ${pointEntries.reason} = 'product_referral'), 0)`,
+      reversed: sql<string>`coalesce(-sum(${pointEntries.points}) filter (where ${pointEntries.reason} = 'product_referral_reversal'), 0)`,
+      /* `gt` rather than the date in the fragment: a bare JS Date skips the
+         column's mapper, which PGlite forgives and postgres.js refuses. */
+      held: sql<string>`coalesce(sum(${pointEntries.points}) filter (where ${gt(pointEntries.availableAt, now)}), 0)`,
     })
     .from(pointEntries)
-    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "affiliate")));
-  const balance = BigInt(await balanceFor(db, userId, "affiliate"));
-  const entries = await db
+    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "points"), inArray(pointEntries.reason, [...LINK_REASONS])));
+  const sales = await db
+    .select({
+      id: pointEntries.id,
+      points: pointEntries.points,
+      reason: pointEntries.reason,
+      availableAt: pointEntries.availableAt,
+      createdAt: pointEntries.createdAt,
+      orderReference: orders.reference,
+      productTitle: orderItems.productTitle,
+    })
+    .from(pointEntries)
+    .leftJoin(orders, eq(orders.id, pointEntries.orderId))
+    .leftJoin(orderItems, eq(orderItems.id, pointEntries.orderItemId))
+    .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "points"), inArray(pointEntries.reason, [...LINK_REASONS])))
+    .orderBy(desc(pointEntries.createdAt), desc(pointEntries.id))
+    .limit(30);
+
+  /* The old programme's money, only for somebody who has some on record. */
+  const legacy = await db
     .select({
       id: pointEntries.id,
       points: pointEntries.points,
@@ -162,34 +250,48 @@ export async function affiliateDashboard(userId: number): Promise<AffiliateDashb
     .where(and(eq(pointEntries.userId, userId), eq(pointEntries.pot, "affiliate")))
     .orderBy(desc(pointEntries.createdAt), desc(pointEntries.id))
     .limit(50);
+  const legacyBalance = legacy.length ? BigInt(await balanceFor(db, userId, "affiliate")) : 0n;
 
   return {
-    status: row.status as AffiliateStatus,
-    code: affiliateCodeFor(userId),
+    status: row.status === "suspended" ? "suspended" : "active",
+    code: referralCodeFor(userId),
     displayName: row.displayName,
-    channel: row.channel,
-    ratePercent: row.ratePercent,
+    joinedAt: row.decidedAt ?? row.createdAt,
     paidOrders: Number(counts?.paid ?? 0),
     waitingOrders: Number(counts?.waiting ?? 0),
-    earned: fromFils(BigInt(sums?.earned ?? 0)),
-    reversed: fromFils(BigInt(sums?.reversed ?? 0)),
-    balance: fromFils(balance),
-    payout: canPayOut(balance),
-    entries: entries.map(entry => ({
-      id: entry.id,
-      amount: fromFils(BigInt(entry.points)),
-      reason: entry.reason,
-      orderReference: entry.orderReference,
-      settledAt: entry.settledAt,
-      createdAt: entry.createdAt,
+    earnedPoints: Number(sums?.earned ?? 0),
+    heldPoints: Math.max(0, Number(sums?.held ?? 0)),
+    reversedPoints: Number(sums?.reversed ?? 0),
+    sales: sales.map(sale => ({
+      id: sale.id,
+      points: sale.points,
+      reversed: sale.reason === "product_referral_reversal",
+      productTitle: sale.productTitle,
+      orderReference: sale.orderReference,
+      availableAt: sale.availableAt && sale.availableAt > now ? sale.availableAt : null,
+      createdAt: sale.createdAt,
     })),
+    earlier: legacy.length
+      ? {
+          balance: fromFils(legacyBalance),
+          payout: canPayOut(legacyBalance),
+          entries: legacy.map(entry => ({
+            id: entry.id,
+            amount: fromFils(BigInt(entry.points)),
+            reason: entry.reason,
+            orderReference: entry.orderReference,
+            settledAt: entry.settledAt,
+            createdAt: entry.createdAt,
+          })),
+        }
+      : null,
   };
 }
 
 /**
- * Ask for the whole affiliate balance as a payout. Written now so the balance
+ * Ask for the old programme's money as a payout. Written now so the balance
  * falls at once; paid by a person, marked off on the finance page with the
- * referral cash-outs. A suspended affiliate may still be paid what they earned
+ * points cash-outs. A suspended member may still be paid what they earned
  * before — suspension closes the door, it does not keep their money.
  */
 export async function requestAffiliatePayout(userId: number): Promise<{ amount: string }> {
@@ -359,13 +461,16 @@ export type AffiliateAdminRow = {
   displayName: string;
   channel: string | null;
   status: AffiliateStatus;
-  ratePercent: string;
   createdAt: Date;
+  /** Orders a member's links brought that were paid for. */
   paidOrders: number;
+  /** Points earned through links, net of what returns took back. */
+  points: number;
+  /** Money from the old programme, net of refunds; "0.000" for everybody who joined since. */
   earned: string;
 };
 
-/** Every affiliate, pending first, then newest. Admin-only. */
+/** Every member, newest first (an application still waiting under the old review first of all). Admin-only. */
 export async function listAffiliates(actor: Actor, request: { page?: number; pageSize?: number } = {}): Promise<Page<AffiliateAdminRow>> {
   assertCan(actor, "affiliate.manage");
   const db = await handle();
@@ -382,9 +487,9 @@ export async function listAffiliates(actor: Actor, request: { page?: number; pag
       displayName: affiliates.displayName,
       channel: affiliates.channel,
       status: affiliates.status,
-      ratePercent: affiliates.ratePercent,
       createdAt: affiliates.createdAt,
-      paidOrders: sql<string>`(select count(*) from ${orders} where ${orders.affiliateId} = ${outer(affiliates.id)} and ${orders.status} in ('paid', 'refunded'))`,
+      paidOrders: sql<string>`(select count(distinct ${orders.id}) from ${orderItems} join ${orders} on ${orders.id} = ${orderItems.orderId} where ${orderItems.referrerId} = ${outer(affiliates.userId)} and ${orders.status} in ('paid', 'refunded'))`,
+      points: sql<string>`(select coalesce(sum(${pointEntries.points}), 0) from ${pointEntries} where ${pointEntries.userId} = ${outer(affiliates.userId)} and ${pointEntries.pot} = 'points' and ${pointEntries.reason} in ('product_referral', 'product_referral_reversal'))`,
       earned: sql<string>`(select coalesce(sum(${pointEntries.points}), 0) from ${pointEntries} where ${pointEntries.userId} = ${outer(affiliates.userId)} and ${pointEntries.pot} = 'affiliate' and ${pointEntries.reason} in ('affiliate_commission', 'affiliate_reversal'))`,
     })
     .from(affiliates)
@@ -397,13 +502,13 @@ export async function listAffiliates(actor: Actor, request: { page?: number; pag
       id: row.id,
       email: row.email,
       name: row.name,
-      code: affiliateCodeFor(row.userId),
+      code: referralCodeFor(row.userId),
       displayName: row.displayName,
       channel: row.channel,
       status: row.status as AffiliateStatus,
-      ratePercent: row.ratePercent,
       createdAt: row.createdAt,
       paidOrders: Number(row.paidOrders),
+      points: Number(row.points),
       earned: fromFils(BigInt(row.earned)),
     })),
     total,
@@ -412,7 +517,7 @@ export async function listAffiliates(actor: Actor, request: { page?: number; pag
   };
 }
 
-/** How many applications are waiting, for the overview. */
+/** How many applications are still waiting under the old review, for the overview. */
 export async function countPendingAffiliates(actor: Actor): Promise<number> {
   if (actor.kind !== "admin") return 0;
   const db = await getDb();
@@ -422,31 +527,29 @@ export async function countPendingAffiliates(actor: Actor): Promise<number> {
 }
 
 /**
- * Approve, suspend or reinstate, and set the rate. Both are on the trail with
- * the chain, because a rate is money NetLet pays and an approval is who it
- * pays — the two questions "and who let them?" exists for.
+ * Suspend a member, reinstate one, or let in an application still waiting
+ * under the old review. On the trail with the chain, because who NetLet pays
+ * is the question "and who let them?" exists for. There is no per-member rate
+ * any more: what a link earns is the programme's rate, set on
+ * `/admin/features`, and each store's own offer.
  */
-export async function updateAffiliate(actor: Actor, affiliateId: number, change: { status?: "active" | "suspended"; ratePercent?: string }): Promise<void> {
+export async function updateAffiliate(actor: Actor, affiliateId: number, change: { status?: "active" | "suspended" }): Promise<void> {
   assertCan(actor, "affiliate.manage");
-  if (change.ratePercent !== undefined && !acceptableRate(change.ratePercent)) throw new AffiliateRefused("affiliate.badRate");
   const db = await handle();
   const [was] = await db
-    .select({ status: affiliates.status, ratePercent: affiliates.ratePercent, displayName: affiliates.displayName })
+    .select({ status: affiliates.status, displayName: affiliates.displayName })
     .from(affiliates)
     .where(eq(affiliates.id, affiliateId))
     .limit(1);
   if (!was) throw new AffiliateRefused("affiliate.notFound");
-  const set: Partial<typeof affiliates.$inferInsert> = {};
-  if (change.status) Object.assign(set, { status: change.status, decidedBy: actor.userId, decidedAt: new Date() });
-  if (change.ratePercent !== undefined) set.ratePercent = Number(change.ratePercent).toFixed(2);
-  if (Object.keys(set).length === 0) return;
-  await db.update(affiliates).set(set).where(eq(affiliates.id, affiliateId));
+  if (!change.status || change.status === was.status) return;
+  await db.update(affiliates).set({ status: change.status, decidedBy: actor.userId, decidedAt: new Date() }).where(eq(affiliates.id, affiliateId));
   await recordAudit(await auditActor(actor), {
     action: "affiliate.update",
     subjectType: "affiliate",
     subjectId: affiliateId,
     subjectLabel: was.displayName,
-    before: { status: was.status, ratePercent: was.ratePercent },
-    after: { status: set.status ?? was.status, ratePercent: set.ratePercent ?? was.ratePercent },
+    before: { status: was.status },
+    after: { status: change.status },
   });
 }

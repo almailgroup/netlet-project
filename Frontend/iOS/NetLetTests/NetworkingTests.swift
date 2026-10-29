@@ -324,6 +324,19 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(rewards.code.isEmpty)
         let affiliate = try await client.call(API.affiliate)
         XCTAssertEqual(affiliate?.status, "active")
+        // A member's links earn NetLet points (3.7): the sales add up to what
+        // was earned, the held part is the points page's held, and the code a
+        // member's Share carries is the dashboard's own.
+        let sales = try XCTUnwrap(affiliate?.sales)
+        XCTAssertFalse(sales.isEmpty)
+        XCTAssertEqual(affiliate?.earnedPoints, sales.filter { !$0.reversed }.reduce(0) { $0 + $1.points })
+        XCTAssertEqual(affiliate?.heldPoints, rewards.held)
+        XCTAssertNil(affiliate?.earlier)
+        let code = try await client.call(API.memberCode)
+        XCTAssertEqual(code?.code, affiliate?.code)
+        XCTAssertEqual(code?.joined, true)
+        XCTAssertEqual(ReferralCode.productPath(handle: "linen-cushion-pair", code: code?.code), "/products/linen-cushion-pair?ref=\(rewards.code)")
+        XCTAssertEqual(ReferralCode.productPath(handle: "linen-cushion-pair", code: nil), "/products/linen-cushion-pair")
         let standing = try await client.call(API.standingOrders)
         XCTAssertTrue(standing.isEmpty)
     }
@@ -759,6 +772,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(vouchers.cards.count, 2)
         let affiliates = try await client.call(API.affiliateList, .init())
         XCTAssertFalse(affiliates.rows.isEmpty)
+        XCTAssertTrue(affiliates.rows.contains { $0.points > 0 }, "a member's links earned points")
         let grants = try await client.call(API.membershipList, .init(current: false))
         XCTAssertEqual(grants.rows.first?.state(), "ended", "a cancelled grant reads as ended whatever its dates")
         let terms = try await client.call(API.membershipTerms)

@@ -1,14 +1,16 @@
 /**
- * Affiliate marketing (3.7).
+ * Affiliate marketing (3.7): join in one press, share product links, earn
+ * NetLet points.
  *
  * `Backend/src/services/affiliates.ts` scopes and guards; this resolves who is asking and
- * turns a refusal into a message key. `lookup` is public because the shopper
- * who arrives through a link is usually signed out, and it answers only the
- * name the affiliate chose to be known by.
+ * turns a refusal into a message key. `sharers` is public because the
+ * shopper who arrives through a link is usually signed out, and it answers
+ * only the name each member chose to be known by — under a ceiling per
+ * address, since a code is an account's id in letters and the answer is
+ * otherwise a list of members anybody could walk.
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { MAX_AFFILIATE_PERCENT } from "../../../Shared/commerce/affiliate.js";
 import {
   AffiliateRefused,
   affiliateDashboard,
@@ -16,12 +18,14 @@ import {
   countPendingAffiliates,
   listAffiliateProducts,
   listAffiliates,
-  publicAffiliate,
+  memberCode,
+  publicSharers,
   setProductAffiliate,
   requestAffiliatePayout,
   updateAffiliate,
 } from "../services/affiliates.js";
 import { resolveActor } from "../services/inventory.js";
+import { checkSharerLookupAllowed, recordSharerLookup } from "../services/rateLimit.js";
 import { rowId } from "../core/schemas.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 
@@ -39,13 +43,24 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export const affiliatesRouter = router({
-  lookup: publicProcedure
-    .input(z.object({ code: z.string().trim().min(3).max(16) }))
-    .query(({ input }) => publicAffiliate(input.code)),
+  /** The members whose links a bag's products came through, for checkout's line saying so. */
+  sharers: publicProcedure
+    .input(z.object({ codes: z.array(z.string().trim().min(3).max(16)).max(20) }))
+    .query(async ({ ctx, input }) => {
+      if (!input.codes.length) return [];
+      const address = ctx.req.ip ?? null;
+      const verdict = await checkSharerLookupAllowed(address);
+      if (!verdict.allowed) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "affiliate.sharersTooMany" });
+      await recordSharerLookup(address);
+      return publicSharers(input.codes);
+    }),
   mine: protectedProcedure.query(({ ctx }) => affiliateDashboard(ctx.user.id)),
+  /** The code a member's Share puts on a product's address, or null. */
+  code: protectedProcedure.query(({ ctx }) => memberCode(ctx.user.id)),
+  /** Join at once; the name shoppers see defaults to the account's first name. */
   join: protectedProcedure
     .input(z.object({
-      displayName: z.string().trim().min(1).max(80),
+      displayName: z.string().trim().max(80).nullish(),
       channel: z.string().trim().max(300).nullish(),
       acceptDisclosure: z.boolean(),
     }))
@@ -69,15 +84,17 @@ export const affiliatesRouter = router({
       return guard(() => listAffiliates(actor, input ?? {}));
     }),
   waiting: protectedProcedure.query(async ({ ctx }) => countPendingAffiliates(await resolveActor(ctx.user))),
+  /* Suspend, reinstate, or let in an application left under the old review.
+     An older client's `ratePercent` is dropped by zod: there is no per-member
+     rate any more. */
   update: protectedProcedure
     .input(z.object({
       affiliateId: rowId,
       status: z.enum(["active", "suspended"]).optional(),
-      ratePercent: z.string().trim().max(6).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
-      await guard(() => updateAffiliate(actor, input.affiliateId, { status: input.status, ratePercent: input.ratePercent }));
-      return { ok: true as const, ceiling: MAX_AFFILIATE_PERCENT };
+      await guard(() => updateAffiliate(actor, input.affiliateId, { status: input.status }));
+      return { ok: true as const };
     }),
 });

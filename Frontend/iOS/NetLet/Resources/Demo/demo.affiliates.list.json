@@ -4,33 +4,46 @@
       "json": {
         "rows": [
           {
+            "id": 3,
+            "email": "vendor@acme.test",
+            "name": "Acme Owner",
+            "code": "NLAAAF",
+            "displayName": "Acme team",
+            "channel": null,
+            "status": "pending",
+            "createdAt": "2026-10-02T12:30:35.852Z",
+            "paidOrders": 0,
+            "points": 0,
+            "earned": "0.000"
+          },
+          {
             "id": 2,
             "email": "noura@shop.test",
             "name": "Noura Al-Sabah",
-            "code": "AFAAAC",
+            "code": "NLAAAC",
             "displayName": "Noura's picks",
             "channel": "instagram.com/nourapicks",
             "status": "active",
-            "ratePercent": "3.00",
             "createdAt": "2026-10-02T12:30:35.832Z",
-            "paidOrders": 0,
+            "paidOrders": 1,
+            "points": 8099,
             "earned": "0.000"
           },
           {
             "id": 1,
             "email": "fahad@shop.test",
-            "name": "Fahad",
-            "code": "AFAAAD",
+            "name": "Fahad Al-Mutairi Jr",
+            "code": "NLAAAD",
             "displayName": "Fahad Picks",
             "channel": "instagram.com/fahadpicks",
             "status": "active",
-            "ratePercent": "1.00",
             "createdAt": "2026-10-02T12:22:21.968Z",
-            "paidOrders": 1,
+            "paidOrders": 0,
+            "points": 0,
             "earned": "0.750"
           }
         ],
-        "total": 2,
+        "total": 3,
         "page": 1,
         "pageSize": 50
       },
@@ -43,12 +56,6 @@
             "Date"
           ],
           "rows.2.createdAt": [
-            "Date"
-          ],
-          "rows.3.createdAt": [
-            "Date"
-          ],
-          "rows.4.createdAt": [
             "Date"
           ]
         }

@@ -235,18 +235,17 @@ export const ordersRouter = router({
       /* A discount code or a gift card, in one field (3.2.3): a shopper
          holding a code does not necessarily know which it is. */
       voucherCode: z.string().trim().max(40).optional(),
-      /* The affiliate link this browser arrived through in the last thirty
-         days (3.7). A claim the server checks, never an instruction. */
-      affiliateCode: z.string().trim().max(16).nullish(),
       /* Presents claimed off a list on this device while signed out: marked
          bought if they are in the order and the hold still names nobody. */
       giftClaims: z.array(z.object({
         token: z.string().min(8).max(64),
         productId: z.string().min(1).max(191),
       })).max(MAX_HELD_CLAIMS).optional(),
-      /* Product links this browser arrived through (3.1.14): which product,
-         and the code on its address. Claims the server checks, never
-         instructions — a line earns only for an account that is not the buyer. */
+      /* Product links this browser arrived through (3.1.14, 3.7): which
+         product, and the code on its address. Claims the server checks,
+         never instructions — a line earns only for a member of the affiliate
+         programme who is not the buyer. An older client's order-level
+         `affiliateCode` is no longer read, and zod drops it. */
       productReferrals: z.array(z.object({
         productId: z.string().min(1).max(191),
         code: z.string().trim().min(2).max(16),
@@ -267,7 +266,6 @@ export const ordersRouter = router({
           addressParts: input.addressParts ?? null,
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
-          affiliateCode: input.affiliateCode ?? null,
           giftClaims: input.giftClaims ?? [],
           productReferrals: input.productReferrals ?? [],
         });

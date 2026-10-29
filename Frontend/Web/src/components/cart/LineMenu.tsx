@@ -26,6 +26,7 @@
  * portalled into the nearest dialog or landmark, because the store card round
  * the line clips what overflows it.
  */
+import { useMemberCode } from "@/hooks/useMemberCode";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -48,6 +49,8 @@ type Action = { key: string; icon: ReactNode; label: string; run: () => void; da
 
 export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();
+  /* A member's Share carries their code, as the product page's does. */
+  const memberCode = useMemberCode();
   const { removeItem, addItem, closeCart } = useCart();
   const { savedIds, saveForLater, chooseWishlist, unsave } = useCustomer();
   const { isAuthenticated } = useAuth();
@@ -101,7 +104,7 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
     key: "share",
     icon: <Share2 className="size-[18px]" aria-hidden />,
     label: t("cart.shareItem"),
-    run: () => void shareProduct({ handle: item.productHandle, title }, t),
+    run: () => void shareProduct({ handle: item.productHandle, title }, t, memberCode),
   });
   actions.push({
     key: "view",

@@ -5,7 +5,7 @@ import { RETURN_WINDOW_DAYS } from "../commerce/returns";
 import { ASK_WINDOW_DAYS } from "../commerce/priceOffers";
 import { DELIVERY_RATING_WINDOW_DAYS } from "../commerce/deliveryRatings";
 import { CLAIM_WINDOW_DAYS } from "../commerce/damageClaims";
-import { ATTRIBUTION_DAYS } from "../commerce/affiliate";
+import { PRODUCT_LINK_DAYS } from "../commerce/referral";
 
 const placeholders = (text: string) => new Set([...text.matchAll(/\{(\w+)\}/g)].map(match => match[1]));
 
@@ -94,7 +94,8 @@ describe("sentences written for a constant", () => {
     ["offers.sent", ASK_WINDOW_DAYS, "few", "أيام"],
     ["delivery.ratingClosed", DELIVERY_RATING_WINDOW_DAYS, "many", "يوماً"],
     ["claims.windowClosed", CLAIM_WINDOW_DAYS, "few", "أيام"],
-    ["affiliate.pitch", ATTRIBUTION_DAYS, "many", "يوماً"],
+    ["affiliate.step2", PRODUCT_LINK_DAYS, "many", "يوماً"],
+    ["affiliate.howToShare", PRODUCT_LINK_DAYS, "many", "يوماً"],
   ] as const)("%s says %i in the right form", (key, value, band, word) => {
     expect(pluralCategory("ar", value)).toBe(band);
     expect(ar[key]).toContain(`{days} ${word}`);

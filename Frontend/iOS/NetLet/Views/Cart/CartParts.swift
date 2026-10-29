@@ -244,7 +244,7 @@ private struct LineMenuSheet: View {
                     if wishlist {
                         row("gift", l.t("cart.moveToWishlist")) { choose(.wishlist) }
                     }
-                    ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: item.productHandle, userId: app.session.user?.id))) {
+                    ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: item.productHandle, code: app.memberCode))) {
                         label("square.and.arrow.up", l.t("cart.shareItem"))
                     }
                     .buttonStyle(PressFillStyle(cornerRadius: 0))

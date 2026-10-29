@@ -315,10 +315,12 @@ struct Rewards: Decodable, Sendable {
     let entries: [Entry]
 }
 
-/// The code a signed-in shopper's links carry — `referralCodeFor` in
-/// `Shared/commerce/referral.ts` — so a product shared from the app is a
-/// product link (3.1.14), as one shared from the web is: a friend who buys it
-/// through the link earns the sharer points on that line.
+/// The code a member's links carry — `referralCodeFor` in
+/// `Shared/commerce/referral.ts` — so a product a member of the affiliate
+/// programme shares from the app is their link (3.1.14, 3.7), as one shared
+/// from the web is: a friend who buys it through the link earns the sharer
+/// NetLet points on that line. A non-member's share carries no code
+/// (`AppModel.memberCode` is nil), because their link would earn nothing.
 enum ReferralCode {
     private static let alphabet = Array("ABCDEFGHJKMNPQRTUVWXYZ23456789")
 
@@ -332,12 +334,35 @@ enum ReferralCode {
         return "NL" + String(repeating: String(alphabet[0]), count: max(0, 4 - code.count)) + code
     }
 
-    /// A product's address, carrying the sharer's code when somebody is signed in.
-    static func productPath(handle: String, userId: Int?) -> String {
+    /// A product's address, carrying a member's code when there is one.
+    static func productPath(handle: String, code: String?) -> String {
         let encoded = handle.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? handle
-        guard let userId else { return "/products/\(encoded)" }
-        return "/products/\(encoded)?ref=\(code(for: userId))"
+        guard let code, !code.isEmpty else { return "/products/\(encoded)" }
+        return "/products/\(encoded)?ref=\(code)"
     }
+}
+
+/// The code a member's Share carries (`affiliates.code`), nil for somebody
+/// whose links earn nothing, and whether the account has joined at all — a
+/// suspended member has no code and must not be offered "Join" again.
+struct MemberCode: Decodable, Sendable {
+    let code: String?
+    let joined: Bool
+
+    init(code: String?, joined: Bool) {
+        self.code = code
+        self.joined = joined
+    }
+
+    /// A server from before `joined` answered with the code alone, which only
+    /// a member had.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        code = try container.decodeIfPresent(String.self, forKey: .code)
+        joined = try container.decodeIfPresent(Bool.self, forKey: .joined) ?? (code != nil)
+    }
+
+    private enum CodingKeys: String, CodingKey { case code, joined }
 }
 
 /// A product a store offers to affiliates at its own rate (`affiliates.products`, 3.7.1).
@@ -362,8 +387,22 @@ struct AffiliateProductPage: Decodable, Sendable {
 
 // MARK: Affiliates
 
-/// The affiliate programme's dashboard (`affiliates.mine`), or nil before joining.
+/// A member's own page (`affiliates.mine`), or nil before joining (3.7): how
+/// their links are doing, in NetLet points, and the old programme's money
+/// for the few who have some.
 struct AffiliateDashboard: Decodable, Sendable {
+    struct Sale: Decodable, Identifiable, Hashable, Sendable {
+        let id: Int
+        let points: Int
+        /// A product bought through a link, or one of them taken back.
+        let reversed: Bool
+        let productTitle: String?
+        let orderReference: String?
+        /// When held points become spendable; nil once they are.
+        let availableAt: Date?
+        let createdAt: Date
+    }
+
     struct Payout: Decodable, Sendable {
         let ok: Bool
         let shortBy: Money?
@@ -378,20 +417,25 @@ struct AffiliateDashboard: Decodable, Sendable {
         let createdAt: Date
     }
 
-    /// pending, approved or suspended.
+    /// Money from the programme before it paid in points.
+    struct Earlier: Decodable, Sendable {
+        let balance: Money
+        let payout: Payout
+        let entries: [Entry]
+    }
+
+    /// active or suspended.
     let status: String
     let code: String
     let displayName: String
-    let channel: String?
-    /// NetLet's own rate, no longer paid: each store now sets its own per product (3.7.1).
-    let ratePercent: String?
+    let joinedAt: Date
     let paidOrders: Int
     let waitingOrders: Int
-    let earned: Money
-    let reversed: Money
-    let balance: Money
-    let payout: Payout
-    let entries: [Entry]
+    let earnedPoints: Int
+    let heldPoints: Int
+    let reversedPoints: Int
+    let sales: [Sale]
+    let earlier: Earlier?
 }
 
 /// What asking for an affiliate payout answers: how much is on its way.

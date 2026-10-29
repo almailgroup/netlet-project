@@ -2,13 +2,20 @@
  * Affiliate marketing, through the API against a real Postgres (3.7).
  *
  * The arithmetic is proved pure in `Shared/commerce/affiliate.test.ts`. What
- * needs a database is who an order may be attributed to, that the share is
- * paid once when the cash is collected and taken back once when a line is
- * refunded, and that it lives in its own pot of the referral ledger.
+ * needs a database is joining in one press, that only a member's product
+ * links earn, that a sale pays NetLet points — NetLet's share and the store's
+ * — once when the cash is collected, held until the return window, and taken
+ * back once when a line is refunded, and that the old programme's money is
+ * still paid as it was.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { and, eq } from "drizzle-orm";
+import { netletCommissionFils, vendorAffiliateFils } from "../../../Shared/commerce/affiliate.js";
+import { MAX_SHARER_LOOKUPS_PER_ADDRESS } from "../../../Shared/auth/rateLimit.js";
+import { referralCodeFor, referralSharePoints } from "../../../Shared/commerce/referral.js";
+import { RETURN_WINDOW_DAYS } from "../../../Shared/commerce/returns.js";
+import { fromFils } from "../../../Shared/money.js";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -83,9 +90,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await db.delete(featureSwitches);
-  /* The programme starts switched off (nothing is behind it until a shop
-     decides to run one), so every case here is a shop that has turned it on. */
-  await db.insert(featureSwitches).values({ key: "affiliates", enabled: true });
   await db.delete(pointEntries);
   await db.delete(invoices);
   await db.delete(invoiceCounters);
@@ -98,13 +102,15 @@ beforeEach(async () => {
   await db.update(products).set({ affiliatePercent: null });
 });
 
+const DAY = 86_400_000;
+
 /** The store offers both products to affiliates at 3% of the line (3.7.1). */
 async function offerBoth(percent = "3") {
   await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent });
   await as("manager").affiliates.setProduct({ productId: ids.mugProduct, percent });
 }
 
-
+/** A sofa and two mugs, bought through `code` on both products' pages (or no link). */
 async function placed(code: string | null, buyer: Who = "shopper") {
   const [cart] = await db.insert(carts).values({ id: `cart-${Math.random().toString(36).slice(2)}`, userId: people[buyer].id }).returning();
   await db.insert(cartItems).values([
@@ -114,7 +120,7 @@ async function placed(code: string | null, buyer: Who = "shopper") {
   const result = await ordersModule.placeOrder(cart.id, {
     email: people[buyer].email, userId: people[buyer].id, contactName: "Buyer",
     contactPhone: "+96550000000", deliveryZoneId: "hawalli", addressLine: "Block 4", paymentMethod: "cod",
-    affiliateCode: code,
+    productReferrals: code ? [{ productId: String(ids.sofaProduct), code }, { productId: String(ids.mugProduct), code }] : [],
   });
   const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, result.order.id));
   const [order] = await db.select().from(orders).where(eq(orders.id, result.order.id));
@@ -123,103 +129,136 @@ async function placed(code: string | null, buyer: Who = "shopper") {
 
 const collect = (orderId: number) => as("manager").orders.markCollected({ orderId });
 
-/** The creator, applied and approved. */
-async function approvedCreator() {
-  const dashboard = await as("creator").affiliates.join({ displayName: "Noura Reviews", channel: "instagram.com/noura", acceptDisclosure: true });
+/** What a line earns its sharer, in points: NetLet's share of its own commission and the store's. */
+const pointsFor = (line: typeof orderItems.$inferSelect) =>
+  referralSharePoints(fromFils(netletCommissionFils(line)), line.referralRate ?? "0") + Number(vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent));
+
+/** The creator, joined. */
+async function member() {
+  const dashboard = await as("creator").affiliates.join({ displayName: "Noura Reviews", acceptDisclosure: true });
   const [row] = await db.select().from(affiliates);
-  await as("admin").affiliates.update({ affiliateId: row.id, status: "active" });
   return { code: dashboard.code as string, id: row.id };
 }
 
 describe("joining", () => {
-  it("needs the disclosure agreed, and starts pending", async () => {
+  it("needs the disclosure agreed, and is a membership at once", async () => {
     await expect(as("creator").affiliates.join({ displayName: "Noura", acceptDisclosure: false })).rejects.toMatchObject({ message: "affiliate.disclosureRequired" });
+    expect(await as("creator").affiliates.mine()).toBeNull();
     const dashboard = await as("creator").affiliates.join({ displayName: "Noura", acceptDisclosure: true });
-    expect(dashboard).toMatchObject({ status: "pending", ratePercent: "3.00", balance: "0.000" });
-    expect(dashboard.code).toMatch(/^AF/);
+    expect(dashboard).toMatchObject({ status: "active", displayName: "Noura", code: referralCodeFor(people.creator.id), earnedPoints: 0, heldPoints: 0, sales: [], earlier: null });
+    expect(await as("creator").affiliates.code()).toEqual({ code: referralCodeFor(people.creator.id), joined: true });
   });
 
-  it("cannot reapply out of a suspension", async () => {
-    const { id } = await approvedCreator();
+  it("is known by the account's first name when no name is given", async () => {
+    await db.update(users).set({ name: "Noura Al-Sabah" }).where(eq(users.id, people.creator.id));
+    expect((await as("creator").affiliates.join({ acceptDisclosure: true })).displayName).toBe("Noura");
+    await db.update(users).set({ name: "creator" }).where(eq(users.id, people.creator.id));
+  });
+
+  it("cannot rejoin out of a suspension, and a waiting application from the old review becomes a membership", async () => {
+    const { id } = await member();
     await as("admin").affiliates.update({ affiliateId: id, status: "suspended" });
     expect((await as("creator").affiliates.join({ displayName: "Again", acceptDisclosure: true })).status).toBe("suspended");
+    /* No code, so a Share carries none — and joined, so nobody offers a suspended member "Join". */
+    expect(await as("creator").affiliates.code()).toEqual({ code: null, joined: true });
+
+    await db.insert(affiliates).values({ userId: people.stranger.id, displayName: "Old application", status: "pending", disclosureAcceptedAt: new Date() });
+    expect(await as("stranger").affiliates.mine()).toBeNull();
+    expect(await as("stranger").affiliates.code()).toEqual({ code: null, joined: false });
+    expect((await as("stranger").affiliates.join({ displayName: "Stranger", acceptDisclosure: true })).status).toBe("active");
   });
 
-  it("is approved, suspended and re-rated by an administrator alone, on the trail", async () => {
-    await as("creator").affiliates.join({ displayName: "Noura", acceptDisclosure: true });
-    const [row] = await db.select().from(affiliates);
-    await expect(as("manager").affiliates.update({ affiliateId: row.id, status: "active" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  it("is suspended and reinstated by an administrator alone, on the trail", async () => {
+    const { id } = await member();
+    await expect(as("manager").affiliates.update({ affiliateId: id, status: "suspended" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(as("manager").affiliates.list()).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(as("admin").affiliates.update({ affiliateId: row.id, ratePercent: "25" })).rejects.toMatchObject({ message: "affiliate.badRate" });
-    await as("admin").affiliates.update({ affiliateId: row.id, status: "active", ratePercent: "5" });
-    const [audit] = await db.select().from(auditLog).where(and(eq(auditLog.action, "affiliate.update"), eq(auditLog.subjectId, row.id)));
-    expect(audit).toMatchObject({ subjectId: row.id, before: { status: "pending", ratePercent: "3.00" }, after: { status: "active", ratePercent: "5.00" } });
-    expect((await as("admin").affiliates.list()).rows).toEqual([expect.objectContaining({ status: "active", ratePercent: "5.00" })]);
+    await as("admin").affiliates.update({ affiliateId: id, status: "suspended" });
+    const [audit] = await db.select().from(auditLog).where(and(eq(auditLog.action, "affiliate.update"), eq(auditLog.subjectId, id)));
+    expect(audit).toMatchObject({ before: { status: "active" }, after: { status: "suspended" } });
+    expect((await as("admin").affiliates.list()).rows).toEqual([expect.objectContaining({ status: "suspended", points: 0, code: referralCodeFor(people.creator.id) })]);
   });
 
-  it("tells a shopper whose link it is only once they are approved", async () => {
-    const dashboard = await as("creator").affiliates.join({ displayName: "Noura Reviews", acceptDisclosure: true });
-    expect(await appRouter.createCaller(contextFor(null)).affiliates.lookup({ code: dashboard.code })).toBeNull();
-    const [row] = await db.select().from(affiliates);
-    await as("admin").affiliates.update({ affiliateId: row.id, status: "active" });
-    expect(await appRouter.createCaller(contextFor(null)).affiliates.lookup({ code: dashboard.code })).toEqual({ displayName: "Noura Reviews" });
+  it("names a member to a shopper by either code, and nobody who is not one", async () => {
+    const guest = appRouter.createCaller(contextFor(null));
+    expect(await guest.affiliates.sharers({ codes: [referralCodeFor(people.creator.id)] })).toEqual([]);
+    const { code } = await member();
+    expect(await guest.affiliates.sharers({ codes: [code, "AF" + code.slice(2), referralCodeFor(people.stranger.id)] }))
+      .toEqual([{ code, displayName: "Noura Reviews" }]);
+  });
+
+  it("answers one address a ceiling's worth an hour, because a code is an account id anybody could walk", async () => {
+    const from = (ip: string) => appRouter.createCaller({ ...contextFor(null), req: { protocol: "https", headers: {}, ip } as TrpcContext["req"] });
+    const walker = from("10.7.7.7");
+    for (let ask = 0; ask < MAX_SHARER_LOOKUPS_PER_ADDRESS; ask++) {
+      await walker.affiliates.sharers({ codes: [referralCodeFor(ask + 1)] });
+    }
+    await expect(walker.affiliates.sharers({ codes: [referralCodeFor(1)] })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", message: "affiliate.sharersTooMany" });
+    /* Another address is not held to the first one's count, and asking for nothing costs nothing. */
+    expect(await from("10.7.7.8").affiliates.sharers({ codes: [referralCodeFor(1)] })).toEqual([]);
+    expect(await walker.affiliates.sharers({ codes: [] })).toEqual([]);
   });
 });
 
 describe("earning", () => {
-  it("attributes an order to an approved affiliate and freezes each store's rate on its line", async () => {
-    const { code, id } = await approvedCreator();
-    await offerBoth();
+  it("freezes a member's link on each line it brought, with the store's rate on what it offered", async () => {
+    const { code } = await member();
+    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "3" });
     const { order, lines } = await placed(code);
-    /* NetLet's own share stopped with 3.7.1: no order-level rate is frozen. */
-    expect(order).toMatchObject({ affiliateId: id, affiliateRate: null });
+    /* Nothing is attributed to the order any more: the link is per line. */
+    expect(order).toMatchObject({ affiliateId: null, affiliateRate: null });
     const sofa = lines.find(line => line.productTitle === "sofa")!;
-    expect(sofa.affiliateVendorPercent).toBe("3.00");
-    /* The share passes through the commission, off the seller's net, and the line still adds up. */
+    const mug = lines.find(line => line.productTitle === "mug")!;
+    expect(sofa).toMatchObject({ referrerId: people.creator.id, referralRate: "20.00", affiliateVendorPercent: "3.00" });
+    expect(mug).toMatchObject({ referrerId: people.creator.id, referralRate: "20.00", affiliateVendorPercent: null });
+    /* The store's share passes through the commission, off the seller's net, and the line still adds up. */
     expect(Number(sofa.commissionAmount) + Number(sofa.vendorNet)).toBeCloseTo(240, 3);
-    expect(sofa.vendorNet).toBe((240 - Number(sofa.commissionAmount)).toFixed(3));
     /* A later change of the store's rate does not reach back. */
     await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "10" });
     const [again] = await db.select().from(orderItems).where(eq(orderItems.id, sofa.id));
     expect(again.affiliateVendorPercent).toBe("3.00");
   });
 
-  it("does not attribute to a pending affiliate, to the buyer themselves, or to nonsense", async () => {
-    const pending = await as("creator").affiliates.join({ displayName: "Noura", acceptDisclosure: true });
-    expect((await placed(pending.code)).order.affiliateId).toBeNull();
-    /* Approved now: still not on the affiliate's own purchase. */
-    const { code } = await approvedCreator();
-    expect((await placed(code, "creator")).order.affiliateId).toBeNull();
-    expect((await placed("NL0002")).order.affiliateId).toBeNull();
-    expect((await placed("AFZZZZZZ")).order.affiliateId).toBeNull();
+  it("freezes nothing for somebody who never joined, for the buyer themselves, or for nonsense", async () => {
+    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "3" });
+    const unjoined = await placed(referralCodeFor(people.stranger.id));
+    expect(unjoined.lines.every(line => line.referrerId === null && line.affiliateVendorPercent === null)).toBe(true);
+    const { code } = await member();
+    expect((await placed(code, "creator")).lines.every(line => line.referrerId === null)).toBe(true);
+    expect((await placed("NLZZZZZZZZ")).lines.every(line => line.referrerId === null)).toBe(true);
   });
 
-  it("pays once, when the cash is collected, out of the store's own net", async () => {
-    const { code } = await approvedCreator();
+  it("reads an old affiliate link's AF code as the same member's link", async () => {
+    const { code } = await member();
+    const { lines } = await placed("AF" + code.slice(2));
+    expect(lines.every(line => line.referrerId === people.creator.id)).toBe(true);
+  });
+
+  it("pays NetLet points once, when the cash is collected, held until the return window passes", async () => {
+    const { code } = await member();
     await offerBoth();
     const { order, lines } = await placed(code);
     expect(await db.select().from(pointEntries)).toEqual([]);
     await collect(order.id);
     await collect(order.id);
-    const entries = await db.select().from(pointEntries).where(eq(pointEntries.pot, "affiliate"));
-    /* 3% of 240.000 and of 8.000, the store's rate on each line. */
-    expect(entries).toEqual([expect.objectContaining({ pot: "affiliate", reason: "affiliate_commission", points: 7200 + 240, orderId: order.id, userId: people.creator.id })]);
-    expect(lines.every(line => Number(line.vendorNet) > 0)).toBe(true);
-    const dashboard = await as("creator").affiliates.mine();
-    expect(dashboard).toMatchObject({ paidOrders: 1, earned: "7.440", balance: "7.440", payout: { ok: true } });
+    const entries = await db.select().from(pointEntries).where(eq(pointEntries.userId, people.creator.id));
+    expect(entries).toHaveLength(2);
+    for (const line of lines) {
+      const entry = entries.find(row => row.orderItemId === line.id)!;
+      /* NetLet's share of its own commission, and the store's 3% on top. */
+      expect(entry).toMatchObject({ pot: "points", reason: "product_referral", points: pointsFor(line) });
+      expect(pointsFor(line)).toBeGreaterThan(Number(vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent)));
+      expect(entry.availableAt!.getTime()).toBeGreaterThan(Date.now() + (RETURN_WINDOW_DAYS - 1) * DAY);
+    }
+    const total = lines.reduce((sum, line) => sum + pointsFor(line), 0);
+    expect(await as("creator").affiliates.mine()).toMatchObject({ paidOrders: 1, waitingOrders: 0, earnedPoints: total, heldPoints: total, reversedPoints: 0 });
+    /* Held, so not yet spendable: the points page says so. */
+    expect(await as("creator").rewards.mine()).toMatchObject({ balance: 0, held: total });
+    /* Nothing went to the old programme's money. */
+    expect(await db.select().from(pointEntries).where(eq(pointEntries.pot, "affiliate"))).toEqual([]);
   });
 
-  it("earns nothing on a product its store has not offered", async () => {
-    const { code } = await approvedCreator();
-    await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "3" });
-    const { order, lines } = await placed(code);
-    expect(lines.find(line => line.productTitle === "mug")!.affiliateVendorPercent).toBeNull();
-    await collect(order.id);
-    expect((await as("creator").affiliates.mine()).earned).toBe("7.200");
-  });
-
-  it("takes back a refunded line's share, exactly, once", async () => {
-    const { code } = await approvedCreator();
+  it("takes back a refunded line's points, exactly, once", async () => {
+    const { code } = await member();
     await offerBoth();
     const { order, lines } = await placed(code);
     await collect(order.id);
@@ -229,22 +268,31 @@ describe("earning", () => {
     const [request] = await db.select().from(returnRequests);
     await as("manager").returns.collect({ requestId: request.id });
     await as("manager").returns.receive({ requestId: request.id, restock: true });
+    const total = lines.reduce((sum, line) => sum + pointsFor(line), 0);
     const dashboard = await as("creator").affiliates.mine();
-    expect(dashboard).toMatchObject({ earned: "7.440", reversed: "0.240", balance: "7.200" });
+    expect(dashboard).toMatchObject({ earnedPoints: total, reversedPoints: pointsFor(mug) });
+    expect(dashboard.sales.filter((sale: { reversed: boolean }) => sale.reversed)).toHaveLength(1);
   });
+});
 
-  it("is its own pot: not spendable as points, and paid out at face value", async () => {
-    const { code } = await approvedCreator();
+describe("the old programme's money", () => {
+  it("still pays an order it attributed, in the affiliate pot, and never the store's share twice", async () => {
+    const { code, id } = await member();
     await offerBoth();
-    const { order } = await placed(code);
+    const { order, lines } = await placed(code);
+    /* An order placed under the old programme carried the affiliate on the order. */
+    await db.update(orders).set({ affiliateId: id }).where(eq(orders.id, order.id));
     await collect(order.id);
-    expect((await as("creator").rewards.mine()).balance).toBe(0);
-    const paid = await as("creator").affiliates.payout();
-    expect(paid).toEqual({ amount: "7.440" });
-    expect((await as("creator").affiliates.mine()).balance).toBe("0.000");
-    const owed = await as("admin").rewards.pendingCashOuts({});
-    expect(owed).toEqual([expect.objectContaining({ pot: "affiliate", value: "7.440", userId: people.creator.id })]);
-    await expect(as("creator").affiliates.payout()).rejects.toMatchObject({ message: "affiliate.notEnough" });
+    const money = await db.select().from(pointEntries).where(eq(pointEntries.pot, "affiliate"));
+    const storeShare = lines.reduce((sum, line) => sum + Number(vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent)), 0);
+    expect(money).toEqual([expect.objectContaining({ reason: "affiliate_commission", points: storeShare })]);
+    /* The points are NetLet's share alone on such an order. */
+    const points = await db.select().from(pointEntries).where(and(eq(pointEntries.pot, "points"), eq(pointEntries.reason, "product_referral")));
+    expect(points.reduce((sum, row) => sum + row.points, 0)).toBe(lines.reduce((sum, line) => sum + referralSharePoints(fromFils(netletCommissionFils(line)), "20.00"), 0));
+    const dashboard = await as("creator").affiliates.mine();
+    expect(dashboard.earlier).toMatchObject({ balance: fromFils(BigInt(storeShare)), payout: { ok: true } });
+    expect(await as("creator").affiliates.payout()).toEqual({ amount: fromFils(BigInt(storeShare)) });
+    expect(await as("admin").rewards.pendingCashOuts({})).toEqual([expect.objectContaining({ pot: "affiliate", value: fromFils(BigInt(storeShare)) })]);
   });
 });
 
@@ -260,11 +308,11 @@ describe("the stores' offers (3.7.1)", () => {
     expect(trail.map(row => row.after)).toEqual(expect.arrayContaining([{ affiliatePercent: "4.50" }, { affiliatePercent: null }]));
   });
 
-  it("lists what is offered to an approved affiliate, highest rate first, and to nobody else", async () => {
+  it("lists what pays extra to a member, highest rate first, and to nobody else", async () => {
     await as("manager").affiliates.setProduct({ productId: ids.sofaProduct, percent: "2" });
     await as("manager").affiliates.setProduct({ productId: ids.mugProduct, percent: "8" });
     expect(await as("creator").affiliates.products()).toBeNull();
-    await approvedCreator();
+    await member();
     const offered = await as("creator").affiliates.products();
     expect(offered.rows.map((row: { handle: string; percent: string }) => [row.handle, row.percent])).toEqual([["mug", "8.00"], ["sofa", "2.00"]]);
     expect(offered.total).toBe(2);
@@ -272,14 +320,14 @@ describe("the stores' offers (3.7.1)", () => {
 });
 
 describe("the switch", () => {
-  it("closes applications and stops new attribution, but still pays an order already attributed", async () => {
-    const { code } = await approvedCreator();
-    await offerBoth();
+  it("is on unless a shop turns it off; off closes joining and new links, but pays a line already frozen", async () => {
+    const { code } = await member();
     const { order } = await placed(code);
     await as("admin").features.set({ key: "affiliates", enabled: false });
     await expect(as("stranger").affiliates.join({ displayName: "X", acceptDisclosure: true })).rejects.toMatchObject({ message: "features.off" });
-    expect((await placed(code)).order.affiliateId).toBeNull();
+    expect((await placed(code)).lines.every(line => line.referrerId === null)).toBe(true);
+    expect((await as("creator").affiliates.code()).code).toBeNull();
     await collect(order.id);
-    expect((await as("creator").affiliates.mine()).balance).toBe("7.440");
+    expect((await as("creator").affiliates.mine()).earnedPoints).toBeGreaterThan(0);
   });
 });

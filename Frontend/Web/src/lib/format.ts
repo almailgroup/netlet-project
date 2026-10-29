@@ -35,6 +35,22 @@ function formatterFor(locale: LocaleCode, currency: string, whole: boolean): Int
   return formatter;
 }
 
+const counters = new Map<LocaleCode, Intl.NumberFormat>();
+
+/**
+ * A count in the page's language with its thousands grouped — "12,500
+ * points" rather than "12500" — in Western digits on the Arabic page too, for
+ * the prices' reason.
+ */
+export function formatCount(value: number, locale: LocaleCode = "en"): string {
+  let formatter = counters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(NUMBER_LOCALE[locale], { maximumFractionDigits: 0 });
+    counters.set(locale, formatter);
+  }
+  return formatter.format(Math.trunc(value));
+}
+
 /**
  * Format a Money or raw amount string into a localized currency string.
  * Falls back to `$X` rounding if Intl rejects the currency code.

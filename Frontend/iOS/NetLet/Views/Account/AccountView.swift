@@ -66,6 +66,13 @@ struct AccountView: View {
                     }
                 }
                 pointsRow
+                // Affiliate marketing, offered here to somebody who has not
+                // joined, on the owner's word — the web's join card. Only once
+                // the server has said so, so it never flashes for a member,
+                // and never to a suspended one.
+                if app.features.isOn("affiliates") && app.affiliateJoined == false {
+                    affiliatePromo
+                }
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { _, ids in
                     let rows = ids.filter { id in id == "language" || id == "signout" || entries.contains { $0.id == id } }
                     if !rows.isEmpty {
@@ -121,6 +128,7 @@ struct AccountView: View {
             orderPhotos = []
         }
         points = (await rewards)?.balance
+        await app.refreshMemberCode()
     }
 
     private func loadSaved() async {
@@ -235,17 +243,13 @@ struct AccountView: View {
             app.push(.rewards)
         } label: {
             HStack(spacing: 14) {
-                Image(systemName: "dollarsign.circle")
-                    .font(.system(size: 21))
-                    .foregroundStyle(ProfileInk.icon)
-                    .frame(width: 26)
-                    .accessibilityHidden(true)
+                PointsCoin(size: 26)
                 Text(l.t("account.points"))
                     .font(.inter(16, .medium))
                     .foregroundStyle(Brand.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 4) {
-                    Text(points.map { l.t("rewards.balance", ["points": "\($0)"]) } ?? "—")
+                    Text(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "—")
                         .font(.inter(15, .bold))
                         .monospacedDigit()
                     Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
@@ -262,6 +266,37 @@ struct AccountView: View {
         }
         .buttonStyle(PressFillStyle(cornerRadius: 24))
         .panel()
+    }
+
+    private var affiliatePromo: some View {
+        Button { app.push(.affiliate) } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "megaphone")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Color(red: 1, green: 0.671, blue: 0.522))
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(Color.white.opacity(0.1)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.t("affiliate.section")).font(.inter(16, .bold)).foregroundStyle(.white)
+                    Text(l.t("affiliate.promoBody"))
+                        .font(.inter(13))
+                        .foregroundStyle(Color(red: 214 / 255, green: 222 / 255, blue: 234 / 255))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(l.t("affiliate.promoJoin"))
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.white))
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Brand.navy))
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(.tap)
     }
 
     @ViewBuilder

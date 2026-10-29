@@ -194,7 +194,7 @@ struct ProductPhotos: View {
 
     /// Signed in, the address carries the sharer's code: a product link (3.1.14).
     private var shareURL: URL {
-        app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, userId: app.session.user?.id))
+        app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, code: app.memberCode))
     }
 
     /// One of the white discs on the photo.

@@ -34,10 +34,6 @@ final class SavedModel {
 
     func contains(_ productId: String) -> Bool { ids.contains(productId) }
 
-    /// What the heart that opens the wishlists counts: what is on them, or a
-    /// guest's Saved, which is where a guest's heart goes.
-    var listedCount: Int { signedIn ? wished.count : ids.count }
-
     /// Whether the heart is filled: in Saved, or on a wishlist.
     func isHearted(_ productId: String) -> Bool { ids.contains(productId) || wished.contains(productId) }
 

@@ -228,14 +228,16 @@ extension API {
     // MARK: Rewards and affiliates
 
     struct JoinAffiliates: Encodable, Sendable {
-        let displayName: String
-        var channel: String?
+        /// Nil is the account's first name, the server's default.
+        var displayName: String?
         let acceptDisclosure: Bool
     }
 
     static let rewards = Procedure<NoInput, Rewards>(query: "rewards.mine")
     static let cashOutRewards = Procedure<NoInput, Acknowledged>(mutation: "rewards.cashOut")
     static let affiliate = Procedure<NoInput, AffiliateDashboard?>(query: "affiliates.mine")
+    /// The code a member's Share carries, or nil (3.7).
+    static let memberCode = Procedure<NoInput, MemberCode?>(query: "affiliates.code")
     static let joinAffiliates = Procedure<JoinAffiliates, Acknowledged>(mutation: "affiliates.join")
     static let requestAffiliatePayout = Procedure<NoInput, PayoutRequested>(mutation: "affiliates.payout")
     /// The products stores offer to affiliates, each at its own rate (3.7.1); nil until approved.

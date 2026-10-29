@@ -43,10 +43,10 @@ import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
 import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
 import { GUIDE_SUMMARY_MAX, GUIDE_TITLE_MAX, GUIDE_TOPIC_MAX, MAX_GUIDE_STEPS, STEP_BODY_MAX, STEP_TITLE_MAX } from "../../../Shared/commerce/guides.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX } from "../../../Shared/commerce/reviews.js";
-import { ATTRIBUTION_DAYS, MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
+import { MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membership.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
-import { FILS_PER_POINT, MIN_CASH_OUT_POINTS } from "../../../Shared/commerce/referral.js";
+import { FILS_PER_POINT, MIN_CASH_OUT_POINTS, PRODUCT_LINK_DAYS } from "../../../Shared/commerce/referral.js";
 import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
@@ -215,7 +215,7 @@ export function buildResources(): Record<string, string> {
         ratingMax: RATING_MAX,
         maxReviewTitle: MAX_REVIEW_TITLE,
         maxReviewBody: MAX_REVIEW_BODY,
-        attributionDays: ATTRIBUTION_DAYS,
+        productLinkDays: PRODUCT_LINK_DAYS,
         minAffiliatePayoutFils: Number(MIN_AFFILIATE_PAYOUT_FILS),
         minCashOutPoints: MIN_CASH_OUT_POINTS,
         maxLists: MAX_LISTS_PER_SHOPPER,
