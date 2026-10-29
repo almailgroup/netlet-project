@@ -83,3 +83,45 @@ jobs:
             echo "no agent:     $(curl -sS -m 30 -o /dev/null -w '%{http_code} %{content_type}' -A '' "$photo")"
             curl -sSI -m 30 -A "$app_agent" "$photo" | grep -iE '^(server|cf-|cache-control|content-length|x-frame|vary|strict-transport)' | head -8
           done
+
+      # What the map services say at a few real Kuwaiti pins, in both
+      # languages: OpenStreetMap's own answer, and the shop's `maps.placeAt`,
+      # which reads the area, block and street out of whichever service it is
+      # configured for. The first is how the parser is checked against real
+      # answers (this sandbox cannot reach the services); the second is how
+      # the live shop is checked once deployed. Nominatim asks for one request
+      # a second and an agent that names the application.
+      - name: Addresses at a few Kuwaiti pins
+        run: |
+          agent="NetLet live check (+https://github.com/almailgroup/netlet-project)"
+          while read -r name lat lng; do
+            [ -z "$name" ] && continue
+            for lang in en ar; do
+              curl -sS -m 30 -A "$agent" \
+                "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=$lat&lon=$lng&zoom=18&addressdetails=1&accept-language=$lang" \
+                | jq -c --arg n "$name" --arg l "$lang" '{pin: $n, lang: $l, osm: {address, name, type, addresstype}}' || echo "$name $lang: no answer"
+              sleep 1.2
+              input=$(printf '{"json":{"lat":%s,"lng":%s,"locale":"%s"}}' "$lat" "$lng" "$lang" | jq -sRr @uri)
+              curl -sS -m 30 "$BASE/api/trpc/maps.placeAt?input=$input" \
+                | jq -c --arg n "$name" --arg l "$lang" '{pin: $n, lang: $l, shop: (.result.data.json // .error.json.message)}' || true
+            done
+          done <<'POINTS'
+          Salmiya 29.33750 48.07630
+          Jabriya 29.31970 48.02470
+          Mishref 29.27170 48.06170
+          Rumaithiya 29.31150 48.08190
+          Surra 29.31230 47.99580
+          Yarmouk 29.31360 47.96610
+          Khaitan 29.28530 47.97270
+          Fahaheel 29.08250 48.13030
+          Mangaf 29.09750 48.13130
+          Jahra 29.33750 47.65810
+          MubarakAlKabeer 29.18590 48.06120
+          Sharq 29.38330 47.99170
+          Hawalli 29.34170 48.02830
+          AbdullahAlMubarak 29.24000 47.89000
+          SabahAlSalem 29.25600 48.07000
+          Qurain 29.20200 48.06900
+          Egaila 29.17300 48.10200
+          Kaifan 29.33800 47.95800
+          POINTS
