@@ -3575,7 +3575,17 @@ control — Google's and Apple's own maps on the web show their places already,
 and OpenStreetMap's tiles carry theirs. Measured at 320 and 390 in both
 languages and 1440: the preview drawn with its pin and hint, the press opening
 the map at the saved pin with its address in the bubble, axe clean, no
-sideways scroll.
+sideways scroll. **A new pin starts where the shopper is, on the owner's
+word**: the map asks for the location once, as soon as it has drawn
+(`locateOnOpen`; the app's `finder.locate()` on appearing), so the browser's or
+the phone's own question comes with the map rather than behind "Use my
+location", and it moves to the spot and reads the address there. A pin being
+moved opens on itself and asks nothing, or it would carry the pin away from
+the address. Refused, it says so and stays at the governorate; somebody abroad
+is told the pin must be in Kuwait and the map stays too — the app checks that
+before moving now, where it had moved and then refused the pin. The iOS
+workflow grants the simulator its location, in Salmiya, so the picture is the
+map and not the system's question over it.
 
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.

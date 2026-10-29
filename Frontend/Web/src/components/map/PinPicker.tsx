@@ -149,6 +149,7 @@ export function PinPicker({ value, place, onChange, governorate }: {
       <PinMap
         start={value ?? centreFor(governorate)}
         zoom={value ? 17 : 12}
+        locateOnOpen={!value}
         onPin={(pin, read) => { onChange(pin, read); close(); }}
         onCancel={close}
       />
@@ -232,9 +233,11 @@ type Reading =
 
 const keyOf = (pin: Pin) => formatPin(cleanPin(pin));
 
-function PinMap({ start, zoom, onPin, onCancel }: {
+function PinMap({ start, zoom, locateOnOpen = false, onPin, onCancel }: {
   start: Pin;
   zoom: number;
+  /** Ask for the shopper's location as the map opens — a new pin, never one being moved. */
+  locateOnOpen?: boolean;
   onPin: (pin: Pin, place: PlaceAnswer | null) => void;
   onCancel: () => void;
 }) {
@@ -365,6 +368,22 @@ function PinMap({ start, zoom, onPin, onCancel }: {
       { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
     );
   };
+
+  /*
+   * A new pin starts where the shopper is, on the owner's word: the map asks
+   * for the location once, as soon as it has drawn, so the browser's own
+   * question comes with the map rather than behind a button. A pin being
+   * moved opens on itself and asks nothing — jumping to wherever the shopper
+   * happens to be would carry it away from the address. Refused, it says so
+   * and the map stays where it opened; "Use my location" asks again.
+   */
+  const askedOnOpen = useRef(false);
+  useEffect(() => {
+    if (state !== "ready" || !locateOnOpen || !canLocate || askedOnOpen.current) return;
+    askedOnOpen.current = true;
+    locate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   const confirm = async () => {
     const problem = pinProblem(centre);

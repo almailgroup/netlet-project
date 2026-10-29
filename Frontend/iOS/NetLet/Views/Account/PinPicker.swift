@@ -318,7 +318,13 @@ struct PinPickerSheet: View {
                     ))
                 }
             }
-            .onAppear { openedAt = Date() }
+            .onAppear {
+                openedAt = Date()
+                // A new pin starts where the shopper is, on the owner's word:
+                // the map asks for the location as it opens (the system's own
+                // question the first time). A pin being moved opens on itself.
+                if !zoomedIn { finder.locate() }
+            }
             .onDisappear { lookup?.cancel() }
         }
         .environment(\.layoutDirection, l.layoutDirection)
@@ -568,7 +574,14 @@ final class LocationFinder: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             self.locating = false
             if let coordinate {
-                self.found = Pin(lat: coordinate.latitude, lng: coordinate.longitude)
+                // Somebody abroad is told why the map stayed, rather than
+                // carried out of Kuwait where no pin can be dropped.
+                let here = Pin(lat: coordinate.latitude, lng: coordinate.longitude)
+                if let problem = here.problem() {
+                    self.problem = problem
+                } else {
+                    self.found = here
+                }
             } else {
                 self.problem = "pin.notFound"
             }
