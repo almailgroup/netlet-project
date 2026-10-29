@@ -32,7 +32,17 @@ struct AddressBookView: View {
             }
             .task {
                 await book.load()
-                if app.addressStep != nil { editing = Editing(address: nil) }
+                if app.addressStep == "edit" {
+                    // The screenshots' saved address, opened for editing with
+                    // its pin on the map.
+                    app.addressStep = nil
+                    if var row = book.state.value?.first {
+                        if row.pin == nil { row.pin = Pin(lat: 29.3376, lng: 48.0757) }
+                        editing = Editing(address: row)
+                    }
+                } else if app.addressStep != nil {
+                    editing = Editing(address: nil)
+                }
             }
             .sheet(item: $editing) { subject in
                 AddressFormSheet(address: subject.address) { _ in

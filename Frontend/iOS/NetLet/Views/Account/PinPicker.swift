@@ -18,7 +18,30 @@ struct PinField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if pin != nil {
+            if let pin {
+                // Where the address was saved, on a still map — on the owner's
+                // word — and a press on it opens the map at the pin to move
+                // it. "Move the pin" below is the same act for VoiceOver, so
+                // the map is not a second element to it.
+                Button { picking = true } label: {
+                    StillPinMap(pin: pin)
+                        .frame(height: 180)
+                        .allowsHitTesting(false)
+                        .overlay(alignment: .top) {
+                            Label(l.t("pin.tapToMove"), systemImage: "hand.tap")
+                                .font(.inter(12, .heavy))
+                                .foregroundStyle(Brand.navy)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Capsule().fill(Color.white.opacity(0.95)))
+                                .shadow(color: Brand.navy.opacity(0.18), radius: 5, y: 2)
+                                .padding(.top, 8)
+                                .environment(\.layoutDirection, l.layoutDirection)
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.tap)
+                .accessibilityHidden(true)
                 let line = place.map { $0.parts.line(l.current) } ?? ""
                 Label {
                     Text(line.isEmpty ? l.t("pin.pinned") : l.t("pin.pinnedAt", ["place": "\u{2068}\(line)\u{2069}"]))
@@ -197,6 +220,9 @@ struct PinPickerSheet: View {
     @State private var lookup: Task<Void, Never>?
     @State private var pinning = false
     @State private var openedAt = Date()
+    /// The satellite view, where somebody finds their own roof — the web's
+    /// map/satellite control. Places are named on both.
+    @State private var satellite = false
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -240,7 +266,7 @@ struct PinPickerSheet: View {
                 Map(position: $position) {
                     UserAnnotation()
                 }
-                .mapStyle(.standard(pointsOfInterest: .excludingAll))
+                .mapStyle(satellite ? .hybrid(elevation: .flat, pointsOfInterest: .all) : .standard(elevation: .flat, pointsOfInterest: .all))
                 .mapControls { MapCompass() }
                 .onMapCameraChange(frequency: .continuous) { context in
                     camera.centre = context.region.center
@@ -270,6 +296,7 @@ struct PinPickerSheet: View {
                 .environment(\.layoutDirection, .leftToRight)
                 .overlay { PinMark(lifted: lifted, drop: drops) }
                 .overlay { bubble }
+                .overlay(alignment: .top) { viewSwitch }
             }
             .ignoresSafeArea(edges: .bottom)
             .safeAreaInset(edge: .bottom) { controls }
@@ -295,6 +322,35 @@ struct PinPickerSheet: View {
             .onDisappear { lookup?.cancel() }
         }
         .environment(\.layoutDirection, l.layoutDirection)
+    }
+
+    /// Map or satellite, in a pill over the top of the map.
+    private var viewSwitch: some View {
+        HStack(spacing: 2) {
+            ForEach([false, true], id: \.self) { on in
+                Button {
+                    guard satellite != on else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) { satellite = on }
+                } label: {
+                    Text(l.t(on ? "ios.pin.satellite" : "ios.pin.standard"))
+                        .font(.inter(13, satellite == on ? Inter.Weight.heavy : Inter.Weight.semibold))
+                        .foregroundStyle(satellite == on ? Color.white : Brand.navy)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 34)
+                        .background(Capsule().fill(satellite == on ? Brand.navy : Color.clear))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.tap)
+                .accessibilityAddTraits(satellite == on ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(Capsule().fill(Color.white.opacity(0.96)))
+        .shadow(color: Brand.navy.opacity(0.18), radius: 6, y: 2)
+        .padding(.top, 10)
+        .environment(\.layoutDirection, l.layoutDirection)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("ios.pin.view"))
     }
 
     private var current: Reading? {
@@ -534,8 +590,10 @@ struct StillPinMap: View {
 
     var body: some View {
         let coordinate = CLLocationCoordinate2D(latitude: pin.lat, longitude: pin.lng)
-        Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 350, longitudinalMeters: 350)), interactionModes: [])
-            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+        Map(initialPosition: .region(MKCoordinateRegion(center: coordinate, latitudinalMeters: 400, longitudinalMeters: 400)), interactionModes: [])
+            .mapStyle(.standard(elevation: .flat, pointsOfInterest: .all))
+            // Its position is only its first: a moved pin is a new map.
+            .id("\(pin.lat),\(pin.lng)")
             .environment(\.layoutDirection, .leftToRight)
             .overlay { PinMark() }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

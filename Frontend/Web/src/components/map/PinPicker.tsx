@@ -49,7 +49,7 @@
  * the other map when there is one, rather than leaving a grey box.
  */
 import { useEffect, useId, useRef, useState } from "react";
-import { LoaderCircle, LocateFixed, MapPin, X } from "lucide-react";
+import { LoaderCircle, LocateFixed, MapPin, Move, X } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { readStored, writeStored } from "@/lib/browserStore";
@@ -160,6 +160,28 @@ export function PinPicker({ value, place, onChange, governorate }: {
     <div className="rounded-2xl border border-[#d5dfeb] bg-white p-4">
       {value ? (
         <>
+          {/* Where the address was saved, on a still map — on the owner's
+              word — and a press on it opens the map at the pin to move it.
+              The press is for the eye and the finger: "Move the pin" below is
+              the same act for a keyboard and a screen reader, the card
+              photo's rule, so the map adds no second stop. */}
+          <div className="relative mb-3">
+            <StillMap pin={value} className="h-44 sm:h-48" />
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              onClick={() => setOpen(true)}
+              className="map-preview-press absolute inset-0 rounded-2xl"
+            >
+              <span className="absolute inset-x-2 top-2 flex justify-center">
+                <span className="map-preview-hint inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-center text-[12px] font-extrabold leading-4 text-[#0a285a] shadow-[0_2px_10px_rgba(10,40,90,0.18)]">
+                  <Move className="size-3.5 shrink-0" aria-hidden />
+                  {t("pin.tapToMove")}
+                </span>
+              </span>
+            </button>
+          </div>
           <p className="flex items-start gap-2 text-[13px] font-extrabold text-[#0a285a]">
             <MapPin className="mt-0.5 size-4 shrink-0 ink-accent" aria-hidden />
             {line ? (

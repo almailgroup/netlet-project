@@ -365,7 +365,8 @@ final class AppModel {
             accountPath = NavigationPath([Route.listings, Route.newListing])
         case "address":
             // `address:pin` or `address:confirm` — a new address in the book,
-            // on its map or at "Is this your address?".
+            // on its map or at "Is this your address?"; `address:edit` — a
+            // saved one opened for editing, its pin on the map.
             addressStep = value ?? "pin"
             openAccount(.addresses)
         case "section":

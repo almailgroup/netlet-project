@@ -3558,6 +3558,25 @@ the real samples, at 390 in both languages and 1440: the lift mid-drag, the drop
 15ms buzz, the bubble, the boxes filled and marked, a typed block kept and
 named, Edit and Yes, axe clean on the form, the sheet and the book.
 
+**A saved pin is shown where it is edited, on the owner's word**: the pin card
+of an address with a pin is its still map with the pin in the middle and "Tap
+to move the pin" over it, and a press anywhere on the map opens the map at the
+pin (`PinPicker`, `PinField`). The press is for the eye and the finger —
+`tabIndex={-1}` and `aria-hidden` on the web, hidden from VoiceOver in the app —
+because "Move the pin" under it is the same act, the card photo's rule. The
+hint sits at the map's top, clear of every map's attribution and logo at its
+foot, and is short enough to stay one line on a 320px phone, where two lines
+reached the pin's head. **The map names places, also on the owner's word**:
+the app's map drew no points of interest (`.excludingAll`), so Kuwait was roads
+and area names with no shop, mosque, school or landmark to find a street by;
+it draws them all now, on the picker, the preview and "Is this your address?",
+and offers Map and Satellite in a pill at its top, the web's map/satellite
+control — Google's and Apple's own maps on the web show their places already,
+and OpenStreetMap's tiles carry theirs. Measured at 320 and 390 in both
+languages and 1440: the preview drawn with its pin and hint, the press opening
+the map at the saved pin with its address in the bubble, axe clean, no
+sideways scroll.
+
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
 
@@ -6141,7 +6160,10 @@ map's pin lifts and drops with `Haptics.pinDrop` at 0.75, the bubble names what
 `maps.placeAt` read, the boxes fill pale orange (`PinFill`, tested on the
 TypeScript's cases), and Save asks "Is this your address?" in a sheet
 (`AddressConfirmSheet`); the CI photographs both (`-NetLetOpen address:pin` and
-`address:confirm`, `55-address-pin`, `56-address-confirm`). The home page is `HomeShelf`, which is
+`address:confirm`, `55-address-pin`, `56-address-confirm`), and a saved one
+opened for editing with its pin on a still map that opens the picker
+(`address:edit`, `57-address-edit`); every map names its places
+(`pointsOfInterest: .all`) and the picker switches Map and Satellite. The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked
