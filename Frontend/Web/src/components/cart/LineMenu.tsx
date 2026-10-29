@@ -142,14 +142,24 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   };
 
   /* The small menu sits under the button, or over it when the screen has no
-     room below, measured as it opens. */
-  useLayoutEffect(() => {
-    if (!open || !wide || !button.current) return;
-    const rect = button.current.getBoundingClientRect();
-    const rtl = getComputedStyle(button.current).direction === "rtl";
+     room below, measured as it opens and again as the page moves — it
+     follows its button while the button is on screen, and closes once it is
+     not. Closing on any scroll shut it under a press made while a smooth
+     scroll was still settling. */
+  const measure = () => {
+    const anchor = button.current;
+    if (!anchor) return false;
+    const rect = anchor.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) return false;
+    const rtl = getComputedStyle(anchor).direction === "rtl";
     const end = rtl ? rect.left : window.innerWidth - rect.right;
     const roomBelow = window.innerHeight - rect.bottom;
     setPlace(roomBelow > 300 ? { top: rect.bottom + 6, end } : { bottom: window.innerHeight - rect.top + 6, end });
+    return true;
+  };
+  useLayoutEffect(() => {
+    if (open && wide) measure();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, wide]);
 
   useEffect(() => {
@@ -160,17 +170,17 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
       const target = event.target as Node;
       if (!menu.current?.contains(target) && !button.current?.contains(target)) setOpen(false);
     };
-    /* A scroll moves the button from under the menu. */
-    const away = () => setOpen(false);
+    const follow = () => { if (!measure()) setOpen(false); };
     document.addEventListener("pointerdown", outside);
-    window.addEventListener("resize", away);
-    window.addEventListener("scroll", away, true);
+    window.addEventListener("resize", follow);
+    window.addEventListener("scroll", follow, true);
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("pointerdown", outside);
-      window.removeEventListener("resize", away);
-      window.removeEventListener("scroll", away, true);
+      window.removeEventListener("resize", follow);
+      window.removeEventListener("scroll", follow, true);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, wide]);
 
   /* The sheet is a modal: Escape, the page held still, focus handed back. */
