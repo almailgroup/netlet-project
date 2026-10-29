@@ -735,12 +735,33 @@ struct DeliveryLine: View {
         }
     }
 
-    private func day(_ date: Date) -> String {
+    private func day(_ date: Date) -> String { Self.shortDay(date, l.current) }
+
+    /// "Tue 13 Oct", on Kuwait's calendar, in the page's language.
+    static func shortDay(_ date: Date, _ language: Language) -> String {
         let formatter = DateFormatter()
-        formatter.locale = l.current.locale
-        formatter.timeZone = Self.kuwait
+        formatter.locale = language.locale
+        formatter.timeZone = kuwait
         formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
         return formatter.string(from: date)
+    }
+
+    /// The slowest band among a parcel's lines, which is when it is complete
+    /// (`slowestSpeed`); nil when no line's seller stated one.
+    static func slowest(_ speeds: [String?]) -> String? {
+        let order = ["same_day", "next_day", "two_to_four", "up_to_week", "made_to_order"]
+        return speeds.compactMap { $0 }.filter { order.contains($0) }.max { order.firstIndex(of: $0)! < order.firstIndex(of: $1)! }
+    }
+
+    /// When a band says a parcel arrives — "Arrives Tue 13 Oct" or a range,
+    /// counted from today across the Kuwaiti weekend (`arrivalFor`) — or the
+    /// band's own words where it has no window.
+    static func arrival(_ speed: String?, language: LanguageSettings, now: Date = Date()) -> String? {
+        guard let speed else { return nil }
+        guard let window = windows[speed] else { return language.t("speed.\(speed)") }
+        let from = shortDay(addBusinessDays(window.lowerBound, from: now), language.current)
+        let to = shortDay(addBusinessDays(window.upperBound, from: now), language.current)
+        return from == to ? language.t("checkout.arrivesOne", ["date": to]) : language.t("checkout.arrives", ["from": from, "to": to])
     }
 
     static let kuwait = TimeZone(identifier: "Asia/Kuwait") ?? TimeZone(secondsFromGMT: 3 * 3600)!

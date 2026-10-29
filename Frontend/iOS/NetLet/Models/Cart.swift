@@ -52,6 +52,12 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     var fastDelivery: FastDelivery? = nil
     /// The store selling it, so the bag draws each store's lines together.
     var vendor: CartStore? = nil
+    /// The line's product, so its menu can save it for later or put it on a
+    /// wishlist; a bag read before the server sent it has none.
+    var productId: String? = nil
+    /// The seller's shipping band for this line (`speedForLine`), which
+    /// checkout turns into the day it arrives; nil when the seller stated none.
+    var deliverySpeed: String? = nil
 
     struct FastDelivery: Decodable, Hashable, Sendable {
         let fee: Money

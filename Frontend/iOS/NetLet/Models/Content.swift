@@ -255,3 +255,8 @@ extension Array {
     /// Nil for an empty list, so an optional field is not sent at all.
     var nilIfEmpty: [Element]? { isEmpty ? nil : self }
 }
+
+extension String {
+    /// Nil for an empty string, so `??` can fall through to the next answer.
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}

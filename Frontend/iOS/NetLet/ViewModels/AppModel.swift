@@ -156,7 +156,7 @@ final class AppModel {
     /// The header's "Deliver to" sheet.
     var deliveryOpen = false
     /// The product whose heart is asking which wishlist (`WishSheet`).
-    var wishAsking: Product?
+    var wishAsking: WishTarget?
     /// The product a hold on its card is previewing (`QuickViewSheet`).
     var previewing: Product?
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
@@ -182,6 +182,10 @@ final class AppModel {
     struct Toast: Identifiable, Equatable {
         let id = UUID()
         let text: String
+        /// A press that takes back what was just done — the bag's Undo.
+        var undo: (@MainActor () -> Void)? = nil
+
+        static func == (lhs: Toast, rhs: Toast) -> Bool { lhs.id == rhs.id }
     }
 
     enum Tab: Hashable, CaseIterable {
@@ -385,7 +389,7 @@ final class AppModel {
             if signedIn { await saved.unwish(product.id) } else { await saved.toggle(product.id) }
             toast(language.t(signedIn ? "wish.unwished" : "saved.removed", ["name": "\u{2068}\(product.title)\u{2069}"]))
         } else if session.isSignedIn && features.isOn("wishlists") {
-            wishAsking = product
+            wishAsking = WishTarget(productId: product.id, title: product.title)
         } else {
             await saved.toggle(product.id)
             toast(language.t("saved.savedForLater", ["name": "\u{2068}\(product.title)\u{2069}"]))
@@ -394,14 +398,18 @@ final class AppModel {
 
     /// Says something briefly — a heart saved, an add that failed — and takes
     /// it away again.
-    func toast(_ text: String) {
-        let shown = Toast(text: text)
+    func toast(_ text: String, undo: (@MainActor () -> Void)? = nil) {
+        let shown = Toast(text: text, undo: undo)
         toastMessage = shown
         Task {
-            try? await Task.sleep(for: .seconds(2.6))
+            // Longer with an Undo, so there is time to reach it.
+            try? await Task.sleep(for: .seconds(undo == nil ? 2.6 : 5))
             if toastMessage == shown { toastMessage = nil }
         }
     }
+
+    /// Puts the toast away — once its Undo has been pressed.
+    func dismissToast() { toastMessage = nil }
 
     /// A link on the site, opened in the app: an account screen on the Profile
     /// tab, a shopping screen on the tab that is showing.

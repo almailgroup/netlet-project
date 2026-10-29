@@ -67,7 +67,8 @@ enum BagOps {
             bundleName: nil,
             addons: [],
             // The card knows its store by address only; the server's answer adds the id.
-            vendor: product.vendorSlug.map { CartStore(id: nil, name: product.vendor ?? "", nameAr: nil, slug: $0) }
+            vendor: product.vendorSlug.map { CartStore(id: nil, name: product.vendor ?? "", nameAr: nil, slug: $0) },
+            productId: product.id
         )
         return withQuantity(item, quantity)
     }

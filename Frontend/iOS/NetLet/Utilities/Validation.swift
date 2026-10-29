@@ -138,15 +138,20 @@ enum Validation {
         return true
     }
 
-    // MARK: Checkout — `refusalFor` and `partsProblems`
+    // MARK: Checkout — the web checkout's blockers and `partsProblems`
 
-    /// The first thing a delivery still needs, in the order checkout asks for it.
-    static func deliveryProblem(governorate: String?, parts: AddressParts, phone: String, requiredParts: [String]) -> String? {
-        if governorate == nil { return "checkout.needGovernorate" }
-        let cleaned = parts.cleaned()
-        if requiredParts.contains(where: { cleaned.value(for: $0) == nil }) { return "checkout.needAddress" }
-        if let paci = cleaned.paciNumber, paci.count != 8 || !paci.allSatisfy({ ("0"..."9").contains($0) }) {
-            return "address.badPaci"
+    /// The first thing the chosen saved address still needs for an order, in
+    /// the order the web's checkout says them: a door at all, the parts a
+    /// driver finds it by, then the number the driver rings. An address kept
+    /// as one line before the parts existed is ordered to by its line.
+    static func savedAddressProblem(_ address: SavedAddress, phone: String, requiredParts: [String]) -> String? {
+        if address.line(.en).isEmpty { return "checkout.needAddress" }
+        let cleaned = (address.parts ?? AddressParts()).cleaned()
+        if !cleaned.isEmpty {
+            if requiredParts.contains(where: { cleaned.value(for: $0) == nil }) { return "address.needsParts" }
+            if let paci = cleaned.paciNumber, paci.count != 8 || !paci.allSatisfy({ ("0"..."9").contains($0) }) {
+                return "address.badPaci"
+            }
         }
         let trimmed = phone.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return "checkout.needPhone" }

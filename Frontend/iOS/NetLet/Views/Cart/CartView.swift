@@ -1,17 +1,25 @@
 import SwiftUI
 
-/// The bag — the web's `/cart` on a phone: where the order is going and the
-/// wishlists on a bar of its own, then each store's lines together under its
-/// name with that store's delivery beside them, the summary the server worked
-/// out, and Checkout under the thumb.
+/// The bag — the web's `/cart` on a phone: the title with a heart to the
+/// wishlists at its end, where the order is going, each store's lines
+/// together under its name with that store's delivery beside them, the
+/// summary the server worked out, Checkout under the thumb, and what was saved
+/// for later under it all.
 ///
-/// **The bar is on the owner's word**: the Cart tab has no header, so the
-/// delivery location the header carries is at its start — the same address
-/// book (`DeliverySheet`) — and a heart to the wishlists at its end.
+/// **It asks where the order is going, on the owner's word** — checkout only
+/// confirms it. The first card is the address (`DeliveryAddressCard`, the
+/// header's address book), and Checkout pressed without one opens the book
+/// first and goes on once one is chosen. Every line has a menu
+/// (`LineMenuButton`) that saves it for later, moves it to a wishlist, shares
+/// it, opens it or takes it out.
 struct CartView: View {
     @Binding var path: NavigationPath
     @State private var pageBottom: CGFloat = .infinity
     @State private var buttonTop: CGFloat = 0
+    /// Checkout was pressed with no address: go on once one is chosen.
+    @State private var continuing = false
+    /// The number on "Your profile", for an address that carries none.
+    @State private var accountPhone: String?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -19,13 +27,17 @@ struct CartView: View {
         let cart = app.cart.cart
         ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }) {
             VStack(alignment: .leading, spacing: 0) {
-                CartTopBar(path: $path).padding(.bottom, 14)
-                Text(l.t("cart.title")).pageTitle()
-                if let cart, !cart.isEmpty {
-                    Text(l.t("cart.itemCount", ["count": "\(cart.itemCount)"]))
-                        .font(.inter(15))
-                        .foregroundStyle(Brand.body)
-                        .padding(.top, 6)
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(l.t("cart.title")).pageTitle()
+                        if let cart, !cart.isEmpty {
+                            Text(l.t("cart.itemCount", ["count": "\(cart.itemCount)"]))
+                                .font(.inter(15))
+                                .foregroundStyle(Brand.body)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    CartWishlistButton(path: $path)
                 }
                 Color.clear.frame(height: 20)
                 if app.cart.settling && (cart?.isEmpty ?? true) {
@@ -42,6 +54,7 @@ struct CartView: View {
                     ) { app.goHome() }
                     .card(padding: 0)
                 }
+                SavedForLaterRow()
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -62,11 +75,49 @@ struct CartView: View {
         }
         .animation(.easeOut(duration: 0.2), value: buttonTop > pageBottom - 8)
         .task(id: l.current) { await app.cart.refresh() }
+        .task(id: app.session.isSignedIn) {
+            guard app.session.isSignedIn else {
+                accountPhone = nil
+                return
+            }
+            accountPhone = (try? await app.services.account.profileDetails().phone)?.nilIfEmpty.map(PhoneNumber.display)
+        }
+        // The book closed with an address chosen: on to checkout, as pressed.
+        .onChange(of: app.deliveryOpen) { _, open in
+            guard !open, continuing else { return }
+            if app.delivery.inUse != nil {
+                continuing = false
+                path.append(Route.checkout)
+            } else {
+                // A new address is saved and read back; give it a moment.
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    continuing = false
+                }
+            }
+        }
+        .onChange(of: app.delivery.inUse?.id) { _, id in
+            guard continuing, !app.deliveryOpen, id != nil else { return }
+            continuing = false
+            path.append(Route.checkout)
+        }
+    }
+
+    /// Checkout asks where first: signed in with no address in use, the
+    /// address book opens on the press, and checkout follows once one is chosen.
+    private func goToCheckout() {
+        if app.session.isSignedIn && app.delivery.loaded && app.delivery.inUse == nil {
+            continuing = true
+            app.deliveryOpen = true
+            return
+        }
+        path.append(Route.checkout)
     }
 
     private func filled(_ cart: Cart) -> some View {
         let groups = BagGroup.groups(cart)
         return VStack(spacing: 12) {
+            DeliveryAddressCard(accountPhone: accountPhone)
             if let recovery = cart.recovery, recovery.remind, let count = recovery.itemCount, let hours = recovery.hours {
                 // Said where it is seen rather than in an email nobody can send.
                 VStack(alignment: .leading, spacing: 2) {
@@ -118,7 +169,7 @@ struct CartView: View {
 
     private func checkoutButton(_ cart: Cart) -> some View {
         Button {
-            path.append(Route.checkout)
+            goToCheckout()
         } label: {
             HStack(spacing: 8) {
                 Text(l.t("cart.checkout"))
@@ -137,7 +188,7 @@ struct CartView: View {
                 Text(cart.total.formatted(l.current)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .opacity(app.cart.syncing ? 0.5 : 1)
             }
-            Button(l.t("cart.checkoutShort")) { path.append(Route.checkout) }
+            Button(l.t("cart.checkoutShort")) { goToCheckout() }
                 .buttonStyle(AccentButtonStyle())
         }
         .padding(.horizontal, 16)
@@ -150,71 +201,31 @@ struct CartView: View {
     }
 }
 
-/// Where the order is going, at the start, and the wishlists, at the end —
-/// the web's `CartTopBar`. The location is the header's own
-/// (`DeliveryModel.label`) and opens the same address book; here it says
-/// "Deliver to" out loud. The heart goes to the wishlists, or for somebody
-/// signed out — who has hearts on the phone and no lists — to Saved, with how
-/// many are saved on its shoulder.
-private struct CartTopBar: View {
+/// The wishlists, at the end of the title's line: the place somebody sends
+/// what they decided not to buy yet. A guest — who has hearts on the phone and
+/// no lists — goes to Saved. It counts the hearts.
+private struct CartWishlistButton: View {
     @Binding var path: NavigationPath
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let place = app.delivery.label(l.current) ?? l.t("home.chooseAreaShort")
         let signedIn = app.session.isSignedIn
-        HStack(spacing: 12) {
-            Button {
-                app.deliveryOpen = true
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Brand.accentInk)
-                        .frame(width: 40, height: 40)
-                        .background(Circle().fill(Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)))
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(l.t("home.deliverTo"))
-                            .font(.inter(12, .medium))
-                            .foregroundStyle(Brand.muted)
-                        HStack(spacing: 4) {
-                            Text(place)
-                                .font(.inter(15, .bold))
-                                .foregroundStyle(Brand.navy)
-                                .lineLimit(1)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Brand.navy)
-                        }
-                    }
+        Button {
+            path.append(signedIn ? Route.wishlists : Route.saved)
+        } label: {
+            Image(systemName: "heart")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Brand.navy)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
+                .overlay(alignment: .topTrailing) {
+                    PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 6, y: -6)
                 }
-                .padding(.vertical, 4)
-                .padding(.trailing, 8)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(PressFillStyle(cornerRadius: 14, strength: Haptics.actionStrength))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
-            .accessibilityHint(l.t("delivery.buttonTitle"))
-            .accessibilityAddTraits(.isButton)
-            Spacer(minLength: 8)
-            Button {
-                path.append(signedIn ? Route.wishlists : Route.saved)
-            } label: {
-                Image(systemName: "heart")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Brand.navy)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
-                    .overlay(alignment: .topTrailing) {
-                        PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 6, y: -6)
-                    }
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.tap)
-            .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
+                .contentShape(Circle())
         }
+        .buttonStyle(.tap)
+        .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
     }
 }
 
@@ -330,17 +341,22 @@ struct CartLineRow: View {
             .buttonStyle(.tap)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                // The stepper's minus is a bin at one, the app's way of taking
-                // a line out, so the line carries no second one.
-                NavigationLink(value: Route.product(handle: item.productHandle)) {
-                    Text(title)
-                        .font(.inter(14, .heavy))
-                        .foregroundStyle(Brand.navy)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                // The stepper's minus is a bin at one, and the menu beside the
+                // name holds the rest of what can be done with the line.
+                HStack(alignment: .top, spacing: 4) {
+                    NavigationLink(value: Route.product(handle: item.productHandle)) {
+                        Text(title)
+                            .font(.inter(14, .heavy))
+                            .foregroundStyle(Brand.navy)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.tap)
+                    LineMenuButton(item: item, title: title)
+                        .padding(.top, -8)
+                        .padding(.trailing, -10)
                 }
-                .buttonStyle(.tap)
                 if let variant = item.variantLabel {
                     Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
                 }

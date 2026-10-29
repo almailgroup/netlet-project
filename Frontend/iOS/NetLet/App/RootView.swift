@@ -51,11 +51,11 @@ struct RootView: View {
         }
         .overlay(alignment: .top) {
             if let toast = app.toastMessage {
-                ToastView(text: toast.text)
-                    .padding(.top, 72)
-                    .padding(.horizontal, 16)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                    .id(toast.id)
+                ToastView(text: toast.text, undo: toast.undo) { app.dismissToast() }
+                .padding(.top, 72)
+                .padding(.horizontal, 16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .id(toast.id)
             }
         }
         .animation(.easeOut(duration: 0.2), value: app.searchOpen)
@@ -71,8 +71,8 @@ struct RootView: View {
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
-        .sheet(item: $app.wishAsking) { product in
-            WishSheet(product: product)
+        .sheet(item: $app.wishAsking) { target in
+            WishSheet(target: target)
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
@@ -110,22 +110,40 @@ struct RootView: View {
     }
 }
 
-/// A short message, the web's toast: a white card with a soft shadow.
+/// A short message, the web's toast: a white card with a soft shadow, and an
+/// Undo beside the words where what was done can be taken back.
 private struct ToastView: View {
     let text: String
+    var undo: (@MainActor () -> Void)? = nil
+    /// Puts the toast away once its Undo is pressed.
+    var dismiss: @MainActor () -> Void = {}
+    @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Text(text)
-            .font(.inter(14, .medium))
-            .foregroundStyle(Brand.ink)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .shadow(color: Brand.navy.opacity(0.12), radius: 12, x: 0, y: 6)
-            .accessibilityAddTraits(.updatesFrequently)
-            .onAppear { announce(text) }
+        HStack(spacing: 14) {
+            Text(text)
+                .font(.inter(14, .medium))
+                .foregroundStyle(Brand.ink)
+                .multilineTextAlignment(undo == nil ? .center : .leading)
+            if let undo {
+                Button(l.t("cart.undo")) {
+                    undo()
+                    dismiss()
+                }
+                    .font(.inter(14, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(minHeight: 32)
+                    .buttonStyle(.tap)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .shadow(color: Brand.navy.opacity(0.12), radius: 12, x: 0, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.updatesFrequently)
+        .onAppear { announce(text) }
     }
 }
 

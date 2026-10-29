@@ -86,10 +86,6 @@ enum AffiliateRules {
     }
 }
 
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
-}
-
 extension API {
     struct ProposeCommission: Encodable, Sendable {
         let vendorId: Int

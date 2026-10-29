@@ -290,59 +290,67 @@ final class AuthViewModelTests: XCTestCase {
 
 @MainActor
 final class CheckoutViewModelTests: XCTestCase {
+    private let home = SavedAddress(id: 8, label: "Home", contactName: "Noura", contactPhone: "٥٠٠٠ ٠٠٠٠", governorate: "hawalli", addressLine: nil, addressNotes: " Ring twice ",
+                                    parts: AddressParts(area: "Salmiya", block: " 4 ", street: "12", building: "15"))
+
     func testSaysWhatIsMissingFirstReasonFirst() async throws {
         let model = CheckoutViewModel(orders: FakeOrderService(), account: FakeAccountService(), defaults: isolatedDefaults())
         let cart = try await Fixtures.cart()
-        XCTAssertEqual(model.blocker(for: nil), "checkout.needItems")
-        XCTAssertEqual(model.blocker(for: cart), "checkout.needGovernorate")
-        model.chooseArea(Area(en: "Salmiya", ar: "السالمية"))
-        XCTAssertEqual(model.governorate, "hawalli", "an area chooses its governorate")
-        XCTAssertEqual(model.blocker(for: cart), "checkout.needAddress")
+        XCTAssertEqual(model.blocker(for: nil, address: home), "checkout.needItems")
+        XCTAssertEqual(model.blocker(for: cart, address: nil), "checkout.needAddressChoice", "checkout confirms an address the cart chose")
+        let unfinished = SavedAddress(id: 2, label: "Office", contactName: nil, contactPhone: "50000000", governorate: "capital", addressLine: nil, addressNotes: nil,
+                                      parts: AddressParts(area: "Sharq"))
+        XCTAssertEqual(model.blocker(for: cart, address: unfinished), "address.needsParts")
+        XCTAssertNil(model.blocker(for: cart, address: home))
     }
 
-    func testPlacesACashOrderWithTheNumberReadAsKuwaiti() async throws {
+    func testPlacesACashOrderFromTheSavedAddress() async throws {
         let orders = FakeOrderService()
-        let model = CheckoutViewModel(orders: orders, account: FakeAccountService(), defaults: isolatedDefaults())
+        let defaults = isolatedDefaults()
+        let model = CheckoutViewModel(orders: orders, account: FakeAccountService(), defaults: defaults)
         let cart = try await Fixtures.cart()
-        model.chooseGovernorate("hawalli")
-        model.parts = AddressParts(area: "Salmiya", block: " 4 ", street: "12", building: "15")
-        model.contactPhone = "٥٠٠٠ ٠٠٠٠"
-        let placed = await model.place(cart: cart)
+        let placed = await model.place(cart: cart, address: home)
         XCTAssertEqual(placed?.reference, "NL-20261018-YNTM9")
         let sent = try XCTUnwrap(orders.placed.first)
         XCTAssertEqual(sent.paymentMethod, "cod")
-        XCTAssertEqual(sent.contactPhone, "+96550000000")
+        XCTAssertEqual(sent.contactName, "Noura")
+        XCTAssertEqual(sent.contactPhone, "+96550000000", "the number is read as Kuwaiti, Arabic-Indic digits and all")
         XCTAssertEqual(sent.addressParts?.block, "4")
         XCTAssertNil(sent.addressParts?.avenue)
+        XCTAssertNil(sent.addressLine, "an address in parts is sent as its parts")
+        XCTAssertEqual(sent.addressNotes, "Ring twice")
         XCTAssertEqual(sent.deliveryZoneId, "hawalli")
+        XCTAssertEqual(defaults.object(forKey: CheckoutViewModel.lastAddressKey) as? Int, 8, "the next order starts from it")
     }
 
-    func testStartsFromTheAddressUsedLastOnThisDevice() async {
-        let account = FakeAccountService()
-        account.book = [
+    func testAnAddressKeptAsALineIsSentAsItsLine() async throws {
+        let orders = FakeOrderService()
+        let model = CheckoutViewModel(orders: orders, account: FakeAccountService(), defaults: isolatedDefaults())
+        let old = SavedAddress(id: 3, label: "Old", contactName: nil, contactPhone: "50000000", governorate: "hawalli", addressLine: "Block 4, Street 12, House 15", addressNotes: nil, parts: nil)
+        let cart = try await Fixtures.cart()
+        _ = await model.place(cart: cart, address: old, accountName: "Noura Al-Sabah")
+        let sent = try XCTUnwrap(orders.placed.first)
+        XCTAssertNil(sent.addressParts)
+        XCTAssertEqual(sent.addressLine, "Block 4, Street 12, House 15")
+        XCTAssertEqual(sent.contactName, "Noura Al-Sabah", "an address naming nobody is for the account")
+    }
+
+    func testABookWithNothingInTheAreaStartsFromTheAddressUsedLast() {
+        let book = [
             SavedAddress(id: 1, label: "Office", contactName: nil, contactPhone: nil, governorate: "capital", addressLine: nil, addressNotes: nil, parts: nil),
-            SavedAddress(id: 8, label: "Home", contactName: "Noura", contactPhone: "50000000", governorate: "hawalli", addressLine: nil, addressNotes: nil,
-                         parts: AddressParts(area: "Salmiya", block: "4", street: "12", building: "15")),
+            home,
         ]
-        let defaults = isolatedDefaults()
-        defaults.set(8, forKey: CheckoutViewModel.lastAddressKey)
-        let model = CheckoutViewModel(orders: FakeOrderService(), account: account, defaults: defaults)
-        await model.load(user: FakeAccountService.user)
-        XCTAssertEqual(model.chosenAddress, 8)
-        XCTAssertEqual(model.governorate, "hawalli")
-        XCTAssertEqual(model.contactPhone, "50000000")
-        XCTAssertFalse(model.typedArea)
+        XCTAssertEqual(CheckoutViewModel.fallback(book, lastUsed: 8)?.id, 8)
+        XCTAssertEqual(CheckoutViewModel.fallback(book, lastUsed: 99)?.id, 1, "else the first")
+        XCTAssertNil(CheckoutViewModel.fallback([], lastUsed: 8))
     }
 
     func testARefusalIsKeptForTheScreenToSay() async throws {
         let orders = FakeOrderService()
         orders.refusal = .server(code: "BAD_REQUEST", message: "order.outOfStock", status: 400)
         let model = CheckoutViewModel(orders: orders, account: FakeAccountService(), defaults: isolatedDefaults())
-        model.chooseGovernorate("hawalli")
-        model.parts = AddressParts(area: "Salmiya", block: "4", street: "12", building: "15")
-        model.contactPhone = "50000000"
         let cart = try await Fixtures.cart()
-        let placed = await model.place(cart: cart)
+        let placed = await model.place(cart: cart, address: home)
         XCTAssertNil(placed)
         XCTAssertEqual(model.refusal?.serverMessage, "order.outOfStock")
     }
@@ -434,17 +442,22 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertEqual(model.phone, "5500 1122")
     }
 
-    func testCheckoutStartsWithTheAccountsPhoneWhereTheAddressHasNone() async {
+    func testCheckoutRingsTheAccountsPhoneWhereTheAddressHasNone() async {
         let account = FakeAccountService()
         account.details.phone = "+96555001122"
-        account.book = [SavedAddress(id: 1, label: "Office", contactName: nil, contactPhone: nil, governorate: "capital", addressLine: nil, addressNotes: nil, parts: nil)]
+        let office = SavedAddress(id: 1, label: "Office", contactName: nil, contactPhone: nil, governorate: "capital", addressLine: nil, addressNotes: nil, parts: nil)
+        let home = SavedAddress(id: 2, label: "Home", contactName: nil, contactPhone: "50000000", governorate: "hawalli", addressLine: nil, addressNotes: nil, parts: nil)
         let model = CheckoutViewModel(orders: FakeOrderService(), account: account, defaults: isolatedDefaults())
         await model.load(user: FakeAccountService.user)
-        XCTAssertEqual(model.contactPhone, "5500 1122")
+        XCTAssertEqual(model.phone(for: office), "5500 1122")
+        XCTAssertFalse(model.asksPhone(for: office), "the account's number is enough")
+        XCTAssertEqual(model.phone(for: home), "50000000", "the address's own number wins")
 
-        account.book = [SavedAddress(id: 2, label: "Home", contactName: nil, contactPhone: "50000000", governorate: "hawalli", addressLine: nil, addressNotes: nil, parts: nil)]
+        account.details.phone = nil
         let other = CheckoutViewModel(orders: FakeOrderService(), account: account, defaults: isolatedDefaults())
         await other.load(user: FakeAccountService.user)
-        XCTAssertEqual(other.contactPhone, "50000000", "the address's own number wins")
+        XCTAssertTrue(other.asksPhone(for: office), "no number anywhere: the driver's is asked for")
+        other.typedPhone = " 5000 1111 "
+        XCTAssertEqual(other.phone(for: office), "5000 1111")
     }
 }

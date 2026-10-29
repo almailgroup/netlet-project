@@ -107,26 +107,52 @@ struct RankFigure: View {
     ]
 }
 
-/// The departments as white tiles with their art — the home page's cards and
-/// the categories page alike. All six, always: they are the shop's shape.
+/// The departments as white tiles with their art — the home page's row and
+/// the categories page's grid alike. All six, always: they are the shop's
+/// shape.
+///
+/// **On the home page they are one row that scrolls sideways, on the owner's
+/// word** (`row`, the web's `DepartmentCards`): three to a row made two rows
+/// that were the whole first screen under the front door. The row reaches the
+/// screen's edges, so the tile cut off there says there is more.
 struct DepartmentCardGrid: View {
-    /// Three to a row on the home page, two on the categories page.
+    /// Two to a row on the categories page; the home page draws a row instead.
     var columns = 3
     /// The categories page says what each holds under its name.
     var counted = false
+    /// One sideways row of tiles, the home page's.
+    var row = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: columns == 3 ? 10 : 12), count: columns), spacing: columns == 3 ? 10 : 12) {
-            ForEach(ReferenceData.shared.departments) { department in
-                tile(slug: department.slug, title: l.t(department.label), count: counted ? countLine(department.slug) : nil) {
-                    app.push(.department(slug: department.slug))
+        if row {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 10) {
+                    tiles(width: 112)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
+                .scrollTargetLayout()
             }
-            tile(slug: "all", title: l.t("nav.allDepartments"), count: counted ? l.t("browse.browseEverything") : nil) {
-                app.push(.department(slug: nil))
+            .scrollTargetBehavior(.viewAligned)
+        } else {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: columns == 3 ? 10 : 12), count: columns), spacing: columns == 3 ? 10 : 12) {
+                tiles(width: nil)
             }
+        }
+    }
+
+    /// Each tile, at a fixed width in the row and the column's in the grid.
+    @ViewBuilder
+    private func tiles(width: CGFloat?) -> some View {
+        ForEach(ReferenceData.shared.departments) { department in
+            tile(slug: department.slug, title: l.t(department.label), count: counted ? countLine(department.slug) : nil, width: width) {
+                app.push(.department(slug: department.slug))
+            }
+        }
+        tile(slug: "all", title: l.t("nav.allDepartments"), count: counted ? l.t("browse.browseEverything") : nil, width: width) {
+            app.push(.department(slug: nil))
         }
     }
 
@@ -136,7 +162,7 @@ struct DepartmentCardGrid: View {
         return l.productCount(counts[slug] ?? 0)
     }
 
-    private func tile(slug: String, title: String, count: String?, open: @escaping () -> Void) -> some View {
+    private func tile(slug: String, title: String, count: String?, width: CGFloat?, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(spacing: 0) {
                 BundledImage(image: WebAssets.department(slug))
@@ -146,7 +172,8 @@ struct DepartmentCardGrid: View {
                     .font(.inter(columns == 3 ? 13 : 15, .bold))
                     .foregroundStyle(Brand.navy)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                    // In the row every tile keeps two lines' room, so the row is one height.
+                    .lineLimit(2, reservesSpace: width != nil)
                     .padding(.top, 6)
                 if let count {
                     Text(count)
@@ -170,6 +197,7 @@ struct DepartmentCardGrid: View {
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .frame(width: width)
         .accessibilityElement(children: .combine)
     }
 }
@@ -290,6 +318,8 @@ struct StoreBadges: View {
 
 /// The brands sellers wrote on their products, each a tile with its initial
 /// — NetLet holds no logos — and how many products; from three brands up.
+/// One row that scrolls sideways, like the departments, on the owner's word:
+/// two to a row made twelve brands six rows of the page.
 struct BrandShelf: View {
     let brands: [BrandCount]
     @Environment(AppModel.self) private var app
@@ -300,40 +330,46 @@ struct BrandShelf: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             ShelfHeading(title: l.t("home.shopByBrand"))
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                ForEach(brands.prefix(Self.most)) { brand in
-                    Button {
-                        app.push(.brand(name: brand.name))
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
-                                .font(.inter(18, .heavy))
-                                .foregroundStyle(Brand.navy)
-                                .frame(width: 44, height: 44)
-                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(brand.name)
-                                    .font(.inter(14, .bold))
+                .padding(.horizontal, 16)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 12) {
+                    ForEach(brands.prefix(Self.most)) { brand in
+                        Button {
+                            app.push(.brand(name: brand.name))
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
+                                    .font(.inter(18, .heavy))
                                     .foregroundStyle(Brand.navy)
-                                    .lineLimit(1)
-                                Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
-                                    .font(.inter(12))
-                                    .foregroundStyle(Brand.muted)
+                                    .frame(width: 44, height: 44)
+                                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
+                                    .accessibilityHidden(true)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(brand.name)
+                                        .font(.inter(14, .bold))
+                                        .foregroundStyle(Brand.navy)
+                                        .lineLimit(1)
+                                    Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
+                                        .font(.inter(12))
+                                        .foregroundStyle(Brand.muted)
+                                }
+                                Spacer(minLength: 0)
                             }
-                            Spacer(minLength: 0)
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
-                        .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .buttonStyle(PressFillStyle(cornerRadius: 16))
+                        .frame(width: 176)
+                        .accessibilityElement(children: .combine)
                     }
-                    .buttonStyle(PressFillStyle(cornerRadius: 16))
-                    .accessibilityElement(children: .combine)
                 }
+                .padding(.horizontal, 16)
+                .scrollTargetLayout()
             }
+            .scrollTargetBehavior(.viewAligned)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 24)
     }
 }

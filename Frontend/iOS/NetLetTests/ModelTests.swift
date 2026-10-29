@@ -159,17 +159,21 @@ final class ValidationTests: XCTestCase {
         XCTAssertEqual(SearchPreview.text("- Warm light\n- Brass", limit: 160), "Warm light · Brass")
     }
 
-    func testDeliverySaysTheFirstThingMissing() {
+    func testASavedAddressSaysTheFirstThingMissing() {
         let required = ReferenceData.shared.requiredParts
-        var parts = AddressParts()
-        XCTAssertEqual(Validation.deliveryProblem(governorate: nil, parts: parts, phone: "", requiredParts: required), "checkout.needGovernorate")
-        XCTAssertEqual(Validation.deliveryProblem(governorate: "hawalli", parts: parts, phone: "", requiredParts: required), "checkout.needAddress")
-        parts = AddressParts(area: "Salmiya", block: "4", street: "12", building: "15", paciNumber: "123")
-        XCTAssertEqual(Validation.deliveryProblem(governorate: "hawalli", parts: parts, phone: "", requiredParts: required), "address.badPaci")
+        func address(_ parts: AddressParts?, line: String? = nil) -> SavedAddress {
+            SavedAddress(id: 1, label: "Home", contactName: nil, contactPhone: nil, governorate: "hawalli", addressLine: line, addressNotes: nil, parts: parts)
+        }
+        XCTAssertEqual(Validation.savedAddressProblem(address(nil), phone: "", requiredParts: required), "checkout.needAddress")
+        XCTAssertEqual(Validation.savedAddressProblem(address(AddressParts(area: "Salmiya", block: "4")), phone: "", requiredParts: required), "address.needsParts")
+        var parts = AddressParts(area: "Salmiya", block: "4", street: "12", building: "15", paciNumber: "123")
+        XCTAssertEqual(Validation.savedAddressProblem(address(parts), phone: "", requiredParts: required), "address.badPaci")
         parts.paciNumber = "١٢٣٤٥٦٧٨"
-        XCTAssertEqual(Validation.deliveryProblem(governorate: "hawalli", parts: parts, phone: "", requiredParts: required), "checkout.needPhone")
-        XCTAssertEqual(Validation.deliveryProblem(governorate: "hawalli", parts: parts, phone: "123", requiredParts: required), "checkout.badPhone")
-        XCTAssertNil(Validation.deliveryProblem(governorate: "hawalli", parts: parts, phone: "50000000", requiredParts: required))
+        XCTAssertEqual(Validation.savedAddressProblem(address(parts), phone: "", requiredParts: required), "checkout.needPhone")
+        XCTAssertEqual(Validation.savedAddressProblem(address(parts), phone: "123", requiredParts: required), "checkout.badPhone")
+        XCTAssertNil(Validation.savedAddressProblem(address(parts), phone: "50000000", requiredParts: required))
+        XCTAssertNil(Validation.savedAddressProblem(address(nil, line: "Block 4, Street 12, House 15"), phone: "50000000", requiredParts: required),
+                     "an address kept as a line before the parts existed is still a door")
     }
 }
 

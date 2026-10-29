@@ -5886,14 +5886,45 @@ keyboard, and Android's back gesture puts it away.
 
 **Only the home page has the footer, and the Cart tab is the web's new bag —
 on the owner's word.** `ShopPage`'s `footer` is off unless asked for, and only
-`HomeView` asks. `CartView` opens on `CartTopBar` (the address in use, opening
-`DeliverySheet`, and a heart to the wishlists or Saved, the hearts counted),
-then the title and the count, each store a card (`BagGroup.groups`, the web's
-`bagGroups`, tested on its cases) with "Sold by …" to the store's page and its
-parcels (`ParcelLine`: the fee, free in green, the way to free delivery as a
-bar), the line's price under its name, and the summary, the note and Checkout
-in one card. The stepper's minus is a bin at one, so a line carries no second
-bin.
+`HomeView` asks. `CartView` opens on the title and the count with a heart to
+the wishlists or Saved at the line's end (`CartWishlistButton`, the hearts
+counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
+the web's own card: the address in use by `DeliveryModel.inUse` with its name,
+number and line and a Change opening `DeliverySheet`, or the question), each
+store a card (`BagGroup.groups`, the web's `bagGroups`, tested on its cases)
+with "Sold by …" to the store's page and its parcels (`ParcelLine`: the fee,
+free in green, the way to free delivery as a bar), the line's price under its
+name, the summary, the note and Checkout in one card, and **Saved for later**
+under it all (`SavedForLaterRow`: Saved newest first less what is in the bag,
+read by id, a sideways row with Move to cart, Choose an option or Sold out).
+**Checkout pressed with no address opens the book and goes on once one is
+chosen**, giving up three seconds after the book closes without one. The
+stepper's minus is a bin at one, and **every line has a "⋯" beside its name**
+(`LineMenuButton`, the web's `LineMenu`): a sheet naming the product over
+Save for later (into Saved, `SavedModel.save`, with Undo in the toast for a
+plain line — `AppModel.toast(_:undo:)`), Move to wishlist (the heart's
+question, `WishSheet` over a `WishTarget`, the line out only once it is on a
+list, signed in only), Share, View product and Remove. What was chosen runs in
+the sheet's `onDismiss`, so the wishlist's sheet is never asked for over it.
+The line carries `productId` and `deliverySpeed` now, as the web's does, and
+the recorded demo bag has both.
+
+**Checkout confirms, as the web's does, on the owner's word.**
+`CheckoutViewModel` no longer holds a form: the order goes to the address in
+use (and a book with nothing in the area starts from the one used last,
+`CheckoutViewModel.fallback`), from its own parts, name and number
+(`Validation.savedAddressProblem`, the web checkout's blockers in their order,
+tested), with a line-only address sent as its line. The screen is the same
+card with Change, a box for the driver's number only when neither the address
+nor the account has one, the destinations folded, each store's lines with its
+delivery and the day it arrives (`DeliveryLine.arrival` and `.slowest`, the
+web's `arrivalFor` and `slowestSpeed`), the payment list (cash chosen; KNET, a
+card and Apple Pay drawn as coming), the code folded with the points, and the
+summary; Place order stays in the bar at the foot, disabled with the blocker
+above it, and a press on the blocker opens the book or focuses the number. The
+home page's departments and brands are sideways rows too
+(`DepartmentCardGrid(row: true)`, `BrandShelf`), and its front door has no
+buttons, both the web's.
 
 **The Profile and Cart tabs have no header and no footer, the header's end is
 the saved location, the Profile page is the delivery apps' layout and the

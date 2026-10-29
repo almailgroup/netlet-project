@@ -233,6 +233,8 @@ enum API {
         var deliveryZoneId: String?
         var addressNotes: String?
         var addressParts: AddressParts?
+        /// The address as one line, for a saved address kept before the parts existed.
+        var addressLine: String? = nil
         /// The presents a guest took on this phone, so the order marks them bought.
         var giftClaims: [GiftClaim]?
         /// Where the door is on the map, when the shopper pinned it.

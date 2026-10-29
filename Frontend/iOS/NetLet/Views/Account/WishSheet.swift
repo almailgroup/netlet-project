@@ -9,8 +9,11 @@ import SwiftUI
 /// says one is made (`wishlists.wish` makes it, under the title here, in the
 /// shopper's language), and a public choice with no phone number on the
 /// account says the number is what lets family find it by typing.
+///
+/// The bag's "Move to wishlist" asks the same question (`onWished`), and takes
+/// the line out only once the product is on a list.
 struct WishSheet: View {
-    let product: Product
+    let target: WishTarget
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
@@ -26,7 +29,7 @@ struct WishSheet: View {
                         .font(.inter(14))
                         .foregroundStyle(Brand.body)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(product.title)
+                    Text(target.title)
                         .font(.inter(15, .semibold))
                         .foregroundStyle(Brand.navy)
                         .lineLimit(2)
@@ -122,7 +125,8 @@ struct WishSheet: View {
         choosing = visibility
         Task {
             do {
-                let answer = try await app.saved.wish(product.id, visibility: visibility, title: title)
+                let answer = try await app.saved.wish(target.productId, visibility: visibility, title: title)
+                target.onWished?()
                 dismiss()
                 app.toast(l.t(visibility == "public" ? "wish.addedPublic" : "wish.addedPrivate", ["list": "\u{2068}\(answer.title)\u{2069}"]))
             } catch {
@@ -132,4 +136,14 @@ struct WishSheet: View {
             }
         }
     }
+}
+
+/// What the heart's question is about: a product, by id and name, and what to
+/// do once it is on a list.
+struct WishTarget: Identifiable {
+    let productId: String
+    let title: String
+    var onWished: (@MainActor () -> Void)? = nil
+
+    var id: String { productId }
 }

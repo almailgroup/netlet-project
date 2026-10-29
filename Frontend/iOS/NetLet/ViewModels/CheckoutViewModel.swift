@@ -1,28 +1,25 @@
 import Foundation
 import Observation
 
-/// Checkout: who receives it, where it goes, and placing the order.
+/// Checkout confirms — the web's `Checkout`: where it goes, who the driver
+/// rings, how it is paid, and placing the order.
 ///
-/// Payment is cash on delivery and nothing else, and every figure is the
+/// **It confirms; it does not ask, on the owner's word** ("in the checkout
+/// page you should only confirm your details — your location and your
+/// preferred payment method — and then you can place order"). The address is
+/// the saved one in use, chosen in the cart (`DeliveryModel.inUse`), and the
+/// order is placed from its own parts, name and number; only a number the
+/// driver can ring is ever typed here, and only when neither the address nor
+/// the account has one. Payment is cash on delivery, and every figure is the
 /// server's: the app sends the bag and the address, and the server prices it,
 /// takes the stock and freezes the order.
 @Observable
 @MainActor
-final class CheckoutViewModel: AddressPartsEditing {
-    private(set) var addresses: LoadState<[SavedAddress]> = .idle
-    private(set) var chosenAddress: Int?
-
-    var contactName = ""
-    var contactPhone = ""
-    var governorate: String?
-    var parts = AddressParts()
-    /// True when the shopper picked "Another area" and types it.
-    var typedArea = false
-    var notes = ""
-    /// Where the door is on the map; optional, the typed address is not.
-    var pin: Pin?
-    /// Keep a new address in the book once the order has gone through.
-    var saveForNext = true
+final class CheckoutViewModel {
+    /// The number on "Your profile", for an address that carries none.
+    private(set) var accountPhone = ""
+    /// The number typed here, when neither the address nor the account has one.
+    var typedPhone = ""
     /// Spend the referral balance on this order.
     var usePoints = false
     /// The code box as typed, and the code last asked about.
@@ -35,9 +32,6 @@ final class CheckoutViewModel: AddressPartsEditing {
     /// The referral balance, in points; zero hides the choice.
     private(set) var balance = 0
 
-    /// Set once Place order has been pressed, so a problem is said only after
-    /// it is asked about — the web's rule that nothing appears because a box lost focus.
-    private(set) var attempted = false
     private(set) var placing = false
     private(set) var refusal: APIError?
 
@@ -56,46 +50,34 @@ final class CheckoutViewModel: AddressPartsEditing {
         self.reference = reference
     }
 
-    /// The saved addresses, with the one used last on this device chosen already.
+    /// The points to spend and the account's own number.
     func load(user: User?) async {
-        if contactName.isEmpty { contactName = user?.name ?? "" }
         guard user != nil else { return }
         if let api, let rewards = try? await api.call(API.rewards) { balance = rewards.balance }
-        addresses = .loading
-        do {
-            let book = try await account.addresses()
-            addresses = .loaded(book)
-            let last = defaults.object(forKey: Self.lastAddressKey) as? Int
-            if chosenAddress == nil, let pick = book.first(where: { $0.id == last }) ?? book.first {
-                use(pick)
-            }
-            // The account's own phone, as the web's checkout does, where the
-            // address carries none.
-            if contactPhone.isEmpty, let phone = try? await account.profileDetails().phone {
-                contactPhone = PhoneNumber.display(phone)
-            }
-        } catch {
-            let failure = APIError.from(error)
-            if failure != .cancelled { addresses = .failed(failure) }
+        if let phone = try? await account.profileDetails().phone, !phone.isEmpty {
+            accountPhone = PhoneNumber.display(phone)
         }
     }
 
-    /// Fills the form from a saved address; changes after it are for this order only.
-    func use(_ address: SavedAddress) {
-        chosenAddress = address.id
-        adopt(parts: address.parts, governorate: address.governorate)
-        if let name = address.contactName, !name.isEmpty { contactName = name }
-        if let phone = address.contactPhone, !phone.isEmpty { contactPhone = phone }
-        notes = address.addressNotes ?? ""
-        pin = address.pin
+    /// The address a book starts from when none is in the area in use — the
+    /// one used last here, else the first (`addressToUse` on the web) — so an
+    /// order always has the door the shopper picked most recently.
+    nonisolated static func fallback(_ book: [SavedAddress], lastUsed: Int?) -> SavedAddress? {
+        book.first { $0.id == lastUsed } ?? book.first
     }
 
-    func startNewAddress() {
-        chosenAddress = nil
-        parts = AddressParts()
-        typedArea = false
-        notes = ""
-        pin = nil
+    /// The driver's number: the address's, else the account's, else typed here.
+    func phone(for address: SavedAddress?) -> String {
+        address?.contactPhone?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? accountPhone.nilIfEmpty
+            ?? typedPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// A saved address with no number, on an account with none: the driver
+    /// has to be able to ring the door, so the box is drawn.
+    func asksPhone(for address: SavedAddress?) -> Bool {
+        guard let address else { return false }
+        return (address.contactPhone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && accountPhone.isEmpty
     }
 
     /// Asks what a code would do to this bag. Only a code naming nothing
@@ -124,13 +106,13 @@ final class CheckoutViewModel: AddressPartsEditing {
         Till.bill(for: cart, quote: quote, balance: balance, usePoints: usePoints)
     }
 
-    /// The first thing still missing, first reason first — said under the
-    /// button, because a greyed button with no sentence beside it leaves
-    /// somebody scrolling a form for what it wants.
-    func blocker(for cart: Cart?) -> String? {
+    /// Why Place order cannot be pressed yet, first reason first — said under
+    /// the button, and a press on the sentence goes to the fix.
+    func blocker(for cart: Cart?, address: SavedAddress?) -> String? {
         guard let cart, !cart.isEmpty else { return "checkout.needItems" }
         if !cart.cod.available { return "checkout.needCod" }
-        return Validation.deliveryProblem(governorate: governorate, parts: parts, phone: contactPhone, requiredParts: reference.requiredParts)
+        guard let address else { return "checkout.needAddressChoice" }
+        return Validation.savedAddressProblem(address, phone: phone(for: address), requiredParts: reference.requiredParts)
     }
 
     /// The reason cash on delivery is refused for this bag, in the shop's words.
@@ -143,56 +125,40 @@ final class CheckoutViewModel: AddressPartsEditing {
         return language.t("checkout.codUnavailableSeller", ["name": because.vendorName])
     }
 
-    /// Places the order. Nil when something is missing or the server refused;
-    /// the reason is then on `refusal` or `blocker(for:)`.
-    func place(cart: Cart?, savedLabel: String = "") async -> PlacedOrder? {
-        attempted = true
+    /// Places the order to the saved address, from its own parts, name and
+    /// number. Nil when something is missing or the server refused; the reason
+    /// is then on `refusal` or `blocker(for:address:)`.
+    func place(cart: Cart?, address: SavedAddress?, accountName: String? = nil) async -> PlacedOrder? {
         refusal = nil
-        guard let cart, blocker(for: cart) == nil else { return nil }
+        guard let cart, let address, blocker(for: cart, address: address) == nil else { return nil }
         placing = true
         defer { placing = false }
-        let cleaned = parts.cleaned()
-        let name = contactName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = (address.parts ?? AddressParts()).cleaned()
+        let name = address.contactName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? accountName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let notes = (address.addressNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let order = API.PlaceOrder(
             cartId: cart.id,
             paymentMethod: "cod",
-            contactName: name.isEmpty ? nil : name,
-            contactPhone: PhoneNumber.normalise(contactPhone),
-            deliveryZoneId: governorate,
-            addressNotes: trimmedNotes.isEmpty ? nil : trimmedNotes,
-            addressParts: cleaned,
+            contactName: name,
+            contactPhone: PhoneNumber.normalise(phone(for: address)),
+            deliveryZoneId: address.governorate,
+            addressNotes: notes.nilIfEmpty,
+            addressParts: parts.isEmpty ? nil : parts,
+            // An address kept as a line before the parts existed is sent as its line.
+            addressLine: parts.isEmpty ? address.line(.en).nilIfEmpty : nil,
             giftClaims: HeldClaims.all(defaults).map { API.GiftClaim(token: $0.token, productId: $0.productId) }.nilIfEmpty,
-            pin: pin,
+            pin: address.pin,
             usePoints: usePoints && balance > 0 ? true : nil,
             voucherCode: appliedCode.isEmpty ? nil : appliedCode
         )
         do {
             let placed = try await orders.place(order)
-            if let chosenAddress { defaults.set(chosenAddress, forKey: Self.lastAddressKey) }
-            await keepNewAddress(cleaned, name: name, notes: trimmedNotes, label: savedLabel)
+            defaults.set(address.id, forKey: Self.lastAddressKey)
             return placed
         } catch {
             refusal = APIError.from(error)
             return nil
-        }
-    }
-
-    /// A first address goes in the book *after* the order succeeds, never
-    /// instead of it, so a refusal from the book's own rules costs nothing.
-    private func keepNewAddress(_ parts: AddressParts, name: String, notes: String, label: String) async {
-        guard chosenAddress == nil, saveForNext, !parts.isEmpty, let api else { return }
-        let input = API.AddressInput(
-            label: label.isEmpty ? governorate ?? "" : label,
-            contactName: name.isEmpty ? nil : name,
-            contactPhone: PhoneNumber.normalise(contactPhone),
-            governorate: governorate,
-            addressNotes: notes.isEmpty ? nil : notes,
-            pin: pin,
-            parts: parts
-        )
-        if let saved = try? await api.call(API.addAddress, input) {
-            defaults.set(saved.id, forKey: Self.lastAddressKey)
         }
     }
 }

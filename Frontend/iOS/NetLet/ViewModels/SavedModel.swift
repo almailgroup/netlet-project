@@ -44,7 +44,24 @@ final class SavedModel {
     }
 
     func toggle(_ productId: String) async {
-        let saving = !ids.contains(productId)
+        await set(productId, saved: !ids.contains(productId))
+    }
+
+    /// Into Saved without asking which list — the bag's "Save for later",
+    /// the web's `saveForLater`.
+    func save(_ productId: String) async {
+        guard !ids.contains(productId) else { return }
+        await set(productId, saved: true)
+    }
+
+    /// Out of Saved alone: a wishlist the product is on keeps it, since a
+    /// list somebody shared is not the bag's to edit (`unsave`).
+    func unsave(_ productId: String) async {
+        guard ids.contains(productId) else { return }
+        await set(productId, saved: false)
+    }
+
+    private func set(_ productId: String, saved saving: Bool) async {
         ids = saving ? ids + [productId] : ids.filter { $0 != productId }
         if signedIn {
             if let answer = try? await account.setSaved(productId, saved: saving) { ids = answer }

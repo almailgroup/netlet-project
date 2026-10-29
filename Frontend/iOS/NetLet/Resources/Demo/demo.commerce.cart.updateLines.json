@@ -43,7 +43,9 @@
             "lineTotal": {
               "amount": "9.500",
               "currencyCode": "KWD"
-            }
+            },
+            "productId": "228",
+            "deliverySpeed": "next_day"
           }
         ],
         "itemCount": 2,

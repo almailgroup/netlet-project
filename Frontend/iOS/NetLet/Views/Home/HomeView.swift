@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The home page, the web's `Home` as a phone draws it: the front door, the
-/// departments as cards, the paid banners and placements, Deals as a navy band
+/// departments as a sideways row, the paid banners and placements, Deals as a navy band
 /// led by the deepest saving, Bestsellers ranked, Picked for you, the brands,
 /// the stores, the new arrivals as a grid, the newest guides, and the footer. Every shelf after the departments is drawn only when it has
 /// something true to show (`shelvesFor`, in `HomeShelf`).
@@ -13,12 +13,12 @@ struct HomeView: View {
         let shelf = app.shelf
         let shelves = shelf.shelves
         ShopPage(root: true, footer: true, refresh: { await shelf.load(language: l.current, force: true) }) {
-            HomeHero(dealsDrawn: shelf.dealsDrawn)
+            HomeHero()
             VStack(alignment: .leading, spacing: 16) {
                 Text(l.t("home.shopByCategory")).shelfTitle()
-                DepartmentCardGrid()
+                    .padding(.horizontal, 16)
+                DepartmentCardGrid(row: true)
             }
-            .padding(.horizontal, 16)
             .padding(.top, 8)
             switch shelf.catalogue {
             case .idle, .loading:
@@ -75,21 +75,19 @@ struct HomeView: View {
     }
 }
 
-/// The front door: a navy band with NetLet's pictures on it, one line saying
-/// what the shop is, and two ways in — Today's deals only while the home page
-/// draws a Deals shelf, New arrivals otherwise, so the first press never lands
-/// on a half-empty page (`HomeHero`).
+/// The front door: a navy band with NetLet's pictures on it and one line
+/// saying what the shop is (`HomeHero`). **No buttons, on the owner's word**:
+/// "See what's new" and "All departments" offered again what the departments'
+/// row directly under the band offers.
 ///
 /// The pictures are a slideshow, on the owner's word: each stays three
 /// seconds, the next fades in over the last, which stays whole underneath so
 /// the navy never shows through mid-change. Only the pictures move; the words
-/// and the buttons hold still. Nobody who asked for less motion sees it move.
+/// hold still. Nobody who asked for less motion sees it move.
 /// The band ends in a fade into the page rather than a line.
 struct HomeHero: View {
-    let dealsDrawn: Bool
     @State private var current = 0
     @State private var previous: Int?
-    @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
 
@@ -118,11 +116,6 @@ struct HomeHero: View {
                     .foregroundStyle(Color(red: 201 / 255, green: 212 / 255, blue: 226 / 255))
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 12)
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 12) { buttons }
-                    VStack(spacing: 12) { buttons }
-                }
-                .padding(.top, 20)
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -134,41 +127,6 @@ struct HomeHero: View {
             Self.foot.frame(height: 144).allowsHitTesting(false)
         }
         .task(id: still) { await run() }
-    }
-
-    @ViewBuilder
-    private var buttons: some View {
-        Button {
-            app.push(dealsDrawn ? .deals : .newest)
-        } label: {
-            HStack(spacing: 8) {
-                Text(l.t(dealsDrawn ? "home.heroDeals" : "home.heroNew"))
-                Image(systemName: "arrow.forward").font(.system(size: 14, weight: .bold))
-            }
-            .font(.inter(15, .bold))
-            .foregroundStyle(Brand.navy)
-            .lineLimit(1)
-            .fixedSize()
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .background(Capsule().fill(Brand.orange))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(PressFillStyle(cornerRadius: 24))
-        Button {
-            app.push(.department(slug: nil))
-        } label: {
-            Text(l.t("nav.allDepartments"))
-                .font(.inter(15, .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .fixedSize()
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.4), lineWidth: 1.5))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.tap)
     }
 
     private var pictures: some View {
