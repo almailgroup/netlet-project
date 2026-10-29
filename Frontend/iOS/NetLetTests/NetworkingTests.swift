@@ -177,9 +177,11 @@ final class FixtureDecodingTests: XCTestCase {
         let rewards = try await client.call(API.rewards)
         // What is held is the entries still waiting on their return window,
         // and the next to free is the earliest of them.
-        let waiting = rewards.entries.filter { $0.availableAt != nil }
-        XCTAssertEqual(rewards.held, waiting.reduce(0) { $0 + $1.points })
-        XCTAssertEqual(rewards.nextRelease, waiting.compactMap(\.availableAt).min())
+        let stillHeld = rewards.entries.filter { $0.availableAt != nil }
+        let heldPoints: Int = stillHeld.reduce(0) { $0 + $1.points }
+        let firstRelease: Date? = stillHeld.compactMap { $0.availableAt }.min()
+        XCTAssertEqual(rewards.held, heldPoints)
+        XCTAssertEqual(rewards.nextRelease, firstRelease)
     }
 
     func testTheFootersContact() async throws {
