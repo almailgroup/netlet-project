@@ -90,6 +90,27 @@ async function accessToken(now: number): Promise<string | null> {
   return access.token;
 }
 
+/**
+ * Another Maps Server API answer, by path ("/reverseGeocode?…"), or null for
+ * every way Apple did not give one. It shares this file's access token and its
+ * pause: a key Apple refuses for driving times is refused for addresses too.
+ */
+export async function appleServerGet(path: string, now = Date.now()): Promise<unknown | null> {
+  if (refusedUntil > now) return null;
+  try {
+    const token = await accessToken(now);
+    if (!token) return null;
+    const reply = await ask(`${API}${path}`, token);
+    if (reply.status === 401) { access = null; return null; }
+    if (reply.status === 429) return refuse(now, "the day's quota is spent");
+    if (!reply.ok) return null;
+    return await reply.json();
+  } catch (error) {
+    console.warn(`[maps] no answer from Apple: ${describeError(error)}`);
+    return null;
+  }
+}
+
 /** The driving time from `from` to `to` now, or null for every way Apple did not say. */
 export async function drivingTime(from: Pin, to: Pin, now = Date.now()): Promise<Drive | null> {
   if (refusedUntil > now) return null;

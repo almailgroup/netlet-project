@@ -36,6 +36,7 @@ export function AddressPartsFields({
   fieldClass,
   labelClass,
   idPrefix,
+  fromPin = [],
 }: {
   parts: AddressParts;
   governorate: string | null | undefined;
@@ -45,6 +46,8 @@ export function AddressPartsFields({
   fieldClass: string;
   labelClass: string;
   idPrefix?: string;
+  /** The parts a dropped pin filled, drawn pale orange until the shopper changes them. */
+  fromPin?: readonly PartKey[];
 }) {
   const { t, isArabic } = useTranslation();
   const generated = useId();
@@ -55,8 +58,12 @@ export function AddressPartsFields({
     .sort((left, right) => (isArabic ? left.ar.localeCompare(right.ar, "ar") : left.en.localeCompare(right.en)));
   const area = parts.area?.trim() ?? "";
   const onList = Boolean(area) && listed.some(entry => entry.en === area);
-  /* Typed rather than chosen: an area off the list, or "Another area" pressed. */
-  const [typing, setTyping] = useState(Boolean(area) && !onList);
+  /* Typed rather than chosen: "Another area" pressed, or an area off the list
+     — which a dropped pin can write as much as a saved address can hold. An
+     area on the list is always the list's. */
+  const [typingChosen, setTyping] = useState(false);
+  const typing = !onList && (typingChosen || Boolean(area));
+  const pinned = (key: PartKey) => (fromPin.includes(key) ? " from-pin" : "");
   const set = (key: PartKey, value: string) => onChange({ ...parts, [key]: value });
   const required = (key: PartKey) => REQUIRED_PARTS.includes(key);
 
@@ -77,7 +84,7 @@ export function AddressPartsFields({
         dir={options.digits ? "ltr" : "auto"}
         aria-required={required(key) || undefined}
         aria-describedby={key === "paciNumber" ? id("paci-hint") : undefined}
-        className={`${fieldClass} mt-1 font-normal`}
+        className={`${fieldClass} mt-1 font-normal${pinned(key)}`}
       />
       {key === "paciNumber" ? <span id={id("paci-hint")} className="mt-1 block text-[12px] font-normal ink-muted">{t("address.paciHint")}</span> : null}
     </label>
@@ -103,7 +110,7 @@ export function AddressPartsFields({
             const owner = governorateOfArea(value);
             if (owner && !zone) onGovernorate?.(owner);
           }}
-          className={`${fieldClass} mt-1 font-normal`}
+          className={`${fieldClass} mt-1 font-normal${typing ? "" : pinned("area")}`}
         >
           <option value="" disabled>{t("address.areaChoose")}</option>
           {listed.map(entry => <option key={entry.en} value={entry.en}>{isArabic ? entry.ar : entry.en}</option>)}
@@ -117,7 +124,7 @@ export function AddressPartsFields({
             maxLength={PART_MAX.area}
             dir="auto"
             onChange={event => set("area", event.target.value)}
-            className={`${fieldClass} mt-2 font-normal`}
+            className={`${fieldClass} mt-2 font-normal${pinned("area")}`}
           />
         ) : null}
       </div>

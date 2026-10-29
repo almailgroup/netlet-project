@@ -86,6 +86,29 @@ export function addressLineOf(address: Pick<ShippingAddress, "addressLine" | "pa
 }
 
 /**
+ * Whether an edit moved the address — its governorate, its parts, its line or
+ * its pin — rather than only its name, its number or its notes.
+ *
+ * A new address, and one moved, is shown back with "Is this your address?"
+ * before it is kept, because that is where a driver will go; renaming "Home"
+ * to "Villa" moves nobody, and asking about it would teach the shopper to
+ * press Yes without reading.
+ */
+export function whereChanged(before: ShippingAddress, after: ShippingAddress): boolean {
+  const pin = (address: ShippingAddress) => {
+    const kept = address.pin ? storedPin(address.pin) : null;
+    return kept ? `${kept.lat},${kept.lng}` : "";
+  };
+  const line = (address: ShippingAddress) => (hasParts(address.parts) ? "" : (address.addressLine ?? "").trim());
+  return (
+    (before.governorate?.trim() || "") !== (after.governorate?.trim() || "") ||
+    JSON.stringify(cleanParts(before.parts) ?? {}) !== JSON.stringify(cleanParts(after.parts) ?? {}) ||
+    line(before) !== line(after) ||
+    pin(before) !== pin(after)
+  );
+}
+
+/**
  * What is *actively wrong*, as message keys.
  *
  * The same split the seller application makes, and for the same reason: a save

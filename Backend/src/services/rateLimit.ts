@@ -22,6 +22,8 @@ import {
   MAX_PHOTO_SEARCH_PER_ADDRESS,
   MAX_RECOMMEND_MODEL_PER_ACCOUNT,
   MAX_SEARCH_REFINE_PER_ADDRESS,
+  MAX_PLACE_LOOKUPS_PER_ADDRESS,
+  PLACE_LOOKUP_WINDOW_MS,
   RECOMMEND_MODEL_WINDOW_MS,
   SEARCH_REFINE_WINDOW_MS,
   MAX_VOUCHER_MISSES_PER_ADDRESS,
@@ -45,7 +47,7 @@ import { getDb } from "./db.js";
  * there is no failure to count, and the abuse is using NetLet to mail somebody
  * else. `codeMiss` counts a wrong code, like a wrong password.
  */
-export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch";
+export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch" | "placeLookup";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -249,6 +251,31 @@ export async function recordSearchRefine(address: string | null | undefined): Pr
   await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "searchRefine" }]);
   await db.delete(authAttempts).where(
     and(eq(authAttempts.kind, "searchRefine"), lt(authAttempts.createdAt, new Date(Date.now() - SEARCH_REFINE_WINDOW_MS))),
+  );
+}
+
+/** Whether this address may ask what address another pin is on. Every request counts. */
+export async function checkPlaceLookupAllowed(address: string | null | undefined): Promise<RateVerdict> {
+  const db = await getDb();
+  if (!db || !address) return ALLOWED;
+  const rows = await db
+    .select({ at: authAttempts.createdAt })
+    .from(authAttempts)
+    .where(and(
+      eq(authAttempts.bucket, addressBucket(address)),
+      eq(authAttempts.kind, "placeLookup"),
+      gt(authAttempts.createdAt, new Date(Date.now() - PLACE_LOOKUP_WINDOW_MS)),
+    ));
+  return limitVerdict(rows.map(row => row.at), MAX_PLACE_LOOKUPS_PER_ADDRESS, new Date(), PLACE_LOOKUP_WINDOW_MS);
+}
+
+/** Count one address lookup, found or not. */
+export async function recordPlaceLookup(address: string | null | undefined): Promise<void> {
+  const db = await getDb();
+  if (!db || !address) return;
+  await db.insert(authAttempts).values([{ bucket: addressBucket(address), kind: "placeLookup" }]);
+  await db.delete(authAttempts).where(
+    and(eq(authAttempts.kind, "placeLookup"), lt(authAttempts.createdAt, new Date(Date.now() - PLACE_LOOKUP_WINDOW_MS))),
   );
 }
 

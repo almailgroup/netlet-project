@@ -89,3 +89,25 @@ nothing else.
   arrow keys — whichever map it is. Switching keeps the spot and the zoom.
 - If a map will not load (a key the provider refuses, a blocked network), the
   box says the typed address is enough and offers the other map.
+
+## Reading the address at a pin
+
+When a shopper drops a pin, NetLet reads the area, block, street and house at
+that spot and fills them into the address form. Nothing needs setting up:
+
+- **OpenStreetMap's Nominatim** answers first. Kuwait is mapped there block by
+  block, and it needs no account. Its terms ask for light use, so NetLet asks
+  only once the map has stopped, keeps each answer a day, spaces its requests a
+  second apart and names itself in every request; the picker credits
+  OpenStreetMap under the map.
+- **Apple's Maps Server API** fills in whatever OpenStreetMap left out, when the
+  three Apple signing values above are set — the same token driving times use.
+
+If the shop outgrows the public service, run your own Nominatim and set
+`NOMINATIM_URL` to its `/reverse` address. Only the pin's point and the page's
+language are sent; the privacy policy says so.
+
+The **Live check** workflow (Actions → Live check → Run workflow) asks both
+OpenStreetMap and the live shop what they read at eighteen Kuwaiti points, in
+English and Arabic — the quickest way to see whether the shop is reading
+addresses.

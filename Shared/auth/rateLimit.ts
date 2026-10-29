@@ -75,6 +75,15 @@ export const MAX_SEARCH_REFINE_PER_ADDRESS = 60;
 export const SEARCH_REFINE_WINDOW_MS = 60 * 60 * 1000;
 
 /**
+ * Reading the address a pin is on: one request each time the map comes to
+ * rest, which somebody finding their roof does a few dozen times, and each
+ * goes to OpenStreetMap's free service, whose terms ask for light use. Every
+ * request counts, found or not.
+ */
+export const MAX_PLACE_LOOKUPS_PER_ADDRESS = 120;
+export const PLACE_LOOKUP_WINDOW_MS = 60 * 60 * 1000;
+
+/**
  * Codes typed into checkout's box that turned out to be nobody's. A discount
  * code is a word somebody chose — "TENOFF", "STAFF50" — and the quote answered
  * any number of guesses a second from a signed-out browser, so a code meant for

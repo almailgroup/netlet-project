@@ -27,12 +27,16 @@ enum Haptics {
     static let actionStrength: CGFloat = strength
     /// Every other button's.
     static let buttonStrength: CGFloat = strength
+    /// The map pin dropping into place once the map stops — three quarters,
+    /// on the owner's word, as the tab bar's.
+    static let pinStrength: CGFloat = 0.75
 
     private static let generator = UIImpactFeedbackGenerator(style: .medium)
 
     static func tab() { impact(tabStrength) }
     static func action() { impact(actionStrength) }
     static func tap() { impact(buttonStrength) }
+    static func pinDrop() { impact(pinStrength) }
 
     /// It worked, and mattered: an order placed.
     static func succeeded() { impact(strength) }

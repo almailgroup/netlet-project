@@ -179,6 +179,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* No keys in the demo, so the pin picker draws OpenStreetMap. */
     case "maps.providers":
       return { google: null, apple: false, drivingTimes: false };
+    /* Wherever the pin lands, the demo reads one real Salmiya answer, so the
+       boxes filling themselves can be seen without a service to ask. */
+    case "maps.placeAt":
+      return { parts: { area: "Salmiya", block: "5", street: "Hamad Al-Mubarak" }, governorate: "hawalli", source: "osm" as const };
 
     case "commerce.products.list": {
       const first =

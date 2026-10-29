@@ -30,7 +30,10 @@ struct AddressBookView: View {
                     }
                 }
             }
-            .task { await book.load() }
+            .task {
+                await book.load()
+                if app.addressStep != nil { editing = Editing(address: nil) }
+            }
             .sheet(item: $editing) { subject in
                 AddressFormSheet(address: subject.address) { _ in
                     Task { await book.load() }
@@ -174,16 +177,23 @@ struct AddressFormSheet: View {
 private struct AddressFormBody: View {
     @Bindable var model: AddressFormModel
     let onSaved: (SavedAddress) -> Void
+    @State private var confirming = false
+    @State private var opensMap = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                LabeledField(label: l.t("address.label"), text: $model.label, placeholder: l.t("address.labelPlaceholder"))
-                AddressPartsFields(model: model, governorateOptional: !model.requireGovernorate) { keys in
-                    model.showsProblems ? model.problems.first(where: { keys.contains($0) }) : nil
+                // The map first: dropping a pin fills the boxes under it.
+                PinField(pin: model.pin, place: model.place, governorate: model.governorate, picking: $opensMap) { pin, place in
+                    model.pinned(pin, place)
                 }
+                if let note = model.pinNote { pinNote(note) }
+                LabeledField(label: l.t("address.label"), text: $model.label, placeholder: l.t("address.labelPlaceholder"))
+                AddressPartsFields(model: model, governorateOptional: !model.requireGovernorate, problem: { keys in
+                    model.showsProblems ? model.problems.first(where: { keys.contains($0) }) : nil
+                }, fromPin: model.byPin)
                 if let line = model.legacyLine, model.parts.isEmpty {
                     Text("\(l.t("address.legacyLine")) \u{2068}\(line)\u{2069}")
                         .font(.footnote)
@@ -200,16 +210,15 @@ private struct AddressFormBody: View {
                     leftToRight: true
                 )
                 LabeledField(label: l.t("address.notes"), text: $model.notes, axis: .vertical)
-                PinField(pin: $model.pin, governorate: model.governorate)
                 if model.showsProblems {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(model.problems, id: \.self) { FieldProblem(key: $0) }
                     }
                 }
                 Button {
-                    Task { await save() }
+                    if model.needsConfirm { confirming = true } else { Task { await save() } }
                 } label: {
-                    if model.saving { ProgressView().tint(.white) } else { Text(l.t("address.save")) }
+                    if model.saving && !confirming { ProgressView().tint(.white) } else { Text(l.t("address.save")) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(!model.problems.isEmpty || model.saving)
@@ -218,11 +227,181 @@ private struct AddressFormBody: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Brand.ground.ignoresSafeArea())
+        .task { await openForScreenshot() }
+        .sheet(isPresented: $confirming) {
+            AddressConfirmSheet(model: model) {
+                Task { await save() }
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    /// The screenshots' address: dropped on the map, or filled and at its confirmation.
+    private func openForScreenshot() async {
+        guard let step = app.addressStep else { return }
+        app.addressStep = nil
+        if step == "pin" {
+            opensMap = true
+            return
+        }
+        let pin = Pin(lat: 29.3115, lng: 48.0819)
+        let place = try? await app.services.api.call(API.placeAt, .init(lat: pin.lat, lng: pin.lng, locale: l.current.rawValue))
+        model.label = l.t("address.labelPlaceholder").components(separatedBy: CharacterSet(charactersIn: ",،")).first ?? "Home"
+        model.pinned(pin, place ?? nil)
+        if (model.parts.building ?? "").isEmpty { model.parts.building = "12" }
+        try? await Task.sleep(for: .milliseconds(600))
+        confirming = true
+    }
+
+    /// What the pin did: filled the boxes, or disagrees with ones the shopper typed.
+    @ViewBuilder
+    private func pinNote(_ note: AddressFormModel.PinNote) -> some View {
+        let line = note.place.parts.line(l.current)
+        VStack(alignment: .leading, spacing: 10) {
+            if note.conflicts.isEmpty {
+                Text(l.t(note.houseMissing ? "pin.filledAddHouse" : "pin.filled"))
+                    .font(.inter(13, .semibold))
+            } else {
+                Text(l.t("pin.conflict", ["place": "\u{2068}\(line)\u{2069}"]))
+                    .font(.inter(13))
+                HStack(spacing: 8) {
+                    Button(l.t("pin.usePin")) { model.pinned(model.pin, note.place, force: true) }
+                        .buttonStyle(PrimaryButtonStyle())
+                    Button(l.t("pin.keepTyped")) { model.pinNote = nil }
+                        .buttonStyle(SecondaryButtonStyle())
+                }
+            }
+        }
+        .foregroundStyle(Brand.fromPinInk)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.fromPin))
+        .accessibilityElement(children: .contain)
     }
 
     private func save() async {
         var saved: SavedAddress?
         let worked = await app.attempt(done: "address.saved") { saved = try await model.save() }
-        if worked, let saved { onSaved(saved) }
+        if worked, let saved {
+            confirming = false
+            onSaved(saved)
+        }
+    }
+}
+
+/// "Is this your address?" — the address read back before it is kept, on the
+/// owner's word, with "Yes, save address" and "Edit address": the pin on a
+/// still map, the label, the area and governorate, the block, street, avenue,
+/// house, floor and flat in the order a driver reads them, who the driver
+/// calls, and the notes. Edit address puts the sheet away and leaves the form
+/// as it was. The web's `AddressConfirm`.
+struct AddressConfirmSheet: View {
+    @Bindable var model: AddressFormModel
+    let onConfirm: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let reference = model.reference
+        let zone = reference.governorate(id: model.governorate)?.name(l.current)
+        let area = model.parts.area.map { reference.areaName($0, language: l.current) } ?? ""
+        let place = [area, zone ?? ""].filter { !$0.isEmpty }.joined(separator: l.current == .ar ? "، " : ", ")
+        let line = model.parts.isEmpty ? (model.legacyLine ?? "") : withoutArea(model.parts).line(l.current)
+        let contact = [model.contactName, model.contactPhone].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let notes = model.notes.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(l.t("address.confirmTitle"))
+                        .font(.inter(22, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(l.t("address.confirmBody"))
+                        .font(.inter(14))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let pin = model.pin {
+                    StillPinMap(pin: pin).frame(height: 170)
+                } else {
+                    Text(l.t("address.confirmNoPin"))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.muted)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.tint.opacity(0.6)))
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "mappin")
+                            .foregroundStyle(Brand.accentInk)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Brand.accentWash))
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 8) {
+                                Text(model.label.trimmingCharacters(in: .whitespaces)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
+                                if !place.isEmpty {
+                                    Text(place)
+                                        .font(.inter(12, .bold))
+                                        .foregroundStyle(Brand.navy)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Capsule().fill(Brand.tint))
+                                }
+                            }
+                            if !line.isEmpty {
+                                Text(line).font(.inter(15)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    if !contact.isEmpty {
+                        Divider()
+                        Label {
+                            Text("\(l.t("address.confirmCall")) \(contact.map { "\u{2068}\($0)\u{2069}" }.joined(separator: " · "))")
+                                .font(.inter(14))
+                                .foregroundStyle(Brand.ink)
+                        } icon: {
+                            Image(systemName: "phone").foregroundStyle(Brand.muted)
+                        }
+                    }
+                    if !notes.isEmpty {
+                        Divider()
+                        Label {
+                            Text(notes).font(.inter(14)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "note.text").foregroundStyle(Brand.muted)
+                        }
+                    }
+                }
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                Button {
+                    onConfirm()
+                } label: {
+                    if model.saving { ProgressView().tint(.white) } else { Text(l.t("address.confirmYes")) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(model.saving)
+                Button(l.t("address.confirmEdit")) { dismiss() }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .disabled(model.saving)
+            }
+            .padding(20)
+        }
+        .background(Brand.ground.ignoresSafeArea())
+        .environment(\.layoutDirection, l.layoutDirection)
+        .buttonStyle(HapticDefaultStyle())
+    }
+
+    /// The parts after the area, which the chip beside the label already names.
+    private func withoutArea(_ parts: AddressParts) -> AddressParts {
+        var rest = parts
+        rest.area = nil
+        return rest
     }
 }

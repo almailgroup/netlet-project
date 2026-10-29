@@ -3500,6 +3500,62 @@ the ground, and an inherited `rtl` mirrors its controls — while the panel
 around it follows the page. The tile host is named in `MAP_TILE_ORIGIN`
 because the CSP has to list it once `MEDIA_HOST` narrows images.
 
+**Dropping a pin fills the address, on the owner's word.** When the map
+rests, `maps.placeAt` reads the area, block, street, avenue and house there
+and a bubble over the pin names it; "Pin it here" writes them into the boxes,
+drawn pale orange (`.from-pin`, `Brand.fromPin`) until the shopper changes
+one, under a line saying so — "then add your house number" when there was
+none. `Shared/commerce/placeParts.ts` is the rule, pure: each service's answer
+becomes `PlaceHints` and one reader decides what they mean — "Salmiya - Block
+5" is block 5 of Salmiya, "Street 3 Lane 1" and "شارع 3 جادة 1" are street 3,
+avenue 1, a named street loses the word "Street", "Road 3" stays a road. **The
+area is NetLet's list or it is typed**: names are compared folded (the article,
+"governorate" and "area" gone; Arabic's disagreeing letters made one), a Latin
+spelling may slip a letter or two ("Mishrif", "Hawally", "Eqaila"), a name with
+a word more is the name inside it ("Abdullah Mubarak Al-Sabah"), and a tie is no
+answer — guessing between Dasma and Dasman sends a parcel to the wrong one.
+`placeParts.test.ts` holds every area finding itself by both its names. **A pin
+writes what is empty or was the pin's, never over what was typed**
+(`fillFromPlace`): a typed box the pin disagrees with is named, with "Use the
+pin's address", and a part an earlier pin wrote that this one has no answer for
+is emptied.
+
+**The reading is the server's, from OpenStreetMap first**
+(`Backend/src/services/placeLookup.ts`): Kuwait is mapped there block by block,
+which the Live check workflow read at eighteen real points before the parser
+was written (this sandbox cannot reach the service; GitHub's runners can), and
+it needs no account. Apple's Maps Server API fills what it leaves out when the
+signing values are set (`appleServerGet`, the driving time's token). Nominatim's
+terms shape the rest: an agent naming the shop, a request a second per
+instance, an answer kept a day per point and language (nothing found, five
+minutes), `MAX_PLACE_LOOKUPS_PER_ADDRESS` an hour per address in Postgres, and
+"Address from OpenStreetMap" under the map. `NOMINATIM_URL` points it at a
+Nominatim of the shop's own. Only the point and the language leave; the privacy
+policy says so (`privacy.who.placeLookup`).
+
+**The pin lifts while the map moves and drops when it rests** — a squash, a
+bounce and an orange ring where it landed — **with a buzz at three quarters
+strength**, both on the owner's word (`PinMark`; `pinDropHaptic`, 15ms where a
+press is 10, since a page's buzz has a length and no strength;
+`Haptics.pinDrop`, 0.75). Each map says when it starts and stops moving
+(`onMoveStart`, `onSettle` in `engines.ts`; `onMapCameraChange` in the app),
+and the centre during a move is never state, only the flip. Reduced motion keeps
+it still. The address is asked only once the map has rested 350ms.
+
+**Saving asks first: "Is this your address?"** (`AddressConfirm`,
+`AddressConfirmSheet`), on the owner's word — the pin on a still map
+(`StillMap`, `StillPinMap`), the label with its area and governorate, the rest
+of the parts in a driver's order, who the driver calls and the notes, with "Yes,
+save address" and "Edit address", which goes back to the form as it was. A new
+address and one moved (`whereChanged`, `AddressMove`) are asked about; renaming
+one is not, or Yes becomes a reflex. Focus goes to the question, a sheet from a
+phone's foot and a card from `sm`, portalled to `<body>` over the delivery
+dialog. The map card now leads the form, since it fills the boxes under it.
+Measured in a browser through a stand-in Nominatim answering with the real
+samples, at 390 in both languages and 1440: the lift mid-drag, the drop and a
+15ms buzz, the bubble, the boxes filled and marked, a typed block kept and
+named, Edit and Yes, axe clean on the form, the sheet and the book.
+
 The sandbox this was built in cannot reach the tile server, so every
 screenshot of it is grey. That is the environment, not the code.
 
@@ -6077,7 +6133,13 @@ Every page starts with it shown, and a page leaving puts it back. **Whether
 the slide moves the bar on a given iOS is a picture, not a reading**: if the
 Liquid Glass pill drew outside the bar's own layers, the bar would stay on
 screen while taking no touches, so the CI photographs the home page with it
-slid away (`-NetLetOpen tabBarAway`, Debug only, `54-tab-bar-away`). The home page is `HomeShelf`, which is
+slid away (`-NetLetOpen tabBarAway`, Debug only, `54-tab-bar-away`). **A new
+address is the web's too** (see "The map pin"): the pin card leads the form, the
+map's pin lifts and drops with `Haptics.pinDrop` at 0.75, the bubble names what
+`maps.placeAt` read, the boxes fill pale orange (`PinFill`, tested on the
+TypeScript's cases), and Save asks "Is this your address?" in a sheet
+(`AddressConfirmSheet`); the CI photographs both (`-NetLetOpen address:pin` and
+`address:confirm`, `55-address-pin`, `56-address-confirm`). The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked

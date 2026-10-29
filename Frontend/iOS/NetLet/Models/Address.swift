@@ -69,6 +69,21 @@ struct AddressParts: Codable, Hashable, Sendable {
         return reference.requiredParts.filter { clean.value(for: $0) == nil }
     }
 
+    /// Sets one part by its key, the web's `parts[key] = value`.
+    mutating func set(_ key: String, _ value: String?) {
+        switch key {
+        case "area": area = value
+        case "block": block = value
+        case "street": street = value
+        case "avenue": avenue = value
+        case "building": building = value
+        case "floor": floor = value
+        case "apartment": apartment = value
+        case "paciNumber": paciNumber = value
+        default: break
+        }
+    }
+
     func value(for key: String) -> String? {
         switch key {
         case "area": return area

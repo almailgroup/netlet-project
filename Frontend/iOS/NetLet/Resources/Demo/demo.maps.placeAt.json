@@ -1,0 +1,16 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "parts": {
+          "block": "5",
+          "area": "Rumaithiya",
+          "street": "52",
+          "building": "6A"
+        },
+        "governorate": "hawalli",
+        "source": "osm"
+      }
+    }
+  }
+}

@@ -798,6 +798,162 @@
 }
 
 /*
+ * The pin over the map (`PinMark`), on the owner's word: it lifts while the
+ * map moves under it, and drops back with a small squash and bounce when the
+ * map rests, a ring spreading where it landed. Its point is the spot — the
+ * box is anchored there and the body stands on it — so `left`/`top: 50%`
+ * centres it (centring takes no side, the RTL rule's one exception). A
+ * transform alone moves it, on the sheets' curve; the drop is restarted by
+ * re-keying the body, so each rest gets its own. Reduced motion keeps the pin
+ * still: no lift, no bounce, no ring.
+ */
+.map-pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 500;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.map-pin-body {
+  position: absolute;
+  bottom: 0;
+  left: -17px;
+  width: 34px;
+  height: 46px;
+  transform-origin: 50% 100%;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: drop-shadow(0 2px 3px rgb(6 27 59 / 0.25));
+}
+.map-pin[data-lifted] .map-pin-body {
+  transform: translateY(-14px) scale(1.05);
+}
+.map-pin[data-dropped] .map-pin-body {
+  animation: pin-drop 460ms cubic-bezier(0.3, 0.7, 0.4, 1) both;
+}
+@keyframes pin-drop {
+  0% { transform: translateY(-14px) scale(1.05); }
+  45% { transform: translateY(0) scale(1.08, 0.88); }
+  68% { transform: translateY(-4px) scale(0.98, 1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+.map-pin-shadow {
+  position: absolute;
+  left: -9px;
+  top: -3px;
+  width: 18px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(6 27 59 / 0.35);
+  filter: blur(1.5px);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 180ms;
+}
+.map-pin[data-lifted] .map-pin-shadow {
+  transform: scale(0.6);
+  opacity: 0.5;
+}
+.map-pin-ring {
+  position: absolute;
+  left: -22px;
+  top: -22px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #f2683a;
+  opacity: 0;
+  animation: pin-ring 700ms ease-out both;
+}
+@keyframes pin-ring {
+  from { transform: scale(0.2); opacity: 0.75; }
+  to { transform: scale(1.4); opacity: 0; }
+}
+/* What is at the pin, in a plate over it: above the body and its lift. */
+.map-pin-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(50% + 58px);
+  z-index: 501;
+  max-width: min(88%, 320px);
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 6px 18px rgb(6 27 59 / 0.18);
+  pointer-events: none;
+  transition: opacity 160ms;
+}
+.map-pin-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+.map-pin-bubble:empty {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-pin-body,
+  .map-pin-shadow {
+    transition: none;
+  }
+  .map-pin[data-lifted] .map-pin-body,
+  .map-pin[data-lifted] .map-pin-shadow {
+    transform: none;
+    opacity: 1;
+  }
+  .map-pin[data-dropped] .map-pin-body,
+  .map-pin-ring {
+    animation: none;
+  }
+  .map-pin-ring {
+    display: none;
+  }
+}
+
+/* "Is this your address?" rises from the foot of a phone, and settles in on a wide screen. */
+.address-confirm {
+  animation: address-confirm-rise 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes address-confirm-rise {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .address-confirm {
+    animation: none;
+  }
+}
+
+/*
+ * A box the pin filled: a pale orange until the shopper has looked — the form
+ * says "check the highlighted boxes" — with one glow as it fills. Unlayered
+ * and doubled, to win over the field's own fill.
+ */
+.from-pin.from-pin {
+  background-color: #fff6f0;
+  border-color: #f0b391;
+  animation: from-pin-glow 1400ms ease-out;
+}
+@keyframes from-pin-glow {
+  0% { box-shadow: 0 0 0 0 rgb(242 104 58 / 0.45); }
+  100% { box-shadow: 0 0 0 8px rgb(242 104 58 / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .from-pin.from-pin {
+    animation: none;
+  }
+}
+
+/*
  * The page's width on a wide screen: up to 1680px, filling the window on the
  * way there. Tailwind's own `container` steps between fixed widths — 1280px
  * from 1280 to 1535, 1536px above — which left a laptop at 1366 with 75px of

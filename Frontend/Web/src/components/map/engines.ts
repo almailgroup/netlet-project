@@ -36,8 +36,14 @@ export type MountOptions = {
   locale: "en" | "ar";
   /** The middle of the map, as it moves. */
   onMove: (centre: Pin) => void;
+  /** The map has started to move — a drag, a zoom, the keyboard, or `setView`. The pin lifts. */
+  onMoveStart?: () => void;
+  /** The map has come to rest with this in the middle. The pin drops, and the address is read. */
+  onSettle?: (centre: Pin) => void;
   /** The provider refused after drawing — a key it does not accept. */
   onBroken: () => void;
+  /** A picture of the spot that does not move: no gestures, no controls, no keyboard stop. */
+  still?: boolean;
 };
 
 /* A little past the border, so a pin at the edge of the country is still in
@@ -106,21 +112,42 @@ export async function mountGoogle(options: MountOptions, key: string): Promise<M
     restriction: { latLngBounds: BOUNDS, strictBounds: false },
     /* One finger moves it, as the other two maps do: this box is the map and
        nothing else, so there is no page to scroll by mistake inside it. */
-    gestureHandling: "greedy",
+    gestureHandling: options.still ? "none" : "greedy",
     clickableIcons: false,
     streetViewControl: false,
     fullscreenControl: false,
+    disableDefaultUI: options.still,
     /* The satellite view is how somebody finds their own roof. */
-    mapTypeControl: true,
+    mapTypeControl: !options.still,
     mapTypeControlOptions: { mapTypeIds: ["roadmap", "hybrid"] },
-    keyboardShortcuts: true,
+    keyboardShortcuts: !options.still,
   });
+  /* Google says "idle" once a move of any kind is over, and nothing when one
+     starts but the centre changing — so the first change after a rest is the start. */
+  let moving = false;
   map.addListener("center_changed", () => {
     const centre = map.getCenter();
-    if (centre) options.onMove({ lat: centre.lat(), lng: centre.lng() });
+    if (!centre) return;
+    if (!moving) {
+      moving = true;
+      options.onMoveStart?.();
+    }
+    options.onMove({ lat: centre.lat(), lng: centre.lng() });
+  });
+  map.addListener("zoom_changed", () => {
+    if (!moving) {
+      moving = true;
+      options.onMoveStart?.();
+    }
+  });
+  map.addListener("idle", () => {
+    const centre = map.getCenter();
+    if (!moving || !centre) return;
+    moving = false;
+    options.onSettle?.({ lat: centre.lat(), lng: centre.lng() });
   });
   map.addListener("click", (event: google.maps.MapMouseEvent) => {
-    if (event.latLng) map.panTo(event.latLng);
+    if (event.latLng && !options.still) map.panTo(event.latLng);
   });
 
   return {
@@ -231,15 +258,21 @@ export async function mountApple(options: MountOptions): Promise<MapHandle> {
     region: regionFor(mapkit, options.start, options.zoom, options.node),
     cameraBoundary: boundary,
     isRotationEnabled: false,
+    isScrollEnabled: !options.still,
+    isZoomEnabled: !options.still,
     showsCompass: mapkit.FeatureVisibility.Hidden,
-    showsMapTypeControl: true,
-    showsZoomControl: true,
+    showsMapTypeControl: !options.still,
+    showsZoomControl: !options.still,
     showsUserLocationControl: false,
   });
-  const report = () => options.onMove({ lat: map.center.latitude, lng: map.center.longitude });
-  map.addEventListener("region-change-end", report);
+  const here = () => ({ lat: map.center.latitude, lng: map.center.longitude });
+  map.addEventListener("region-change-start", () => options.onMoveStart?.());
+  map.addEventListener("region-change-end", () => {
+    options.onMove(here());
+    options.onSettle?.(here());
+  });
   map.addEventListener("single-tap", event => {
-    if (event.pointOnPage) map.setCenterAnimated(map.convertPointOnPageToCoordinate(event.pointOnPage));
+    if (event.pointOnPage && !options.still) map.setCenterAnimated(map.convertPointOnPageToCoordinate(event.pointOnPage));
   });
 
   return {
@@ -262,16 +295,24 @@ export async function mountOsm(options: MountOptions): Promise<MapHandle> {
     zoom: options.zoom,
     minZoom: MIN_ZOOM,
     maxBounds: L.latLngBounds([BOUNDS.south, BOUNDS.west], [BOUNDS.north, BOUNDS.east]),
+    ...(options.still
+      ? { dragging: false, zoomControl: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, touchZoom: false }
+      : {}),
   });
   L.tileLayer(MAP_TILES, {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(map);
+  map.on("movestart", () => options.onMoveStart?.());
   map.on("move", () => {
     const at = map.getCenter();
     options.onMove({ lat: at.lat, lng: at.lng });
   });
-  map.on("click", event => map.panTo(event.latlng));
+  map.on("moveend", () => {
+    const at = map.getCenter();
+    options.onSettle?.({ lat: at.lat, lng: at.lng });
+  });
+  map.on("click", event => { if (!options.still) map.panTo(event.latlng); });
 
   return {
     setView: (pin, zoom) => map.setView([pin.lat, pin.lng], zoom),

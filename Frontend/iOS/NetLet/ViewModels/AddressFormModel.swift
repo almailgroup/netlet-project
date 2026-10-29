@@ -16,9 +16,29 @@ final class AddressFormModel: AddressPartsEditing {
     var contactPhone: String
     var notes: String
     var governorate: String? = nil
-    var parts: AddressParts
+    var parts: AddressParts {
+        didSet {
+            // A box the shopper changed is theirs now, not the pin's.
+            guard !filling else { return }
+            let changed = PinFill.keys.filter { (oldValue.value(for: $0) ?? "") != (parts.value(for: $0) ?? "") }
+            if !changed.isEmpty { byPin.removeAll { changed.contains($0) } }
+        }
+    }
     var typedArea = false
     var pin: Pin?
+    /// What the last pin read there.
+    private(set) var place: PlaceAnswer?
+    /// The parts the pin wrote, drawn pale orange until changed.
+    private(set) var byPin: [String] = []
+    /// What the form says after a pin: that it filled the boxes, or where it disagrees.
+    var pinNote: PinNote?
+    private var filling = false
+
+    struct PinNote: Equatable {
+        let conflicts: [String]
+        let place: PlaceAnswer
+        let houseMissing: Bool
+    }
     /// The line of an address saved before the parts existed, kept until it is re-entered.
     let legacyLine: String?
     /// An address chosen for delivery must say where it is to be priced.
@@ -74,6 +94,40 @@ final class AddressFormModel: AddressPartsEditing {
     /// Problems are said once there is something to be wrong about, never on an empty form.
     var showsProblems: Bool {
         !problems.isEmpty && (!label.isEmpty || legacyLine != nil || !parts.isEmpty)
+    }
+
+    /// The pin, and what was read there: the boxes fill from it (`PinFill`),
+    /// and the note under the map says how. `force` takes the pin's over
+    /// what was typed — "Use the pin's address".
+    func pinned(_ pin: Pin?, _ read: PlaceAnswer?, force: Bool = false) {
+        self.pin = pin
+        place = read
+        guard pin != nil, let read else {
+            if pin == nil { byPin = [] }
+            pinNote = nil
+            return
+        }
+        let fill = PinFill.apply(current: parts, governorate: governorate, place: read, byPin: byPin, force: force)
+        filling = true
+        parts = fill.parts
+        filling = false
+        if let zone = fill.governorate { governorate = zone }
+        if fill.filled.contains("area"), let area = parts.area {
+            typedArea = !(reference.areas[governorate ?? ""] ?? []).contains { $0.en == area }
+        }
+        byPin = fill.filled
+        pinNote = PinNote(
+            conflicts: fill.conflicts,
+            place: read,
+            houseMissing: (parts.building ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+        )
+    }
+
+    /// A new address, or one moved, is read back with "Is this your address?"
+    /// before it is kept (`whereChanged`); a renamed one saves at once.
+    var needsConfirm: Bool {
+        guard let editing else { return true }
+        return AddressMove.moved(before: editing, governorate: governorate, parts: parts, line: legacyLine, pin: pin)
     }
 
     /// Saves it, answering the row the server kept.

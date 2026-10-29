@@ -35,6 +35,12 @@ enum Brand {
     static let pressFill = Color(red: 240 / 255, green: 242 / 255, blue: 245 / 255)
     static let star = Color(red: 255 / 255, green: 184 / 255, blue: 0 / 255)
     static let chevron = Color(red: 138 / 255, green: 160 / 255, blue: 189 / 255)
+    /// A box a dropped pin filled (`.from-pin`): pale orange until it is changed (#fff6f0).
+    static let fromPin = Color(red: 255 / 255, green: 246 / 255, blue: 240 / 255)
+    /// That box's rim (#f0b391).
+    static let fromPinRim = Color(red: 240 / 255, green: 179 / 255, blue: 145 / 255)
+    /// The words of the line saying the pin filled them (#7a3a1f).
+    static let fromPinInk = Color(red: 122 / 255, green: 58 / 255, blue: 31 / 255)
 }
 
 /// The shop's main action: navy, full width, a thumb's height.

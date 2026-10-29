@@ -164,6 +164,8 @@ jobs:
             shot 52-admin-commission "$lang" portal:/admin/commission admin
             shot 53-product-preview "$lang" preview:wireless-earbuds ""
             shot 54-tab-bar-away "$lang" tabBarAway ""
+            shot 55-address-pin "$lang" address:pin shopper
+            shot 56-address-confirm "$lang" address:confirm shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

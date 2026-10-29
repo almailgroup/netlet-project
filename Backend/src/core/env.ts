@@ -102,6 +102,10 @@ export const ENV = {
      back to OpenStreetMap — see Backend/src/core/maps.ts. */
   googleMapsKey: process.env.GOOGLE_MAPS_API_KEY ?? "",
   appleMapkitToken: process.env.APPLE_MAPKIT_TOKEN ?? "",
+  /* Where a dropped pin's address is read (services/placeLookup.ts). Unset,
+     OpenStreetMap's public Nominatim, which asks for light use; a shop that
+     outgrows it runs its own and names it here. */
+  nominatimUrl: process.env.NOMINATIM_URL ?? "",
   appleMapkitTeamId: process.env.APPLE_MAPKIT_TEAM_ID ?? "",
   appleMapkitKeyId: process.env.APPLE_MAPKIT_KEY_ID ?? "",
   appleMapkitPrivateKey: (process.env.APPLE_MAPKIT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),

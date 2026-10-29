@@ -614,3 +614,73 @@ final class BagOpsTests: XCTestCase {
         XCTAssertEqual(gone.subtotal.fils, 0)
     }
 }
+
+/// The pin filling the form — `fillFromPlace` and `whereChanged` in
+/// `Shared/commerce`, on the TypeScript's own cases.
+final class PinFillTests: XCTestCase {
+    private let place = PlaceAnswer(parts: AddressParts(area: "Salmiya", block: "5", street: "52", building: "6A"), governorate: "hawalli", source: "osm")
+
+    func testFillsAnEmptyFormAndItsGovernorate() {
+        let fill = PinFill.apply(current: AddressParts(), governorate: nil, place: place, byPin: [])
+        XCTAssertEqual(fill.parts.cleaned(), AddressParts(area: "Salmiya", block: "5", street: "52", building: "6A"))
+        XCTAssertEqual(fill.governorate, "hawalli")
+        XCTAssertEqual(fill.filled, ["area", "block", "street", "building"])
+        XCTAssertEqual(fill.conflicts, [])
+    }
+
+    func testKeepsWhatWasTypedAndNamesWhereThePinDisagrees() {
+        let fill = PinFill.apply(current: AddressParts(area: "Salmiya", block: "7", building: "12", floor: "2"), governorate: "hawalli", place: place, byPin: [])
+        XCTAssertEqual(fill.parts.cleaned(), AddressParts(area: "Salmiya", block: "7", street: "52", building: "12", floor: "2"))
+        XCTAssertEqual(fill.conflicts, ["block", "building"])
+        XCTAssertEqual(fill.filled, ["area", "street"])
+    }
+
+    func testTakesThePinsOverWhatWasTypedWhenAsked() {
+        let fill = PinFill.apply(current: AddressParts(block: "7"), governorate: "capital", place: place, byPin: [], force: true)
+        XCTAssertEqual(fill.parts.block, "5")
+        XCTAssertEqual(fill.governorate, "hawalli")
+        XCTAssertEqual(fill.conflicts, [])
+    }
+
+    func testRewritesWhatAnEarlierPinWroteAndEmptiesWhatThisOneLacks() {
+        let first = PinFill.apply(current: AddressParts(), governorate: nil, place: place, byPin: [])
+        let jabriya = PlaceAnswer(parts: AddressParts(area: "Jabriya", block: "2", street: "Hamad Bin Mubarak Al-Mi'na'i"), governorate: "hawalli", source: "osm")
+        let second = PinFill.apply(current: first.parts, governorate: first.governorate, place: jabriya, byPin: first.filled)
+        XCTAssertEqual(second.parts.cleaned(), AddressParts(area: "Jabriya", block: "2", street: "Hamad Bin Mubarak Al-Mi'na'i"))
+        XCTAssertEqual(second.conflicts, [])
+    }
+
+    func testLeavesAChosenGovernorateUnlessThePinWroteTheArea() {
+        XCTAssertEqual(PinFill.apply(current: AddressParts(area: "Typed"), governorate: "capital", place: place, byPin: []).governorate, "capital")
+        XCTAssertEqual(PinFill.apply(current: AddressParts(), governorate: "capital", place: place, byPin: []).governorate, "hawalli")
+    }
+
+    func testTheSameValueWrittenDifferentlyIsNoConflict() {
+        let fill = PinFill.apply(current: AddressParts(block: " ٥ "), governorate: "hawalli", place: place, byPin: [])
+        XCTAssertEqual(fill.conflicts, [])
+        XCTAssertTrue(fill.filled.contains("block"))
+    }
+
+    private let home = SavedAddress(
+        id: 1, label: "Home", contactName: "Noura", contactPhone: "99887766", governorate: "hawalli", addressLine: "Salmiya, Block 5, Street 52, House 6A", addressNotes: nil,
+        parts: AddressParts(area: "Salmiya", block: "5", street: "52", building: "6A"), pin: Pin(lat: 29.3375, lng: 48.0763)
+    )
+
+    func testANewNameOrNumberMovesNothing() {
+        XCTAssertFalse(AddressMove.moved(before: home, governorate: "hawalli", parts: AddressParts(area: "Salmiya", block: " ٥ ", street: "52", building: "6A"), line: nil, pin: Pin(lat: 29.337501, lng: 48.076299)))
+    }
+
+    func testAGovernoratePartOrPinMoves() {
+        let parts = AddressParts(area: "Salmiya", block: "5", street: "52", building: "6A")
+        XCTAssertTrue(AddressMove.moved(before: home, governorate: "capital", parts: parts, line: nil, pin: home.pin))
+        XCTAssertTrue(AddressMove.moved(before: home, governorate: "hawalli", parts: AddressParts(area: "Salmiya", block: "5", street: "53", building: "6A"), line: nil, pin: home.pin))
+        XCTAssertTrue(AddressMove.moved(before: home, governorate: "hawalli", parts: parts, line: nil, pin: nil))
+    }
+
+    func testThePlaceAnswerFixtureDecodes() async throws {
+        let place = try await Fixtures.client.call(API.placeAt, .init(lat: 29.3115, lng: 48.0819, locale: "en"))
+        XCTAssertEqual(place?.parts.area, "Rumaithiya")
+        XCTAssertEqual(place?.parts.line(.en), "Rumaithiya, Block 5, Street 52, House 6A")
+        XCTAssertEqual(place?.source, "osm")
+    }
+}

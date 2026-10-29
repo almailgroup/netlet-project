@@ -137,6 +137,8 @@ struct LabeledField: View {
     var secure = false
     var leftToRight = false
     var axis: Axis = .horizontal
+    /// Filled by a dropped pin and not yet changed: pale orange, the web's `.from-pin`.
+    var fromPin = false
 
     @State private var revealed = false
     @Environment(LanguageSettings.self) private var l
@@ -175,11 +177,12 @@ struct LabeledField: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 50)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(problem == nil ? Brand.line : Brand.danger, lineWidth: problem == nil ? 1 : 1.5)
+                    .strokeBorder(problem != nil ? Brand.danger : fromPin ? Brand.fromPinRim : Brand.line, lineWidth: problem == nil ? 1 : 1.5)
             )
+            .animation(.easeOut(duration: 0.25), value: fromPin)
             if let hint, problem == nil {
                 Text(hint).font(.footnote).foregroundStyle(Brand.muted)
             }

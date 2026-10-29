@@ -58,6 +58,8 @@ struct AddressPartsFields<Model: AddressPartsEditing>: View {
     var governorateOptional = false
     /// A problem to say under the box it belongs to, by the keys that box answers.
     var problem: @MainActor ([String]) -> String? = { _ in nil }
+    /// The parts a dropped pin filled, drawn pale orange until the shopper changes them.
+    var fromPin: [String] = []
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -65,16 +67,16 @@ struct AddressPartsFields<Model: AddressPartsEditing>: View {
             governoratePicker
             areaPicker
             HStack(alignment: .top, spacing: 10) {
-                partField("address.block", \.block, keyboard: .numbersAndPunctuation)
-                partField("address.street", \.street)
+                partField("address.block", \.block, id: "block", keyboard: .numbersAndPunctuation)
+                partField("address.street", \.street, id: "street")
             }
             HStack(alignment: .top, spacing: 10) {
-                partField("address.avenue", \.avenue)
-                partField("address.building", \.building)
+                partField("address.avenue", \.avenue, id: "avenue")
+                partField("address.building", \.building, id: "building")
             }
             HStack(alignment: .top, spacing: 10) {
-                partField("address.floor", \.floor, keyboard: .numbersAndPunctuation)
-                partField("address.apartment", \.apartment)
+                partField("address.floor", \.floor, id: "floor", keyboard: .numbersAndPunctuation)
+                partField("address.apartment", \.apartment, id: "apartment")
             }
             LabeledField(
                 label: l.t("address.paci"),
@@ -130,20 +132,25 @@ struct AddressPartsFields<Model: AddressPartsEditing>: View {
                 }
             } label: {
                 let chosen = model.areas.first { $0.en == model.parts.area }
-                MenuField(text: model.typedArea ? l.t("address.areaOther") : chosen?.name(l.current), placeholder: l.t("address.areaChoose"))
+                MenuField(
+                    text: model.typedArea ? l.t("address.areaOther") : chosen?.name(l.current),
+                    placeholder: l.t("address.areaChoose"),
+                    fromPin: !model.typedArea && fromPin.contains("area")
+                )
             }
             .accessibilityLabel(l.t("address.area"))
             if model.typedArea {
-                LabeledField(label: l.t("address.areaTyped"), text: Binding(get: { model.parts.area ?? "" }, set: { model.parts.area = $0 }))
+                LabeledField(label: l.t("address.areaTyped"), text: Binding(get: { model.parts.area ?? "" }, set: { model.parts.area = $0 }), fromPin: fromPin.contains("area"))
             }
         }
     }
 
-    private func partField(_ key: String, _ part: WritableKeyPath<AddressParts, String?>, keyboard: UIKeyboardType = .default) -> some View {
+    private func partField(_ key: String, _ part: WritableKeyPath<AddressParts, String?>, id: String, keyboard: UIKeyboardType = .default) -> some View {
         LabeledField(
             label: l.t(key),
             text: Binding(get: { model.parts[keyPath: part] ?? "" }, set: { model.parts[keyPath: part] = $0 }),
-            keyboard: keyboard
+            keyboard: keyboard,
+            fromPin: fromPin.contains(id)
         )
     }
 }

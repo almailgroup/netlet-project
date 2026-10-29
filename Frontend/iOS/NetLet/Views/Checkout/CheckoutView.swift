@@ -516,6 +516,8 @@ private struct CodeCard: View {
 struct MenuField: View {
     let text: String?
     let placeholder: String
+    /// Filled by a dropped pin and not yet changed: pale orange, like `LabeledField`'s.
+    var fromPin = false
 
     var body: some View {
         HStack {
@@ -527,8 +529,9 @@ struct MenuField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 50)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(fromPin ? Brand.fromPinRim : Brand.line, lineWidth: 1))
+        .animation(.easeOut(duration: 0.25), value: fromPin)
     }
 }
 

@@ -11,6 +11,19 @@
  * saved before the parts existed keeps its line, said under the boxes, until
  * somebody fills them in.
  *
+ * **The map comes first, and fills the boxes** (on the owner's word). Dropping
+ * a pin reads the area, block, street and house there (`maps.placeAt`) and
+ * writes them into the boxes, drawn pale orange until the shopper changes
+ * them, under a line saying so. It writes what is empty or was the pin's
+ * before, never over what the shopper typed: where the pin disagrees with a
+ * typed box, the line says where the pin is and offers to take its address
+ * (`fillFromPlace`).
+ *
+ * **Saving asks first, "Is this your address?"** (`AddressConfirm`, also the
+ * owner's): a new address, and one moved, is shown back whole, with "Yes, save
+ * address" and "Edit address". An edit that only renames it or changes who to
+ * call saves at once (`whereChanged`).
+ *
  * `requireGovernorate` is the dialog's: an address chosen there is chosen *for*
  * its governorate, which is what prices each seller's delivery, so one saved
  * without it would answer nothing. The book still allows the gap, the way the
@@ -21,10 +34,12 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { kuwaitDeliveryZones } from "@shared/customer";
-import { MAX_LABEL, MAX_NOTES, addressProblems, type ShippingAddress } from "@shared/commerce/addresses";
-import { cleanParts, hasParts } from "@shared/commerce/kuwaitAddress";
+import { MAX_LABEL, MAX_NOTES, addressProblems, whereChanged, type ShippingAddress } from "@shared/commerce/addresses";
+import { AREAS, cleanParts, governorateOfArea, hasParts } from "@shared/commerce/kuwaitAddress";
+import { PIN_PARTS, fillFromPlace, type PinPart, type PlaceAnswer } from "@shared/commerce/placeParts";
+import { AddressConfirm } from "@/components/account/AddressConfirm";
 import { AddressPartsFields } from "@/components/account/AddressPartsFields";
-import { PinPicker } from "@/components/map/PinPicker";
+import { PinPicker, placeLine } from "@/components/map/PinPicker";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
 
@@ -43,6 +58,8 @@ const BLANK: ShippingAddress = {
 };
 
 type Saved = { id: number; governorate?: string | null; label: string };
+/** What the form says after a pin: that it filled the boxes, or where it disagrees with them. */
+type PinNote = { conflicts: PinPart[]; place: PlaceAnswer; houseMissing: boolean };
 
 export function AddressForm({
   address,
@@ -67,6 +84,11 @@ export function AddressForm({
   const { t, isArabic } = useTranslation();
   const utils = trpc.useUtils();
   const [draft, setDraft] = useState<ShippingAddress>(address ? { ...BLANK, ...address } : BLANK);
+  /* What the last pin read, which parts it wrote, and what to say about it. */
+  const [place, setPlace] = useState<PlaceAnswer | null>(null);
+  const [byPin, setByPin] = useState<PinPart[]>([]);
+  const [note, setNote] = useState<PinNote | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const refresh = async () => {
     await utils.customer.addresses.list.invalidate();
@@ -79,6 +101,7 @@ export function AddressForm({
 
   const add = trpc.customer.addresses.add.useMutation({
     onSuccess: async row => {
+      setConfirming(false);
       if (announce) toast.success(t("address.saved"));
       await refresh();
       if (row) onSaved(row, true);
@@ -87,6 +110,7 @@ export function AddressForm({
   });
   const update = trpc.customer.addresses.update.useMutation({
     onSuccess: async row => {
+      setConfirming(false);
       if (announce) toast.success(t("address.saved"));
       await refresh();
       if (row) onSaved(row, false);
@@ -99,6 +123,30 @@ export function AddressForm({
     ...(requireGovernorate && !draft.governorate?.trim() ? (["address.needsGovernorate"] as const) : []),
   ];
   const saving = add.isPending || update.isPending;
+
+  /** The pin and what was read there: the boxes fill, and the line under the map says how. */
+  const pinned = (pin: ShippingAddress["pin"], read: PlaceAnswer | null, force = false) => {
+    setPlace(read);
+    if (!pin || !read) {
+      setDraft(d => ({ ...d, pin }));
+      setByPin(pin ? byPin : []);
+      setNote(null);
+      return;
+    }
+    const fill = fillFromPlace(draft.parts ?? {}, draft.governorate, read, byPin, force);
+    setDraft(d => ({ ...d, pin, parts: fill.parts, governorate: fill.governorate ?? d.governorate }));
+    setByPin(fill.filled);
+    setNote({ conflicts: fill.conflicts, place: read, houseMissing: !fill.parts.building?.trim() });
+  };
+
+  /** A box the shopper changed is theirs now, not the pin's. */
+  const typed = (parts: ShippingAddress["parts"]) => {
+    const before = draft.parts ?? {};
+    const after = parts ?? {};
+    const changed = PIN_PARTS.filter(key => (before[key] ?? "") !== (after[key] ?? ""));
+    if (changed.length) setByPin(keys => keys.filter(key => !changed.includes(key)));
+    setDraft(d => ({ ...d, parts }));
+  };
 
   const save = () => {
     const payload = {
@@ -117,11 +165,20 @@ export function AddressForm({
     else add.mutate(payload);
   };
 
+  /* A new address, or one moved, is shown back before it is kept. */
+  const submit = () => {
+    if (problems.length > 0 || saving) return;
+    if (!address || whereChanged(address, draft)) setConfirming(true);
+    else save();
+  };
+
+  const filledLine = note ? placeLine(note.place, isArabic) : "";
+
   return (
     <form
       onSubmit={event => {
         event.preventDefault();
-        if (problems.length === 0) save();
+        submit();
       }}
       className="rounded-2xl border border-[#e6e9ef] bg-white p-5"
     >
@@ -131,6 +188,31 @@ export function AddressForm({
         </h3>
       )}
       <div className={`${heading === null ? "" : "mt-4 "}grid gap-3 sm:grid-cols-2`}>
+        {/* The map first: dropping a pin fills the boxes under it. */}
+        <div className="sm:col-span-2">
+          <PinPicker value={draft.pin ?? null} place={place} onChange={(pin, read) => pinned(pin, read)} governorate={draft.governorate} />
+          {note ? (
+            note.conflicts.length ? (
+              <div role="status" className="mt-2 rounded-xl bg-[#fff6f0] px-4 py-3 text-[12px] leading-5 text-[#7a3a1f]">
+                {/* The address inside the sentence, isolated (U+2068…U+2069) as
+                    `<bdi>` would, so its direction cannot reorder the words around it. */}
+                <p>{t("pin.conflict", { place: `\u2068${filledLine}\u2069` })}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => pinned(draft.pin ?? null, note.place, true)} className="glass-navy pressable rounded-full px-4 py-1.5 text-[12px] font-bold">
+                    {t("pin.usePin")}
+                  </button>
+                  <button type="button" onClick={() => setNote(null)} className="glass pressable rounded-full px-4 py-1.5 text-[12px] font-bold">
+                    {t("pin.keepTyped")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p role="status" className="mt-2 rounded-xl bg-[#fff6f0] px-4 py-2.5 text-[12px] font-semibold leading-5 text-[#7a3a1f]">
+                {t(note.houseMissing ? "pin.filledAddHouse" : "pin.filled")}
+              </p>
+            )
+          ) : null}
+        </div>
         <label className="text-[12px] font-bold text-[#536b8c]">
           {t("address.label")}
           <input
@@ -150,7 +232,15 @@ export function AddressForm({
           <Select
             aria-label={t("address.governorate")}
             value={draft.governorate ?? ""}
-            onChange={event => setDraft(d => ({ ...d, governorate: event.target.value }))}
+            onChange={event => {
+              const governorate = event.target.value;
+              setDraft(d => {
+                /* An area on another governorate's list does not belong to this one. */
+                const area = d.parts?.area?.trim();
+                const elsewhere = area && governorateOfArea(area) && !(AREAS[governorate] ?? []).some(entry => entry.en === area);
+                return { ...d, governorate, parts: elsewhere ? { ...d.parts, area: "" } : d.parts };
+              });
+            }}
             className={`${field} mt-1 font-normal`}
           >
             {requireGovernorate ? <option value="" disabled>{t("delivery.selectGovernorate")}</option> : <option value="">—</option>}
@@ -164,10 +254,11 @@ export function AddressForm({
         <AddressPartsFields
           parts={draft.parts ?? {}}
           governorate={draft.governorate}
-          onChange={parts => setDraft(d => ({ ...d, parts }))}
+          onChange={typed}
           onGovernorate={governorate => setDraft(d => ({ ...d, governorate }))}
           fieldClass={field}
           labelClass="text-[12px] font-bold text-[#536b8c]"
+          fromPin={byPin}
         />
         {/* Saved as one line before the parts existed: kept until replaced. */}
         {!hasParts(draft.parts) && draft.addressLine?.trim() ? (
@@ -210,9 +301,6 @@ export function AddressForm({
             className={`${field} mt-1 min-h-20 font-normal`}
           />
         </label>
-        <div className="sm:col-span-2">
-          <PinPicker value={draft.pin ?? null} onChange={pin => setDraft(d => ({ ...d, pin }))} governorate={draft.governorate} />
-        </div>
       </div>
 
       {/* What is wrong, named. A form that only greys the button leaves
@@ -237,6 +325,14 @@ export function AddressForm({
           {cancelLabel ?? t("common.cancel")}
         </button>
       </div>
+
+      <AddressConfirm
+        open={confirming}
+        address={draft}
+        pending={saving}
+        onConfirm={save}
+        onEdit={() => setConfirming(false)}
+      />
     </form>
   );
 }

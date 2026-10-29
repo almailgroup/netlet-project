@@ -72,10 +72,18 @@ extension API {
         let allows: Bool
     }
 
+    /// A pin to read the address at, in the page's language.
+    struct PlaceQuery: Encodable, Sendable {
+        let lat: Double
+        let lng: Double
+        let locale: String
+    }
+
     static let notices = Procedure<Page, NoticePage>(query: "notifications.list")
     static let markNoticesRead = Procedure<MarkRead, Acknowledged>(mutation: "notifications.markRead")
     static let noticeChannels = Procedure<NoInput, NoticeChannels>(query: "notifications.channels")
     static let mapAvailability = Procedure<NoInput, MapAvailability>(query: "maps.providers")
+    static let placeAt = Procedure<PlaceQuery, PlaceAnswer?>(query: "maps.placeAt")
     static let noticeEmail = Procedure<NoInput, Bool>(query: "notifications.email")
     static let setNoticeEmail = Procedure<EmailChoice, Acknowledged>(mutation: "notifications.setEmail")
 

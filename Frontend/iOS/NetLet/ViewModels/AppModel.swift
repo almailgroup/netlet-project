@@ -166,6 +166,9 @@ final class AppModel {
     var wishAfterSignIn: WishTarget?
     /// The product a hold on its card is previewing (`QuickViewSheet`).
     var previewing: Product?
+    /// For the screenshots: the address book opens a new address on the map
+    /// ("pin") or at its confirmation ("confirm"). Debug builds only set it.
+    var addressStep: String?
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
     private(set) var ai: AIAvailability?
     /// Whether a model can read a photo for search (`search.photoAvailable`),
@@ -360,6 +363,11 @@ final class AppModel {
             guard session.seller?.isStoreMember == true else { return }
             selectedTab = .account
             accountPath = NavigationPath([Route.listings, Route.newListing])
+        case "address":
+            // `address:pin` or `address:confirm` — a new address in the book,
+            // on its map or at "Is this your address?".
+            addressStep = value ?? "pin"
+            openAccount(.addresses)
         case "section":
             // `section:addresses` — any account section, by its web address.
             guard let value, let route = Route.from(link: "/account/\(value)") else { return }

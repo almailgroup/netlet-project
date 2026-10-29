@@ -3,6 +3,7 @@ import {
   MAX_ADDRESSES,
   addressAcceptable,
   addressProblems,
+  whereChanged,
   destinationCount,
   freezeDestination,
   missingFromAddress,
@@ -154,5 +155,25 @@ describe("a parcel is a seller and a destination", () => {
     ];
     expect(destinationCount(oneSellerTwoDoors)).toBe(2);
     expect(splitAcrossSeller(oneSellerTwoDoors)).toBe(true);
+  });
+});
+
+describe("whereChanged", () => {
+  const home = { label: "Home", governorate: "hawalli", parts: { area: "Salmiya", block: "5", street: "52", building: "6A" }, pin: { lat: 29.3375, lng: 48.0763 }, contactName: "Noura", contactPhone: "99887766", addressNotes: "" };
+
+  it("is false for a new name, number or note", () => {
+    expect(whereChanged(home, { ...home, label: "Villa", contactName: "Sara", contactPhone: "55443322", addressNotes: "Ring twice" })).toBe(false);
+  });
+
+  it("is false for the same parts written differently", () => {
+    expect(whereChanged(home, { ...home, parts: { ...home.parts, block: " ٥ " } })).toBe(false);
+    expect(whereChanged(home, { ...home, pin: { lat: 29.337501, lng: 48.076299 } })).toBe(false);
+  });
+
+  it("is true when the governorate, a part, the line or the pin moves", () => {
+    expect(whereChanged(home, { ...home, governorate: "capital" })).toBe(true);
+    expect(whereChanged(home, { ...home, parts: { ...home.parts, street: "53" } })).toBe(true);
+    expect(whereChanged(home, { ...home, pin: null })).toBe(true);
+    expect(whereChanged({ label: "Old", addressLine: "Salmiya, Block 5" }, { label: "Old", addressLine: "Salmiya, Block 6" })).toBe(true);
   });
 });

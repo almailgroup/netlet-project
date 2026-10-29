@@ -24,3 +24,13 @@ export function pressHaptic(): void {
 export function refusedHaptic(): void {
   buzz([14, 70, 14]);
 }
+
+/**
+ * The map pin dropping into place once the map stops (on the owner's word, at
+ * three quarters strength). A page's buzz has a length and no strength, so
+ * the length stands in for it: half again a press's, as the app's 0.75 is to
+ * its 0.5. It follows a drag of the map, which is the press a browser asks for.
+ */
+export function pinDropHaptic(): void {
+  buzz(15);
+}
