@@ -175,7 +175,12 @@ root and drain its glass to white for as long as the fade ran — keeps it up
 while focus is inside it, and is a cut under reduced motion. **What floats
 over it rides it down** into the room it left (`.rides-tab-bar`: a page's
 `PhoneActionBar` and a department's Filters button; and the assistant's
-button), so nothing hangs over an empty strip. Measured at 390 in both
+button), so nothing hangs over an empty strip. **The assistant's button folds
+to its mark while the bar is away, on the owner's word** (`.assistant-label`):
+"Need help?" narrows to nothing and fades, and since the pill is held at the
+screen's end edge it goes out that way — the right in English, the left in
+Arabic — and comes back with the bar; a width and an opacity on the words
+alone, never on the glass pill. Measured at 390 in both
 languages: still there 152px down from the top, away at 160, back after 15px
 up, there at the foot; the Filters button and the product page's buy bar land
 72px lower, where the bar was. The app follows the same numbers
@@ -1604,7 +1609,10 @@ one can be put back from the toast's Undo. **Move to wishlist** asks the
 heart's question (`chooseWishlist`) and takes the line out only once it is on
 a list; a guest has no lists and is not offered it. Both need the line's
 product, so the bag now sends `productId`. **Saved for later** is a sideways
-row under the bag (`SavedForLater`): Saved, newest first, less what is in the
+row directly under the bag's lines, on the owner's word ("so that you can
+easily add it back to cart") — beside the summary from `lg`, not under the
+whole page, and under the empty state when the bag is empty
+(`SavedForLater`): Saved, newest first, less what is in the
 bag, each with Move to cart, which takes it out of Saved alone (`unsave` — a
 list it is on keeps it), Choose an option for one with sizes, or Sold out. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
@@ -1800,11 +1808,12 @@ header and no footer, on the owner's word** (`BARE_ON_PHONE` in
 `StorefrontShell`): the page starts under the status bar, ends with its own
 content — `<main>` keeps the room the footer left for the floating tab bar —
 and the tab bar is the way anywhere else; a wide screen keeps both, having no
-tab bar. A guest changes the language from any other page's footer. **And no
-assistant's button there**: it goes with the header (see "The shop
-assistant"), because floating over a column of rows it covered their ends —
-the owner's screenshot had it over "Help from NetLet", which is the help on
-that page anyway.
+tab bar. A guest changes the language from any other page's footer. **The
+assistant's button is there too, on the owner's word** ("add the need help AI
+assistant icon for all the pages"): it was left off these two for a while,
+having covered the ends of the rows — the owner's screenshot had it over
+"Help from NetLet" — and now the page keeps room under its last row for it
+(`pb-[11rem]`), and it folds to its mark while the tab bar is away.
 
 **"Your profile" is drawn to the owner's second reference** (Noon's "Your
 profile"): white cards whose boxes carry their label inside the rim, small and
@@ -2669,8 +2678,9 @@ that corner; each says so through `useFloatingBar` (`data-floating-bar` on
 `<html>`, a count, so two at once and one leaving does not bring the button
 back early), and the button fades out while any of them shows. The thing a
 page is for wins the corner. On a wide screen the footer leaves room under it.
-**It goes with the header**: on a phone's account and cart pages, which have
-none, it is not drawn (see "The account").
+**It is on every page, the header-less account and cart included, and folds
+to its mark on a scroll down** — both on the owner's word; see the tab bar's
+slide under Buttons and "The account".
 
 **On a phone it is a sheet that rises from the foot of the screen over the
 dimmed page**, with a gap above it and a handle, sized to what the keyboard
@@ -4375,20 +4385,31 @@ nothing else, which is the argument for that habit in its sharpest form:
   three presents dismissed the bag three times. `addItem` takes `reveal` now;
   the gift page confirms with a toast.
 
-**The heart asks which list, on the owner's word.** Signed in, an empty heart
-opens `WishChooser` (web) or `WishSheet` (app): a private wishlist ("Only you
-can see it") or a public one (family and friends see it with your number or a
-link, and buy from it), each naming the list it lands on or saying one is
-started. `wishlists.wish` puts the product on the shopper's oldest list of that
-kind — making one, under a title in the page's language, when there is none,
-under an advisory lock on the shopper so two quick hearts make one list — and
-in Saved, because the heart's fill is Saved's. A filled heart is
-`wishlists.unwish`: out of Saved and off every list of the shopper's, and the
-toast says both. Signed out the heart saves on the device as it always did,
-there being no lists without an account; with the `wishlists` switch off it
-saves to Saved and asks nothing. `toggleSaved` answers what it did
-(`SaveOutcome`), so a page toasts only when the heart did not ask
-(`toastHeart`). The account's Wishlists section says the same thing in the
+**The heart asks first: Saved items or a wishlist — on the owner's word,
+"wishlists and saved items are a totally different thing".** Saved is what a
+shopper keeps to come back to and buy, only theirs; a wishlist is what they
+would like, kept private or shared for family to buy from. An empty heart
+opens `WishChooser` (web) or `WishSheet` (app) on that question, for a guest
+too; Saved goes straight in, and Wishlist asks the second question — a
+private wishlist ("Only you can see it") or a public one (family and friends
+see it with your number or a link, and buy from it), each naming the list it
+lands on or saying one is started — with a way back to the first. A guest who
+chooses Wishlist signs in over the question (the web) or after it (the app,
+`wishAfterSignIn`, two sheets at once being one too many) and is asked which
+list once the session exists. `wishlists.wish` puts the product on the
+shopper's oldest list of that kind — making one, under a title in the page's
+language, when there is none, under an advisory lock on the shopper so two
+quick hearts make one list — **and no longer in Saved**, which it used to do
+so the heart would fill. The heart fills for either now (`heartedIds`, the
+app's `isHearted`): Saved and `wishlists.wishedIds`, every product on the
+shopper's lists once each. A filled heart on something on a list is
+`wishlists.unwish` — off every list and out of Saved, and the toast says both
+— and on something only saved takes it out of Saved. With the `wishlists`
+switch off the heart saves to Saved and asks nothing. The header's and the
+cart's heart open the wishlists and count what is on them (a guest's, Saved
+and its count). `toggleSaved` answers what it did (`SaveOutcome`), so a page
+toasts only when the heart did not ask (`toastHeart`); the bag's "Move to
+wishlist" starts at the second question. The account's Wishlists section says the same thing in the
 same words: public lists, then private, each under a heading saying who can
 see them, with a line on how to start one. A list can still be filled from
 Saved and made public or private afterwards.
@@ -5894,9 +5915,11 @@ number and line and a Change opening `DeliverySheet`, or the question), each
 store a card (`BagGroup.groups`, the web's `bagGroups`, tested on its cases)
 with "Sold by …" to the store's page and its parcels (`ParcelLine`: the fee,
 free in green, the way to free delivery as a bar), the line's price under its
-name, the summary, the note and Checkout in one card, and **Saved for later**
-under it all (`SavedForLaterRow`: Saved newest first less what is in the bag,
-read by id, a sideways row with Move to cart, Choose an option or Sold out).
+name, **Saved for later directly under the lines**, on the owner's word
+(`SavedForLaterRow`: Saved newest first less what is in the bag, read by id, a
+sideways row with Move to cart, Choose an option or Sold out; under the empty
+state when the bag is empty), then the summary, the note and Checkout in one
+card.
 **Checkout pressed with no address opens the book and goes on once one is
 chosen**, giving up three seconds after the book closes without one. The
 stepper's minus is a bin at one, and **every line has a "⋯" beside its name**
@@ -5931,8 +5954,9 @@ the saved location, the Profile page is the delivery apps' layout and the
 assistant says "Need help?" — the web's changes, on the owner's word.**
 `ShopPage`'s `header: false, footer: false` draws a page with neither row and
 no footer (the Profile tab's first screen, signed in or out, its sections,
-which carry their own "← Your account", and the Cart tab's first screen), no
-assistant's button — it goes with the header — and the page's own ground under
+which carry their own "← Your account", and the Cart tab's first screen) — the
+assistant's button still floats there, on the owner's word, with room kept
+under the last row for it — and the page's own ground under
 the status bar, solid, so what scrolls up goes under it rather than under the
 clock (build 35 drew nothing there); `LogoRow`'s end is a pin,
 the address in use or the area, and a chevron, felt on the press and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
@@ -6012,9 +6036,20 @@ scroll down and back on a scroll up**, on the owner's word, by the web's
 numbers (`TabBarScroll`, tested on `tabBarScroll.test.ts`'s cases): `ShopPage`
 follows its scroll — the system's reading from iOS 18, the content's frame on
 17 — in a box nothing observes, so only the bar's coming and going draws the
-page again, and hides the bar with `.toolbar(.hidden, for: .tabBar)` inside a
-smooth animation (a cut under Reduce Motion, never under VoiceOver, which
-reads the bar as the way round the app). Every page starts with it shown. The home page is `HomeShelf`, which is
+page again. **It slides down off the screen rather than vanishing, on the
+owner's word** (`TabBarSlide`): `.toolbar(.hidden, for: .tabBar)` made it
+vanish where it stood, so on a phone the bar `TabView` is built on is moved by
+its layer's `sublayerTransform`, on the web's curve over 380ms — never the
+view's own `transform`, since UIKit lays the bar out by its frame and a frame
+set under a transform is undefined — and takes no touches while away. An iPad,
+whose bar is along the top, still hides it the system's way. What floats over
+the page rides down with it (`AppModel.tabBarRide`: the assistant's button,
+the cart's Checkout bar, the product page's buy bar, a department's Filters),
+the assistant's button folds to its mark while it is away ("Need help?" moving
+out toward the end edge), and the button steps aside for the cart's and a
+department's floating control as it does on the web. A cut under Reduce
+Motion, never under VoiceOver, which reads the bar as the way round the app.
+Every page starts with it shown, and a page leaving puts it back. The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked

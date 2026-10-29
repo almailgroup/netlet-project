@@ -144,7 +144,12 @@ extension API {
         let productId: String
     }
 
+    /// Onto a private or a public wishlist — never into Saved, which is the
+    /// heart's other answer and a different thing.
     static let wish = Procedure<Wish, WishAnswer>(mutation: "wishlists.wish")
+    /// Every product on the shopper's wishlists, once each, so a heart fills
+    /// for what is on a list as well as for what is saved.
+    static let wishedIds = Procedure<NoInput, [String]>(query: "wishlists.wishedIds")
     /// A filled heart: out of Saved and off every list of the shopper's.
     static let unwish = Procedure<Unwish, UnwishAnswer>(mutation: "wishlists.unwish")
     static let wishlistPhone = Procedure<NoInput, String?>(query: "wishlists.phone")

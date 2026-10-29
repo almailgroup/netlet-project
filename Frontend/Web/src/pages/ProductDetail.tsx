@@ -1066,7 +1066,7 @@ export default function ProductDetail() {
   const { data: product, isLoading, error } = useProductByHandle(handle);
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart } = useCart();
-  const { savedIds, toggleSaved, deliveryZone } = useCustomer();
+  const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
   /* Signed in, sharing this page shares a product link with the sharer's code (3.1.14). */
   const { user: me } = useAuth();
   const { direction, t, tError, locale, isArabic: isArabicPage } = useTranslation();
@@ -1148,7 +1148,7 @@ export default function ProductDetail() {
 
   const selectedVariant = product?.variants.find(variant => variant.id === selectedVariantId) ?? product?.variants[0];
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
-  const isSaved = product ? savedIds.includes(product.id) : false;
+  const isSaved = product ? heartedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   /* Before any early return, like every hook. */
   const { member } = useMembership();
@@ -1439,7 +1439,7 @@ export default function ProductDetail() {
           <Suspense fallback={null}>
             <BoughtTogether
               productId={product.id}
-              saved={savedIds}
+              saved={heartedIds}
               onSave={id => toggleSaved(id)}
               onQuickView={setQuickProduct}
             />
@@ -1459,7 +1459,7 @@ export default function ProductDetail() {
             <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map(item => (
                 <li key={item.id} className="min-w-0">
-                  <ProductCard compact product={item} saved={savedIds.includes(item.id)} onSave={() => toggleSaved(item.id)} onQuickView={() => setQuickProduct(item)} />
+                  <ProductCard compact product={item} saved={heartedIds.includes(item.id)} onSave={() => toggleSaved(item.id)} onQuickView={() => setQuickProduct(item)} />
                 </li>
               ))}
             </ul>

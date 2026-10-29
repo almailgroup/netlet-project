@@ -28,6 +28,7 @@ protocol AccountServicing: Sendable {
     func setSaved(_ productId: String, saved: Bool) async throws -> [String]
     func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer
     func unwish(_ productId: String) async throws
+    func wishedProducts() async throws -> [String]
 }
 
 struct AccountService: AccountServicing {
@@ -113,4 +114,6 @@ struct AccountService: AccountServicing {
     func unwish(_ productId: String) async throws {
         _ = try await client.call(API.unwish, .init(productId: productId))
     }
+
+    func wishedProducts() async throws -> [String] { try await client.call(API.wishedIds) }
 }

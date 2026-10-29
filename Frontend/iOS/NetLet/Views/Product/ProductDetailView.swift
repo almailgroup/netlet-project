@@ -82,7 +82,11 @@ private struct ProductPage: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .overlay(alignment: .bottom) {
-            if buttonsGone { stickyBar.transition(.move(edge: .bottom).combined(with: .opacity)) }
+            if buttonsGone {
+                stickyBar
+                    .offset(y: app.tabBarRide)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         .sensoryFeedback(.impact(weight: .medium, intensity: Haptics.strength), trigger: app.cart.itemCount)
@@ -416,13 +420,13 @@ private struct ProductPage: View {
                 Button {
                     Task { await app.heart(product) }
                 } label: {
-                    Image(systemName: app.saved.contains(product.id) ? "heart.fill" : "heart")
+                    Image(systemName: app.saved.isHearted(product.id) ? "heart.fill" : "heart")
                         .font(.system(size: 19, weight: .medium))
                         .foregroundStyle(Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255))
                         .frame(width: 56, height: 56)
                 }
                 .buttonStyle(PurchaseButtonStyle())
-                .accessibilityLabel(l.t(app.saved.contains(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
+                .accessibilityLabel(l.t(app.saved.isHearted(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
             }
             Button {
                 Task { await add(openCheckout: true) }

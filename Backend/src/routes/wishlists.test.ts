@@ -390,7 +390,7 @@ describe("the heart's question", () => {
     [shopper] = await db.insert(users).values({ email: "hearts@example.test" }).returning();
   });
 
-  it("makes the private list on the first heart, saves the product and reuses the list after", async () => {
+  it("makes the private list on the first heart and reuses it after, leaving Saved alone", async () => {
     const first = await caller().wishlists.wish({ productId: "41", visibility: "private", title: "My wishlist" });
     expect(first).toMatchObject({ title: "My wishlist", created: true });
     const second = await caller().wishlists.wish({ productId: "42", visibility: "private", title: "Another title" });
@@ -399,7 +399,9 @@ describe("the heart's question", () => {
     const lists = await caller().wishlists.mine();
     expect(lists).toHaveLength(1);
     expect(lists[0]).toMatchObject({ visibility: "private", itemCount: 2 });
-    expect((await savedIds()).sort()).toEqual(["41", "42"]);
+    // A wishlist and Saved are two things, on the owner's word.
+    expect(await savedIds()).toEqual([]);
+    expect(await caller().wishlists.wishedIds()).toEqual(["41", "42"]);
   });
 
   it("puts a public heart on a public list, never the private one", async () => {
@@ -426,7 +428,14 @@ describe("the heart's question", () => {
     expect(privateList.itemCount).toBe(2);
   });
 
+  it("lists what is on the shopper's lists once each, and nobody else's", async () => {
+    await asShopper("noura").wishlists.create({ title: "Not mine" }).then(list => asShopper("noura").wishlists.addItem({ listId: list, productId: "99" }));
+    await caller().wishlists.wish({ productId: "42", visibility: "public", title: "My public wishlist" });
+    expect(await caller().wishlists.wishedIds()).toEqual(["41", "42", "43"]);
+  });
+
   it("takes a filled heart off Saved and every list of the shopper's, and nobody else's", async () => {
+    await caller().customer.saved.set({ productId: "41", saved: true });
     await caller().wishlists.wish({ productId: "41", visibility: "public", title: "My public wishlist" });
     const nouraList = await asShopper("noura").wishlists.create({ title: "Hers" });
     await asShopper("noura").wishlists.addItem({ listId: nouraList, productId: "41" });
@@ -434,7 +443,7 @@ describe("the heart's question", () => {
     expect(await caller().wishlists.unwish({ productId: "41" })).toEqual({ lists: 2 });
     expect(await savedIds()).not.toContain("41");
     const lists = await caller().wishlists.mine();
-    expect(lists.map((list: { itemCount: number }) => list.itemCount)).toEqual([1, 1]);
+    expect(lists.map((list: { itemCount: number }) => list.itemCount)).toEqual([1, 2]);
 
     const { items } = await asShopper("noura").wishlists.get({ listId: nouraList });
     expect(items.map((item: { productId: string }) => item.productId)).toEqual(["41"]);

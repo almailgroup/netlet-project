@@ -349,7 +349,7 @@ struct HeartButton: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let saved = app.saved.contains(product.id)
+        let saved = app.saved.isHearted(product.id)
         Button {
             Task { await app.heart(product) }
         } label: {

@@ -8,6 +8,10 @@ import SwiftUI
 struct ShopAssistantButton: View {
     /// The product on screen, so the conversation starts about it.
     var product: Product?
+    /// Folded to its mark while the tab bar is away, on the owner's word:
+    /// "Need help?" goes out toward the screen's end edge — the right in
+    /// English, the left in Arabic — and comes back on a scroll up.
+    var folded = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -18,19 +22,28 @@ struct ShopAssistantButton: View {
             } label: {
                 // "Need help?" beside the mark, on the owner's word — the
                 // web's button at every width, glass round a navy mark.
-                HStack(spacing: 10) {
+                HStack(spacing: 0) {
                     AssistantMark(size: 40)
                         .overlay(alignment: .topTrailing) {
                             if app.chatUnread { PixelDot().offset(x: 2, y: -2) }
                         }
-                    Text(l.t("shopChat.needHelp"))
-                        .font(.inter(15, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .lineLimit(1)
-                        .fixedSize()
+                    // The words' own box narrows as they leave and clips them,
+                    // so they slide out under the pill's end rather than past it.
+                    HStack(spacing: 0) {
+                        if !folded {
+                            Text(l.t("shopChat.needHelp"))
+                                .font(.inter(15, .bold))
+                                .foregroundStyle(Brand.navy)
+                                .lineLimit(1)
+                                .fixedSize()
+                                .padding(.leading, 10)
+                                .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
+                    }
+                    .clipped()
                 }
                 .padding(5)
-                .padding(.trailing, 11)
+                .padding(.trailing, folded ? 0 : 11)
                 .background(GlassSurface(top: 0.7, foot: 0.7).clipShape(Capsule()))
                 .overlay(Capsule().strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
                 .shadow(color: Brand.navy.opacity(0.22), radius: 12, x: 0, y: 6)

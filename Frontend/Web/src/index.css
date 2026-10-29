@@ -1013,6 +1013,33 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
+ * And the assistant's button folds to its mark while the bar is away, on the
+ * owner's word: "Need help?" narrows to nothing and fades, and since the pill
+ * is held at the screen's end edge the words go out that way — to the right
+ * in English, the left in Arabic — and come back the same way on a scroll up.
+ * A width and an opacity on the words alone, never on the pill, whose glass
+ * an opacity would drain to white (`.tab-bar`'s rule above).
+ */
+.assistant-label {
+  display: inline-block;
+  max-width: 9rem;
+  overflow: hidden;
+  transition:
+    max-width 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 240ms ease;
+}
+@media (max-width: 1023.98px) {
+  html[data-tab-bar="away"] .assistant-launcher {
+    gap: 0;
+    padding-inline-end: 0.375rem;
+  }
+  html[data-tab-bar="away"] .assistant-label {
+    max-width: 0;
+    opacity: 0;
+  }
+}
+
+/*
  * The notification badges' hop (`PixelBadge`), on the owner's word: a badge
  * crouches, jumps and lands with a squash, throwing four pixels off its
  * corners at the top of the jump — once, then still, and again every ten
@@ -1324,6 +1351,8 @@ html[dir="rtl"] .nav-progress {
     opacity 200ms ease,
     translate 200ms ease,
     transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    gap 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    padding 380ms cubic-bezier(0.32, 0.72, 0, 1),
     visibility 0s linear 0s;
 }
 /*
@@ -1421,6 +1450,8 @@ html[dir="rtl"] .nav-progress {
       opacity 200ms ease,
       translate 200ms ease,
       transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      gap 380ms cubic-bezier(0.32, 0.72, 0, 1),
+      padding 380ms cubic-bezier(0.32, 0.72, 0, 1),
       visibility 0s linear 200ms;
   }
 }

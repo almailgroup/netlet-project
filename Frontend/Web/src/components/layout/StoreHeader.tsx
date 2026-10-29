@@ -104,7 +104,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
   const [location, navigate] = useLocation();
   const query = useSearch();
   const { itemCount, openCart } = useCart();
-  const { savedIds, toggleLocale } = useCustomer();
+  const { savedIds, wishedIds, toggleLocale } = useCustomer();
   const { isAuthenticated } = useAuth();
   /* The logo is the way home, and on the home page the way back to its top: a
      link to the page already open would push a second copy of it into the
@@ -204,6 +204,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
      the page's title start from, as it does on a wide screen. The name takes
      what the logo and the heart leave and is cut short before it reaches them. */
   const wishlists = isAuthenticated ? t("cart.wishlists") : t("nav.saved");
+  const listed = isAuthenticated ? wishedIds.length : savedIds.length;
   const phoneTop = (
     <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
@@ -222,16 +223,16 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
           <ChevronDown className="size-4 shrink-0" aria-hidden />
         </button>
         {/* The wishlists, or Saved for a guest, who has no lists, only hearts
-            kept on the device; the count is the hearts. */}
+            kept on the device; the count is what is on the lists, or Saved. */}
         <Link
           href={isAuthenticated ? "/account/wishlists" : "/saved"}
           onClick={() => pressHaptic()}
-          aria-label={savedIds.length ? `${wishlists} (${savedIds.length})` : wishlists}
+          aria-label={listed ? `${wishlists} (${listed})` : wishlists}
           title={wishlists}
           className="pressable relative grid size-11 shrink-0 place-items-center rounded-xl text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
         >
           <Heart className="size-[20px]" aria-hidden />
-          <PixelBadge value={savedIds.length} className="absolute end-0.5 top-0.5" />
+          <PixelBadge value={listed} className="absolute end-0.5 top-0.5" />
         </Link>
       </div>
     </div>

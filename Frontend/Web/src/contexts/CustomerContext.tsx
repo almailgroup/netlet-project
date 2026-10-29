@@ -11,6 +11,9 @@ import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { createContext, type ReactNode, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+/* One empty list, so a guest's `wishedIds` is the same array every render. */
+const NONE: string[] = [];
+
 /* The heart's question, fetched when the browser is idle after a sign-in. */
 const WishChooser = lazyPage(async () => ({ default: (await import("@/components/wishlist/WishChooser")).WishChooser }));
 
@@ -44,13 +47,23 @@ type CustomerContextValue = {
   direction: "rtl" | "ltr";
   setLocale: (locale: LocaleCode) => void;
   toggleLocale: () => void;
+  /** Saved — the products kept to come back to — and nothing on a wishlist. */
   savedIds: string[];
   /**
-   * The heart. Signed in, an empty heart *asks* — a private wishlist or a
-   * public one (`WishChooser`, on the owner's word) — and the chooser says
-   * what happened; a filled one comes out of Saved and off the shopper's
-   * lists. Signed out it saves on this device, there being no lists without
-   * an account. Answers which, so a page toasts only what it did itself.
+   * What fills a heart: Saved and every product on the shopper's wishlists,
+   * which are two things now (`wishlists.wishedIds`).
+   */
+  heartedIds: string[];
+  /** What is on the shopper's wishlists, once each; empty for a guest. */
+  wishedIds: string[];
+  /**
+   * The heart. An empty one *asks*, on the owner's word — **Saved items or a
+   * wishlist?** (`WishChooser`), and for a wishlist which one — because the
+   * two are different things; the chooser says what happened. A filled one
+   * comes out of Saved and off the shopper's lists. A guest is asked too:
+   * Saved is kept on this device, and a wishlist needs signing in. With the
+   * `wishlists` switch off it saves and asks nothing. Answers which, so a
+   * page toasts only what it did itself.
    */
   toggleSaved: (productId: string) => SaveOutcome;
   /**
@@ -60,9 +73,9 @@ type CustomerContextValue = {
    */
   saveForLater: (productId: string) => void;
   /**
-   * The heart's question asked outright — which list, private or public —
-   * for the bag's "Move to wishlist". `onWished` runs once the shopper has
-   * chosen one and it is on it, never when they close the question.
+   * The heart's second question asked outright — which list, private or
+   * public — for the bag's "Move to wishlist". `onWished` runs once the
+   * shopper has chosen one and it is on it, never when they close it.
    */
   chooseWishlist: (productId: string, onWished?: () => void) => void;
   /** Out of Saved alone — "Move to cart" — leaving any list it is on alone. */
@@ -73,7 +86,7 @@ type CustomerContextValue = {
   isSignedIn: boolean;
 };
 
-/** What the heart did: asked which list, saved on this device, or took it back — from the device, or from Saved and the account's lists. */
+/** What the heart did: asked where it goes, saved it, or took it back — from Saved alone, or from Saved and the account's lists. */
 export type SaveOutcome = "asked" | "saved" | "removed" | "unwished";
 
 const CustomerContext = createContext<CustomerContextValue | null>(null);
@@ -92,16 +105,17 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const updateSaved = trpc.customer.saved.set.useMutation({
     onSuccess: () => saved.refetch(),
   });
-  const unwish = trpc.wishlists.unwish.useMutation({
-    onSuccess: () => saved.refetch(),
-  });
   const wishlistsOn = useFeature("wishlists");
-  const [asking, setAsking] = useState<string | null>(null);
+  const wished = trpc.wishlists.wishedIds.useQuery(undefined, { enabled: isAuthenticated && wishlistsOn });
+  const unwish = trpc.wishlists.unwish.useMutation({
+    onSuccess: () => { void saved.refetch(); void wished.refetch(); },
+  });
+  const [asking, setAsking] = useState<{ productId: string; start: "choose" | "lists" } | null>(null);
   /* What to do once the question asked by `chooseWishlist` has an answer. */
   const afterWish = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (isAuthenticated && wishlistsOn) return whenIdle(() => void WishChooser.preload());
-  }, [isAuthenticated, wishlistsOn]);
+    if (wishlistsOn) return whenIdle(() => void WishChooser.preload());
+  }, [wishlistsOn]);
 
   // The one writer of <html lang/dir>. Direction is a document property, and
   // setting it here — above every page — is what makes the `ms-`/`me-`/
@@ -146,6 +160,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }, [guestSavedIds, isAuthenticated, saved.data, updateSaved]);
 
   const savedIds = isAuthenticated ? saved.data ?? guestSavedIds : guestSavedIds;
+  const wishedIds = isAuthenticated ? wished.data : undefined;
+  const heartedIds = useMemo(
+    () => (wishedIds?.length ? Array.from(new Set([...savedIds, ...wishedIds])) : savedIds),
+    [savedIds, wishedIds],
+  );
   const deliveryZoneId = isAuthenticated ? profile.data?.deliveryZoneId ?? guestDeliveryZoneId : guestDeliveryZoneId;
   const deliveryZone = kuwaitDeliveryZones.find(zone => zone.id === deliveryZoneId);
 
@@ -162,26 +181,30 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const toggleLocale = useCallback(() => setLocale(locale === "en" ? "ar" : "en"), [locale, setLocale]);
 
   const toggleSaved = useCallback((productId: string): SaveOutcome => {
-    const nextSaved = !savedIds.includes(productId);
+    const hearted = heartedIds.includes(productId);
+    if (!hearted && wishlistsOn) {
+      setAsking({ productId, start: "choose" });
+      return "asked";
+    }
     if (isAuthenticated) {
-      if (nextSaved && wishlistsOn) {
-        setAsking(productId);
-        return "asked";
-      }
-      if (nextSaved) {
+      if (!hearted) {
         updateSaved.mutate({ productId, saved: true });
         return "saved";
       }
-      unwish.mutate({ productId });
-      return "unwished";
+      if (wishedIds?.includes(productId)) {
+        unwish.mutate({ productId });
+        return "unwished";
+      }
+      updateSaved.mutate({ productId, saved: false });
+      return "removed";
     }
     setGuestSavedIds(current => {
-      const next = nextSaved ? Array.from(new Set([...current, productId])) : current.filter(id => id !== productId);
+      const next = hearted ? current.filter(id => id !== productId) : Array.from(new Set([...current, productId]));
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
-    return nextSaved ? "saved" : "removed";
-  }, [isAuthenticated, savedIds, unwish, updateSaved, wishlistsOn]);
+    return hearted ? "removed" : "saved";
+  }, [heartedIds, isAuthenticated, unwish, updateSaved, wishedIds, wishlistsOn]);
 
   const saveForLater = useCallback((productId: string) => {
     if (savedIds.includes(productId)) return;
@@ -211,7 +234,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const chooseWishlist = useCallback((productId: string, onWished?: () => void) => {
     if (!isAuthenticated) return;
     afterWish.current = onWished ?? null;
-    setAsking(productId);
+    setAsking({ productId, start: "lists" });
   }, [isAuthenticated]);
 
   const setDeliveryZoneId = useCallback((zoneId: string) => {
@@ -249,6 +272,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     setLocale,
     toggleLocale,
     savedIds,
+    heartedIds,
+    wishedIds: wishedIds ?? NONE,
     toggleSaved,
     saveForLater,
     chooseWishlist,
@@ -257,16 +282,19 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     deliveryZone,
     setDeliveryZoneId,
     isSignedIn: isAuthenticated,
-  }), [chooseWishlist, deliveryZone, deliveryZoneId, isAuthenticated, locale, saveForLater, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved, unsave]);
+  }), [chooseWishlist, deliveryZone, deliveryZoneId, heartedIds, isAuthenticated, locale, saveForLater, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved, unsave, wishedIds]);
 
   return (
     <CustomerContext.Provider value={value}>
       {children}
-      {asking && isAuthenticated ? (
+      {asking ? (
         <Suspense fallback={null}>
           <WishChooser
-            productId={asking}
-            onWished={() => { const then = afterWish.current; afterWish.current = null; then?.(); }}
+            productId={asking.productId}
+            start={asking.start}
+            signedIn={isAuthenticated}
+            onSave={() => saveForLater(asking.productId)}
+            onWished={() => { const then = afterWish.current; afterWish.current = null; then?.(); void wished.refetch(); }}
             onClose={() => { afterWish.current = null; setAsking(null); }}
           />
         </Suspense>

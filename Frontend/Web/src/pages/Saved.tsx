@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 export default function Saved() {
   usePageMeta(privatePageMeta("Saved items"));
-  const { savedIds, toggleSaved } = useCustomer();
+  const { savedIds, heartedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   /* By id, so a heart on something older than the newest sixty products is
@@ -97,7 +97,7 @@ export default function Saved() {
       {/* Under the hearts it learns from, and only once it has learned
           something: the rail draws nothing until it is personal. */}
       <RecommendedRail
-        saved={savedIds}
+        saved={heartedIds}
         onSave={(id, title) => toastHeart(toggleSaved(id), title, t)}
         onQuickView={setQuickProduct}
       />

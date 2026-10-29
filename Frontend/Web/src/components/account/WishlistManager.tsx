@@ -199,6 +199,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
   const [confirming, setConfirming] = useState<"unpublish" | "delete" | null>(null);
   const update = trpc.wishlists.update.useMutation();
   const remove = trpc.wishlists.remove.useMutation();
+  const utils = trpc.useUtils();
   const link = trpc.wishlists.shareLink.useQuery({ listId: list.id }, { enabled: list.visibility === "public" });
 
   const published = list.visibility === "public";
@@ -346,7 +347,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
         confirmLabel={t("wish.deleteConfirm")}
         pending={remove.isPending}
         onConfirm={() => remove.mutate({ listId: list.id }, {
-          onSuccess: () => { setConfirming(null); onChanged(); },
+          onSuccess: () => { setConfirming(null); onChanged(); void utils.wishlists.wishedIds.invalidate(); },
           onError: error => toast.error(t(error.message as "wishlist.notFound")),
         })}
         onClose={() => setConfirming(null)}
@@ -400,6 +401,8 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
   const detail = trpc.wishlists.get.useQuery({ listId });
   const add = trpc.wishlists.addItem.useMutation();
   const drop = trpc.wishlists.removeItem.useMutation();
+  /* What is on a list fills its heart everywhere (`wishedIds`). */
+  const utils = trpc.useUtils();
 
   /*
    * Saved is a list of ids, and so is the list. Both are read by id, in one
@@ -459,7 +462,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                         </div>
                         <DiscButton
                           onClick={() => drop.mutate({ listId, itemId: item.id }, {
-                            onSuccess: () => { void detail.refetch(); toast.success(t("wish.removed")); },
+                            onSuccess: () => { void detail.refetch(); void utils.wishlists.wishedIds.invalidate(); toast.success(t("wish.removed")); },
                           })}
                           aria-label={t("wish.removeItem", { name: nameOf(item.productId) || item.productId })}
                           className="-m-1.5"
@@ -500,7 +503,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                         <p dir="auto" className="min-w-0 flex-1 truncate text-sm font-extrabold text-[#0a285a]">{product.title}</p>
                         <button
                           onClick={() => add.mutate({ listId, productId: product.id }, {
-                            onSuccess: () => { void detail.refetch(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },
+                            onSuccess: () => { void detail.refetch(); void utils.wishlists.wishedIds.invalidate(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },
                             onError: error => toast.error(t(error.message as "wishlist.listFull")),
                           })}
                           disabled={already || add.isPending}

@@ -899,6 +899,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "wishlists.byToken":
       return null;
     case "wishlists.findByPhone":
+    case "wishlists.wishedIds":
       return [];
     case "wishlists.create":
       return 1;

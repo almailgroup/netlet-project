@@ -72,13 +72,13 @@ private struct QuickViewContent: View {
             Button {
                 Task { await app.heart(product) }
             } label: {
-                Image(systemName: app.saved.contains(product.id) ? "heart.fill" : "heart")
+                Image(systemName: app.saved.isHearted(product.id) ? "heart.fill" : "heart")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundStyle(Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255))
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.action)
-            .accessibilityLabel(l.t(app.saved.contains(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
+            .accessibilityLabel(l.t(app.saved.isHearted(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
             ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, userId: app.session.user?.id))) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 17, weight: .medium))

@@ -155,8 +155,15 @@ final class AppModel {
     let delivery: DeliveryModel
     /// The header's "Deliver to" sheet.
     var deliveryOpen = false
-    /// The product whose heart is asking which wishlist (`WishSheet`).
+    /// The product whose heart is asking Saved or a wishlist, and which
+    /// (`WishSheet`).
     var wishAsking: WishTarget?
+    /// How far the tab bar has slid down out of the way (`TabBarSlide`), for
+    /// what floats over a page to ride down with it; zero while it is there.
+    var tabBarRide: CGFloat = 0
+    /// A guest who chose a wishlist is signing in; which list is asked once
+    /// the session exists, and forgotten if they close sign-in instead.
+    var wishAfterSignIn: WishTarget?
     /// The product a hold on its card is previewing (`QuickViewSheet`).
     var previewing: Product?
     /// What the AI gateway is set up for here (`ai.available`); nil until asked.
@@ -378,21 +385,27 @@ final class AppModel {
         }
     }
 
-    /// The heart, wherever it is drawn — the web's `toggleSaved`. Signed in, an
-    /// empty heart asks whether the product goes on the private or the public
-    /// wishlist (`WishSheet`, on the owner's word), and a filled one comes out
-    /// of Saved and off the shopper's lists. Signed out it saves on the phone,
-    /// there being no lists without an account.
+    /// The heart, wherever it is drawn — the web's `toggleSaved`. An empty
+    /// heart asks first, on the owner's word: **Saved items or a wishlist?**,
+    /// and for a wishlist which one (`WishSheet`) — a guest too, who is asked
+    /// to sign in for a wishlist. A filled one comes off the lists and out of
+    /// Saved if it is on a list, and out of Saved otherwise. With wishlists
+    /// switched off it saves without asking.
     func heart(_ product: Product) async {
-        if saved.contains(product.id) {
-            let signedIn = session.isSignedIn
-            if signedIn { await saved.unwish(product.id) } else { await saved.toggle(product.id) }
-            toast(language.t(signedIn ? "wish.unwished" : "saved.removed", ["name": "\u{2068}\(product.title)\u{2069}"]))
-        } else if session.isSignedIn && features.isOn("wishlists") {
+        let name = "\u{2068}\(product.title)\u{2069}"
+        if saved.isHearted(product.id) {
+            if session.isSignedIn && saved.wished.contains(product.id) {
+                await saved.unwish(product.id)
+                toast(language.t("wish.unwished", ["name": name]))
+            } else {
+                await saved.unsave(product.id)
+                toast(language.t("saved.removed", ["name": name]))
+            }
+        } else if features.isOn("wishlists") {
             wishAsking = WishTarget(productId: product.id, title: product.title)
         } else {
-            await saved.toggle(product.id)
-            toast(language.t("saved.savedForLater", ["name": "\u{2068}\(product.title)\u{2069}"]))
+            await saved.save(product.id)
+            toast(language.t("saved.savedForLater", ["name": name]))
         }
     }
 
@@ -480,6 +493,12 @@ final class AppModel {
         await session.adopt(user)
         authPresented = false
         await linkAccount()
+        if let pending = wishAfterSignIn {
+            wishAfterSignIn = nil
+            // Once the sign-in sheet has gone.
+            try? await Task.sleep(for: .milliseconds(450))
+            wishAsking = pending
+        }
     }
 
     /// Buy now: the item is in the bag like any other, and the bag is skipped

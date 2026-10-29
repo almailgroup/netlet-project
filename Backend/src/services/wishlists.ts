@@ -287,16 +287,17 @@ export async function removeItem(userId: number, listId: number, itemId: number)
 const WISH_LOCK = 7_301;
 
 /**
- * The heart's question answered: put a product on the shopper's private or
- * public wishlist, and keep it saved, in one go (on the owner's word — the
- * heart asks which before it fills).
+ * The heart's "Wishlist" answered: put a product on the shopper's private or
+ * public wishlist (on the owner's word — the heart asks Saved items or a
+ * wishlist, and which wishlist, before it fills).
  *
  * The list is the shopper's oldest of that kind; with none, one is made under
  * the title the page sends, in the shopper's language. Two quick presses must
  * not make two lists, so the read and the insert sit under a lock on the
- * shopper, the way a placement's capacity does. The product stays in Saved
- * as well, because the heart's fill is Saved's and the Saved page is where
- * somebody looks for what they hearted.
+ * shopper, the way a placement's capacity does. **It does not go in Saved
+ * too**, on the owner's word: "wishlists and saved items are a totally
+ * different thing". It used to, because the heart's fill was Saved's; the
+ * heart fills now for either (`wishedProductIds`).
  */
 export async function wishProduct(
   userId: number,
@@ -342,12 +343,22 @@ export async function wishProduct(
       .insert(wishlistItems)
       .values({ wishlistId: list.id, productId, quantity: 1 })
       .onConflictDoNothing({ target: [wishlistItems.wishlistId, wishlistItems.productId] });
-    await tx
-      .insert(savedProducts)
-      .values({ userId, productId })
-      .onConflictDoNothing({ target: [savedProducts.userId, savedProducts.productId] });
     return { listId: list.id, title: list.title, created };
   });
+}
+
+/**
+ * Every product on any of the shopper's wishlists, once each — what fills a
+ * heart beside Saved, now that the two are kept apart.
+ */
+export async function wishedProductIds(userId: number): Promise<string[]> {
+  const rows = await (await db())
+    .selectDistinct({ productId: wishlistItems.productId })
+    .from(wishlistItems)
+    .innerJoin(wishlists, eq(wishlists.id, wishlistItems.wishlistId))
+    .where(eq(wishlists.userId, userId))
+    .orderBy(wishlistItems.productId);
+  return rows.map(row => row.productId);
 }
 
 /**

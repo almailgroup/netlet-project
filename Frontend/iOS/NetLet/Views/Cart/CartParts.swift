@@ -196,7 +196,7 @@ struct LineMenuButton: View {
             app.toast(l.t("cart.savedForLater", ["name": "\u{2068}\(title)\u{2069}"]), undo: undo)
         case .wishlist:
             guard let productId = item.productId else { return }
-            app.wishAsking = WishTarget(productId: productId, title: title, onWished: {
+            app.wishAsking = WishTarget(productId: productId, title: title, start: .lists, onWished: {
                 Task { await app.cart.setQuantity(lineId: lineId, to: 0) }
             })
         case .view:
@@ -280,8 +280,9 @@ private struct LineMenuSheet: View {
     }
 }
 
-/// Saved for later: what the shopper keeps without buying yet, under the bag
-/// with a way back into it — the web's `SavedForLater`.
+/// Saved for later: what the shopper keeps without buying yet, directly under
+/// the bag's lines — under its empty state when the bag is empty — on the
+/// owner's word, with a way back into it: the web's `SavedForLater`.
 ///
 /// It is Saved, newest first, less anything already in the bag, read by id
 /// (`commerce.products.byIds`). **Move to cart** adds the plain line and takes
@@ -290,6 +291,8 @@ private struct LineMenuSheet: View {
 /// "add" means anything, and a sold-out one says so. One row that scrolls
 /// sideways, and nothing drawn with nothing saved.
 struct SavedForLaterRow: View {
+    /// The room above it once there is something to show.
+    var topPadding: CGFloat = 24
     @State private var products: [Product] = []
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -339,7 +342,7 @@ struct SavedForLaterRow: View {
                 .padding(.horizontal, -16)
             }
         }
-        .padding(.top, shown.isEmpty ? 0 : 24)
+        .padding(.top, shown.isEmpty ? 0 : topPadding)
         .task(id: ids.joined(separator: ",") + "|" + l.current.rawValue) { await load(ids) }
     }
 

@@ -106,9 +106,12 @@ export default function Cart() {
         {!items && settling ? (
           <BagSettling />
         ) : !items ? (
-          <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("cart.emptyNote")}>
-            <Link href="/" className={BUTTON_PRIMARY}>{t("cart.keepBrowsing")}</Link>
-          </EmptyState>
+          <>
+            <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("cart.emptyNote")}>
+              <Link href="/" className={BUTTON_PRIMARY}>{t("cart.keepBrowsing")}</Link>
+            </EmptyState>
+            <SavedForLater className="mt-6" />
+          </>
         ) : (
           <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
             <div className="min-w-0 space-y-3">
@@ -120,11 +123,13 @@ export default function Cart() {
                 accountPhone={details.data?.phone ? formatPhone(details.data.phone) : null}
               />
               <BagLines layout="page" />
+              {/* Directly under the lines, on the owner's word, so something
+                  kept for later is a press from going back in. */}
+              <SavedForLater className="pt-3" />
             </div>
             <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} /></aside>
           </div>
         )}
-        <SavedForLater />
       </div>
       {items && cart ? (
         <PhoneActionBar shown={checkoutBelow} label={t("cart.bar")}>
@@ -146,12 +151,14 @@ export default function Cart() {
 /**
  * The wishlists, at the end of the title's line: the place somebody sends
  * what they decided not to buy yet. A guest — who has no lists, only hearts
- * kept on the device — goes to Saved. It counts the hearts.
+ * kept on the device — goes to Saved. It counts what is on the lists, or a
+ * guest's Saved.
  */
 function WishlistLink() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  const { savedIds } = useCustomer();
+  const { savedIds, wishedIds } = useCustomer();
+  const count = isAuthenticated ? wishedIds.length : savedIds.length;
   return (
     <Link
       href={isAuthenticated ? "/account/wishlists" : "/saved"}
@@ -160,7 +167,7 @@ function WishlistLink() {
       className="pressable relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
     >
       <Heart className="size-5" aria-hidden />
-      <PixelBadge value={savedIds.length} className="absolute -end-1.5 -top-1.5" />
+      <PixelBadge value={count} className="absolute -end-1.5 -top-1.5" />
     </Link>
   );
 }

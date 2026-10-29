@@ -33,6 +33,8 @@ struct WishlistsView: View {
                 }
             }
             .task { await model.load() }
+            // An item added or taken off here fills or empties hearts elsewhere.
+            .onDisappear { Task { await app.saved.refreshWished() } }
         }
     }
 }
@@ -321,6 +323,8 @@ struct WishlistDetailView: View {
                 }
             }
             .task { await model.load() }
+            // An item added or taken off here fills or empties hearts elsewhere.
+            .onDisappear { Task { await app.saved.refreshWished() } }
         }
     }
 }

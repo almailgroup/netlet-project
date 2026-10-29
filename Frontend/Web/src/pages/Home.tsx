@@ -195,7 +195,7 @@ export default function Home() {
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
   const { t, locale } = useTranslation();
-  const { savedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
+  const { heartedIds: saved, toggleSaved: togglePersistentSaved } = useCustomer();
   const { data: catalogNow = NO_PRODUCTS, isLoading: catalogFetching, error: catalogError } = useCatalog(HEADER_SHELF);
   /* The shelves are rebuilt from a deferred copy, so thirty cards arriving at
      once are drawn in pieces rather than in one stretch a tap cannot get

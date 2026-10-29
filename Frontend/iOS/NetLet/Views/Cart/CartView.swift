@@ -2,9 +2,10 @@ import SwiftUI
 
 /// The bag — the web's `/cart` on a phone: the title with a heart to the
 /// wishlists at its end, where the order is going, each store's lines
-/// together under its name with that store's delivery beside them, the
-/// summary the server worked out, Checkout under the thumb, and what was saved
-/// for later under it all.
+/// together under its name with that store's delivery beside them, what was
+/// saved for later directly under them (on the owner's word, so it is a press
+/// from going back in), the summary the server worked out, and Checkout under
+/// the thumb.
 ///
 /// **It asks where the order is going, on the owner's word** — checkout only
 /// confirms it. The first card is the address (`DeliveryAddressCard`, the
@@ -25,7 +26,9 @@ struct CartView: View {
 
     var body: some View {
         let cart = app.cart.cart
-        ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }) {
+        let barShown = !(cart?.isEmpty ?? true) && buttonTop > pageBottom - 8
+        // The assistant steps aside while Checkout floats in its corner.
+        ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }, assistant: !barShown) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {
@@ -53,8 +56,8 @@ struct CartView: View {
                         actionTitle: l.t("cart.keepBrowsing")
                     ) { app.goHome() }
                     .card(padding: 0)
+                    SavedForLaterRow()
                 }
-                SavedForLaterRow()
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -69,11 +72,13 @@ struct CartView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let cart, !cart.isEmpty, buttonTop > pageBottom - 8 {
-                bar(cart).transition(.opacity)
+            if let cart, barShown {
+                bar(cart)
+                    .offset(y: app.tabBarRide)
+                    .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.2), value: buttonTop > pageBottom - 8)
+        .animation(.easeOut(duration: 0.2), value: barShown)
         .task(id: l.current) { await app.cart.refresh() }
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
@@ -148,6 +153,7 @@ struct CartView: View {
                 }
                 .card()
             }
+            SavedForLaterRow(topPadding: 12)
             VStack(alignment: .leading, spacing: 14) {
                 SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
@@ -220,7 +226,7 @@ private struct CartWishlistButton: View {
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
                 .overlay(alignment: .topTrailing) {
-                    PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 6, y: -6)
+                    PixelBadge(value: app.saved.listedCount).fixedSize().offset(x: 6, y: -6)
                 }
                 .contentShape(Circle())
         }

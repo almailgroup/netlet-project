@@ -65,7 +65,7 @@ export default function Store() {
   const formatDate = useDateFormat();
   const [location, navigate] = useLocation();
   const query = useSearch();
-  const { savedIds, toggleSaved } = useCustomer();
+  const { heartedIds, toggleSaved } = useCustomer();
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   usePageChrome({ activeDepartment: null });
 
@@ -288,7 +288,7 @@ export default function Store() {
               <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {shown.map(product => (
                   <li key={product.id} className="min-w-0">
-                    <ProductCard compact product={product} saved={savedIds.includes(product.id)} onSave={() => onSave(product)} onQuickView={() => setQuickProduct(product)} />
+                    <ProductCard compact product={product} saved={heartedIds.includes(product.id)} onSave={() => onSave(product)} onQuickView={() => setQuickProduct(product)} />
                   </li>
                 ))}
               </ul>

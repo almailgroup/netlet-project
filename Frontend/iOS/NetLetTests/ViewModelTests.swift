@@ -288,6 +288,47 @@ final class AuthViewModelTests: XCTestCase {
     }
 }
 
+/// Saved and the wishlists are two different things, on the owner's word: a
+/// heart fills for either, and choosing a wishlist never puts it in Saved.
+@MainActor
+final class SavedModelTests: XCTestCase {
+    func testAWishlistIsNotSaved() async throws {
+        let account = FakeAccountService()
+        let saved = SavedModel(account: account, defaults: isolatedDefaults())
+        await saved.adoptAccount()
+        _ = try await saved.wish("41", visibility: "private", title: "My wishlist")
+        XCTAssertEqual(saved.ids, [], "a wish is not a save")
+        XCTAssertEqual(saved.wished, ["41"])
+        XCTAssertTrue(saved.isHearted("41"), "the heart fills for something on a list")
+        XCTAssertEqual(saved.listedCount, 1, "the wishlists' heart counts what is on them")
+
+        await saved.save("42")
+        XCTAssertEqual(saved.ids, ["42"])
+        XCTAssertFalse(saved.wished.contains("42"), "a save is not a wish")
+        XCTAssertEqual(saved.listedCount, 1)
+    }
+
+    func testAFilledHeartOnAListComesOffEverything() async throws {
+        let account = FakeAccountService()
+        account.saved = ["41"]
+        let saved = SavedModel(account: account, defaults: isolatedDefaults())
+        await saved.adoptAccount()
+        _ = try await saved.wish("41", visibility: "public", title: "Wishes")
+        await saved.unwish("41")
+        XCTAssertEqual(account.unwished, ["41"])
+        XCTAssertFalse(saved.isHearted("41"))
+    }
+
+    func testAGuestCountsTheirSaved() async {
+        let saved = SavedModel(account: FakeAccountService(), defaults: isolatedDefaults())
+        await saved.save("7")
+        XCTAssertEqual(saved.listedCount, 1, "a guest's heart goes to Saved")
+        XCTAssertTrue(saved.isHearted("7"))
+        saved.signedOut()
+        XCTAssertEqual(saved.wished, [])
+    }
+}
+
 @MainActor
 final class CheckoutViewModelTests: XCTestCase {
     private let home = SavedAddress(id: 8, label: "Home", contactName: "Noura", contactPhone: "٥٠٠٠ ٠٠٠٠", governorate: "hawalli", addressLine: nil, addressNotes: " Ring twice ",

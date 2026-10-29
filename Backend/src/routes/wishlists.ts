@@ -47,6 +47,7 @@ import {
   setPhone,
   shareTokenFor,
   unwishProduct,
+  wishedProductIds,
   updateList,
   wishProduct,
   WishlistError,
@@ -151,8 +152,9 @@ export const wishlistsRouter = router({
     .mutation(({ ctx, input }) => guard(() => removeItem(ctx.user.id, input.listId, input.itemId))),
 
   /**
-   * The heart's answer: on the shopper's private or public list (made if they
-   * have none, under `title`) and in Saved. See `wishProduct`.
+   * The heart's "Wishlist": on the shopper's private or public list (made if
+   * they have none, under `title`) — and not in Saved, which is its own
+   * thing. See `wishProduct`.
    */
   wish: protectedProcedure
     .input(z.object({
@@ -161,6 +163,9 @@ export const wishlistsRouter = router({
       title: z.string().trim().min(1).max(120),
     }))
     .mutation(({ ctx, input }) => guard(() => wishProduct(ctx.user.id, input.productId, input.visibility, input.title))),
+
+  /** The products on any of the shopper's lists, which fill a heart beside Saved. */
+  wishedIds: protectedProcedure.query(({ ctx }) => wishedProductIds(ctx.user.id)),
 
   /** A filled heart pressed: out of Saved and off every list of the shopper's. */
   unwish: protectedProcedure

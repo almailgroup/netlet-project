@@ -42,7 +42,8 @@ private struct BrowsePage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, searchTerm: model.searchTerm) {
+        // The assistant steps aside while Filters floats in its corner.
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !rowGone, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: [crumb])
                 Text(title)
@@ -186,6 +187,7 @@ private struct BrowsePage: View {
             .accessibilityLabel(filtersLabel)
             .padding(.trailing, 16)
             .padding(.bottom, 12)
+            .offset(y: app.tabBarRide)
             .transition(.opacity.combined(with: .offset(y: 12)))
         }
     }

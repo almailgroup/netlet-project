@@ -81,7 +81,10 @@ struct RootView: View {
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
-        .sheet(isPresented: $app.authPresented) {
+        .sheet(isPresented: $app.authPresented, onDismiss: {
+            // Closed without signing in: the wishlist that was waiting goes too.
+            if !app.session.isSignedIn { app.wishAfterSignIn = nil }
+        }) {
             NavigationStack {
                 AuthView(inSheet: true)
                     .toolbar {

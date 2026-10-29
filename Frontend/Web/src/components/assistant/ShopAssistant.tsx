@@ -17,6 +17,11 @@
  * optional service here follows: a chat button that can only apologise is
  * worse than none.
  *
+ * **On a phone it folds to its mark on a scroll down, on the owner's word**:
+ * while the tab bar is away (`data-tab-bar`) "Need help?" narrows to nothing
+ * and fades toward the screen's end edge, and comes back with the bar on a
+ * scroll up (`.assistant-label` in index.css).
+ *
  * **On a phone it steps aside for the page's own floating control** — the
  * product page's buy bar, the cart's Checkout, a department's corner Filters
  * — which say so with `useFloatingBar`; `.assistant-launcher` in index.css
@@ -88,7 +93,7 @@ export function ShopAssistant({ product, department }: {
           <Sparkles className="size-5" />
           {unread ? <PixelDot className="absolute -end-0.5 -top-0.5" /> : null}
         </span>
-        <span aria-hidden className="relative whitespace-nowrap text-[15px] font-bold text-[#0a285a]">{t("shopChat.needHelp")}</span>
+        <span aria-hidden className="assistant-label relative whitespace-nowrap text-[15px] font-bold text-[#0a285a]">{t("shopChat.needHelp")}</span>
       </button>
       {started ? (
         <Suspense fallback={null}>

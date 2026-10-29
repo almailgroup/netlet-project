@@ -181,7 +181,7 @@ struct ProductPhotos: View {
 
     /// The heart, as the card's: red once saved, and a toast saying so.
     private var saveButton: some View {
-        let saved = app.saved.contains(product.id)
+        let saved = app.saved.isHearted(product.id)
         return Button {
             Task { await app.heart(product) }
         } label: {

@@ -1,6 +1,7 @@
 /**
- * Saved for later: what the shopper keeps without buying yet, under the bag on
- * the cart page, with a way back into it.
+ * Saved for later: what the shopper keeps without buying yet, directly under
+ * the bag's lines on the cart page (under its empty state when the bag is
+ * empty), on the owner's word, with a way back into it.
  *
  * It is Saved — the hearts — newest first, less anything already in the bag;
  * the line menu's "Save for later" (`LineMenu`) puts a line here and takes it
@@ -27,7 +28,7 @@ import { Link } from "wouter";
 
 const SHOWN = 12;
 
-export function SavedForLater() {
+export function SavedForLater({ className = "" }: { className?: string }) {
   const { t } = useTranslation();
   const { savedIds, unsave, saveForLater } = useCustomer();
   const { cart, addItem } = useCart();
@@ -53,7 +54,7 @@ export function SavedForLater() {
   };
 
   return (
-    <section aria-labelledby="saved-later-title" className="mt-6">
+    <section aria-labelledby="saved-later-title" className={className}>
       <div className="flex items-center justify-between gap-3">
         <h2 id="saved-later-title" className="text-[17px] font-extrabold text-[#0a285a]">{title}</h2>
         <div className="flex items-center gap-2">

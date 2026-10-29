@@ -19,10 +19,10 @@ import UIKit
 /// word (`header: false, footer: false`) — the web's phone draws `/account`
 /// and `/cart` with neither: the page starts under the status bar, ends with
 /// its own content, and the tab bar is the way anywhere else. The account's
-/// sections carry their own "← Your account". **The assistant's button goes
-/// with the header**: floating over a column of rows it covered their ends —
-/// "Help from NetLet" on the Profile page, which is the help there anyway — so
-/// a page without the header draws none.
+/// sections carry their own "← Your account". **The assistant's button is on
+/// every page, those two included, on the owner's word** — it went with the
+/// header for a while, having covered the ends of the Profile page's rows; a
+/// page without the header now keeps room under its content for it.
 ///
 /// **Only the home page has the footer**, on the owner's word (`footer`), as on
 /// the web's phone.
@@ -34,7 +34,13 @@ import UIKit
 ///
 /// **The tab bar slides away on a scroll down and back on a scroll up**, on
 /// the owner's word — once the page has gone down a little, never on the first
-/// point (`TabBarScroll`, the web's rule number for number). The scroll is
+/// point (`TabBarScroll`, the web's rule number for number) — and **it slides
+/// down off the screen rather than vanishing**, also on the owner's word
+/// (`TabBarSlide`, the bar moved by its own transform; an iPad, whose bar is
+/// along the top, hides it the system's way). What floats over the page rides
+/// down with it into the room it left (`AppModel.tabBarRide`), and the
+/// assistant's button folds to its mark while it is away: "Need help?" goes
+/// out toward the screen's end edge and comes back with the bar. The scroll is
 /// followed in a box nothing observes, so only the bar's coming and going
 /// draws the page again; it stays put for VoiceOver, which reads it as the
 /// way around the app, and comes and goes with no slide under Reduce Motion.
@@ -72,12 +78,15 @@ struct ShopPage<Content: View>: View {
     @State private var scroll = ScrollFollower()
     /// Whether the tab bar is out of the way: the one thing that does draw.
     @State private var barAway = false
+    /// Hidden the system's way, where there is no bar along the foot to slide.
+    @State private var barHidden = false
     /// Whether the logo row has gone and the search row is the top of the
     /// screen — which row's glass reaches up behind the status bar.
     @State private var searchAtTop = false
 
-    /// The assistant floats only where the header is; see above.
-    private var showsAssistant: Bool { assistant && header }
+    /// The assistant floats on every page but where the page's own floating
+    /// bar has its corner.
+    private var showsAssistant: Bool { assistant }
 
     var body: some View {
         let back: (() -> Void)? = root ? nil : { dismiss() }
@@ -107,6 +116,10 @@ struct ShopPage<Content: View>: View {
                                 SiteFooter().id(ShopPageTop.foot)
                             } else {
                                 content()
+                                if !header && showsAssistant && app.assistantOn {
+                                    // Room under the last row for the assistant's button.
+                                    Color.clear.frame(height: 64).accessibilityHidden(true)
+                                }
                             }
                         } header: {
                             if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar) }
@@ -132,9 +145,10 @@ struct ShopPage<Content: View>: View {
         .background(Brand.ground.ignoresSafeArea())
         .overlay(alignment: .bottomTrailing) {
             if showsAssistant {
-                ShopAssistantButton(product: assistantProduct)
+                ShopAssistantButton(product: assistantProduct, folded: barAway)
                     .padding(.trailing, 16)
                     .padding(.bottom, 16)
+                    .offset(y: app.tabBarRide)
             }
         }
         .animation(.easeOut(duration: 0.2), value: showsAssistant)
@@ -153,13 +167,22 @@ struct ShopPage<Content: View>: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(barAway ? .hidden : .visible, for: .tabBar)
+        .toolbar(barHidden ? .hidden : .visible, for: .tabBar)
         .onAppear {
             // Back on this page, from one pushed over it or another tab: the
             // bar is there, and the scroll counts afresh from where it is.
             scroll.state = TabBarScroll(y: scroll.state.y)
             barAway = false
+            barHidden = false
+            TabBarSlide.slide(away: false, animated: !still)
+            app.tabBarRide = 0
             if header { app.searchText = searchTerm ?? "" }
+        }
+        // A screen that is not a shop page — the portal's — never inherits a
+        // bar slid away here.
+        .onDisappear {
+            TabBarSlide.slide(away: false, animated: !still)
+            app.tabBarRide = 0
         }
     }
 
@@ -183,7 +206,13 @@ struct ShopPage<Content: View>: View {
         scroll.state = next
         let away = next.away && !voiceOver
         guard away != barAway else { return }
-        withAnimation(still ? nil : .smooth(duration: 0.38)) { barAway = away }
+        let motion: Animation? = still ? nil : .smooth(duration: 0.38)
+        withAnimation(motion) { barAway = away }
+        if let ride = TabBarSlide.slide(away: away, animated: !still) {
+            withAnimation(motion) { app.tabBarRide = ride }
+        } else {
+            withAnimation(motion) { barHidden = away }
+        }
     }
 }
 
@@ -287,7 +316,7 @@ struct LogoRow: View {
             .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
             .accessibilityHint(l.t("delivery.buttonTitle"))
             // The wishlists, or Saved for a guest — the cart page's own pair,
-            // on the owner's word — with the hearts counted.
+            // on the owner's word — with what is on the lists counted.
             let signedIn = app.session.isSignedIn
             Button {
                 app.push(signedIn ? .wishlists : .saved)
@@ -297,13 +326,13 @@ struct LogoRow: View {
                     .foregroundStyle(Brand.navy)
                     .frame(width: 40, height: 44)
                     .overlay(alignment: .topTrailing) {
-                        PixelBadge(value: app.saved.ids.count).fixedSize().offset(x: 2, y: 2)
+                        PixelBadge(value: app.saved.listedCount).fixedSize().offset(x: 2, y: 2)
                     }
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
             .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
-            .accessibilityValue(app.saved.ids.isEmpty ? "" : "\(app.saved.ids.count)")
+            .accessibilityValue(app.saved.listedCount == 0 ? "" : "\(app.saved.listedCount)")
             .padding(.trailing, -6)
         }
         .padding(.horizontal, 16)

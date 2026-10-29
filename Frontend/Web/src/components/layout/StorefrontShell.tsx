@@ -22,10 +22,11 @@
  * draw their profile and their bag: the page starts at the top of the screen,
  * ends with its own content, and the tab bar is the way anywhere else. The
  * room the footer left for the floating tab bar is the page's own padding
- * then. **The assistant's button goes with the header**: floating over a
- * column of rows it covered their ends — "Help from NetLet" on the account
- * page, which is the help there anyway — so those two pages draw none. A wide screen keeps both, having no tab bar
- * to fall back on. One structure at a time (`useMediaQuery`), so a phone's
+ * then. **The assistant's button is on every page, those two included, on
+ * the owner's word** — it was left off them for a while, having covered the
+ * ends of the account's rows, and the owner asked for it everywhere, folded
+ * to its mark while the tab bar is away; the page keeps the room under it. A
+ * wide screen keeps both, having no tab bar to fall back on. One structure at a time (`useMediaQuery`), so a phone's
  * page holds no hidden search field for a keyboard to land in.
  *
  * **On a phone the footer is the home page's alone, on the owner's word**
@@ -142,8 +143,8 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
   /* The footer on a wide screen, and on a phone only on the home page. */
   const footed = !bare && (wide || location === "/");
   /* The assistant's button floats over the foot of the page too, so the
-     footer leaves it room; it goes with the header, so a bare page has none. */
-  const assistant = useAssistantShown() && !bare;
+     footer, or a bare page's own padding, leaves it room. */
+  const assistant = useAssistantShown();
   /* What the foot of the page clears on a phone, footer or not. */
   const clearance = TALL_FOOT.test(location) || assistant ? "tall" : "tabs";
 
@@ -163,7 +164,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
           tabIndex={-1}
           className={`flex min-h-[100svh] flex-1 flex-col outline-none print:min-h-0 ${
             bare
-              ? "pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]"
+              ? `pt-[env(safe-area-inset-top)] ${assistant ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(5rem+env(safe-area-inset-bottom))]"}`
               : footed
                 ? ""
                 : clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"
@@ -176,7 +177,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         <div className={printed ? "contents print:hidden" : "contents"}>
           {held || !footed ? null : <SiteFooter clearance={clearance} assistant={assistant} />}
           <MobileTabBar />
-          {held || bare ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
+          {held ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
         </div>
       </div>
     </ChromeContext.Provider>

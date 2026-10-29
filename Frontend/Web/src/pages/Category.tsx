@@ -77,7 +77,7 @@ export default function Category() {
   const [onSearchPage] = useRoute("/search");
   const [location, navigate] = useLocation();
   const { t, locale } = useTranslation();
-  const { savedIds, toggleSaved } = useCustomer();
+  const { heartedIds, toggleSaved } = useCustomer();
   const shelf = useCatalog(DEPARTMENT_SHELF);
   const catalog = shelf.data ?? [];
 
@@ -367,7 +367,7 @@ export default function Category() {
                 slot="department"
                 departmentSlug={slug}
                 layout="strip"
-                saved={savedIds}
+                saved={heartedIds}
                 onSave={product => toastHeart(toggleSaved(product.id), product.title, t)}
                 onQuickView={setQuickProduct}
               />
@@ -404,7 +404,7 @@ export default function Category() {
                     key={product.id}
                     product={product}
                     compact
-                    saved={savedIds.includes(product.id)}
+                    saved={heartedIds.includes(product.id)}
                     onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
                     onQuickView={() => setQuickProduct(product)}
                   />

@@ -27,7 +27,7 @@ export default function NotFound() {
   usePageMeta(privatePageMeta("Page not found"));
   const [location] = useLocation();
   const { t } = useTranslation();
-  const { savedIds, toggleSaved } = useCustomer();
+  const { heartedIds, toggleSaved } = useCustomer();
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   // A handful of real products beats a dead end, and the catalog is already
   // cached from wherever the shopper came in.
@@ -64,7 +64,7 @@ export default function NotFound() {
               <ProductCard
                 key={product.id}
                 product={product}
-                saved={savedIds.includes(product.id)}
+                saved={heartedIds.includes(product.id)}
                 onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
                 onQuickView={() => setQuickProduct(product)}
               />
