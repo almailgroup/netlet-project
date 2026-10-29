@@ -16,17 +16,21 @@ import SwiftUI
 struct CartView: View {
     @Binding var path: NavigationPath
     @State private var pageBottom: CGFloat = .infinity
-    @State private var buttonTop: CGFloat = 0
+    /// Whether the page's own Checkout is below the screen, which is when the
+    /// bar floats. Only the flip is state: the button's position was, and the
+    /// whole bag was drawn again on every frame of a scroll.
+    @State private var checkoutBelow = false
     /// Checkout was pressed with no address: go on once one is chosen.
     @State private var continuing = false
     /// The number on "Your profile", for an address that carries none.
     @State private var accountPhone: String?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let cart = app.cart.cart
-        let barShown = !(cart?.isEmpty ?? true) && buttonTop > pageBottom - 8
+        let barShown = !(cart?.isEmpty ?? true) && checkoutBelow
         // The assistant steps aside while Checkout floats in its corner.
         ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }, assistant: !barShown) {
             VStack(alignment: .leading, spacing: 0) {
@@ -72,13 +76,17 @@ struct CartView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let cart, barShown {
-                bar(cart)
-                    .offset(y: app.tabBarRide)
-                    .transition(.opacity)
+            // The bar's own animation, never the page's: an animation on the
+            // whole bag animated whatever else changed in that frame with it.
+            ZStack(alignment: .bottom) {
+                if let cart, barShown {
+                    bar(cart)
+                        .offset(y: app.tabBarRide)
+                        .transition(.opacity)
+                }
             }
+            .animation(still ? nil : .easeOut(duration: 0.2), value: barShown)
         }
-        .animation(.easeOut(duration: 0.2), value: barShown)
         .task(id: l.current) { await app.cart.refresh() }
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
@@ -164,8 +172,9 @@ struct CartView: View {
                     .background {
                         GeometryReader { proxy in
                             Color.clear
-                                .onAppear { buttonTop = proxy.frame(in: .global).minY }
-                                .onChange(of: proxy.frame(in: .global).minY) { _, top in buttonTop = top }
+                                .onChange(of: proxy.frame(in: .global).minY > pageBottom - 8, initial: true) { _, below in
+                                    if below != checkoutBelow { checkoutBelow = below }
+                                }
                         }
                     }
             }

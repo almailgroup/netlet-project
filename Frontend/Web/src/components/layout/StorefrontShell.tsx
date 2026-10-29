@@ -59,6 +59,8 @@ type Chrome = {
   assistantProduct: { key: string; brief: ProductBrief; image: string | null } | null;
 };
 const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null };
+/** How long a page counts as arriving, past its own entrance (180ms). */
+const ARRIVAL_MS = 220;
 
 const ChromeContext = createContext<(chrome: Chrome) => void>(() => {});
 
@@ -137,6 +139,21 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
    * visit. `page-enter` does nothing for somebody who asked for less motion.
    */
   const enter = usePageEntrance(pageOf(location));
+  /* A page just arrived: the assistant's button waits until it has settled,
+     because a page whose own floating bar takes the corner (a long cart's
+     Checkout) says so a frame or two after it is drawn — and the button was
+     drawn whole on the first frame and then faded out, a flash on every visit.
+     `.assistant-launcher` in index.css holds it hidden while this is set. */
+  const arriving = pageOf(location);
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    html.setAttribute("data-page-arriving", "");
+    const done = window.setTimeout(() => html.removeAttribute("data-page-arriving"), ARRIVAL_MS);
+    return () => {
+      window.clearTimeout(done);
+      html.removeAttribute("data-page-arriving");
+    };
+  }, [arriving]);
   const printed = PRINTED.test(location);
   const wide = useMediaQuery("(min-width: 1024px)");
   const bare = !wide && BARE_ON_PHONE.test(location);

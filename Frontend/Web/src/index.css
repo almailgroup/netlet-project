@@ -1440,6 +1440,16 @@ html[dir="rtl"] .nav-progress {
     opacity: 1;
   }
 }
+/* While a page is arriving the button waits, hidden at once and fading in
+   after (`data-page-arriving`, set by `StorefrontShell`): a page whose own
+   bar takes the corner says so a frame or two after it is drawn, and the
+   button was drawn whole first and then faded out — a flash on every visit
+   to a long cart. */
+html[data-page-arriving] .assistant-launcher {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
 @media (max-width: 1023.98px) {
   html[data-floating-bar] .assistant-launcher {
     opacity: 0;

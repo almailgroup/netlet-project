@@ -300,6 +300,14 @@ final class AppModel {
         case "homeFoot":
             selectedTab = .home
             startAtFoot = true
+        case "tabBarAway":
+            // The home page with the tab bar slid away, as a scroll down leaves
+            // it — the picture that says the slide moves the bar on this iOS.
+            selectedTab = .home
+            Task {
+                try? await Task.sleep(for: .seconds(4))
+                if let ride = TabBarSlide.slide(away: true, animated: false) { tabBarRide = ride }
+            }
         case "photos", "zoom":
             // Every photo of a product, or one of them full screen.
             guard let value else { return }

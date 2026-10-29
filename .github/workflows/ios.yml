@@ -163,6 +163,7 @@ jobs:
             shot 51-admin-fraud "$lang" portal:/admin/fraud admin
             shot 52-admin-commission "$lang" portal:/admin/commission admin
             shot 53-product-preview "$lang" preview:wireless-earbuds ""
+            shot 54-tab-bar-away "$lang" tabBarAway ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

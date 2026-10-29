@@ -80,13 +80,18 @@ struct ShopPage<Content: View>: View {
     @State private var barAway = false
     /// Hidden the system's way, where there is no bar along the foot to slide.
     @State private var barHidden = false
+    /// The page has been on screen a moment. The assistant waits for it: a
+    /// page whose own floating bar takes the corner (a long cart's Checkout)
+    /// knows so only once it is laid out, and the button was drawn on the
+    /// first frame and then animated away — a flash on every visit.
+    @State private var settled = false
     /// Whether the logo row has gone and the search row is the top of the
     /// screen — which row's glass reaches up behind the status bar.
     @State private var searchAtTop = false
 
     /// The assistant floats on every page but where the page's own floating
-    /// bar has its corner.
-    private var showsAssistant: Bool { assistant }
+    /// bar has its corner, once the page has settled.
+    private var showsAssistant: Bool { assistant && settled }
 
     var body: some View {
         let back: (() -> Void)? = root ? nil : { dismiss() }
@@ -116,8 +121,10 @@ struct ShopPage<Content: View>: View {
                                 SiteFooter().id(ShopPageTop.foot)
                             } else {
                                 content()
-                                if !header && showsAssistant && app.assistantOn {
-                                    // Room under the last row for the assistant's button.
+                                if !header && app.assistantOn {
+                                    // Room under the last row for the assistant's button —
+                                    // kept while it steps aside too, so the page's height
+                                    // never changes under a scroll when it does.
                                     Color.clear.frame(height: 64).accessibilityHidden(true)
                                 }
                             }
@@ -144,14 +151,19 @@ struct ShopPage<Content: View>: View {
         }
         .background(Brand.ground.ignoresSafeArea())
         .overlay(alignment: .bottomTrailing) {
-            if showsAssistant {
-                ShopAssistantButton(product: assistantProduct, folded: barAway)
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 16)
-                    .offset(y: app.tabBarRide)
+            // The button's own animation, never the page's: on the whole page
+            // it animated whatever else changed in that frame — the scroll's
+            // content included — along with it.
+            ZStack(alignment: .bottomTrailing) {
+                if showsAssistant {
+                    ShopAssistantButton(product: assistantProduct, folded: barAway)
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 16)
+                        .offset(y: app.tabBarRide)
+                }
             }
+            .animation(still ? nil : .easeOut(duration: 0.2), value: showsAssistant)
         }
-        .animation(.easeOut(duration: 0.2), value: showsAssistant)
         .safeAreaInset(edge: .top, spacing: 0) {
             // With a header, the strip under the status bar is the header's
             // own glass reaching up (`GlassSurface`'s `reach`) — the logo row's
@@ -168,6 +180,11 @@ struct ShopPage<Content: View>: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(barHidden ? .hidden : .visible, for: .tabBar)
+        .task {
+            guard !settled else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            settled = true
+        }
         .onAppear {
             // Back on this page, from one pushed over it or another tab: the
             // bar is there, and the scroll counts afresh from where it is.

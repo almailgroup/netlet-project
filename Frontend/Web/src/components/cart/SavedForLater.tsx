@@ -34,11 +34,15 @@ export function SavedForLater({ className = "" }: { className?: string }) {
   const { cart, addItem } = useCart();
   const inBag = new Set((cart?.items ?? []).map(item => item.productId).filter(Boolean));
   const ids = [...savedIds].reverse().filter(id => !inBag.has(id)).slice(0, SHOWN);
-  const { products } = useProductsByIds(ids);
+  const { products, waiting } = useProductsByIds(ids);
   const scroll = useSideScroll<HTMLUListElement>([products.length]);
   const [said, setSaid] = useState("");
   const title = t("cart.savedTitle");
-  if (!products.length) return null;
+  /* Until the saved products are read, the row holds its place with outlines
+     of its cards; arriving a moment after the bag, it pushed the summary and
+     Checkout down a phone's screen. */
+  const outlined = !products.length && waiting;
+  if (!products.length && !outlined) return null;
 
   const move = (product: Product) => {
     const variant = product.variants.find(entry => entry.availableForSale);
@@ -66,9 +70,26 @@ export function SavedForLater({ className = "" }: { className?: string }) {
       </div>
       <p aria-live="polite" className="sr-only">{said}</p>
       <ul ref={scroll.trackRef} className="hide-scrollbar -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
-        {products.map(product => <SavedCard key={product.id} product={product} onMove={() => move(product)} onRemove={() => unsave(product.id)} />)}
+        {outlined
+          ? Array.from({ length: Math.min(ids.length, 3) }, (_, index) => <SavedCardOutline key={index} />)
+          : products.map(product => <SavedCard key={product.id} product={product} onMove={() => move(product)} onRemove={() => unsave(product.id)} />)}
       </ul>
     </section>
+  );
+}
+
+/** A saved card's outline, its own size, so nothing moves when the cards land. */
+function SavedCardOutline() {
+  return (
+    <li aria-hidden className="flex w-[152px] shrink-0 flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:w-[168px]">
+      <div className="aspect-square animate-pulse rounded-xl bg-[#eef2f8] motion-reduce:animate-none" />
+      <div className="mt-2 min-h-10 space-y-1.5 pt-1">
+        <div className="h-3 w-4/5 rounded bg-[#eef2f8]" />
+        <div className="h-3 w-1/2 rounded bg-[#eef2f8]" />
+      </div>
+      <div className="mt-1 h-5 w-16 rounded bg-[#eef2f8]" />
+      <div className="mt-auto pt-2"><div className="h-9 rounded-full bg-[#eef2f8]" /></div>
+    </li>
   );
 }
 

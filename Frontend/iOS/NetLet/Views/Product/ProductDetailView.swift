@@ -82,13 +82,16 @@ private struct ProductPage: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .overlay(alignment: .bottom) {
-            if buttonsGone {
-                stickyBar
-                    .offset(y: app.tabBarRide)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            // The bar's own animation, never the whole page's.
+            ZStack(alignment: .bottom) {
+                if buttonsGone {
+                    stickyBar
+                        .offset(y: app.tabBarRide)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         }
-        .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         .sensoryFeedback(.impact(weight: .medium, intensity: Haptics.strength), trigger: app.cart.itemCount)
         .fullScreenCover(item: $photos) { start in
             PhotoSheet(product: product, index: $model.imageIndex, startFull: start == .zoom) { photos = nil }

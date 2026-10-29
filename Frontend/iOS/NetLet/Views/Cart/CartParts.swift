@@ -294,6 +294,11 @@ struct SavedForLaterRow: View {
     /// The room above it once there is something to show.
     var topPadding: CGFloat = 24
     @State private var products: [Product] = []
+    /// The ids the last answer was for. Until the answer for these has come,
+    /// the row holds its place with outlines, or it arrived a moment after
+    /// the bag and pushed the summary down the screen.
+    @State private var loadedFor: String?
+    @Environment(\.accessibilityReduceMotion) private var still
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -306,9 +311,11 @@ struct SavedForLaterRow: View {
 
     var body: some View {
         let ids = wanted
+        let key = ids.joined(separator: ",") + "|" + l.current.rawValue
         let shown = ids.compactMap { id in products.first { $0.id == id } }
+        let waiting = shown.isEmpty && !ids.isEmpty && loadedFor != key
         VStack(alignment: .leading, spacing: 12) {
-            if !shown.isEmpty {
+            if !shown.isEmpty || waiting {
                 HStack(spacing: 12) {
                     Text(l.t("cart.savedTitle"))
                         .font(.inter(17, .heavy))
@@ -331,8 +338,12 @@ struct SavedForLaterRow: View {
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(shown) { product in
-                            SavedCard(product: product)
+                        if waiting {
+                            ForEach(0..<min(ids.count, 3), id: \.self) { _ in placeholder }
+                        } else {
+                            ForEach(shown) { product in
+                                SavedCard(product: product)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
@@ -342,18 +353,39 @@ struct SavedForLaterRow: View {
                 .padding(.horizontal, -16)
             }
         }
-        .padding(.top, shown.isEmpty ? 0 : topPadding)
-        .task(id: ids.joined(separator: ",") + "|" + l.current.rawValue) { await load(ids) }
+        .padding(.top, shown.isEmpty && !waiting ? 0 : topPadding)
+        .task(id: key) { await load(ids, key: key) }
     }
 
-    private func load(_ ids: [String]) async {
+    /// A saved card's outline, its own size, so nothing moves when the cards land.
+    private var placeholder: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            LoadingTint(still: still)
+                .aspectRatio(1, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            RoundedRectangle(cornerRadius: 4).fill(Brand.tint).frame(height: 13).padding(.trailing, 24)
+            RoundedRectangle(cornerRadius: 4).fill(Brand.tint).frame(width: 64, height: 13).padding(.bottom, 4)
+            RoundedRectangle(cornerRadius: 4).fill(Brand.tint).frame(width: 56, height: 17)
+            Capsule().fill(Brand.tint).frame(height: 36)
+        }
+        .padding(8)
+        .frame(width: 152)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .accessibilityHidden(true)
+    }
+
+    private func load(_ ids: [String], key: String) async {
         guard !ids.isEmpty else {
             products = []
+            loadedFor = key
             return
         }
         if let found = try? await app.services.api.call(API.productsByIds, .init(ids: ids, locale: l.current.rawValue)) {
             products = found
         }
+        // A failed read lets the row go rather than leaving outlines for good.
+        if !Task.isCancelled { loadedFor = key }
     }
 }
 

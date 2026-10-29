@@ -1612,7 +1612,9 @@ product, so the bag now sends `productId`. **Saved for later** is a sideways
 row directly under the bag's lines, on the owner's word ("so that you can
 easily add it back to cart") — beside the summary from `lg`, not under the
 whole page, and under the empty state when the bag is empty
-(`SavedForLater`): Saved, newest first, less what is in the
+(`SavedForLater`, which holds its place with outlines of its cards while the
+saved products are read, or it landed a moment after the bag and pushed the
+summary and Checkout down a phone's screen): Saved, newest first, less what is in the
 bag, each with Move to cart, which takes it out of Saved alone (`unsave` — a
 list it is on keeps it), Choose an option for one with sizes, or Sold out. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
@@ -2681,6 +2683,15 @@ page is for wins the corner. On a wide screen the footer leaves room under it.
 **It is on every page, the header-less account and cart included, and folds
 to its mark on a scroll down** — both on the owner's word; see the tab bar's
 slide under Buttons and "The account".
+
+**It waits while a page arrives** (`data-page-arriving`, set by
+`StorefrontShell` for `ARRIVAL_MS` after every move, the app's `settled`), on
+the owner's report of a glitching cart. A page whose own bar takes the corner
+says so a frame or two after it is drawn, so on a long cart the button was
+drawn whole on the first frame and then faded out as Checkout came — a flash
+on every visit. Measured frame by frame at 390: hidden from the first frame
+on arrival at the cart now, and fading in 220ms after arriving anywhere the
+corner is free.
 
 **On a phone it is a sheet that rises from the foot of the screen over the
 dimmed page**, with a gap above it and a handle, sized to what the keyboard
@@ -5918,8 +5929,21 @@ free in green, the way to free delivery as a bar), the line's price under its
 name, **Saved for later directly under the lines**, on the owner's word
 (`SavedForLaterRow`: Saved newest first less what is in the bag, read by id, a
 sideways row with Move to cart, Choose an option or Sold out; under the empty
-state when the bag is empty), then the summary, the note and Checkout in one
-card.
+state when the bag is empty; outlines of its cards while they are read, so the
+summary does not jump), then the summary, the note and Checkout in one
+card. **The cart was glitching, on the owner's report, and three things in it
+were the cause.** It kept the Checkout button's position as state, so every
+frame of a scroll drew the whole bag again; it keeps only whether the button
+is below the screen now (`checkoutBelow`, written only when it flips — the
+department and product pages' rule). The floating bar's coming and going
+toggled the room kept under the page for the assistant, so the page's height
+changed under the scroll; that room is kept while the assistant steps aside
+now. And the bar, the assistant and the product page's buy bar each carried an
+`.animation(_:value:)` on the whole page, which animates everything else that
+changed in that frame too — the scroll's own content included; each is the
+overlay's own animation now. **A position read during a scroll is never state,
+only what it decides; and an animation goes on the view that moves**, never on
+a page.
 **Checkout pressed with no address opens the book and goes on once one is
 chosen**, giving up three seconds after the book closes without one. The
 stepper's minus is a bin at one, and **every line has a "⋯" beside its name**
@@ -6049,7 +6073,11 @@ the assistant's button folds to its mark while it is away ("Need help?" moving
 out toward the end edge), and the button steps aside for the cart's and a
 department's floating control as it does on the web. A cut under Reduce
 Motion, never under VoiceOver, which reads the bar as the way round the app.
-Every page starts with it shown, and a page leaving puts it back. The home page is `HomeShelf`, which is
+Every page starts with it shown, and a page leaving puts it back. **Whether
+the slide moves the bar on a given iOS is a picture, not a reading**: if the
+Liquid Glass pill drew outside the bar's own layers, the bar would stay on
+screen while taking no touches, so the CI photographs the home page with it
+slid away (`-NetLetOpen tabBarAway`, Debug only, `54-tab-bar-away`). The home page is `HomeShelf`, which is
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked
