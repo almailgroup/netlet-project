@@ -343,13 +343,32 @@ struct LogoRow: View {
                     .foregroundStyle(Brand.navy)
                     .frame(width: 40, height: 44)
                     .overlay(alignment: .topTrailing) {
-                        PixelBadge(value: app.saved.listedCount).fixedSize().offset(x: 2, y: 2)
+                        CountBadge(value: app.saved.listedCount).fixedSize().offset(x: 2, y: 2)
                     }
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
             .accessibilityLabel(l.t(signedIn ? "cart.wishlists" : "nav.saved"))
             .accessibilityValue(app.saved.listedCount == 0 ? "" : "\(app.saved.listedCount)")
+            // The notifications follow the heart, on the owner's word, with
+            // what is unread counted; signed out it is the sign-in, the web's
+            // inbox address being its sign-in form.
+            let unread = app.signals.unreadNotices
+            Button {
+                if signedIn { app.push(.notifications) } else { app.openAccount(nil) }
+            } label: {
+                Image(systemName: "bell")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 40, height: 44)
+                    .overlay(alignment: .topTrailing) {
+                        CountBadge(value: unread).fixedSize().offset(x: 2, y: 2)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .accessibilityLabel(l.t("notices.menu"))
+            .accessibilityValue(unread == 0 ? "" : l.t("header.unreadCount", ["count": "\(unread)"]))
             .padding(.trailing, -6)
         }
         .padding(.horizontal, 16)

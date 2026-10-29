@@ -30,7 +30,7 @@ import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { PixelDot } from "@/components/ui/PixelBadge";
+import { NoticeDot } from "@/components/ui/CountBadge";
 import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, UserRound } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -161,7 +161,7 @@ export function AccountMenu() {
         <span className="relative grid shrink-0 place-items-center">
           <UserRound className="size-[19px]" aria-hidden />
           {/* A dot, not a count: the menu says how many and where. */}
-          {unread ? <PixelDot className="absolute -end-1.5 -top-1.5" /> : null}
+          {unread ? <NoticeDot className="absolute -end-1.5 -top-1.5" /> : null}
         </span>
         {/* The name a shopper gave, as they typed it. */}
         <span dir="auto" className="max-w-[110px] truncate">{name}</span>

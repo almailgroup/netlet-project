@@ -25,7 +25,7 @@ struct ShopAssistantButton: View {
                 HStack(spacing: 0) {
                     AssistantMark(size: 40)
                         .overlay(alignment: .topTrailing) {
-                            if app.chatUnread { PixelDot().offset(x: 2, y: -2) }
+                            if app.chatUnread { NoticeDot().offset(x: 2, y: -2) }
                         }
                     // The words' own box narrows as they leave and clips them,
                     // so they slide out under the pill's end rather than past it.

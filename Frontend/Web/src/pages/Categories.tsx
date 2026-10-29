@@ -15,9 +15,15 @@
  * "All departments" comes last, where somebody who did not find theirs looks
  * next. Deals follows the grid only while the home page draws a Deals shelf
  * (`shelvesFor`), the rule every link to it keeps.
+ *
+ * **Shop by brand and the stores come first, on the owner's word** — they
+ * left the home page for here, each the sideways row it was there
+ * (`BrandShelf`, `StoreShelf`), and each drawn only from three.
  */
 import { ChevronRight, Tag } from "lucide-react";
 import { Link } from "wouter";
+import { BrandShelf } from "@/components/home/BrandShelf";
+import { StoreShelf } from "@/components/home/StoreShelf";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { shelvesFor } from "@/content/homeLayout";
@@ -55,7 +61,10 @@ export default function Categories() {
     <PageBody>
       <Breadcrumbs trail={[{ label: t("nav.categories") }]} />
       <PageHeading title={t("nav.categories")} />
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      <BrandShelf embedded />
+      <StoreShelf embedded />
+      <h2 id="departments-title" className="mb-4 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
+      <ul aria-labelledby="departments-title" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {TILES.map(tile => (
           <li key={tile.slug} className="min-w-0">
             <Link

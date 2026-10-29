@@ -5,10 +5,11 @@
  * the card they saved from, rather than a second, subtly different one that
  * drifts every time the first is touched.
  *
- * **A card is a photograph, a name, a price, and Add to cart over Buy now**,
- * sharing one quantity whose minus and plus appear inside either button under
- * a pointer — without moving anything, which is what the old pair got wrong.
- * Both are the card's original white button (`PURCHASE_TONE`).
+ * **A card is a photograph, a name, a price and Add to cart**, whose minus
+ * and plus appear inside it under a pointer — without moving anything.
+ * **Buy now appears once the product is in the bag, on the owner's word**,
+ * saying how many ("Buy 9 now") and going straight to checkout; it is the
+ * card's original white button (`PURCHASE_TONE`), as Add is.
  *
  * **Add turns into the quantity once the item is in the bag**, the way the
  * delivery apps people here use every day do it: the card answers "is this in
@@ -23,7 +24,8 @@
  * **On a touch screen the bag is on the photo, on the owner's word**: a plus in
  * its end corner that adds one and opens a stepper, folding into the count
  * once the presses stop (`PhotoCartControl`). Add to cart is not drawn there,
- * and Buy now stays under the price. A mouse keeps the pair above — the same
+ * and under the price there is nothing until the plus has put the product in,
+ * then "Buy N now". A mouse keeps Add to cart under the price — the same
  * split `.reveal-control` and `.pill-step` make, read here with
  * `useMediaQuery` because it changes what is drawn rather than how.
  */
@@ -42,7 +44,6 @@ import { Link, useLocation } from "wouter";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { useCart } from "@/contexts/CartContext";
 import { DiscButton } from "@/components/ui/DiscButton";
-import { useBuyNow } from "@/hooks/useBuyNow";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 /**
@@ -141,14 +142,15 @@ function BuyPill({ tone, label, children, onPress, href, step, always = false, p
 }
 
 /**
- * Add to cart and Buy now, sharing one quantity.
+ * Add to cart, and Buy now once the product is in the bag.
  *
  * **One number, drawn in both.** Before the item is in the bag it is the
- * card's own pick, set by the minus and plus that appear on either button; once
- * it is in, it is the bag's line, so the two buttons can never disagree about
- * how many — choose three on Add and Buy now reads "Buy 3 now", and the bag's
- * stepper and Buy now's minus change the same line. Buy now with the item
- * already in the bag goes straight to checkout rather than adding it again.
+ * card's own pick, set by the minus and plus that appear on Add; once it is
+ * in, it is the bag's line, and **Buy now appears with it, on the owner's
+ * word** — "Buy 9 now" after nine presses of the plus — so the two can never
+ * disagree about how many, and the bag's stepper and Buy now's minus change
+ * the same line. Buy now goes straight to checkout, the item being in the bag
+ * already. Before that there is no Buy now at all.
  *
  * The line it reads is the plain one for this variant — no extras, no bundle —
  * because that is the line a card makes. A line carrying a fitting or priced as
@@ -168,12 +170,11 @@ function BuyPill({ tone, label, children, onPress, href, step, always = false, p
 function CardAction({ product, onChoose, onPhoto = false }: {
   product: Product;
   onChoose?: () => void;
-  /** The bag is on the photo (a touch screen): Buy now alone is drawn here. */
+  /** The bag is on the photo (a touch screen): only Buy now is drawn here, once the product is in the bag. */
   onPhoto?: boolean;
 }) {
   const { t } = useTranslation();
   const { cart, addItem, updateQuantity, removeItem } = useCart();
-  const buyNow = useBuyNow();
   const [, navigate] = useLocation();
   const [said, setSaid] = useState("");
   /** How many, before the item is in the bag. */
@@ -235,18 +236,10 @@ function CardAction({ product, onChoose, onPhoto = false }: {
        where there is not. Neither picks a quantity, because the preview has
        its own and a size has to be chosen before a number means anything. */
     const href = onChoose ? undefined : `/products/${encodeURIComponent(product.handle)}`;
-    control = (
-      <>
-        {onPhoto ? null : (
-          <BuyPill tone="add" label={t("card.chooseName", { name })} onPress={onChoose} href={href}>
-            <span className="truncate">{t("product.chooseOption")}</span>
-          </BuyPill>
-        )}
-        <BuyPill tone="buy" label={t("card.buyName", { name })} onPress={onChoose} href={href}>
-          <Zap className="size-4 shrink-0 fill-current" aria-hidden />
-          <span className="truncate">{t("product.buyNow")}</span>
-        </BuyPill>
-      </>
+    control = onPhoto ? null : (
+      <BuyPill tone="add" label={t("card.chooseName", { name })} onPress={onChoose} href={href}>
+        <span className="truncate">{t("product.chooseOption")}</span>
+      </BuyPill>
     );
   } else {
     const preorder = Boolean(variant.preorder);
@@ -290,18 +283,20 @@ function CardAction({ product, onChoose, onPhoto = false }: {
     control = (
       <>
         {onPhoto ? null : add}
-        <BuyPill
-          tone="buy"
-          label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
-          /* Already in the bag at this number: checkout is the whole of what is left. */
-          onPress={() => line
-            ? navigate("/checkout")
-            : run(() => buyNow(product, pick, variant.id), t("cart.added", { name }), null)}
-          step={shared}
-        >
-          <Zap className="size-4 shrink-0 fill-current" aria-hidden />
-          <span className="truncate">{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count })}</span>
-        </BuyPill>
+        {/* Buy now follows the bag, on the owner's word: it is drawn once the
+            plus has put the product in, and says how many ("Buy 9 now") —
+            the bag's own line, so it goes straight to checkout. */}
+        {line ? (
+          <BuyPill
+            tone="buy"
+            label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
+            onPress={() => navigate("/checkout")}
+            step={shared}
+          >
+            <Zap className="size-4 shrink-0 fill-current" aria-hidden />
+            <span className="truncate">{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count })}</span>
+          </BuyPill>
+        ) : null}
       </>
     );
   }

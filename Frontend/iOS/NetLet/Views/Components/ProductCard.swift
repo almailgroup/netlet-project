@@ -48,13 +48,23 @@ struct SavingBadge: View {
 }
 
 /// Minus, the count and plus — a bin at one, the way the delivery apps work.
+///
+/// **In the bag the count is a box** (`typed`, on the owner's word): a press
+/// on it opens the number keypad with the box empty and the count as its
+/// placeholder, and what is typed is the line's quantity once the keyboard is
+/// put away (`TypedQuantity`, the web's `typedQuantity`) — nothing typed
+/// changes nothing, zero takes the line out, over the ceiling is held to it.
 struct QuantityStepper: View {
     let quantity: Int
     let maximum: Int
     var name = ""
     var busy = false
     var compact = false
+    var typed = false
     let change: (Int) -> Void
+    @State private var draft = ""
+    @FocusState private var typing: Bool
+    @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -67,11 +77,35 @@ struct QuantityStepper: View {
             }
             .buttonStyle(.action)
             .accessibilityLabel(quantity <= 1 ? l.t("cart.remove", ["name": name]) : l.t("cart.decrease", ["name": name]))
-            Group {
-                if busy { ProgressView().tint(Brand.navy) } else { Text("\(quantity)").font(.inter(16, .bold)).monospacedDigit() }
+            if typed {
+                TextField("\(quantity)", text: $draft)
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.inter(16, .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(Brand.navy)
+                    .focused($typing)
+                    .frame(width: 42, height: 34)
+                    .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(typing ? Color.white : Brand.navy.opacity(0.06)))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
+                    .onAppear { draft = "\(quantity)" }
+                    .onChange(of: quantity) { _, next in if !typing { draft = "\(next)" } }
+                    .onChange(of: draft) { _, text in
+                        let kept = TypedQuantity.draft(text)
+                        if kept != text { draft = kept }
+                    }
+                    .onChange(of: typing) { _, now in
+                        if now { draft = "" } else { commit() }
+                    }
+                    .accessibilityLabel(l.t("cart.quantityOf", ["name": name]))
+                    .accessibilityValue("\(quantity)")
+            } else {
+                Group {
+                    if busy { ProgressView().tint(Brand.navy) } else { Text("\(quantity)").font(.inter(16, .bold)).monospacedDigit() }
+                }
+                .frame(minWidth: 30)
+                .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(quantity)"]))
             }
-            .frame(minWidth: 30)
-            .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(quantity)"]))
             Button {
                 change(quantity + 1)
             } label: {
@@ -83,9 +117,24 @@ struct QuantityStepper: View {
             .accessibilityLabel(l.t("cart.increase", ["name": name]))
         }
         .foregroundStyle(Brand.navy)
-        .disabled(busy)
+        .disabled(busy && !typing)
         .background(Capsule().fill(Color.white))
         .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+    }
+
+    /// The typed number, once the keyboard is put away.
+    private func commit() {
+        let text = draft
+        draft = "\(quantity)"
+        switch TypedQuantity.read(text, ceiling: maximum) {
+        case .remove?:
+            change(0)
+        case .set(let value, let capped)?:
+            if capped { app.toast(l.t("cart.atMost", ["count": "\(maximum)"])) }
+            if value != quantity { change(value) }
+        case nil:
+            break
+        }
     }
 }
 
@@ -396,10 +445,12 @@ struct RatingLine: View {
     }
 }
 
-/// Buy now under the price — the bag itself is on the photo
-/// (`PhotoCartControl`). "Choose an option" when a size comes first opens the
-/// product, and "Sold out" says so when nothing can be bought. The web's
-/// `CardAction` on a touch screen.
+/// Under the price — the bag itself is on the photo (`PhotoCartControl`).
+/// **Buy now appears once the photo's plus has put the product in the bag, on
+/// the owner's word**, saying how many ("Buy 9 now") and going straight to
+/// checkout; before that there is nothing here, and a product with sizes or
+/// colours is chosen from its page through the plus. "Sold out" says so when
+/// nothing can be bought. The web's `CardAction` on a touch screen.
 struct CardActions: View {
     let product: Product
     @Environment(AppModel.self) private var app
@@ -409,13 +460,9 @@ struct CardActions: View {
         let variant = product.leadVariant
         Group {
             if let variant, variant.availableForSale {
-                if product.needsChoice {
-                    buyPill { app.push(.product(handle: product.handle)) }
-                } else if app.cart.cart?.plainLine(for: variant.id) != nil {
-                    // Already in the bag: checkout is the whole of what is left.
-                    buyPill { app.openCheckout() }
-                } else {
-                    buyPill { buy(variant) }
+                if !product.needsChoice, let line = app.cart.cart?.plainLine(for: variant.id) {
+                    buyPill(count: line.quantity) { app.openCheckout() }
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
                 }
             } else {
                 Text(l.t("product.soldOut"))
@@ -429,11 +476,11 @@ struct CardActions: View {
         }
     }
 
-    private func buyPill(_ press: @escaping () -> Void) -> some View {
+    private func buyPill(count: Int, _ press: @escaping () -> Void) -> some View {
         Button(action: press) {
             HStack(spacing: 6) {
                 Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
-                Text(l.t("product.buyNow")).lineLimit(1)
+                Text(count > 1 ? l.t("product.buyNowCount", ["count": "\(count)"]) : l.t("product.buyNow")).lineLimit(1)
             }
             .font(.inter(14, .medium))
             .foregroundStyle(Brand.navy)
@@ -443,19 +490,9 @@ struct CardActions: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(CardPillStyle())
-        .accessibilityLabel(l.t("card.buyName", ["name": product.title]))
-    }
-
-    /// Checkout opens at once on the bag drawn ahead, the web's rule; it
-    /// waits for the bag to settle before an order can be placed.
-    private func buy(_ variant: ProductVariant) {
-        app.openCheckout()
-        Task {
-            if !(await app.cart.add(variantId: variant.id, product: product)) {
-                Haptics.refused()
-                app.toast(l.t("cart.buyFailed"))
-            }
-        }
+        .accessibilityLabel(count > 1
+            ? l.t("card.buyCountName", ["count": "\(count)", "name": product.title])
+            : l.t("card.buyName", ["name": product.title]))
     }
 }
 

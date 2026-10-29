@@ -3,46 +3,70 @@ import SwiftUI
 /// The departments as a page, the phone's Categories tab — the home page's
 /// cards made the page's subject, each saying how many products it holds,
 /// and Today's deals under them only while the home page would draw them.
+/// Shop by brand and the stores lead it, the web's `/categories`.
 struct CategoriesView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
+        let brands = app.shelf.brands.count >= HomeShelf.minimumRow
+        let stores = app.shelf.stores.count >= HomeShelf.minimumRow
         ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("nav.categories")])
-                Text(l.t("nav.categories")).pageTitle().padding(.bottom, 24)
-                DepartmentCardGrid(columns: 2, counted: true)
-                if app.shelf.dealsDrawn {
-                    Button {
-                        app.push(.deals)
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "tag")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(Brand.navy)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(Brand.orange))
-                            Text(l.t("home.heroDeals"))
-                                .font(.inter(15, .bold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(.white)
-                        }
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 56)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
-                        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.tap)
-                    .padding(.top, 16)
+                VStack(alignment: .leading, spacing: 0) {
+                    Breadcrumbs(trail: [l.t("nav.categories")])
+                    Text(l.t("nav.categories")).pageTitle()
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 24)
+                .padding(.bottom, brands || stores ? 0 : 24)
+                // Shop by brand and the stores come first, on the owner's
+                // word — they left the home page for here, each the sideways
+                // row it was there, reaching the screen's edges.
+                if brands { BrandShelf(brands: app.shelf.brands) }
+                if stores { StoreShelf(stores: app.shelf.stores) }
+                departments
+                    .padding(.horizontal, 16)
+                    .padding(.top, brands || stores ? 4 : 0)
+                    .padding(.bottom, 48)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 24)
-            .padding(.bottom, 48)
+        }
+    }
+
+    /// The department cards under their own heading once the rows above
+    /// them are drawn, and Today's deals under them.
+    private var departments: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if app.shelf.brands.count >= HomeShelf.minimumRow || app.shelf.stores.count >= HomeShelf.minimumRow {
+                ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
+            }
+            DepartmentCardGrid(columns: 2, counted: true)
+            if app.shelf.dealsDrawn {
+                Button {
+                    app.push(.deals)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "tag")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Brand.orange))
+                        Text(l.t("home.heroDeals"))
+                            .font(.inter(15, .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: 56)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
+                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.tap)
+                .padding(.top, 16)
+            }
         }
     }
 }

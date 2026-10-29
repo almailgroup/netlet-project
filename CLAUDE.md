@@ -724,28 +724,25 @@ missed the guard and still showed a zero. **The count is navy on the orange**:
 white on `#f2683a` is 3.08:1 at 10px, navy on it is 4.65:1, and the badge keeps
 the brand colour.
 
-**Every badge is pixel art, and it hops when it has news — both on the owner's
-word.** `PixelBadge` (`components/ui/PixelBadge.tsx`) is the count on the
-cart, Saved and Profile, in the header and the phone's tab bar; `PixelDot` is
-the account control's dot and the account menu's. Each is one SVG of unit
-squares, two CSS pixels to a unit so every edge lands on a whole pixel, with
-`shapeRendering="crispEdges"`: a navy outline stepped at the corners the way a
-pixel-art circle is, the orange inside, one pale pixel of shine, and the number
-in a 3 × 5 pixel font drawn from a table in the file — no font file, and the
-digits read left to right on either page. When a badge appears or its number
-changes it crouches, jumps and lands with a squash, throwing four pixels off
-its corners at the top of the jump — **once, and again every ten seconds**
-(`.pixel-badge-hop`, `.pixel-spark` in `index.css`: a 10s loop whose first
-0.8s is the jump). It hopped three times and then held still at first, and the
-owner asked for one hop on an interval instead. Every keyframe is held rather
-than tweened (`steps(1, end)`), which is what makes it move like a sprite. The
-span is keyed by the number, so a new number hops at once and starts the ten
-seconds again. Repeating is a trade against WCAG 2.2.2, which asks for a way
-to stop motion that lasts past five seconds, made on the owner's word as the
-slideshow's was; under reduced motion it never moves. Measured on a production
-build, sampling every frame for 23s after Add: one 0.7s hop at the press, then
-at 10.0s and 20.0s and still between, in both languages; a second Add at 4.5s
-hopped at 4.5s and next at 14.5s. axe found nothing on the pages that draw it.
+**Every badge is a small rounded 3D badge, and it hops when it has news —
+both on the owner's word.** It was pixel art for a while (a stepped SVG sprite
+with a 3 × 5 pixel font and held keyframes), and the owner asked for a modern,
+simple 3D design across the website and the app. `CountBadge`
+(`components/ui/CountBadge.tsx`) is the count on the heart, the bell, the cart
+and Profile, in the header and the phone's tab bar, and on a department's
+Filters; `NoticeDot` is the account control's dot, the account menu's and the
+assistant's. Each is the brand orange lit from above — `#f8956d` at the top
+running to `#f2683a` at the foot, a gloss on the upper half, a fine light edge
+above and a darker one below — inside a 1.5px white rim, lifted by a small navy
+shadow (`.count-badge`, `.notice-dot` in `index.css`); the number is navy,
+4.65:1 at the darkest orange and more where it is lighter, read left to right
+on either page. **It hops once and again every ten seconds**, the rhythm the
+owner chose for the pixel badge: a smooth rise and a small settle in the first
+0.7s of a 10s loop (`.badge-hop`), where the sprite's poses were held. The span
+is keyed by the number, so a new number hops at once and starts the ten
+seconds again. Repeating is a trade against WCAG 2.2.2, made on the owner's
+word as the slideshow's was; under reduced motion it never moves. The app's is
+`CountBadge.swift`, the same surface, its hop a `phaseAnimator`.
 
 **Delivery sits in the primary bar, because that is the row that survives a
 scroll** — on a wide screen, and on a phone at the end of the logo row (see below). It spent one release at the end of the department rail, put there to
@@ -848,7 +845,11 @@ signed out); before that the area left the phone's bar when the logo was
 centred, and the owner asked for it back in the language's place. **A heart
 follows the location, on the owner's word** — the wishlists, or Saved for a
 guest, with the hearts counted: the cart page's own pair, now on every page
-with the row. The top row scrolls away with the page and the
+with the row. **The bell follows the heart, also on the owner's word**: the
+notifications (`/account/notifications`, the sign-in form for a guest), with
+the unread counted (`useAccountSignals`); on a wide screen it sits after Saved.
+Under 360px the logo narrows to 100px and the area's chevron goes, so the area
+keeps a word beside the two. The top row scrolls away with the page and the
 search row stays — somebody four screens in knows they are on NetLet. **A
 product, a department and `/categories` have no top row at all**, on the
 owner's word: the search field is the whole bar, the header sticks at `top-0`
@@ -1093,13 +1094,15 @@ An English title on the Arabic page took the page's direction and put its "…"
 at the wrong end ("…EXYNOS 2600, 12GB RAM"); `markup.test.ts` fails on a title
 drawn without it.
 
-**A product card is a photograph, a name, a price, and Add to cart over Buy
-now.** It had been cut to one button: the photographs cycled on their own, a
-share disc slid out, and two pills grew a minus and a plus that *pushed the
-label aside* as a pointer came near, so the grid moved while somebody read it.
-The owner asked for the pair back, each showing a minus and a plus on hover,
-and what made it moving was the shift, not the pair — so the pair came back
-without it. **On a touch screen Add to cart is a plus on the photo** (below).
+**A product card is a photograph, a name, a price and Add to cart — and Buy
+now only once the product is in the bag, on the owner's word.** It had been cut
+to one button once: the photographs cycled on their own, a share disc slid out,
+and two pills grew a minus and a plus that *pushed the label aside* as a
+pointer came near, so the grid moved while somebody read it. The pair came back
+without the shift; then the owner asked for Buy now to wait for the plus —
+nine presses put nine in the bag and the card reads "Buy 9 now", the bag's own
+line, going straight to checkout. A product not in the bag has no Buy now at
+all. **On a touch screen Add to cart is a plus on the photo** (below).
 
 **On a phone the bag is on the photo, on the owner's word** — the way Noon and
 the delivery apps do it (`PhotoCartControl`, drawn wherever the pointer is not
@@ -1109,9 +1112,9 @@ and grows into a navy stepper across the photo's foot — a bin at one or a
 minus, the count, a plus — and once the presses stop for `SETTLE_MS` (2.5s),
 or a finger lands anywhere else, it folds into a navy square: a cart with the
 count inside its basket. A press on that opens the stepper again. Under the
-price only Buy now is left, following the same plain line. It is the bag's
-plain line for the variant, `CardAction`'s, so the photo and Buy now cannot
-disagree; a product with sizes gets a plus that opens the preview, and a
+price there is nothing until the plus has put the product in, and then "Buy N
+now", following the same plain line. It is the bag's plain line for the
+variant, `CardAction`'s, so the photo and Buy now cannot disagree; a product with sizes gets a plus that opens the preview, and a
 sold-out one no plus at all (its badge says so). The gallery's dots move to the
 photo's start, level with the plus (`dotsAtStart`), or a narrow card's plus
 sat over them. **Every press buzzes where a page may** (`lib/haptics.ts`,
@@ -1170,13 +1173,14 @@ its bottom edge keeps the hover instead of setting it bouncing (measured: the
 transform holds still with the pointer one pixel from the edge).
 
 **One quantity, drawn in both.** Before the item is in the bag it is the card's
-own pick; once it is, it is the bag's line. Choose three on Add and Buy now
-reads "Buy 3 now"; the bag's stepper and Buy now's minus change the same line;
-Buy now on an item already in the bag goes straight to checkout rather than
-adding it again. **The minus and plus never move anything**: they are
-`.pill-step`, always laid out inside the pill and only made visible while a
-fine pointer hovers it or the keyboard is in it, so the label stays where it is
-and the card keeps its height (measured: 454px before and after adding). A
+own pick on Add; once it is, it is the bag's line, and Buy now appears reading
+it — three in the bag is "Buy 3 now"; the bag's stepper and Buy now's minus
+change the same line, and Buy now goes straight to checkout. The card grows by
+the button when Buy now appears (measured: 329px to 373px at 390, 569px to
+615px at 1440), which the owner's rule asks for. **The minus and plus never
+move anything**: they are `.pill-step`, always laid out inside the pill and
+only made visible while a fine pointer hovers it or the keyboard is in it, so
+the label stays where it is. A
 touch screen has no hover, so they are left out there, and the quantity is set
 on the photo's stepper — which Buy now then follows.
 
@@ -1387,8 +1391,8 @@ same size; about 25 KB each, loaded eagerly. A set made as one grid has to be
 redone as separate images: cutting the grid apart clipped a sneaker and left a
 sliver of it beside the grocery basket.
 
-Then the paid placements, Deals, Bestsellers, Picked for you, Shop by brand,
-Stores on NetLet, the new arrivals as a grid to browse, the newest three
+Then the paid placements, Deals, Bestsellers, Picked for you, the new
+arrivals as a grid to browse, the newest three
 shoppers' guides (see "Guides") once one is published, and the footer. **A
 shelf below four products is not drawn**: `shelvesFor` in
 `Frontend/Web/src/content/homeLayout.ts` decides — Deals is what is actually
@@ -1422,7 +1426,11 @@ it turned its `margin-inline-end` into a right margin on the Arabic page too,
 where the scroller then clipped the "1".
 
 **Stores on NetLet is the row that says this is a marketplace** — the one thing
-departments, shelves and a grid never said. `commerce.stores`
+departments, shelves and a grid never said. **It and Shop by brand are at the
+top of `/categories`, not on the home page, on the owner's word** (see
+Browsing), each a row that scrolls sideways at every width with the shelves'
+arrows for a mouse (`useSideScroll`, `ScrollArrows`; `embedded` drops the home
+section's own container). `commerce.stores`
 (`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
 the same `pick` their products use. Each card opens the store's own page, and
@@ -1441,8 +1449,8 @@ floor, on purpose (`homeLayout.ts` says why). **Shop by brand is the Brand rows
 sellers wrote** (`commerce.brands`, counted by the `brandOf` the Brand filter
 uses, so a tile reading "3 products" opens a page of three), from three brands
 up, an initial on each tile because NetLet holds no logos — one sideways row,
-like the departments, on the owner's word (two to a row on a phone made twelve
-brands six rows of the page). The paid home banners
+on the owner's word (two to a row on a phone made twelve brands six rows of the
+page), at the top of `/categories` now. The paid home banners
 sit under the department cards (see Paid placements) and are absent when none
 is approved and running. The four lines on what shopping here involves
 (delivery, cash, returns, help) that closed the page went: their facts are the
@@ -1596,6 +1604,20 @@ Change that opens the address book, or the question when there is none — and
 Checkout pressed without one opens the book and goes on once one is chosen.
 It replaced the bar (`CartTopBar`) that named the address in a word; the heart
 to the wishlists, or Saved for a guest, is at the end of the title's line.
+
+**The number between a line's minus and plus is a box, on the owner's word**
+(`LineQuantity` in `BagDrawer.tsx`): a press selects the number and opens the
+number keypad, and what is typed is the line's quantity on Enter or on leaving
+the box — so twenty is two keys. `Shared/commerce/typedQuantity.ts` reads it,
+pure and shared with the app: Arabic-Indic digits folded, zero takes the line
+out as the bin does, over `MAX_LINE_QUANTITY` is held to it and a toast says
+so, and anything that is not a whole number changes nothing; Escape puts the
+number back. It is always an input rather than a number that turns into one,
+because a phone opens its keyboard only for a field focused by the press
+itself, and it selects on focus in the same handler — a selection a frame
+later lost the first digit to a fast typist. Measured at 390 in both languages
+and 1440: 12 typed, ١٢ typed, 150 held to 99 with the toast, Escape, 0
+removing the line, axe clean.
 
 **Every line has a menu, on the owner's word** (`LineMenu`, a "⋯" where the bin
 was; the stepper's minus is the bin at one, the app's rule): Save for later,
@@ -5164,6 +5186,13 @@ rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
 `/category/` with its slash — the footer's clearance for the department page's
 filter button does, or it would leave room for a button this page has not got.
+**Shop by brand and Stores on NetLet lead it, on the owner's word** — they
+left the home page for here, each the sideways row it was (`BrandShelf`,
+`StoreShelf` with `embedded`), each drawn from three, and the department cards
+follow under "Shop by category". Measured at 320, 390 and 1440 in both
+languages with brand rows on four local products: brands, then stores, then the
+departments, both rows scrolling sideways on a phone, axe clean, no sideways
+scroll of the page, and neither row left on the home page.
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
@@ -6225,8 +6254,20 @@ photo's end corner adds one and opens the navy stepper, which folds into the
 cart-and-count square `settleSeconds` (2.5) after the last press — never under
 VoiceOver, which would pull it from under somebody between its buttons — and a
 press on the square opens it again. Every face is `.action`, felt on the
-press, and a refused add says so with two taps and a toast. Under the price only Buy now is left (`CardActions`); the long press's
-preview keeps its Add to cart. The dots sit at the photo's start.
+press, and a refused add says so with two taps and a toast. Under the price
+there is nothing until the plus has put the product in, and then "Buy N now"
+(`CardActions`, the web's rule, on the owner's word); the long press's preview
+keeps its Add to cart and Buy now. The dots sit at the photo's start.
+
+**This round's app half, the web's word for word**: the bag line's count is a
+box (`QuantityStepper`'s `typed`, `TypedQuantity` — `typedQuantity.ts` on its
+own cases in `TypedQuantityTests`), empty with the count as its placeholder
+when a press opens the number pad, and read when the keyboard is put away;
+Shop by brand and the stores lead Categories and left Home; the bell follows
+the heart in `LogoRow`, with `signals.unreadNotices`, the inbox for somebody
+signed in and the sign-in for a guest; and every badge is `CountBadge` or
+`NoticeDot` (`CountBadge.swift`). The system tab bar's own badge is the
+system's, as before.
 
 **The rest of the shop was checked against the web the same way**, by listing
 every dictionary key a web page or component asks for that no Swift file

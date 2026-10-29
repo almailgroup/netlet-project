@@ -235,7 +235,7 @@ private struct CartWishlistButton: View {
                 .frame(width: 44, height: 44)
                 .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
                 .overlay(alignment: .topTrailing) {
-                    PixelBadge(value: app.saved.listedCount).fixedSize().offset(x: 6, y: -6)
+                    CountBadge(value: app.saved.listedCount).fixedSize().offset(x: 6, y: -6)
                 }
                 .contentShape(Circle())
         }
@@ -410,7 +410,8 @@ struct CartLineRow: View {
                     maximum: ReferenceData.shared.rules.maxLineQuantity,
                     name: title,
                     busy: app.cart.busyLine == item.lineId,
-                    compact: true
+                    compact: true,
+                    typed: true
                 ) { next in
                     if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
                     Task { await app.cart.setQuantity(lineId: item.lineId, to: next) }

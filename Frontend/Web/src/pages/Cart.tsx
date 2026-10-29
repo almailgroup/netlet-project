@@ -36,7 +36,7 @@ import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/Deliv
 import { SavedForLater } from "@/components/cart/SavedForLater";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar, TAB_BAR_REACH } from "@/components/layout/PhoneActionBar";
-import { PixelBadge } from "@/components/ui/PixelBadge";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,7 +167,7 @@ function WishlistLink() {
       className="pressable relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
     >
       <Heart className="size-5" aria-hidden />
-      <PixelBadge value={count} className="absolute -end-1.5 -top-1.5" />
+      <CountBadge value={count} className="absolute -end-1.5 -top-1.5" />
     </Link>
   );
 }

@@ -684,3 +684,39 @@ final class PinFillTests: XCTestCase {
         XCTAssertEqual(place?.source, "osm")
     }
 }
+
+/// A quantity typed into a bag line — `typedQuantity.ts`, on its own cases.
+final class TypedQuantityTests: XCTestCase {
+    func testReadsAWholeNumber() {
+        XCTAssertEqual(TypedQuantity.read("9", ceiling: 99), .set(quantity: 9, capped: false))
+        XCTAssertEqual(TypedQuantity.read(" 12 ", ceiling: 99), .set(quantity: 12, capped: false))
+        XCTAssertEqual(TypedQuantity.read("007", ceiling: 99), .set(quantity: 7, capped: false))
+    }
+
+    func testFoldsArabicIndicDigits() {
+        XCTAssertEqual(TypedQuantity.read("١٢", ceiling: 99), .set(quantity: 12, capped: false))
+        XCTAssertEqual(TypedQuantity.read("۵", ceiling: 99), .set(quantity: 5, capped: false))
+    }
+
+    func testZeroTakesTheLineOut() {
+        XCTAssertEqual(TypedQuantity.read("0", ceiling: 99), .remove)
+        XCTAssertEqual(TypedQuantity.read("٠", ceiling: 99), .remove)
+    }
+
+    func testHoldsANumberOverTheCeiling() {
+        XCTAssertEqual(TypedQuantity.read("100", ceiling: 99), .set(quantity: 99, capped: true))
+        XCTAssertEqual(TypedQuantity.read("99", ceiling: 99), .set(quantity: 99, capped: false))
+    }
+
+    func testChangesNothingForWhatIsNotAWholeNumber() {
+        for text in ["", "  ", "2.5", "-3", "two", "1e3", "12345", "3 4"] {
+            XCTAssertNil(TypedQuantity.read(text, ceiling: 99), text)
+        }
+    }
+
+    func testTheDraftKeepsOnlyDigits() {
+        XCTAssertEqual(TypedQuantity.draft("1a2"), "12")
+        XCTAssertEqual(TypedQuantity.draft("٣٤"), "34")
+        XCTAssertEqual(TypedQuantity.draft("123456"), "1234")
+    }
+}

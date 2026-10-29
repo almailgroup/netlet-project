@@ -36,7 +36,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { Sparkles } from "lucide-react";
-import { PixelDot } from "@/components/ui/PixelBadge";
+import { NoticeDot } from "@/components/ui/CountBadge";
 import type { ProductBrief } from "@shared/commerce/assistant";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -91,7 +91,7 @@ export function ShopAssistant({ product, department }: {
         </span>
         <span aria-hidden className="relative grid size-10 place-items-center rounded-full bg-[#0a285a] text-white lg:size-11">
           <Sparkles className="size-5" />
-          {unread ? <PixelDot className="absolute -end-0.5 -top-0.5" /> : null}
+          {unread ? <NoticeDot className="absolute -end-0.5 -top-0.5" /> : null}
         </span>
         <span aria-hidden className="assistant-label relative whitespace-nowrap text-[15px] font-bold text-[#0a285a]">{t("shopChat.needHelp")}</span>
       </button>

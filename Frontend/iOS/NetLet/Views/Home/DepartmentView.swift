@@ -180,7 +180,7 @@ private struct BrowsePage: View {
                     .background(Circle().fill(Brand.navy))
                     .shadow(color: Brand.navy.opacity(0.25), radius: 15, x: 0, y: 10)
                     .overlay(alignment: .topTrailing) {
-                        PixelBadge(value: model.filters.activeCount).fixedSize().offset(x: 4, y: -4)
+                        CountBadge(value: model.filters.activeCount).fixedSize().offset(x: 4, y: -4)
                     }
             }
             .buttonStyle(.tap)

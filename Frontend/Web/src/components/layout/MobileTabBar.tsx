@@ -42,7 +42,7 @@
  * motion). It is an attribute on `<html>`, written by the listener directly,
  * so a scroll never re-renders the bar; what floats over it follows it down.
  */
-import { PixelBadge } from "@/components/ui/PixelBadge";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -203,7 +203,7 @@ export function MobileTabBar() {
           <>
             <span className="relative">
               {tab.icon(lit)}
-              <PixelBadge value={tab.badge ?? 0} className="absolute -end-3 -top-2" />
+              <CountBadge value={tab.badge ?? 0} className="absolute -end-3 -top-2" />
             </span>
             {tab.label}
           </>

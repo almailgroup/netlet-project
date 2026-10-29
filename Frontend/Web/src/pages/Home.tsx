@@ -1,9 +1,10 @@
 /**
  * The home page: the front door (`HomeHero`), the departments as cards, the
  * paid placements, Deals as a navy band led by the deepest one, Bestsellers
- * ranked, the shopper's own picks, the brands, the stores, the new arrivals as
- * a grid, and the footer. Every shelf after the departments is drawn only when
- * it has something true to show.
+ * ranked, the shopper's own picks, the new arrivals as a grid, and the footer.
+ * Every shelf after the departments is drawn only when it has something true
+ * to show. The brands and the stores are at the top of `/categories` now, on
+ * the owner's word.
  */
 import { toastHeart } from "@/lib/heartToast";
 import { useCatalog } from "@/hooks/useCatalog";
@@ -19,10 +20,8 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
 import { HomeHero } from "@/components/home/HomeHero";
-import { StoreShelf } from "@/components/home/StoreShelf";
 import { GuideShelf } from "@/components/home/GuideShelf";
 import { Later } from "@/components/layout/Later";
-import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { useSideScroll } from "@/hooks/useSideScroll";
@@ -219,14 +218,10 @@ export default function Home() {
         : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
         : undefined;
       const shared = { id: rail.id, title: rail.title, products, catalogLoading, catalogError: Boolean(catalogError), saved, onSave: toggleSaved, onQuickView: setQuickProduct, onViewAll: viewAll, ranked: rail.id === "bestsellers" };
-      /* What is about this shopper, and the brands, sit between what sold
-         and what is new — drawn only when each has something true to show. */
+      /* What is about this shopper sits between what sold and what is new —
+         drawn only when it is personal. */
       const before = rail.id === "newest" ? (
-        <>
-          <RecommendedRail quiet saved={saved} onSave={toggleSaved} onQuickView={setQuickProduct} />
-          <BrandShelf />
-          <StoreShelf />
-        </>
+        <RecommendedRail quiet saved={saved} onSave={toggleSaved} onQuickView={setQuickProduct} />
       ) : null;
       if ((catalogLoading || catalogError) && index > 0) return <Fragment key={rail.id}>{before}</Fragment>;
       if (!catalogLoading && !catalogError && products.length === 0) return <Fragment key={rail.id}>{before}</Fragment>;

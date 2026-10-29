@@ -57,7 +57,7 @@ import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
-import { PixelBadge } from "@/components/ui/PixelBadge";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -67,7 +67,8 @@ import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { Bell, ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { pressHaptic } from "@/lib/haptics";
 import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { lazyPage } from "@/lib/lazyPage";
@@ -88,10 +89,10 @@ const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 t
 
 /**
  * A count on a control's shoulder, drawn only when there is something to
- * count — the shop's pixel badge (`PixelBadge`), which hops when it changes.
+ * count — the shop's badge (`CountBadge`), which hops when it changes.
  */
 function Count({ value }: { value: number }) {
-  return <PixelBadge value={value} className="absolute -end-2.5 -top-2.5" />;
+  return <CountBadge value={value} className="absolute -end-2.5 -top-2.5" />;
 }
 
 export function StoreHeader({ activeDepartment, logoRow = true }: {
@@ -205,10 +206,14 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
      what the logo and the heart leave and is cut short before it reaches them. */
   const wishlists = isAuthenticated ? t("cart.wishlists") : t("nav.saved");
   const listed = isAuthenticated ? wishedIds.length : savedIds.length;
+  /* The notifications follow the heart, on the owner's word, with what is
+     unread counted; signed out, the inbox's address is the sign-in form. */
+  const { unreadNotices } = useAccountSignals();
+  const noticesName = unreadNotices ? `${t("notices.menu")} (${t("header.unreadCount", { count: unreadNotices })})` : t("notices.menu");
   const phoneTop = (
     <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
-        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[130px] object-contain" />
+        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[100px] object-contain min-[360px]:max-w-[130px]" />
       </Link>
       <div className="-me-2 flex min-w-0 items-center">
         <button
@@ -220,7 +225,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
           <MapPin className="size-[18px] shrink-0 ink-accent" aria-hidden />
           <span className="sr-only">{t("home.deliverTo")} </span>
           <span dir="auto" className="min-w-0 max-w-[160px] truncate">{areaName}</span>
-          <ChevronDown className="size-4 shrink-0" aria-hidden />
+          <ChevronDown className="hidden size-4 shrink-0 min-[360px]:block" aria-hidden />
         </button>
         {/* The wishlists, or Saved for a guest, who has no lists, only hearts
             kept on the device; the count is what is on the lists, or Saved. */}
@@ -232,7 +237,18 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
           className="pressable relative grid size-11 shrink-0 place-items-center rounded-xl text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
         >
           <Heart className="size-[20px]" aria-hidden />
-          <PixelBadge value={listed} className="absolute end-0.5 top-0.5" />
+          <CountBadge value={listed} className="absolute end-0.5 top-0.5" />
+        </Link>
+        <Link
+          href="/account/notifications"
+          onClick={() => pressHaptic()}
+          aria-current={location === "/account/notifications" ? "page" : undefined}
+          aria-label={noticesName}
+          title={t("notices.menu")}
+          className="pressable relative grid size-11 shrink-0 place-items-center rounded-xl text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
+        >
+          <Bell className="size-[20px]" aria-hidden />
+          <CountBadge value={unreadNotices} className="absolute end-0.5 top-0.5" />
         </Link>
       </div>
     </div>
@@ -307,6 +323,12 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
                 <Count value={savedIds.length} />
               </span>
               <span className="hidden xl:inline">{t("nav.saved")}</span>
+            </Link>
+            <Link href="/account/notifications" aria-current={location === "/account/notifications" ? "page" : undefined} aria-label={noticesName} title={t("notices.menu")} className={plain}>
+              <span className="relative grid shrink-0 place-items-center">
+                <Bell className="size-[19px]" aria-hidden />
+                <Count value={unreadNotices} />
+              </span>
             </Link>
             {language}
             <AccountMenu />

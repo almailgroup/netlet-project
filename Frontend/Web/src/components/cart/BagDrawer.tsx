@@ -19,11 +19,14 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
 import { Link } from "wouter";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { CARD } from "@/components/layout/Page";
 import { bagGroups, freeDeliveryProgress, type BagGroup } from "@/lib/bagGroups";
 import type { CartItem } from "@shared/commerce/types";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
+import { quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -218,11 +221,79 @@ function BagLine({ item }: { item: CartItem }) {
           ) : (
             <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           )}
-          <span className="min-w-7 text-center text-[14px] font-extrabold text-[#0a285a] pointer-fine:text-xs">{item.quantity}</span>
+          <LineQuantity item={item} title={title} />
           <button disabled={item.quantity >= MAX_QUANTITY} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The number between the minus and the plus, which is a box, on the owner's
+ * word: a press on it selects the number and opens the number keypad, and
+ * what is typed is the line's quantity once the box is left or Enter is
+ * pressed — so twenty is two keys, not nineteen presses of the plus.
+ * `typedQuantity` reads it (Arabic-Indic digits folded, zero takes the line
+ * out as the bin does, over the ceiling is held to it and said); anything
+ * that is not a whole number changes nothing and Escape puts the number back.
+ * It is always an input rather than a number that turns into one, because a
+ * phone opens its keyboard only for a field focused by the press itself.
+ */
+function LineQuantity({ item, title }: { item: CartItem; title: string }) {
+  const { updateQuantity, removeItem } = useCart();
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelled = useRef(false);
+  /* The press that focused the box would put the caret where it landed and
+     undo the selection; that one press keeps the whole number selected. */
+  const justFocused = useRef(false);
+  const commit = () => {
+    const text = draft;
+    setDraft(null);
+    if (cancelled.current || text === null) {
+      cancelled.current = false;
+      return;
+    }
+    const typed = typedQuantity(text);
+    if (!typed) return;
+    if (typed.kind === "remove") {
+      void removeItem(item.lineId).catch(() => undefined);
+      return;
+    }
+    if (typed.capped) toast(t("cart.atMost", { count: String(MAX_QUANTITY) }));
+    if (typed.quantity !== item.quantity) void updateQuantity(item.lineId, typed.quantity).catch(() => undefined);
+  };
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      enterKeyHint="done"
+      autoComplete="off"
+      aria-label={t("cart.quantityOf", { name: title })}
+      value={draft ?? String(item.quantity)}
+      onFocus={event => {
+        setDraft(String(item.quantity));
+        event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
+        justFocused.current = true;
+      }}
+      onMouseUp={event => {
+        if (!justFocused.current) return;
+        justFocused.current = false;
+        event.preventDefault();
+      }}
+      onChange={event => setDraft(quantityDraft(event.target.value))}
+      onKeyDown={event => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          cancelled.current = true;
+          event.currentTarget.blur();
+        }
+      }}
+      onBlur={commit}
+      className="line-quantity h-8 w-10 rounded-lg bg-[#0a285a]/[.06] text-center text-[14px] font-extrabold tabular-nums text-[#0a285a] outline-none focus:bg-white focus:ring-2 focus:ring-[#0a285a] pointer-fine:h-6 pointer-fine:w-8 pointer-fine:text-xs"
+    />
   );
 }
 

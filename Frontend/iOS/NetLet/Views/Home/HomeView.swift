@@ -53,14 +53,10 @@ struct HomeView: View {
                 if !shelves.bestsellers.isEmpty {
                     ProductRail(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
                 }
-                // What is about this shopper sits between what sold and what is new.
+                // What is about this shopper sits between what sold and what is
+                // new. The brands and the stores are on Categories now, on the
+                // owner's word.
                 RecommendedRail(quiet: true)
-                if shelf.brands.count >= HomeShelf.minimumRow {
-                    BrandShelf(brands: shelf.brands)
-                }
-                if shelf.stores.count >= HomeShelf.minimumRow {
-                    StoreShelf(stores: shelf.stores)
-                }
                 if !shelves.newest.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
                         ShelfHeading(title: l.t("rail.newest.title")) { app.push(.newest) }

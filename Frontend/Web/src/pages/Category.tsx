@@ -59,7 +59,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
-import { PixelBadge } from "@/components/ui/PixelBadge";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
@@ -450,7 +450,7 @@ export default function Category() {
           className={`glass glass-navy rides-tab-bar fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] ${filtersPassed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
         >
           <SlidersHorizontal className="size-5" aria-hidden />
-          <PixelBadge value={activeCount} className="absolute -end-1 -top-1" />
+          <CountBadge value={activeCount} className="absolute -end-1 -top-1" />
         </button>
       ) : null}
 
