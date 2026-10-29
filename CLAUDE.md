@@ -3551,8 +3551,10 @@ address and one moved (`whereChanged`, `AddressMove`) are asked about; renaming
 one is not, or Yes becomes a reflex. Focus goes to the question, a sheet from a
 phone's foot and a card from `sm`, portalled to `<body>` over the delivery
 dialog. The map card now leads the form, since it fills the boxes under it.
-Measured in a browser through a stand-in Nominatim answering with the real
-samples, at 390 in both languages and 1440: the lift mid-drag, the drop and a
+The live deployment's `maps.placeAt` read all eighteen Live check points in
+both languages onto the list's own areas, with block, street, avenue, house and
+governorate. Measured in a browser through a stand-in Nominatim answering with
+the real samples, at 390 in both languages and 1440: the lift mid-drag, the drop and a
 15ms buzz, the bubble, the boxes filled and marked, a typed block kept and
 named, Edit and Yes, axe clean on the form, the sheet and the book.
 
