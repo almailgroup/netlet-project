@@ -53,6 +53,20 @@ type CustomerContextValue = {
    * an account. Answers which, so a page toasts only what it did itself.
    */
   toggleSaved: (productId: string) => SaveOutcome;
+  /**
+   * Into Saved without the heart's question — the bag's "Save for later",
+   * which keeps something for later rather than putting it on a list. A
+   * product already saved stays saved.
+   */
+  saveForLater: (productId: string) => void;
+  /**
+   * The heart's question asked outright — which list, private or public —
+   * for the bag's "Move to wishlist". `onWished` runs once the shopper has
+   * chosen one and it is on it, never when they close the question.
+   */
+  chooseWishlist: (productId: string, onWished?: () => void) => void;
+  /** Out of Saved alone — "Move to cart" — leaving any list it is on alone. */
+  unsave: (productId: string) => void;
   deliveryZoneId: string | null;
   deliveryZone: (typeof kuwaitDeliveryZones)[number] | undefined;
   setDeliveryZoneId: (zoneId: string) => void;
@@ -83,6 +97,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   });
   const wishlistsOn = useFeature("wishlists");
   const [asking, setAsking] = useState<string | null>(null);
+  /* What to do once the question asked by `chooseWishlist` has an answer. */
+  const afterWish = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (isAuthenticated && wishlistsOn) return whenIdle(() => void WishChooser.preload());
   }, [isAuthenticated, wishlistsOn]);
@@ -167,6 +183,37 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     return nextSaved ? "saved" : "removed";
   }, [isAuthenticated, savedIds, unwish, updateSaved, wishlistsOn]);
 
+  const saveForLater = useCallback((productId: string) => {
+    if (savedIds.includes(productId)) return;
+    if (isAuthenticated) {
+      updateSaved.mutate({ productId, saved: true });
+      return;
+    }
+    setGuestSavedIds(current => {
+      const next = Array.from(new Set([...current, productId]));
+      writeValue(SAVED_STORAGE_KEY, next);
+      return next;
+    });
+  }, [isAuthenticated, savedIds, updateSaved]);
+
+  const unsave = useCallback((productId: string) => {
+    if (isAuthenticated) {
+      updateSaved.mutate({ productId, saved: false });
+      return;
+    }
+    setGuestSavedIds(current => {
+      const next = current.filter(id => id !== productId);
+      writeValue(SAVED_STORAGE_KEY, next);
+      return next;
+    });
+  }, [isAuthenticated, updateSaved]);
+
+  const chooseWishlist = useCallback((productId: string, onWished?: () => void) => {
+    if (!isAuthenticated) return;
+    afterWish.current = onWished ?? null;
+    setAsking(productId);
+  }, [isAuthenticated]);
+
   const setDeliveryZoneId = useCallback((zoneId: string) => {
     if (!kuwaitDeliveryZones.some(zone => zone.id === zoneId)) return;
     setGuestDeliveryZoneId(zoneId);
@@ -203,18 +250,25 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     toggleLocale,
     savedIds,
     toggleSaved,
+    saveForLater,
+    chooseWishlist,
+    unsave,
     deliveryZoneId,
     deliveryZone,
     setDeliveryZoneId,
     isSignedIn: isAuthenticated,
-  }), [deliveryZone, deliveryZoneId, isAuthenticated, locale, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved]);
+  }), [chooseWishlist, deliveryZone, deliveryZoneId, isAuthenticated, locale, saveForLater, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved, unsave]);
 
   return (
     <CustomerContext.Provider value={value}>
       {children}
       {asking && isAuthenticated ? (
         <Suspense fallback={null}>
-          <WishChooser productId={asking} onClose={() => setAsking(null)} />
+          <WishChooser
+            productId={asking}
+            onWished={() => { const then = afterWish.current; afterWish.current = null; then?.(); }}
+            onClose={() => { afterWish.current = null; setAsking(null); }}
+          />
         </Suspense>
       ) : null}
     </CustomerContext.Provider>

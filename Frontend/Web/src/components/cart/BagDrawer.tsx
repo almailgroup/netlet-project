@@ -13,6 +13,7 @@ import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
 import { MeasureLabel } from "@/components/product/UnitPrice";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
+import { LineMenu } from "@/components/cart/LineMenu";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
@@ -201,16 +202,22 @@ function BagLine({ item }: { item: CartItem }) {
             {/* "1.5 kg" beside a quantity of 6. Nothing for a counted line. */}
             <MeasureLabel measure={item.measure} quantity={item.quantity} className="text-[12px] ink-muted" />
           </div>
-          {/* A 16px bin was a 16px target: it reaches 44px now, by
-              `.tap-target`, without growing the row. */}
-          <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="tap-target -m-1 grid size-8 shrink-0 place-items-center rounded-full ink-muted hover:text-[#a44a2b]"><Trash2 className="size-4" /></button>
+          {/* What else can be done with the line — save it for later, move
+              it to a wishlist, share it, open it, take it out (`LineMenu`). */}
+          <LineMenu item={item} title={title} />
         </div>
         {/* Fast or regular (3.2.5), only where the store offers fast. */}
         {item.fastDelivery ? <SpeedChoice item={item} title={title} /> : null}
         {/* A thumb's size under a coarse pointer (40px a side), the
             old 28px under a mouse, where the drawer is narrow. */}
         <div className="mt-3 inline-flex items-center rounded-full border border-[#d5dfeb] bg-white">
-          <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(() => undefined)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          {/* At one the minus is the bin: taking the last one out is what
+              the press does, and the menu above says it in words too. */}
+          {item.quantity > 1 ? (
+            <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(() => undefined)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          ) : (
+            <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          )}
           <span className="min-w-7 text-center text-[14px] font-extrabold text-[#0a285a] pointer-fine:text-xs">{item.quantity}</span>
           <button disabled={item.quantity >= MAX_QUANTITY} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
         </div>
@@ -257,7 +264,12 @@ function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
  * on its way the delivery and the total are the server's last, so they are
  * drawn fainter and the region says it is busy until the answer lands.
  */
-export function BagSummary({ checkoutRef, heading = false }: { checkoutRef?: (node: HTMLButtonElement | null) => void; heading?: boolean } = {}) {
+export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
+  checkoutRef?: (node: HTMLButtonElement | null) => void;
+  heading?: boolean;
+  /** What Checkout does instead of going straight there — the cart page asks for an address first. */
+  onCheckout?: () => void;
+} = {}) {
   const { cart, syncing, proceedToCheckout } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
@@ -297,7 +309,7 @@ export function BagSummary({ checkoutRef, heading = false }: { checkoutRef?: (no
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
-      <button ref={checkoutRef} onClick={proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
+      <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>
     </div>

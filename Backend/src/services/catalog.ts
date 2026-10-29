@@ -55,7 +55,7 @@ import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { shopperPrice } from "../../../Shared/commerce/shopperPrice.js";
 import { memberPriceFor, waiveDelivery } from "../../../Shared/commerce/membership.js";
 import { discountAllowed } from "../../../Shared/inventory/discountLicence.js";
-import { isDeliverySpeed, type DeliverySpeed } from "../../../Shared/commerce/deliverySpeed.js";
+import { isDeliverySpeed, speedForLine, type DeliverySpeed } from "../../../Shared/commerce/deliverySpeed.js";
 import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import { featureOn } from "./features.js";
 import {
@@ -526,6 +526,9 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       deliveryChoice: cartItems.deliveryChoice,
       fastDeliveryFee: vendors.fastDeliveryFee,
       fastDeliverySpeed: vendors.fastDeliverySpeed,
+      /* The regular trip's band, so checkout can say when each parcel comes. */
+      vendorDeliverySpeed: vendors.deliverySpeed,
+      productDeliverySpeed: products.deliverySpeed,
       variantId: productVariants.id,
       variantTitle: productVariants.title,
       price: productVariants.price,
@@ -651,6 +654,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
   const items: CartItem[] = priced.map(row => ({
     lineId: String(row.lineId),
     variantId: String(row.variantId),
+    productId: String(row.productId),
     productHandle: row.productHandle,
     productTitle: row.productTitle,
     productTitleAr: row.productTitleAr?.trim() || null,
@@ -672,6 +676,13 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     destination: row.addressId && doors.has(row.addressId)
       ? { id: row.addressId, label: doors.get(row.addressId)!.label }
       : null,
+    /* A line the shelf cannot cover is a pre-order (stock first, never
+       split), and a pre-order's promise is its release date, not a band. */
+    deliverySpeed: speedForLine(
+      { preordered: row.stock < row.quantity && (row.preorderStock ?? 0) >= row.quantity },
+      row.vendorDeliverySpeed,
+      row.productDeliverySpeed,
+    ),
     deliveryChoice: effectiveChoice(row.deliveryChoice, { fastFlat: row.fastDeliveryFee }),
     fastDelivery: offersFast({ fastFlat: row.fastDeliveryFee })
       ? { fee: money(row.fastDeliveryFee!), speed: isDeliverySpeed(row.fastDeliverySpeed) ? row.fastDeliverySpeed : null }

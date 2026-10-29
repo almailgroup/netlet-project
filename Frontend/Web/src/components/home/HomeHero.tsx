@@ -1,17 +1,17 @@
 /**
  * The front door: a navy band the width of the screen with NetLet's pictures
- * on it, one line saying what the shop is, and two ways in.
+ * on it and one line saying what the shop is.
  *
  * The home page opened on a slogan once ("Small upgrades. A brighter
  * everyday.") over blurred colour blobs, and it went because it was words where
  * a shopper looks for something to tap. This is the opposite arrangement: the
- * line is short and both buttons go somewhere with something in it — today's
- * deals only while the home page
- * draws a Deals shelf (`shelvesFor`), the new arrivals otherwise, so the first
- * press never lands on a half-empty page. The three facts every order carries
- * (every governorate, cash at the door, the return window) sat under the line
- * as a list for a while; the owner asked for them gone, and they are still
- * said at checkout and on the sign-in page.
+ * line is short, and what is tapped is directly under it — the departments.
+ * **It carries no buttons, on the owner's word**: it had two ("See what's new"
+ * or "Today's deals", and "All departments"), which said again what the rows
+ * under the band already offer. The three facts every order carries (every
+ * governorate, cash at the door, the return window) sat under the line as a
+ * list for a while; the owner asked for them gone, and they are still said at
+ * checkout and on the sign-in page.
  *
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
  * street, then `Frontend/Web/src/assets/hero/` in name order). Only the pictures
@@ -40,11 +40,7 @@
  * gradient starts at a visible line and lingers in a slate grey halfway, and
  * an eased one leaves the navy and arrives at the page without either.
  */
-import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
-import { categorySlug } from "@shared/commerce/browse";
-import { ArrowRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "wouter";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslation } from "@/hooks/useTranslation";
 import { heroSlides } from "@/lib/brandAssets";
@@ -52,7 +48,7 @@ import { heroSlides } from "@/lib/brandAssets";
 /** How long each picture stays before the next fades in. */
 export const SLIDE_MS = 3000;
 
-export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
+export function HomeHero() {
   const { t } = useTranslation();
   const slides = heroSlides;
   const many = slides.length > 1;
@@ -162,29 +158,12 @@ export function HomeHero({ dealsDrawn }: { dealsDrawn: boolean }) {
             {t("home.heroTitle")} <span className="text-[#f2683a]">{t("home.heroTitleAccent")}</span>
           </h1>
           <p className="mt-3 max-w-[46ch] text-[15px] leading-6 text-[#c9d4e2] sm:mt-4 sm:text-[17px] sm:leading-7">{t("home.heroNote")}</p>
-          {/* Side by side while both fit on one line, each the whole width
-              once they do not — the words never wrap inside a button. */}
-          <div className="mt-5 flex flex-wrap gap-3 sm:mt-6">
-            <Link
-              href={dealsDrawn ? "/category/all?offer=1&sort=discount" : "/category/all?sort=newest"}
-              className="inline-flex h-12 flex-[1_0_auto] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#f2683a] px-5 tint-on-hover text-[15px] font-bold text-[#0a285a] sm:flex-none sm:px-6"
-            >
-              {t(dealsDrawn ? "home.heroDeals" : "home.heroNew")}
-              <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
-            </Link>
-            <Link
-              href={`/category/${categorySlug(ALL_DEPARTMENTS.query)}`}
-              className="inline-flex h-12 flex-[1_0_auto] items-center justify-center whitespace-nowrap rounded-full border-[1.5px] border-white/40 px-5 text-[15px] font-bold text-white transition-colors hover:bg-white/[.12] sm:flex-none sm:px-6"
-            >
-              {t(ALL_DEPARTMENTS.label)}
-            </Link>
-          </div>
         </div>
       </div>
 
       {/* The foot: from the navy into the page's own background, over the
           pictures as well, so the band ends without an edge. Taller than the
-          room under the buttons, because its first fifth is all but clear. */}
+          room under the words, because its first fifth is all but clear. */}
       <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-36 sm:h-40 lg:h-48" />
     </section>
   );

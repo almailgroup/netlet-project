@@ -230,6 +230,12 @@ export type CartItem = {
   /** Cart-line identifier — required for update/remove. */
   lineId: string;
   variantId: string;
+  /**
+   * The storefront product this line is of — the id Saved and the wishlists
+   * keep — so the bag can move a line to either. Absent from a bag read
+   * before it was sent, which then offers neither.
+   */
+  productId?: string;
   productHandle: string;
   productTitle: string;
   /** The seller's Arabic title, when they wrote one; the page picks (`lineTitle`). */
@@ -286,6 +292,13 @@ export type CartItem = {
    */
   deliveryChoice?: "regular" | "fast";
   fastDelivery?: { fee: Money; speed: string | null } | null;
+  /**
+   * The seller's band for this line's regular trip (`speedForLine`), so
+   * checkout can say when each parcel arrives. Null when the seller has said
+   * nothing — NetLet does not promise for them — or when the line will be a
+   * pre-order, whose promise is its release date.
+   */
+  deliverySpeed?: string | null;
   /**
    * The store selling this line, so the bag can draw each store's lines
    * together with that store's own delivery beside them. Absent from a bag

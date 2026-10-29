@@ -50,7 +50,7 @@ import { PURCHASE_TONE } from "@/lib/purchaseStyle";
  * makes it a product link (3.1.14): a friend who buys it through the link earns
  * the sharer points on that line once its return window has passed.
  */
-export async function shareProduct(product: Product, t: Translate, referralCode?: string | null) {
+export async function shareProduct(product: Pick<Product, "handle" | "title">, t: Translate, referralCode?: string | null) {
   const shareUrl = `${window.location.origin}/products/${encodeURIComponent(product.handle)}${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`;
   const shareData = { title: product.title, text: t("product.shareText", { name: product.title }), url: shareUrl };
   try {

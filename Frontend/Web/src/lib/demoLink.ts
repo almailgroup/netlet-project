@@ -116,6 +116,7 @@ function buildLine(variantId: string, quantity: number): CartItem {
   return {
     lineId: `demo-line-${variantId}`,
     variantId,
+    productId: product.id,
     productHandle: product.handle,
     productTitle: product.title,
     variantTitle: variant.title,

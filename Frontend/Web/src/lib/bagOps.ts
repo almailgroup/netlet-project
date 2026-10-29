@@ -59,6 +59,7 @@ export function ghostLine(product: Product, variantId: string, quantity: number)
   return withQuantity({
     lineId: ghostLineId(variantId),
     variantId,
+    productId: product.id,
     productHandle: product.handle,
     /* Already in the page's language: the catalogue was read in it. */
     productTitle: product.title,

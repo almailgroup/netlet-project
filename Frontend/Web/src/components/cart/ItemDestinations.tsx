@@ -15,19 +15,27 @@
  * The note about parcels appears only once a seller is actually being asked
  * for two, because explaining the charge to somebody who is not paying it is
  * explaining a rule that has not applied to them.
+ *
+ * **Folded until it is wanted** on the checkout that only confirms: most
+ * orders go to one door, and a list of selects under the address was one
+ * more block between the shopper and Place order.
  */
 import { lineTitle } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/hooks/useTranslation";
-import { MapPin } from "lucide-react";
+import { ChevronDown, MapPin } from "lucide-react";
+import { useState } from "react";
 import { Select } from "@/components/ui/Select";
 
 export function ItemDestinations() {
   const { cart, setDestination, loading } = useCart();
   const { t, isArabic } = useTranslation();
+  const [open, setOpen] = useState(false);
 
   const book = cart?.addresses ?? [];
   const items = cart?.items ?? [];
+  /* Folded until it is wanted, unless a line is already going elsewhere. */
+  const shown = open || items.some(item => item.destination);
   if (book.length === 0 || items.length < 2) return null;
 
   /*
@@ -46,18 +54,24 @@ export function ItemDestinations() {
   const split = [...perSeller.values()].some(count => count > 1);
 
   return (
-    <section className="mt-8 border-t border-[#d5dfeb] pt-7">
-      <div className="flex items-center gap-3">
-        <div className="grid size-9 place-items-center rounded-full bg-[#0a285a] text-white">
-          <MapPin className="size-4" aria-hidden />
-        </div>
-        <div>
-          <h2 className="type-heading text-base">{t("address.sendElsewhere")}</h2>
-          <p className="type-body text-[#536b8c]">{t("address.bookNote")}</p>
-        </div>
-      </div>
-
-      <ul className="mt-5 space-y-3">
+    <section className="rounded-2xl border border-[#e6e9ef] bg-white px-4 py-1.5 sm:px-5">
+      <button
+        type="button"
+        aria-expanded={shown}
+        aria-controls="item-destinations"
+        onClick={() => setOpen(value => !value)}
+        className="flex min-h-12 w-full items-center gap-3 text-start"
+      >
+        <MapPin className="size-[18px] shrink-0 text-[#536b8c]" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-bold text-[#0a285a]">{t("address.sendElsewhere")}</span>
+          {shown ? <span className="block text-[12px] leading-4 ink-muted">{t("address.bookNote")}</span> : null}
+        </span>
+        <ChevronDown className={`size-4 shrink-0 text-[#536b8c] transition-transform ${shown ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {shown ? (
+      <div id="item-destinations" className="pb-3">
+      <ul className="mt-2 space-y-3">
         {items.map(item => (
           <li key={item.lineId} className="flex flex-wrap items-center justify-between gap-3">
             <span className="type-body min-w-0 flex-1 text-[13px] text-[#0a285a]" dir="auto">
@@ -91,6 +105,8 @@ export function ItemDestinations() {
         <p className="type-body mt-4 rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] p-3 text-[12px] leading-5 text-[#536b8c]">
           {t("address.splitNote")}
         </p>
+      ) : null}
+      </div>
       ) : null}
     </section>
   );

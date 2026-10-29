@@ -20,6 +20,12 @@
  * Every card is a link, so it can be opened in a new tab. "All departments"
  * comes last, where a shopper who did not find theirs looks next.
  *
+ * **They are one row that scrolls sideways, on the owner's word** — three to a
+ * row on a phone made two rows of six tiles the whole first screen under the
+ * front door. The row reaches the screen's edges on a phone, so the tile cut
+ * off at the edge says there is more; a mouse gets the shelves' arrows
+ * (`useSideScroll`, `ScrollArrows`), drawn only while something is off an end.
+ *
  * **All six, always.** The header row, the phone's sheet and the footer leave
  * out a department with nothing on sale; these cards did too for a while, and
  * the home page opened on three tiles. The owner asked for the six back: they
@@ -27,7 +33,8 @@
  * page with its name and an empty state.
  */
 import { useTranslation } from "@/hooks/useTranslation";
-import type { CSSProperties } from "react";
+import { useSideScroll } from "@/hooks/useSideScroll";
+import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { appPath } from "@/lib/basePath";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
@@ -42,16 +49,23 @@ const CARDS: { slug: string; query: string; label: MessageKey }[] = [
 export function DepartmentCards() {
   const { t } = useTranslation();
   const cards = CARDS;
+  const scroll = useSideScroll<HTMLUListElement>([cards.length]);
+  const title = t("home.shopByCategory");
   return (
     <section aria-labelledby="departments-title" className="container pt-2 sm:pt-3">
-      <h2 id="departments-title" className="text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
-      {/* Six to a row on a wide screen, three on a phone. */}
+      <div className="flex items-center justify-between gap-4">
+        <h2 id="departments-title" className="text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{title}</h2>
+        <ScrollArrows scroll={scroll} previousLabel={t("home.rowBack", { title })} nextLabel={t("home.rowOn", { title })} />
+      </div>
+      {/* One row that scrolls sideways, reaching the screen's edges on a
+          phone so the next tile shows it is there; from `lg` the tiles share
+          the row while they fit, and scroll once they do not. */}
       <ul
-        className="mt-4 grid grid-cols-3 gap-2.5 sm:gap-4 lg:grid-cols-[repeat(var(--tiles),minmax(0,1fr))]"
-        style={{ "--tiles": Math.min(cards.length, 6) } as CSSProperties}
+        ref={scroll.trackRef}
+        className="hide-scrollbar -mx-4 mt-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 pt-0.5 sm:mx-0 sm:scroll-px-0 sm:gap-4 sm:px-0"
       >
         {cards.map(card => (
-          <li key={card.slug}>
+          <li key={card.slug} className="w-[104px] shrink-0 snap-start min-[390px]:w-[112px] sm:w-[148px] lg:min-w-[150px] lg:flex-[1_0_0]">
             <Link
               href={`/category/${categorySlug(card.query)}`}
               className="group flex h-full flex-col items-center rounded-2xl border border-transparent bg-white px-2 pb-3 pt-2 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:rounded-[1.375rem] sm:px-3 sm:pb-4 sm:pt-3"

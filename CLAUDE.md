@@ -1303,13 +1303,12 @@ once that said "Small upgrades. A brighter everyday." over blurred colour blobs 
 a slogan where a shopper looks for something to tap — and it went, leaving the
 page to open on six tiles, which the owner found plain. `HomeHero` is the door
 that came back, built the other way round: a navy band the width of the screen
-with NetLet's pictures on it, one line saying what the shop is — "Kuwait's
-stores, one cart." — and two ways in. The first is Today's
-deals only while the home page draws a Deals shelf (`shelvesFor`), New arrivals
-otherwise, so the first press never lands on a half-empty page. The page's `h1`
-is in it, the shop's name first for a screen reader. On a phone the buttons
-sit side by side only while both fit (`flex-[1_0_auto]`, never wrapping their
-words), each the full width at 320. The three facts every order carries (every
+with NetLet's pictures on it and one line saying what the shop is — "Kuwait's
+stores, one cart." **It carries no buttons, on the owner's word**: it had two,
+"See what's new" (Today's deals while the home page drew that shelf) and "All
+departments", which offered again what the row directly under the band
+offers. The page's `h1` is in it, the shop's name first for a screen reader.
+The three facts every order carries (every
 governorate, cash at the door, `RETURN_WINDOW_DAYS`) sat under the line as a
 list, and the owner asked for them gone; checkout and the sign-in page still
 say them.
@@ -1365,8 +1364,13 @@ hands a screen up to 640px wide; a picture with no copy is sent whole, so a
 missing copy costs a phone the download and nothing else.
 
 `DepartmentCards` follows under a heading of its own — six tiles, the five
-departments and "All departments", three to a row on a phone and six on a wide
-screen, each a link. **The tiles are white, all six alike**: a colour per
+departments and "All departments", each a link, **in one row that scrolls
+sideways, on the owner's word**: three to a row on a phone made two rows that
+were the whole first screen under the band. The row reaches the screen's edges
+on a phone, so the tile cut off at the edge says there is more; from `lg` the
+tiles share the row while they fit. A mouse gets the shelves' arrows
+(`useSideScroll` and `ScrollArrows`, now the one copy the product shelves use
+too), drawn only while something is off an end. **The tiles are white, all six alike**: a colour per
 department was offered in the mockup and the owner declined it. **The art is a
 file per department**, `Frontend/Web/public/departments/<slug>.webp`, so a picture is
 replaced by dropping a file of the same name. Each is a few of the department's
@@ -1431,7 +1435,9 @@ on `/saved` it is drawn from one. New arrivals is the one shelf exempt from the
 floor, on purpose (`homeLayout.ts` says why). **Shop by brand is the Brand rows
 sellers wrote** (`commerce.brands`, counted by the `brandOf` the Brand filter
 uses, so a tile reading "3 products" opens a page of three), from three brands
-up, an initial on each tile because NetLet holds no logos. The paid home banners
+up, an initial on each tile because NetLet holds no logos — one sideways row,
+like the departments, on the owner's word (two to a row on a phone made twelve
+brands six rows of the page). The paid home banners
 sit under the department cards (see Paid placements) and are absent when none
 is approved and running. The four lines on what shopping here involves
 (delivery, cash, returns, help) that closed the page went: their facts are the
@@ -1451,8 +1457,12 @@ cart", "Native checkout", "Payment mockup only", "not connected yet", "when the
 delivery policy is configured": each was true and each was written for whoever
 was building the page. Checkout says cash on delivery and the returns window
 now, and the four card logos are gone — brands drawn beside an order nobody can
-pay with them. When a card service is integrated they come back as choices in
-the payment fieldset, not as pictures. Staff pages may still speak plainly about
+pay with them. **The other ways to pay are back as choices that say they are
+coming, on the owner's word** ("add multiple payment methods as a mockup
+design"): KNET, a card and Apple Pay are drawn in the payment list, each
+marked "Coming soon" and none choosable, so the page shows what paying will
+look like and no press leads anywhere — never logos, and never a button that
+does nothing. They become real choices when a card service is integrated. Staff pages may still speak plainly about
 configuration; a shopper's may not.
 
 **Nor is it a slogan, and a heading is a name.** "Ready when you are." over the
@@ -1573,23 +1583,42 @@ before. On the page each store is a card; in the drawer, a section. A line's
 price sits under its name and its stepper under that: beside the stepper, the
 price was cut at a 320px card's edge, which the page-width audit did not see
 because the card clips: measure text past the edge of any box that clips it,
-not only the page's width. **The phone's page has a bar of its own**
-(`CartTopBar`): "Deliver to" and the address in use at the start, opening the
-address book as the header's does (`useDeliveryArea`, which the header now
-asks too), and a heart at the end to the wishlists, or Saved for a guest, with
-the hearts counted. **The drawer is mounted after the pages** (`App`): its
+not only the page's width. **The page asks where the order goes, on the
+owner's word** ("choose your delivery location in the cart page, not in
+checkout"): its first card is the address (`DeliveryAddressCard`) — the one in
+use by `addressInUse`, the header's rule, with its name, number and line and a
+Change that opens the address book, or the question when there is none — and
+Checkout pressed without one opens the book and goes on once one is chosen.
+It replaced the bar (`CartTopBar`) that named the address in a word; the heart
+to the wishlists, or Saved for a guest, is at the end of the title's line.
+
+**Every line has a menu, on the owner's word** (`LineMenu`, a "⋯" where the bin
+was; the stepper's minus is the bin at one, the app's rule): Save for later,
+Move to wishlist, Share, View product, Remove from cart — a sheet from the foot
+of a phone's screen naming the product, a small menu from `sm`, the WAI-ARIA
+menu in both, `position: fixed` and portalled into the nearest dialog or
+landmark because the store card clips. **Save for later is Saved** — the
+hearts, on the device and the account — not a list of its own, which would be
+a second answer to "where did I put it"; the line leaves the bag, and a plain
+one can be put back from the toast's Undo. **Move to wishlist** asks the
+heart's question (`chooseWishlist`) and takes the line out only once it is on
+a list; a guest has no lists and is not offered it. Both need the line's
+product, so the bag now sends `productId`. **Saved for later** is a sideways
+row under the bag (`SavedForLater`): Saved, newest first, less what is in the
+bag, each with Move to cart, which takes it out of Saved alone (`unsave` — a
+list it is on keeps it), Choose an option for one with sizes, or Sold out. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
 first link on the page, which axe reported as content outside a landmark.
 
 **Every width draws the phone's page, in the middle of the screen, on the
 owner's word** — the account's rule. A wide screen spread the bag from the
 logo's line to the screen's edge under a title alone, with no bar saying where
-it was going: the old page beside the phone's new one. Now `CartTopBar`, the
-title and the store cards are the same at every width, in one column
+it was going: the old page beside the phone's new one. Now the title, the
+address card and the store cards are the same at every width, in one column
 (`COLUMN`: the account's `max-w-2xl`, and `max-w-5xl` from `lg`), centred;
 from `lg` the summary stands beside the lines, sticky, so Checkout stays on the
-screen down a long bag, and the lines' column is about the account's width. The
-bar repeats the wide header's delivery button and Saved — kept, because on
+screen down a long bag, and the lines' column is about the account's width.
+The address card repeats the wide header's delivery button — kept, because on
 this page where the order goes is part of what it costs.
 
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
@@ -3362,13 +3391,23 @@ phone. Found by walking one order from a 375px checkout through the seller,
 the driver, the cash, a return and the payout schedule, every page at 375 and
 414 in both languages (`.scratch/walk-e2e.mjs`).
 
-**The address book fills checkout.** Saved addresses are one-tap choices, the
-one used last on this device is chosen already (`browserStore`), and picking
-one sets the governorate as well, which is what prices delivery. Edits after
-picking are for this order only. A first address is saved *after* the order
-succeeds, never instead of it, so a refusal from the book's own rules costs the
-shopper nothing they asked for. Signing in happens on the page and keeps the
-basket, because `CartContext` already adopts the guest bag on sign-in.
+**Checkout confirms; it does not ask, on the owner's word** ("you should only
+confirm your details such as your location and your preferred payment method
+and then you can place order"). The governorate, area, block, street, house,
+name, number and map were typed there on every order; the address is chosen in
+the cart now and checkout is one column of cards: the same address card with
+Change (Buy now arrives without passing the cart, so it asks when nothing is
+chosen), the lines by store with each store's delivery and when it arrives —
+the seller's band (`deliverySpeed`, now on each bag line, `arrivalFor`), and
+nothing where the seller stated none — the payment list, a code and points
+folded until wanted, and the summary with Place order. The order is placed
+from the saved address's own parts, name and number; a saved address with no
+number on an account with none asks for it in one box, and the sentence under
+Place order goes to whatever is missing (the address book, or that box). A
+book with no address in the area in use starts from the one used last here, as
+before. Sending some lines elsewhere (`ItemDestinations`) is folded behind one
+row. Signing in happens on the page and keeps the basket, because
+`CartContext` already adopts the guest bag on sign-in.
 
 **The browser fills what it knows, and only that.** The name and the number
 carry `autoComplete` `name` and `tel` (and `type="tel"`, so a phone opens its

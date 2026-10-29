@@ -13,8 +13,8 @@ import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
-import { Fragment, lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Fragment, lazy, Suspense, useDeferredValue, useMemo, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
@@ -24,6 +24,8 @@ import { GuideShelf } from "@/components/home/GuideShelf";
 import { Later } from "@/components/layout/Later";
 import { BrandShelf } from "@/components/home/BrandShelf";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
+import { ScrollArrows } from "@/components/ui/ScrollArrows";
+import { useSideScroll } from "@/hooks/useSideScroll";
 import { Link, useLocation } from "wouter";
 
 /* Fetched on the first preview, not with the page: most visits open none. */
@@ -89,53 +91,18 @@ function ProductRail({ id, title, products, catalogLoading, catalogError, saved,
   const { t } = useTranslation();
   const railProducts = products.slice(0, 12);
   const railTitle = t(title);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [edges, setEdges] = useState({ back: false, forward: false });
-
-  useEffect(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    /* scrollLeft runs negative in a right-to-left page, so measure the distance from each end. */
-    const measure = () => {
-      const travelled = Math.abs(track.scrollLeft);
-      const room = track.scrollWidth - track.clientWidth;
-      setEdges({ back: travelled > 4, forward: room - travelled > 4 });
-    };
-    measure();
-    track.addEventListener("scroll", measure, { passive: true });
-    const observer = new ResizeObserver(measure);
-    observer.observe(track);
-    return () => { track.removeEventListener("scroll", measure); observer.disconnect(); };
-  }, [railProducts.length, catalogLoading]);
-
-  const scrollBy = (direction: -1 | 1) => {
-    const track = trackRef.current;
-    if (!track) return;
-    const rtl = getComputedStyle(track).direction === "rtl";
-    track.scrollBy({ left: (rtl ? -direction : direction) * Math.round(track.clientWidth * 0.9), behavior: "smooth" });
-  };
-
-  const arrowClass = "glass pressable grid size-9 place-items-center rounded-full text-[#0a285a] disabled:opacity-35";
+  const scroll = useSideScroll<HTMLDivElement>([railProducts.length, catalogLoading]);
 
   return (
     <section id={id} className="py-6 sm:py-8" aria-labelledby={`${id}-title`}>
       <div className="container">
         <ShelfHeading id={id} title={railTitle} onViewAll={onViewAll}>
-          {edges.back || edges.forward ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <button type="button" onClick={() => scrollBy(-1)} disabled={!edges.back} aria-label={t("home.previousProducts", { title: railTitle })} title={t("home.previousProducts", { title: railTitle })} className={arrowClass}>
-                <ChevronLeft className="size-4 rtl:-scale-x-100" />
-              </button>
-              <button type="button" onClick={() => scrollBy(1)} disabled={!edges.forward} aria-label={t("home.nextProducts", { title: railTitle })} title={t("home.nextProducts", { title: railTitle })} className={arrowClass}>
-                <ChevronRight className="size-4 rtl:-scale-x-100" />
-              </button>
-            </div>
-          ) : null}
+          <ScrollArrows scroll={scroll} previousLabel={t("home.previousProducts", { title: railTitle })} nextLabel={t("home.nextProducts", { title: railTitle })} />
         </ShelfHeading>
         {catalogLoading ? <CatalogSkeleton /> : catalogError ? (
           <div className="mt-4 rounded-2xl border border-[#f2b69e] bg-white px-6 py-10 text-center text-[#0a285a]"><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div>
         ) : (
-          <div ref={trackRef} className="hide-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
+          <div ref={scroll.trackRef} className="hide-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
             {railProducts.map((product, index) => (
               /* Four to a row from lg up, whatever the container's width, so a shelf fills its row. */
               <div key={`${id}-${product.id}`} className={`shrink-0 snap-start ${ranked ? "flex w-[200px] items-end sm:w-[235px]" : "w-[164px] sm:w-[195px]"} lg:w-[calc((100%-2.25rem)/4)]`}>
@@ -280,11 +247,11 @@ export default function Home() {
      kept a header of its own for a long time and drifted from the rest. */
   return <>
 
-    {/* The front door: the street, one line, the facts, two ways in. It
-        carries the page's h1, the shop's name first for a screen reader. */}
-    <HomeHero dealsDrawn={shelves.deals.length > 0} />
+    {/* The front door: the pictures and one line. It carries the page's h1,
+        the shop's name first for a screen reader. */}
+    <HomeHero />
 
-    {/* The departments, as big cards. */}
+    {/* The departments, a row to scroll sideways. */}
     <DepartmentCards />
 
     {/* The rest is below the first screen: drawn the frame after the first

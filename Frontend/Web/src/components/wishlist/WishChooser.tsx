@@ -27,7 +27,7 @@ import { Gift, LoaderCircle, Lock, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
-export function WishChooser({ productId, onClose }: { productId: string; onClose: () => void }) {
+export function WishChooser({ productId, onClose, onWished }: { productId: string; onClose: () => void; onWished?: () => void }) {
   const { t } = useTranslation();
   const titleId = useId();
   const firstRef = useRef<HTMLButtonElement>(null);
@@ -54,6 +54,8 @@ export function WishChooser({ productId, onClose }: { productId: string; onClose
         onSuccess: answer => {
           void utils.customer.saved.list.invalidate();
           void utils.wishlists.mine.invalidate();
+          /* Before closing, which forgets what to do next. */
+          onWished?.();
           onClose();
           toast.success(t(visibility === "public" ? "wish.addedPublic" : "wish.addedPrivate", { list: isolate(answer.title) }), {
             action: { label: t("wish.viewLists"), onClick: () => navigateWhenReady(appPath("/account/wishlists")) },

@@ -9,12 +9,13 @@
  * The phone's Cart tab opens this; the wide header's cart button keeps the
  * drawer, which is quicker over a page somebody is in the middle of.
  *
- * **On a phone it opens on where the order is going and on the wishlists, on
- * the owner's word** (`CartTopBar`): the page has no header there (see
- * `StorefrontShell`), so the delivery location the header carried is at the
- * start of its own bar — the address book, as the header's opens — and a heart
- * to the wishlists at the end, the place somebody sends what they decided not
- * to buy yet.
+ * **It asks where the order is going, on the owner's word** — checkout only
+ * confirms it. The first card is the address (`DeliveryAddressCard`): the one
+ * in use with Change, or the question, and Checkout pressed without one opens
+ * the address book first and goes on once one is chosen. The heart to the
+ * wishlists is at the end of the title's line. Under the bag, what was saved
+ * for later (`SavedForLater`), each with a way back in; every line has a menu
+ * (`LineMenu`) that puts it there.
  *
  * On a phone the summary comes after the lines, so with three things in the
  * bag Checkout started below the screen, under the tab bar. While it is still
@@ -23,17 +24,18 @@
  *
  * **Every width draws the phone's page, in the middle of the screen, on the
  * owner's word** — the account's rule (`COLUMN`). A wide screen spread the
- * bag from the logo's line to the edge with its title alone over it, and no
- * bar saying where it was going: the old page beside the phone's new one. It
- * is the same bar, title and store cards now, centred; from `lg` the summary
+ * bag from the logo's line to the edge with its title alone over it, and
+ * nothing saying where it was going: the old page beside the phone's new one.
+ * It is the same title, address and store cards now, centred; from `lg` the summary
  * stands beside the lines rather than under them, so Checkout stays on the
  * screen down a long bag, and the two together are as wide as the account's
  * column plus the summary.
  */
 import { BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
+import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
+import { SavedForLater } from "@/components/cart/SavedForLater";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar, TAB_BAR_REACH } from "@/components/layout/PhoneActionBar";
-import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { PixelBadge } from "@/components/ui/PixelBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -41,14 +43,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
-import { pressHaptic } from "@/lib/haptics";
-import { lazyPage } from "@/lib/lazyPage";
+import { trpc } from "@/lib/trpc";
+import { formatPhone } from "@shared/commerce/wishlist";
 import { privatePageMeta } from "@shared/seo";
-import { ArrowRight, ChevronDown, Heart, MapPin, ShoppingBag } from "lucide-react";
-import { Suspense, useState } from "react";
+import { ArrowRight, Heart, ShoppingBag } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-
-const DeliveryZoneDialog = lazyPage(async () => ({ default: (await import("@/components/layout/DeliveryZoneDialog")).DeliveryZoneDialog }));
 
 /* The phone's column, centred: the account's width until there is room for the
    summary beside the lines. */
@@ -58,15 +58,51 @@ export default function Cart() {
   const { t } = useTranslation();
   const money = useMoney();
   const { cart, settling, proceedToCheckout } = useCart();
+  const { user, isAuthenticated } = useAuth();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
+  const delivery = useDeliveryAddress();
+  const details = trpc.customer.details.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000 });
+
+  /*
+   * Checkout asks where first. A signed-in shopper with no address in use is
+   * shown the address book on the press, and goes on to checkout as soon as
+   * one is chosen — waiting a moment for the book to answer, since a new
+   * address is saved and then read back. Closing the book without choosing
+   * stays on the cart.
+   */
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [continuing, setContinuing] = useState(false);
+  const giveUp = useRef<number | null>(null);
+  const goToCheckout = () => {
+    if (delivery.isAuthenticated && delivery.loaded && !delivery.address) {
+      setContinuing(true);
+      setAddressOpen(true);
+      return;
+    }
+    proceedToCheckout();
+  };
+  const closeAddress = () => {
+    setAddressOpen(false);
+    if (giveUp.current) window.clearTimeout(giveUp.current);
+    giveUp.current = window.setTimeout(() => setContinuing(false), 3000);
+  };
+  useEffect(() => {
+    if (!continuing || addressOpen || !delivery.address) return;
+    setContinuing(false);
+    proceedToCheckout();
+  }, [continuing, addressOpen, delivery.address, proceedToCheckout]);
+  useEffect(() => () => { if (giveUp.current) window.clearTimeout(giveUp.current); }, []);
 
   return (
     <PageBody>
       <div data-cart-column className={COLUMN}>
-        <CartTopBar />
-        <PageHeading title={t("cart.title")} note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined} />
+        <PageHeading
+          title={t("cart.title")}
+          note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined}
+          actions={<WishlistLink />}
+        />
         {!items && settling ? (
           <BagSettling />
         ) : !items ? (
@@ -75,10 +111,20 @@ export default function Cart() {
           </EmptyState>
         ) : (
           <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5">
-            <div className="min-w-0"><BagLines layout="page" /></div>
-            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading /></aside>
+            <div className="min-w-0 space-y-3">
+              <DeliveryAddressCard
+                open={addressOpen}
+                onOpen={() => setAddressOpen(true)}
+                onClose={closeAddress}
+                accountName={user?.name}
+                accountPhone={details.data?.phone ? formatPhone(details.data.phone) : null}
+              />
+              <BagLines layout="page" />
+            </div>
+            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} /></aside>
           </div>
         )}
+        <SavedForLater />
       </div>
       {items && cart ? (
         <PhoneActionBar shown={checkoutBelow} label={t("cart.bar")}>
@@ -87,7 +133,7 @@ export default function Cart() {
               <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
               <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(cart.total)}</p>
             </div>
-            <button type="button" onClick={proceedToCheckout} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold min-[360px]:px-5">
+            <button type="button" onClick={goToCheckout} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold min-[360px]:px-5">
               {t("cart.checkoutShort")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
             </button>
           </div>
@@ -98,47 +144,23 @@ export default function Cart() {
 }
 
 /**
- * Where the order is going, at the start, and the wishlists, at the end. The
- * location is the header's own (`useDeliveryArea`) and opens the same address
- * book; here it says "Deliver to" out loud, having the room the header did
- * not. The heart goes to the account's wishlists, or for a guest — who has no
- * lists, only hearts kept on the device — to Saved, and counts the hearts.
+ * The wishlists, at the end of the title's line: the place somebody sends
+ * what they decided not to buy yet. A guest — who has no lists, only hearts
+ * kept on the device — goes to Saved. It counts the hearts.
  */
-function CartTopBar() {
+function WishlistLink() {
   const { t } = useTranslation();
-  const area = useDeliveryArea();
   const { isAuthenticated } = useAuth();
   const { savedIds } = useCustomer();
-  const [open, setOpen] = useState(false);
   return (
-    <div className="-mt-2 mb-4 flex items-center justify-between gap-3">
-      <button
-        type="button"
-        onClick={() => { pressHaptic(); setOpen(true); }}
-        title={area.title}
-        className="pressable -ms-2 flex min-h-12 min-w-0 items-center gap-2.5 rounded-2xl px-2 text-start text-[#0a285a] hover:bg-[#0a285a]/[.06]"
-      >
-        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#fdf3ee]">
-          <MapPin className="size-[18px] ink-accent" aria-hidden />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-[12px] font-medium leading-4 ink-muted">{t("home.deliverTo")} </span>
-          <span className="flex min-w-0 items-center gap-1 text-[15px] font-bold leading-5">
-            <span dir="auto" className="truncate">{area.name}</span>
-            <ChevronDown className="size-4 shrink-0" aria-hidden />
-          </span>
-        </span>
-      </button>
-      <Link
-        href={isAuthenticated ? "/account/wishlists" : "/saved"}
-        aria-label={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
-        title={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
-        className="pressable relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
-      >
-        <Heart className="size-5" aria-hidden />
-        <PixelBadge value={savedIds.length} className="absolute -end-1.5 -top-1.5" />
-      </Link>
-      {open ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setOpen(false)} /></Suspense> : null}
-    </div>
+    <Link
+      href={isAuthenticated ? "/account/wishlists" : "/saved"}
+      aria-label={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
+      title={isAuthenticated ? t("cart.wishlists") : t("nav.saved")}
+      className="pressable relative grid size-11 shrink-0 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.12)] hover:bg-[#f0f2f5]"
+    >
+      <Heart className="size-5" aria-hidden />
+      <PixelBadge value={savedIds.length} className="absolute -end-1.5 -top-1.5" />
+    </Link>
   );
 }
