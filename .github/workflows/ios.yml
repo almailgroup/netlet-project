@@ -33,7 +33,11 @@ jobs:
     permissions:
       contents: read
       checks: write
-    timeout-minutes: 40
+    # The previews are most of the run — about half a minute a screen, in two
+    # languages — and grow with every screen added; the push of the address
+    # screens finished 0s inside the old 40 minutes, and a run that times out
+    # uploads nothing to TestFlight.
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: Frontend/iOS

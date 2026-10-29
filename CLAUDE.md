@@ -6439,7 +6439,10 @@ Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
 posts small copies as neutral check runs on the commit, because a session
 working on this repository can read the checks API but cannot download an
 artifact; notices were tried first and the API cuts an annotation off at
-4,096 characters, a fifth of a picture.
+4,096 characters, a fifth of a picture. **The previews are most of the
+run's time** — about half a minute a screen in each language — so the job's
+limit grows with them: the push of the address screens finished 0s inside
+the old 40 minutes, and a run that times out uploads nothing, so it is 60.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was
