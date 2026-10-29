@@ -300,12 +300,12 @@ final class SavedModelTests: XCTestCase {
         XCTAssertEqual(saved.ids, [], "a wish is not a save")
         XCTAssertEqual(saved.wished, ["41"])
         XCTAssertTrue(saved.isHearted("41"), "the heart fills for something on a list")
-        XCTAssertEqual(saved.listedCount, 1, "the wishlists' heart counts what is on them")
+        XCTAssertEqual(saved.ids.count, 0, "the header's heart counts Saved items, and a wish is not one")
 
         await saved.save("42")
         XCTAssertEqual(saved.ids, ["42"])
         XCTAssertFalse(saved.wished.contains("42"), "a save is not a wish")
-        XCTAssertEqual(saved.listedCount, 1)
+        XCTAssertEqual(saved.ids.count, 1)
     }
 
     func testAFilledHeartOnAListComesOffEverything() async throws {
@@ -322,7 +322,7 @@ final class SavedModelTests: XCTestCase {
     func testAGuestCountsTheirSaved() async {
         let saved = SavedModel(account: FakeAccountService(), defaults: isolatedDefaults())
         await saved.save("7")
-        XCTAssertEqual(saved.listedCount, 1, "a guest's heart goes to Saved")
+        XCTAssertEqual(saved.ids.count, 1, "the heart counts Saved, for a guest as for anybody")
         XCTAssertTrue(saved.isHearted("7"))
         saved.signedOut()
         XCTAssertEqual(saved.wished, [])

@@ -380,8 +380,9 @@ final class ApprovedRoundRuleTests: XCTestCase {
     /// `referralCodeFor`: the values `Shared/commerce/referral.ts` gives.
     func testAReferralCodeIsTheWebsOwn() {
         XCTAssertEqual([1, 31, 900, 123_456].map(ReferralCode.code(for:)), ["NLAAAB", "NLAABB", "NLABAA", "NLEVFG"])
-        XCTAssertEqual(ReferralCode.productPath(handle: "brass lamp", userId: 31), "/products/brass%20lamp?ref=NLAABB")
-        XCTAssertEqual(ReferralCode.productPath(handle: "lamp", userId: nil), "/products/lamp")
+        XCTAssertEqual(ReferralCode.productPath(handle: "brass lamp", code: ReferralCode.code(for: 31)), "/products/brass%20lamp?ref=NLAABB")
+        XCTAssertEqual(ReferralCode.productPath(handle: "lamp", code: nil), "/products/lamp")
+        XCTAssertEqual(ReferralCode.productPath(handle: "lamp", code: ""), "/products/lamp", "no code is no ref")
     }
 
     /// `proposalFigureProblem`: one figure, a percentage or an amount.
