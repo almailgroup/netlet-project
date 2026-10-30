@@ -504,6 +504,7 @@ private struct DayField: View {
             if let chosen = day {
                 DatePicker(label, selection: Binding(get: { chosen }, set: { day = $0 }), displayedComponents: .date)
                     .labelsHidden()
+                    .kuwaitDays()
             }
             if let hint { Text(hint).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true) }
         }

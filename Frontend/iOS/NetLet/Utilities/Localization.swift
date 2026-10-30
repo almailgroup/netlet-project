@@ -155,3 +155,14 @@ extension Bundle {
         return data
     }
 }
+
+extension View {
+    /// A date picker whose days are Kuwait's, whatever zone the phone is set
+    /// to. Every day the app sends is formatted as a Kuwaiti day, so a picker
+    /// drawn in the phone's own zone sent the day before on a phone east of
+    /// Kuwait (Dubai's midnight is still yesterday in Kuwait) and showed the
+    /// day before for a stored day on one far to the west.
+    func kuwaitDays() -> some View {
+        environment(\.timeZone, TimeZone(identifier: "Asia/Kuwait") ?? TimeZone(secondsFromGMT: 3 * 3600)!)
+    }
+}

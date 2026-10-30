@@ -5649,7 +5649,12 @@ in `useDateFormat.ts` is passed to every formatter, because the shop's days are
 Kuwaiti days — a code's last day, a payout week, a release date — and a date
 formatted in the browser's own zone read as the day before to anybody west of
 Greenwich, an administrator travelling included. A review's date was the last
-one still formatted on its own.
+one still formatted on its own. **In the app a date picker is drawn in Kuwait's
+zone too** (`kuwaitDays()`, the birthday's `BirthdayDay.zone`), because every day
+it sends is a Kuwaiti day: drawn in the phone's own zone, a seller whose phone
+was set to Dubai time who picked the 5th sent the 4th — the pre-order date, a
+code's last day, a gift card's, the discount permit's and a standing order's
+first delivery all did.
 
 The server counts days the same way. An order reference, an inbound
 shipment's reference, the delivery band's business days and the membership

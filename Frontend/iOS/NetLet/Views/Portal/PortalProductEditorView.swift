@@ -550,6 +550,7 @@ private struct VariantEditor: View {
                     Text(l.t("admin.preorderReleaseAt")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                     DatePicker(l.t("admin.preorderReleaseAt"), selection: Binding(get: { releaseOn ?? Date() }, set: { releaseOn = $0 }), displayedComponents: .date)
                         .labelsHidden()
+                        .kuwaitDays()
                         .disabled(allowance <= 0)
                     Text(l.t("admin.preorderReleaseHint")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                 }

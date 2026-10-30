@@ -541,6 +541,7 @@ struct PortalStoreView: View {
             if let expires = draft.expires {
                 DatePicker(l.t("admin.discountLicenceExpires"), selection: Binding(get: { expires }, set: { draft.expires = $0 }), displayedComponents: .date)
                     .labelsHidden()
+                    .kuwaitDays()
             }
         }
     }

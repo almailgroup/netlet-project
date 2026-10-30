@@ -556,6 +556,7 @@ struct SubscribePanel: View {
                 DatePicker(l.t("subscribe.firstDelivery"), selection: $firstRun,
                            in: Date().addingTimeInterval(86_400)...Date().addingTimeInterval(60 * 86_400), displayedComponents: .date)
                     .font(.inter(14))
+                    .kuwaitDays()
                 if let addresses {
                     if addresses.isEmpty {
                         HStack {
