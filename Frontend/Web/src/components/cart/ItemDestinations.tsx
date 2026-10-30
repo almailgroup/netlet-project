@@ -25,6 +25,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChevronDown, MapPin } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 
 export function ItemDestinations() {
@@ -87,6 +88,7 @@ export function ItemDestinations() {
               value={item.destination?.id ?? ""}
               onChange={event =>
                 void setDestination(item.lineId, event.target.value ? Number(event.target.value) : null)
+                  .catch(() => toast.error(t("cart.updateFailed")))
               }
               className="glass-field w-full rounded-xl px-3 py-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a]/30 sm:w-auto sm:min-w-52"
             >

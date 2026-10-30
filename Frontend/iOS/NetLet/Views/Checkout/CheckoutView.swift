@@ -709,7 +709,8 @@ private struct ItemDestinations: View {
     private func choice(_ item: CartItem, _ addressId: Int?, _ label: String) -> some View {
         Button {
             Haptics.tap()
-            Task { await app.cart.setDestination(lineId: item.lineId, addressId: addressId) }
+            let refused = l.t("cart.updateFailed")
+            Task { if !(await app.cart.setDestination(lineId: item.lineId, addressId: addressId)) { app.toast(refused) } }
         } label: {
             if item.destination?.id == addressId { Label(label, systemImage: "checkmark") } else { Text(label) }
         }

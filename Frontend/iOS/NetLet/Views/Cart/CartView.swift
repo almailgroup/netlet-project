@@ -464,7 +464,8 @@ private struct SpeedChoice: View {
         let on = item.isFast == choice
         return Button {
             guard !on else { return }
-            Task { await app.cart.setDeliveryChoice(lineId: item.lineId, fast: choice) }
+            let refused = l.t("cart.updateFailed")
+            Task { if !(await app.cart.setDeliveryChoice(lineId: item.lineId, fast: choice)) { app.toast(refused) } }
         } label: {
             Text(label)
                 .font(.inter(12, .bold))
