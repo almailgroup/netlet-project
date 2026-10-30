@@ -276,10 +276,18 @@ private struct QuickViewContent: View {
     @ViewBuilder
     private var quantity: some View {
         if let chosen = model.variant, chosen.availableForSale {
-            let inBag = app.cart.quantity(of: chosen.id)
+            // Every line of this option — plain, with extras, in a set — the web's count.
+            let inBag = (app.cart.cart?.items ?? []).filter { $0.variantId == chosen.id }.reduce(0) { $0 + $1.quantity }
             FlowLayout(spacing: 12) {
-                QuantityStepper(quantity: model.quantity, maximum: max(1, chosen.maxQuantity), name: product.title) { next in
-                    model.quantity = min(max(1, next), max(1, chosen.maxQuantity))
+                // What is left after what the bag holds of it, in any line
+                // (`BagStock.room`): it offered the whole shelf over a bag
+                // that already held most of it, and checkout then refused.
+                let room = BagStock.room(chosen.maxQuantity, inBag: inBag)
+                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
+                    model.quantity = min(max(1, next), room)
+                }
+                .onChange(of: room, initial: true) { _, most in
+                    if model.quantity > most { model.quantity = most }
                 }
                 if inBag > 0 {
                     Button {

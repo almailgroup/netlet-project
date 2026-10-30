@@ -173,6 +173,8 @@ private struct CheckoutForm: View {
             return
         case "checkout.needPhone", "checkout.badPhone":
             if model.asksPhone(for: address) { phoneFocused = true } else { app.deliveryOpen = true }
+        case "checkout.needFewer":
+            editCart()
         default:
             app.deliveryOpen = true
         }

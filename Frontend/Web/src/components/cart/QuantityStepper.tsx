@@ -19,7 +19,7 @@ import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 /** Nobody buys a hundred lamps from a product card; a typo could. The server's own ceiling. */
 export const MAX_QUANTITY = MAX_LINE_QUANTITY;
 
-export function QuantityStepper({ value, onChange, size = "regular", disabled = false }: {
+export function QuantityStepper({ value, onChange, size = "regular", disabled = false, max = MAX_QUANTITY }: {
   value: number;
   /*
    * A React setter, so a press can say "one more than whatever it is now"
@@ -33,9 +33,17 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
   /** `compact` is the card; `regular` is the product page. */
   size?: "regular" | "compact";
   disabled?: boolean;
+  /**
+   * The most this press may ask for — what is left of the variant after what
+   * the bag already holds (`roomFor`), never over the line ceiling. Without
+   * it, a stepper offered ninety-nine of something with three on the shelf
+   * and checkout refused what the page had suggested.
+   */
+  max?: number;
 }) {
   const { t } = useTranslation();
   const compact = size === "compact";
+  const ceiling = Math.max(1, Math.min(MAX_QUANTITY, max));
   /* The product page's is a thumb's size under a coarse pointer (44px a
      side); a mouse keeps the 36px it always had. */
   const button = compact ? "grid size-8 place-items-center" : "grid size-11 place-items-center pointer-fine:size-9";
@@ -61,8 +69,8 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
       </span>
       <button
         type="button"
-        onClick={() => onChange(current => Math.min(MAX_QUANTITY, current + 1))}
-        disabled={disabled || value >= MAX_QUANTITY}
+        onClick={() => onChange(current => Math.min(ceiling, current + 1))}
+        disabled={disabled || value >= ceiling}
         aria-label={t("product.increaseQuantity")}
         className={`${button} pressable rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}
       >

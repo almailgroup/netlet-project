@@ -96,7 +96,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [guestSavedIds, setGuestSavedIds] = useState(() => readStoredList(SAVED_STORAGE_KEY));
   const [guestDeliveryZoneId, setGuestDeliveryZoneId] = useState(() => readStored(DELIVERY_STORAGE_KEY));
   const [locale, setLocaleState] = useState<LocaleCode>(storedLocale);
-  const syncedGuestIds = useRef<string | null>(null);
+  const mergingGuestIds = useRef(false);
   const profile = trpc.customer.profile.get.useQuery(undefined, { enabled: isAuthenticated });
   const saved = trpc.customer.saved.list.useQuery(undefined, { enabled: isAuthenticated });
   const updateProfile = trpc.customer.profile.update.useMutation({
@@ -146,17 +146,26 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated, locale, profile.data, updateProfile]);
 
   useEffect(() => {
-    if (!isAuthenticated || !saved.data?.length) return;
-    const guestKey = guestSavedIds.slice().sort().join("|");
-    if (!guestKey || syncedGuestIds.current === guestKey) return;
+    /*
+     * The hearts kept on this device as a guest join the account's list once
+     * that list is read — an empty one included: it waited for a list with
+     * something on it, so an account that had saved nothing yet, which is
+     * every new one, never took them and they vanished at sign-in. And once
+     * the account holds them they leave the device: kept, they were merged
+     * in again on every load, so a heart taken off one came back after a
+     * reload, and the next person to sign out on a shared device found them.
+     */
+    if (!isAuthenticated || !saved.data || !guestSavedIds.length || mergingGuestIds.current) return;
     const serverIds = new Set(saved.data);
     const missing = guestSavedIds.filter(productId => !serverIds.has(productId));
-    if (!missing.length) {
-      syncedGuestIds.current = guestKey;
-      return;
-    }
-    missing.forEach(productId => updateSaved.mutate({ productId, saved: true }));
-    syncedGuestIds.current = guestKey;
+    mergingGuestIds.current = true;
+    void Promise.all(missing.map(productId => updateSaved.mutateAsync({ productId, saved: true })))
+      .then(() => {
+        writeValue(SAVED_STORAGE_KEY, []);
+        setGuestSavedIds([]);
+      })
+      .catch(() => undefined)
+      .finally(() => { mergingGuestIds.current = false; });
   }, [guestSavedIds, isAuthenticated, saved.data, updateSaved]);
 
   const savedIds = isAuthenticated ? saved.data ?? guestSavedIds : guestSavedIds;

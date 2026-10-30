@@ -68,7 +68,8 @@ enum BagOps {
             addons: [],
             // The card knows its store by address only; the server's answer adds the id.
             vendor: product.vendorSlug.map { CartStore(id: nil, name: product.vendor ?? "", nameAr: nil, slug: $0) },
-            productId: product.id
+            productId: product.id,
+            maxQuantity: min(ReferenceData.shared.rules.maxLineQuantity, variant.maxQuantity)
         )
         return withQuantity(item, quantity)
     }

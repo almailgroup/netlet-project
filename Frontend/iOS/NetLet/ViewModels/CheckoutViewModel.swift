@@ -110,6 +110,9 @@ final class CheckoutViewModel {
     /// the button, and a press on the sentence goes to the fix.
     func blocker(for cart: Cart?, address: SavedAddress?) -> String? {
         guard let cart, !cart.isEmpty else { return "checkout.needItems" }
+        // A line asking for more than is left is lowered in the bag first,
+        // rather than refused after the press (`BagStock.shortLines`).
+        if !BagStock.shortLines(cart.items).isEmpty { return "checkout.needFewer" }
         if !cart.cod.available { return "checkout.needCod" }
         guard let address else { return "checkout.needAddressChoice" }
         return Validation.savedAddressProblem(address, phone: phone(for: address), requiredParts: reference.requiredParts)

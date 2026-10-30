@@ -33,7 +33,7 @@
  * focus moves to the count that replaces it. A finger's press moves no focus,
  * so a phone's own focus rules cannot keep the stepper open.
  */
-import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
+import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { useCart } from "@/contexts/CartContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic, refusedHaptic } from "@/lib/haptics";
@@ -147,7 +147,7 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
       removeItem(line.lineId).catch(failed);
       return;
     }
-    const clamped = Math.min(MAX_QUANTITY, next);
+    const clamped = Math.min(cardCeiling(variant, line, cart?.items ?? []), next);
     if (clamped === line.quantity) return;
     setSaid(t("cart.quantityShort", { count: String(clamped) }));
     updateQuantity(line.lineId, clamped).catch(failed);
@@ -194,7 +194,7 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
           type="button"
           data-focus="step"
           onClick={event => change(event, quantity + 1)}
-          disabled={quantity >= MAX_QUANTITY}
+          disabled={quantity >= cardCeiling(variant, line, cart?.items ?? [])}
           aria-label={t("cart.increase", { name })}
           className={step}
         >

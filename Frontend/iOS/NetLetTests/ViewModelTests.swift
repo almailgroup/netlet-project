@@ -319,6 +319,24 @@ final class SavedModelTests: XCTestCase {
         XCTAssertFalse(saved.isHearted("41"))
     }
 
+    func testAGuestsHeartsJoinTheAccountAndLeaveTheDevice() async {
+        let account = FakeAccountService()
+        let defaults = isolatedDefaults()
+        let guest = SavedModel(account: account, defaults: defaults)
+        await guest.save("7")
+        await guest.save("9")
+        await guest.adoptAccount()
+        XCTAssertEqual(account.saved, ["7", "9"], "an account with nothing saved takes the device's hearts")
+        XCTAssertNil(defaults.stringArray(forKey: SavedModel.key), "and the device keeps none of them")
+        await guest.unsave("7")
+        // The next launch: nothing on the device brings the heart back.
+        let relaunched = SavedModel(account: account, defaults: defaults)
+        await relaunched.adoptAccount()
+        XCTAssertEqual(relaunched.ids, ["9"])
+        relaunched.signedOut()
+        XCTAssertEqual(relaunched.ids, [], "signing out leaves no account's hearts on the phone")
+    }
+
     func testAGuestCountsTheirSaved() async {
         let saved = SavedModel(account: FakeAccountService(), defaults: isolatedDefaults())
         await saved.save("7")

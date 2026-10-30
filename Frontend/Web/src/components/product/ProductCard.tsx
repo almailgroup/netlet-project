@@ -31,7 +31,7 @@
  */
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { appPath } from "@/lib/basePath";
-import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
+import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { CardGallery } from "@/components/product/CardGallery";
 import { PhotoCartControl } from "@/components/product/PhotoCartControl";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -188,6 +188,9 @@ function CardAction({ product, onChoose, onPhoto = false }: {
   const quantity = line ? line.quantity : pick;
   const count = String(quantity);
   const name = product.title;
+  /* No more than there is (`lineCeiling`, `roomFor`): the card offered
+     ninety-nine whatever the shelf held. */
+  const ceiling = cardCeiling(variant, line, cart?.items ?? []);
 
   useEffect(() => {
     const target = focusNext.current === "add" ? addRef.current : focusNext.current === "plus" ? plusRef.current : null;
@@ -204,7 +207,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
 
   /* The one place the shared number changes: the card's pick, or the bag's line. */
   const setQuantity = (next: number) => {
-    const clamped = Math.max(1, Math.min(MAX_QUANTITY, next));
+    const clamped = Math.max(1, Math.min(ceiling, next));
     if (clamped === quantity) return;
     if (line) {
       run(() => updateQuantity(line.lineId, clamped), t("cart.quantityShort", { count: String(clamped) }), null);
@@ -218,7 +221,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
     less: () => setQuantity(quantity - 1),
     more: () => setQuantity(quantity + 1),
     canLess: quantity > 1,
-    canMore: quantity < MAX_QUANTITY,
+    canMore: quantity < ceiling,
   };
 
   let control: ReactNode;

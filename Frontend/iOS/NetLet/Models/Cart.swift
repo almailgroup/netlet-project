@@ -58,6 +58,10 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     /// The seller's shipping band for this line (`speedForLine`), which
     /// checkout turns into the day it arrives; nil when the seller stated none.
     var deliverySpeed: String? = nil
+    /// The most of this variant there is to sell, held to the line ceiling;
+    /// the bag's stepper stops there (`BagStock`). Nil from a bag read before
+    /// the server sent it.
+    var maxQuantity: Int? = nil
 
     struct FastDelivery: Decodable, Hashable, Sendable {
         let fee: Money

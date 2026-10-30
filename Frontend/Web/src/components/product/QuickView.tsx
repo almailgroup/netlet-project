@@ -28,7 +28,8 @@ import { useOverlay } from "@/hooks/useOverlay";
 import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
 import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
-import type { Product } from "@shared/commerce/types";
+import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
+import { roomFor } from "@shared/commerce/typedQuantity";
 import { ArrowRight, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -40,7 +41,7 @@ import { Select } from "@/components/ui/Select";
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
-  const { addItem } = useCart();
+  const { addItem, cart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
@@ -76,18 +77,24 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const savings = savingsPercent(price, compareAt);
   const rating = productRating(product.attributes);
   const inStock = Boolean(variant?.availableForSale);
+  /* What is left of this option once the bag's own is counted — the product
+     page's rule: the stepper stops there, and a number chosen for another
+     option is held to it on the press. */
+  const inBag = variant ? (cart?.items ?? []).filter(item => item.variantId === variant.id).reduce((total, item) => total + item.quantity, 0) : 0;
+  const room = roomFor(variant?.maxQuantity ?? MAX_LINE_QUANTITY, inBag);
+  const asked = Math.min(quantity, room);
   const image = product.images[imageIndex] ?? product.images[0];
   const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
   const add = async (thenCheckout: boolean) => {
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
-    if (thenCheckout) return buyNow(product, quantity, variant.id);
+    if (thenCheckout) return buyNow(product, asked, variant.id);
     /* The drawer opening is the confirmation; no toast (see the product page).
        It opens on the line drawn ahead, so the preview closes on the press. */
     onClose();
     try {
-      await addItem(variant.id, quantity, { product });
+      await addItem(variant.id, asked, { product });
     } catch {
       toast.error(t("cart.addFailed"));
     }
@@ -199,7 +206,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 {inStock ? (
                   <div className="flex items-center gap-3">
                     <span className="text-[13px] font-semibold ink-muted">{t("product.quantity")}</span>
-                    <QuantityStepper value={quantity} onChange={setQuantity} />
+                    <QuantityStepper value={asked} onChange={next => setQuantity(current => (typeof next === "function" ? next(Math.min(current, room)) : next))} max={room} />
                   </div>
                 ) : (
                   // Out of stock is the moment a back-in-stock alert is worth
@@ -216,14 +223,14 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                     className={`${PREVIEW_TONE.add} flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1`}
                   >
                     <ShoppingBag className="size-[18px]" aria-hidden />
-                    {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : quantity > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(quantity) })}
+                    {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : asked > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(asked) })}
                   </button>
                   <button
                     onClick={() => void add(true)}
                     disabled={!inStock}
                     className={`${PREVIEW_TONE.buy} flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1`}
                   >
-                    <Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}
+                    <Zap className="size-[18px] fill-current" aria-hidden />{t(asked > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(asked) })}
                   </button>
                 </div>
               </div>

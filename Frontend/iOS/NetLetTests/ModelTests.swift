@@ -716,6 +716,51 @@ final class PinFillTests: XCTestCase {
 }
 
 /// A quantity typed into a bag line — `typedQuantity.ts`, on its own cases.
+/// `Shared/commerce/typedQuantity.test.ts`'s `lineCeiling`, `shortLines` and
+/// `roomFor` cases, so the app's bag stops where the web's does.
+final class BagStockTests: XCTestCase {
+    private func line(_ id: String, _ variant: String, _ quantity: Int, _ most: Int?) -> CartItem {
+        CartItem(lineId: id, variantId: variant, productHandle: "p", productTitle: "P", productTitleAr: nil, variantTitle: "Default",
+                 image: nil, unitPrice: .zero, quantity: quantity, lineTotal: .zero, bundleName: nil, addons: nil, maxQuantity: most)
+    }
+
+    func testTheCeilingIsWhatTheShelfHolds() {
+        let lamps = line("1", "v1", 2, 28)
+        XCTAssertEqual(BagStock.lineCeiling(lamps, in: [lamps]), 28)
+        let plenty = line("1", "v1", 2, 500)
+        XCTAssertEqual(BagStock.lineCeiling(plenty, in: [plenty]), BagStock.ceiling)
+    }
+
+    func testOtherLinesOfTheVariantAreLeftOut() {
+        let plain = line("1", "v1", 3, 10)
+        let fitted = line("2", "v1", 4, 10)
+        let other = line("3", "v2", 9, 10)
+        XCTAssertEqual(BagStock.lineCeiling(plain, in: [plain, fitted, other]), 6)
+        XCTAssertEqual(BagStock.lineCeiling(fitted, in: [plain, fitted, other]), 7)
+    }
+
+    func testNeverBelowOneAndTheCeilingAloneWithoutAFigure() {
+        let gone = line("1", "v1", 2, 0)
+        XCTAssertEqual(BagStock.lineCeiling(gone, in: [gone]), 1)
+        let old = line("1", "v1", 2, nil)
+        XCTAssertEqual(BagStock.lineCeiling(old, in: [old]), BagStock.ceiling)
+    }
+
+    func testShortLinesNameEachLineAskingTooMany() {
+        let short = BagStock.shortLines([
+            line("1", "v1", 20, 28), line("2", "v1", 10, 28), line("3", "v2", 3, 3), line("4", "v3", 1, 0), line("5", "v4", 50, nil),
+        ])
+        XCTAssertEqual(short, ["1": 28, "2": 28, "4": 0])
+    }
+
+    func testRoomLeavesWhatTheBagHolds() {
+        XCTAssertEqual(BagStock.room(28, inBag: 0), 28)
+        XCTAssertEqual(BagStock.room(28, inBag: 25), 3)
+        XCTAssertEqual(BagStock.room(28, inBag: 28), 1)
+        XCTAssertEqual(BagStock.room(500, inBag: 0), BagStock.ceiling)
+    }
+}
+
 final class TypedQuantityTests: XCTestCase {
     func testReadsAWholeNumber() {
         XCTAssertEqual(TypedQuantity.read("9", ceiling: 99), .set(quantity: 9, capped: false))

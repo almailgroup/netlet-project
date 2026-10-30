@@ -1620,6 +1620,24 @@ later lost the first digit to a fast typist. Measured at 390 in both languages
 and 1440: 12 typed, ١٢ typed, 150 held to 99 with the toast, Escape, 0
 removing the line, axe clean.
 
+**No stepper offers more than there is.** Every one stopped at the line
+ceiling, 99, whatever the shelf held: the product page, the preview, the card
+and the bag all let somebody ask for forty lamps with twenty-eight on the
+shelf, nothing in the bag said so, and Place order answered that something
+"has just sold out" — which is not what happened. Found by typing 40 into a
+bag line. Each bag line now carries `maxQuantity` (`maxQuantityFor`, the
+larger pool, held to the ceiling), and `Shared/commerce/typedQuantity.ts`
+holds the rules both sides use: `lineCeiling` (what there is, less the bag's
+other lines of the same variant), `roomFor` (what one press on the product
+page or the preview may add, after what the bag holds of that option in any
+line), `cardCeiling` (the card's and the photo's stepper) and `shortLines`
+(lines asking for more than is left, said under the stepper — "Only 28 left.
+Lower the quantity to check out.", or sold out). A typed number over what
+there is is held to it ("Only 28 available."). Checkout will not place the
+order while a line is short (`checkout.needFewer`, which goes to the bag),
+rather than refusing it after the press. The app is the same, rule for rule
+(`BagStock` in `TypedQuantity.swift`, tested on the same cases).
+
 **Every line has a menu, on the owner's word** (`LineMenu`, a "⋯" where the bin
 was; the stepper's minus is the bin at one, the app's rule): Save for later,
 Move to wishlist, Share, View product, Remove from cart — a sheet from the foot
@@ -3786,7 +3804,11 @@ first, each with its free places, counted by `runsOn` — the rule `fullDays` an
 the booking use — so it cannot call free a day the booking then refuses. The
 first press is the first day and the second the last; a run across a full day
 is not offered. Arabic heads the columns with the day's letter, because its
-short names are whole words that wrap in a seventh of a phone.
+short names are whole words that wrap in a seventh of a phone. The app's start-day
+picker is Kuwait's day whatever zone the phone is set to
+(`AdWords.todayInKuwait`): it took the phone's own, so a phone set west of
+Kuwait late in the evening offered a day already gone there, and the booking
+was refused.
 
 Disclosed on the shelf and on every card, and never folded into a sort: a
 department's paid products are a strip above a grid that stays in the
@@ -4585,6 +4607,18 @@ nothing else, which is the argument for that habit in its sharpest form:
 - Adding to the bag opened the drawer over the list, so a relative choosing
   three presents dismissed the bag three times. `addItem` takes `reveal` now;
   the gift page confirms with a toast.
+
+**A guest's hearts join the account at sign-in, and then leave the device**
+(`CustomerContext`, `SavedModel.adoptAccount`). The web waited for the
+account's list to have something in it before adding the device's, so an
+account that had saved nothing — every new one — never took them, and they
+vanished the moment the shopper signed in. And neither side emptied the device
+afterwards, so the copy kept there was merged in again on every load: a heart
+taken off one of those items came back after a reload, and signing out left
+the account's hearts on a shared device. Now the device's list goes once the
+account holds it (only once every write has landed). In the app a refused
+heart also goes back to how it was, rather than staying drawn saved over
+nothing saved.
 
 **The heart asks first: Saved items or a wishlist — on the owner's word,
 "wishlists and saved items are a totally different thing".** Saved is what a
@@ -5771,7 +5805,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, and is 786 KB (228 KB) now, the points coin and the affiliate programme's words in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, and is 786 KB (230 KB) now, the bag's stock ceiling and its words — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

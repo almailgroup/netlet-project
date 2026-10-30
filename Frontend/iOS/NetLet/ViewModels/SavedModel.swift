@@ -37,15 +37,20 @@ final class SavedModel {
     /// Whether the heart is filled: in Saved, or on a wishlist.
     func isHearted(_ productId: String) -> Bool { ids.contains(productId) || wished.contains(productId) }
 
-    /// The account's list, with this device's added to it.
+    /// The account's list, with this device's added to it — and then this
+    /// device's emptied, the web's rule: kept, it was merged in again at every
+    /// launch, so a heart taken off one of them came back, and signing out
+    /// left the account's hearts on a phone somebody else might use.
     func adoptAccount() async {
         signedIn = true
         guard let stored = try? await account.savedProducts() else { return }
         var merged = stored
+        var allKept = true
         for productId in deviceIds where !stored.contains(productId) {
-            if let answer = try? await account.setSaved(productId, saved: true) { merged = answer }
+            if let answer = try? await account.setSaved(productId, saved: true) { merged = answer } else { allKept = false }
         }
         ids = merged
+        if allKept { defaults.removeObject(forKey: Self.key) }
         await refreshWished()
     }
 
@@ -82,9 +87,12 @@ final class SavedModel {
     }
 
     private func set(_ productId: String, saved saving: Bool) async {
+        let before = ids
         ids = saving ? ids + [productId] : ids.filter { $0 != productId }
         if signedIn {
-            if let answer = try? await account.setSaved(productId, saved: saving) { ids = answer }
+            // The server's list is what is kept; a refusal puts the heart back
+            // as it was, rather than leaving it drawn saved over nothing saved.
+            if let answer = try? await account.setSaved(productId, saved: saving) { ids = answer } else { ids = before }
         } else {
             defaults.set(ids, forKey: Self.key)
         }

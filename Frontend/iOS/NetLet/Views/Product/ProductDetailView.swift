@@ -386,12 +386,20 @@ private struct ProductPage: View {
     @ViewBuilder
     private var quantity: some View {
         if let variant = model.variant, variant.availableForSale {
-            let inBag = app.cart.quantity(of: variant.id)
+            // Every line of this option — plain, with extras, in a set — the web's count.
+            let inBag = (app.cart.cart?.items ?? []).filter { $0.variantId == variant.id }.reduce(0) { $0 + $1.quantity }
             FlowLayout(spacing: 12) {
                 Text(l.t("product.quantity") + ":").font(.inter(14, .semibold)).foregroundStyle(Brand.muted)
                     .frame(minHeight: 44)
-                QuantityStepper(quantity: model.quantity, maximum: max(1, variant.maxQuantity), name: product.title) { next in
-                    model.quantity = min(max(1, next), max(1, variant.maxQuantity))
+                // What is left after what the bag holds of it, in any line
+                // (`BagStock.room`): it offered the whole shelf over a bag
+                // that already held most of it, and checkout then refused.
+                let room = BagStock.room(variant.maxQuantity, inBag: inBag)
+                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
+                    model.quantity = min(max(1, next), room)
+                }
+                .onChange(of: room, initial: true) { _, most in
+                    if model.quantity > most { model.quantity = most }
                 }
                 if inBag > 0 {
                     Button {

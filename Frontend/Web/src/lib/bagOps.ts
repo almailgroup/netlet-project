@@ -70,6 +70,7 @@ export function ghostLine(product: Product, variantId: string, quantity: number)
     agreedFrom: null,
     priceReason: null,
     quantity,
+    maxQuantity: Math.min(MAX_LINE_QUANTITY, variant.maxQuantity),
     addons: [],
     addonsTotal: null,
     bundleName: null,

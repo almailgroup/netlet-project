@@ -39,6 +39,7 @@ import {
   type LocalePick,
 } from "../../../Shared/commerce/fromInventory.js";
 import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Product } from "../../../Shared/commerce/types.js";
+import { maxQuantityFor } from "../../../Shared/commerce/preorder.js";
 import type { Measure } from "../../../Shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
@@ -688,6 +689,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       ? { fee: money(row.fastDeliveryFee!), speed: isDeliverySpeed(row.fastDeliverySpeed) ? row.fastDeliverySpeed : null }
       : null,
     quantity: row.quantity,
+    maxQuantity: Math.min(MAX_LINE_QUANTITY, maxQuantityFor({ stock: row.stock, preorderStock: row.preorderStock ?? 0, preorderReleaseAt: null })),
     vendor: { id: row.vendorId, name: row.vendorName, nameAr: row.vendorNameAr?.trim() || null, slug: row.vendorSlug },
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
     addons: row.extras.map(addon => ({

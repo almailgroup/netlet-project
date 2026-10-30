@@ -13,7 +13,7 @@
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
 import { readStored, writeStored } from "@/lib/browserStore";
-import type { Cart, CartItem, Money } from "@shared/commerce/types";
+import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Money } from "@shared/commerce/types";
 import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../../Backend/src/routes";
@@ -123,6 +123,7 @@ function buildLine(variantId: string, quantity: number): CartItem {
     image: product.images[0] ?? null,
     unitPrice: variant.price,
     quantity,
+    maxQuantity: Math.min(MAX_LINE_QUANTITY, variant.maxQuantity),
     // The demo catalog is counted throughout; see demoCatalog.ts.
     measure: { unit: "each" as const, stepAmount: 1 },
     lineTotal: fromFils(toFils(variant.price) * quantity),

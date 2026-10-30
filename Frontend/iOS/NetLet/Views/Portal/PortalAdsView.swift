@@ -104,6 +104,18 @@ enum AdWords {
         }
     }
 
+    static let kuwait = TimeZone(identifier: "Asia/Kuwait") ?? TimeZone(secondsFromGMT: 3 * 3600)!
+
+    /// The start of today in Kuwait — the first day a run may start on, whatever
+    /// zone the phone is set to. The picker took the phone's own day, so on a
+    /// phone set west of Kuwait late in the evening it offered a day that is
+    /// already yesterday in Kuwait, and the booking was refused.
+    static var todayInKuwait: Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = kuwait
+        return calendar.startOfDay(for: Date())
+    }
+
     /// The Kuwaiti day, as `yyyy-mm-dd`.
     static func day(_ date: Date) -> String {
         let formatter = DateFormatter()
@@ -200,9 +212,10 @@ private struct AdBookForm: View {
             Text(l.t("ads.place")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
             PortalSegmented(label: l.t("ads.place"), value: $slot, options: rules.ads.slots.map { ($0, l.t(AdWords.slot($0), ["department": l.t("ads.yourDepartment")])) })
             if isBanner { bannerFields }
-            let today = Calendar.current.startOfDay(for: Date())
+            let today = AdWords.todayInKuwait
             DatePicker(l.t("ads.startsOn"), selection: $starts, in: today...today.addingTimeInterval(Double(rules.ads.maxLeadDays) * 86_400), displayedComponents: .date)
                 .font(.inter(14))
+                .environment(\.timeZone, AdWords.kuwait)
             Stepper(value: $days, in: 1...rules.ads.maxDays) {
                 Text("\(l.t("ads.days", ["max": "\(rules.ads.maxDays)"])): \(days)").font(.inter(14))
             }

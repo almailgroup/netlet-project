@@ -262,6 +262,14 @@ export type CartItem = {
   priceReason?: "agreed" | "subscriber" | "member" | null;
   quantity: number;
   /**
+   * The most of this variant there is to sell — the shelf, or for a pre-order
+   * the seller's promise, the larger pool (`maxQuantityFor`), held to the line
+   * ceiling. The bag's steppers stop there, and a bag asking for more than it
+   * says so before checkout (`lineCeiling`, `shortLines`). Absent from a bag
+   * read before it was sent.
+   */
+  maxQuantity?: number;
+  /**
    * The optional extras this line carries (3.1.2) — a fitting, an extended
    * warranty. Priced from the catalog on every read, like everything else in a
    * basket: `cart_item_addons` stores which, never what they cost.

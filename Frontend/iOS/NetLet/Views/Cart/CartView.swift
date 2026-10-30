@@ -405,9 +405,12 @@ struct CartLineRow: View {
                 if let fast = item.fastDelivery {
                     SpeedChoice(item: item, fast: fast, title: title).padding(.top, 4)
                 }
+                // No more than there is of it (`BagStock`), and a line asking
+                // for more than is left says so before checkout.
+                let lines = app.cart.cart?.items ?? [item]
                 QuantityStepper(
                     quantity: item.quantity,
-                    maximum: ReferenceData.shared.rules.maxLineQuantity,
+                    maximum: BagStock.lineCeiling(item, in: lines),
                     name: title,
                     busy: app.cart.busyLine == item.lineId,
                     compact: true,
@@ -417,6 +420,12 @@ struct CartLineRow: View {
                     Task { await app.cart.setQuantity(lineId: item.lineId, to: next) }
                 }
                 .padding(.top, 6)
+                if let left = BagStock.shortLines(lines)[item.lineId] {
+                    Text(left == 0 ? l.t("cart.lineSoldOut") : l.t("cart.lineShort", ["count": "\(left)"]))
+                        .font(.inter(12, .bold))
+                        .foregroundStyle(Brand.danger)
+                        .padding(.top, 4)
+                }
             }
         }
     }

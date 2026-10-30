@@ -38,7 +38,8 @@ import { relatedProducts } from "@shared/commerce/related";
 import { descriptionBlocks } from "@shared/commerce/productDetail";
 import { EMPTY_FILTERS, categorySlug, searchPath, searchWithTerm } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
-import type { Product } from "@shared/commerce/types";
+import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
+import { roomFor } from "@shared/commerce/typedQuantity";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -1147,6 +1148,13 @@ export default function ProductDetail() {
   }, [direction, product?.id, product?.media.length, product?.images.length]);
 
   const selectedVariant = product?.variants.find(variant => variant.id === selectedVariantId) ?? product?.variants[0];
+  /* What the bag already holds of this option, in every line of it, and so
+     what is left to add: the stepper stops there, and a quantity chosen for
+     another option is held to it. It offered ninety-nine whatever the shelf
+     held, and checkout then refused what the page had suggested. */
+  const inBag = selectedVariant ? (cart?.items ?? []).filter(item => item.variantId === selectedVariant.id).reduce((total, item) => total + item.quantity, 0) : 0;
+  const room = roomFor(selectedVariant?.maxQuantity ?? MAX_LINE_QUANTITY, inBag);
+  useEffect(() => { setQuantity(current => Math.min(current, room)); }, [room]);
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
   const isSaved = product ? heartedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
@@ -1229,7 +1237,6 @@ export default function ProductDetail() {
   const price = selectedVariant?.price ?? product.priceRange.min;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
   const savings = savingsPercent(price, compareAtPrice);
-  const inBag = selectedVariant ? (cart?.items ?? []).filter(item => item.variantId === selectedVariant.id).reduce((total, item) => total + item.quantity, 0) : 0;
   const inStock = Boolean(selectedVariant?.availableForSale);
 
 
@@ -1361,7 +1368,7 @@ export default function ProductDetail() {
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
               {/* The shared control: the card grew the same thing, and two
                   copies is how one clamps at 1 and the other at 0. */}
-              <QuantityStepper value={quantity} onChange={setQuantity} />
+              <QuantityStepper value={quantity} onChange={setQuantity} max={room} />
               {/* What the bag already holds of this option, in every line of it
                   (plain, with extras, in a set): the stepper is "how many more",
                   and showing 1 beside a bag of 5 read as the bag being wrong. */}

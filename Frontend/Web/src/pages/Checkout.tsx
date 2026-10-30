@@ -66,6 +66,7 @@ import { addressLineOf } from "@shared/commerce/addresses";
 import { arrivalFor, isDeliverySpeed, slowestSpeed, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import type { CartItem } from "@shared/commerce/types";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
+import { shortLines } from "@shared/commerce/typedQuantity";
 
 const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[15px] outline-none transition-shadow focus:border-[#0a285a] focus:shadow-[0_0_0_3px_rgba(10,40,90,.12)]";
 
@@ -145,6 +146,7 @@ export default function Checkout() {
     ? null /* said by the sign-in card */
     : settling || !delivery.loaded ? null
     : !items.length ? "checkout.needItems"
+    : shortLines(items).size ? "checkout.needFewer"
     : cart?.cod.available === false ? "checkout.needCod"
     : !address ? "checkout.needAddressChoice"
     : !addressLineOf(address) ? "checkout.needAddress"
@@ -163,6 +165,11 @@ export default function Checkout() {
       return;
     }
     if (blocker === "checkout.needCod" || blocker === "checkout.needItems") return;
+    /* The quantity is changed where the stepper is. */
+    if (blocker === "checkout.needFewer") {
+      navigate("/cart");
+      return;
+    }
     setAddressOpen(true);
   };
   const fixable = Boolean(blocker && blocker !== "checkout.needCod" && blocker !== "checkout.needItems");

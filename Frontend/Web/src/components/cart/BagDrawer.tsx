@@ -26,7 +26,8 @@ import { bagGroups, freeDeliveryProgress, type BagGroup } from "@/lib/bagGroups"
 import type { CartItem } from "@shared/commerce/types";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
-import { quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
+import { lineCeiling, quantityDraft, shortLines, typedQuantity } from "@shared/commerce/typedQuantity";
+import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -165,10 +166,15 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
  * did not fit on one line and the price was cut at the card's edge.
  */
 function BagLine({ item }: { item: CartItem }) {
-  const { updateQuantity, removeItem, closeCart } = useCart();
+  const { cart, updateQuantity, removeItem, closeCart } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const title = lineTitle(item, isArabic);
+  /* How many this line may hold, and whether the bag asks for more of its
+     variant than there is — said under the stepper, before checkout. */
+  const lines = cart?.items ?? [item];
+  const ceiling = lineCeiling(item, lines);
+  const left = shortLines(lines).get(item.lineId);
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
   return (
     <div className="flex gap-3 py-4">
@@ -221,9 +227,14 @@ function BagLine({ item }: { item: CartItem }) {
           ) : (
             <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           )}
-          <LineQuantity item={item} title={title} />
-          <button disabled={item.quantity >= MAX_QUANTITY} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          <LineQuantity item={item} title={title} ceiling={ceiling} />
+          <button disabled={item.quantity >= ceiling} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
         </div>
+        {left !== undefined ? (
+          <p role="status" className="mt-2 text-[12px] font-bold text-[#b42318]">
+            {left === 0 ? t("cart.lineSoldOut") : t("cart.lineShort", { count: left })}
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -240,7 +251,7 @@ function BagLine({ item }: { item: CartItem }) {
  * It is always an input rather than a number that turns into one, because a
  * phone opens its keyboard only for a field focused by the press itself.
  */
-function LineQuantity({ item, title }: { item: CartItem; title: string }) {
+function LineQuantity({ item, title, ceiling }: { item: CartItem; title: string; ceiling: number }) {
   const { updateQuantity, removeItem } = useCart();
   const { t } = useTranslation();
   const [draft, setDraft] = useState<string | null>(null);
@@ -255,13 +266,14 @@ function LineQuantity({ item, title }: { item: CartItem; title: string }) {
       cancelled.current = false;
       return;
     }
-    const typed = typedQuantity(text);
+    const typed = typedQuantity(text, ceiling);
     if (!typed) return;
     if (typed.kind === "remove") {
       void removeItem(item.lineId).catch(() => undefined);
       return;
     }
-    if (typed.capped) toast(t("cart.atMost", { count: String(MAX_QUANTITY) }));
+    /* Held to what there is, or to the line ceiling — each said as what it is. */
+    if (typed.capped) toast(ceiling < MAX_LINE_QUANTITY ? t("cart.onlyAvailable", { count: ceiling }) : t("cart.atMost", { count: String(MAX_QUANTITY) }));
     if (typed.quantity !== item.quantity) void updateQuantity(item.lineId, typed.quantity).catch(() => undefined);
   };
   return (

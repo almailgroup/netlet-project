@@ -130,7 +130,12 @@ struct QuantityStepper: View {
         case .remove?:
             change(0)
         case .set(let value, let capped)?:
-            if capped { app.toast(l.t("cart.atMost", ["count": "\(maximum)"])) }
+            // Held to what there is, or to the line ceiling — each said as what it is.
+            if capped {
+                app.toast(maximum < BagStock.ceiling
+                    ? l.t("cart.onlyAvailable", ["count": "\(maximum)"])
+                    : l.t("cart.atMost", ["count": "\(maximum)"]))
+            }
             if value != quantity { change(value) }
         case nil:
             break
@@ -627,7 +632,8 @@ struct PhotoCartControl: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.action)
-            .disabled(count >= variant.maxQuantity)
+            // What there is, less the bag's other lines of it (`BagStock`).
+            .disabled(count >= BagStock.cardCeiling(variant, line: line, in: app.cart.cart?.items ?? []))
             .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
         }
         .transition(.opacity)
