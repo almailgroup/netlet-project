@@ -150,9 +150,6 @@ final class AppModel {
     var searchStart: SearchStart?
     /// The photo viewer a product page opens on — for the screenshots CI takes.
     var photoViewerStart: PhotoViewerStart?
-    /// The home page opens scrolled to its foot — for the screenshot of the
-    /// tab bar over the footer.
-    var startAtFoot = false
     /// Which of the shop's switchable features are on (`features.states`).
     private(set) var features = FeatureStates.unknown
     /// What is waiting in the account: unread notices and messages, parcels on the way.
@@ -314,9 +311,6 @@ final class AppModel {
             guard let value else { return }
             selectedTab = .home
             homePath = NavigationPath([Route.product(handle: value)])
-        case "homeFoot":
-            selectedTab = .home
-            startAtFoot = true
         case "tabBarAway":
             // The home page with the tab bar slid away, as a scroll down leaves
             // it — the picture that says the slide moves the bar on this iOS.

@@ -50,7 +50,7 @@ struct AccountView: View {
     ]
 
     private func home(_ user: User) -> some View {
-        ShopPage(root: true, header: false, footer: false, refresh: { await app.session.restore(); await loadPreviews() }) {
+        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
             VStack(alignment: .leading, spacing: 12) {
                 profileCard(user)
                 MembershipCard()
@@ -73,8 +73,13 @@ struct AccountView: View {
                 if app.features.isOn("affiliates") && app.affiliateJoined == false {
                     affiliatePromo
                 }
-                ForEach(Array(Self.cards.enumerated()), id: \.offset) { _, ids in
+                ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
                     let rows = ids.filter { id in id == "language" || id == "signout" || entries.contains { $0.id == id } }
+                    if index == Self.cards.count - 1 {
+                        // What the footer carried, before the account's own
+                        // card, so signing out stays the last thing on the page.
+                        MoreFromNetLet()
+                    }
                     if !rows.isEmpty {
                         VStack(spacing: 0) {
                             ForEach(Array(rows.enumerated()), id: \.element) { index, id in
@@ -303,21 +308,7 @@ struct AccountView: View {
     private func row(_ id: String) -> some View {
         switch id {
         case "language":
-            // Each word whole on one line, never broken in two: beside the
-            // label while they fit, under it on a narrow screen or a large
-            // text size.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 14) {
-                    languageLabel
-                    languageSwitch
-                }
-                .frame(minHeight: 64)
-                VStack(alignment: .leading, spacing: 10) {
-                    languageLabel
-                    languageSwitch
-                }
-                .padding(.vertical, 14)
-            }
+            LanguageRow()
         case "signout":
             Button {
                 confirmingSignOut = true
@@ -335,47 +326,6 @@ struct AccountView: View {
                 .buttonStyle(.tap)
             }
         }
-    }
-
-    private var languageLabel: some View {
-        HStack(spacing: 14) {
-            rowIcon("character.bubble")
-            Text(l.t("account.language"))
-                .font(.inter(16, .medium))
-                .foregroundStyle(Brand.ink)
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-        }
-    }
-
-    /// The two languages, each in its own language and its own script.
-    private var languageSwitch: some View {
-        HStack(spacing: 0) {
-            ForEach([Language.en, Language.ar], id: \.self) { language in
-                let active = l.current == language
-                Button {
-                    guard !active else { return }
-                    app.setLanguage(language)
-                } label: {
-                    Text(l.t(language == .en ? "account.english" : "account.arabic"))
-                        .font(.inter(15, .semibold))
-                        .foregroundStyle(active ? Brand.ink : ProfileInk.icon)
-                        .lineLimit(1)
-                        .fixedSize()
-                        .padding(.horizontal, 16)
-                        .frame(minHeight: 40)
-                        .background(Capsule().fill(active ? Color.white : Color.clear).shadow(color: Brand.navy.opacity(active ? 0.14 : 0), radius: 2, y: 1))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(PressFillStyle(cornerRadius: 20, strength: Haptics.actionStrength))
-                .environment(\.locale, language.locale)
-                .accessibilityAddTraits(active ? .isSelected : [])
-            }
-        }
-        .padding(4)
-        .background(Capsule().fill(ProfileInk.chip))
-        .fixedSize()
     }
 
     private func rowIcon(_ symbol: String, colour: Color = ProfileInk.icon) -> some View {
@@ -445,14 +395,14 @@ struct AccountView: View {
 /// slate for the row icons, and the red of the way out. An enum of its own
 /// rather than statics on the view, so a default argument can name one —
 /// Swift 5 evaluates those outside the main actor.
-private enum ProfileInk {
+enum ProfileInk {
     static let chip = Color(red: 241 / 255, green: 242 / 255, blue: 246 / 255)
     static let icon = Color(red: 93 / 255, green: 107 / 255, blue: 130 / 255)
     static let signOutRed = Color(red: 194 / 255, green: 54 / 255, blue: 42 / 255)
 }
 
 /// The dashed line between two rows of a card, inset as the reference draws it.
-private struct DashedRule: View {
+struct DashedRule: View {
     var body: some View {
         Line()
             .stroke(Color(red: 227 / 255, green: 230 / 255, blue: 236 / 255), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -470,7 +420,7 @@ private struct DashedRule: View {
     }
 }
 
-private extension View {
+extension View {
     /// A white card of the profile page: 24 round, a whisper of shadow, no rim.
     func panel() -> some View {
         background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white))
@@ -596,7 +546,7 @@ struct ProfileView: View {
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
-            ShopPage(header: false, footer: false) {
+            ShopPage(header: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 14) {
                         // Back one screen, to wherever it was opened from.

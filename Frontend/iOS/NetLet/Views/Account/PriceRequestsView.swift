@@ -9,7 +9,7 @@ struct PriceRequestsView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.priceRequests) } }) { requests in
-            ShopPage(header: false, footer: false, refresh: { await requests.load() }) {
+            ShopPage(header: false, refresh: { await requests.load() }) {
                 AccountSection(title: l.t("offers.mine"), hint: l.t("account.hint.offers")) {
                     LoadStateView(state: requests.state, retry: { await requests.load() }) { rows in
                         if rows.isEmpty {
@@ -105,7 +105,7 @@ struct ReviewsView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.reviewableLines) } }) { lines in
-            ShopPage(header: false, footer: false, refresh: { await lines.load() }) {
+            ShopPage(header: false, refresh: { await lines.load() }) {
                 AccountSection(title: l.t("account.sectionReviews"), hint: l.t("account.hint.reviews")) {
                     LoadStateView(state: lines.state, retry: { await lines.load() }) { rows in
                         if rows.isEmpty {

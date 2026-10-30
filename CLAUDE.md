@@ -6173,9 +6173,23 @@ A field that brings its own bar keeps it; the words and the direction are the
 page's. The web needs none: Safari on an iPhone has its own Done above the
 keyboard, and Android's back gesture puts it away.
 
-**Only the home page has the footer, and the Cart tab is the web's new bag —
-on the owner's word.** `ShopPage`'s `footer` is off unless asked for, and only
-`HomeView` asks. `CartView` opens on the title and the count with a heart to
+**The app has no footer, on the owner's word** ("there is no need for a
+footer in app"). The home page drew the web's phone footer for a while — the
+departments, the shopping and service links, the contact block, the language,
+who the shop is — as screens of navy under the last shelf. What it carried that
+the app had no other door to is a card on the Profile tab now
+(`MoreFromNetLet`, "Help and information"): the help centre (where WhatsApp,
+the phone and the email are), the returns policy, the guides, Find a wishlist,
+the stores, Sell with us, then the terms, the privacy policy and the seller
+agreement, and the copyright and registration line. It sits before the card
+that ends in Sign out, so signing out stays the page's last row; **a guest's
+Profile tab is the sign-in form, and the footer was the only place a guest could
+change the language**, so the card under the guest's form leads with the same
+switch (`LanguageRow`, `LanguageSwitch`, one copy for both). Every shopping
+page keeps room under its content for the assistant's button now, since no
+footer follows it.
+
+**The Cart tab is the web's new bag, on the owner's word.** `CartView` opens on the title and the count with a heart to
 Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
 the web's own card: the address in use by `DeliveryModel.inUse` with its name,
 number and line and a Change opening `DeliverySheet`, or the question), each
@@ -6229,11 +6243,10 @@ home page's departments and brands are sideways rows too
 (`DepartmentCardGrid(row: true)`, `BrandShelf`), and its front door has no
 buttons, both the web's.
 
-**The Profile and Cart tabs have no header and no footer, the header's end is
+**The Profile and Cart tabs have no header, the header's end is
 the saved location, the Profile page is the delivery apps' layout and the
 assistant says "Need help?" — the web's changes, on the owner's word.**
-`ShopPage`'s `header: false, footer: false` draws a page with neither row and
-no footer (the Profile tab's first screen, signed in or out, its sections,
+`ShopPage`'s `header: false` draws a page with neither row (the Profile tab's first screen, signed in or out, its sections,
 which carry their own "← Your account", and the Cart tab's first screen) — the
 assistant's button still floats there, on the owner's word, with room kept
 under the last row for it — and the page's own ground under
@@ -6252,8 +6265,8 @@ at noon in Kuwait, so no time zone moves it a day), and the nationality's
 chips with "View all" as a searchable sheet (`CountrySheet`, the countries
 from `rules.json`'s `profile` block); the rules are `Validation`'s twins of
 `profileDetails.ts`, tested on its cases, and checkout's view model starts
-from the account's phone as the web's does. The language is its switch row (and the
-footer's), **each word whole on one line** — the switch is `fixedSize` and
+from the account's phone as the web's does. The language is its switch row (and the guest's, under
+the sign-in form), **each word whole on one line** — the switch is `fixedSize` and
 drops under its label (`ViewThatFits`) on a narrow screen or a large text
 size, where build 35 broke "English" into "Engl / ish". `ShopAssistantButton`
 carries "Need help?" beside the mark.
@@ -6268,7 +6281,7 @@ glass starts at the status-bar strip's tint so the two meet with no step.
 `ShopPage`, the web's `StorefrontShell` at 390: the logo row (logo at the
 start, the saved location and the heart at the end) scrolls away and the search row stays pinned,
 both on the header's glass (`GlassSurface`, 60% white over 45%, the phone's
-tint); the footer follows the content. **The header is the web's phone header
+tint). **The header is the web's phone header
 piece for piece, on the owner's word**: one surface from 60% at the top of the
 logo row to 45% at the foot of the search row, with no rim between the rows
 (the first build drew each row's rim, which split one header into three
@@ -6302,12 +6315,9 @@ and **the owner asked for the glass behind the menu to go**: every scroll view
 in the tabs has its bottom edge effect hidden (`NoBottomEdge`,
 `scrollEdgeEffectHidden`), so the bar floats over the page as the web's pill
 does. What keeps the selected tab readable is that the bar rests over the
-page's ground, never the footer's navy: the navy ends with the footer, and
-every page above it is at least a screen tall (`ShopPage`, the web's
-`min-h-[100svh]`), so the footer starts below the fold even on a short page —
-the first preview without the band showed the bag's footer under the bar and
-the Cart tab gone but for its badge. Scrolling through the footer the glass
-darkens for a moment, as it does in any app. A
+page's ground, never navy: the first preview without the band showed the bag's
+footer under the bar and the Cart tab gone but for its badge, and since the
+footer went (above) nothing navy reaches the foot of any page. A
 press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
@@ -6452,6 +6462,32 @@ searched. **Saved reads its products by id**
 (`commerce.products.byIds`): it looked them up in the newest page, so anything
 older read as no longer available — the bug the web fixed under Wishlists.
 
+**The search sheet reaches the keyboard and moves, on the owner's word**
+("make it interactive and animated … make it connected"). It stopped 48
+points short of the keyboard with a rounded foot, and the gap showed the page
+under it — the home page's footer and the assistant's button — between the
+sheet and the keys. Now the words stop at the keyboard's top, as any scroll
+does, and the glass runs on down behind the keyboard to the screen's foot, so
+the field, the sheet and the keys are one surface; the assistant's button is
+not drawn while the search is open. **It grows out of the header and folds back
+into it** — a clip that only reveals (`Unroll`: the field's row at nothing, the
+whole screen at one, its foot rounded while it moves), never a fade or a scale
+on the glass, which would wash its blur out — over a dim that fades with it;
+Close and a press on the dim roll it up as the keyboard goes down, and only
+then is it gone. What is in it moves too: the recent searches, the department
+tiles and the shortcuts rise in one after another as it unrolls (`rise`); the
+field's navy ring grows in with the keyboard; the microphone, the camera and
+clear come and go with a small spring; the microphone breathes while it
+listens; an arc turns on the search disc while the server is asked about the
+words (`TurningArc`, a view of its own so it starts afresh each time); outline
+rows breathe where the first answer will be (`SkeletonRows`) rather than a
+spinner; the rows slide to their places as each answer replaces the last; and
+a tile, a row or a shortcut gives under the thumb and springs back
+(`SpringPressStyle`). Reduce Motion keeps all of it still and the sheet simply
+appears. The simulator's keyboard lesson ("Speed up your typing by sliding…")
+covered the sheet's foot in the CI pictures, so the preview step marks it
+seen, and `50-search-typing` photographs it with words typed.
+
 **Holding a product card opens a preview of it, on the owner's word**
 (`QuickViewSheet`, the app's alone — the web's phone has its own Quick View on
 a long press): a sheet over the page with the photographs to swipe, the store,
@@ -6482,6 +6518,30 @@ Saved wait on an outline of that grid (`GridSkeleton`: the card's shape, the
 photo breathing as one on its way does) rather than a spinner in an empty
 page, so nothing moves when the products land. VoiceOver has it as an action on the
 card's name. `-NetLetOpen preview:<handle>` opens it for the screenshots.
+
+**The preview is drawn as the web's is, on the owner's word** ("work on the
+product preview … it's not working well"). The CI picture showed why: a square
+photo filled the sheet at its 86% height, the price was cut at its foot, and
+the choice, the stock and the quantity were all a scroll away under three
+full-width buttons. Now it is the full sheet under a navy band — "Quick view",
+the heart (a lighter red on navy, 5.3:1), Share and Close — then the photos in
+a 4:3 window with a count on them and their thumbnails under them, the store,
+the name in navy, the price, the stock and the delivery date
+(`DeliveryLine`), four lines of the description, the choice, the quantity, and
+"Full product details" as a navy link; the pair at the foot is the web's
+`PREVIEW_TONE`, Add to cart navy and Buy now white with a navy rim. **Add to
+cart says it worked where the finger is**: the button turns green with a tick
+and "Added to your cart" for a moment, and the line under the quantity says how
+many the bag holds, with View cart. A press with nothing chosen scrolls to the
+choice and says so there, rather than a line appearing out of sight; a bag that
+already holds every unit has no stepper and the pair is off; a sold-out choice
+offers the back-in-stock alert in the stepper's place, as the web's does. A
+colour chosen shows its photo, found among the stills by address — the model's
+index counts the gallery, which a video can sit in. **The card sinks a little
+under the finger while the hold counts** (`@GestureState`, ease-in over the
+0.4s, so a tap or the start of a scroll moves it by nothing anybody sees), so a
+hold reads as doing something before the preview rises; it opened out of a card
+that never moved.
 
 **A product stays where it is when it goes in the bag, on the owner's word**
 ("the product suddenly disappears and goes somewhere else"). Two things moved

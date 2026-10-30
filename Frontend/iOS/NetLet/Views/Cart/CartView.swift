@@ -32,7 +32,7 @@ struct CartView: View {
         let cart = app.cart.cart
         let barShown = !(cart?.isEmpty ?? true) && checkoutBelow
         // The assistant steps aside while Checkout floats in its corner.
-        ShopPage(root: true, header: false, footer: false, refresh: { await app.cart.refresh() }, assistant: !barShown) {
+        ShopPage(root: true, header: false, refresh: { await app.cart.refresh() }, assistant: !barShown) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 6) {

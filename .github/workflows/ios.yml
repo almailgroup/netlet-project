@@ -111,6 +111,10 @@ jobs:
           # rather than the system's question over it.
           xcrun simctl privacy "$SIM" grant location com.netlet.marketplace || true
           xcrun simctl location "$SIM" set 29.3376,48.0757 || true
+          # The keyboard's first-use lesson ("Speed up your typing by sliding
+          # your finger…") covered the search sheet's foot in every picture.
+          xcrun simctl spawn "$SIM" defaults write com.apple.keyboard.preferences DidShowContinuousPathIntroduction -bool true || true
+          xcrun simctl spawn "$SIM" defaults write com.apple.keyboard.preferences DidShowGestureKeyboardIntroduction -bool true || true
           shot() {  # name, language, screen, as
             xcrun simctl terminate "$SIM" com.netlet.marketplace 2>/dev/null || true
             args=(-NetLetDemo YES -netlet.language "$2" -NetLetOpen "$3")
@@ -168,7 +172,7 @@ jobs:
             shot 47-admin-new-product "$lang" portal:/admin/products/new admin
             shot 48-product-photos "$lang" photos:wireless-earbuds ""
             shot 49-product-zoom "$lang" zoom:wireless-earbuds ""
-            shot 50-home-foot "$lang" homeFoot ""
+            shot 50-search-typing "$lang" searchOpen:rice ""
             shot 51-admin-fraud "$lang" portal:/admin/fraud admin
             shot 52-admin-commission "$lang" portal:/admin/commission admin
             shot 53-product-preview "$lang" preview:wireless-earbuds ""

@@ -178,6 +178,11 @@ struct ProductCard: View {
     @Environment(LanguageSettings.self) private var l
     /// Moves on with each hold, so the card under the finger is a new one.
     @State private var held = 0
+    /// A finger is holding the photo or the words: the card sinks a little
+    /// under it while the hold counts, so a hold reads as doing something
+    /// before the preview rises — it opened out of a card that never moved.
+    @GestureState private var holding = false
+    @Environment(\.accessibilityReduceMotion) private var still
 
     /// The card's identity: its product, and how many holds it has had.
     /// **It names the product, and that is what drew only one card.** It was
@@ -257,13 +262,19 @@ struct ProductCard: View {
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // Slow to start, so a finger that only taps or begins a scroll moves
+        // the card by nothing anybody sees; quick to spring back.
+        .scaleEffect(holding && !still ? 0.95 : 1)
+        .animation(still ? nil : (holding ? .easeIn(duration: 0.4) : .spring(duration: 0.3, bounce: 0.3)), value: holding)
     }
 
     /// A hold previews the product without leaving the shelf (3.1.11), on the
     /// photo and the words. A finger that moves is scrolling, and the hold
     /// gives way to it.
     private var hold: some Gesture {
-        LongPressGesture(minimumDuration: 0.4).onEnded { _ in preview() }
+        LongPressGesture(minimumDuration: 0.4)
+            .updating($holding) { pressing, state, _ in state = pressing }
+            .onEnded { _ in preview() }
     }
 
     private func preview() {

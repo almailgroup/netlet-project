@@ -5,12 +5,25 @@ import SwiftUI
 /// that rises over the page the shopper is on.
 ///
 /// It is enough to decide on: the photographs to swipe through, who sells it,
-/// the name, the rating and the price, whether it is in stock, the choice of
-/// size or colour, how many, and Add to cart and Buy now — the product page's
-/// own rules through the product page's own model, so the two cannot answer
-/// differently. **Full product details** opens the whole page, and so does a
-/// press on the photo or the name: the sheet goes down and the page is pushed
-/// where the card was.
+/// the name, the rating and the price, whether it is in stock and when it
+/// arrives, the choice of size or colour, how many, and Add to cart and Buy
+/// now — the product page's own rules through the product page's own model,
+/// so the two cannot answer differently. **Full product details** opens the
+/// whole page, and so does a press on the photo or the name: the sheet goes
+/// down and the page is pushed where the card was.
+///
+/// **It is drawn as the web's preview is, on the owner's word** ("it's not
+/// working well"): it opened on a square photo that filled the sheet, so the
+/// price was cut at its foot and the choice, the stock and the quantity were
+/// all a scroll away, under three full-width buttons. Now a navy band says
+/// what it is and closes it, the photo is a 4:3 window with its thumbnails
+/// under it and a count on it, the price, the stock, the delivery date and
+/// the choice follow on the first screen, and the pair at the foot is the
+/// web's `PREVIEW_TONE` — Add to cart in navy, Buy now white with a navy rim —
+/// with the whole page a link under the details. Add to cart says it worked
+/// where the finger is ("Added to your cart", with a tick) and the line under
+/// the quantity says how many the bag holds, with View cart; a choice not yet
+/// made is scrolled to and said, rather than a line appearing out of sight.
 ///
 /// It opens at once on the card's own copy of the product and asks the server
 /// again behind it, as the product page does (`start(with:)`).
@@ -27,7 +40,7 @@ struct QuickViewSheet: View {
                     await model.load(language: l.current)
                 }
         }
-        .presentationDetents([.fraction(0.86), .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
         .presentationBackground(Color.white)
@@ -39,50 +52,93 @@ private struct QuickViewContent: View {
     @Bindable var model: ProductDetailViewModel
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
     @State private var failure: String?
+    /// The photograph showing, among the stills.
+    @State private var photo = 0
+    /// Add to cart was pressed and taken: the button says so for a moment.
+    @State private var added = false
+    @State private var addedReset: Task<Void, Never>?
 
     /// The server's fresh copy once it has answered, the card's until then.
     private var product: Product { model.product.value.flatMap { $0 } ?? shown }
     private var variant: ProductVariant? { model.variant ?? product.leadVariant }
+    private var stills: [ProductImage] { Array(product.images.prefix(8)) }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    photos
-                    details.padding(.horizontal, 20).padding(.top, 16)
-                }
-                .padding(.bottom, 16)
-            }
-            actions
-        }
-        .background(Color.white)
+    /// Every line of the chosen option in the bag — plain, with extras, in a
+    /// set — the web's count.
+    private var inBag: Int {
+        guard let chosen = model.variant else { return 0 }
+        return (app.cart.cart?.items ?? []).filter { $0.variantId == chosen.id }.reduce(0) { $0 + $1.quantity }
     }
 
-    // MARK: The top: what this is, saving, sharing, closing
+    /// What is left of the chosen option once the bag's own is counted
+    /// (`BagStock.room`): it offered the whole shelf over a bag that already
+    /// held most of it, and checkout then refused.
+    private var room: Int {
+        guard let chosen = model.variant else { return 0 }
+        return BagStock.room(chosen.maxQuantity, inBag: inBag)
+    }
 
-    private var topBar: some View {
-        HStack(spacing: 4) {
+    /// The pair can add something: an option chosen, on sale, with room left.
+    private var ready: Bool { model.variant?.availableForSale == true && room > 0 }
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            VStack(spacing: 0) {
+                band
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        photos
+                        details.padding(.horizontal, 20).padding(.top, 18)
+                    }
+                    .padding(.bottom, 24)
+                }
+                actions(proxy)
+            }
+        }
+        .background(Color.white)
+        .onChange(of: model.imageIndex) { _, index in
+            // A colour chosen shows its photo — counted in the gallery, which
+            // a video can sit in, so it is found among the stills by address.
+            guard product.gallery.indices.contains(index) else { return }
+            let address = product.gallery[index].url
+            if let at = stills.firstIndex(where: { $0.url == address }) {
+                withAnimation(still ? nil : .easeInOut(duration: 0.25)) { photo = at }
+            }
+        }
+        .onDisappear { addedReset?.cancel() }
+    }
+
+    // MARK: The band: what this is, saving, sharing, closing
+
+    /// The brand's navy across the top, the web's: the preview is the shop
+    /// speaking over the page, and says so in its colour.
+    private var band: some View {
+        HStack(spacing: 2) {
             Text(l.t("quick.title"))
                 .font(.inter(15, .bold))
-                .foregroundStyle(Brand.muted)
+                .foregroundStyle(.white)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
+            let hearted = app.saved.isHearted(product.id)
             Button {
                 Task { await app.heart(product) }
             } label: {
-                Image(systemName: app.saved.isHearted(product.id) ? "heart.fill" : "heart")
+                Image(systemName: hearted ? "heart.fill" : "heart")
                     .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255))
+                    // A lighter red than the cards' — the same red on navy is
+                    // under 3:1; this is 5.3:1.
+                    .foregroundStyle(hearted ? Color(red: 1, green: 107 / 255, blue: 127 / 255) : .white)
+                    .contentTransition(.symbolEffect(.replace))
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.action)
-            .accessibilityLabel(l.t(app.saved.isHearted(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
+            .accessibilityLabel(l.t(hearted ? "product.removeSaved" : "product.save", ["name": product.title]))
             ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, code: app.memberCode))) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Brand.navy)
+                    .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel(l.t("product.share", ["name": product.title]))
@@ -91,57 +147,113 @@ private struct QuickViewContent: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Brand.navy)
-                    .frame(width: 32, height: 32)
-                    .background(Circle().fill(Brand.photo))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1))
                     .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.tap)
             .accessibilityLabel(l.t("quick.close"))
         }
         .padding(.leading, 20)
         .padding(.trailing, 8)
-        .padding(.top, 14)
-        .padding(.bottom, 4)
+        .padding(.top, 16)
+        .padding(.bottom, 6)
+        .background(Brand.navy)
     }
 
     // MARK: The photographs
 
-    /// Every photograph, swiped like the phone's own pictures, mirrored on the
-    /// Arabic page. A press opens the whole product.
+    /// Every photograph in a 4:3 window — swiped like the phone's own
+    /// pictures, mirrored on the Arabic page — with a count on it and the
+    /// thumbnails under it, the web's preview. A press opens the whole product.
     private var photos: some View {
-        let stills = Array(product.images.prefix(8))
-        return Group {
-            if stills.count > 1 {
-                TabView(selection: $model.imageIndex) {
-                    ForEach(Array(stills.enumerated()), id: \.offset) { index, photo in
-                        photoFrame(photo).tag(index)
+        VStack(spacing: 10) {
+            Group {
+                if stills.count > 1 {
+                    TabView(selection: $photo) {
+                        ForEach(Array(stills.enumerated()), id: \.offset) { index, image in
+                            photoFrame(image).tag(index)
+                        }
                     }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                } else {
+                    photoFrame(stills.first)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .always))
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
-            } else {
-                photoFrame(stills.first)
             }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .background(Brand.photo)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(alignment: .topLeading) {
-            if let percent = variant?.savingPercent, percent > 0 {
-                SavingBadge(percent: percent, large: true).padding(12)
+            .aspectRatio(4.0 / 3.0, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .background(Brand.photo)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                if let percent = variant?.savingPercent, percent > 0 {
+                    SavingBadge(percent: percent, large: true).padding(12)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if stills.count > 1 {
+                    Text("\(photo + 1) / \(stills.count)")
+                        .font(.inter(12, .bold))
+                        .monospacedDigit()
+                        .foregroundStyle(Brand.navy)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.white.opacity(0.92)))
+                        .environment(\.layoutDirection, .leftToRight)
+                        .padding(10)
+                        .accessibilityHidden(true)
+                }
+            }
+            if stills.count > 1 {
+                thumbnails
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 8)
+        .padding(.top, 16)
     }
 
-    private func photoFrame(_ photo: ProductImage?) -> some View {
+    private var thumbnails: some View {
+        ScrollViewReader { strip in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(Array(stills.enumerated()), id: \.offset) { index, image in
+                        let current = index == photo
+                        Button {
+                            withAnimation(still ? nil : .easeInOut(duration: 0.25)) { photo = index }
+                        } label: {
+                            RemoteImage(reference: image.url, contentMode: .fit)
+                                .padding(4)
+                                .frame(width: 56, height: 56)
+                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(current ? Brand.navy : Brand.cardLine, lineWidth: current ? 2 : 1)
+                                )
+                                .scaleEffect(current || still ? 1 : 0.94)
+                                .animation(still ? nil : .spring(duration: 0.25, bounce: 0.3), value: current)
+                        }
+                        .buttonStyle(.tap)
+                        .id(index)
+                        .accessibilityLabel(l.t("product.showImage", ["index": "\(index + 1)", "total": "\(stills.count)"]))
+                        .accessibilityAddTraits(current ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .onChange(of: photo) { _, now in
+                withAnimation(still ? nil : .easeInOut(duration: 0.25)) { strip.scrollTo(now, anchor: .center) }
+            }
+        }
+    }
+
+    private func photoFrame(_ image: ProductImage?) -> some View {
         Button(action: openFull) {
             Brand.photo
                 .overlay {
-                    if let photo {
-                        RemoteImage(reference: photo.url, contentMode: .fit, label: photo.altText ?? product.title)
+                    if let image {
+                        RemoteImage(reference: image.url, contentMode: .fit, label: image.altText ?? product.title)
+                            .padding(12)
                     }
                 }
                 .clipped()
@@ -160,9 +272,9 @@ private struct QuickViewContent: View {
             }
             Button(action: openFull) {
                 Text(product.title)
-                    .font(.inter(21, .heavy))
+                    .font(.inter(22, .heavy))
                     .tracking(-0.3)
-                    .foregroundStyle(Brand.ink)
+                    .foregroundStyle(Brand.navy)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -175,6 +287,8 @@ private struct QuickViewContent: View {
             if let variant {
                 PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, large: true)
                     .padding(.top, 12)
+                    .contentTransition(.numericText())
+                    .animation(still ? nil : .snappy(duration: 0.25), value: variant.id)
                 if let measure = variant.measure,
                    let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
                     Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
@@ -183,20 +297,44 @@ private struct QuickViewContent: View {
                         .padding(.top, 2)
                 }
             }
-            availability.padding(.top, 12)
-            choices
-            quantity.padding(.top, 16)
-            if let failure { FieldProblem(key: failure).padding(.top, 8) }
+            VStack(alignment: .leading, spacing: 6) {
+                availability
+                if variant?.preorder == nil {
+                    DeliveryLine(speed: product.deliverySpeed, provider: product.deliveryProvider)
+                }
+            }
+            .padding(.top, 14)
             if let summary {
                 Text(summary)
-                    .font(.inter(14))
+                    .font(.inter(15))
                     .foregroundStyle(Brand.body)
                     .lineSpacing(3)
                     .lineLimit(4)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 20)
+                    .padding(.top, 14)
             }
+            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.top, 18)
+            choices.id(QuickViewPlace.choices)
+            quantity.padding(.top, 16)
+            if let failure {
+                FieldProblem(key: failure)
+                    .padding(.top, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            Button(action: openFull) {
+                HStack(spacing: 6) {
+                    Text(l.t("quick.fullDetails")).underline()
+                    Image(systemName: "arrow.forward").font(.system(size: 13, weight: .bold)).flipsForRightToLeftLayoutDirection(true)
+                }
+                .font(.inter(15, .bold))
+                .foregroundStyle(Brand.navy)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.tap)
+            .padding(.top, 14)
         }
+        .animation(still ? nil : .easeOut(duration: 0.2), value: failure)
     }
 
     /// The description's first paragraph, or its first few list lines.
@@ -272,83 +410,95 @@ private struct QuickViewContent: View {
         }
     }
 
-    /// How many, and what the bag already holds of this choice.
+    /// How many, and what the bag already holds of this choice — or, sold
+    /// out, a way to hear when it is back, which takes the stepper's place as
+    /// on the web.
     @ViewBuilder
     private var quantity: some View {
-        if let chosen = model.variant, chosen.availableForSale {
-            // Every line of this option — plain, with extras, in a set — the web's count.
-            let inBag = (app.cart.cart?.items ?? []).filter { $0.variantId == chosen.id }.reduce(0) { $0 + $1.quantity }
-            FlowLayout(spacing: 12) {
-                // What is left after what the bag holds of it, in any line
-                // (`BagStock.room`): it offered the whole shelf over a bag
-                // that already held most of it, and checkout then refused.
-                let room = BagStock.room(chosen.maxQuantity, inBag: inBag)
-                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
-                    model.quantity = min(max(1, next), room)
+        if let chosen = model.variant {
+            if chosen.availableForSale {
+                VStack(alignment: .leading, spacing: 8) {
+                    if room > 0 {
+                        HStack(spacing: 12) {
+                            Text(l.t("product.quantity"))
+                                .font(.inter(14, .semibold))
+                                .foregroundStyle(Brand.muted)
+                            QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
+                                model.quantity = min(max(1, next), room)
+                            }
+                        }
+                    }
+                    if inBag > 0 {
+                        HStack(spacing: 8) {
+                            Text(inBag == 1 ? l.t("product.inYourCartOne") : l.t("product.inYourCartMany", ["count": "\(inBag)"]))
+                                .font(.inter(13, .semibold))
+                                .foregroundStyle(Brand.body)
+                            Button {
+                                app.previewing = nil
+                                app.select(.cart)
+                            } label: {
+                                Text(l.t("ios.quick.viewCart"))
+                                    .font(.inter(13, .bold))
+                                    .foregroundStyle(Brand.navy)
+                                    .underline()
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.tap)
+                        }
+                        .transition(.opacity)
+                    }
                 }
                 .onChange(of: room, initial: true) { _, most in
-                    if model.quantity > most { model.quantity = most }
+                    if most > 0, model.quantity > most { model.quantity = most }
                 }
-                if inBag > 0 {
-                    Button {
-                        app.previewing = nil
-                        app.select(.cart)
-                    } label: {
-                        Text(inBag == 1 ? l.t("product.inYourCartOne") : l.t("product.inYourCartMany", ["count": "\(inBag)"]))
-                            .font(.inter(13, .semibold))
-                            .foregroundStyle(Brand.navy)
-                            .underline()
-                            .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.tap)
-                }
+                .animation(still ? nil : .easeOut(duration: 0.2), value: inBag)
+            } else {
+                FollowButton(product: product)
             }
         }
     }
 
     // MARK: The buttons, kept under the thumb
 
-    private var actions: some View {
-        let ready = model.variant?.availableForSale == true
-        return VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                Button {
-                    Task { await add(openCheckout: false) }
-                } label: {
-                    HStack(spacing: 8) {
-                        if model.adding { ProgressView().tint(Brand.navy) } else { Image(systemName: "bag").font(.system(size: 16, weight: .medium)) }
-                        Text(addLabel).lineLimit(1).minimumScaleFactor(0.8)
+    private func actions(_ proxy: ScrollViewProxy) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                Task { await add(openCheckout: false, proxy: proxy) }
+            } label: {
+                ZStack {
+                    if added {
+                        Label(l.t("ios.quick.added"), systemImage: "checkmark")
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    } else {
+                        HStack(spacing: 8) {
+                            if model.adding { ProgressView().tint(.white) } else { Image(systemName: "bag").font(.system(size: 16, weight: .medium)) }
+                            Text(addLabel)
+                        }
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
                     }
-                    .frame(maxWidth: .infinity, minHeight: 50)
                 }
-                .buttonStyle(PurchaseButtonStyle())
-                Button {
-                    Task { await add(openCheckout: true) }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bolt.fill").font(.system(size: 15, weight: .medium))
-                        Text(model.quantity > 1 ? l.t("product.buyNowCount", ["count": "\(model.quantity)"]) : l.t("product.buyNow"))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(PurchaseButtonStyle())
-            }
-            .disabled(!ready && model.variant != nil)
-            .opacity(ready || model.variant == nil ? 1 : 0.5)
-            Button(action: openFull) {
-                HStack(spacing: 8) {
-                    Text(l.t("quick.fullDetails"))
-                    Image(systemName: "arrow.forward").font(.system(size: 14, weight: .bold)).flipsForRightToLeftLayoutDirection(true)
-                }
-                .font(.inter(15, .bold))
-                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.navy))
             }
-            .buttonStyle(.tap)
+            .buttonStyle(PreviewAddStyle(done: added))
+            Button {
+                Task { await add(openCheckout: true, proxy: proxy) }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "bolt.fill").font(.system(size: 15, weight: .medium))
+                    Text(model.quantity > 1 && ready ? l.t("product.buyNowCount", ["count": "\(min(model.quantity, room))"]) : l.t("product.buyNow"))
+                }
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity, minHeight: 50)
+            }
+            .buttonStyle(PreviewBuyStyle())
         }
+        .disabled(model.variant != nil && !ready)
+        .opacity(model.variant != nil && !ready ? 0.5 : 1)
+        .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 12)
@@ -358,7 +508,7 @@ private struct QuickViewContent: View {
     private var addLabel: String {
         if model.variant == nil && product.isAvailable { return l.t("product.chooseOption") }
         if model.variant?.preorder != nil { return model.quantity > 1 ? l.t("product.preorderCount", ["count": "\(model.quantity)"]) : l.t("product.preorderAction") }
-        return l.t("product.addToCart")
+        return model.quantity > 1 ? l.t("product.addToCartCount", ["count": "\(min(model.quantity, max(room, 1)))"]) : l.t("product.addToCart")
     }
 
     /// The whole page: the sheet goes down and the page opens where the card was.
@@ -370,11 +520,14 @@ private struct QuickViewContent: View {
 
     /// The product page's rule: a choice first; Buy now on something already
     /// in the bag goes straight to checkout rather than adding it again.
-    private func add(openCheckout: Bool) async {
+    private func add(openCheckout: Bool, proxy: ScrollViewProxy) async {
         failure = nil
         guard let chosen = model.variant else {
+            // The choice is where the words say what is missing, so it is
+            // brought into view rather than left under the fold.
             failure = "product.chooseOption"
             Haptics.refused()
+            withAnimation(still ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo(QuickViewPlace.choices, anchor: .top) }
             return
         }
         if openCheckout, app.cart.quantity(of: chosen.id) > 0 {
@@ -393,9 +546,54 @@ private struct QuickViewContent: View {
         }
         Haptics.succeeded()
         announce(l.t("cart.added", ["name": product.title]))
+        added = true
+        addedReset?.cancel()
+        addedReset = Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            added = false
+        }
         if !(await model.add(to: app.cart, product: product)) {
             Haptics.refused()
+            addedReset?.cancel()
+            added = false
             failure = "cart.addFailed"
         }
+    }
+}
+
+private enum QuickViewPlace {
+    static let choices = "quick-view-choices"
+}
+
+/// The preview's Add to cart: the brand's navy, white words (`PREVIEW_TONE.add`),
+/// a step darker under the finger; green for the moment it says it worked.
+private struct PreviewAddStyle: ButtonStyle {
+    var done = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(15, .bold))
+            .foregroundStyle(.white)
+            .background(
+                Capsule().fill(done ? Brand.success : (configuration.isPressed ? Color(red: 13 / 255, green: 51 / 255, blue: 114 / 255) : Brand.navy))
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
+    }
+}
+
+/// The preview's Buy now: white, a navy rim and navy words (`PREVIEW_TONE.buy`).
+private struct PreviewBuyStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.inter(15, .bold))
+            .foregroundStyle(Brand.navy)
+            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
+            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }

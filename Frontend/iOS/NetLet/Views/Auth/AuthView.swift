@@ -27,7 +27,15 @@ struct AuthView: View {
             } else {
                 // Signed out, the account page is the form itself, in the
                 // shop's frame like every other page.
-                ShopPage(root: true, header: false, footer: false) { AuthForm(model: model, band: true) }
+                ShopPage(root: true, header: false) {
+                    AuthForm(model: model, band: true)
+                    // The app has no footer: its links, and for a guest the
+                    // language, are under the form.
+                    MoreFromNetLet(language: true)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
+                }
             }
         }
     }

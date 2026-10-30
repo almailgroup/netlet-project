@@ -12,7 +12,7 @@ struct HomeView: View {
     var body: some View {
         let shelf = app.shelf
         let shelves = shelf.shelves
-        ShopPage(root: true, footer: true, refresh: { await shelf.load(language: l.current, force: true) }) {
+        ShopPage(root: true, refresh: { await shelf.load(language: l.current, force: true) }) {
             HomeHero()
             VStack(alignment: .leading, spacing: 16) {
                 Text(l.t("home.shopByCategory")).shelfTitle()

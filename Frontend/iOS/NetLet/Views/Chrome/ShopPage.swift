@@ -9,23 +9,26 @@ import UIKit
 /// with the page and the search row stays, pinned under the status bar, so
 /// somebody four screens in still has the one way to look for something. Both
 /// sit on the header's liquid glass, and so does the strip under the status
-/// bar. A page draws its content and nothing else; the footer follows it, and
-/// the system's tab bar sits over it all (drawn once by `RootView`).
+/// bar. A page draws its content and nothing else, and the system's tab bar
+/// sits over it all (drawn once by `RootView`).
+///
+/// **There is no footer, on the owner's word** ("there is no need for a
+/// footer in app"): the home page drew one for a while, as the web's phone
+/// does, and what it carried that the app had nowhere else — the help centre,
+/// the policies, the stores, selling, and a guest's language — is a card on
+/// the Profile tab now (`MoreFromNetLet`).
 ///
 /// A screen pushed onto a stack gets a back chevron before the logo: the web
 /// leaves going back to the browser, and the app has no browser around it.
 ///
-/// **The Profile and Cart tabs have no header and no footer**, on the owner's
-/// word (`header: false, footer: false`) — the web's phone draws `/account`
-/// and `/cart` with neither: the page starts under the status bar, ends with
+/// **The Profile and Cart tabs have no header**, on the owner's word
+/// (`header: false`) — the web's phone draws `/account` and `/cart` with
+/// neither header nor footer: the page starts under the status bar, ends with
 /// its own content, and the tab bar is the way anywhere else. The account's
 /// sections carry their own "← Your account". **The assistant's button is on
 /// every page, those two included, on the owner's word** — it went with the
 /// header for a while, having covered the ends of the Profile page's rows; a
 /// page without the header now keeps room under its content for it.
-///
-/// **Only the home page has the footer**, on the owner's word (`footer`), as on
-/// the web's phone.
 ///
 /// **A product, a department and the departments have no logo row**, on the
 /// owner's word (`logo: false`): the search field is the whole header there,
@@ -52,10 +55,6 @@ struct ShopPage<Content: View>: View {
     /// The logo row — the logo, where the shop delivers and the heart — over
     /// the search row; off on a product and the category pages.
     var logo = true
-    /// The footer, which only the home page draws, on the owner's word: on
-    /// every other page it was screens of links between the last thing looked
-    /// at and the tab bar — the web's phone, the same.
-    var footer = false
     var refresh: (() async -> Void)?
     /// The assistant's button in the end corner; off where the page's own
     /// floating bar has that corner, the web's rule that the thing a page is for wins.
@@ -90,8 +89,9 @@ struct ShopPage<Content: View>: View {
     @State private var searchAtTop = false
 
     /// The assistant floats on every page but where the page's own floating
-    /// bar has its corner, once the page has settled.
-    private var showsAssistant: Bool { assistant && settled }
+    /// bar has its corner, once the page has settled — and never under the
+    /// search, which covers the page to the keyboard.
+    private var showsAssistant: Bool { assistant && settled && !app.searchOpen }
 
     var body: some View {
         let back: (() -> Void)? = root ? nil : { dismiss() }
@@ -112,21 +112,12 @@ struct ShopPage<Content: View>: View {
                             Color.clear.frame(height: 0).id(ShopPageTop.id)
                         }
                         Section {
-                            if footer {
-                                // At least a screen tall, the web's `min-h-[100svh]`:
-                                // the footer starts below the fold, so the tab bar
-                                // never rests over its navy (see `SiteFooter`).
-                                VStack(alignment: .leading, spacing: 0) { content() }
-                                    .frame(maxWidth: .infinity, minHeight: screen.size.height, alignment: .topLeading)
-                                SiteFooter().id(ShopPageTop.foot)
-                            } else {
-                                content()
-                                if !header && app.assistantOn {
-                                    // Room under the last row for the assistant's button —
-                                    // kept while it steps aside too, so the page's height
-                                    // never changes under a scroll when it does.
-                                    Color.clear.frame(height: 64).accessibilityHidden(true)
-                                }
+                            content()
+                            if app.assistantOn {
+                                // Room under the last row for the assistant's button —
+                                // kept while it steps aside too, so the page's height
+                                // never changes under a scroll when it does.
+                                Color.clear.frame(height: 64).accessibilityHidden(true)
                             }
                         } header: {
                             if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar) }
@@ -136,14 +127,6 @@ struct ShopPage<Content: View>: View {
                 }
                 .coordinateSpace(.named(ShopPageTop.space))
                 .modifier(ScrollPlaceReader(changed: follow))
-                .task(id: app.startAtFoot) {
-                    // The screenshot of the tab bar over the footer; asked for once
-                    // the launch has settled, after the home page has appeared.
-                    guard root, footer, app.startAtFoot else { return }
-                    app.startAtFoot = false
-                    try? await Task.sleep(for: .seconds(2))
-                    proxy.scrollTo(ShopPageTop.foot, anchor: .bottom)
-                }
                 .modifier(OptionalRefresh(action: refresh))
                 .modifier(NoBottomEdge())
                 .scrollDismissesKeyboard(.interactively)
@@ -241,7 +224,6 @@ private final class ScrollFollower {
 
 private enum ShopPageTop {
     static let id = "shop-page-top"
-    static let foot = "shop-page-foot"
     static let space = "shop-page-scroll"
     /// How far down the logo row's 58 points the search row takes over the
     /// status bar's glass: past the logo and the location, into the padding.
