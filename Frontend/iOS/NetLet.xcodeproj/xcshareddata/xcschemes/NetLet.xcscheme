@@ -41,6 +41,17 @@
                ReferencedContainer = "container:NetLet.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "BB20FE94C0BCB8B66C8D5373"
+               BuildableName = "NetLetUITests.xctest"
+               BlueprintName = "NetLetUITests"
+               ReferencedContainer = "container:NetLet.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

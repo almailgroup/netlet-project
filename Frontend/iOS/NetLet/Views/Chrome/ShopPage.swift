@@ -112,6 +112,7 @@ struct ShopPage<Content: View>: View {
                             Color.clear.frame(height: 0).id(ShopPageTop.id)
                         }
                         Section {
+                            PageTopMarker()
                             content()
                             if app.assistantOn {
                                 // Room under the last row for the assistant's button —
