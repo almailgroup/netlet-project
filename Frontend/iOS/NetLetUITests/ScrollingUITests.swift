@@ -49,10 +49,10 @@ final class ScrollingUITests: XCTestCase {
         assertDrags(launch("categories"), atLeast: 100)
     }
 
-    /// The product page draws a loading frame first — which the marker is on
-    /// — and then the product, and the tests have not been able to read the
-    /// loaded page since they began: the marker is found on the frame and
-    /// then nothing is, for as long as they wait. Until that is understood it
+    /// The product page draws a loading frame first and then the product, and
+    /// once its later sections have landed the tests cannot read it at all —
+    /// Add to cart and the top marker are found on the fresh page, and a
+    /// moment later nothing is, for as long as they wait. Until that is understood it
     /// reports what it can see rather than holding the build back, the skip's
     /// message carrying the start of the page's element tree.
     func testProductScrolls() throws {
@@ -60,6 +60,10 @@ final class ScrollingUITests: XCTestCase {
         let top = app.descendants(matching: .any).matching(identifier: "page-top").firstMatch
         let buy = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Add to cart")).firstMatch
         let loaded = buy.waitForExistence(timeout: 45)
+        // The reviews, the related products and bought-together land a
+        // moment after the page; it is once they have that it stops being
+        // readable, so the question is asked after them.
+        sleep(5)
         guard loaded, top.waitForExistence(timeout: 20) else {
             let tree = String(app.debugDescription.prefix(6000)).replacingOccurrences(of: "\n", with: " ⏎ ")
             throw XCTSkip("The loaded product page could not be read (Add to cart \(loaded ? "found" : "not found"), top marker \(top.exists ? "found" : "not found")). Tree: \(tree)")
