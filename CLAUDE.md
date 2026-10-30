@@ -1945,6 +1945,17 @@ today's (`firstPhotos`), read live rather than frozen: a picture is how a thing
 is recognised, not a fact anybody is held to, and the opened order's lines
 carry one too.
 
+**A link to an order opens it, wherever it is.** `?order=` opened only a row on
+the page showing, so a notice or an email about an order older than the first
+twenty, or one opened while signed in as somebody else, landed on the list with
+nothing said. One not on the page is drawn on its own above the list, and one
+that is not this account's says so ("This order is not on this account…") — on
+the web and in the app, where `orders.get`'s null used to be a decoding failure
+with Try again. A page reached by a name or a number that names nothing — an
+invoice, a guide in the portal, a store, a gift list's link — says so under a
+heading, never "could not load" over a Try again that cannot find it, and never
+offers to print or share what is not there.
+
 Signing out is a plain row at the foot of the home, still asking first. It sat in a red "danger zone" box, which dressed the most
 ordinary thing anybody does on an account page as a hazard. "Your activity"
 went too: its two cards repeated what the Saved and Orders tiles say.

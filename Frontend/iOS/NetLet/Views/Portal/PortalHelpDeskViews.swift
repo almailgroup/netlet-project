@@ -347,6 +347,13 @@ struct PortalGuideEditorView: View {
 
     private var dirty: Bool { content != saved }
 
+    /// Deleted, or a link to one that was: said plainly, never a Try again
+    /// that cannot find it — the web's not-found state.
+    private var missing: Bool {
+        if case .server(let code, _, _)? = failed { return code == "NOT_FOUND" }
+        return false
+    }
+
     var body: some View {
         PortalScreen(title: GuideRules.title(content, arabic: l.current == .ar) ?? l.t("guides.new")) {
             if loaded {
@@ -378,6 +385,8 @@ struct PortalGuideEditorView: View {
                     .buttonStyle(PortalSmallButtonStyle())
                 }
                 publishCard
+            } else if missing {
+                PortalEmpty(text: l.t("guides.notFound"))
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
             } else {

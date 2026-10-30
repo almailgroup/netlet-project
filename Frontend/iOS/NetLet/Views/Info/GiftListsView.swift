@@ -86,7 +86,7 @@ struct GiftListView: View {
                             if let found {
                                 GiftListCard(list: found) { await list.load() }
                             } else {
-                                GiftNotFound()
+                                GiftNotFound(byLink: true)
                             }
                         }
                     }
@@ -102,14 +102,17 @@ struct GiftListView: View {
     }
 }
 
+/// Nothing to show. From a link the words are about the link, which the
+/// person holding it used — the web's `NotFound`.
 private struct GiftNotFound: View {
+    var byLink = false
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: "lock").font(.system(size: 28)).foregroundStyle(Brand.muted).accessibilityHidden(true)
-            Text(l.t("gift.none")).font(.inter(15, .bold)).foregroundStyle(Brand.ink).multilineTextAlignment(.center)
-            Text(l.t("gift.noneNote")).font(.inter(13)).foregroundStyle(Brand.muted).multilineTextAlignment(.center)
+            Text(l.t(byLink ? "gift.linkGone" : "gift.none")).font(.inter(15, .bold)).foregroundStyle(Brand.ink).multilineTextAlignment(.center)
+            Text(l.t(byLink ? "gift.linkGoneNote" : "gift.noneNote")).font(.inter(13)).foregroundStyle(Brand.muted).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .card(padding: 24)

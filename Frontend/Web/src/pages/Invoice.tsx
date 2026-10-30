@@ -21,7 +21,7 @@ import QRCode from "qrcode";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { appPath } from "@/lib/basePath";
 import { QueryGate } from "@/components/admin/QueryGate";
-import { PAGE_SPACE } from "@/components/layout/Page";
+import { PAGE_SPACE, PageHeading } from "@/components/layout/Page";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -55,6 +55,10 @@ export default function Invoice() {
   const number = params?.number ?? "";
   const { isAuthenticated, loading } = useAuth();
   usePageMeta(privatePageMeta(number || t("invoice.title")));
+  const query = trpc.invoices.get.useQuery({ number }, { retry: false, enabled: isAuthenticated && number.length > 0 });
+  /* Not yours, or no such number: one plain answer, and no "try again" —
+     asking again will not make it exist. And no Print over nothing. */
+  const missing = query.error?.data?.code === "NOT_FOUND" || query.error?.data?.code === "BAD_REQUEST";
 
   return (
     <div className={`type-body container flex-1 ${PAGE_SPACE} print:p-0`}>
@@ -63,34 +67,23 @@ export default function Invoice() {
             <Link href="/account/orders" className="glass type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
               <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("invoice.back")}
             </Link>
-            {isAuthenticated ? (
+            {query.data ? (
               <button type="button" onClick={() => window.print()} className="glass-navy type-control pressable inline-flex items-center gap-2 rounded-full px-4 py-2">
                 <Printer className="size-4" aria-hidden />{t("invoice.print")}
               </button>
             ) : null}
           </div>
           {loading ? null : !isAuthenticated ? (
-            <p className="rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm ink-muted">{t("invoice.signIn")}</p>
+            <PageHeading title={t("invoice.title")} note={t("invoice.signIn")} />
+          ) : missing ? (
+            <PageHeading title={t("invoice.title")} note={t("invoice.notFound")} />
           ) : (
-            <Loaded number={number} />
+            <QueryGate queries={[query]}>
+              {() => (query.data ? <Document document={query.data.document} credits={query.data.credits} verifyCode={query.data.verifyCode} /> : null)}
+            </QueryGate>
           )}
         </div>
     </div>
-  );
-}
-
-function Loaded({ number }: { number: string }) {
-  const { t } = useTranslation();
-  const query = trpc.invoices.get.useQuery({ number }, { retry: false, enabled: number.length > 0 });
-  /* Not yours, or no such number: one plain answer, and no "try again" —
-     asking again will not make it exist. */
-  if (query.error?.data?.code === "NOT_FOUND" || query.error?.data?.code === "BAD_REQUEST") {
-    return <p className="rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm ink-muted">{t("invoice.notFound")}</p>;
-  }
-  return (
-    <QueryGate queries={[query]}>
-      {() => (query.data ? <Document document={query.data.document} credits={query.data.credits} verifyCode={query.data.verifyCode} /> : null)}
-    </QueryGate>
   );
 }
 

@@ -83,7 +83,7 @@ function ByToken({ token }: { token: string }) {
       {list.isLoading ? <ListSkeleton />
         : list.isError ? <LoadFailed onRetry={() => void list.refetch()} />
         : list.data ? <ListCard list={list.data} onChanged={() => void list.refetch()} />
-        : <NotFound />}
+        : <NotFound byLink />}
       <Link
         href="/gifts"
         className="glass pressable mt-5 inline-flex rounded-full px-4 py-2 text-xs font-extrabold"
@@ -177,17 +177,20 @@ function Lookup() {
   );
 }
 
-function NotFound() {
+/** Nothing to show. From a link the words are about the link, which the
+    person holding it used: "that number" and "ask for the link" were about a
+    lookup they never made. */
+function NotFound({ byLink = false }: { byLink?: boolean }) {
   const { t } = useTranslation();
   return (
     <div className="mt-6 rounded-[1.35rem] border border-dashed border-[#c3ccda] bg-[#fbfaf6] p-6 text-center">
       <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-[#e7edf5]">
         <Lock className="size-5 text-[#0a285a]" aria-hidden />
       </div>
-      <p className="mt-3 text-sm font-extrabold text-[#0a285a]">{t("gift.none")}</p>
+      <p className="mt-3 text-sm font-extrabold text-[#0a285a]">{t(byLink ? "gift.linkGone" : "gift.none")}</p>
       {/* No reason given, because the server deliberately does not know one to
           give — see the file comment. What it offers instead is the next step. */}
-      <p className="mx-auto mt-1 max-w-sm text-xs leading-5 ink-muted">{t("gift.noneNote")}</p>
+      <p className="mx-auto mt-1 max-w-sm text-xs leading-5 ink-muted">{t(byLink ? "gift.linkGoneNote" : "gift.noneNote")}</p>
     </div>
   );
 }

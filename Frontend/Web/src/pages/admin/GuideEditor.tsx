@@ -55,7 +55,18 @@ export default function AdminGuideEditor() {
 }
 
 function Existing({ id }: { id: number }) {
-  const guide = trpc.guides.get.useQuery({ id }, { enabled: Number.isInteger(id) && id > 0 });
+  const { t } = useTranslation();
+  const valid = Number.isInteger(id) && id > 0;
+  const guide = trpc.guides.get.useQuery({ id }, { enabled: valid, retry: false });
+  /* No such guide — deleted, or a typed address. Said with a heading and the
+     way back, never "could not load" over a Try again that cannot find it,
+     nor an outline left waiting on a query that was never sent. */
+  if (!valid || guide.error?.data?.code === "NOT_FOUND") return (
+    <>
+      <BackLink href="/admin/guides">{t("guides.adminTitle")}</BackLink>
+      <PageHeader title={t("guides.notFound")} />
+    </>
+  );
   return (
     <QueryGate queries={[guide]}>
       {() => {

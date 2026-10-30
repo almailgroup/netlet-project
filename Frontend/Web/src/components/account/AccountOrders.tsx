@@ -135,10 +135,24 @@ export function AccountOrders() {
     <QueryGate audience="shopper" queries={[list]}>
       {() => {
         const data = list.data;
-        if (!data || data.total === 0) return <EmptyOrders />;
+        /* A link names an order this page does not show — older than the
+           first page, or placed from another account (an email opened while
+           signed in as somebody else). It is drawn on its own above the list,
+           where it says whether it is this account's, rather than the list
+           opening on nothing. */
+        const linked = openRef && !data?.rows.some(order => order.reference === openRef) ? (
+          <section aria-labelledby="linked-order" className="mb-3 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
+            <h3 id="linked-order" className="mb-3 text-[15px] font-bold text-[#0a285a]">
+              {t("orders.orderHeading", { reference: openRef })}
+            </h3>
+            <OrderLines reference={openRef} />
+          </section>
+        ) : null;
+        if (!data || data.total === 0) return <>{linked}<EmptyOrders /></>;
 
         return (
           <>
+            {linked}
             {/*
               A real list, so assistive tech announces "list, 3 items" before
               reading them. A stack of <article>s in a <div> is three unrelated
