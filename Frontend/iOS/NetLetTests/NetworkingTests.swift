@@ -445,6 +445,11 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/guides/how-to-return-an-item"), .guide(slug: "how-to-return-an-item"))
         XCTAssertEqual(Route.from(link: "/gifts/abc12345"), .gift(token: "abc12345"))
         XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
+        // The bag reminder's link: a notice the app drew as a card that did nothing.
+        XCTAssertEqual(Route.from(link: "/cart"), .tab(.cart))
+        XCTAssertEqual(Route.from(link: "/categories"), .tab(.categories))
+        XCTAssertEqual(Route.from(link: "/"), .tab(.home))
+        XCTAssertEqual(Route.from(link: "/account"), .tab(.account))
         // The shopper–store messages went on the owner's word; an old link opens nothing.
         XCTAssertNil(Route.from(link: "/account/messages"))
         XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))

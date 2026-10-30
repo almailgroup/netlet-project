@@ -204,6 +204,8 @@ private struct RouteDestination: View {
         case .portal(let path): PortalRouter(path: path)
         case .verifyInvoice(let number, let code): InvoiceVerifyView(number: number, code: code)
         case .sell: SellView()
+        // Opened by switching tabs, never pushed.
+        case .tab: EmptyView()
         }
     }
 }

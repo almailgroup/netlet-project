@@ -55,6 +55,9 @@ enum Route: Hashable {
     case verifyInvoice(number: String, code: String)
     /// A page of the seller and admin portal, by its web address (`/admin/...`).
     case portal(String)
+    /// A tab's own first screen — the web's `/`, `/account`, `/cart` and
+    /// `/categories`, which the app draws as tabs rather than pushes.
+    case tab(AppModel.Tab)
 
     /// The screen a link on the site names — a notice's link, an answer's,
     /// the footer's — or nil for one the app has no screen for. Nothing
@@ -64,6 +67,9 @@ enum Route: Hashable {
         let segments = components.path.split(separator: "/").map { $0.removingPercentEncoding ?? String($0) }
         let query = Dictionary((components.queryItems ?? []).map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         switch (segments.first, segments.count) {
+        case (nil, 0): return .tab(.home)
+        case ("cart"?, 1): return .tab(.cart)
+        case ("categories"?, 1): return .tab(.categories)
         case ("products"?, 2): return .product(handle: segments[1])
         case ("category"?, 2):
             let slug = segments[1] == "all" ? nil : segments[1]
@@ -89,7 +95,7 @@ enum Route: Hashable {
         case ("admin"?, _):
             let path = components.path.hasSuffix("/") && components.path.count > 1 ? String(components.path.dropLast()) : components.path
             return .portal(path + (components.percentEncodedQuery.map { "?" + $0 } ?? ""))
-        case ("account"?, 1): return nil
+        case ("account"?, 1): return .tab(.account)
         case ("account"?, _):
             switch segments[1] {
             case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
@@ -464,6 +470,10 @@ final class AppModel {
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }
         case .checkout:
             openCheckout()
+        case .tab(let tab):
+            // The tab's first screen, as a press on it from another tab gives.
+            selectedTab = tab
+            select(tab)
         default:
             push(route)
         }
