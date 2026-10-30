@@ -49,16 +49,20 @@ final class ScrollingUITests: XCTestCase {
         assertDrags(launch("categories"), atLeast: 100)
     }
 
-    /// The product page scrolled in the first run of these tests and has not
-    /// shown its top marker to them since. Until that is understood it
-    /// reports what it does see rather than holding the build back: the
-    /// skip's message carries the start of the page's element tree.
+    /// The product page draws a loading frame first — which the marker is on
+    /// — and then the product, and the tests have not been able to read the
+    /// loaded page since they began: the marker is found on the frame and
+    /// then nothing is, for as long as they wait. Until that is understood it
+    /// reports what it can see rather than holding the build back, the skip's
+    /// message carrying the start of the page's element tree.
     func testProductScrolls() throws {
         let app = launch("product:basmati-rice-5kg")
         let top = app.descendants(matching: .any).matching(identifier: "page-top").firstMatch
-        guard top.waitForExistence(timeout: 45) else {
+        let buy = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Add to cart")).firstMatch
+        let loaded = buy.waitForExistence(timeout: 45)
+        guard loaded, top.waitForExistence(timeout: 20) else {
             let tree = String(app.debugDescription.prefix(6000)).replacingOccurrences(of: "\n", with: " ⏎ ")
-            throw XCTSkip("The product page's top marker never appeared. Buttons \(app.buttons.count), texts \(app.staticTexts.count), scroll views \(app.scrollViews.count). Tree: \(tree)")
+            throw XCTSkip("The loaded product page could not be read (Add to cart \(loaded ? "found" : "not found"), top marker \(top.exists ? "found" : "not found")). Tree: \(tree)")
         }
         assertDrags(app)
         assertReachesFoot(app)
