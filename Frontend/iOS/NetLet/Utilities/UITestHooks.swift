@@ -24,3 +24,16 @@ struct PageTopMarker: View {
         }
     }
 }
+
+/// The foot of a page's content, for a UI test to scroll to ("page-foot").
+struct PageFootMarker: View {
+    var body: some View {
+        if UITestHooks.on {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement()
+                .accessibilityLabel("page foot")
+                .accessibilityIdentifier("page-foot")
+        }
+    }
+}

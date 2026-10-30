@@ -120,6 +120,7 @@ struct ShopPage<Content: View>: View {
                                 // never changes under a scroll when it does.
                                 Color.clear.frame(height: 64).accessibilityHidden(true)
                             }
+                            PageFootMarker()
                         } header: {
                             if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar) }
                         }
