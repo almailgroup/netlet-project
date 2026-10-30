@@ -179,16 +179,18 @@ struct LineMenuButton: View {
             let plain = (item.addons ?? []).isEmpty && item.bundleName == nil
             let variantId = item.variantId
             let quantity = item.quantity
+            let refused = l.t("cart.updateFailed")
             Task {
                 await app.saved.save(productId)
-                await app.cart.setQuantity(lineId: lineId, to: 0)
+                if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(refused) }
             }
             // A plain line can be put straight back; one with extras or a set's price cannot.
             var undo: (@MainActor () -> Void)?
             if plain {
+                let addFailed = l.t("cart.addFailed")
                 undo = {
                     Task {
-                        _ = await app.cart.add(variantId: variantId, quantity: quantity)
+                        if !(await app.cart.add(variantId: variantId, quantity: quantity)) { app.toast(addFailed) }
                         if !wasSaved { await app.saved.unsave(productId) }
                     }
                 }
@@ -196,8 +198,9 @@ struct LineMenuButton: View {
             app.toast(l.t("cart.savedForLater", ["name": "\u{2068}\(title)\u{2069}"]), undo: undo)
         case .wishlist:
             guard let productId = item.productId else { return }
+            let refused = l.t("cart.updateFailed")
             app.wishAsking = WishTarget(productId: productId, title: title, start: .lists, onWished: {
-                Task { await app.cart.setQuantity(lineId: lineId, to: 0) }
+                Task { if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(refused) } }
             })
         case .view:
             app.push(.product(handle: item.productHandle))
