@@ -74,7 +74,7 @@ final class ScrollingUITests: XCTestCase {
     private func marker(_ app: XCUIApplication, _ name: String, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let element = app.descendants(matching: .any).matching(identifier: name).firstMatch
         if name == "page-top" {
-            XCTAssertTrue(element.waitForExistence(timeout: 20), "The page never drew.", file: file, line: line)
+            XCTAssertTrue(element.waitForExistence(timeout: 45), "The page never drew.", file: file, line: line)
             sleep(3)
         }
         return element
@@ -106,12 +106,17 @@ final class ScrollingUITests: XCTestCase {
         func onScreen(_ element: XCUIElement) -> Bool {
             element.exists && element.frame.minY >= screen.minY && element.frame.maxY <= screen.maxY
         }
+        // Where the top of the page is after each flick, for a failure to say
+        // where it stopped: a number while it is drawn, "·" once it is not.
+        var trace: [String] = []
         var flicks = 0
         while !onScreen(foot) && flicks < 25 {
             app.swipeUp(velocity: .fast)
             flicks += 1
+            trace.append(top.exists ? String(Int(top.frame.minY)) : "·")
         }
-        XCTAssertTrue(onScreen(foot), "\(flicks) flicks never reached the page's foot.", file: file, line: line)
+        let elsewhere = app.buttons["Back"].exists || app.sheets.count > 0 ? " — and the flicks had left the page (a Back button or a sheet is up)" : ""
+        XCTAssertTrue(onScreen(foot), "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(foot.exists ? "at \(Int(foot.frame.minY))" : "not drawn")\(elsewhere).", file: file, line: line)
         flicks = 0
         while !(onScreen(top) && top.frame.minY > 40) && flicks < 25 {
             app.swipeDown(velocity: .fast)

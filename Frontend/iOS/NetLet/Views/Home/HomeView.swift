@@ -3,7 +3,7 @@ import SwiftUI
 /// The home page, the web's `Home` as a phone draws it: the front door, the
 /// departments as a sideways row, the paid banners and placements, Deals as a navy band
 /// led by the deepest saving, Bestsellers ranked, Picked for you, the brands,
-/// the stores, the new arrivals as a grid, the newest guides, and the footer. Every shelf after the departments is drawn only when it has
+/// the stores, the new arrivals as a grid and the newest guides. Every shelf after the departments is drawn only when it has
 /// something true to show (`shelvesFor`, in `HomeShelf`).
 struct HomeView: View {
     @Environment(AppModel.self) private var app
@@ -11,62 +11,78 @@ struct HomeView: View {
 
     var body: some View {
         let shelf = app.shelf
-        let shelves = shelf.shelves
         ShopPage(root: true, refresh: { await shelf.load(language: l.current, force: true) }) {
-            HomeHero()
+            // **One block, not a row per shelf**, and that is the home page's
+            // scrolling, on the owner's word ("I can't scroll, it stops"). In
+            // the frame's lazy stack every shelf was a row of its own, made as
+            // it neared the screen and thrown away once it was well past — and
+            // the paid banners, the sponsored shelf, "Picked for you" and the
+            // guides each start empty and fill from their own read, so every
+            // one came back at no height and grew again under the finger,
+            // over and over, and a flick never reached the foot of the page
+            // (`ScrollingUITests`). Held as one, they are made once while the
+            // page is open; the page is a couple of dozen cards, so there is
+            // nothing to save by making them late. The search row still pins.
+            VStack(alignment: .leading, spacing: 0) { homeShelves(shelf) }
+        }
+    }
+
+    @ViewBuilder
+    private func homeShelves(_ shelf: HomeShelf) -> some View {
+        let shelves = shelf.shelves
+        HomeHero()
+        VStack(alignment: .leading, spacing: 16) {
+            Text(l.t("home.shopByCategory")).shelfTitle()
+                .padding(.horizontal, 16)
+            DepartmentCardGrid(row: true)
+        }
+        .padding(.top, 8)
+        switch shelf.catalogue {
+        case .idle, .loading:
             VStack(alignment: .leading, spacing: 16) {
-                Text(l.t("home.shopByCategory")).shelfTitle()
-                    .padding(.horizontal, 16)
-                DepartmentCardGrid(row: true)
+                Text(l.t("rail.deals.title")).shelfTitle().padding(.horizontal, 16)
+                ShelfSkeleton()
             }
-            .padding(.top, 8)
-            switch shelf.catalogue {
-            case .idle, .loading:
+            .padding(.vertical, 24)
+        case .failed:
+            Text(l.t("home.catalogSlow"))
+                .font(.inter(14, .bold))
+                .foregroundStyle(Brand.navy)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 40)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 182 / 255, blue: 158 / 255), lineWidth: 1))
+                .padding(16)
+        case .loaded:
+            if shelf.showingEarlier {
+                EarlierShelfNote { await shelf.load(language: l.current, force: true) }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+            }
+            // Paid banners and placements, approved and labelled; absent when none runs today.
+            HomeBanners()
+            SponsoredShelf(slot: "home")
+            if !shelves.deals.isEmpty {
+                DealsBand(products: shelves.deals)
+            }
+            if !shelves.bestsellers.isEmpty {
+                ProductRail(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
+            }
+            // What is about this shopper sits between what sold and what is
+            // new. The brands and the stores are on Categories now, on the
+            // owner's word.
+            RecommendedRail(quiet: true)
+            if !shelves.newest.isEmpty {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(l.t("rail.deals.title")).shelfTitle().padding(.horizontal, 16)
-                    ShelfSkeleton()
+                    ShelfHeading(title: l.t("rail.newest.title")) { app.push(.newest) }
+                    ProductGrid(products: Array(shelves.newest.prefix(15)))
                 }
+                .padding(.horizontal, 16)
                 .padding(.vertical, 24)
-            case .failed:
-                Text(l.t("home.catalogSlow"))
-                    .font(.inter(14, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 40)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 182 / 255, blue: 158 / 255), lineWidth: 1))
-                    .padding(16)
-            case .loaded:
-                if shelf.showingEarlier {
-                    EarlierShelfNote { await shelf.load(language: l.current, force: true) }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                }
-                // Paid banners and placements, approved and labelled; absent when none runs today.
-                HomeBanners()
-                SponsoredShelf(slot: "home")
-                if !shelves.deals.isEmpty {
-                    DealsBand(products: shelves.deals)
-                }
-                if !shelves.bestsellers.isEmpty {
-                    ProductRail(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
-                }
-                // What is about this shopper sits between what sold and what is
-                // new. The brands and the stores are on Categories now, on the
-                // owner's word.
-                RecommendedRail(quiet: true)
-                if !shelves.newest.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ShelfHeading(title: l.t("rail.newest.title")) { app.push(.newest) }
-                        ProductGrid(products: Array(shelves.newest.prefix(15)))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 24)
-                }
-                GuideShelf()
             }
+            GuideShelf()
         }
     }
 }

@@ -40,6 +40,11 @@ export type PluralEntry = {
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
   /* ------------------------------------------------------------ shoppers --- */
+  "header.seeAllCount": {
+    param: "count",
+    en: { one: "See the 1 result for “{query}”" },
+    ar: { one: "عرض النتيجة الوحيدة لـ ”{query}“" },
+  },
   "cart.itemCount": {
     param: "count",
     en: { one: "1 item" },

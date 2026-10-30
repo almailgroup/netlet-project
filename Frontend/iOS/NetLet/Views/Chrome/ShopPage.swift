@@ -414,7 +414,14 @@ struct SearchRow: View {
             Button {
                 app.searchOpen = true
             } label: {
-                Text(empty ? placeholder : app.searchText)
+                Group {
+                    if empty {
+                        // The shop's own examples in turn, rolling up one to the next.
+                        CyclingExample(examples: app.shelf.searchExamples(language: l))
+                    } else {
+                        Text(app.searchText)
+                    }
+                }
                     .font(.inter(16))
                     .foregroundStyle(empty ? Brand.muted : Brand.navy)
                     .lineLimit(1)
@@ -493,10 +500,6 @@ struct SearchRow: View {
 
     /// The field's example comes from the live catalogue — the first product
     /// type it holds, in the page's language — and asks plainly without one.
-    private var placeholder: String {
-        guard let example = app.shelf.searchExample(language: l) else { return l.t("header.searchAria") }
-        return l.t("header.searchPlaceholder", ["example": example])
-    }
 }
 
 /// A screen's breadcrumbs, the web's `Breadcrumbs`: Home, then the trail, the

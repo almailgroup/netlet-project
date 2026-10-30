@@ -136,22 +136,42 @@ final class HomeShelf {
         }.map(\.element)
     }
 
-    /// The search field's example: the first product type the catalogue holds,
-    /// as its department is named — lower case in English — or as the seller
-    /// typed it, and on the Arabic page only when it is Arabic
-    /// (`catalogExample` in `LiveSearch.tsx`).
-    func searchExample(language: LanguageSettings) -> String? {
+    /// What the search field offers in turn while it is empty (`CyclingExample`),
+    /// on the owner's word ("give recommendations in the text … that cycle
+    /// through smoothly") — every one of them true of this shop today: a
+    /// department with something on sale, a brand it sells, a kind of product
+    /// on its shelves, taken in turn so the field never says the same sort of
+    /// thing twice running. A department is named as the page names it (lower
+    /// case in English); a type a seller typed is offered on the Arabic page
+    /// only if it is Arabic (`catalogExample` in `LiveSearch.tsx`); a brand is
+    /// a name, offered on both. At most ten.
+    func searchExamples(language: LanguageSettings) -> [String] {
         let arabic = language.current == .ar
-        for product in catalogue.value ?? [] {
-            guard let type = product.productType?.trimmingCharacters(in: .whitespaces), !type.isEmpty else { continue }
-            if let department = ReferenceData.shared.department(named: type) {
-                let name = language.t(department.label)
-                return arabic ? name : name.lowercased()
-            }
-            if !arabic { return type.lowercased() }
-            if type.unicodeScalars.contains(where: { (0x0600...0x06FF).contains($0.value) }) { return type }
+        let products = catalogue.value ?? []
+        let departments = ReferenceData.shared.departments.filter { department in
+            if let counts { return (counts[department.slug] ?? 0) > 0 }
+            return products.contains { ReferenceData.shared.department(named: $0.productType ?? "")?.slug == department.slug }
         }
-        return nil
+        .map { language.t($0.label) }
+        .map { arabic ? $0 : $0.lowercased() }
+        let brandNames = brands.prefix(6).map(\.name)
+        var types: [String] = []
+        for product in products {
+            guard let type = product.productType?.trimmingCharacters(in: .whitespaces), !type.isEmpty,
+                  ReferenceData.shared.department(named: type) == nil else { continue }
+            if arabic && !type.unicodeScalars.contains(where: { (0x0600...0x06FF).contains($0.value) }) { continue }
+            types.append(arabic ? type : type.lowercased())
+        }
+        var seen = Set<String>()
+        var turns: [String] = []
+        let lists = [departments, brandNames, types]
+        for index in 0..<(lists.map(\.count).max() ?? 0) {
+            for list in lists where index < list.count {
+                let word = list[index]
+                if seen.insert(word.lowercased()).inserted { turns.append(word) }
+            }
+        }
+        return Array(turns.prefix(10))
     }
 }
 

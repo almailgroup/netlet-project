@@ -1,21 +1,20 @@
 /**
- * The shop's notification badges: a small, rounded, lit-from-above badge —
- * on the owner's word, who asked for a modern 3D look in place of the pixel
- * art the badges wore before.
+ * The shop's notification badges: a flat 2D badge drawn like a sketch, on the
+ * owner's word ("fix the fade which is on top of it, make it high quality 2D
+ * sketch design") — it was a 3D badge with a gloss fading across its upper
+ * half, and before that pixel art.
  *
- * A count is a pill of the brand orange, lighter at the top and the brand's
- * own orange at the foot, with a soft highlight across its upper half, a fine
- * inner edge and a white rim, lifted off the control by a small shadow
- * (`.count-badge` in `index.css`). The number is navy on the orange, never
- * white: navy is 4.65:1 on `#f2683a` and more on the lighter top, where white
- * would be 3.08:1. It is hidden from a screen reader, because the control it
- * sits on already says the count.
+ * A count is a pill of the brand orange, flat, inside a navy ink line, on a
+ * white sticker edge, with a hard navy shadow dropped down and to the side
+ * (`.count-badge` in `index.css`); no gradient and no blur. The number is navy
+ * on the orange, never white: navy is 4.65:1 on `#f2683a`, white 3.08:1. It
+ * is hidden from a screen reader, because the control it sits on already says
+ * the count.
  *
  * **It hops when it has news, and again every five seconds**, on the owner's
- * word — a smooth rise and a small settle rather than held sprite poses.
- * Keyed by the number, so a new number hops at once and starts the five
- * seconds again. Nobody who asked for less motion sees it
- * move.
+ * word — a jump, a squash as it lands and a spring back. Keyed by the number,
+ * so a new number hops at once and starts the five seconds again. Nobody who
+ * asked for less motion sees it move.
  */
 
 /**

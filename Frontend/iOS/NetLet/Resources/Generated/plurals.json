@@ -1,4 +1,13 @@
 {
+  "header.seeAllCount": {
+    "param": "count",
+    "en": {
+      "one": "See the 1 result for “{query}”"
+    },
+    "ar": {
+      "one": "عرض النتيجة الوحيدة لـ ”{query}“"
+    }
+  },
   "cart.itemCount": {
     "param": "count",
     "en": {

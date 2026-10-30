@@ -153,7 +153,7 @@ private struct SearchSheet: View {
     private var field: some View {
         HStack(spacing: 8) {
             HStack(spacing: 0) {
-                TextField(placeholder, text: $model.query)
+                TextField("", text: $model.query)
                     .font(.inter(16))
                     .foregroundStyle(Brand.navy)
                     .focused($focused)
@@ -163,6 +163,18 @@ private struct SearchSheet: View {
                     .textInputAutocapitalization(.never)
                     .padding(.horizontal, 12)
                     .accessibilityLabel(l.t("header.searchAria"))
+                    // The empty field offers the shop's own examples in turn,
+                    // as the header's does, until the first letter is typed.
+                    .overlay(alignment: .leading) {
+                        if model.query.isEmpty && !dictation.listening {
+                            CyclingExample(examples: app.shelf.searchExamples(language: l))
+                                .font(.inter(16))
+                                .foregroundStyle(Brand.muted)
+                                .padding(.horizontal, 12)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                        }
+                    }
                 trailingControls
                 Button {
                     submit(model.trimmed)
@@ -271,11 +283,6 @@ private struct SearchSheet: View {
         }
         .animation(still ? nil : .spring(duration: 0.28, bounce: 0.25), value: model.query.isEmpty)
         .animation(still ? nil : .spring(duration: 0.28, bounce: 0.25), value: dictation.listening)
-    }
-
-    private var placeholder: String {
-        guard let example = app.shelf.searchExample(language: l) else { return l.t("header.searchAria") }
-        return l.t("header.searchPlaceholder", ["example": example])
     }
 
     // MARK: Nothing typed yet

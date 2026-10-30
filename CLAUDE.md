@@ -724,24 +724,28 @@ missed the guard and still showed a zero. **The count is navy on the orange**:
 white on `#f2683a` is 3.08:1 at 10px, navy on it is 4.65:1, and the badge keeps
 the brand colour.
 
-**Every badge is a small rounded 3D badge, and it hops when it has news —
-both on the owner's word.** It was pixel art for a while (a stepped SVG sprite
-with a 3 × 5 pixel font and held keyframes), and the owner asked for a modern,
-simple 3D design across the website and the app. `CountBadge`
+**Every badge is a flat 2D badge drawn like a sketch, and it hops when it has
+news — both on the owner's word.** It was pixel art first (a stepped SVG sprite
+with a 3 × 5 pixel font and held keyframes), then a modern 3D badge lit from
+above with a gloss fading across its upper half, and the owner asked for that
+fade to go: "make it high quality 2D sketch design". `CountBadge`
 (`components/ui/CountBadge.tsx`) is the count on the heart, the bell, the cart
 and Profile, in the header and the phone's tab bar, and on a department's
 Filters; `NoticeDot` is the account control's dot, the account menu's and the
-assistant's. Each is the brand orange lit from above — `#f8956d` at the top
-running to `#f2683a` at the foot, a gloss on the upper half, a fine light edge
-above and a darker one below — inside a 1.5px white rim, lifted by a small navy
-shadow (`.count-badge`, `.notice-dot` in `index.css`); the number is navy,
-4.65:1 at the darkest orange and more where it is lighter, read left to right
-on either page. **It hops once and again every five seconds, on the owner's
-word** (it was ten): a smooth rise and a small settle in the first 0.7s of a 5s
-loop (`.badge-hop`), where the sprite's poses were held. The span is keyed by
-the number, so a new number hops at once and starts the five seconds again. Repeating is a trade against WCAG 2.2.2, made on the owner's
-word as the slideshow's was; under reduced motion it never moves. The app's is
-`CountBadge.swift`, the same surface, its hop a `phaseAnimator`.
+assistant's. Each is the brand orange, flat, inside a 1.5px navy ink line, on a
+1.5px white sticker edge, with a hard navy shadow dropped 1.5px across and 2px
+down — no gradient and no blur anywhere (`.count-badge`, `.notice-dot` in
+`index.css`); the number is navy, 4.65:1 on the orange, read left to right on
+either page. **It hops once and again every five seconds, on the owner's word**
+(it was ten): a jump, a squash as it lands and a spring back in the first 0.6s
+of a 5s loop (`.badge-hop`). The span is keyed by the number, so a new number
+hops at once and starts the five seconds again. Repeating is a trade against
+WCAG 2.2.2, made on the owner's word as the slideshow's was; under reduced
+motion it never moves. **The app's is `CountBadge.swift`, the same drawing, its
+hop a `keyframeAnimator` on a five-second clock** — it was a `phaseAnimator`
+looping through a rest that changed nothing, and whether a loop with nothing
+to animate waits out its delay is the system's guess, so the owner had to ask
+for the five seconds twice.
 
 **Delivery sits in the primary bar, because that is the row that survives a
 scroll** — on a wide screen, and on a phone at the end of the logo row (see below). It spent one release at the end of the department rail, put there to
@@ -880,7 +884,7 @@ the home page it reaches 0 with the history unchanged, and from a product page
 900px down it lands on the home page at 0.
 
 **Nothing in the header moves on its own** — only its badges, which hop when
-their number changes and every ten seconds after (above). It used to watch the scroll and fold:
+their number changes and every five seconds after (above). It used to watch the scroll and fold:
 the phone's logo row collapsed, the department rail shrank away, a shadow
 arrived — all of it animated, all of it driven by a scroll listener and a
 `data-compact` flag. Now the header is one fixed height and nothing animates:
@@ -907,6 +911,11 @@ product type to draw on it asks plainly rather than inventing one. **And it is
 in the page's language**: a product type is the seller's word, so the Arabic
 field read "ابحث عن electronics". A type that is a department takes the
 department's name; any other is used on the Arabic page only if it is Arabic.
+**The app's field cycles, on the owner's word** ("give recommendations in the
+text for the search bar that cycle through smoothly") — but only through what
+is true of the shop today (`HomeShelf.searchExamples`: departments with
+something on sale, brands it sells, product types on its shelves, by the rules
+above), so the reason the web stopped cycling does not apply; see "iOS app".
 
 **Voice and photo search are wired, and each says where the input goes.**
 `SearchModes.tsx` holds both, with every state drawn — listening, heard,
@@ -1362,7 +1371,7 @@ working. Nobody who asked for less motion sees it move. A picture is fetched
 only when it is next, the first with `fetchPriority="high"` as the page's
 largest paint; one picture alone is a still. The header, the cards and the
 paid banners' carousel still never move on their own; a badge hops when its
-number changes and every ten seconds after.
+number changes and every five seconds after.
 
 **The next picture fades in over the last, and only once it is decoded.** The
 one going out stays whole underneath (`.hero-slide-in`, a one-second fade
@@ -6537,11 +6546,49 @@ choice and says so there, rather than a line appearing out of sight; a bag that
 already holds every unit has no stepper and the pair is off; a sold-out choice
 offers the back-in-stock alert in the stepper's place, as the web's does. A
 colour chosen shows its photo, found among the stills by address — the model's
-index counts the gallery, which a video can sit in. **The card sinks a little
-under the finger while the hold counts** (`@GestureState`, ease-in over the
-0.4s, so a tap or the start of a scroll moves it by nothing anybody sees), so a
-hold reads as doing something before the preview rises; it opened out of a card
-that never moved.
+index counts the gallery, which a video can sit in.
+
+**The home page is one block in the frame's lazy stack, and that is its
+scrolling, on the owner's word** ("I can't scroll, it stops"). Every shelf
+was a row of the lazy stack of its own, made as it neared the screen and
+thrown away once well past — and the paid banners, the sponsored shelf,
+"Picked for you" and the guides each start empty and fill from their own
+read, so each came back at no height and grew again under the finger, and 25
+flicks never reached the page's foot (`ScrollingUITests`, which reproduced it
+on the simulator before the fix: the department page, whose rows are drawn
+from the page's own data, reached its foot in the same run). `HomeView` holds
+them in one `VStack`, made once while the page is open — a couple of dozen
+cards, so nothing was saved by making them late — and the search row still
+pins. **A row that loads its own data does not belong straight in a lazy
+stack**: give it the data from a model that outlives it, or keep it inside a
+block that does.
+
+**The hold is UIKit's own long press from iOS 18** — not the home page's
+fault in the end, but taken out on the way. It was a
+SwiftUI `LongPressGesture` on every card's photo and words — most of a shelf —
+and a SwiftUI long press on what a scroll view holds is the known way iOS 18
+and 26 stop the page scrolling under a finger that lands on it; one round
+also had the card sink under the finger while the hold counted, which tracked
+every touch on every card. `CardHold` is a `UILongPressGestureRecognizer`
+through `UIGestureRecognizerRepresentable`, the hold every list on the phone
+uses: it fails the moment the finger travels, so the scroll has it, and fires
+once at 0.4s. iOS 17 keeps the SwiftUI gesture.
+**`NetLetUITests` is the proof, and the first UI test target the app has**:
+it opens the home page in both languages, all products, Categories, a product
+and the account from the recordings and moves each the ways a thumb does —
+three drags from over the cards, their photos and the sideways rows; a flick
+that has to carry on by itself; flicks to the page's foot and back to its top
+— and fails if the page has not gone where it should, saying where it stopped.
+The top and the foot are markers (`PageTopMarker`, `PageFootMarker`) drawn
+only under `-NetLetUITest` in a Debug build. It runs in the iOS workflow's
+tests, so a page that stops scrolling fails CI before it reaches TestFlight.
+
+**A flow of chips or a price never wraps onto a line it did not count**
+(`FlowLayout`): it reports exactly its widest row's width and then placed the
+same widths again against it, and an Arabic price's fractional widths came out
+a hair over, so the preview's was-price went to a second line the height had
+not counted and was drawn struck through over "in stock". A row may now run a
+point past its bounds rather than be broken again.
 
 **A product stays where it is when it goes in the bag, on the owner's word**
 ("the product suddenly disappears and goes somewhere else"). Two things moved
@@ -6712,6 +6759,26 @@ page opened from a card draws the card's copy of the photo at once, while its
 own sharper copy is decoded (`ImagePipeline.anySize`), and a photo still on
 its way breathes gently rather than sitting flat, so loading reads differently
 from no photo (still under Reduce Motion).
+
+**The app opens on its mark, on the owner's word** ("a cool animation when
+opening the app … use the logo to zoom out"; `LaunchSplash`). The first frame
+is the launch screen's own navy, so nothing changes where the system hands
+over; the white-and-orange mark springs up into place with a little bounce, an
+orange ring breathes out from behind it with a light tap, and then it zooms
+past the viewer and fades as the navy clears, so the shop comes up from behind
+it — about a second and a half, on a cold launch only, with the shop loading
+underneath the whole time. Under Reduce Motion it is the mark, faded; the UI
+tests and the screenshots (`-NetLetOpen`) open straight onto their screen.
+
+**The empty search field offers the shop's own examples in turn, on the
+owner's word** (`CyclingExample`, in the header's field and the open sheet's):
+"Search for" holds still and the example rolls up to the next every 2.6
+seconds, inside the line's own height so the field never jumps. They are
+`HomeShelf.searchExamples` — departments with something on sale, brands it
+sells, product types on its shelves, taken in turn, at most ten — never a
+phrase the shop may not sell, which is why the web's field stopped cycling.
+Still under Reduce Motion and while VoiceOver runs, which reads the field's
+own name.
 
 **It runs against recordings as well as a server.** `-NetLetDemo YES` answers
 every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a

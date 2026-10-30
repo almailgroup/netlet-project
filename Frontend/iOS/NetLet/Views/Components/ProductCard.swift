@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// A price, and the was-price beside it when the shop may advertise a saving.
 struct PriceView: View {
@@ -178,11 +179,6 @@ struct ProductCard: View {
     @Environment(LanguageSettings.self) private var l
     /// Moves on with each hold, so the card under the finger is a new one.
     @State private var held = 0
-    /// A finger is holding the photo or the words: the card sinks a little
-    /// under it while the hold counts, so a hold reads as doing something
-    /// before the preview rises — it opened out of a card that never moved.
-    @GestureState private var holding = false
-    @Environment(\.accessibilityReduceMotion) private var still
 
     /// The card's identity: its product, and how many holds it has had.
     /// **It names the product, and that is what drew only one card.** It was
@@ -197,7 +193,7 @@ struct ProductCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .top) {
                 CardGallery(product: product, feature: feature)
-                    .simultaneousGesture(hold)
+                    .modifier(CardHold(action: preview))
                 HStack(alignment: .top) {
                     badges(variant)
                     Spacer(minLength: 0)
@@ -248,7 +244,7 @@ struct ProductCard: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .simultaneousGesture(hold)
+                .modifier(CardHold(action: preview))
                 Spacer(minLength: 0)
                 CardActions(product: product)
                     .padding(.top, 10)
@@ -262,19 +258,6 @@ struct ProductCard: View {
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        // Slow to start, so a finger that only taps or begins a scroll moves
-        // the card by nothing anybody sees; quick to spring back.
-        .scaleEffect(holding && !still ? 0.95 : 1)
-        .animation(still ? nil : (holding ? .easeIn(duration: 0.4) : .spring(duration: 0.3, bounce: 0.3)), value: holding)
-    }
-
-    /// A hold previews the product without leaving the shelf (3.1.11), on the
-    /// photo and the words. A finger that moves is scrolling, and the hold
-    /// gives way to it.
-    private var hold: some Gesture {
-        LongPressGesture(minimumDuration: 0.4)
-            .updating($holding) { pressing, state, _ in state = pressing }
-            .onEnded { _ in preview() }
     }
 
     private func preview() {
@@ -318,6 +301,44 @@ struct ProductCard: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(fill))
+    }
+}
+
+/// A hold previews the product without leaving the shelf (3.1.11), on the
+/// photo and the words. **It is UIKit's own long press from iOS 18**, the one
+/// every list on the phone uses, and never a SwiftUI gesture there: the shelves
+/// are mostly cards, and a SwiftUI `LongPressGesture` on what a scroll view
+/// holds is the known way iOS 18 and 26 stop the page scrolling under a finger
+/// that lands on it — the owner's "I can't scroll, it stops" on the home page.
+/// UIKit's hold fails the moment the finger travels, so the scroll has it, and
+/// otherwise fires once at 0.4s. iOS 17, which never had the fault, keeps the
+/// SwiftUI gesture beside the card's own buttons. `NetLetUITests` drags every
+/// long page from over its cards.
+struct CardHold: ViewModifier {
+    let action: () -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content.gesture(HoldRecognizer(action: action))
+        } else {
+            content.simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in action() })
+        }
+    }
+}
+
+@available(iOS 18, *)
+private struct HoldRecognizer: UIGestureRecognizerRepresentable {
+    let action: () -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
+        let hold = UILongPressGestureRecognizer()
+        hold.minimumPressDuration = 0.4
+        return hold
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
+        if recognizer.state == .began { action() }
     }
 }
 

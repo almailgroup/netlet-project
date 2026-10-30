@@ -448,11 +448,16 @@ struct FlowLayout: Layout {
         return CGSize(width: min(widest, width), height: y + rowHeight)
     }
 
+    /// The bounds are the width `sizeThatFits` reported — exactly its widest
+    /// row — so a row is let run a point past them rather than broken again:
+    /// added up a second time, an Arabic price's fractional widths came out a
+    /// hair over, the was-price went to a line the height had not counted, and
+    /// it was drawn struck through over "in stock" under it.
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
         for subview in subviews {
             let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + size.width > bounds.maxX {
+            if x > bounds.minX, x + size.width > bounds.maxX + 1 {
                 y += rowHeight + spacing
                 x = bounds.minX
                 rowHeight = 0

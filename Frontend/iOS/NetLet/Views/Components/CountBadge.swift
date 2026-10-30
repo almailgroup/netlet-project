@@ -1,17 +1,21 @@
 import SwiftUI
 
 /// The count on the heart, the bell, the cart page and a department's filters
-/// — a small rounded badge lit from above, on the owner's word, who asked for
-/// a modern 3D look in place of the pixel art the badges wore. The web's
-/// `CountBadge`, the same surface.
+/// — a flat 2D badge drawn like a sketch, on the owner's word ("fix the fade
+/// which is on top of it, make it high quality 2D sketch design"). It wore a
+/// 3D look for a while — the orange lit from above with a gloss fading across
+/// its upper half — and the gloss was the fade the owner asked to lose. The
+/// web's `CountBadge`, the same drawing.
 ///
-/// The brand orange, lighter at the top and `#f2683a` at the foot, a soft
-/// gloss on the upper half, a fine light edge above and a darker one below,
-/// inside a white rim and lifted by a small navy shadow. The number is navy —
-/// 4.65:1 at the darkest orange, more where it is lighter — and reads left to
-/// right in either language. A new number hops at once, a smooth rise and a
-/// small settle, and again every five seconds, the rhythm the owner asked for;
-/// nobody who asked for less motion sees it move. A zero draws nothing.
+/// The brand orange, flat, inside a navy ink line, on a white sticker edge,
+/// with a hard navy shadow dropped down and to the side — no gradient and no
+/// blur anywhere, so it reads as drawn rather than rendered. The number is
+/// navy, 4.65:1 on the orange, and reads left to right in either language.
+/// **It hops when it has news and again every five seconds**, on the owner's
+/// word: a jump, a squash as it lands and a spring back, on a five-second
+/// clock — it was a looping animation whose rest had nothing to animate, so
+/// whether it waited the five seconds was the system's guess. Nobody who asked
+/// for less motion sees it move. A zero draws nothing.
 struct CountBadge: View {
     let value: Int
 
@@ -44,48 +48,29 @@ struct NoticeDot: View {
     }
 }
 
-/// The badge's body: the orange lit from above, the gloss, the edges, the rim
-/// and the shadow — the web's `.count-badge`.
+/// The badge's body: flat orange in a navy ink line, a white sticker edge and
+/// a hard navy drop — the web's `.count-badge`.
 private struct BadgeSurface: View {
-    private static let top = Color(red: 248 / 255, green: 149 / 255, blue: 109 / 255)
-    private static let middle = Color(red: 244 / 255, green: 122 / 255, blue: 78 / 255)
-    private static let edge = Color(red: 176 / 255, green: 62 / 255, blue: 24 / 255)
-
     var body: some View {
         Capsule()
-            .fill(LinearGradient(colors: [Self.top, Self.middle, Brand.orange], startPoint: .top, endPoint: .bottom))
-            .overlay {
-                Capsule()
-                    .fill(LinearGradient(colors: [Color.white.opacity(0.55), Color.white.opacity(0)], startPoint: .top, endPoint: .center))
-                    .padding(.horizontal, 2)
-                    .padding(.top, 1)
-            }
-            .overlay {
-                Capsule()
-                    .strokeBorder(LinearGradient(colors: [Color.white.opacity(0.55), Self.edge.opacity(0.35)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
-            }
+            .fill(Brand.orange)
+            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
             .background(Capsule().fill(Color.white).padding(-1.5))
-            .shadow(color: Brand.navy.opacity(0.28), radius: 2.5, x: 0, y: 2)
+            .background(Capsule().fill(Brand.navy).padding(-1.5).offset(x: 1.5, y: 2))
     }
 }
 
-/// The hop: up, a small squash, a spring back, and still for the rest of five
-/// seconds — smooth where the pixel badge's poses were held.
+/// The hop: up, a squash as it lands, a spring back — once as the badge
+/// appears (a new number is a new badge) and then every five seconds by the
+/// clock, still in between.
 private struct BadgeHop: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var still
+    @State private var beat = 0
 
-    private enum Phase: CaseIterable {
-        case rest, up, squash, settle
-
-        var scale: CGSize {
-            switch self {
-            case .up: return CGSize(width: 1.08, height: 1.08)
-            case .squash: return CGSize(width: 1.06, height: 0.94)
-            case .rest, .settle: return CGSize(width: 1, height: 1)
-            }
-        }
-
-        var lift: CGFloat { self == .up ? -5 : 0 }
+    private struct Pose {
+        var lift: CGFloat = 0
+        var width: CGFloat = 1
+        var height: CGFloat = 1
     }
 
     @ViewBuilder
@@ -93,19 +78,38 @@ private struct BadgeHop: ViewModifier {
         if still {
             content
         } else {
-            content.phaseAnimator(Phase.allCases) { view, phase in
-                view
-                    .scaleEffect(phase.scale, anchor: .bottom)
-                    .offset(y: phase.lift)
-            } animation: { phase in
-                switch phase {
-                case .up: return .easeOut(duration: 0.18)
-                case .squash: return .easeIn(duration: 0.14)
-                case .settle: return .spring(response: 0.32, dampingFraction: 0.55)
-                // Held at rest for the rest of five seconds, then up again.
-                case .rest: return .linear(duration: 0.01).delay(4.3)
+            content
+                .keyframeAnimator(initialValue: Pose(), trigger: beat) { view, pose in
+                    view
+                        .scaleEffect(x: pose.width, y: pose.height, anchor: .bottom)
+                        .offset(y: pose.lift)
+                } keyframes: { _ in
+                    KeyframeTrack(\.lift) {
+                        CubicKeyframe(-6, duration: 0.16)
+                        CubicKeyframe(0, duration: 0.14)
+                        CubicKeyframe(-1.5, duration: 0.1)
+                        CubicKeyframe(0, duration: 0.12)
+                    }
+                    KeyframeTrack(\.width) {
+                        CubicKeyframe(0.94, duration: 0.16)
+                        CubicKeyframe(1.12, duration: 0.14)
+                        SpringKeyframe(1, duration: 0.3)
+                    }
+                    KeyframeTrack(\.height) {
+                        CubicKeyframe(1.08, duration: 0.16)
+                        CubicKeyframe(0.88, duration: 0.14)
+                        SpringKeyframe(1, duration: 0.3)
+                    }
                 }
-            }
+                .task {
+                    try? await Task.sleep(for: .milliseconds(150))
+                    beat += 1
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .seconds(5))
+                        guard !Task.isCancelled else { return }
+                        beat += 1
+                    }
+                }
         }
     }
 }
