@@ -118,7 +118,11 @@ struct LoadingTint: View {
         Brand.tint
             .overlay(Color.white.opacity(lit ? 0.45 : 0))
             .onAppear {
-                guard !still else { return }
+                // Still under the UI tests too: a photo that never comes would
+                // breathe for ever, and XCUITest waits for the app to be idle
+                // before every question it asks — so a page whose photo was
+                // slow never answered "is the top of the page drawn?".
+                guard !still, !UITestHooks.on else { return }
                 withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { lit = true }
             }
     }
