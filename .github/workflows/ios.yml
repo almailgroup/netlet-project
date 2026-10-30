@@ -83,7 +83,7 @@ jobs:
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/xcodebuild.log \
-            | grep --line-buffered -E "error:|warning: .*/NetLet(Tests)?/|Test Case .* (passed|failed)|Executed|\*\* (BUILD|TEST)"
+            | grep --line-buffered -E "error:|warning: .*/NetLet(Tests|UITests)?/|Test Case .* (passed|failed|skipped)|Test skipped|Executed|\*\* (BUILD|TEST)"
           status=${PIPESTATUS[0]}
           exit "$status"
 
