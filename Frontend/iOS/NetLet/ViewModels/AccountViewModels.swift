@@ -242,6 +242,10 @@ final class OrdersViewModel {
 final class OrderDetailViewModel {
     let reference: String
     private(set) var detail: LoadState<OrderDetail> = .idle
+    /// The server has no order by that reference for this account — a link
+    /// from an email or a notice opened while signed in as somebody else. The
+    /// web's `orders.detailMissing`, not a failure with Try again.
+    private(set) var missing = false
     private let service: OrderServicing
 
     init(reference: String, service: OrderServicing) {
@@ -252,7 +256,13 @@ final class OrderDetailViewModel {
     func load() async {
         if detail.value == nil { detail = .loading }
         do {
-            detail = .loaded(try await service.order(reference: reference))
+            guard let found = try await service.order(reference: reference) else {
+                missing = true
+                detail = .idle
+                return
+            }
+            missing = false
+            detail = .loaded(found)
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled { detail = .failed(failure) }

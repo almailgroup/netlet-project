@@ -227,9 +227,9 @@ final class FakeOrderService: OrderServicing, @unchecked Sendable {
 
     func orders(page: Int) async throws -> OrderPage { OrderPage(rows: [], total: 0, page: page, pageSize: 20) }
 
-    func order(reference: String) async throws -> OrderDetail {
-        throw APIError.server(code: "NOT_FOUND", message: "orders.detailMissing", status: 404)
-    }
+    /// No order by any reference, which is what the server answers for one
+    /// that is not this account's.
+    func order(reference: String) async throws -> OrderDetail? { nil }
 
     func place(_ order: API.PlaceOrder) async throws -> PlacedOrder {
         if let refusal { throw refusal }

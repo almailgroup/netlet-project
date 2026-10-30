@@ -203,14 +203,21 @@ struct OrderDetailView: View {
                     Text(l.t("orders.orderHeading", ["reference": reference]))
                         .pageTitle()
                         .fixedSize(horizontal: false, vertical: true)
-                    LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
-                        VStack(alignment: .leading, spacing: 16) {
-                            lines(detail, reload: { await model.load() })
-                            OrderDocumentsList(documents: detail.documents)
-                            if detail.hasShipped { TrackingPanel(reference: reference) }
-                            ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
-                            totals(detail.order)
-                            delivery(detail.order)
+                    if model.missing {
+                        Text(l.t("orders.detailMissing"))
+                            .font(.subheadline)
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
+                            VStack(alignment: .leading, spacing: 16) {
+                                lines(detail, reload: { await model.load() })
+                                OrderDocumentsList(documents: detail.documents)
+                                if detail.hasShipped { TrackingPanel(reference: reference) }
+                                ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
+                                totals(detail.order)
+                                delivery(detail.order)
+                            }
                         }
                     }
                 }

@@ -1,10 +1,11 @@
 import Foundation
 
 /// The shopper's orders, and placing one. Every order query is scoped to the
-/// signed-in account by the server, so another shopper's reference is "not found".
+/// signed-in account by the server, so another shopper's reference is "not found"
+/// — an answer of nothing, never an error.
 protocol OrderServicing: Sendable {
     func orders(page: Int) async throws -> OrderPage
-    func order(reference: String) async throws -> OrderDetail
+    func order(reference: String) async throws -> OrderDetail?
     func place(_ order: API.PlaceOrder) async throws -> PlacedOrder
 }
 
@@ -15,7 +16,7 @@ struct OrderService: OrderServicing {
         try await client.call(API.orders, .init(page: page, pageSize: 20))
     }
 
-    func order(reference: String) async throws -> OrderDetail {
+    func order(reference: String) async throws -> OrderDetail? {
         try await client.call(API.order, .init(reference: reference))
     }
 

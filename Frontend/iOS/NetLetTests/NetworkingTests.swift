@@ -215,7 +215,8 @@ final class FixtureDecodingTests: XCTestCase {
     func testOrders() async throws {
         let page = try await client.call(API.orders, .init(page: 1, pageSize: 20))
         XCTAssertFalse(page.rows.isEmpty)
-        let detail = try await client.call(API.order, .init(reference: page.rows[0].reference))
+        let found = try await client.call(API.order, .init(reference: page.rows[0].reference))
+        let detail = try XCTUnwrap(found)
         XCTAssertFalse(detail.lines.isEmpty)
         XCTAssertEqual(detail.lines.reduce(Money.zero) { $0 + $1.lineTotal }, detail.order.itemsTotal)
         let placed = try await client.call(API.placeOrder, .init(cartId: "x", paymentMethod: "cod"))
@@ -223,7 +224,8 @@ final class FixtureDecodingTests: XCTestCase {
     }
 
     func testWhatCanBeDoneAboutAnOrder() async throws {
-        let detail = try await client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
+        let found = try await client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
+        let detail = try XCTUnwrap(found)
         let line = try XCTUnwrap(detail.lines.first)
         XCTAssertEqual(line.returnState?.returnable, true)
         XCTAssertTrue(detail.mayAskReturn(for: line), "a delivered line in its window with nothing asked may be sent back")

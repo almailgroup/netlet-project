@@ -521,3 +521,17 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertEqual(other.phone(for: office), "5000 1111")
     }
 }
+
+@MainActor
+final class OrderDetailViewModelTests: XCTestCase {
+    /// An order link opened while signed in as somebody else: the server
+    /// answers nothing, and the page says the order is not found rather than
+    /// offering Try again over a read that will never find it.
+    func testAnOrderThatIsNotThisAccountsIsNotFoundRatherThanFailed() async {
+        let model = OrderDetailViewModel(reference: "NL-20261001-ZZZZZ", service: FakeOrderService())
+        await model.load()
+        XCTAssertTrue(model.missing)
+        XCTAssertNil(model.detail.value)
+        if case .failed = model.detail { XCTFail("not found is not a failure") }
+    }
+}

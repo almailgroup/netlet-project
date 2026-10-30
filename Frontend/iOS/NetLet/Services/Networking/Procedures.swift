@@ -263,7 +263,7 @@ enum API {
     static let quoteVoucher = Procedure<VoucherAsk, VoucherQuote>(query: "orders.quoteVoucher")
 
     static let orders = Procedure<OrderList, OrderPage>(query: "orders.list")
-    static let order = Procedure<Reference, OrderDetail>(query: "orders.get")
+    static let order = Procedure<Reference, OrderDetail?>(query: "orders.get")
     static let placeOrder = Procedure<PlaceOrder, PlacedOrder>(mutation: "orders.place")
 
     // MARK: Selling
