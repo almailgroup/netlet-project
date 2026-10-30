@@ -145,6 +145,19 @@ PORT              # Vercel decides
 `netlet-project.vercel.app`, and every push to `main` redeploys — pull
 requests get their own preview URL automatically.
 
+**The shop's address is `netlet.net`** (Settings → Domains: `netlet.net` on
+Production, `www.netlet.net` redirecting to it). The iOS app calls the address
+it was built with (`NETLET_API_BASE_URL` in `Frontend/iOS/Config/Shared.xcconfig`),
+so **a domain an installed build calls must stay on the project** until every
+phone has a build that calls the new one. Removing `netlet-project.vercel.app`
+answered every request from builds made before the move with Vercel's
+`DEPLOYMENT_NOT_FOUND` page, which the app reads as "NetLet could not be
+reached" — sign-in included. The other addresses Vercel gives a project
+(`netlet-project-<team>.vercel.app` and each deployment's own) sit behind
+Vercel Authentication and cannot stand in for it. Moving the shop to another
+host also moves Supabase's Site URL and Redirect URLs, the Google Maps key's
+allowed referrers, reCAPTCHA's domain list and `SITE_URL`.
+
 ## 4. Check it
 
 ```

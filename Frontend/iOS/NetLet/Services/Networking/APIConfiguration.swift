@@ -7,7 +7,7 @@ import Foundation
 /// launch argument overrides it for development — `-NetLetAPIBaseURL
 /// http://localhost:3000` points a simulator at a server on the same Mac.
 struct APIConfiguration: Sendable {
-    static let fallback = URL(string: "https://netlet-project.vercel.app")!
+    static let fallback = URL(string: "https://netlet.net")!
 
     let baseURL: URL
 

@@ -1,8 +1,11 @@
 // Settings both of the app's configurations share.
 
-// Where the app finds NetLet's server: the deployment `docs/VERCEL.md` sets up.
+// Where the app finds NetLet's server: the shop's own domain, which Vercel
+// serves as the production deployment (`docs/VERCEL.md`). It was the project's
+// netlet-project.vercel.app until that domain was taken off the project, which
+// left every build calling it with "NetLet could not be reached".
 // An xcconfig reads `//` as the start of a comment, so the address is written
 // with `$()` between the slashes, which expands to nothing.
 // A launch argument overrides it for development, without editing this file:
 //   -NetLetAPIBaseURL http://localhost:3000
-NETLET_API_BASE_URL = https:/$()/netlet-project.vercel.app
+NETLET_API_BASE_URL = https:/$()/netlet.net

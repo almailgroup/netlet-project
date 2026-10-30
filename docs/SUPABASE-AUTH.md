@@ -124,9 +124,8 @@ shopper reported exactly that after pressing the link in the sign-up email.
 
 **Authentication → URL Configuration**:
 
-- **Site URL**: the shop's own address, for example
-  `https://netlet-project.vercel.app` (or your own domain once it points at the
-  shop). Any page on that host is then allowed.
+- **Site URL**: the shop's own address — `https://netlet.net` since the shop
+  moved to its own domain. Any page on that host is then allowed.
 - **Redirect URLs**: add the same address with `/**` after it, and the same
   again for any other address the shop answers on (a custom domain beside the
   Vercel one).

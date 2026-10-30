@@ -11,7 +11,7 @@ on:
     inputs:
       base:
         description: The shop's address
-        default: https://netlet-project.vercel.app
+        default: https://netlet.net
 
 permissions:
   contents: read
