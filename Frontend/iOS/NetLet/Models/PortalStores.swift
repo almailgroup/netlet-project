@@ -256,7 +256,7 @@ extension API {
     }
 
     static let storeList = Procedure<StoreQuery, StoreListPage>(query: "inventory.vendors.list")
-    static let storeDetail = Procedure<StoreId, StoreDetail>(query: "inventory.vendors.get")
+    static let storeDetail = Procedure<StoreId, StoreDetail?>(query: "inventory.vendors.get")
 
     /// One section's fields: a key left out is not touched, and an emptied
     /// box is sent as null so the server clears it.

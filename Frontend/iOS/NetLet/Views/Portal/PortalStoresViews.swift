@@ -384,6 +384,8 @@ private struct StoreDraft {
 struct PortalStoreView: View {
     let vendorId: Int
     @State private var store: StoreDetail?
+    /// The server answered and has no such store — a link to one since removed.
+    @State private var missing = false
     @State private var failed: APIError?
     @State private var draft = StoreDraft()
     @State private var saving: String?
@@ -409,6 +411,8 @@ struct PortalStoreView: View {
                 badges(store)
                 StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: true)
                 StoreTeamSection(vendorId: vendorId) { await load() }
+            } else if missing {
+                PortalEmpty(text: l.t("admin.storeNotFound"))
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
             } else {
@@ -682,7 +686,11 @@ struct PortalStoreView: View {
 
     private func load() async {
         do {
-            let answer = try await app.services.api.call(API.storeDetail, .init(vendorId: vendorId))
+            guard let answer = try await app.services.api.call(API.storeDetail, .init(vendorId: vendorId)) else {
+                missing = store == nil
+                failed = nil
+                return
+            }
             if store == nil { draft = StoreDraft(answer) }
             store = answer
             failed = nil
