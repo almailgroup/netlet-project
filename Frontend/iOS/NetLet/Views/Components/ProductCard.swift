@@ -662,7 +662,9 @@ struct PhotoCartControl: View {
         announce(quantity < 1
             ? l.t("cart.removedName", ["name": product.title])
             : l.t("cart.quantityShort", ["count": "\(quantity)"]))
-        Task { await app.cart.setQuantity(lineId: line.lineId, to: quantity) }
+        Task {
+            if !(await app.cart.setQuantity(lineId: line.lineId, to: quantity)) { app.toast(l.t("cart.updateFailed")) }
+        }
     }
 
     /// Folds the stepper into the count once the presses stop; each press

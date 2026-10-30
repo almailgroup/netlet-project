@@ -111,9 +111,9 @@ final class CartQueueTests: XCTestCase {
         let third = Task { await cart.setQuantity(lineId: line.lineId, to: 5) }
         await settle { drawn() == 5 }
         XCTAssertEqual(drawn(), 5, "every press is drawn while the first is on its way")
-        await first.value
-        await second.value
-        await third.value
+        _ = await first.value
+        _ = await second.value
+        _ = await third.value
         XCTAssertEqual(service.quantities, [3, 5], "the two waiting presses went as one, after the first")
     }
 
@@ -125,7 +125,8 @@ final class CartQueueTests: XCTestCase {
         let line = try XCTUnwrap(cart.cart?.items.first)
         service.refuse = true
         let readsBefore = service.reads
-        await cart.setQuantity(lineId: line.lineId, to: 7)
+        let took = await cart.setQuantity(lineId: line.lineId, to: 7)
+        XCTAssertFalse(took, "the caller is told, so the bag can say so in words")
         XCTAssertEqual(cart.cart?.items.first?.quantity, line.quantity, "the refused press is dropped")
         XCTAssertNotNil(cart.lastError)
         // The bag is read again just after the caller is told.

@@ -1056,7 +1056,12 @@ and the subtotal from the bag's own unit prices — and the delivery and the
 total stay the server's last, drawn faint while `syncing`; checkout will not
 place an order until it clears. A refusal drops that press, reads the bag
 again (a dropped connection may have half-happened) and still rejects, so the
-caller's toast is unchanged. Buy now opens checkout at once on the bag drawn
+caller's toast is unchanged — **and the bag's own controls now say it**
+(`cart.updateFailed`): its minus, plus, bin, typed number, speed choice and
+line menu swallowed the rejection, so a refused press snapped the line back
+with no word, which reads as a press that did not take. The app's bag and
+card stepper say the same (`setQuantity` answers whether it took). Buy now
+opens checkout at once on the bag drawn
 ahead. Measured on a throttled phone: Add to the tab bar's count 67–90ms and
 plus 56–65ms, where both were 330–550ms; six fast presses landed as six; a
 refused press came back with a toast.

@@ -158,9 +158,13 @@ final class CartModel {
         return await enqueue(.lines(lines))
     }
 
-    /// Sets a line's quantity; zero takes it out. Drawn at once.
-    func setQuantity(lineId: String, to quantity: Int) async {
-        _ = await enqueue(quantity <= 0 ? .remove(lineId: lineId) : .set(lineId: lineId, quantity: quantity))
+    /// Sets a line's quantity; zero takes it out. Drawn at once; false once the
+    /// server refused it, which the caller says in words — the line has gone
+    /// back to the server's answer, and a press that silently undoes itself
+    /// reads as one that did not take.
+    @discardableResult
+    func setQuantity(lineId: String, to quantity: Int) async -> Bool {
+        await enqueue(quantity <= 0 ? .remove(lineId: lineId) : .set(lineId: lineId, quantity: quantity))
     }
 
     /// Sends one line to a saved address, or back where the order goes —

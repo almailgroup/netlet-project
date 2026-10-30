@@ -134,7 +134,17 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   }, [row]);
 
   if (vendor.isLoading || vendor.isError) return <QueryGate queries={[vendor]}>{() => null}</QueryGate>;
-  if (!row || !draft) return <p className="text-sm font-bold">{t("admin.noVendors")}</p>;
+  /* It said "No vendors yet." over a store that does not exist. A store
+     that exists waits the one frame its form takes to fill. */
+  if (row && !draft) return null;
+  if (!row || !draft) return (
+    <>
+      <PageHeader title={t("admin.storeNotFound")} />
+      <Link href="/admin/vendors" className={buttonClass.secondary}>
+        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.backToVendors")}
+      </Link>
+    </>
+  );
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft(current => (current ? { ...current, [key]: value } : current));
   const blank = (value: string) => (value.trim() === "" ? null : value.trim());

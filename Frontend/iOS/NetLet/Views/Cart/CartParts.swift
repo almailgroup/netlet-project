@@ -203,7 +203,9 @@ struct LineMenuButton: View {
             app.push(.product(handle: item.productHandle))
         case .remove:
             announce(l.t("cart.removedName", ["name": title]))
-            Task { await app.cart.setQuantity(lineId: lineId, to: 0) }
+            Task {
+                if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(l.t("cart.updateFailed")) }
+            }
         }
     }
 }

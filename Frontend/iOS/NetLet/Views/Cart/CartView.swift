@@ -417,7 +417,9 @@ struct CartLineRow: View {
                     typed: true
                 ) { next in
                     if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
-                    Task { await app.cart.setQuantity(lineId: item.lineId, to: next) }
+                    Task {
+                        if !(await app.cart.setQuantity(lineId: item.lineId, to: next)) { app.toast(l.t("cart.updateFailed")) }
+                    }
                 }
                 .padding(.top, 6)
                 if let left = BagStock.shortLines(lines)[item.lineId] {

@@ -67,7 +67,7 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   /* After a line leaves the bag its button is gone, so the keyboard goes to
      the page rather than to `<body>`. */
   const toPage = () => window.setTimeout(() => document.getElementById("main")?.focus({ preventScroll: true }), 0);
-  const drop = () => void removeItem(item.lineId).catch(() => undefined);
+  const drop = () => void removeItem(item.lineId).catch(() => toast.error(t("cart.updateFailed")));
 
   const actions: Action[] = [];
   if (productId) {

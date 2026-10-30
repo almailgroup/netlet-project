@@ -194,7 +194,16 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   });
 
   if (product.isLoading || product.isError) return <QueryGate queries={[product]}>{() => null}</QueryGate>;
-  if (!product.data) return <p className="text-sm font-bold">{t("product.notFound")}</p>;
+  /* A heading and a way back, not a bare sentence: a deleted product's
+     address is somewhere people land from an old link or the audit trail. */
+  if (!product.data) return (
+    <>
+      <PageHeader title={t("product.notFound")} />
+      <Link href="/admin/products" className={buttonClass.secondary}>
+        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.products")}
+      </Link>
+    </>
+  );
 
   const row = product.data;
   const mayEdit = can(actor, "product.edit", row.vendorId);

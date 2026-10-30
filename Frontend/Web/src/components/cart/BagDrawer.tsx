@@ -175,6 +175,8 @@ function BagLine({ item }: { item: CartItem }) {
   const lines = cart?.items ?? [item];
   const ceiling = lineCeiling(item, lines);
   const left = shortLines(lines).get(item.lineId);
+  /* The line goes back to the server's answer on a refusal; this says why. */
+  const failed = () => toast.error(t("cart.updateFailed"));
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
   return (
     <div className="flex gap-3 py-4">
@@ -223,12 +225,12 @@ function BagLine({ item }: { item: CartItem }) {
           {/* At one the minus is the bin: taking the last one out is what
               the press does, and the menu above says it in words too. */}
           {item.quantity > 1 ? (
-            <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(() => undefined)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+            <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(failed)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           ) : (
-            <button onClick={() => void removeItem(item.lineId).catch(() => undefined)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+            <button onClick={() => void removeItem(item.lineId).catch(failed)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           )}
           <LineQuantity item={item} title={title} ceiling={ceiling} />
-          <button disabled={item.quantity >= ceiling} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(() => undefined)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          <button disabled={item.quantity >= ceiling} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(failed)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
         </div>
         {left !== undefined ? (
           <p role="status" className="mt-2 text-[12px] font-bold text-[#b42318]">
@@ -259,6 +261,7 @@ function LineQuantity({ item, title, ceiling }: { item: CartItem; title: string;
   /* The press that focused the box would put the caret where it landed and
      undo the selection; that one press keeps the whole number selected. */
   const justFocused = useRef(false);
+  const failed = () => toast.error(t("cart.updateFailed"));
   const commit = () => {
     const text = draft;
     setDraft(null);
@@ -269,12 +272,12 @@ function LineQuantity({ item, title, ceiling }: { item: CartItem; title: string;
     const typed = typedQuantity(text, ceiling);
     if (!typed) return;
     if (typed.kind === "remove") {
-      void removeItem(item.lineId).catch(() => undefined);
+      void removeItem(item.lineId).catch(failed);
       return;
     }
     /* Held to what there is, or to the line ceiling — each said as what it is. */
     if (typed.capped) toast(ceiling < MAX_LINE_QUANTITY ? t("cart.onlyAvailable", { count: ceiling }) : t("cart.atMost", { count: String(MAX_QUANTITY) }));
-    if (typed.quantity !== item.quantity) void updateQuantity(item.lineId, typed.quantity).catch(() => undefined);
+    if (typed.quantity !== item.quantity) void updateQuantity(item.lineId, typed.quantity).catch(failed);
   };
   return (
     <input
@@ -327,7 +330,7 @@ function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
     <button
       type="button"
       aria-pressed={(choice === "fast") === fast}
-      onClick={() => void setDeliveryChoice(item.lineId, choice).catch(() => undefined)}
+      onClick={() => void setDeliveryChoice(item.lineId, choice).catch(() => toast.error(t("cart.updateFailed")))}
       className={`min-h-9 rounded-xl px-2.5 text-[12px] font-bold transition pointer-fine:min-h-7 ${(choice === "fast") === fast ? "bg-[#0a285a] text-white" : "text-[#0a285a]"}`}
     >
       {label}
