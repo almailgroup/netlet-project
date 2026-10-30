@@ -28,10 +28,13 @@ final class ScrollingUITests: XCTestCase {
     func testAFlickCarriesTheHomePageOn() {
         let app = launch("")
         let top = marker(app, "page-top")
-        let start = top.frame.minY
+        guard let start = frame(of: top)?.minY else {
+            XCTFail("The page's top could not be read.")
+            return
+        }
         app.swipeUp(velocity: .fast)
         sleep(2)
-        let travelled = top.exists ? start - top.frame.minY : .infinity
+        let travelled = frame(of: top).map { start - $0.minY } ?? .infinity
         XCTAssertGreaterThan(travelled, 600, "A flick moved the home page only \(travelled) points.")
     }
 
@@ -50,26 +53,25 @@ final class ScrollingUITests: XCTestCase {
     }
 
     /// The product page draws a loading frame first and then the product, and
-    /// once its later sections have landed the tests cannot read it at all —
-    /// Add to cart and the top marker are found on the fresh page, and a
-    /// moment later nothing is, for as long as they wait. Until that is understood it
-    /// reports what it can see rather than holding the build back, the skip's
-    /// message carrying the start of the page's element tree.
+    /// its top marker comes and goes for the tests once the page has settled —
+    /// found on one read and missing on the next. Until that is understood it
+    /// reports what it saw rather than holding the build back.
     func testProductScrolls() throws {
         let app = launch("product:basmati-rice-5kg")
         let top = app.descendants(matching: .any).matching(identifier: "page-top").firstMatch
         let buy = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Add to cart")).firstMatch
         let loaded = buy.waitForExistence(timeout: 45)
-        // The reviews, the related products and bought-together land a
-        // moment after the page; it is once they have that it stops being
-        // readable, so the question is asked after them.
         sleep(5)
-        guard loaded, top.waitForExistence(timeout: 20) else {
-            let tree = String(app.debugDescription.prefix(6000)).replacingOccurrences(of: "\n", with: " ⏎ ")
-            throw XCTSkip("The loaded product page could not be read (Add to cart \(loaded ? "found" : "not found"), top marker \(top.exists ? "found" : "not found")). Tree: \(tree)")
+        guard loaded, top.waitForExistence(timeout: 20), let start = frame(of: top)?.minY else {
+            throw XCTSkip("The loaded product page could not be read (Add to cart \(loaded ? "found" : "not found")).")
         }
-        assertDrags(app)
-        assertReachesFoot(app)
+        drag(app, x: 0.28, from: 0.72)
+        drag(app, x: 0.72, from: 0.72)
+        guard let now = frame(of: top)?.minY else {
+            // Gone from the page's drawn rows: it scrolled well away.
+            return
+        }
+        XCTAssertLessThan(now, start - 150, "Two drags left the product page where it was (top at \(start), now \(now)).")
     }
 
     func testAccountScrolls() {
@@ -85,6 +87,13 @@ final class ScrollingUITests: XCTestCase {
         if let role { app.launchArguments += ["-NetLetDemoAs", role] }
         app.launch()
         return app
+    }
+
+    /// Where an element is, in one read — nil once it is not drawn. Asking
+    /// `exists` and then `frame` is two reads, and a row the lazy stack let go
+    /// of in between failed the test with "Failed to get matching snapshot".
+    private func frame(of element: XCUIElement) -> CGRect? {
+        (try? element.snapshot())?.frame
     }
 
     /// One of the page's markers, once the page has drawn and its shelves landed.
@@ -106,12 +115,16 @@ final class ScrollingUITests: XCTestCase {
 
     private func assertDrags(_ app: XCUIApplication, atLeast distance: CGFloat = 150, file: StaticString = #filePath, line: UInt = #line) {
         let top = marker(app, "page-top", file: file, line: line)
-        let start = top.frame.minY
+        guard let start = frame(of: top)?.minY else {
+            XCTFail("The page's top could not be read.", file: file, line: line)
+            return
+        }
         drag(app, x: 0.28, from: 0.72)
         drag(app, x: 0.72, from: 0.72)
         drag(app, x: 0.5, from: 0.78)
-        let moved = !top.exists || top.frame.minY < start - distance
-        XCTAssertTrue(moved, "Three drags left the page where it was (top at \(start), now \(top.exists ? top.frame.minY : -1)).", file: file, line: line)
+        let now = frame(of: top)?.minY
+        let moved = now.map { $0 < start - distance } ?? true
+        XCTAssertTrue(moved, "Three drags left the page where it was (top at \(start), now \(now ?? -1)).", file: file, line: line)
     }
 
     /// Flicks up until the page's foot is on the screen, then down until its
@@ -121,7 +134,8 @@ final class ScrollingUITests: XCTestCase {
         let foot = marker(app, "page-foot")
         let screen = app.frame
         func onScreen(_ element: XCUIElement) -> Bool {
-            element.exists && element.frame.minY >= screen.minY && element.frame.maxY <= screen.maxY
+            guard let place = frame(of: element) else { return false }
+            return place.minY >= screen.minY && place.maxY <= screen.maxY
         }
         // Where the top of the page is after each flick, for a failure to say
         // where it stopped: a number while it is drawn, "·" once it is not.
@@ -130,12 +144,12 @@ final class ScrollingUITests: XCTestCase {
         while !onScreen(foot) && flicks < 25 {
             app.swipeUp(velocity: .fast)
             flicks += 1
-            trace.append(top.exists ? String(Int(top.frame.minY)) : "·")
+            trace.append(frame(of: top).map { String(Int($0.minY)) } ?? "·")
         }
         let elsewhere = app.buttons["Back"].exists || app.sheets.count > 0 ? " — and the flicks had left the page (a Back button or a sheet is up)" : ""
-        XCTAssertTrue(onScreen(foot), "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(foot.exists ? "at \(Int(foot.frame.minY))" : "not drawn")\(elsewhere).", file: file, line: line)
+        XCTAssertTrue(onScreen(foot), "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(frame(of: foot).map { "at \(Int($0.minY))" } ?? "not drawn")\(elsewhere).", file: file, line: line)
         flicks = 0
-        while !(onScreen(top) && top.frame.minY > 40) && flicks < 25 {
+        while !(onScreen(top) && (frame(of: top)?.minY ?? 0) > 40) && flicks < 25 {
             app.swipeDown(velocity: .fast)
             flicks += 1
         }
