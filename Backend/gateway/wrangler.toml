@@ -13,11 +13,10 @@ preview_urls = false
 
 [vars]
 # The pages allowed to call from a browser: scheme and host exactly, comma-
-# separated, no trailing slash. NetLet's own domain both ways, and Vercel's
-# production address, which is where the site is served until the domain is
-# connected and stays reachable after. A preview deployment's address is not
+# separated, no trailing slash. NetLet's own domain both ways — the shop is
+# served at netlet.net and nowhere else. A preview deployment's address is not
 # here: each is different, and a preview has no business spending the key.
-ALLOWED_ORIGINS = "https://netlet.net,https://www.netlet.net,https://netlet-project.vercel.app"
+ALLOWED_ORIGINS = "https://netlet.net,https://www.netlet.net"
 GEMINI_MODEL = "gemini-2.5-flash"
 
 # Ceilings, counted by Cloudflare at the edge. A period is 10 or 60 seconds.

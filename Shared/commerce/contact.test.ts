@@ -4,15 +4,15 @@ import { supportNumber } from "./support.js";
 
 describe("contactEmail", () => {
   it("takes an ordinary address and lowercases it", () => {
-    expect(contactEmail("  Support@NetLet.com.kw ")).toBe("support@netlet.com.kw");
+    expect(contactEmail("  Support@NetLet.net ")).toBe("support@netlet.net");
   });
 
   it("is absent when unset or not an address", () => {
     expect(contactEmail("")).toBeNull();
     expect(contactEmail("support")).toBeNull();
     expect(contactEmail("support@netlet")).toBeNull();
-    expect(contactEmail("sup port@netlet.com")).toBeNull();
-    expect(contactEmail("a@b@netlet.com")).toBeNull();
+    expect(contactEmail("sup port@netlet.net")).toBeNull();
+    expect(contactEmail("a@b@netlet.net")).toBeNull();
   });
 });
 

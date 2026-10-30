@@ -126,13 +126,12 @@ shopper reported exactly that after pressing the link in the sign-up email.
 
 - **Site URL**: the shop's own address — `https://netlet.net` since the shop
   moved to its own domain. Any page on that host is then allowed.
-- **Redirect URLs**: add the same address with `/**` after it, and the same
-  again for any other address the shop answers on (a custom domain beside the
-  Vercel one).
+- **Redirect URLs**: `https://netlet.net/**`. Nothing else: the shop answers
+  on that address alone (`www.netlet.net` redirects to it).
 
 NetLet names the address from `SITE_URL` when it is set, otherwise from
 Vercel's production address, otherwise from the host the request came to — so
-set `SITE_URL` to the same address if the shop has a custom domain.
+set `SITE_URL` to `https://netlet.net` in Vercel's environment variables.
 
 ---
 

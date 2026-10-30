@@ -141,27 +141,32 @@ PORT              # Vercel decides
 
 ## 3. Deploy
 
-**Deploy**. Two minutes. You get a URL like
-`netlet-project.vercel.app`, and every push to `main` redeploys — pull
-requests get their own preview URL automatically.
+**Deploy**. Two minutes. Every push to `main` redeploys — pull requests get
+their own preview URL automatically.
 
-**The shop's address is `netlet.net`** (Settings → Domains: `netlet.net` on
-Production, `www.netlet.net` redirecting to it). The iOS app calls the address
-it was built with (`NETLET_API_BASE_URL` in `Frontend/iOS/Config/Shared.xcconfig`),
-so **a domain an installed build calls must stay on the project** until every
-phone has a build that calls the new one. Removing `netlet-project.vercel.app`
-answered every request from builds made before the move with Vercel's
-`DEPLOYMENT_NOT_FOUND` page, which the app reads as "NetLet could not be
-reached" — sign-in included. The other addresses Vercel gives a project
-(`netlet-project-<team>.vercel.app` and each deployment's own) sit behind
-Vercel Authentication and cannot stand in for it. Moving the shop to another
-host also moves Supabase's Site URL and Redirect URLs, the Google Maps key's
-allowed referrers, reCAPTCHA's domain list and `SITE_URL`.
+**The shop's address is `https://netlet.net`, and it is the only one** —
+Settings → Domains: `netlet.net` on Production, `www.netlet.net` redirecting to
+it. The website, the iOS app (`NETLET_API_BASE_URL` in
+`Frontend/iOS/Config/Shared.xcconfig`), the AI gateway (`ALLOWED_ORIGINS` in
+`Backend/gateway/wrangler.toml`), the emails (`SITE_URL`) and the live check all
+name it. The other addresses Vercel gives a project — its own `.vercel.app`
+name and each deployment's — sit behind Vercel Authentication, so nobody can
+use them, and the project's own `.vercel.app` domain is not on it.
+
+**An installed app calls the address it was built with**, so a domain a build
+calls must stay on the project until every phone runs a build that calls its
+successor. Taking the project's `.vercel.app` domain off answered every request
+from builds made before the move with Vercel's `DEPLOYMENT_NOT_FOUND` page,
+which the app reads as "NetLet could not be reached" — sign-in included —
+until a build calling `netlet.net` was installed. Moving the shop to another
+host moves all of these with it: Supabase's Site URL and Redirect URLs, the
+Google Maps key's allowed websites, the MapKit token's domain, reCAPTCHA's
+domain list, `SITE_URL`, `ALLOWED_ORIGINS` and the app's address.
 
 ## 4. Check it
 
 ```
-https://<your-url>/healthz
+https://netlet.net/healthz
 ```
 
 should answer `{"status":"ok","uptime":…}`. That is the serverless function
@@ -180,8 +185,9 @@ Turn GitHub Pages off in the repository's **Settings → Pages** so the two
 cannot drift. The native iOS app reads its server's address from
 `NETLET_API_BASE_URL` in `Frontend/iOS/Config/Shared.xcconfig`.
 
-For a custom domain (`netlet.com` or similar): **Settings → Domains**, add it,
-and follow the DNS records Vercel gives you. TLS is automatic.
+The shop's domain is `netlet.net`: **Settings → Domains**, with the DNS records
+Vercel gives. TLS is automatic. See "The shop's address" above for what else
+names it.
 
 ---
 

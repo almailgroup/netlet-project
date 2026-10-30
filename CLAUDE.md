@@ -6556,16 +6556,18 @@ bars say "Close" (`common.close`) with the longer name ("Close the size guide")
 kept for VoiceOver. The website has none of this: Safari on an iPhone lets no
 page vibrate.
 
-**The app calls `https://netlet.net`** (`NETLET_API_BASE_URL` in
-`Config/Shared.xcconfig`, `APIConfiguration.fallback`), the shop's own domain.
-It called `netlet-project.vercel.app` until that domain was taken off the
-Vercel project for `netlet.net`; every installed build then got Vercel's
+**The shop is `https://netlet.net` and nothing else, on the owner's word** —
+the app (`NETLET_API_BASE_URL` in `Config/Shared.xcconfig`,
+`APIConfiguration.fallback`), the AI gateway's `ALLOWED_ORIGINS`, `SITE_URL`,
+the live check and every doc name it, and the project's own `.vercel.app`
+domain is off the Vercel project. Taking that domain off before a build
+calling `netlet.net` was installed gave every installed build Vercel's
 `DEPLOYMENT_NOT_FOUND` page for every request, which `APIError.unexpected`
 says as "NetLet could not be reached", and the launch's session check failing
 drew the sign-in form, so the owner read it as being signed out. **A host an
 installed build calls stays on the Vercel project** until every phone runs a
-build calling the new one (`docs/VERCEL.md`); the session cookie is the host's
-own, so moving host asks for one sign-in.
+build calling its successor (`docs/VERCEL.md`); the session cookie is the
+host's own, so moving host asks for one sign-in.
 
 **The client is typed by procedure.** The server has no REST routes, so
 `Procedures.swift` declares each tRPC procedure the app calls with its input

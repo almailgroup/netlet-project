@@ -234,7 +234,7 @@ for (const [name, label, fallback] of [["SUPPORT_WHATSAPP", "WhatsApp support", 
      value that is set and refused would vanish without a word, so it blocks. */
   const email = (process.env.SUPPORT_EMAIL ?? NETLET_CONTACT.email).trim();
   if (!email) add("warn", "Support email", "SUPPORT_EMAIL not set — the footer offers no email address", "Set SUPPORT_EMAIL to NetLet's support address");
-  else if (!contactEmail(email)) add("blocked", "Support email", "SUPPORT_EMAIL is not an email address", "Write it like support@netlet.com.kw");
+  else if (!contactEmail(email)) add("blocked", "Support email", "SUPPORT_EMAIL is not an email address", "Write it like support@netlet.net");
   else add("ok", "Support email", contactEmail(email)!);
   for (const platform of SOCIAL_PLATFORMS) {
     const name = `SOCIAL_${platform.toUpperCase()}`;

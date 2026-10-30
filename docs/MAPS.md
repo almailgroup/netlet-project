@@ -24,9 +24,9 @@ map is used.
 2. **APIs & Services → Library → Maps JavaScript API → Enable.**
 3. **APIs & Services → Credentials → Create credentials → API key.**
 4. Open the key and restrict it — this is what makes a public key safe:
-   - **Application restrictions → Websites**, and add NetLet's addresses, e.g.
-     `https://netlet.com/*` and `https://www.netlet.com/*` (and the Vercel
-     preview address if you test there).
+   - **Application restrictions → Websites**, and add NetLet's addresses:
+     `https://netlet.net/*` and `https://www.netlet.net/*` (and
+     `http://localhost:5000/*` only if you test the map on a laptop).
    - **API restrictions → Restrict key → Maps JavaScript API.**
 5. In Vercel, set `GOOGLE_MAPS_API_KEY` to the key, and redeploy.
 
@@ -43,8 +43,8 @@ Needs an Apple Developer account (the yearly membership).
 1. **developer.apple.com → Certificates, Identifiers & Profiles → Keys**, create
    a key with **MapKit JS** ticked (or use **Maps tokens**, where Apple offers
    it, to make a MapKit JS token directly).
-2. Create a **MapKit JS token** restricted to NetLet's domain, with a long
-   expiry.
+2. Create a **MapKit JS token** restricted to NetLet's domain, `netlet.net`,
+   with a long expiry.
 3. In Vercel, set `APPLE_MAPKIT_TOKEN` to it, and redeploy. Renew it before it
    expires.
 
