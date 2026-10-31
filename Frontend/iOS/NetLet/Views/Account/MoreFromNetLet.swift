@@ -161,8 +161,11 @@ struct LanguageRow: View {
 
 /// The currency prices are read in, on the owner's word: the dinar, the US
 /// dollar, the pound, the euro and the Gulf's, each named by the phone in the
-/// page's language — the web's `CurrencySelect`. A line under it says it is a
-/// reading aid; everything is still paid in dinars.
+/// page's language — the web's `CurrencySelect`. **The row is its name and
+/// the choice alone, on the owner's word**: the line saying prices are a
+/// reading aid and the feed's credit came off it. The cart and checkout still
+/// say what is paid in dinars, and the credit the feed asks for is the title
+/// of the list the choice opens.
 struct CurrencyRow: View {
     @Environment(LanguageSettings.self) private var l
 
@@ -173,31 +176,24 @@ struct CurrencyRow: View {
                 .foregroundStyle(ProfileInk.icon)
                 .frame(width: 26)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(l.t("currency.title"))
-                    .font(.inter(16, .medium))
-                    .foregroundStyle(Brand.ink)
-                Text(l.t("currency.note"))
-                    .font(.inter(12))
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                // The feed asks to be credited where its rates are used.
-                Text(l.t("currency.source"))
-                    .font(.inter(11))
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(l.t("currency.title"))
+                .font(.inter(16, .medium))
+                .foregroundStyle(Brand.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
             Menu {
-                ForEach(CurrencyTable.shared.currencies, id: \.self) { code in
-                    Button {
-                        Haptics.tap()
-                        l.setCurrency(code)
-                    } label: {
-                        if l.currency == code {
-                            Label(CurrencyTable.name(code, language: l.current), systemImage: "checkmark")
-                        } else {
-                            Text(CurrencyTable.name(code, language: l.current))
+                // The feed asks to be credited where its rates are used: the
+                // list's own title, seen only by somebody choosing.
+                Section(l.t("currency.source")) {
+                    ForEach(CurrencyTable.shared.currencies, id: \.self) { code in
+                        Button {
+                            Haptics.tap()
+                            l.setCurrency(code)
+                        } label: {
+                            if l.currency == code {
+                                Label(CurrencyTable.name(code, language: l.current), systemImage: "checkmark")
+                            } else {
+                                Text(CurrencyTable.name(code, language: l.current))
+                            }
                         }
                     }
                 }

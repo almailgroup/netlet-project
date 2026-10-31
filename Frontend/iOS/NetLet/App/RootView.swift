@@ -143,9 +143,12 @@ private struct ToastView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Brand.navy.opacity(0.12), radius: 12, x: 0, y: 6)
+        )
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-        .shadow(color: Brand.navy.opacity(0.12), radius: 12, x: 0, y: 6)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.updatesFrequently)
         .onAppear { announce(text) }

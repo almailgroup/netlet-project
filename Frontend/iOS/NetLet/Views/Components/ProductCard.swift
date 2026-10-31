@@ -716,7 +716,14 @@ struct PhotoCartControl: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: Brand.navy.opacity(line == nil ? 0.14 : 0.26), radius: 5, y: 2)
+            // The shadow is the shape's, behind the control, never the whole
+            // control's: a shadow round a composite is drawn off screen again
+            // on every frame it moves, on every card of a scrolling grid.
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(line == nil ? Color.white : Brand.navy)
+                    .shadow(color: Brand.navy.opacity(line == nil ? 0.14 : 0.26), radius: 5, y: 2)
+            )
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: stepping)
             .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: line == nil)
             .onDisappear {

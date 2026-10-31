@@ -64,26 +64,13 @@ struct AccountSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         // The account's home is behind this one when it is the Profile tab's first push.
         let toAccount = app.selectedTab == .account && app.accountPath.count <= 1
         VStack(alignment: .leading, spacing: 0) {
-            Button {
-                dismiss()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "arrow.backward").font(.system(size: 14, weight: .semibold))
-                    Text(l.t(toAccount ? "account.backToAccount" : "nav.back"))
-                }
-                .font(.inter(14, .semibold))
-                .foregroundStyle(Brand.muted)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.tap)
-            .padding(.bottom, 8)
+            BackLink(label: l.t(toAccount ? "account.backToAccount" : "nav.back"))
+                .padding(.bottom, 8)
             Text(title).pageTitle()
             Text(hint)
                 .font(.inter(15))
@@ -98,6 +85,29 @@ struct AccountSection<Content: View>: View {
         .padding(.top, 16)
         .padding(.bottom, 48)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// "← Your account", "← Your orders": one screen back, the account's own way
+/// back on a page that draws no header.
+struct BackLink: View {
+    let label: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Button {
+            dismiss()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.backward").font(.system(size: 14, weight: .semibold))
+                Text(label)
+            }
+            .font(.inter(14, .semibold))
+            .foregroundStyle(Brand.muted)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
     }
 }
 
@@ -190,6 +200,9 @@ struct OrderProgressPill: View {
 /// One order: where each line is and what can be done about it — a return,
 /// a delivery rating, a damage report, the driver on a map, the invoice —
 /// then what it cost and where it is going. The web's opened order.
+///
+/// **No header and no search, on the owner's word** — an order is the
+/// account's, drawn as its sections are, with "← Your orders" for the way back.
 struct OrderDetailView: View {
     let reference: String
     @Environment(AppModel.self) private var app
@@ -197,9 +210,10 @@ struct OrderDetailView: View {
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
-            ShopPage(refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Breadcrumbs(trail: [l.t("account.sectionOrders"), reference])
+                    BackLink(label: l.t("invoice.back"))
+                        .padding(.bottom, -8)
                     Text(l.t("orders.orderHeading", ["reference": reference]))
                         .pageTitle()
                         .fixedSize(horizontal: false, vertical: true)
@@ -222,7 +236,7 @@ struct OrderDetailView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 24)
+                .padding(.top, 16)
                 .padding(.bottom, 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

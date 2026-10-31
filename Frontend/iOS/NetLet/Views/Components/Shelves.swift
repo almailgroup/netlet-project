@@ -187,13 +187,18 @@ struct DepartmentCardGrid: View {
             .padding(.top, columns == 3 ? 8 : 12)
             .padding(.bottom, columns == 3 ? 12 : 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            // The shadow from the card's shape, not from all it holds (see
+            // `PhotoCartControl`).
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Brand.navy.opacity(0.06), radius: 1, x: 0, y: 1)
+            )
             .overlay {
                 if columns != 3 {
                     RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1)
                 }
             }
-            .shadow(color: Brand.navy.opacity(0.06), radius: 1, x: 0, y: 1)
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(PressFillStyle(cornerRadius: 16))

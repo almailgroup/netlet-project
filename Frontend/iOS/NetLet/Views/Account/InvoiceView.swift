@@ -15,10 +15,11 @@ struct InvoiceView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(refresh: { await load() }) {
+        // An order's paper, drawn as the order is: no header, and the way back.
+        ShopPage(header: false, refresh: { await load() }) {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Breadcrumbs(trail: [l.t("invoice.back"), number])
+                    BackLink(label: l.t("nav.back"))
                     Spacer()
                     if let loaded = record.value {
                         ShareLink(item: InvoicePDF(record: loaded, language: l.current, verifyURL: verifyURL(loaded)), preview: SharePreview(loaded.document.number)) {

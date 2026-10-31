@@ -125,8 +125,7 @@ struct HomeBanners: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 36, height: 36)
-                .background(Circle().fill(Color.white))
-                .shadow(color: Brand.navy.opacity(0.18), radius: 5, x: 0, y: 2)
+                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.18), radius: 5, x: 0, y: 2))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }

@@ -458,8 +458,12 @@ struct DashedRule: View {
 extension View {
     /// A white card of the profile page: 24 round, a whisper of shadow, no rim.
     func panel() -> some View {
-        background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white))
-            .shadow(color: Brand.navy.opacity(0.05), radius: 1, y: 1)
+        // The shadow is the card's shape's, not the whole card's.
+        background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Brand.navy.opacity(0.05), radius: 1, y: 1)
+        )
     }
 }
 

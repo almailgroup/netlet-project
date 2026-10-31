@@ -177,8 +177,7 @@ private struct BrowsePage: View {
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 52, height: 52)
-                    .background(Circle().fill(Brand.navy))
-                    .shadow(color: Brand.navy.opacity(0.25), radius: 15, x: 0, y: 10)
+                    .background(Circle().fill(Brand.navy).shadow(color: Brand.navy.opacity(0.25), radius: 15, x: 0, y: 10))
                     .overlay(alignment: .topTrailing) {
                         CountBadge(value: model.filters.activeCount).fixedSize().offset(x: 4, y: -4)
                     }

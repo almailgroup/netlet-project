@@ -274,9 +274,14 @@ private struct ProductPage: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white))
+        // The shadow from the box's shape: round everything in the buy box it
+        // was drawn off screen again on every frame of the page's scroll.
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Brand.navy.opacity(0.05), radius: 16, x: 0, y: 8)
+        )
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-        .shadow(color: Brand.navy.opacity(0.05), radius: 16, x: 0, y: 8)
     }
 
     @ViewBuilder

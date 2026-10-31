@@ -299,8 +299,9 @@ function LanguageRow({ row }: { row: Row }) {
 
 /**
  * The currency prices are read in, on the owner's word: the shop's own list
- * (`CurrencySelect`), with a line saying it is a reading aid — the dinars are
- * still what is paid.
+ * (`CurrencySelect`), and nothing under the name, also on their word — the
+ * cart and checkout say what is paid in dinars, and the feed's credit is in
+ * the footer beside the same control.
  */
 function CurrencyRow({ row }: { row: Row }) {
   const { t } = useTranslation();
@@ -310,11 +311,8 @@ function CurrencyRow({ row }: { row: Row }) {
       <Icon className={ICON} strokeWidth={1.75} aria-hidden />
       <span className="min-w-0 flex-1">
         <label htmlFor="account-currency" className="block text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</label>
-        <span id="account-currency-note" className="block text-[12px] leading-4 ink-muted">{t("currency.note")}</span>
-        {/* The feed asks to be credited where its rates are used. */}
-        <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block text-[11px] leading-4 ink-muted underline underline-offset-2">{t("currency.source")}</a>
       </span>
-      <CurrencySelect id="account-currency" describedBy="account-currency-note" className="glass-field flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#1f2a44] min-[420px]:w-auto min-[420px]:min-w-52" />
+      <CurrencySelect id="account-currency" className="glass-field flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#1f2a44] min-[420px]:w-auto min-[420px]:min-w-52" />
     </div>
   );
 }

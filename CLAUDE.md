@@ -5733,7 +5733,11 @@ counted or charged by them. Every rate is held within 35% of the reference
 table (`ratesFromFeed`), so a feed answering in the wrong base or with a typo
 cannot misprice every card; any failure is the reference table, whose Gulf
 currencies follow their pegs to the dollar. The feed asks to be credited where
-its rates are used, and the currency row does. `EXCHANGE_RATES_URL` points it
+its rates are used. **The account's currency row is its name and the choice
+alone, on the owner's word** — the line saying prices are a reading aid and the
+credit came off it — so the credit is beside the footer's currency control on
+the web and the title of the list the choice opens in the app; the cart and
+checkout still say what is paid in dinars. `EXCHANGE_RATES_URL` points it
 elsewhere and `off` keeps the reference alone. The sandbox this was built in
 cannot reach the feed, so its first live read is the deployment's.
 
@@ -6395,13 +6399,18 @@ web's.
 the saved location, the Profile page is the delivery apps' layout and the
 assistant says "Need help?" — the web's changes, on the owner's word.**
 `ShopPage`'s `header: false` draws a page with neither row (the Profile tab's first screen, signed in or out, its sections,
-which carry their own "← Your account", and the Cart tab's first screen) — the
+which carry their own "← Your account", an opened order and its invoice, on
+the owner's word, with "← Your orders" and "← Back" (`BackLink`), and the Cart
+tab's first screen) — the
 assistant's button still floats there, on the owner's word, with room kept
 under the last row for it — and the page's own ground under
 the status bar, solid, so what scrolls up goes under it rather than under the
 clock (build 35 drew nothing there); `LogoRow`'s end is a pin,
 the address in use or the area, and a chevron, felt on the press and opening `DeliverySheet` — the web's `DeliveryZoneDialog`: the
-book as choices, add or manage, and a guest's governorates — over
+book as choices, each with a pencil that opens its own form over the sheet
+(on the owner's word; the web's dialog had one), "Add a new address" opening
+the same form there, the new one then delivered to, and a guest's
+governorates — over
 `DeliveryModel`, which is the web's `addressInUse` (tested on the same cases)
 with checkout's own last-address key, so a choice here is where checkout
 starts. The Profile page is `AccountView`'s cards and rows, the dates at the
@@ -6923,24 +6932,51 @@ own sharper copy is decoded (`ImagePipeline.anySize`), and a photo still on
 its way breathes gently rather than sitting flat, so loading reads differently
 from no photo (still under Reduce Motion).
 
-**The app opens on its mark, on the owner's word** ("a cool animation when
-opening the app … use the logo to zoom out"; `LaunchSplash`). The first frame
-is the launch screen's own navy, so nothing changes where the system hands
-over; the white-and-orange mark springs up into place with a little bounce, an
-orange ring breathes out from behind it with a light tap, and then it zooms
-past the viewer and fades as the navy clears, so the shop comes up from behind
-it — about a second and a half, on a cold launch only, with the shop loading
-underneath the whole time. Under Reduce Motion it is the mark, faded; the UI
-tests and the screenshots (`-NetLetOpen`) open straight onto their screen.
-**It was made more dynamic and given a sound, on the owner's word** ("a more
-dynamic and premium intro … with a short UI sound synced to it"): a warm glow
-blooms, the mark springs out of a blur, two orange rings ripple out as it
-lands, a band of light sweeps across it, and the home page's line rises in
-under it a beat apart before it all zooms past. `launch-chime.wav` (made for
-it: a soft whoosh into two bells, E6 then B6, over a low thump) lands at
-300ms, `LaunchSplash.landing`, the instant the mark does, with the tap. It
-plays in the `.ambient` category, so the silent switch silences it and music
-playing keeps playing.
+**The app opens by zooming into its roof, and the shop is seen through it —
+on the owner's word** ("make the opening intro animation better, don't add
+glow … a zoom into the logo as it reveals the app itself"; `LaunchSplash`). It
+had been a wordmark with a glow, two rings, a light sweep and the home page's
+line, and before that a mark that zoomed past the viewer and faded. The first
+frame is the launch screen's own navy, so nothing changes where the system
+hands over; the app icon's orange roof springs up into its place, lands on the
+chime's first bell with a light tap, draws back a touch, and then **becomes a
+window**: the orange fades out of it as it grows into the apex, where the two
+bars meet, slow to start and fast at the end, until the window is the screen —
+and the shop behind settles from 108% to its own size as it does (`revealing`,
+in `NetLetApp`). About a second and a quarter, on a cold launch only, with the
+shop loading underneath the whole time. **The roof is drawn, not a picture**
+(`RoofMark`): the icon's own geometry in its 1024 grid — two rounded bars at
+forty-five degrees, their union less the two holes near the feet, checked
+against `AppIcon-1024.png` by drawing one over the other — so it is as sharp
+at ninety times its size as at its own. The curtain is one even-odd path, the
+screen with the roof cut out (`RoofCurtain`), so a frame of the zoom redraws a
+few curves rather than masking the whole screen. **How far it zooms is
+measured** (`zoomToCover`): the nearest edge of the roof to the apex — the
+notch above and the inside corner below, each 28 units away — has to pass the
+far edge of the screen, read as the splash is laid out; rendered frame by frame
+at 390 × 844, 430 × 932 and an iPad's 1024 × 1366, the last frame is all window.
+Under Reduce Motion the roof fades in and the curtain fades away; the UI tests
+and the screenshots (`-NetLetOpen`) open straight onto their screen.
+`launch-chime.wav` (made for it: a soft whoosh into two bells, E6 then B6,
+over a low thump) lands at 300ms, `LaunchSplash.landing`, the instant the roof
+does. It plays in the `.ambient` category, so the silent switch silences it and
+music playing keeps playing.
+
+**It runs at the screen's own rate, up to 120 frames a second, on the owner's
+word** ("take full advantage of the 120 fps screen of an iPhone").
+`CADisableMinimumFrameDurationOnPhone` in `Config/Info.plist` is what allows
+it: without the key an iPhone's ProMotion screen holds an app's animations —
+SwiftUI's, a spring, a sheet's, the tab bar's slide — to 60, while its own
+scrolling runs faster beside them. And **a shadow belongs to a shape, never
+to a composite**: a `.shadow` on a whole card, or a control holding icons and
+text, is drawn off screen again on every frame the view moves, on every card of
+a scrolling grid — the card's photo control, the shelves' cards, the product
+page's buy box, the account's panels and the rewards wallet had it. Each is the
+background shape's own shadow now, behind the content, the same picture. The
+glass bars' shadows are left as they were: their blur is redrawn every frame
+anyway, and a shape behind translucent glass would show through it. Not
+measured on a device here, which this sandbox cannot reach — Instruments'
+hitches template on a ProMotion iPhone is the check.
 
 **The empty search field offers the shop's own examples in turn, on the
 owner's word** (`CyclingExample`, in the header's field and the open sheet's):

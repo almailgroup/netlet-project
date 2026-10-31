@@ -10,10 +10,22 @@ import SwiftUI
 /// rather than being chosen. Signed out there is no book, so it offers to sign
 /// in and keeps the governorates beneath, so a guest can still see what
 /// delivery costs.
+///
+/// **Each address has a pencil, on the owner's word**, which opens that
+/// address's own form over this sheet — the web's dialog, where an address is
+/// changed with its pencil where it is chosen. "Add a new address" opens the
+/// same form here too, and the address made is then the one delivered to.
 struct DeliverySheet: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
+    /// The address open in its form over the sheet; `nil` inside is a new one.
+    @State private var editing: Editing?
+
+    private struct Editing: Identifiable {
+        let address: SavedAddress?
+        var id: String { address.map { "address-\($0.id)" } ?? "new" }
+    }
 
     var body: some View {
         NavigationStack {
@@ -38,6 +50,19 @@ struct DeliverySheet: View {
                 }
             }
             .task { await app.delivery.refresh(signedIn: app.session.isSignedIn) }
+            .sheet(item: $editing) { subject in
+                // A governorate is asked for here, as on the web: an address
+                // chosen for delivery is chosen for exactly that.
+                AddressFormSheet(address: subject.address, requireGovernorate: true) { saved in
+                    Task {
+                        await app.delivery.refresh(signedIn: true)
+                        if subject.address == nil {
+                            await app.delivery.choose(saved)
+                            dismiss()
+                        }
+                    }
+                }
+            }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -77,10 +102,27 @@ struct DeliverySheet: View {
         }
     }
 
+    /// The address to choose, and its pencil beside it — two buttons side by
+    /// side, since a button inside a button is not one.
     private func row(_ address: SavedAddress, chosen: Bool) -> some View {
+        HStack(alignment: .top, spacing: 0) {
+            choice(address, chosen: chosen)
+            IconButton(symbol: "pencil", label: "\(l.t("address.editTitle")) — \(address.label)") {
+                editing = Editing(address: address)
+            }
+            .padding(.top, 6)
+            .padding(.trailing, 6)
+        }
+    }
+
+    private func choice(_ address: SavedAddress, chosen: Bool) -> some View {
         let usable = !(address.governorate ?? "").isEmpty
         return Button {
-            guard usable else { return openBook() }
+            // One with no governorate cannot price anything: it opens to be finished.
+            guard usable else {
+                editing = Editing(address: address)
+                return
+            }
             Task {
                 await app.delivery.choose(address)
                 dismiss()
@@ -115,7 +157,7 @@ struct DeliverySheet: View {
 
     private var addButton: some View {
         Button {
-            openBook()
+            editing = Editing(address: nil)
         } label: {
             Label(l.t("delivery.addNew"), systemImage: "plus")
                 .font(.inter(15, .bold))

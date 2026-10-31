@@ -323,7 +323,12 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
           </button>
           {/* The currency prices are read in — for a guest too, whose account
               page is the sign-in form. */}
-          <CurrencySelect className="inline-flex h-11 w-fit items-center gap-2 rounded-full border border-white/25 px-4 text-[14px] font-semibold text-white hover:bg-white/[.12]" />
+          <div className="flex flex-col items-start gap-1.5">
+            <CurrencySelect className="inline-flex h-11 w-fit items-center gap-2 rounded-full border border-white/25 px-4 text-[14px] font-semibold text-white hover:bg-white/[.12]" />
+            {/* The feed asks to be credited where its rates are used; the
+                account's currency row no longer carries it, on the owner's word. */}
+            <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer" className="text-[12px] leading-5 text-[#c5d3e6] underline underline-offset-2">{t("currency.source")}</a>
+          </div>
         </div>
 
         {/* Who the shop is, and the documents that bind it. */}

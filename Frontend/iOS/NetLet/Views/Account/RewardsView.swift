@@ -196,8 +196,11 @@ struct PointsWallet: View {
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Brand.navy))
-        .shadow(color: Brand.navy.opacity(0.35), radius: 14, y: 8)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Brand.navy)
+                .shadow(color: Brand.navy.opacity(0.35), radius: 14, y: 8)
+        )
         .confirmationDialog(l.t("rewards.convertTitle"), isPresented: $asking, titleVisibility: .visible) {
             Button(l.t("rewards.convert")) {
                 Task {

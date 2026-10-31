@@ -6,6 +6,9 @@ struct NetLetApp: App {
     /// The opening animation is on screen (`LaunchSplash`) — on every cold
     /// launch but a UI test's or a screenshot's, which open on their screen.
     @State private var opening: Bool
+    /// The opening's zoom has begun, and the shop behind it settles from a
+    /// little large to its own size as the roof opens onto it.
+    @State private var revealed = false
 
     // Made in the initialiser, which is on the main actor, rather than as the
     // property's initial value, which Swift 5 mode evaluates outside it.
@@ -21,8 +24,11 @@ struct NetLetApp: App {
         WindowGroup {
             ZStack {
                 RootView()
+                    .scaleEffect(opening && !revealed && !UIAccessibility.isReduceMotionEnabled ? 1.08 : 1)
                 if opening {
-                    LaunchSplash { opening = false }
+                    LaunchSplash(revealing: {
+                        withAnimation(.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.8)) { revealed = true }
+                    }, done: { opening = false })
                         .zIndex(1)
                 }
             }
