@@ -305,7 +305,7 @@ final class FixtureDecodingTests: XCTestCase {
         _ = try await client.call(API.unreadNotices)
         _ = try await client.call(API.onTheWay)
         // Account security says what stands in the way of deleting, before the press.
-        let deletion = try await client.call(API.deletionCheck)
+        let deletion = try await client.call(API.accountDeletionCheck)
         XCTAssertTrue(deletion.blockers.isEmpty)
         XCTAssertGreaterThan(deletion.points, 0)
 

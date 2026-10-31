@@ -7035,8 +7035,13 @@ helper on a main-actor type that something nonisolated calls is marked
 `nonisolated` (`trimmedRate`), and a view helper that hands its content to
 `PortalCard` takes it `@escaping`, because the card keeps it. And **no
 `await` inside an XCTest assertion**: `XCTUnwrap` and `XCTAssert…` take
-autoclosures, which cannot be async, so the value is awaited first. None of
-these shows anywhere but on macOS, so a push is not done until its iOS run is
+autoclosures, which cannot be async, so the value is awaited first. And
+**`API` is one namespace across every file that extends it**:
+`Procedures.swift` and `PortalProcedures.swift` both add to it, so an account's
+`deletionCheck` collided with a product's, and a nested `API.DeletionCheck`
+would have shadowed the top-level type the product's used — the account's
+are `accountDeletionCheck` and `AccountDeletionCheck`. Grep both files for a
+name before adding one. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also

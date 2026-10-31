@@ -17,7 +17,7 @@ import SwiftUI
 struct DeleteAccountCard: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    @State private var check: API.DeletionCheck?
+    @State private var check: API.AccountDeletionCheck?
     @State private var asking = false
     @State private var password = ""
     @State private var deleting = false
@@ -113,7 +113,7 @@ struct DeleteAccountCard: View {
     }
 
     private func load() async {
-        if let answer = try? await app.services.api.call(API.deletionCheck) { check = answer }
+        if let answer = try? await app.services.api.call(API.accountDeletionCheck) { check = answer }
     }
 
     private func delete() async {

@@ -167,7 +167,7 @@ enum API {
 
     /// What stands between the shopper and deleting their account, and the
     /// points that go with it.
-    struct DeletionCheck: Decodable, Sendable {
+    struct AccountDeletionCheck: Decodable, Sendable {
         let blockers: [String]
         let points: Int
     }
@@ -211,7 +211,8 @@ enum API {
     static let profileDetails = Procedure<NoInput, ProfileDetails>(query: "customer.details.get")
     static let saveProfileDetails = Procedure<DetailsPatch, ProfileDetails>(mutation: "customer.details.save")
     static let changePassword = Procedure<ChangePassword, Acknowledged>(mutation: "auth.changePassword")
-    static let deletionCheck = Procedure<NoInput, DeletionCheck>(query: "auth.deletionCheck")
+    /// Named for the account: `deletionCheck` is a product's (`PortalProcedures`).
+    static let accountDeletionCheck = Procedure<NoInput, AccountDeletionCheck>(query: "auth.deletionCheck")
     static let deleteAccount = Procedure<DeleteAccount, Acknowledged>(mutation: "auth.deleteAccount")
     static let changeEmail = Procedure<ChangeEmail, User>(mutation: "auth.changeEmail")
     static let profile = Procedure<NoInput, Profile>(query: "customer.profile.get")
